@@ -1973,6 +1973,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 						<InspectorSidePanel
 							currentPath={inspectorPath}
 							searchQuery={vaultSearchQuery}
+							showCommandCenterPin
 							onClose={() => useVaultSearchStore.getState().setInspectorOpen(false)}
 							onOpenDocument={(path) => {
 								// Open the doc but keep the Search modal open so the user can hop.

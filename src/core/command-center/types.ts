@@ -101,6 +101,18 @@ export interface CommandCenterRecentTarget {
 	parentPath: string;
 }
 
+export interface CommandCenterVaultTargetMembership {
+	path: string;
+	defaultGroupId: string | null;
+	configured: boolean;
+	shownOnHome: boolean;
+	groups: Array<{
+		id: string;
+		label: string;
+		included: boolean;
+	}>;
+}
+
 export interface CommandCenterRuntimePort {
 	getConfig(): CommandCenterBoardConfig;
 	subscribe(listener: () => void): () => void;
@@ -113,6 +125,10 @@ export interface CommandCenterRuntimePort {
 	invokeItem(item: CommandCenterActionItem): Promise<boolean>;
 	invokeCatalogEntry(entry: CommandCenterCatalogEntry): Promise<boolean>;
 	getRecentTargets(): CommandCenterRecentTarget[];
+	getVaultTargetMembership(path: string): CommandCenterVaultTargetMembership;
+	setVaultTargetGroup(path: string, groupId: string, included: boolean): Promise<CommandCenterVaultTargetMembership>;
+	setVaultTargetHome(path: string, included: boolean): Promise<CommandCenterVaultTargetMembership>;
+	renameVaultTargets(oldPath: string, newPath: string): Promise<void>;
 	openLauncher(): void;
 	openCustomize(): void;
 	openHome(): Promise<void>;

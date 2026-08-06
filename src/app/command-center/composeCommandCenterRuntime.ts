@@ -30,5 +30,10 @@ export async function composeCommandCenterRuntime(
 		plugin.settings.commandCenter = runtime.getConfig();
 		await plugin.saveSettings();
 	}
+	plugin.registerEvent(plugin.app.vault.on('rename', (file, oldPath) => {
+		void runtime.renameVaultTargets(oldPath, file.path).catch((error) => {
+			console.error('[Peak Command Center] Failed to follow a Vault target rename.', error);
+		});
+	}));
 	return runtime;
 }

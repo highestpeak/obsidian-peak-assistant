@@ -222,6 +222,19 @@ export function composeQuickSearchHost(
 			const { FileAtlasModal } = await import('@/app/file-atlas/FileAtlasModal');
 			new FileAtlasModal(appContext, path).open();
 		},
+		getCommandCenterDocumentMembership: (path) => {
+			return appContext.runtimeRegistry.tryGetCommandCenterRuntime()?.getVaultTargetMembership(path) ?? null;
+		},
+		setCommandCenterDocumentGroup: async (path, groupId, included) => {
+			const runtime = appContext.runtimeRegistry.tryGetCommandCenterRuntime();
+			if (!runtime) return null;
+			return runtime.setVaultTargetGroup(path, groupId, included);
+		},
+		setCommandCenterDocumentHome: async (path, included) => {
+			const runtime = appContext.runtimeRegistry.tryGetCommandCenterRuntime();
+			if (!runtime) return null;
+			return runtime.setVaultTargetHome(path, included);
+		},
 
 		enableDevTools,
 		isMockEnv,

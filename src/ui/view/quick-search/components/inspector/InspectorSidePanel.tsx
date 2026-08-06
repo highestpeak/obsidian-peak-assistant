@@ -7,6 +7,7 @@ import { DiscoveredSection } from './DiscoveredSection';
 import { AIGraphSection } from './AIGraphSection';
 import { useVaultSearchStore } from '../../store';
 import { renderSnippetContent } from '../snippet/renderSnippetHighlights';
+import { CommandCenterPinControl } from './CommandCenterPinControl';
 
 /**
  * Renders the current file's search-hit snippet at the top of the inspector.
@@ -67,6 +68,8 @@ export interface InspectorSidePanelProps {
 	onInspectInPanel: (notePath: string) => void;
 	/** Hand the selected result to File Atlas, the canonical local-graph owner. */
 	onOpenFileAtlas: (notePath: string) => void;
+	/** Search surfaces explicitly opt into Command Center curation. */
+	showCommandCenterPin?: boolean;
 }
 
 /**
@@ -76,7 +79,7 @@ export interface InspectorSidePanelProps {
  */
 export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 	currentPath, searchQuery, onClose, showSearchSnippet = true, onOpenDocument, onInspectInPanel,
-	onOpenFileAtlas,
+	onOpenFileAtlas, showCommandCenterPin = false,
 }) => {
 	if (!currentPath) {
 		return (
@@ -99,6 +102,7 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 				>
 					{title}
 				</span>
+				{showCommandCenterPin ? <CommandCenterPinControl path={currentPath} /> : null}
 				<Button
 					variant="ghost"
 					size="icon"

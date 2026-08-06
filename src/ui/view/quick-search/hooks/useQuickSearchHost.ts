@@ -30,6 +30,7 @@ import type { SaveAnalysisResultParams } from '../callbacks/save-ai-analyze-to-m
 import type { CompletedAnalysisSnapshot } from '../store/aiAnalysisStore';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
+import type { CommandCenterVaultTargetMembership } from '@/core/command-center';
 import type {
 	AIGraphArtifactRuntime,
 	AIGraphArtifactView,
@@ -50,6 +51,10 @@ export interface QuickSearchHost {
 	getActiveFilePath(): string | null;
 	/** Open the canonical File Atlas surface focused on a search result. */
 	openFileAtlas(path: string): Promise<void>;
+	/** Read and mutate one document's curated Command Center membership. */
+	getCommandCenterDocumentMembership(path: string): CommandCenterVaultTargetMembership | null;
+	setCommandCenterDocumentGroup(path: string, groupId: string, included: boolean): Promise<CommandCenterVaultTargetMembership | null>;
+	setCommandCenterDocumentHome(path: string, included: boolean): Promise<CommandCenterVaultTargetMembership | null>;
 
 	// Settings-derived flags (computed at hook call time, NOT raw settings tree)
 	enableDevTools: boolean;

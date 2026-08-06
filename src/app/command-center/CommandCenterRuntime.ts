@@ -8,6 +8,10 @@ import {
 	moveCommandCenterHomeItem,
 	moveCommandCenterTab,
 	normalizeCommandCenterBoardConfig,
+	getCommandCenterVaultTargetMembership,
+	renameCommandCenterVaultTargets,
+	setCommandCenterVaultTargetGroup,
+	setCommandCenterVaultTargetHome,
 	type CommandCenterActionItem,
 	type CommandCenterBoardConfig,
 	type CommandCenterCatalogEntry,
@@ -16,6 +20,7 @@ import {
 	type CommandCenterRecentTarget,
 	type CommandCenterRuntimePort,
 	type CommandCenterTabId,
+	type CommandCenterVaultTargetMembership,
 	type ResolvedCommandCenterItem,
 } from '@/core/command-center';
 import type { ObsidianCommandCenterAdapter } from './ObsidianCommandCenterAdapter';
@@ -43,6 +48,7 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 	private config: CommandCenterBoardConfig;
 	private readonly listeners = new Set<() => void>();
 	private persistTail: Promise<void> = Promise.resolve();
+	private idSequence = 0;
 
 	constructor(
 		defaults: CommandCenterBoardConfig,
@@ -97,6 +103,38 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 		placement: CommandCenterDropPlacement,
 	): Promise<void> {
 		await this.saveConfig(moveCommandCenterTab(this.config, tabId, targetTabId, placement));
+	}
+
+	getVaultTargetMembership(path: string): CommandCenterVaultTargetMembership {
+		return getCommandCenterVaultTargetMembership(this.config, path);
+	}
+
+	async setVaultTargetGroup(
+		path: string,
+		groupId: string,
+		included: boolean,
+	): Promise<CommandCenterVaultTargetMembership> {
+		const next = setCommandCenterVaultTargetGroup(
+			this.config,
+			path,
+			groupId,
+			included,
+			this.createActionId(),
+		);
+		if (JSON.stringify(next) !== JSON.stringify(this.config)) await this.saveConfig(next);
+		return this.getVaultTargetMembership(path);
+	}
+
+	async setVaultTargetHome(path: string, included: boolean): Promise<CommandCenterVaultTargetMembership> {
+		const next = setCommandCenterVaultTargetHome(this.config, path, included, this.createActionId());
+		if (JSON.stringify(next) !== JSON.stringify(this.config)) await this.saveConfig(next);
+		return this.getVaultTargetMembership(path);
+	}
+
+	async renameVaultTargets(oldPath: string, newPath: string): Promise<void> {
+		const next = renameCommandCenterVaultTargets(this.config, oldPath, newPath);
+		if (JSON.stringify(next) === JSON.stringify(this.config)) return;
+		await this.saveConfig(next);
 	}
 
 	async resolveItems(groupId: string | 'home', query = ''): Promise<ResolvedCommandCenterItem[]> {
@@ -218,5 +256,12 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 
 	openNativeCommandPalette(): void {
 		this.adapter.openNativeCommandPalette();
+	}
+
+	private createActionId(): string {
+		this.idSequence += 1;
+		const randomId = globalThis.crypto?.randomUUID?.()
+			?? `${Date.now().toString(36)}-${this.idSequence.toString(36)}`;
+		return `action-${randomId}`;
 	}
 }
