@@ -154,11 +154,15 @@ export class DocumentComposerView extends ReactItemViewHost {
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
 		this.pendingRawState = state;
 		const runtime = this.appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
+		const previousFilePath = this.viewState?.filePath ?? null;
 		const normalized = normalizeComposerViewState(
 			state,
 			runtime?.navigation?.getLegacyActiveMarkdownPath(),
 		);
 		if (normalized) {
+			if (previousFilePath && previousFilePath !== normalized.filePath) {
+				result.history = true;
+			}
 			if (this.viewState?.filePath !== normalized.filePath) {
 				this.lastFocusedSourceOffset = null;
 			}

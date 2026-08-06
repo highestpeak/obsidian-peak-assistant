@@ -1,12 +1,18 @@
 import type { EventRef, WorkspaceLeaf } from 'obsidian';
-import type {
-	ComposerWorkspaceNavigationPort,
-	ComposerWorkspaceNavigationSnapshot,
+import {
+	normalizeComposerViewState,
+	type ComposerWorkspaceNavigationPort,
+	type ComposerWorkspaceNavigationSnapshot,
 } from '@/core/composer';
+import { DOCUMENT_COMPOSER_VIEW_TYPE } from './viewType';
+
+interface ObsidianLeafHistoryEntry {
+	state?: unknown;
+}
 
 interface ObsidianLeafHistory {
-	backHistory: readonly unknown[];
-	forwardHistory: readonly unknown[];
+	backHistory: readonly ObsidianLeafHistoryEntry[];
+	forwardHistory: readonly ObsidianLeafHistoryEntry[];
 	go(delta: number): void | Promise<void>;
 }
 
@@ -21,8 +27,10 @@ const EMPTY_NAVIGATION_SNAPSHOT: ComposerWorkspaceNavigationSnapshot = Object.fr
 });
 
 /**
- * Thin app-owned adapter over the same leaf history used by Obsidian's native
- * view-header arrows. The private history shape is isolated here and fails
+ * App-owned document projection over the same leaf history used by Obsidian's
+ * native view-header arrows. Same-file view states and non-document surfaces
+ * are skipped in one native `go()` call so they never render as intermediate
+ * navigation steps. The private history shape is isolated here and fails
  * closed if a future host version removes it.
  */
 export class ObsidianWorkspaceHistoryNavigation implements ComposerWorkspaceNavigationPort {
@@ -47,15 +55,15 @@ export class ObsidianWorkspaceHistoryNavigation implements ComposerWorkspaceNavi
 	}
 
 	async back(): Promise<void> {
-		const history = this.availableHistory();
-		if (!history || history.backHistory.length === 0) return;
-		await history.go(-1);
+		const target = this.documentTarget('back');
+		if (!target) return;
+		await target.history.go(target.delta);
 	}
 
 	async forward(): Promise<void> {
-		const history = this.availableHistory();
-		if (!history || history.forwardHistory.length === 0) return;
-		await history.go(1);
+		const target = this.documentTarget('forward');
+		if (!target) return;
+		await target.history.go(target.delta);
 	}
 
 	private refreshSnapshot(): ComposerWorkspaceNavigationSnapshot {
@@ -69,12 +77,33 @@ export class ObsidianWorkspaceHistoryNavigation implements ComposerWorkspaceNavi
 	}
 
 	private readSnapshot(): ComposerWorkspaceNavigationSnapshot {
-		const history = this.availableHistory();
-		if (!history) return EMPTY_NAVIGATION_SNAPSHOT;
+		const back = this.documentTarget('back');
+		const forward = this.documentTarget('forward');
+		if (!back && !forward) return EMPTY_NAVIGATION_SNAPSHOT;
 		return {
-			canBack: history.backHistory.length > 0,
-			canForward: history.forwardHistory.length > 0,
+			canBack: back !== null,
+			canForward: forward !== null,
 		};
+	}
+
+	private documentTarget(
+		direction: 'back' | 'forward',
+	): { history: ObsidianLeafHistory; delta: number } | null {
+		const history = this.availableHistory();
+		if (!history) return null;
+		const currentPath = documentPathForViewState(this.leaf.getViewState());
+		if (!currentPath) return null;
+		const entries = direction === 'back' ? history.backHistory : history.forwardHistory;
+		for (let index = entries.length - 1; index >= 0; index -= 1) {
+			const candidatePath = documentPathForHistoryEntry(entries[index]);
+			if (!candidatePath || candidatePath === currentPath) continue;
+			const distance = entries.length - index;
+			return {
+				history,
+				delta: direction === 'back' ? -distance : distance,
+			};
+		}
+		return null;
 	}
 
 	private availableHistory(): ObsidianLeafHistory | null {
@@ -91,4 +120,31 @@ export class ObsidianWorkspaceHistoryNavigation implements ComposerWorkspaceNavi
 	private navigationLeaf(): NavigationLeaf {
 		return this.leaf as NavigationLeaf;
 	}
+}
+
+function documentPathForHistoryEntry(entry: ObsidianLeafHistoryEntry): string | null {
+	return documentPathForViewState(entry.state);
+}
+
+function documentPathForViewState(value: unknown): string | null {
+	const viewState = asRecord(value);
+	const type = typeof viewState.type === 'string' ? viewState.type : '';
+	const state = asRecord(viewState.state);
+	if (type === DOCUMENT_COMPOSER_VIEW_TYPE) {
+		return normalizeComposerViewState(state)?.filePath ?? null;
+	}
+	if (type !== 'markdown') return null;
+	return normalizePath(state.file);
+}
+
+function normalizePath(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object'
+		? value as Record<string, unknown>
+		: {};
 }

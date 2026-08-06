@@ -264,19 +264,19 @@ export class ComposerDocumentRouter {
 			}
 			await this.withGuard(leaf, async () => {
 				if (target === 'composer') {
-					await leaf.setViewState({
+					await leaf.setViewState(withoutLeafHistory({
 						type: DOCUMENT_COMPOSER_VIEW_TYPE,
 						state: composerState(filePath),
 						active: true,
-					});
+					}));
 					return;
 				}
 				await this.withHostOpenSuppressed(filePath, () =>
-					leaf.setViewState({
+					leaf.setViewState(withoutLeafHistory({
 						type: 'markdown',
 						state: { file: filePath, mode: 'source' },
 						active: true,
-					}),
+					})),
 				);
 			});
 			this.assertConversionCurrent(options);
@@ -286,8 +286,13 @@ export class ComposerDocumentRouter {
 		} catch (error) {
 			if (this.canRestoreOriginal(leaf, filePath, options)) {
 				await this.withGuard(leaf, () => {
-					if (original.type !== 'markdown') return leaf.setViewState(original);
-					return this.withHostOpenSuppressed(filePath, () => leaf.setViewState(original));
+					if (original.type !== 'markdown') {
+						return leaf.setViewState(withoutLeafHistory(original));
+					}
+					return this.withHostOpenSuppressed(
+						filePath,
+						() => leaf.setViewState(withoutLeafHistory(original)),
+					);
 				});
 			}
 			throw error;
@@ -486,6 +491,18 @@ function composerState(
 		displayMode: 'edit',
 		...(intelligenceRunId ? { intelligenceRunId } : {}),
 	};
+}
+
+/**
+ * Obsidian records every view-type replacement in leaf history. Composer and
+ * Native Markdown are two presentations of the same file, so mark that
+ * replacement as a history restore and keep it out of document navigation.
+ */
+function withoutLeafHistory(viewState: ViewState): ViewState {
+	return {
+		...viewState,
+		popstate: true,
+	} as ViewState;
 }
 
 function filePathForLeaf(leaf: WorkspaceLeaf): string | null {

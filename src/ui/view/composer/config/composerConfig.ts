@@ -390,7 +390,7 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			shortcutRedo: '⇧⌘Z',
 		},
 		workspaceNavigation: {
-			groupLabel: '工作区导航',
+			groupLabel: '文档导航',
 			back: '后退',
 			forward: '前进',
 		},

@@ -20,8 +20,9 @@ export interface ComposerWorkspaceNavigationSnapshot {
 }
 
 /**
- * Leaf-local host navigation. The app adapter owns Obsidian history access;
- * Composer chrome only renders this framework-neutral contract.
+ * Leaf-local document navigation. The app adapter projects Obsidian history
+ * by canonical file identity; Composer chrome only renders this
+ * framework-neutral contract.
  */
 export interface ComposerWorkspaceNavigationPort {
 	getSnapshot(): ComposerWorkspaceNavigationSnapshot;
