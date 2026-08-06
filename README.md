@@ -1,185 +1,169 @@
-## Installation
+<div align="center">
 
-### Dependencies Installation
+<p><a href="README.zh-CN.md">简体中文</a></p>
 
-Due to peer dependency conflicts between different packages (mainly `@langchain/community` and `ignore` versions), use the following command to install dependencies:
+# Peak Assistant
+
+### Turn scattered notes into work you can verify.
+
+Peak Assistant is an evidence-aware AI workspace for Obsidian. Search across your vault, inspect the notes behind each answer, and review changes without giving up your Markdown.
+
+[![Development Preview](https://img.shields.io/badge/status-development_preview-c98225?style=flat-square)](#project-status)
+[![Obsidian Desktop](https://img.shields.io/badge/Obsidian-desktop_only-7c3aed?style=flat-square)](https://obsidian.md/)
+[![GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-2d6a4f?style=flat-square)](LICENSE)
+
+**[Project site](https://highestpeak.github.io/obsidian-peak-assistant/)** · **[Quick start](#quick-start)** · **[Documentation](docs/index.html)** · **[Roadmap](docs/roadmap.html)**
+
+</div>
+
+![Peak Composer open in Obsidian with a Markdown document and its Intelligence sidecar](website/assets/peak-composer.webp)
+
+> [!IMPORTANT]
+> Peak Assistant is a development preview. There is no official binary or Obsidian Community Plugins release yet. The current installation path is a source build for early users and contributors.
+
+## Why Peak Assistant
+
+Most AI tools stop at an answer. Peak Assistant keeps the work around that answer visible:
+
+- **Understand the vault, not just one note.** Search with full-text, fuzzy, semantic, tree, and graph-oriented views, then continue into deeper analysis when needed.
+- **Keep evidence attached.** AI Search separates the run, report, and source list so you can inspect which notes shaped the result.
+- **Work where the source lives.** Peak Composer keeps Markdown as the primary surface, with Copilot, Intelligence, and History next to the document.
+- **Choose the model and the boundary.** Connect local or cloud providers by role; Fast Index stays local, while semantic and full indexing are explicit opt-ins that require a configured provider.
+
+The core loop is deliberately simple:
+
+```text
+Ask a real task → search the vault → inspect report + sources → review or continue the work
+```
+
+<table>
+  <tr>
+    <td width="50%"><img src="website/assets/ai-search-report.webp" alt="AI Search report with an executive summary and evidence sections"></td>
+    <td width="50%"><img src="website/assets/ai-search-sources.webp" alt="AI Search source list showing the vault notes used in the report"></td>
+  </tr>
+  <tr>
+    <td><b>Result</b> — read the structured report in the same workspace.</td>
+    <td><b>Evidence</b> — move to the exact source set without losing the run.</td>
+  </tr>
+</table>
+
+## What is in the preview
+
+### Search and investigate
+
+- Vault Search with compact/detailed list, tree, and graph-oriented exploration
+- AI Search runs with progress, report, source inspection, saved snapshots, and handoff into Chat
+- Vault Intelligence signals for hubs, gaps, stale structure, links, and other knowledge-health patterns
+
+### Write and review
+
+- Peak Composer as a Markdown-first writing surface
+- Document Copilot for selection, block, and document-level work
+- Intelligence and History alongside the source document
+- Candidate, receipt, and history paths designed to make note changes inspectable
+
+### Chat with context
+
+- Chat Studio with projects, conversations, attachments, and vault context
+- A shared agent runtime for tools, permissions, traces, budgets, and cancellation
+- Provider profiles for OpenAI, Anthropic, Google, Perplexity, OpenRouter, Ollama, and compatible custom endpoints
+
+### Stay in control
+
+- Local Fast Index and local SQLite read models
+- Explicit local/cloud model bindings by role
+- Usage and diagnostic views that keep run cost and runtime behavior visible
+- External tools and external plugin commands remain permission-gated
+
+Capability availability depends on your configuration. Provider-backed AI, embeddings, web search, media generation, and external tools need their own credentials or local endpoints.
+
+## Quick start
+
+### Requirements
+
+- Obsidian Desktop
+- Git
+- Node.js 20 or newer
+
+### Build inside your vault
+
+Open a terminal and replace `<your-vault>` with the path to your Obsidian vault:
 
 ```bash
+cd "<your-vault>/.obsidian/plugins"
+git clone https://github.com/highestpeak/obsidian-peak-assistant.git
+cd obsidian-peak-assistant
 npm run install-safe
+npm run build
 ```
 
-Or manually:
+Then restart Obsidian, open **Settings → Community plugins**, and enable **Peak Assistant**. The first-run setup will guide you through provider and index configuration.
+
+To update a source installation:
+
 ```bash
-npm install --legacy-peer-deps
+git pull
+npm run install-safe
+npm run build
 ```
 
-This uses `--legacy-peer-deps` flag to handle peer dependency conflicts while maintaining functionality.
+Restart Obsidian after the build finishes.
 
-**Note**: Regular `npm install` may show ERESOLVE errors due to peer dependency conflicts, but the above commands will resolve them properly.
+> [!NOTE]
+> The project does not currently publish release packages. If you prefer a signed, versioned, no-build installation, watch the repository for the first public release.
+
+## Data, privacy, and control
+
+Peak Assistant uses a storage boundary instead of treating every generated value as a note.
+
+| Data class | Where it lives | What to know |
+| --- | --- | --- |
+| User-owned source | Markdown and native files in your vault | These remain the primary source of truth and follow your own vault/sync setup. |
+| Durable machine records | JSON / partitioned JSONL in the configured Peak data folder | Used for conversations, reports, receipts, reviews, and history. Legacy Markdown readers are migration adapters. |
+| Rebuildable read models | Local SQLite, full-text indexes, embeddings, caches, and local diagnostics | These are local projections, not canonical user documents. |
+| Provider requests | The AI, embedding, web-search, media, or external-tool service you configure | A selected action may send prompts, note excerpts, attachments, or queries required for that action. Review the provider's own data policy. |
+
+Additional points worth knowing:
+
+- **Fast Index is local-only.** Semantic and Full modes require configured embedding/LLM providers and may send document chunks for enrichment.
+- **API keys are stored locally in Obsidian plugin data.** Peak does not claim to encrypt that local file; protect your vault and device accordingly.
+- **Debug traces are off by default.** Redacted and Full local modes are opt-in. Full local traces can contain vault or account context and should not be shared verbatim.
+- **Edits are designed for inspection, not blind writeback.** Composer exposes candidate/history/receipt paths, but this preview does not promise perfect rollback for every feature and file type.
+
+For the full storage contract, see the [generated artifact registry](docs/conventions/generated-artifact-registry.md).
+
+## Project status
+
+Peak Assistant is under active development.
+
+- **Desktop only.** This matches the current plugin manifest.
+- **Markdown-first.** PDF, DOCX, PPTX, CSV, JSON, Canvas, Excalidraw, and other formats are mainly read/index or constrained embed paths—not full Peak editors. XLSX is not currently supported.
+- **No official release package yet.** Installation currently requires a source build.
+- **Interaction QA is still closing.** Some recently landed Composer, File Atlas, and Command Center surfaces are build-verified but still labeled for live Obsidian QA in the roadmap.
+- **Plans are not shipped features.** Research candidates and future products remain clearly separated from current capabilities.
+
+Use the [current roadmap](docs/roadmap.html) for status and [progress log](docs/progress.md) for implementation history.
 
 ## Development
 
-### Hot Reload Setup
-
-This project supports hot reload for faster development. Follow these steps:
-
-1. **Install obsidian-hot-reload plugin** (if not already installed):
-   - Download from [GitHub](https://github.com/pjeby/hot-reload)
-   - Extract to `.obsidian/plugins/hot-reload` in your test vault
-   - Enable the plugin in Obsidian settings
-
-2. **Enable hot reload for this plugin**:
-   - The `.hotreload` file has been created in the plugin root directory
-   - This file signals the hot-reload plugin to watch this plugin for changes
-
-3. **Start development mode**:
-   ```bash
-   npm run dev
-   ```
-   This will:
-   - Watch TypeScript files and rebuild `main.js` on changes (via esbuild watch mode)
-   - Watch Tailwind CSS files and rebuild `styles.css` on changes
-   - Run both watchers in parallel
-
-4. **Development workflow**:
-   - Make changes to your TypeScript/React code
-   - Save the file
-   - The build process will automatically compile changes
-   - The hot-reload plugin will detect the new `main.js` or `styles.css`
-   - Obsidian will automatically reload the plugin
-
-**Note**: The `dev` script uses `npm-run-all` to run both TypeScript and Tailwind watchers in parallel. The esbuild watch mode is configured in `esbuild.config.mjs`.
-
-### Build Scripts
-
-- `npm run dev` - Start development mode with file watching (TypeScript + Tailwind)
-- `npm run build` - Build for production (minified, no sourcemaps)
-- `npm run build:css` - Build only CSS files
-
-### Testing
-
-The project includes unit tests for critical components to ensure code quality and prevent regressions.
-
-**Running All Tests:**
 ```bash
+npm run dev
 npm run test
+npm run build
 ```
 
-**Running Specific Test File:**
-```bash
-npm run test -- path/to/specific.test.ts
-```
+Useful starting points:
 
-**Available Test Commands:**
-- `npm run test` - Run all `.test.ts` files under the `test/` directory
-- `npm run test -- test/boolean-expression-parser.test.ts` - Run specific test file
+- [Architecture and runtime boundaries](docs/01-architecture.html)
+- [Code organization](docs/02-code-organization.html)
+- [Use-case playbook](docs/05-use-case-playbook.html)
+- [Configuration and user views](docs/04-configuration-and-user-views.html)
+- [Contributor rules](AGENTS.md)
 
-**Current Test Coverage:**
+Before opening a large pull request, start with an [issue](https://github.com/highestpeak/obsidian-peak-assistant/issues) describing the user problem and intended scope. Keep unrelated changes separate and run the relevant tests plus the production build before requesting review.
 
-**Boolean Expression Parser** (`test/boolean-expression-parser.test.ts` - 54 tests):
-- Basic tag and category matching
-- AND, OR, NOT logical operations
-- Complex nested expressions with parentheses
-- Whitespace handling
-- Syntax error detection and proper error messages
-- `extractDimensions` - Extracting tags and categories from expressions
-- `buildEdgeConditions` - Building SQL WHERE conditions
-- `evaluate` - Boolean expression evaluation against note data
+## License
 
-**Chat Conversation Document** (`test/chat-docs/ChatConversationDoc.test.ts`):
-- Markdown generation with different configurations
-- Message deduplication and hash handling
-- Content parsing and formatting
+Peak Assistant is licensed under [GPL-3.0](LICENSE).
 
-**Test Framework Features:**
-- Automatic compilation of TypeScript test files using esbuild
-- Detailed pass/fail reporting with test counts
-- Error handling for missing test files
-- Automatic cleanup of temporary build artifacts
-- Support for running individual test files or all tests
-
-All tests should pass before committing changes. The test runner will report the total number of passed/failed test files.
-
-## Project Structure Explanation
-
-This project is organized into logical modules that separate concerns for maintainability and extensibility. Below is a detailed explanation of the directory structure:
-
-```
-src/
-|-- app/                          # Application layer - Obsidian plugin integration
-|   |-- commands/                 # Command registration (Register.ts exports command builders)
-|   |-- events/                   # Event registration (Register.ts handles workspace events)
-|   |-- settings/                 # Plugin settings management
-|   |-- view/                     # View management and lifecycle
-|
-|-- core/                         # Core layer - foundational abstractions and utilities
-|   |-- document/                 # Document model and caching
-|   |-- storage/                  # Storage abstraction layer
-|   |-- utils/                    # Pure utility functions
-|   |-- po/                       # model class for database table or file
-|   |-- eventBus.ts               # Event bus for cross-view communication
-|   |-- EventDispatcher.ts        # Event dispatching utilities
-|   |-- HtmlView.ts               # HTML view rendering utilities
-|   |-- ScriptLoader.ts           # Script loading utilities
-|
-|-- service/                      # Service layer - business logic
-|   |-- chat/                     # Chat service
-|   |-- search/                   # Search service
-|   |-- tools/                    # Tool integrations for agent logic
-|
-|-- ui/                           # UI layer - React components and views
-|   |-- store/                    # Global stores (shared across views)
-|   |-- view/                     # View implementations
-|   |   |-- chat-view/            # Chat view
-|   |   |-- project-list-view/    # Project list view
-|   |   |-- message-history-view/ # Message history view
-|   |   |-- quick-search/         # Quick search modal
-|   |   |-- settings/             # Settings view
-|   |   |-- shared/               # Shared view utilities
-|   |-- component/                # Reusable React components
-|   |   |-- shared-ui/            # Shared UI components (button, dialog, input, etc.)
-|   |-- context/                  # React context providers
-|   |-- react/                    # React integration utilities
-|   |   |-- ReactRenderer.tsx     # React rendering bridge
-|   |   |-- ReactElementFactory.tsx  # React element factory
-|   |   |-- lib/                  # React utilities (ErrorBoundary, etc.)
-|   |-- utils/                    # UI utilities (toast, etc.)
-|
-|-- styles/                       # Styles
-|   |-- tailwind.css              # Tailwind CSS styles
-|
-|-- types/                        # Type definitions
-|   |-- pdfjs-dist.d.ts           # PDF.js type definitions
-```
-
-### Key Concepts
-
-#### Directory Organization Principles
-
-- **app/**: Application layer that integrates with Obsidian. Commands and events are registered here but follow a pattern where `Register.ts` files export builder functions that are called during plugin initialization. This keeps the integration layer thin and testable.
-
-- **core/**: Core abstractions that are independent of Obsidian and business logic. This layer provides:
-  - Document models that can be used across plugins
-  - Storage abstractions that allow different backends (vault, SQLite, etc.)
-  - Pure utility functions with no side effects
-  - Event bus for decoupled communication
-
-- **service/**: Business logic layer that implements features like chat and search. Services are organized by domain (chat, search) and contain:
-  - Provider implementations (AI providers, storage backends)
-  - Domain-specific logic
-  - Data transformation and processing
-
-- **ui/**: UI layer using React. Store organization follows a scope principle:
-  - **Global stores** (`ui/store/`): Shared state across all views (e.g., `messageStore` for streaming, `projectStore` for project/conversation data)
-  - **View-scoped stores** (`ui/view/*/store/`): State specific to a view (e.g., `chatViewStore` for chat view modes, search stores for search state)
-  - This separation ensures views can be independent while sharing common data
-
-### Design Principles
-
-- **Separation of Concerns**: Each layer has a clear responsibility (app integration, core abstractions, business logic, UI)
-- **Extensibility**: Adding new document types, storage backends, or AI providers requires minimal changes, confined to their respective modules
-- **Store Scope**: Global stores for shared state, view-scoped stores for view-specific state
-- **Event-Driven**: Uses event bus for cross-view communication, keeping components decoupled
-- **Type Safety**: Strong TypeScript typing throughout, with shared type definitions
-
-This structure enables the project to scale as new features, providers, or storage backends are added.
+Obsidian is a trademark of Dynalist Inc. Peak Assistant is an independent open-source project and is not affiliated with or endorsed by Obsidian.
