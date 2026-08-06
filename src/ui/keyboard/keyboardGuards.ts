@@ -1,37 +1,18 @@
-const EDITOR_SELECTOR = [
-	'input',
-	'textarea',
-	'[contenteditable="true"]',
-	'[contenteditable=""]',
-	'.cm-editor',
-	'.cm-content',
-	'.ProseMirror',
-	'[data-peak-editor]',
-	'[data-prompt-input]',
-	'[role="textbox"]',
-].join(',');
+type ModifierEvent = Pick<
+	KeyboardEvent,
+	'key' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'repeat'
+> & Partial<Pick<KeyboardEvent, 'getModifierState'>>;
 
-export function eventTargetElement(target: EventTarget | null): HTMLElement | null {
-	if (!target || typeof target !== 'object') return null;
-	const candidate = target as Partial<HTMLElement>;
-	return typeof candidate.closest === 'function' ? candidate as HTMLElement : null;
+/** Option on macOS and Alt on Windows/Linux both arrive as `Alt`. */
+export function isStandaloneKeyTipModifier(event: ModifierEvent): boolean {
+	if (event.key !== 'Alt' || event.repeat) return false;
+	if (event.ctrlKey || event.metaKey || event.shiftKey) return false;
+	return !event.getModifierState?.('AltGraph');
 }
 
-export function isPeakEditorTarget(target: EventTarget | null): boolean {
-	return Boolean(eventTargetElement(target)?.closest(EDITOR_SELECTOR));
-}
-
-export function isUnmodifiedQuestionMark(event: KeyboardEvent): boolean {
-	return event.key === '?'
-		&& !event.metaKey
-		&& !event.ctrlKey
-		&& !event.altKey;
-}
-
-export function shouldIgnoreApplicationKey(
-	event: Pick<KeyboardEvent, 'isComposing' | 'key' | 'target'>,
-	compositionActive: boolean,
-): boolean {
-	if (compositionActive || event.isComposing || event.key === 'Process') return true;
-	return isPeakEditorTarget(event.target) && event.key !== 'F6';
+export function keyTipSelectionKey(
+	event: Pick<KeyboardEvent, 'key' | 'altKey' | 'ctrlKey' | 'metaKey'>,
+): string | null {
+	if (event.altKey || event.ctrlKey || event.metaKey) return null;
+	return /^[a-z0-9]$/i.test(event.key) ? event.key.toLocaleUpperCase() : null;
 }

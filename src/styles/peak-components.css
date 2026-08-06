@@ -12233,9 +12233,9 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
- * Keyboard navigation kernel — shared live region and searchable map.
- * The map is rendered by an Obsidian Modal, so it cannot rely on a surface-
- * specific stylesheet being present.
+ * Keyboard navigation kernel — shared live region and in-place Key Tips.
+ * Key Tips are non-interactive overlays attached to their real destinations;
+ * showing them never moves focus or opens a modal.
  * ─────────────────────────────────────────────────────────────────────── */
 .pk-keyboard-live-region {
   position: fixed !important;
@@ -12249,117 +12249,61 @@
   border: 0 !important;
 }
 
-.pk-keyboard-map-modal .modal-content {
-  width: min(760px, calc(100vw - 48px));
-  max-height: min(720px, calc(100vh - 64px));
+.pk-keytip-host {
+  isolation: isolate;
 }
 
-.pk-keyboard-map {
-  display: flex;
-  flex-direction: column;
-  min-height: 420px;
-  max-height: min(680px, calc(100vh - 96px));
-  color: var(--pk-text-primary, var(--text-normal));
+.pk-keytip-host--relative {
+  position: relative !important;
 }
 
-.pk-keyboard-map__header,
-.pk-keyboard-map__scope,
-.pk-keyboard-map__row {
-  display: flex;
+.pk-keytip {
+  position: absolute;
+  inset: 8px auto auto 8px;
+  z-index: 100;
+  display: inline-flex;
   align-items: center;
-}
-
-.pk-keyboard-map__header {
-  justify-content: space-between;
-  gap: var(--pk-space-3, 12px);
-  padding: var(--pk-space-4, 16px);
-  border-bottom: 1px solid var(--pk-border, var(--background-modifier-border));
-}
-
-.pk-keyboard-map__title,
-.pk-keyboard-map__context {
-  display: block;
-}
-
-.pk-keyboard-map__title {
-  font-size: var(--pk-font-size-lg, 16px);
-  font-weight: 750;
-}
-
-.pk-keyboard-map__context,
-.pk-keyboard-map__meta {
-  margin-top: 2px;
-  color: var(--pk-text-secondary, var(--text-muted));
-  font-size: var(--pk-font-size-xs, 11px);
-}
-
-.pk-keyboard-map__search {
-  display: flex;
-  align-items: center;
-  gap: var(--pk-space-2, 8px);
-  margin: var(--pk-space-4, 16px);
-  padding: 0 var(--pk-space-3, 12px);
-  border: 1px solid var(--pk-border, var(--background-modifier-border));
+  gap: 6px;
+  max-width: calc(100% - 16px);
+  padding: 4px 8px 4px 4px;
+  border: 1px solid var(--pk-border-strong, var(--background-modifier-border-hover));
   border-radius: var(--pk-radius-md, 8px);
-}
-
-.pk-keyboard-map__search svg {
-  width: 16px;
-  height: 16px;
-  color: var(--pk-text-secondary, var(--text-muted));
-}
-
-.pk-keyboard-map__search input {
-  flex: 1;
-  min-width: 0;
-  border: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-.pk-keyboard-map__scope {
-  gap: var(--pk-space-2, 8px);
-  padding: 0 var(--pk-space-4, 16px) var(--pk-space-3, 12px);
-}
-
-.pk-keyboard-map__list {
-  min-height: 0;
-  overflow: auto;
-  border-top: 1px solid var(--pk-border-soft, var(--background-modifier-border));
-}
-
-.pk-keyboard-map__row {
-  gap: var(--pk-space-3, 12px);
-  padding: var(--pk-space-3, 12px) var(--pk-space-4, 16px);
-  border-bottom: 1px solid var(--pk-border-soft, var(--background-modifier-border));
-}
-
-.pk-keyboard-map__description {
-  flex: 1;
-  min-width: 0;
-}
-
-.pk-keyboard-map__label {
-  display: block;
-  font-weight: 650;
-}
-
-.pk-keyboard-map kbd {
-  flex: 0 0 auto;
-  padding: 3px 7px;
-  border: 1px solid var(--pk-border, var(--background-modifier-border));
-  border-bottom-width: 2px;
-  border-radius: var(--pk-radius-sm, 5px);
-  background: var(--pk-surface-sunken, var(--background-secondary));
-  font: inherit;
+  background: var(--pk-surface-raised, var(--background-primary));
+  color: var(--pk-text-primary, var(--text-normal));
+  box-shadow: var(--pk-shadow-md, 0 6px 18px rgb(0 0 0 / 18%));
   font-size: var(--pk-font-size-xs, 11px);
+  font-weight: 650;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pk-keytip kbd {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--pk-accent, var(--interactive-accent)) 70%, black);
+  border-radius: var(--pk-radius-sm, 5px);
+  background: var(--pk-accent, var(--interactive-accent));
+  color: var(--text-on-accent, white);
+  font: inherit;
+  font-weight: 800;
+}
+
+.pk-keytip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pk-keyboard-map__empty {
-  padding: var(--pk-space-6, 24px);
-  text-align: center;
-  color: var(--pk-text-secondary, var(--text-muted));
+@media (forced-colors: active) {
+  .pk-keytip,
+  .pk-keytip kbd {
+    border: 1px solid CanvasText;
+  }
 }
 
 .pk-graph-node-list {

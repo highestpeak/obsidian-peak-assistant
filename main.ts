@@ -301,7 +301,7 @@ export default class MyPlugin extends Plugin {
 		this.aiServiceManager.setGeneratedOutputPersistenceRuntime(
 			appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 		);
-		const keyboardNavigation = composePeakKeyboardRuntime(appContext);
+		const keyboardNavigation = composePeakKeyboardRuntime();
 		appContext.runtimeRegistry.setKeyboardNavigationRuntime(keyboardNavigation);
 
 		// T10: bind the Quick Search background-session runtime as
@@ -516,9 +516,6 @@ export default class MyPlugin extends Plugin {
 			openUsageDashboard,
 			openChatStudio,
 			openDocumentComposer,
-			showKeyboardMap: () => {
-				keyboardNavigation.showKeyboardMap();
-			},
 		});
 		for (const binding of gatewayBindings) {
 			commandGateway.register(binding);

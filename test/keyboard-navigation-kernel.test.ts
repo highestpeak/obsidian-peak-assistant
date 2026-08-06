@@ -1,20 +1,27 @@
 import assert from 'assert';
+import { readFileSync } from 'fs';
 import {
-	isPeakEditorTarget,
-	isUnmodifiedQuestionMark,
-	shouldIgnoreApplicationKey,
+	isStandaloneKeyTipModifier,
+	keyTipSelectionKey,
 } from '@/ui/keyboard/keyboardGuards';
 import { resolveRovingKeyIntent } from '@/ui/keyboard/useRovingComposite';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import {
-	KEYBOARD_MAP_DEFINITIONS,
 	PEAK_KEYBOARD_SURFACE_LABELS,
+	PEAK_KEY_TIP_DEFINITIONS,
 } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
-function fakeTarget(editor: boolean): EventTarget {
+function modifierEvent(overrides: Partial<KeyboardEvent> = {}): KeyboardEvent {
 	return {
-		closest: () => editor ? {} : null,
-	} as unknown as EventTarget;
+		key: 'Alt',
+		altKey: true,
+		ctrlKey: false,
+		metaKey: false,
+		shiftKey: false,
+		repeat: false,
+		getModifierState: () => false,
+		...overrides,
+	} as KeyboardEvent;
 }
 
 assert.deepStrictEqual(resolveRovingKeyIntent('ArrowDown', 'vertical', 5), {
@@ -35,53 +42,18 @@ assert.deepStrictEqual(resolveRovingKeyIntent('F10', 'both', 7), {
 	kind: 'context',
 });
 
-assert.strictEqual(isPeakEditorTarget(fakeTarget(true)), true);
-assert.strictEqual(isPeakEditorTarget(fakeTarget(false)), false);
+assert.strictEqual(isStandaloneKeyTipModifier(modifierEvent()), true);
+assert.strictEqual(isStandaloneKeyTipModifier(modifierEvent({ repeat: true })), false);
+assert.strictEqual(isStandaloneKeyTipModifier(modifierEvent({ ctrlKey: true })), false);
+assert.strictEqual(isStandaloneKeyTipModifier(modifierEvent({ shiftKey: true })), false);
 assert.strictEqual(
-	shouldIgnoreApplicationKey({
-		isComposing: false,
-		key: '?',
-		target: fakeTarget(true),
-	}, false),
-	true,
-	'plain editor input must own printable keys',
-);
-assert.strictEqual(
-	shouldIgnoreApplicationKey({
-		isComposing: false,
-		key: 'F6',
-		target: fakeTarget(true),
-	}, false),
+	isStandaloneKeyTipModifier(modifierEvent({ getModifierState: (key) => key === 'AltGraph' })),
 	false,
-	'F6 must remain the explicit application navigation key inside editors',
+	'AltGraph must remain available for text entry',
 );
-assert.strictEqual(
-	shouldIgnoreApplicationKey({
-		isComposing: true,
-		key: 'F6',
-		target: fakeTarget(false),
-	}, false),
-	true,
-	'IME composition must win over surface navigation',
-);
-assert.strictEqual(
-	isUnmodifiedQuestionMark({
-		key: '?',
-		metaKey: false,
-		ctrlKey: false,
-		altKey: false,
-	} as KeyboardEvent),
-	true,
-);
-assert.strictEqual(
-	isUnmodifiedQuestionMark({
-		key: '?',
-		metaKey: true,
-		ctrlKey: false,
-		altKey: false,
-	} as KeyboardEvent),
-	false,
-);
+assert.strictEqual(keyTipSelectionKey(modifierEvent({ key: 'q', altKey: false })), 'Q');
+assert.strictEqual(keyTipSelectionKey(modifierEvent({ key: 'q', altKey: true })), null);
+assert.strictEqual(keyTipSelectionKey(modifierEvent({ key: '?', altKey: false })), null);
 
 const graphPoints = [
 	{ id: 'centre', x: 0, y: 0 },
@@ -106,20 +78,29 @@ assert.strictEqual(
 assert.deepStrictEqual(
 	Object.keys(PEAK_KEYBOARD_SURFACE_LABELS).sort(),
 	['ai-search', 'chat-studio', 'file-atlas', 'vault-search'],
-	'phase 1 must expose exactly the four non-Composer surfaces',
+	'Key Tips must expose exactly the four non-Composer surfaces',
+);
+assert.deepStrictEqual(
+	PEAK_KEY_TIP_DEFINITIONS['vault-search'].map((tip) => tip.key),
+	['M', 'Q', 'F', 'R', 'D'],
+);
+assert.deepStrictEqual(
+	PEAK_KEY_TIP_DEFINITIONS['file-atlas']
+		.filter((tip) => tip.zoneId === 'fa-atlas')
+		.map((tip) => [tip.key, tip.zoneLabel]),
+	[['T', 'Atlas tree'], ['G', 'Atlas graph']],
 );
 assert.ok(
-	KEYBOARD_MAP_DEFINITIONS.some((entry) =>
-		entry.id === 'focus-next-zone' && entry.binding === 'F6'),
+	PEAK_KEY_TIP_DEFINITIONS['chat-studio'].some((tip) =>
+		tip.key === 'Q' && tip.zoneId === 'cs-composer'),
 );
-assert.ok(
-	KEYBOARD_MAP_DEFINITIONS.some((entry) =>
-		entry.id === 'show-keyboard-map' && entry.binding === '?'),
-);
-assert.ok(
-	KEYBOARD_MAP_DEFINITIONS.every((entry) =>
-		entry.commandId === undefined || entry.commandId === 'peak-show-keyboard-map'),
-	'local focus actions must not be exposed as global Obsidian commands',
+const template = JSON.parse(readFileSync('templates/config/keyboard-navigation.json', 'utf8')) as {
+	keyTips: typeof PEAK_KEY_TIP_DEFINITIONS;
+};
+assert.deepStrictEqual(
+	template.keyTips,
+	PEAK_KEY_TIP_DEFINITIONS,
+	'compiled Key Tips must mirror the product-owned template',
 );
 
 console.log('keyboard-navigation-kernel: passed');

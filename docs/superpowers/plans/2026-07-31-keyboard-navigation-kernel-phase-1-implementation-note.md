@@ -1,9 +1,16 @@
 # Keyboard Navigation Kernel Phase 1 — Implementation Note
 
-**Status:** IMPLEMENTED / SOURCE + CONTRACT VERIFIED
+**Status:** IMPLEMENTED / 2026-08-06 KEY TIPS REVISION
 **Source of truth:** `docs/superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md`
 **Scope:** Keyboard Kernel + Vault Search + AI Search + File Atlas + Chat Studio
 **Protected scope:** Peak Composer and Composer Intelligence sidecar adapters are not connected in this phase.
+
+> **2026-08-06 owner revision:** the searchable `?` keyboard-map modal and
+> user-facing `F6 / Shift+F6` Zone loop have been retired. The current discovery
+> and direct-navigation contract is in-place modifier Key Tips: tap `Option` on
+> macOS or `Alt` on Windows/Linux, then press the label shown beside the real
+> destination. See
+> [`2026-08-06-peak-modifier-key-tips-navigation.md`](../specs/2026-08-06-peak-modifier-key-tips-navigation.md).
 
 ## 1. Delivered boundary
 
@@ -15,17 +22,18 @@ listener was added.
 Phase 1 delivers:
 
 - per-`ownerDocument` surface and zone registration;
-- `F6` / `Shift+F6` logical zone traversal with per-zone focus bookmarks;
+- `Option` / `Alt` tap detection that preserves modifier combinations,
+  AltGraph, text editing, and IME ownership;
+- non-modal, in-place Key Tips with direct destination selection and per-group
+  focus bookmarks;
 - shared roving focus for list, tree, tablist, toolbar, and message composites;
 - directional graph navigation plus a structured graph-node list;
-- LIFO Escape layers with trigger restoration for mode/filter menus, the
-  keyboard map, and the narrow Chat Studio drawer;
-- IME and editor-first guards;
-- a searchable, context-filtered keyboard map showing fixed surface-local
-  grammar plus the current Obsidian binding and conflicts for its global entry;
-- one stable Command Palette entry for the keyboard map; direct surface focus,
-  next / previous zone, and last-focus restoration stay outside the global
-  command surface;
+- LIFO Escape layers with trigger restoration for mode/filter menus and the
+  narrow Chat Studio drawer; `Escape` also dismisses Key Tips without moving
+  focus;
+- IME guards plus native editor ownership for ordinary characters and modifier
+  combinations;
+- no keyboard-help modal and no keyboard-navigation Command Palette entry;
 - owner-document-aware listeners and focus operations for detached windows.
 
 ## 2. Surface migration
@@ -87,3 +95,23 @@ the shared roving / Escape primitives.
 Until a real renderer run records focus order, active element, IME, popup,
 drawer, graph, and detached-window evidence, the interaction status remains
 `INTERACTION NOT VERIFIED`.
+
+## 5. 2026-08-06 Key Tips revision verification
+
+- `keyboard-navigation-kernel`, `keyboard-navigation-surface-contract`,
+  `command-gateway-wire-in`, and `a11y-structure` pass.
+- Production build, bundle syntax check, and simulator-boundary check pass.
+- A Playwright DOM keyboard contract passes with focus initially inside the
+  Vault Search query: standalone `Alt` preserves focus and shows `M/Q/F/R`,
+  `R` focuses the active result, `Escape` cleans up without moving focus, and
+  `Alt+Q` plus composition state do not activate Key Tips. This is harness
+  evidence, not Obsidian acceptance.
+- The full suite is effectively 443 / 449 with dependency resolution matching
+  the repository install. The six failures are untouched baseline contracts:
+  `code-block-theme-settings`, `composer-architecture-source-guards`,
+  `composer-frontmatter-inline-tag-candidate`,
+  `composer-layout-geometry-contract`, `generated-output-registry`, and
+  `no-inline-llm-prompts`.
+- No Obsidian CDP listener was available. macOS real-host Option behavior,
+  Windows Electron Alt/menu behavior, detached-window interaction, and visual
+  placement in production remain `INTERACTION NOT VERIFIED`.

@@ -1,150 +1,52 @@
-import type {
-	PeakKeyboardMapCategory,
-	PeakKeyboardSurfaceId,
-} from '../KeyboardNavigationPort';
+import type { PeakKeyboardSurfaceId } from '../KeyboardNavigationPort';
 
 /**
  * Compiled fallback mirrored by `templates/config/keyboard-navigation.json`.
- * The JSON template is the product-owned source for labels and discoverability;
- * this fallback keeps keyboard navigation available if templates have not
- * finished loading during early plugin boot.
+ * The JSON template is the product-owned source for labels and key assignments.
+ * This fallback keeps Key Tips available during early plugin boot.
  */
-export interface KeyboardMapDefinition {
-	id: string;
+export interface PeakKeyTipDefinition {
+	key: string;
 	label: string;
-	category: PeakKeyboardMapCategory;
-	binding: string;
-	commandId?: string;
-	surfaceId?: PeakKeyboardSurfaceId;
-	zoneId?: string;
-	context: string;
+	zoneId: string;
+	/** Distinguishes dynamic destinations that reuse one internal focus group. */
+	zoneLabel?: string;
 }
 
-export const KEYBOARD_MAP_DEFINITIONS: readonly KeyboardMapDefinition[] = [
-	{
-		id: 'focus-next-zone',
-		label: 'Focus next zone',
-		category: 'Navigation',
-		binding: 'F6',
-		context: 'Current Peak surface',
-	},
-	{
-		id: 'focus-previous-zone',
-		label: 'Focus previous zone',
-		category: 'Navigation',
-		binding: 'Shift+F6',
-		context: 'Current Peak surface',
-	},
-	{
-		id: 'next-component',
-		label: 'Focus next component',
-		category: 'Navigation',
-		binding: 'Tab',
-		context: 'Current zone',
-	},
-	{
-		id: 'previous-component',
-		label: 'Focus previous component',
-		category: 'Navigation',
-		binding: 'Shift+Tab',
-		context: 'Current zone',
-	},
-	{
-		id: 'move-item',
-		label: 'Move within list, tree, tabs, toolbar, or graph',
-		category: 'Navigation',
-		binding: 'Arrow keys',
-		context: 'Focused composite',
-	},
-	{
-		id: 'first-last-item',
-		label: 'Move to first or last item',
-		category: 'Navigation',
-		binding: 'Home / End',
-		context: 'Focused composite',
-	},
-	{
-		id: 'primary-action',
-		label: 'Open or run primary action',
-		category: 'Action',
-		binding: 'Enter',
-		context: 'Focused item',
-	},
-	{
-		id: 'toggle-selection',
-		label: 'Select or toggle focused item',
-		category: 'Action',
-		binding: 'Space',
-		context: 'Selectable composite',
-	},
-	{
-		id: 'item-actions',
-		label: 'Show actions for focused item',
-		category: 'Action',
-		binding: 'Shift+F10',
-		context: 'Focused item',
-	},
-	{
-		id: 'escape-layer',
-		label: 'Close the innermost layer and return to its trigger',
-		category: 'Navigation',
-		binding: 'Escape',
-		context: 'Popup, modal, drawer, or content mode',
-	},
-	{
-		id: 'show-keyboard-map',
-		label: 'Show searchable keyboard map',
-		category: 'Navigation',
-		binding: '?',
-		commandId: 'peak-show-keyboard-map',
-		context: 'Peak surface outside text editing',
-	},
-	{
-		id: 'vault-open-new-tab',
-		label: 'Open result in a new tab',
-		category: 'Surface-specific',
-		binding: 'Cmd/Ctrl+Enter',
-		surfaceId: 'vault-search',
-		zoneId: 'vs-results',
-		context: 'Vault Search results',
-	},
-	{
-		id: 'ai-cycle-mode',
-		label: 'Cycle AI Search mode',
-		category: 'Surface-specific',
-		binding: 'Alt+Up / Alt+Down',
-		surfaceId: 'ai-search',
-		zoneId: 'as-mode-query',
-		context: 'AI Search mode selector outside text editing',
-	},
-	{
-		id: 'file-atlas-tray-toggle',
-		label: 'Add or remove block from selection tray',
-		category: 'Surface-specific',
-		binding: 'Space',
-		surfaceId: 'file-atlas',
-		zoneId: 'fa-atlas',
-		context: 'File Atlas tree or graph',
-	},
-	{
-		id: 'chat-focus-composer',
-		label: 'Focus Chat Composer',
-		category: 'Surface-specific',
-		binding: 'Cmd/Ctrl+K',
-		surfaceId: 'chat-studio',
-		zoneId: 'cs-composer',
-		context: 'Chat Studio',
-	},
-	{
-		id: 'chat-newline',
-		label: 'Insert a newline in Chat Composer',
-		category: 'Editing',
-		binding: 'Shift+Enter or Cmd/Ctrl+Enter',
-		surfaceId: 'chat-studio',
-		zoneId: 'cs-composer',
-		context: 'Chat Composer',
-	},
-] as const;
+export const PEAK_KEY_TIP_DEFINITIONS: Readonly<
+	Record<PeakKeyboardSurfaceId, readonly PeakKeyTipDefinition[]>
+> = {
+	'vault-search': [
+		{ key: 'M', label: 'Search mode', zoneId: 'vs-search-mode' },
+		{ key: 'Q', label: 'Search', zoneId: 'vs-query' },
+		{ key: 'F', label: 'Filters and view', zoneId: 'vs-view-toolbar' },
+		{ key: 'R', label: 'Results', zoneId: 'vs-results' },
+		{ key: 'D', label: 'Details', zoneId: 'vs-inspector' },
+	],
+	'ai-search': [
+		{ key: 'Q', label: 'Ask AI', zoneId: 'as-mode-query' },
+		{ key: 'S', label: 'Suggestions and history', zoneId: 'as-suggestions' },
+		{ key: 'A', label: 'Activity and sources', zoneId: 'as-lifecycle' },
+		{ key: 'R', label: 'Result', zoneId: 'as-primary' },
+		{ key: 'O', label: 'Outline', zoneId: 'as-outline' },
+		{ key: 'C', label: 'Result actions', zoneId: 'as-actions' },
+	],
+	'file-atlas': [
+		{ key: 'F', label: 'Files', zoneId: 'fa-file-rail' },
+		{ key: 'V', label: 'View and filters', zoneId: 'fa-view-filters' },
+		{ key: 'T', label: 'Tree', zoneId: 'fa-atlas', zoneLabel: 'Atlas tree' },
+		{ key: 'G', label: 'Graph', zoneId: 'fa-atlas', zoneLabel: 'Atlas graph' },
+		{ key: 'I', label: 'Inspector', zoneId: 'fa-inspector' },
+		{ key: 'S', label: 'Selection tray', zoneId: 'fa-selection-tray' },
+	],
+	'chat-studio': [
+		{ key: 'C', label: 'Conversations', zoneId: 'cs-left-navigation' },
+		{ key: 'M', label: 'Messages', zoneId: 'cs-message-timeline' },
+		{ key: 'M', label: 'Chat content', zoneId: 'cs-centre-content' },
+		{ key: 'Q', label: 'Chat input', zoneId: 'cs-composer' },
+		{ key: 'I', label: 'Conversation index', zoneId: 'cs-conversation-index' },
+	],
+} as const;
 
 export const PEAK_KEYBOARD_SURFACE_LABELS: Readonly<Record<PeakKeyboardSurfaceId, string>> = {
 	'vault-search': 'Vault Search',
@@ -198,15 +100,8 @@ export const PEAK_KEYBOARD_A11Y_STRINGS = {
 	conversations: 'Conversations',
 } as const;
 
-export const KEYBOARD_MAP_STRINGS = {
-	title: 'Peak keyboard map',
-	searchPlaceholder: 'Search actions, controls, contexts, or keys…',
-	showAll: 'Show all contexts',
-	currentContext: 'Current context',
-	noMatches: 'No keyboard actions match this search.',
-	unbound: 'Unbound',
-	openHotkeys: 'Open Obsidian Hotkeys',
-	close: 'Close',
-	defaultSurface: 'Peak',
-	conflictPrefix: 'Conflict',
+export const PEAK_KEY_TIP_STRINGS = {
+	shownSuffix: 'shortcuts shown',
+	availablePrefix: 'Available keys',
+	unknownPrefix: 'No shortcut for',
 } as const;

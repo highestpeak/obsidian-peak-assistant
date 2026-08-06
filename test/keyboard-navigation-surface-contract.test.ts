@@ -20,13 +20,14 @@ const chatMessages = read('src/ui/view/chat-view/components/messages/MessageList
 const styles = `${read('src/styles/tailwind.css')}\n${read('src/styles/peak-components.css')}`;
 const templateRegistry = read('src/core/template/TemplateRegistry.ts');
 const template = JSON.parse(read('templates/config/keyboard-navigation.json')) as {
+	activation: Record<string, string>;
 	surfaceLabels: Record<string, string>;
+	keyTips: Record<string, Array<{ key: string; label: string; zoneId: string }>>;
 	zoneLabels: Record<string, string>;
 	a11y: Record<string, string>;
-	commands: Record<string, string>;
 };
 
-assert.match(main, /composePeakKeyboardRuntime\(appContext\)/);
+assert.match(main, /composePeakKeyboardRuntime\(\)/);
 assert.match(main, /runtimeRegistry\.setKeyboardNavigationRuntime\(keyboardNavigation\)/);
 assert.match(registry, /private keyboardNavigationRuntime:/);
 assert.match(registry, /runtime\?\.dispose\(\)/);
@@ -36,9 +37,16 @@ assert.doesNotMatch(
 	'the app runtime must attach key listeners to each surface ownerDocument',
 );
 assert.match(runtime, /ownerDocument\.addEventListener\('keydown', state\.keydown, true\)/);
+assert.match(runtime, /ownerDocument\.addEventListener\('keyup', state\.keyup, true\)/);
+assert.match(runtime, /ownerDocument\.addEventListener\('pointerdown', state\.pointerdown, true\)/);
 assert.match(runtime, /state\.compositionActive \|\| event\.isComposing \|\| event\.key === 'Process'/);
 assert.match(runtime, /\[data-peak-keyboard-zone\]/);
-assert.match(runtime, /focusNextZone\(event\.shiftKey\)/);
+assert.match(runtime, /isStandaloneKeyTipModifier\(event\)/);
+assert.match(runtime, /showKeyTips\(surface\)/);
+assert.match(runtime, /hideKeyTips\(ownerDocument\)/);
+assert.match(runtime, /dataset\.peakKeytips = 'visible'/);
+assert.doesNotMatch(runtime, /event\.key === 'F6'/);
+assert.doesNotMatch(runtime, /KeyboardMap|QuestionMark/);
 assert.match(runtime, /registerEscapeLayer/);
 assert.match(runtime, /event\.stopImmediatePropagation\(\)/);
 
@@ -89,9 +97,21 @@ assert.doesNotMatch(
 assert.match(styles, /focus-visible[\s\S]*?outline:\s*2px solid/);
 assert.match(styles, /@media \(forced-colors: active\)/);
 assert.match(styles, /\.pk-keyboard-live-region/);
+assert.match(styles, /\.pk-keytip-host/);
+assert.match(styles, /\.pk-keytip kbd/);
+assert.doesNotMatch(styles, /\.pk-keyboard-map/);
 assert.match(templateRegistry, /KeyboardNavigation: 'config-keyboard-navigation'/);
+assert.deepStrictEqual(template.activation, {
+	macOS: 'Option',
+	windowsLinux: 'Alt',
+	gesture: 'tap-and-release',
+});
 assert.deepStrictEqual(
 	Object.keys(template.surfaceLabels).sort(),
+	['ai-search', 'chat-studio', 'file-atlas', 'vault-search'],
+);
+assert.deepStrictEqual(
+	Object.keys(template.keyTips).sort(),
 	['ai-search', 'chat-studio', 'file-atlas', 'vault-search'],
 );
 for (const zone of [
@@ -103,10 +123,7 @@ for (const zone of [
 	assert.ok(template.zoneLabels[zone], `keyboard config must own label for ${zone}`);
 }
 assert.ok(template.a11y.graphInstructions);
-assert.deepStrictEqual(
-	Object.values(template.commands).sort(),
-	['peak-show-keyboard-map'],
-	'keyboard config must not re-expose local navigation actions as global Obsidian commands',
-);
+assert.ok(template.keyTips['vault-search'].some((tip) => tip.key === 'R' && tip.label === 'Results'));
+assert.ok(template.keyTips['chat-studio'].some((tip) => tip.key === 'Q' && tip.label === 'Chat input'));
 
 console.log('keyboard-navigation-surface-contract: passed');

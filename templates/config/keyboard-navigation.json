@@ -1,22 +1,47 @@
 {
-  "version": 1,
-  "strings": {
-    "title": "Peak keyboard map",
-    "searchPlaceholder": "Search actions, controls, contexts, or keys…",
-    "showAll": "Show all contexts",
-    "currentContext": "Current context",
-    "noMatches": "No keyboard actions match this search.",
-    "unbound": "Unbound",
-    "openHotkeys": "Open Obsidian Hotkeys",
-    "close": "Close",
-    "defaultSurface": "Peak",
-    "conflictPrefix": "Conflict"
+  "version": 2,
+  "activation": {
+    "macOS": "Option",
+    "windowsLinux": "Alt",
+    "gesture": "tap-and-release"
   },
   "surfaceLabels": {
     "vault-search": "Vault Search",
     "ai-search": "AI Search",
     "file-atlas": "File Atlas",
     "chat-studio": "Chat Studio"
+  },
+  "keyTips": {
+    "vault-search": [
+      { "key": "M", "label": "Search mode", "zoneId": "vs-search-mode" },
+      { "key": "Q", "label": "Search", "zoneId": "vs-query" },
+      { "key": "F", "label": "Filters and view", "zoneId": "vs-view-toolbar" },
+      { "key": "R", "label": "Results", "zoneId": "vs-results" },
+      { "key": "D", "label": "Details", "zoneId": "vs-inspector" }
+    ],
+    "ai-search": [
+      { "key": "Q", "label": "Ask AI", "zoneId": "as-mode-query" },
+      { "key": "S", "label": "Suggestions and history", "zoneId": "as-suggestions" },
+      { "key": "A", "label": "Activity and sources", "zoneId": "as-lifecycle" },
+      { "key": "R", "label": "Result", "zoneId": "as-primary" },
+      { "key": "O", "label": "Outline", "zoneId": "as-outline" },
+      { "key": "C", "label": "Result actions", "zoneId": "as-actions" }
+    ],
+    "file-atlas": [
+      { "key": "F", "label": "Files", "zoneId": "fa-file-rail" },
+      { "key": "V", "label": "View and filters", "zoneId": "fa-view-filters" },
+      { "key": "T", "label": "Tree", "zoneId": "fa-atlas", "zoneLabel": "Atlas tree" },
+      { "key": "G", "label": "Graph", "zoneId": "fa-atlas", "zoneLabel": "Atlas graph" },
+      { "key": "I", "label": "Inspector", "zoneId": "fa-inspector" },
+      { "key": "S", "label": "Selection tray", "zoneId": "fa-selection-tray" }
+    ],
+    "chat-studio": [
+      { "key": "C", "label": "Conversations", "zoneId": "cs-left-navigation" },
+      { "key": "M", "label": "Messages", "zoneId": "cs-message-timeline" },
+      { "key": "M", "label": "Chat content", "zoneId": "cs-centre-content" },
+      { "key": "Q", "label": "Chat input", "zoneId": "cs-composer" },
+      { "key": "I", "label": "Conversation index", "zoneId": "cs-conversation-index" }
+    ]
   },
   "zoneLabels": {
     "vs-search-mode": "Search mode",
@@ -60,16 +85,5 @@
     "closeGraphNodeList": "Close graph node list",
     "graphInstructions": "Knowledge graph. Use arrow keys to move between nodes, Enter to open, Space to select, plus and minus to zoom, and zero to fit.",
     "conversations": "Conversations"
-  },
-  "bindings": {
-    "focusNextZone": "F6",
-    "focusPreviousZone": "Shift+F6",
-    "showKeyboardMap": "?",
-    "itemActions": "Shift+F10",
-    "primaryAction": "Enter",
-    "toggleSelection": "Space"
-  },
-  "commands": {
-    "showKeyboardMap": "peak-show-keyboard-map"
   }
 }

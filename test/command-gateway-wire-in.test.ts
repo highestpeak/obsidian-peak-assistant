@@ -31,7 +31,6 @@ const EXPECTED_PALETTE_COMMAND_IDS = [
 	'peak-usage-dashboard',
 	'peak-open-chat-studio',
 	'peak-open-document-composer',
-	'peak-show-keyboard-map',
 ] as const;
 
 function makeCounter(): { fn: () => void; count: () => number } {
@@ -54,7 +53,6 @@ function makeActions(recorder: Record<string, () => void>): PaletteCommandAction
 		openUsageDashboard: recorder.openUsageDashboard,
 		openChatStudio: recorder.openChatStudio,
 		openDocumentComposer: recorder.openDocumentComposer,
-		showKeyboardMap: recorder.showKeyboardMap,
 	};
 }
 
@@ -70,7 +68,6 @@ function testManifestCoverageMatchesBindings(): void {
 		openUsageDashboard: () => {},
 		openChatStudio: () => {},
 		openDocumentComposer: () => {},
-		showKeyboardMap: () => {},
 	});
 	const bindings = composeCommandGatewayBindings(dummy);
 	const manifestIds = Object.keys(PALETTE_COMMAND_MANIFESTS);
@@ -78,7 +75,7 @@ function testManifestCoverageMatchesBindings(): void {
 	assert.deepStrictEqual(
 		manifestIds,
 		[...EXPECTED_PALETTE_COMMAND_IDS],
-		'global command palette must stay limited to the owner-approved product and keyboard-map entry points',
+		'global command palette must stay limited to owner-approved product entry points',
 	);
 	assert.deepStrictEqual(
 		bindingIds,
@@ -106,7 +103,6 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 		openUsageDashboard: makeCounter(),
 		openChatStudio: makeCounter(),
 		openDocumentComposer: makeCounter(),
-		showKeyboardMap: makeCounter(),
 	};
 	const actions = makeActions(
 		Object.fromEntries(Object.entries(counters).map(([k, c]) => [k, c.fn])) as Record<string, () => void>,
@@ -128,7 +124,6 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 		['peak-usage-dashboard', 'openUsageDashboard'],
 		['peak-open-chat-studio', 'openChatStudio'],
 		['peak-open-document-composer', 'openDocumentComposer'],
-		['peak-show-keyboard-map', 'showKeyboardMap'],
 	];
 
 	for (const [commandId, actionKey] of commandToAction) {

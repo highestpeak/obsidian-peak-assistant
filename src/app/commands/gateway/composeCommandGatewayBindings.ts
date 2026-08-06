@@ -29,7 +29,6 @@ import {
 	MY_CONTENT_MANIFEST,
 	QUICK_SEARCH_MANIFEST,
 	SETTINGS_MODAL_MANIFEST,
-	SHOW_KEYBOARD_MAP_MANIFEST,
 	USAGE_DASHBOARD_MANIFEST,
 } from './manifests';
 
@@ -41,13 +40,6 @@ import {
  */
 const SURFACE_OPEN_SKILL: CompiledSkill = {
 	skillId: 'ui.surface-open.v1',
-	systemPrompt: '',
-	quarantine: 'permissive',
-	allowedTools: [],
-};
-
-const KEYBOARD_NAVIGATION_SKILL: CompiledSkill = {
-	skillId: 'ui.keyboard-navigation.v1',
 	systemPrompt: '',
 	quarantine: 'permissive',
 	allowedTools: [],
@@ -69,7 +61,6 @@ export interface PaletteCommandActions {
 	readonly openUsageDashboard: () => void | Promise<void>;
 	readonly openChatStudio: () => void | Promise<void>;
 	readonly openDocumentComposer: () => void | Promise<void>;
-	readonly showKeyboardMap: () => void | Promise<void>;
 }
 
 function surfaceOpenStrategy(
@@ -168,14 +159,6 @@ export function composeCommandGatewayBindings(
 			manifest: DOCUMENT_COMPOSER_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
 			execute: surfaceOpenStrategy(actions.openDocumentComposer),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-show-keyboard-map',
-			commandLabel: 'Show keyboard map',
-			manifest: SHOW_KEYBOARD_MAP_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.showKeyboardMap),
 			trigger: 'manual',
 		},
 	];

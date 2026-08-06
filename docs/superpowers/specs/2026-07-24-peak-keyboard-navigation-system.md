@@ -13,6 +13,13 @@
 
 > 本文只定义目标行为，不代表生产代码已经实现。当前局部 keyboard handler、ARIA 和 Tab 顺序仍以源码为准。
 
+> **2026-08-06 owner revision：** 四个非 Composer Surface 的生产交互已改为
+> `Option`（macOS）/ `Alt`（Windows、Linux）轻按后显示原位 Key Tips；`?`
+> keyboard map、面向用户的 Zone 概念和 `F6 / Shift+F6` Zone 循环被撤销。
+> 本文相关段落保留为历史设计背景，当前契约以
+> [`2026-08-06-peak-modifier-key-tips-navigation.md`](./2026-08-06-peak-modifier-key-tips-navigation.md)
+> 为准。Composer 仍不在该修订的实现范围内。
+
 ## 1. 设计目标
 
 用户只学习一套键盘语法，就能在五个工作区完成主要任务；界面中几乎所有可操作元素都可以到达、理解和操作，但不要求每个元素拥有独立快捷键。
