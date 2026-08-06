@@ -24,6 +24,10 @@ assert.match(main, /IndexService\.cancelIndexing\(\)[\s\S]*searchUpdateQueue\?\.
 assert.match(entry, /private disposed = false/);
 assert.match(entry, /if \(this\.disposed\) return/);
 assert.match(entry, /this\.disposed = true/);
+assert.match(entry, /claimPeakShellLoadKind\([\s\S]*globalThis,[\s\S]*workspace\.layoutReady/);
+assert.match(entry, /loadKind === 'hot-reload'/);
+assert.match(entry, /await this\.boot\(\)/);
+assert.match(entry, /startup RSS gate skipped/);
 
 assert.match(atlasHost, /createTransientController/);
 assert.match(atlasHost, /\{ capabilities: true \}/);

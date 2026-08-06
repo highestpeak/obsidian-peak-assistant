@@ -8,20 +8,26 @@
  * module-eval memory INSIDE that spike window, pushing the renderer past
  * its ~3.4GB cppgc ceiling → SIGABRT → the white-screen crash loop.
  *
- * This shell is the esbuild entry point. It keeps plugin load near-free
- * (only the source is parsed; no module bodies evaluate) and defers the
- * real boot — a dynamic import of `./main`, which esbuild wraps lazily in
- * the same main.js — until the storm has passed:
+ * This shell is the esbuild entry point. It keeps the first plugin load
+ * near-free (only the source is parsed; no module bodies evaluate) and
+ * defers the real boot — a dynamic import of `./main`, which esbuild wraps
+ * lazily in the same main.js — until the startup storm has passed:
  *   • adaptive: boot as soon as renderer RSS drops below BOOT_RSS_SAFE_MB
  *     after layout-ready (storm peaked and GC reclaimed), or
  *   • hard cap: BOOT_MAX_DELAY_MS after layout-ready, storm or not, so
  *     Peak never silently fails to start.
+ *
+ * A plugin-only disable/enable inside the same renderer bypasses this gate.
+ * The startup storm is already over, and DevTools heap profiling can keep RSS
+ * above the cold-start threshold for minutes even after live JS was reclaimed.
  *
  * The real plugin (`main.ts` MyPlugin) is attached as a Component child so
  * Obsidian's normal load/unload lifecycle applies unchanged.
  */
 
 import { Plugin } from 'obsidian';
+
+import { claimPeakShellLoadKind } from './src/app/composition/PeakShellRendererSession';
 
 /** Boot immediately once renderer RSS is below this (storm cleared). */
 const BOOT_RSS_SAFE_MB = 1700;
@@ -47,6 +53,18 @@ export default class PeakShellPlugin extends Plugin {
 	private disposed = false;
 
 	async onload() {
+		const loadKind = claimPeakShellLoadKind(
+			globalThis,
+			this.app.workspace.layoutReady,
+		);
+		if (loadKind === 'hot-reload') {
+			console.log(
+				`[Peak Shell] hot reload: booting core (rss=${rendererRssMb()}MB, startup RSS gate skipped)`,
+			);
+			await this.boot();
+			return;
+		}
+
 		this.app.workspace.onLayoutReady(() => {
 			if (this.disposed) return;
 			const start = Date.now();
