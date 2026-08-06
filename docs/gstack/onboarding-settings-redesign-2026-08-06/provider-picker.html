@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · OpenRouter model picker</title>
+  <link rel="stylesheet" href="mock.css">
+  <script src="mock.js" defer></script>
+</head>
+<body>
+  <header class="prototype-bar">
+    <div class="prototype-bar__brand">
+      <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+      <span>Peak design prototype</span>
+      <span class="prototype-bar__meta">OpenRouter picker · production unchanged</span>
+    </div>
+    <nav class="prototype-bar__nav" aria-label="Prototype pages">
+      <a href="index.html">Review board</a>
+      <a href="onboarding.html">Onboarding</a>
+      <a href="settings.html">Settings</a>
+      <a href="provider-picker.html" aria-current="page">Model picker</a>
+    </nav>
+  </header>
+
+  <main class="stage">
+    <section class="picker-window" aria-label="OpenRouter model picker prototype">
+      <header class="picker-header">
+        <div class="picker-header__title">
+          <span class="brand-tile">OR</span>
+          <div>
+            <h1>Choose a model for Search & research</h1>
+            <p>OpenRouter · showing models compatible with tools and long documents</p>
+          </div>
+        </div>
+        <a class="btn btn--quiet" href="settings.html">Close</a>
+      </header>
+
+      <div class="picker-controls">
+        <div class="search-field">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+          <input class="field" data-model-query placeholder="Search by model or provider" aria-label="Search models">
+        </div>
+        <div class="filter-row" aria-label="Model filters">
+          <button class="filter-button" data-filter="tools" data-active="true">Tools</button>
+          <button class="filter-button" data-filter="vision" data-active="false">Vision</button>
+          <button class="filter-button" data-filter="context" data-active="true">Long context</button>
+          <button class="filter-button" data-filter="price" data-active="false">Under $5 / 1M</button>
+          <button class="filter-button" data-filter="privacy" data-active="false">Zero data retention</button>
+        </div>
+      </div>
+
+      <div class="picker-scroll">
+        <section class="model-section">
+          <div class="section-heading">
+            <div><h2 class="section-title">Best matches</h2><p class="section-subtitle">Ranked for this task from live capabilities, price, context, and connection policy.</p></div>
+            <span class="chip chip--accent">3 recommended</span>
+          </div>
+          <div class="model-grid">
+            <button class="model-card" data-model-card data-model-name="Claude Sonnet · balanced research" data-selected="true">
+              <span class="chip chip--accent">Best overall</span>
+              <span class="model-card__name">Claude Sonnet</span>
+              <span class="model-card__desc">Strong synthesis and tool use for multi-note research.</span>
+              <span class="model-card__meta"><span>200k context</span><span>Mid cost</span></span>
+              <span class="model-card__id">anthropic/claude-sonnet</span>
+            </button>
+            <button class="model-card" data-model-card data-model-name="GPT mini · fast and economical" data-selected="false">
+              <span class="chip">Fast value</span>
+              <span class="model-card__name">GPT mini</span>
+              <span class="model-card__desc">Low-latency search follow-ups with dependable tool calling.</span>
+              <span class="model-card__meta"><span>128k context</span><span>Low cost</span></span>
+              <span class="model-card__id">openai/gpt-mini</span>
+            </button>
+            <button class="model-card" data-model-card data-model-name="Gemini Flash · long context" data-selected="false">
+              <span class="chip">Long context</span>
+              <span class="model-card__name">Gemini Flash</span>
+              <span class="model-card__desc">Good fit when many long documents must be scanned quickly.</span>
+              <span class="model-card__meta"><span>1m context</span><span>Low cost</span></span>
+              <span class="model-card__id">google/gemini-flash</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="model-section">
+          <div class="section-heading">
+            <div><h2 class="section-title">All compatible models</h2><p class="section-subtitle">Display names first; provider model IDs remain available as secondary detail.</p></div>
+            <span class="section-subtitle">42 matches · live catalog</span>
+          </div>
+          <div class="model-list">
+            <div class="model-list__row" data-searchable-model>
+              <span><span class="model-list__name">Claude Haiku</span><span class="model-list__id">anthropic/claude-haiku</span></span>
+              <span class="chip">Tools · vision</span>
+              <button class="btn" data-model-card data-model-name="Claude Haiku" data-selected="false">Select</button>
+            </div>
+            <div class="model-list__row" data-searchable-model>
+              <span><span class="model-list__name">GPT standard</span><span class="model-list__id">openai/gpt-standard</span></span>
+              <span class="chip">Tools · structured</span>
+              <button class="btn" data-model-card data-model-name="GPT standard" data-selected="false">Select</button>
+            </div>
+            <div class="model-list__row" data-searchable-model>
+              <span><span class="model-list__name">Mistral Small</span><span class="model-list__id">mistralai/mistral-small</span></span>
+              <span class="chip">Tools · low cost</span>
+              <button class="btn" data-model-card data-model-name="Mistral Small" data-selected="false">Select</button>
+            </div>
+            <div class="model-list__row" data-searchable-model>
+              <span><span class="model-list__name">Qwen Coder</span><span class="model-list__id">qwen/qwen-coder</span></span>
+              <span class="chip">Tools · code</span>
+              <button class="btn" data-model-card data-model-name="Qwen Coder" data-selected="false">Select</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="picker-footer">
+        <span class="picker-footer__selection">Selected: <strong data-model-selection>Claude Sonnet · balanced research</strong></span>
+        <div class="button-row">
+          <a class="btn" href="settings.html">Cancel</a>
+          <button class="btn btn--primary" data-use-model>Use this model</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

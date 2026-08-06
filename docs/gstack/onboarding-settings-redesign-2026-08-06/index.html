@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · Onboarding 与 Settings 上线准备</title>
+  <link rel="stylesheet" href="mock.css">
+  <script src="mock.js" defer></script>
+  <style>
+    .screen-pair { margin-top: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .screen-frame { margin: 0; padding: 9px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+    .screen-frame--wide { grid-column: 1 / -1; }
+    .screen-live { position: relative; height: 356px; overflow: hidden; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-muted); }
+    .screen-live iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 900px; border: 0; transform: scale(.395); transform-origin: top left; pointer-events: none; }
+    .screen-frame--wide .screen-live { height: 470px; }
+    .screen-frame--wide .screen-live iframe { left: 50%; transform: translateX(-50%) scale(.52); transform-origin: top center; }
+    .screen-frame figcaption { padding: 10px 3px 2px; color: var(--ink-2); font-size: 11px; line-height: 1.5; }
+    @media (max-width: 760px) { .screen-pair { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="prototype-bar">
+    <div class="prototype-bar__brand">
+      <svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>
+      <span>Peak design prototype</span>
+      <span class="prototype-bar__meta">2026-08-06 · design only</span>
+    </div>
+    <nav class="prototype-bar__nav" aria-label="Prototype pages">
+      <a href="index.html" aria-current="page">Review board</a>
+      <a href="onboarding.html">Onboarding</a>
+      <a href="settings.html">Settings</a>
+      <a href="provider-picker.html">Model picker</a>
+    </nav>
+  </header>
+
+  <main class="stage stage--report">
+    <section class="report-hero">
+      <div class="report-hero__meta">Peak Assistant · Launch readiness redesign</div>
+      <h1>先让用户成功，再让用户掌控。</h1>
+      <p>这版不是给旧页面换皮。它把 Onboarding 重构成一次真实任务闭环，把 Settings 重构成系统状态与长期控制中心，并把 Provider、模型、Agent runtime 和媒体路由拆回正确层级。</p>
+
+      <div class="report-summary">
+        <article class="report-card"><h3>Onboarding</h3><p>7 个技术步骤 → 5 个用户阶段；默认路径不再要求预算问卷和 bootstrap model。</p></article>
+        <article class="report-card"><h3>Settings</h3><p>6 个横向 tabs → 稳定左侧分组；Overview 只回答系统是否可用和怎么修。</p></article>
+        <article class="report-card"><h3>Connections</h3><p>Direct API、Local、Agent runtime、Media 与 Gateway 统一管理，但不抹平各自契约。</p></article>
+      </div>
+    </section>
+
+    <section class="report-section">
+      <h2>录像里看到的，不只是“丑”</h2>
+      <p class="report-section__intro">视觉拥挤是表层。真正的问题是用户动作、系统状态和产品能力已经不在同一条路径上。</p>
+
+      <div class="issue-lane">
+        <article class="issue-node issue-node--danger">
+          <div class="issue-node__tag">当前入口</div>
+          <h3>先理解内部概念</h3>
+          <p>Provider、starter model、budget、speed、tier、preset 和 embedding 在首次成功之前连续出现。</p>
+        </article>
+        <div class="issue-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></div>
+        <article class="issue-node issue-node--danger">
+          <div class="issue-node__tag">状态断裂</div>
+          <h3>界面显示静态结论</h3>
+          <p>`Not yet`、`Scanning` 与 System Check 来自 JSON；完成卡片也没有真实 surface handler。</p>
+        </article>
+        <div class="issue-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></div>
+        <article class="issue-node issue-node--success">
+          <div class="issue-node__tag">新版完成定义</div>
+          <h3>打开并开始一次真实任务</h3>
+          <p>连接验证、Vault readiness、目标 surface 与预填任务形成同一个可证明闭环。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="report-section">
+      <h2>新版主画面</h2>
+      <p class="report-section__intro">视觉只使用中性色、清晰边框与少量紫色强调；导航稳定，内容区独立滚动，底部操作始终可见。</p>
+      <div class="screen-pair">
+        <figure class="screen-frame">
+          <div class="screen-live"><iframe src="onboarding.html" title="Onboarding live preview"></iframe></div>
+          <figcaption>Onboarding：一次只连接一个 AI；API、Local 与 Agent runtime 有明确类型。</figcaption>
+        </figure>
+        <figure class="screen-frame">
+          <div class="screen-live"><iframe src="settings.html" title="Settings live preview"></iframe></div>
+          <figcaption>Settings：Overview 先给真实健康状态、影响和唯一修复入口。</figcaption>
+        </figure>
+        <figure class="screen-frame screen-frame--wide">
+          <div class="screen-live"><iframe src="provider-picker.html" title="OpenRouter model picker live preview"></iframe></div>
+          <figcaption>OpenRouter：先给与当前任务匹配的 3 个推荐，再提供搜索、能力过滤和完整兼容列表；raw model id 只是次要信息。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="report-section">
+      <h2>可点击模块</h2>
+      <p class="report-section__intro">每个 mock 都可独立检查，不需要先阅读长 spec。</p>
+      <div class="prototype-grid">
+        <a class="prototype-link" href="onboarding.html">
+          <span class="prototype-link__preview"><span></span><span></span></span>
+          <h3>Onboarding click-through</h3>
+          <p>五阶段流程、连接测试 receipt、真实 Index 状态与首次任务 launchpad。</p>
+          <span class="prototype-link__cta">打开原型 →</span>
+        </a>
+        <a class="prototype-link" href="settings.html">
+          <span class="prototype-link__preview"><span></span><span></span></span>
+          <h3>Settings click-through</h3>
+          <p>Overview、Connections、Behavior、Knowledge、Creation & Tools、Advanced。</p>
+          <span class="prototype-link__cta">打开原型 →</span>
+        </a>
+        <a class="prototype-link" href="provider-picker.html">
+          <span class="prototype-link__preview"><span></span><span></span></span>
+          <h3>OpenRouter model picker</h3>
+          <p>任务推荐、能力过滤、搜索与 secondary model id，替代裸露长列表。</p>
+          <span class="prototype-link__cta">打开原型 →</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="report-section">
+      <h2>关键产品决定</h2>
+      <ul class="decision-list">
+        <li>Onboarding 默认零偏好问题，系统先用已验证 capability 生成 Auto defaults。</li>
+        <li>Provider 的首发可见范围是 OpenAI、Anthropic、OpenRouter、Ollama、Codex、Claude Code。</li>
+        <li>Codex 与 Claude Code 作为 Agent runtime，不伪装成普通 chat provider。</li>
+        <li>媒体能力回到核心产品叙事；高级 preset、route 与模板路径只在 Advanced 中出现。</li>
+        <li>Onboarding 与 Settings 必须消费同一个 ReadinessProjection 和 verification receipt。</li>
+        <li>Setup 完成条件是目标 surface 真正打开且预填任务，而不是 modal 被关闭。</li>
+      </ul>
+
+      <div class="evidence-note">
+        交付边界：设计 spec + 静态可点击 HTML mock。本轮没有修改 production Onboarding、Settings、Provider、Index 或 Media 代码；没有在真实 Obsidian 中验证交互。<strong>INTERACTION NOT VERIFIED · IMPLEMENTATION NOT STARTED</strong><br>
+        详细诊断与实施顺序：<a href="../../superpowers/specs/2026-08-06-onboarding-settings-launch-readiness-redesign.md">2026-08-06 Onboarding 与 Settings 上线准备设计</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
