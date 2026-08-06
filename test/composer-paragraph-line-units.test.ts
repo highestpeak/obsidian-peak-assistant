@@ -119,8 +119,8 @@ assert.match(
 );
 assert.match(
 	css,
-	/\.pk-composer-display-switch\.pk-segmented\[data-variant='animated-pill'\][\s\S]*?border-radius:\s*var\(--pk-radius-md\)/,
-	'the nested display switch uses a smaller radius rung than the floating control bar',
+	/\.pk-composer-display-switch\.pk-segmented\[data-variant='animated-pill'\][\s\S]*?border-radius:\s*var\(--pk-radius-full\)/,
+	'the display switch matches the full-pill Result Browser view toggle grammar',
 );
 
 console.log('composer-paragraph-line-units: passed');

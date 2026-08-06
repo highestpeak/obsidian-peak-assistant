@@ -133,6 +133,11 @@ export interface ComposerChromeConfig {
 		shortcutUndo: string;
 		shortcutRedo: string;
 	};
+	workspaceNavigation: {
+		groupLabel: string;
+		back: string;
+		forward: string;
+	};
 	displayStates: {
 		groupLabel: string;
 		edit: string;
@@ -375,7 +380,7 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 					{ id: 'excalidraw', label: 'Excalidraw', default: false, initialValue: '![[新草图.excalidraw.md]]', placeholder: '输入 Excalidraw 文件名…', syntaxPrefix: '![[', syntaxSuffix: '.excalidraw.md]]', shortcut: false, mode: 'markdown' },
 				],
 			},
-			undo: {
+		undo: {
 			undo: '撤销',
 			redo: '重做',
 			committed: '改动已写入',
@@ -383,6 +388,11 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			redone: '已重做',
 			shortcutUndo: '⌘Z',
 			shortcutRedo: '⇧⌘Z',
+		},
+		workspaceNavigation: {
+			groupLabel: '工作区导航',
+			back: '后退',
+			forward: '前进',
 		},
 		displayStates: {
 			groupLabel: '文档视图',
@@ -587,6 +597,7 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 			types: parsed.insertDraft?.types ?? base.insertDraft.types,
 		},
 		undo: { ...base.undo, ...parsed.undo },
+		workspaceNavigation: { ...base.workspaceNavigation, ...parsed.workspaceNavigation },
 		displayStates: { ...base.displayStates, ...parsed.displayStates },
 		selection: {
 			...base.selection,

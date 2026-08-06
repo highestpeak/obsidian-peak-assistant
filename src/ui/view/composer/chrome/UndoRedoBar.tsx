@@ -1,5 +1,17 @@
 import * as React from 'react';
-import { Layers3, MessageSquare, Sparkles, Undo2, Redo2 } from 'lucide-react';
+import {
+	ArrowLeft,
+	ArrowRight,
+	Layers3,
+	MessageSquare,
+	Redo2,
+	Sparkles,
+	Undo2,
+} from 'lucide-react';
+import type {
+	ComposerWorkspaceNavigationPort,
+	ComposerWorkspaceNavigationSnapshot,
+} from '@/core/composer';
 import { Button, Chip, IconButton } from '@/ui/components/primitives';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { DisplayStateSwitch, type ComposerDisplayState } from './DisplayStateSwitch';
@@ -58,6 +70,9 @@ export function UndoRedoBar({
 	const [intelligenceStrings, setIntelligenceStrings] = React.useState(DEFAULT_SIDECAR_CONFIG.strings);
 	const { undo } = projection;
 	const c = config.chrome.undo;
+	const workspaceNavigation = runtime.workspaceNavigation;
+	const workspaceNavigationState = useWorkspaceNavigation(workspaceNavigation);
+	const workspaceNavigationStrings = config.chrome.workspaceNavigation;
 	const commentStrings = config.chrome.comment;
 
 	React.useEffect(() => {
@@ -100,6 +115,30 @@ export function UndoRedoBar({
 
 	return (
 		<div className="pk-composer-controlbar" data-chrome="true" aria-label={config.chrome.displayStates.groupLabel}>
+			{workspaceNavigation && (
+				<div
+					className="pk-composer-workspace-navigation"
+					role="group"
+					aria-label={workspaceNavigationStrings.groupLabel}
+				>
+					<IconButton
+						label={workspaceNavigationStrings.back}
+						className="pk-composer-workspace-navigation__btn"
+						disabled={!workspaceNavigationState.canBack}
+						onClick={() => void workspaceNavigation.back()}
+					>
+						<ArrowLeft size={16} />
+					</IconButton>
+					<IconButton
+						label={workspaceNavigationStrings.forward}
+						className="pk-composer-workspace-navigation__btn"
+						disabled={!workspaceNavigationState.canForward}
+						onClick={() => void workspaceNavigation.forward()}
+					>
+						<ArrowRight size={16} />
+					</IconButton>
+				</div>
+			)}
 			{canEdit ? (
 				<DisplayStateSwitch
 					value={displayState}
@@ -189,4 +228,23 @@ function isEditableTarget(target: EventTarget | null): boolean {
 	const tag = el.tagName.toLowerCase();
 	if (tag === 'input' || tag === 'textarea') return true;
 	return el.isContentEditable === true;
+}
+
+const EMPTY_WORKSPACE_NAVIGATION: ComposerWorkspaceNavigationSnapshot = Object.freeze({
+	canBack: false,
+	canForward: false,
+});
+
+function useWorkspaceNavigation(
+	port: ComposerWorkspaceNavigationPort | undefined,
+): ComposerWorkspaceNavigationSnapshot {
+	const subscribe = React.useCallback(
+		(listener: () => void) => port?.subscribe(listener) ?? (() => undefined),
+		[port],
+	);
+	const getSnapshot = React.useCallback(
+		() => port?.getSnapshot() ?? EMPTY_WORKSPACE_NAVIGATION,
+		[port],
+	);
+	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

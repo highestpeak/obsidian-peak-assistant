@@ -14,6 +14,22 @@ export type ComposerOpenDisposition =
 	| 'new-tab'
 	| 'split';
 
+export interface ComposerWorkspaceNavigationSnapshot {
+	canBack: boolean;
+	canForward: boolean;
+}
+
+/**
+ * Leaf-local host navigation. The app adapter owns Obsidian history access;
+ * Composer chrome only renders this framework-neutral contract.
+ */
+export interface ComposerWorkspaceNavigationPort {
+	getSnapshot(): ComposerWorkspaceNavigationSnapshot;
+	subscribe(listener: () => void): () => void;
+	back(): Promise<void>;
+	forward(): Promise<void>;
+}
+
 export interface ComposerViewStateV2 extends Record<string, unknown> {
 	version: 2;
 	filePath: string;

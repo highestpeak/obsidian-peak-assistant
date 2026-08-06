@@ -16,12 +16,18 @@ import {
 	type ComposerViewStateV2,
 	type DocumentComposerState,
 } from '@/core/composer';
-import { ComposerRoot, loadComposerConfig, type ComposerConfig } from '@/ui/view/composer';
+import {
+	ComposerRoot,
+	loadComposerConfig,
+	type ComposerChromeRuntime,
+	type ComposerConfig,
+} from '@/ui/view/composer';
 import { DEFAULT_COMPOSER_CONFIG } from '@/ui/view/composer';
 import { DOCUMENT_COMPOSER_VIEW_TYPE } from './viewType';
 import type { DocumentComposerController } from './DocumentComposerController';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from './ComposerNavigationDefaults';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+import { ObsidianWorkspaceHistoryNavigation } from './ObsidianWorkspaceHistoryNavigation';
 
 export { DOCUMENT_COMPOSER_VIEW_TYPE };
 
@@ -55,6 +61,10 @@ export class DocumentComposerView extends ReactItemViewHost {
 	private revealSequence = 0;
 	private pendingReveal: { id: number; location: DocumentSourceLocation } | null = null;
 	private lastFocusedSourceOffset: number | null = null;
+	private readonly workspaceNavigation: ObsidianWorkspaceHistoryNavigation;
+	private readonly navigationOnlyRuntime: ComposerChromeRuntime;
+	private decoratedRuntimeBase: ComposerChromeRuntime | null = null;
+	private decoratedRuntime: ComposerChromeRuntime | null = null;
 	private readonly onComposerFocusIn = (event: FocusEvent): void => {
 		const target = event.target as HTMLElement | null;
 		if (!target?.closest) return;
@@ -73,6 +83,9 @@ export class DocumentComposerView extends ReactItemViewHost {
 
 	constructor(leaf: WorkspaceLeaf, appContext: AppContext) {
 		super(leaf, appContext);
+		this.navigation = true;
+		this.workspaceNavigation = new ObsidianWorkspaceHistoryNavigation(leaf);
+		this.navigationOnlyRuntime = { workspaceNavigation: this.workspaceNavigation };
 		this.scope = new Scope(this.app.scope);
 		this.scope.register([], 'Escape', () => false);
 	}
@@ -101,6 +114,8 @@ export class DocumentComposerView extends ReactItemViewHost {
 		this.controllerSubscription = null;
 		this.controller?.stop();
 		this.controller = null;
+		this.decoratedRuntimeBase = null;
+		this.decoratedRuntime = null;
 		await super.onClose();
 	}
 
@@ -176,7 +191,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 		const controller = this.controller;
 		const source: ComposerStateSource = controller ?? EMPTY_SOURCE;
 		const onRevalidate = controller ? () => controller.revalidate() : undefined;
-		const runtimeSource = controller ? { getRuntime: () => controller.getRuntime() } : undefined;
+		const runtimeSource = controller ? { getRuntime: () => this.getChromeRuntime() } : undefined;
 		const intelligenceSource = controller ? { getIntelligence: () => controller.getIntelligence() } : undefined;
 		const runtime = this.appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
 		return createReactElementWithServices(
@@ -217,6 +232,20 @@ export class DocumentComposerView extends ReactItemViewHost {
 
 	private requestHeaderRefresh(): void {
 		this.app.workspace.trigger('layout-change');
+	}
+
+	private getChromeRuntime(): ComposerChromeRuntime {
+		const base = this.controller?.getRuntime();
+		if (!base) return this.navigationOnlyRuntime;
+		if (base === this.decoratedRuntimeBase && this.decoratedRuntime) {
+			return this.decoratedRuntime;
+		}
+		this.decoratedRuntimeBase = base;
+		this.decoratedRuntime = {
+			...base,
+			workspaceNavigation: this.workspaceNavigation,
+		};
+		return this.decoratedRuntime;
 	}
 
 	private ensureController(

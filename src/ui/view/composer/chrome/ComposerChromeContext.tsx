@@ -6,6 +6,7 @@ import type {
 	ComposerModelSelectionPort,
 	ComposerNativeEmbedRendererPort,
 	ComposerTransactionConfig,
+	ComposerWorkspaceNavigationPort,
 } from '@/core/composer';
 import { stubComposerCapabilityProjection } from '@/core/composer';
 import type {
@@ -38,6 +39,8 @@ import type { CandidateRendererRegistry } from '@/ui/view/composer/candidates';
 export interface ComposerChromeRuntime {
 	session?: ComposerDocumentSession;
 	hub?: ComposerTransactionHub;
+	/** Leaf-local Obsidian Back/Forward history, injected by the app view. */
+	workspaceNavigation?: ComposerWorkspaceNavigationPort;
 	/** App-resolved timing policy shared with the transaction hub. */
 	transactionConfig?: ComposerTransactionConfig;
 	projection?: ComposerCapabilityProjectionPort;

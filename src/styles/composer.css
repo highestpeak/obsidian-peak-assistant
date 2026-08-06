@@ -2306,6 +2306,32 @@
 .peak-composer-root .pk-composer-controlbar__spacer {
 	flex: 1;
 }
+.peak-composer-root .pk-composer-workspace-navigation {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 2px;
+	padding-right: 2px;
+}
+.peak-composer-root .pk-composer-workspace-navigation__btn {
+	width: 28px !important;
+	height: 28px !important;
+	min-width: 28px !important;
+	min-height: 28px !important;
+	max-width: 28px !important;
+	max-height: 28px !important;
+	padding: 0 !important;
+	border-radius: var(--pk-radius-md) !important;
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-composer-workspace-navigation__btn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+.peak-composer-root .pk-composer-workspace-navigation__btn:hover:not(:disabled) {
+	background: var(--pk-surface-sunken) !important;
+	color: var(--pk-text-primary);
+}
 .peak-composer-root .pk-composer-comment-toggle,
 .peak-composer-root .pk-composer-intelligence-toggle,
 .peak-composer-root .pk-composer-review-all {
@@ -2834,11 +2860,11 @@
 	margin-left: 0;
 }
 .peak-composer-root .pk-composer-display-switch.pk-segmented[data-variant='animated-pill'] {
-	border-radius: var(--pk-radius-md);
+	border-radius: var(--pk-radius-full);
 }
 .peak-composer-root .pk-composer-display-switch.pk-segmented[data-variant='animated-pill']
 	.pk-segmented__opt {
-	border-radius: var(--pk-radius-sm) !important;
+	border-radius: var(--pk-radius-full) !important;
 }
 
 /* ── focus-visible ring (all interactive families) ─────────────────────────── */
@@ -2846,6 +2872,7 @@
 .peak-composer-root .pk-action-capsule:focus-visible,
 .peak-composer-root .pk-selection-format-btn:focus-visible,
 .peak-composer-root .pk-selection-text-btn:focus-visible,
+.peak-composer-root .pk-composer-workspace-navigation__btn:focus-visible,
 .peak-composer-root .pk-undo-redo__btn:focus-visible,
 .peak-composer-root .pk-easy-copy__tile:focus-visible {
 	outline: 2px solid var(--pk-accent);
