@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Modal } from '@/ui/components/primitives';
 import type { EditableBuiltInPrompt } from '@/core/ports/AIControlCenterPort';
 import { PromptInputsTable } from './PromptInputsTable';
+import { PromptTemplateEditor } from './PromptTemplateEditor';
 
 export interface PromptEditorModalProps {
 	prompt: EditableBuiltInPrompt | null;
@@ -62,13 +63,7 @@ export function PromptEditorModal({ prompt, onOpenChange, onSave, onReset }: Pro
 					<span className="pktw-text-xs pktw-text-pk-text-tertiary">
 						Saving changes the Vault override. The next run of this action renders this exact template with the fields shown below.
 					</span>
-					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Vault override template</span><textarea
-						aria-label="Prompt template"
-						rows={28}
-						value={content}
-						onChange={(event) => setContent(event.target.value)}
-						className="pk-ai-control-center__prompt-textarea pktw-w-full pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs pktw-text-pk-text-primary"
-					/></label>
+					<PromptTemplateEditor label="Vault override template" ariaLabel="Prompt template" value={content} onChange={setContent} />
 					<div className="pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface"><div className="pktw-px-4 pktw-py-3"><span className="pktw-block pktw-text-sm pktw-font-medium">Template inputs</span><span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">These values are supplied by Peak when this action runs. They are not settings to fill in here.</span></div><PromptInputsTable inputs={prompt?.inputs ?? []} /></div>
 					{error ? <span className="pktw-text-xs pktw-text-red-500">{error}</span> : null}
 				</Modal.Body>

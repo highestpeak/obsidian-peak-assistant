@@ -3,6 +3,7 @@ import { Button, Modal } from '@/ui/components/primitives';
 import type { CustomPromptDraft } from '@/core/ports/AIControlCenterPort';
 import { CUSTOM_PROMPT_TEMPLATE_VARIABLES } from '@/service/copilot/CustomPromptRegistry';
 import { PromptInputsTable } from './PromptInputsTable';
+import { PromptTemplateEditor } from './PromptTemplateEditor';
 
 export interface CustomPromptEditorModalProps {
 	draft: CustomPromptDraft | null;
@@ -64,7 +65,7 @@ export function CustomPromptEditorModal({ draft, onOpenChange, onSave }: CustomP
 						<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Where it appears</span><select className={fieldClass} value={form.category} onChange={(event) => update('category', event.target.value as CustomPromptDraft['category'])}><option value="document">Document</option><option value="vault">Vault</option><option value="writing">Writing</option></select></label>
 						<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Model override (optional)</span><input className={fieldClass} placeholder="Use current AI setup default" value={form.modelId ?? ''} onChange={(event) => update('modelId', event.target.value)} /></label>
 					</div>
-					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Prompt template</span><textarea aria-label="Custom Prompt template" rows={28} className="pk-ai-control-center__prompt-textarea pktw-w-full pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs" value={form.template} onChange={(event) => update('template', event.target.value)} /></label>
+					<PromptTemplateEditor label="Prompt template" ariaLabel="Custom Prompt template" value={form.template} onChange={(template) => update('template', template)} />
 					<div className="pktw-rounded-md pktw-border pktw-border-pk-border"><div className="pktw-px-4 pktw-py-3"><span className="pktw-block pktw-text-sm pktw-font-medium">Template inputs</span><span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">Peak supplies these values when this Custom Prompt runs.</span></div><PromptInputsTable inputs={CUSTOM_PROMPT_TEMPLATE_VARIABLES} /></div>
 					{error ? <span className="pktw-text-xs pktw-text-red-500">{error}</span> : null}
 				</Modal.Body>

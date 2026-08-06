@@ -46,3 +46,81 @@
 	cursor: text !important;
 	flex: 0 0 auto !important;
 }
+
+/* Native textarea editing remains the source of truth. A synchronized layer
+   renders Handlebars expressions without changing what gets saved. */
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__handlebars-help {
+	padding: 8px 10px;
+	border: 1px solid var(--pk-accent-border, var(--pk-border));
+	border-radius: var(--pk-radius-sm);
+	background: var(--pk-accent-soft);
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	line-height: 1.5;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__handlebars-help strong,
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__handlebars-help code {
+	color: var(--pk-accent-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__template-editor {
+	position: relative;
+	min-height: 360px;
+	overflow: hidden;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__template-highlights {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	overflow: hidden;
+	pointer-events: none;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	word-break: break-word;
+	color: var(--pk-text-primary);
+	font-family: var(--font-monospace);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__template-highlights > code {
+	display: block;
+	min-height: 100%;
+	padding: 12px;
+	font: inherit;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__handlebars-token {
+	padding: 1px 2px;
+	border-radius: 3px;
+	background: var(--pk-accent-soft);
+	color: var(--pk-accent-text);
+	font-weight: 650;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__template-textarea.pk-ai-control-center__prompt-textarea {
+	position: relative;
+	z-index: 1;
+	margin: 0;
+	border: 0 !important;
+	border-radius: 0 !important;
+	background: transparent !important;
+	color: transparent !important;
+	caret-color: var(--pk-text-primary);
+	font-family: var(--font-monospace);
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	word-break: break-word;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__template-textarea::selection {
+	background: var(--pk-accent-soft);
+	color: transparent;
+}
