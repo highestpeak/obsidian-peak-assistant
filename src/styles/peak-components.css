@@ -12233,9 +12233,9 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
- * Keyboard navigation kernel — shared live region and in-place Key Tips.
- * Key Tips are non-interactive overlays attached to their real destinations;
- * showing them never moves focus or opens a modal.
+ * Keyboard navigation kernel — shared live region and viewport Key Tips.
+ * The app-owned overlay keeps tips visible when their destination lives inside
+ * a scrolled or clipped surface; showing it never moves focus or opens a modal.
  * ─────────────────────────────────────────────────────────────────────── */
 .pk-keyboard-live-region {
   position: fixed !important;
@@ -12249,22 +12249,22 @@
   border: 0 !important;
 }
 
-.pk-keytip-host {
-  isolation: isolate;
-}
-
-.pk-keytip-host--relative {
-  position: relative !important;
+.pk-keytip-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
 }
 
 .pk-keytip {
   position: absolute;
-  inset: 8px auto auto 8px;
-  z-index: 100;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: calc(100% - 16px);
+  max-width: min(280px, calc(100vw - 16px));
   padding: 4px 8px 4px 4px;
   border: 1px solid var(--pk-border-strong, var(--background-modifier-border-hover));
   border-radius: var(--pk-radius-md, 8px);
@@ -12275,7 +12275,6 @@
   font-weight: 650;
   line-height: 1;
   pointer-events: none;
-  user-select: none;
 }
 
 .pk-keytip kbd {

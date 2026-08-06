@@ -1,5 +1,6 @@
 import {
 	PEAK_KEYBOARD_SURFACE_LABELS,
+	PEAK_KEY_TIP_ACTIVATION,
 	PEAK_KEY_TIP_DEFINITIONS,
 	PEAK_KEY_TIP_STRINGS,
 	type PeakKeyTipDefinition,
@@ -11,6 +12,7 @@ import {
 import type {
 	PeakKeyboardEscapeLayer,
 	PeakKeyboardNavigationPort,
+	PeakKeyboardSurfaceAdapter,
 	PeakKeyboardSurfaceId,
 } from '@/ui/keyboard/KeyboardNavigationPort';
 
@@ -34,32 +36,47 @@ const FOCUSABLE_SELECTORS = [
 interface RegisteredSurface {
 	id: PeakKeyboardSurfaceId;
 	root: HTMLElement;
+	adapter?: PeakKeyboardSurfaceAdapter;
 }
 
 interface ActiveKeyTip {
 	definition: PeakKeyTipDefinition;
-	host: HTMLElement;
+	anchor: HTMLElement;
 	badge: HTMLElement;
-	madeRelative: boolean;
+}
+
+interface PositionedRect {
+	left: number;
+	top: number;
+	right: number;
+	bottom: number;
 }
 
 interface KeyTipSession {
 	surface: RegisteredSurface;
 	tips: ActiveKeyTip[];
+	layer: HTMLElement;
+	observer: MutationObserver | null;
+	refreshFrame: number | null;
 }
 
 interface DocumentState {
 	surfaces: RegisteredSurface[];
+	activeSurface: RegisteredSurface | null;
 	layers: PeakKeyboardEscapeLayer[];
 	compositionActive: boolean;
 	liveRegion: HTMLElement;
 	modifierSurface: RegisteredSurface | null;
+	modifierTimer: number | null;
+	modifierShownWhileHeld: boolean;
+	modifierDismissed: boolean;
 	keyTips: KeyTipSession | null;
 	keydown: (event: KeyboardEvent) => void;
 	keyup: (event: KeyboardEvent) => void;
 	pointerdown: () => void;
 	focusin: (event: FocusEvent) => void;
 	blur: () => void;
+	reposition: () => void;
 	compositionstart: () => void;
 	compositionend: () => void;
 }
@@ -91,27 +108,39 @@ function consume(event: KeyboardEvent): void {
 export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 	private readonly documents = new Map<Document, DocumentState>();
 	private readonly bookmarks = new Map<string, HTMLElement>();
-	private pendingFocus: { surfaceId: PeakKeyboardSurfaceId; zoneId?: string } | null = null;
+	private pendingFocus: {
+		surfaceId: PeakKeyboardSurfaceId;
+		zoneId?: string;
+		ownerDocument?: Document;
+	} | null = null;
 	private lastPeakFocus: HTMLElement | null = null;
 
-	registerSurface(surfaceId: PeakKeyboardSurfaceId, root: HTMLElement): () => void {
+	registerSurface(
+		surfaceId: PeakKeyboardSurfaceId,
+		root: HTMLElement,
+		adapter?: PeakKeyboardSurfaceAdapter,
+	): () => void {
 		const state = this.ensureDocument(root.ownerDocument);
-		const registration: RegisteredSurface = { id: surfaceId, root };
+		const registration: RegisteredSurface = { id: surfaceId, root, adapter };
 		state.surfaces.push(registration);
+		state.activeSurface = registration;
 		root.dataset.peakKeyboardSurface = surfaceId;
 		root.addEventListener('compositionstart', state.compositionstart, true);
 		root.addEventListener('compositionend', state.compositionend, true);
 
-		if (this.pendingFocus?.surfaceId === surfaceId) {
+		if (
+			this.pendingFocus?.surfaceId === surfaceId
+			&& (!this.pendingFocus.ownerDocument || this.pendingFocus.ownerDocument === root.ownerDocument)
+		) {
 			const request = this.pendingFocus;
 			this.pendingFocus = null;
 			const ownerWindow = root.ownerDocument.defaultView;
 			if (ownerWindow) {
 				ownerWindow.setTimeout(() => {
-					this.focusSurface(request.surfaceId, request.zoneId);
+					this.focusSurface(request.surfaceId, request.zoneId, request.ownerDocument);
 				}, 0);
 			} else {
-				this.focusSurface(request.surfaceId, request.zoneId);
+				this.focusSurface(request.surfaceId, request.zoneId, request.ownerDocument);
 			}
 		}
 
@@ -121,23 +150,41 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			root.removeEventListener('compositionend', state.compositionend, true);
 			delete root.dataset.peakKeyboardSurface;
 			state.surfaces = state.surfaces.filter((candidate) => candidate !== registration);
+			if (state.activeSurface === registration) {
+				state.activeSurface = [...state.surfaces].reverse().find((candidate) =>
+					isVisible(candidate.root)) ?? null;
+			}
+			if (state.modifierSurface === registration) this.cancelModifierGesture(state);
 			if (state.surfaces.length === 0 && state.layers.length === 0) {
 				this.disposeDocument(root.ownerDocument);
 			}
 		};
 	}
 
-	requestSurfaceFocus(surfaceId: PeakKeyboardSurfaceId, zoneId?: string): void {
-		if (this.focusSurface(surfaceId, zoneId)) return;
-		this.pendingFocus = { surfaceId, zoneId };
+	requestSurfaceFocus(
+		surfaceId: PeakKeyboardSurfaceId,
+		zoneId?: string,
+		ownerDocument?: Document,
+	): void {
+		if (this.focusSurface(surfaceId, zoneId, ownerDocument)) return;
+		this.pendingFocus = { surfaceId, zoneId, ownerDocument };
 	}
 
-	focusSurface(surfaceId: PeakKeyboardSurfaceId, zoneId?: string): boolean {
-		const registrations = Array.from(this.documents.values())
+	focusSurface(
+		surfaceId: PeakKeyboardSurfaceId,
+		zoneId?: string,
+		ownerDocument?: Document,
+	): boolean {
+		const documentStates = ownerDocument
+			? [this.documents.get(ownerDocument)].filter((state): state is DocumentState => Boolean(state))
+			: Array.from(this.documents.values());
+		const registrations = documentStates
 			.flatMap((state) => state.surfaces)
 			.filter((surface) => surface.id === surfaceId && isVisible(surface.root));
 		const surface = registrations[registrations.length - 1];
 		if (!surface) return false;
+		const state = this.documents.get(surface.root.ownerDocument);
+		if (state) state.activeSurface = surface;
 		const zones = this.visibleZones(surface);
 		const zone = zoneId
 			? zones.find((candidate) => candidate.dataset.peakKeyboardZone === zoneId)
@@ -184,29 +231,34 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 		ownerDocument.body.appendChild(liveRegion);
 		const state: DocumentState = {
 			surfaces: [],
+			activeSurface: null,
 			layers: [],
 			compositionActive: false,
 			liveRegion,
 			modifierSurface: null,
+			modifierTimer: null,
+			modifierShownWhileHeld: false,
+			modifierDismissed: false,
 			keyTips: null,
 			keydown: (event) => this.onKeyDown(ownerDocument, event),
 			keyup: (event) => this.onKeyUp(ownerDocument, event),
 			pointerdown: () => {
 				const current = this.documents.get(ownerDocument);
-				if (current) current.modifierSurface = null;
+				if (current) this.cancelModifierGesture(current);
 				this.hideKeyTips(ownerDocument);
 			},
 			focusin: (event) => this.onFocusIn(ownerDocument, event),
 			blur: () => {
 				const current = this.documents.get(ownerDocument);
-				if (current) current.modifierSurface = null;
+				if (current) this.cancelModifierGesture(current);
 				this.hideKeyTips(ownerDocument);
 			},
+			reposition: () => this.positionKeyTips(ownerDocument),
 			compositionstart: () => {
 				const current = this.documents.get(ownerDocument);
 				if (!current) return;
 				current.compositionActive = true;
-				current.modifierSurface = null;
+				this.cancelModifierGesture(current);
 				this.hideKeyTips(ownerDocument);
 			},
 			compositionend: () => {
@@ -218,7 +270,9 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 		ownerDocument.addEventListener('keyup', state.keyup, true);
 		ownerDocument.addEventListener('pointerdown', state.pointerdown, true);
 		ownerDocument.addEventListener('focusin', state.focusin, true);
+		ownerDocument.addEventListener('scroll', state.reposition, true);
 		ownerDocument.defaultView?.addEventListener('blur', state.blur);
+		ownerDocument.defaultView?.addEventListener('resize', state.reposition);
 		this.documents.set(ownerDocument, state);
 		return state;
 	}
@@ -226,12 +280,15 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 	private disposeDocument(ownerDocument: Document): void {
 		const state = this.documents.get(ownerDocument);
 		if (!state) return;
+		this.cancelModifierGesture(state);
 		this.hideKeyTips(ownerDocument);
 		ownerDocument.removeEventListener('keydown', state.keydown, true);
 		ownerDocument.removeEventListener('keyup', state.keyup, true);
 		ownerDocument.removeEventListener('pointerdown', state.pointerdown, true);
 		ownerDocument.removeEventListener('focusin', state.focusin, true);
+		ownerDocument.removeEventListener('scroll', state.reposition, true);
 		ownerDocument.defaultView?.removeEventListener('blur', state.blur);
+		ownerDocument.defaultView?.removeEventListener('resize', state.reposition);
 		state.liveRegion.remove();
 		this.documents.delete(ownerDocument);
 	}
@@ -240,7 +297,7 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 		const state = this.documents.get(ownerDocument);
 		if (!state || event.defaultPrevented) return;
 		if (state.compositionActive || event.isComposing || event.key === 'Process') {
-			state.modifierSurface = null;
+			this.cancelModifierGesture(state);
 			this.hideKeyTips(ownerDocument);
 			return;
 		}
@@ -267,13 +324,40 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			return;
 		}
 
-		const context = this.resolveSurfaceForTarget(ownerDocument, event.target);
 		if (isStandaloneKeyTipModifier(event)) {
-			state.modifierSurface = context?.surface ?? null;
+			if (state.keyTips) {
+				consume(event);
+				this.cancelModifierTimer(state);
+				state.modifierSurface = null;
+				state.modifierShownWhileHeld = false;
+				state.modifierDismissed = true;
+				this.hideKeyTips(ownerDocument);
+				return;
+			}
+			const surface = this.resolveActiveSurface(ownerDocument, event.target);
+			state.modifierSurface = surface;
+			state.modifierShownWhileHeld = false;
+			state.modifierDismissed = false;
+			this.cancelModifierTimer(state);
+			const ownerWindow = ownerDocument.defaultView;
+			if (!surface || !ownerWindow) return;
+			state.modifierTimer = ownerWindow.setTimeout(() => {
+				const current = this.documents.get(ownerDocument);
+				if (!current || current.modifierSurface !== surface) return;
+				current.modifierTimer = null;
+				if (current.compositionActive || !isVisible(surface.root)) return;
+				current.modifierShownWhileHeld = this.showKeyTips(surface);
+			}, PEAK_KEY_TIP_ACTIVATION.holdDelayMs);
 			return;
 		}
 
-		state.modifierSurface = null;
+		if (state.modifierSurface || state.modifierTimer !== null) {
+			const shownWhileHeld = state.modifierShownWhileHeld;
+			this.cancelModifierGesture(state);
+			if (shownWhileHeld) this.hideKeyTips(ownerDocument);
+			return;
+		}
+
 		if (!state.keyTips) return;
 		if (event.altKey || event.ctrlKey || event.metaKey) {
 			this.hideKeyTips(ownerDocument);
@@ -296,22 +380,34 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			return;
 		}
 		this.hideKeyTips(ownerDocument);
-		this.focusZone(session.surface, tip.host, tip.definition.label);
+		if (tip.definition.actionId && session.surface.adapter?.activateKeyTip(
+			tip.definition.actionId,
+		)) {
+			state.activeSurface = session.surface;
+			state.liveRegion.textContent = `${PEAK_KEYBOARD_SURFACE_LABELS[session.surface.id]}, ${
+				tip.definition.label
+			}`;
+			return;
+		}
+		this.focusZone(session.surface, tip.anchor, tip.definition.label);
 	}
 
 	private onKeyUp(ownerDocument: Document, event: KeyboardEvent): void {
 		const state = this.documents.get(ownerDocument);
-		if (!state) return;
+		if (!state || event.key !== 'Alt') return;
 		const surface = state.modifierSurface;
-		if (event.key === 'Alt') state.modifierSurface = null;
-		if (!surface || !isStandaloneKeyTipModifier(event)) return;
-		if (state.compositionActive || event.isComposing || event.key === 'Process') return;
-		if (!isVisible(surface.root)) return;
-		consume(event);
-		if (state.keyTips?.surface === surface) {
-			this.hideKeyTips(ownerDocument);
+		const shownWhileHeld = state.modifierShownWhileHeld;
+		const dismissed = state.modifierDismissed;
+		this.cancelModifierGesture(state);
+		if (dismissed) {
+			consume(event);
 			return;
 		}
+		if (!surface || !isStandaloneKeyTipModifier(event)) return;
+		if (state.compositionActive || event.isComposing) return;
+		if (!isVisible(surface.root)) return;
+		consume(event);
+		if (shownWhileHeld) return;
 		this.showKeyTips(surface);
 	}
 
@@ -319,6 +415,7 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 		const context = this.resolveSurfaceForTarget(ownerDocument, event.target);
 		const target = event.target as HTMLElement | null;
 		if (!context || !target) return;
+		context.state.activeSurface = context.surface;
 		const zone = currentZone(context.surface.root, target);
 		const zoneId = zone?.dataset.peakKeyboardZone ?? null;
 		if (zoneId) this.bookmarks.set(this.bookmarkKey(context.surface.id, zoneId), target);
@@ -330,57 +427,154 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 		const state = this.documents.get(ownerDocument);
 		if (!state) return false;
 		this.hideKeyTips(ownerDocument);
-		const usedKeys = new Set<string>();
-		const tips: ActiveKeyTip[] = [];
-		for (const definition of PEAK_KEY_TIP_DEFINITIONS[surface.id]) {
-			if (usedKeys.has(definition.key)) continue;
-			const host = this.findKeyTipHost(surface, definition);
-			if (!host) continue;
-			const badge = ownerDocument.createElement('span');
-			badge.className = 'pk-keytip';
-			badge.dataset.peakKeytip = definition.key;
-			badge.setAttribute('aria-hidden', 'true');
-			const key = ownerDocument.createElement('kbd');
-			key.textContent = definition.key;
-			const label = ownerDocument.createElement('span');
-			label.textContent = definition.label;
-			badge.append(key, label);
-			const madeRelative = ownerDocument.defaultView?.getComputedStyle(host).position === 'static';
-			host.classList.add('pk-keytip-host');
-			if (madeRelative) host.classList.add('pk-keytip-host--relative');
-			host.appendChild(badge);
-			tips.push({ definition, host, badge, madeRelative });
-			usedKeys.add(definition.key);
-		}
-		if (tips.length === 0) return false;
+		const layer = ownerDocument.createElement('div');
+		layer.className = 'pk-keytip-layer';
+		layer.setAttribute('aria-hidden', 'true');
+		ownerDocument.body.appendChild(layer);
+		const session: KeyTipSession = {
+			surface,
+			tips: [],
+			layer,
+			observer: null,
+			refreshFrame: null,
+		};
+		state.keyTips = session;
+		this.refreshKeyTips(ownerDocument);
+		if (!state.keyTips || state.keyTips.tips.length === 0) return false;
 		surface.root.classList.add('pk-keytips-active');
 		surface.root.dataset.peakKeytips = 'visible';
-		state.keyTips = { surface, tips };
-		const keys = tips.map((tip) => tip.definition.key).join(', ');
+		const ObserverCtor = ownerDocument.defaultView?.MutationObserver;
+		if (ObserverCtor) {
+			session.observer = new ObserverCtor(() => this.scheduleKeyTipRefresh(ownerDocument));
+			session.observer.observe(surface.root, {
+				attributes: true,
+				childList: true,
+				subtree: true,
+			});
+		}
+		state.activeSurface = surface;
+		const keys = session.tips.map((tip) => tip.definition.key).join(', ');
 		state.liveRegion.textContent = `${PEAK_KEYBOARD_SURFACE_LABELS[surface.id]} ${
 			PEAK_KEY_TIP_STRINGS.shownSuffix
 		}. ${PEAK_KEY_TIP_STRINGS.availablePrefix}: ${keys}`;
 		return true;
 	}
 
+	private refreshKeyTips(ownerDocument: Document): void {
+		const session = this.documents.get(ownerDocument)?.keyTips;
+		if (!session) return;
+		for (const tip of session.tips) tip.badge.remove();
+		session.tips = [];
+		const usedKeys = new Set<string>();
+		for (const definition of PEAK_KEY_TIP_DEFINITIONS[session.surface.id]) {
+			if (usedKeys.has(definition.key)) continue;
+			const anchor = this.findKeyTipAnchor(session.surface, definition);
+			if (!anchor) continue;
+			const badge = ownerDocument.createElement('span');
+			badge.className = 'pk-keytip';
+			badge.dataset.peakKeytip = definition.key;
+			const key = ownerDocument.createElement('kbd');
+			key.textContent = definition.key;
+			const label = ownerDocument.createElement('span');
+			label.textContent = definition.label;
+			badge.append(key, label);
+			session.layer.appendChild(badge);
+			session.tips.push({ definition, anchor, badge });
+			usedKeys.add(definition.key);
+		}
+		if (session.tips.length === 0) {
+			this.hideKeyTips(ownerDocument);
+			return;
+		}
+		this.positionKeyTips(ownerDocument);
+	}
+
 	private hideKeyTips(ownerDocument: Document): void {
 		const state = this.documents.get(ownerDocument);
 		const session = state?.keyTips;
 		if (!state || !session) return;
-		for (const tip of session.tips) tip.badge.remove();
-		for (const tip of session.tips) {
-			tip.host.classList.remove('pk-keytip-host');
-			if (tip.madeRelative) tip.host.classList.remove('pk-keytip-host--relative');
+		session.observer?.disconnect();
+		const ownerWindow = ownerDocument.defaultView;
+		if (session.refreshFrame !== null && ownerWindow) {
+			ownerWindow.cancelAnimationFrame(session.refreshFrame);
 		}
+		session.layer.remove();
 		session.surface.root.classList.remove('pk-keytips-active');
 		delete session.surface.root.dataset.peakKeytips;
 		state.keyTips = null;
 	}
 
-	private findKeyTipHost(
+	private scheduleKeyTipRefresh(ownerDocument: Document): void {
+		const session = this.documents.get(ownerDocument)?.keyTips;
+		const ownerWindow = ownerDocument.defaultView;
+		if (!session || !ownerWindow || session.refreshFrame !== null) return;
+		session.refreshFrame = ownerWindow.requestAnimationFrame(() => {
+			const current = this.documents.get(ownerDocument)?.keyTips;
+			if (!current) return;
+			current.refreshFrame = null;
+			this.refreshKeyTips(ownerDocument);
+		});
+	}
+
+	private positionKeyTips(ownerDocument: Document): void {
+		const session = this.documents.get(ownerDocument)?.keyTips;
+		const ownerWindow = ownerDocument.defaultView;
+		if (!session || !ownerWindow) return;
+		const occupied: PositionedRect[] = [];
+		for (const tip of session.tips) {
+			const anchorRect = tip.anchor.getBoundingClientRect();
+			const outsideViewport = anchorRect.bottom <= 0
+				|| anchorRect.right <= 0
+				|| anchorRect.top >= ownerWindow.innerHeight
+				|| anchorRect.left >= ownerWindow.innerWidth;
+			tip.badge.hidden = outsideViewport;
+			if (outsideViewport) continue;
+			const badgeRect = tip.badge.getBoundingClientRect();
+			const maxLeft = Math.max(8, ownerWindow.innerWidth - badgeRect.width - 8);
+			const maxTop = Math.max(8, ownerWindow.innerHeight - badgeRect.height - 8);
+			const left = Math.min(Math.max(8, anchorRect.left + 8), maxLeft);
+			const initialTop = Math.min(Math.max(8, anchorRect.top + 8), maxTop);
+			const verticalStep = badgeRect.height + 6;
+			let top = initialTop;
+			let positioned = this.positionedRect(left, top, badgeRect.width, badgeRect.height);
+			for (let attempt = 1; occupied.some((rect) => this.rectsOverlap(rect, positioned)); attempt += 1) {
+				const below = initialTop + attempt * verticalStep;
+				top = below <= maxTop
+					? below
+					: Math.max(8, initialTop - attempt * verticalStep);
+				positioned = this.positionedRect(left, top, badgeRect.width, badgeRect.height);
+				if (attempt >= session.tips.length) break;
+			}
+			tip.badge.style.left = `${Math.round(positioned.left)}px`;
+			tip.badge.style.top = `${Math.round(positioned.top)}px`;
+			occupied.push(positioned);
+		}
+	}
+
+	private positionedRect(
+		left: number,
+		top: number,
+		width: number,
+		height: number,
+	): PositionedRect {
+		return { left, top, right: left + width, bottom: top + height };
+	}
+
+	private rectsOverlap(left: PositionedRect, right: PositionedRect): boolean {
+		return left.left < right.right
+			&& left.right > right.left
+			&& left.top < right.bottom
+			&& left.bottom > right.top;
+	}
+
+	private findKeyTipAnchor(
 		surface: RegisteredSurface,
 		definition: PeakKeyTipDefinition,
 	): HTMLElement | null {
+		if (definition.actionId) {
+			const anchor = surface.adapter?.getKeyTipAnchor(definition.actionId) ?? null;
+			return anchor && isVisible(anchor) ? anchor : null;
+		}
 		return Array.from(surface.root.querySelectorAll<HTMLElement>(ZONE_SELECTOR)).find((zone) => {
 			if (zone.closest('[data-peak-keyboard-surface]') !== surface.root) return false;
 			if (zone.dataset.peakKeyboardZone !== definition.zoneId) return false;
@@ -389,6 +583,23 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			}
 			return isVisible(zone);
 		}) ?? null;
+	}
+
+	private resolveActiveSurface(
+		ownerDocument: Document,
+		target: EventTarget | null,
+	): RegisteredSurface | null {
+		const state = this.documents.get(ownerDocument);
+		if (!state) return null;
+		// Registration and focusin both update activeSurface. Prefer that app-owned
+		// foreground marker over the key event target: a command can mount a new
+		// Surface while Electron still dispatches Alt from the old trigger.
+		if (state.activeSurface && isVisible(state.activeSurface.root)) return state.activeSurface;
+		const direct = this.resolveSurfaceForTarget(ownerDocument, target)?.surface;
+		if (direct && isVisible(direct.root)) return direct;
+		const focused = this.resolveSurfaceForTarget(ownerDocument, ownerDocument.activeElement)?.surface;
+		if (focused && isVisible(focused.root)) return focused;
+		return [...state.surfaces].reverse().find((surface) => isVisible(surface.root)) ?? null;
 	}
 
 	private resolveSurfaceForTarget(
@@ -455,10 +666,25 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 		target.focus({ preventScroll: true });
 		target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 		if (surface.root.ownerDocument.activeElement !== target) return false;
+		const state = this.documents.get(surface.root.ownerDocument);
+		if (state) state.activeSurface = surface;
 		const zoneId = zone?.dataset.peakKeyboardZone;
 		if (zoneId) this.bookmarks.set(this.bookmarkKey(surface.id, zoneId), target);
 		this.lastPeakFocus = target;
 		return true;
+	}
+
+	private cancelModifierTimer(state: DocumentState): void {
+		if (state.modifierTimer === null) return;
+		state.liveRegion.ownerDocument.defaultView?.clearTimeout(state.modifierTimer);
+		state.modifierTimer = null;
+	}
+
+	private cancelModifierGesture(state: DocumentState): void {
+		this.cancelModifierTimer(state);
+		state.modifierSurface = null;
+		state.modifierShownWhileHeld = false;
+		state.modifierDismissed = false;
 	}
 
 	private bookmarkKey(surfaceId: PeakKeyboardSurfaceId, zoneId: string): string {

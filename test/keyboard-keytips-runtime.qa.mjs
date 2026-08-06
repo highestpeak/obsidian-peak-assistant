@@ -1,0 +1,163 @@
+/**
+ * Browser-level keyboard contract for the app-owned Key Tips runtime.
+ *
+ * Run with: node test/keyboard-keytips-runtime.qa.mjs
+ */
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { chromium } from 'playwright';
+
+const bundle = await build({
+	entryPoints: ['src/app/keyboard/PeakKeyboardRuntime.ts'],
+	bundle: true,
+	format: 'iife',
+	globalName: 'PeakKeyboardTest',
+	platform: 'browser',
+	target: 'es2020',
+	tsconfig: 'tsconfig.json',
+	write: false,
+});
+
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
+
+try {
+	await page.setContent(`
+		<style>
+			body { margin: 0; }
+			.surface { display: flex; flex-direction: column; width: 800px; height: 560px; }
+			.zone { position: relative; min-height: 64px; margin: 6px; }
+			.pk-keytip-layer { position: fixed; inset: 0; pointer-events: none; }
+			.pk-keytip { position: absolute; display: inline-flex; }
+		</style>
+		<button id="outside">Outside trigger</button>
+		<div id="surface" class="surface">
+			<div class="zone" data-peak-keyboard-zone="vs-query"><input id="query" /></div>
+			<div class="zone" data-peak-keyboard-zone="vs-view-toolbar"><button>View</button></div>
+			<div class="zone" data-peak-keyboard-zone="vs-results"><button>Result</button></div>
+		</div>
+	`);
+	await page.addScriptTag({ content: bundle.outputFiles[0].text });
+	await page.evaluate(() => {
+		const runtime = new window.PeakKeyboardTest.PeakKeyboardRuntime();
+		window.__peakRuntime = runtime;
+		runtime.registerSurface('vault-search', document.querySelector('#surface'));
+		document.querySelector('#outside').focus();
+	});
+
+	// A command-opened surface must work even while focus remains on its trigger.
+	await page.keyboard.down('Alt');
+	await page.waitForTimeout(220);
+	assert.equal(await page.locator('#surface').getAttribute('data-peak-keytips'), 'visible');
+	assert.equal(await page.locator('[data-peak-keytip="Q"]').count(), 1);
+	assert.equal(await page.locator('#surface [data-peak-keytip]').count(), 0);
+	await page.keyboard.up('Alt');
+	assert.equal(await page.locator('#surface').getAttribute('data-peak-keytips'), 'visible');
+	await page.keyboard.press('q');
+	assert.equal(await page.evaluate(() => document.activeElement?.id), 'query');
+
+	// Quick tap remains supported, and a second tap dismisses without reopening.
+	await page.keyboard.press('Alt');
+	assert.equal(await page.locator('#surface').getAttribute('data-peak-keytips'), 'visible');
+	await page.keyboard.press('Alt');
+	assert.equal(await page.locator('#surface').getAttribute('data-peak-keytips'), null);
+
+	// Alt+character remains a host/editor combination and never arms Key Tips.
+	await page.keyboard.down('Alt');
+	await page.keyboard.press('q');
+	await page.keyboard.up('Alt');
+	assert.equal(await page.locator('#surface').getAttribute('data-peak-keytips'), null);
+
+	// A newly mounted foreground Surface wins over focus left in the old Surface.
+	await page.evaluate(() => {
+		window.__peakRuntime.dispose();
+		document.body.innerHTML = `
+			<div id="old-studio" class="surface">
+				<div class="zone" data-peak-keyboard-zone="cs-left-navigation"><button id="old-focus">Old chat</button></div>
+			</div>
+			<div id="new-search" class="surface">
+				<div class="zone" data-peak-keyboard-zone="vs-query"><input /></div>
+			</div>`;
+		const runtime = new window.PeakKeyboardTest.PeakKeyboardRuntime();
+		window.__peakRuntime = runtime;
+		runtime.registerSurface('chat-studio', document.querySelector('#old-studio'));
+		document.querySelector('#old-focus').focus();
+		runtime.registerSurface('vault-search', document.querySelector('#new-search'));
+	});
+	await page.keyboard.press('Alt');
+	assert.equal(await page.locator('#new-search').getAttribute('data-peak-keytips'), 'visible');
+	assert.equal(await page.locator('#old-studio').getAttribute('data-peak-keytips'), null);
+
+	// A visible session follows dynamically mounted Studio destinations.
+	await page.evaluate(() => {
+		window.__peakRuntime.dispose();
+		document.body.innerHTML = `
+			<button id="outside">Outside trigger</button>
+			<div id="studio" class="surface">
+				<div class="zone" data-peak-keyboard-zone="cs-left-navigation"><button>Chats</button></div>
+				<div class="zone" data-peak-keyboard-zone="cs-message-timeline"><button>Message</button></div>
+				<div class="zone" data-peak-keyboard-zone="cs-composer"><input /></div>
+			</div>`;
+		const runtime = new window.PeakKeyboardTest.PeakKeyboardRuntime();
+		window.__peakRuntime = runtime;
+		const studio = document.querySelector('#studio');
+		runtime.registerSurface('chat-studio', studio);
+		document.querySelector('#outside').focus();
+	});
+	await page.keyboard.press('Alt');
+	assert.equal(await page.locator('[data-peak-keytip="I"]').count(), 0);
+	await page.evaluate(() => {
+		const index = document.createElement('div');
+		index.className = 'zone';
+		index.dataset.peakKeyboardZone = 'cs-conversation-index';
+		index.innerHTML = '<button>Index</button>';
+		document.querySelector('#studio').appendChild(index);
+	});
+	await page.waitForTimeout(50);
+	assert.equal(await page.locator('[data-peak-keytip="I"]').count(), 1);
+
+	// Action-backed destinations stay visible even when their content is unmounted.
+	await page.evaluate(() => {
+		window.__peakRuntime.dispose();
+		document.body.innerHTML = `
+			<button id="outside">Outside trigger</button>
+			<div id="atlas" class="surface">
+				<div class="zone" data-peak-keyboard-zone="fa-file-rail"><button>Files</button></div>
+				<div class="zone" data-peak-keyboard-zone="fa-view-filters">
+					<button data-peak-keytip-action="atlas-tree">Tree</button>
+					<button data-peak-keytip-action="atlas-graph">Graph</button>
+				</div>
+				<div class="zone" data-peak-keyboard-zone="fa-atlas"><button>Tree item</button></div>
+			</div>`;
+		const atlas = document.querySelector('#atlas');
+		const runtime = new window.PeakKeyboardTest.PeakKeyboardRuntime();
+		window.__peakRuntime = runtime;
+		runtime.registerSurface('file-atlas', atlas, {
+			getKeyTipAnchor(actionId) {
+				return atlas.querySelector(`[data-peak-keytip-action="${actionId}"]`);
+			},
+			activateKeyTip(actionId) {
+				window.__peakAction = actionId;
+				return true;
+			},
+		});
+		document.querySelector('#outside').focus();
+	});
+	await page.keyboard.press('Alt');
+	assert.equal(await page.locator('[data-peak-keytip="T"]').count(), 1);
+	assert.equal(await page.locator('[data-peak-keytip="G"]').count(), 1);
+	assert.equal(await page.locator('[data-peak-keytip="V"]').count(), 1);
+	const viewBox = await page.locator('[data-peak-keytip="V"]').boundingBox();
+	const treeBox = await page.locator('[data-peak-keytip="T"]').boundingBox();
+	assert.ok(viewBox && treeBox);
+	assert.ok(
+		viewBox.y + viewBox.height <= treeBox.y || treeBox.y + treeBox.height <= viewBox.y,
+		'overlapping Atlas destinations must be vertically deconflicted',
+	);
+	await page.keyboard.press('g');
+	assert.equal(await page.evaluate(() => window.__peakAction), 'atlas-graph');
+
+	console.log('keyboard-keytips-runtime.qa: passed');
+} finally {
+	await browser.close();
+}

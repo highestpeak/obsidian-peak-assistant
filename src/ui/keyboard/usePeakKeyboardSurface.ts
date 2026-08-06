@@ -3,19 +3,21 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import type {
 	PeakKeyboardEscapeLayer,
 	PeakKeyboardSurfaceId,
+	PeakKeyboardSurfaceAdapter,
 } from './KeyboardNavigationPort';
 
 export function usePeakKeyboardSurface(
 	surfaceId: PeakKeyboardSurfaceId,
 	rootRef: RefObject<HTMLElement | null>,
+	adapter?: PeakKeyboardSurfaceAdapter,
 ): void {
 	const { keyboardNavigation } = useServiceContext();
 
 	useEffect(() => {
 		const root = rootRef.current;
 		if (!root || !keyboardNavigation) return;
-		return keyboardNavigation.registerSurface(surfaceId, root);
-	}, [keyboardNavigation, rootRef, surfaceId]);
+		return keyboardNavigation.registerSurface(surfaceId, root, adapter);
+	}, [adapter, keyboardNavigation, rootRef, surfaceId]);
 }
 
 export function usePeakEscapeLayer(

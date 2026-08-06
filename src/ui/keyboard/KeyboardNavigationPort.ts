@@ -12,10 +12,28 @@ export interface PeakKeyboardEscapeLayer {
 	close: () => void;
 }
 
+/** Surface-owned actions for destinations that are not currently mounted. */
+export interface PeakKeyboardSurfaceAdapter {
+	getKeyTipAnchor(actionId: string): HTMLElement | null;
+	activateKeyTip(actionId: string): boolean;
+}
+
 export interface PeakKeyboardNavigationPort {
-	registerSurface(surfaceId: PeakKeyboardSurfaceId, root: HTMLElement): () => void;
-	requestSurfaceFocus(surfaceId: PeakKeyboardSurfaceId, zoneId?: string): void;
-	focusSurface(surfaceId: PeakKeyboardSurfaceId, zoneId?: string): boolean;
+	registerSurface(
+		surfaceId: PeakKeyboardSurfaceId,
+		root: HTMLElement,
+		adapter?: PeakKeyboardSurfaceAdapter,
+	): () => void;
+	requestSurfaceFocus(
+		surfaceId: PeakKeyboardSurfaceId,
+		zoneId?: string,
+		ownerDocument?: Document,
+	): void;
+	focusSurface(
+		surfaceId: PeakKeyboardSurfaceId,
+		zoneId?: string,
+		ownerDocument?: Document,
+	): boolean;
 	returnToLastPeakFocus(): boolean;
 	registerEscapeLayer(layer: PeakKeyboardEscapeLayer): () => void;
 	dispose(): void;

@@ -9,24 +9,34 @@ export interface PeakKeyTipDefinition {
 	key: string;
 	label: string;
 	zoneId: string;
+	/** Surface adapter action used for destinations that may not be mounted yet. */
+	actionId?: string;
 	/** Distinguishes dynamic destinations that reuse one internal focus group. */
 	zoneLabel?: string;
 }
+
+export const PEAK_KEY_TIP_ACTIVATION = {
+	holdDelayMs: 180,
+	gesture: 'press-or-tap',
+} as const;
 
 export const PEAK_KEY_TIP_DEFINITIONS: Readonly<
 	Record<PeakKeyboardSurfaceId, readonly PeakKeyTipDefinition[]>
 > = {
 	'vault-search': [
-		{ key: 'M', label: 'Search mode', zoneId: 'vs-search-mode' },
+		{ key: 'V', label: 'Vault Search', zoneId: 'search-mode', actionId: 'search-vault' },
+		{ key: 'A', label: 'AI Search', zoneId: 'search-mode', actionId: 'search-ai' },
 		{ key: 'Q', label: 'Search', zoneId: 'vs-query' },
 		{ key: 'F', label: 'Filters and view', zoneId: 'vs-view-toolbar' },
 		{ key: 'R', label: 'Results', zoneId: 'vs-results' },
-		{ key: 'D', label: 'Details', zoneId: 'vs-inspector' },
+		{ key: 'D', label: 'Details', zoneId: 'vs-inspector', actionId: 'search-inspector' },
 	],
 	'ai-search': [
+		{ key: 'V', label: 'Vault Search', zoneId: 'search-mode', actionId: 'search-vault' },
+		{ key: 'A', label: 'AI Search', zoneId: 'search-mode', actionId: 'search-ai' },
 		{ key: 'Q', label: 'Ask AI', zoneId: 'as-mode-query' },
 		{ key: 'S', label: 'Suggestions and history', zoneId: 'as-suggestions' },
-		{ key: 'A', label: 'Activity and sources', zoneId: 'as-lifecycle' },
+		{ key: 'L', label: 'Activity and sources', zoneId: 'as-lifecycle' },
 		{ key: 'R', label: 'Result', zoneId: 'as-primary' },
 		{ key: 'O', label: 'Outline', zoneId: 'as-outline' },
 		{ key: 'C', label: 'Result actions', zoneId: 'as-actions' },
@@ -34,8 +44,8 @@ export const PEAK_KEY_TIP_DEFINITIONS: Readonly<
 	'file-atlas': [
 		{ key: 'F', label: 'Files', zoneId: 'fa-file-rail' },
 		{ key: 'V', label: 'View and filters', zoneId: 'fa-view-filters' },
-		{ key: 'T', label: 'Tree', zoneId: 'fa-atlas', zoneLabel: 'Atlas tree' },
-		{ key: 'G', label: 'Graph', zoneId: 'fa-atlas', zoneLabel: 'Atlas graph' },
+		{ key: 'T', label: 'Tree', zoneId: 'fa-atlas', actionId: 'atlas-tree' },
+		{ key: 'G', label: 'Graph', zoneId: 'fa-atlas', actionId: 'atlas-graph' },
 		{ key: 'I', label: 'Inspector', zoneId: 'fa-inspector' },
 		{ key: 'S', label: 'Selection tray', zoneId: 'fa-selection-tray' },
 	],
@@ -56,7 +66,7 @@ export const PEAK_KEYBOARD_SURFACE_LABELS: Readonly<Record<PeakKeyboardSurfaceId
 };
 
 export const PEAK_KEYBOARD_ZONE_LABELS = {
-	'vs-search-mode': 'Search mode',
+	'search-mode': 'Search modes',
 	'vs-query': 'Query',
 	'vs-view-toolbar': 'View and scope',
 	'vs-results': 'Results',

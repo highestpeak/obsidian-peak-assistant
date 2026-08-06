@@ -67,13 +67,21 @@ interface TabButtonProps {
 	label: string;
 	activeTab: TabType;
 	onClick: () => void;
+	keyTipAction: string;
 	className?: string;
 }
 
 /**
  * Tab button component for switching between tabs.
  */
-const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, className }) => {
+const TabButton: React.FC<TabButtonProps> = ({
+	tab,
+	label,
+	activeTab,
+	onClick,
+	keyTipAction,
+	className,
+}) => {
 	const isActive = activeTab === tab;
 	return (
 		<Button
@@ -82,6 +90,7 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, c
 			aria-selected={isActive}
 			tabIndex={isActive ? 0 : -1}
 			data-peak-focus-id={`search-surface-${tab}`}
+			data-peak-keytip-action={keyTipAction}
 			onClick={onClick}
 			className={cn(
 				'pktw-shadow-none pktw-rounded-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-0 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
@@ -532,6 +541,7 @@ function AIWorkspaceSelector({
 				aria-selected={active}
 				tabIndex={active ? 0 : -1}
 				data-peak-focus-id="search-surface-ai"
+				data-peak-keytip-action="search-ai"
 				onClick={onActivate}
 				onKeyDown={(event) => {
 					if (event.key !== 'ArrowDown') return;
@@ -1834,7 +1844,9 @@ function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
  */
 const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, setActiveTab, onOpenSuggest, onReplaySuggest }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
+	const resultsZoneRef = useRef<HTMLDivElement | null>(null);
 	const inspectorZoneRef = useRef<HTMLDivElement | null>(null);
+	const inspectorReturnFocusRef = useRef<HTMLElement | null>(null);
 	const { vaultStats, vaultNavigation } = useServiceContext();
 	const quickSearchHost = useQuickSearchHost();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
@@ -1848,6 +1860,45 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
+
+	const rememberInspectorTrigger = (): void => {
+		const ownerDocument = resultsZoneRef.current?.ownerDocument
+			?? inspectorZoneRef.current?.ownerDocument;
+		if (!ownerDocument) return;
+		const active = ownerDocument.activeElement as HTMLElement | null;
+		const row = active?.closest<HTMLElement>('[data-result-browser-row]') ?? null;
+		if (row) inspectorReturnFocusRef.current = row;
+	};
+
+	const focusInspector = (): void => {
+		rememberInspectorTrigger();
+		const win = resultsZoneRef.current?.ownerDocument.defaultView
+			?? inspectorZoneRef.current?.ownerDocument.defaultView;
+		win?.requestAnimationFrame(() => {
+			win.requestAnimationFrame(() => {
+				const zone = inspectorZoneRef.current;
+				const target = zone?.querySelector<HTMLElement>(
+					'button:not([disabled]), a[href], [tabindex="0"]',
+				) ?? zone;
+				target?.focus({ preventScroll: true });
+			});
+		});
+	};
+
+	const restoreInspectorFocus = (close: boolean): void => {
+		if (close) useVaultSearchStore.getState().setInspectorOpen(false);
+		const target = inspectorReturnFocusRef.current;
+		const ownerWindow = target?.ownerDocument.defaultView
+			?? inspectorZoneRef.current?.ownerDocument.defaultView;
+		ownerWindow?.requestAnimationFrame(() => {
+			const fallback = target?.ownerDocument.querySelector<HTMLElement>(
+				'[data-result-browser-row][tabindex="0"]',
+			) ?? null;
+			const destination = target?.isConnected ? target : fallback;
+			destination?.focus({ preventScroll: true });
+			destination?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+		});
+	};
 
 	// Heading mode moved to Copilot Modal's Atlas tab — no `#` cycling here.
 
@@ -1924,6 +1975,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-flex">
 				{/* Results panel — always visible */}
 				<div
+					ref={resultsZoneRef}
 					data-peak-keyboard-zone="vs-results"
 					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-results']}
 					data-peak-keyboard-order="4"
@@ -1936,16 +1988,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 						onClose={onClose}
 						onSelectForInspector={(path) => setInspectorPath(path)}
 						navigateToPath={navigateToPath}
-						onRequestInspectorFocus={() => {
-							const win = inspectorZoneRef.current?.ownerDocument.defaultView;
-							win?.requestAnimationFrame(() => {
-								win.requestAnimationFrame(() => {
-									inspectorZoneRef.current?.querySelector<HTMLElement>(
-										'button:not([disabled]), a[href], [tabindex="0"]',
-									)?.focus({ preventScroll: true });
-								});
-							});
-						}}
+						onRequestInspectorFocus={focusInspector}
 					/>
 				</div>
 
@@ -1957,24 +2000,19 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 						data-peak-keyboard-zone="vs-inspector"
 						data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-inspector']}
 						data-peak-keyboard-order="5"
+						tabIndex={-1}
 						onKeyDown={(event) => {
-							if (event.key !== 'ArrowLeft') return;
-							const root = event.currentTarget.closest<HTMLElement>(
-								'[data-peak-keyboard-surface="vault-search"]',
-							);
-							const selected = root?.querySelector<HTMLElement>(
-								'[data-result-browser-row][tabindex="0"]',
-							);
-							if (!selected) return;
+							if (event.key !== 'ArrowLeft' && event.key !== 'Escape') return;
 							event.preventDefault();
-							selected.focus({ preventScroll: true });
+							event.stopPropagation();
+							restoreInspectorFocus(event.key === 'Escape');
 						}}
 					>
 						<InspectorSidePanel
 							currentPath={inspectorPath}
 							searchQuery={vaultSearchQuery}
 							showCommandCenterPin
-							onClose={() => useVaultSearchStore.getState().setInspectorOpen(false)}
+							onClose={() => restoreInspectorFocus(true)}
 							onOpenDocument={(path) => {
 								// Open the doc but keep the Search modal open so the user can hop.
 								void createOpenSourceCallback(undefined, true, vaultNavigation)(path);
@@ -2051,15 +2089,72 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 		aiWorkspaceMode,
 		setAIWorkspaceMode,
 	} = useSharedStore();
+	const { keyboardNavigation } = useServiceContext();
 	// Graph view claims all available modal height (list view stays
 	// content-driven so short result sets don't leave empty space).
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const isGraph = activeTab === 'vault' && resultView === 'graph';
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const tabListRef = React.useRef<HTMLDivElement | null>(null);
+	const searchKeyboardAdapter = React.useMemo(() => ({
+		getKeyTipAnchor: (actionId: string): HTMLElement | null => {
+			const root = rootRef.current;
+			if (!root) return null;
+			if (actionId === 'search-inspector') {
+				return root.querySelector<HTMLElement>('[data-peak-keyboard-zone="vs-inspector"]')
+					?? root.querySelector<HTMLElement>('[data-result-browser-row][tabindex="0"]');
+			}
+			return root.querySelector<HTMLElement>(`[data-peak-keytip-action="${actionId}"]`);
+		},
+		activateKeyTip: (actionId: string): boolean => {
+			const root = rootRef.current;
+			const ownerWindow = root?.ownerDocument.defaultView;
+			if (!root || !ownerWindow) return false;
+			if (actionId === 'search-inspector') {
+				const inspector = root.querySelector<HTMLElement>(
+					'[data-peak-keyboard-zone="vs-inspector"]',
+				);
+				if (inspector) {
+					return keyboardNavigation?.focusSurface(
+						'vault-search',
+						'vs-inspector',
+						root.ownerDocument,
+					) ?? false;
+				}
+				const row = root.querySelector<HTMLElement>('[data-result-browser-row][tabindex="0"]');
+				if (!row) return false;
+				row.focus({ preventScroll: true });
+				row.dispatchEvent(new ownerWindow.KeyboardEvent('keydown', {
+					bubbles: true,
+					cancelable: true,
+					key: 'ArrowRight',
+				}));
+				return true;
+			}
+			const nextTab = actionId === 'search-vault'
+				? 'vault'
+				: actionId === 'search-ai'
+					? 'ai'
+					: null;
+			if (!nextTab) return false;
+			setActiveTab(nextTab);
+			const nextSurface = nextTab === 'vault' ? 'vault-search' : 'ai-search';
+			ownerWindow.requestAnimationFrame(() => {
+				ownerWindow.requestAnimationFrame(() => {
+					keyboardNavigation?.requestSurfaceFocus(
+						nextSurface,
+						'search-mode',
+						root.ownerDocument,
+					);
+				});
+			});
+			return true;
+		},
+	}), [keyboardNavigation, setActiveTab]);
 	usePeakKeyboardSurface(
 		activeTab === 'vault' ? 'vault-search' : 'ai-search',
 		rootRef,
+		searchKeyboardAdapter,
 	);
 	useRovingComposite(tabListRef, {
 		itemSelector: '[role="tab"]',
@@ -2099,17 +2194,16 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 				className="pktw-flex-shrink-0 pktw-relative pktw-flex pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised pktw-min-h-[48px]"
 				role="tablist"
 				aria-label={PEAK_KEYBOARD_A11Y_STRINGS.searchSurface}
-				data-peak-keyboard-zone={activeTab === 'vault' ? 'vs-search-mode' : undefined}
-				data-peak-keyboard-zone-label={
-					activeTab === 'vault' ? PEAK_KEYBOARD_ZONE_LABELS['vs-search-mode'] : undefined
-				}
-				data-peak-keyboard-order={activeTab === 'vault' ? '1' : undefined}
+				data-peak-keyboard-zone="search-mode"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['search-mode']}
+				data-peak-keyboard-order="1"
 			>
 				<TabButton
 					tab="vault"
 					label="Vault Search"
 					activeTab={activeTab}
 					onClick={() => setActiveTab('vault')}
+					keyTipAction="search-vault"
 					className="pktw-rounded-tl-lg"
 				/>
 				<AIWorkspaceSelector

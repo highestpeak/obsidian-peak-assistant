@@ -22,7 +22,12 @@ const templateRegistry = read('src/core/template/TemplateRegistry.ts');
 const template = JSON.parse(read('templates/config/keyboard-navigation.json')) as {
 	activation: Record<string, string>;
 	surfaceLabels: Record<string, string>;
-	keyTips: Record<string, Array<{ key: string; label: string; zoneId: string }>>;
+	keyTips: Record<string, Array<{
+		key: string;
+		label: string;
+		zoneId: string;
+		actionId?: string;
+	}>>;
 	zoneLabels: Record<string, string>;
 	a11y: Record<string, string>;
 };
@@ -39,10 +44,16 @@ assert.doesNotMatch(
 assert.match(runtime, /ownerDocument\.addEventListener\('keydown', state\.keydown, true\)/);
 assert.match(runtime, /ownerDocument\.addEventListener\('keyup', state\.keyup, true\)/);
 assert.match(runtime, /ownerDocument\.addEventListener\('pointerdown', state\.pointerdown, true\)/);
+assert.match(runtime, /ownerDocument\.addEventListener\('scroll', state\.reposition, true\)/);
 assert.match(runtime, /state\.compositionActive \|\| event\.isComposing \|\| event\.key === 'Process'/);
 assert.match(runtime, /\[data-peak-keyboard-zone\]/);
 assert.match(runtime, /isStandaloneKeyTipModifier\(event\)/);
+assert.match(runtime, /PEAK_KEY_TIP_ACTIVATION\.holdDelayMs/);
+assert.match(runtime, /resolveActiveSurface/);
+assert.match(runtime, /state\.activeSurface/);
 assert.match(runtime, /showKeyTips\(surface\)/);
+assert.match(runtime, /MutationObserver/);
+assert.match(runtime, /pk-keytip-layer/);
 assert.match(runtime, /hideKeyTips\(ownerDocument\)/);
 assert.match(runtime, /dataset\.peakKeytips = 'visible'/);
 assert.doesNotMatch(runtime, /event\.key === 'F6'/);
@@ -62,7 +73,13 @@ assert.match(aiFooter, /'ai-search-table-of-contents'/);
 assert.match(modeHelp, /data-result-browser-row/);
 
 assert.match(search, /usePeakKeyboardSurface\([\s\S]*?'vault-search'[\s\S]*?'ai-search'/);
+assert.match(search, /keyTipAction="search-vault"/);
+assert.match(search, /data-peak-keytip-action="search-ai"/);
+assert.match(search, /inspectorReturnFocusRef/);
+assert.match(search, /event\.key !== 'ArrowLeft' && event\.key !== 'Escape'/);
 assert.match(fileAtlas, /usePeakKeyboardSurface\('file-atlas'/);
+assert.match(fileAtlas, /data-peak-keytip-action="atlas-tree"/);
+assert.match(fileAtlas, /data-peak-keytip-action="atlas-graph"/);
 assert.match(chatStudio, /usePeakKeyboardSurface\('chat-studio'/);
 assert.doesNotMatch(port, /\|\s*'composer'/, 'Composer adapter belongs to phase 2');
 
@@ -97,14 +114,15 @@ assert.doesNotMatch(
 assert.match(styles, /focus-visible[\s\S]*?outline:\s*2px solid/);
 assert.match(styles, /@media \(forced-colors: active\)/);
 assert.match(styles, /\.pk-keyboard-live-region/);
-assert.match(styles, /\.pk-keytip-host/);
+assert.match(styles, /\.pk-keytip-layer/);
 assert.match(styles, /\.pk-keytip kbd/);
 assert.doesNotMatch(styles, /\.pk-keyboard-map/);
 assert.match(templateRegistry, /KeyboardNavigation: 'config-keyboard-navigation'/);
 assert.deepStrictEqual(template.activation, {
 	macOS: 'Option',
 	windowsLinux: 'Alt',
-	gesture: 'tap-and-release',
+	gesture: 'press-or-tap',
+	holdDelayMs: 180,
 });
 assert.deepStrictEqual(
 	Object.keys(template.surfaceLabels).sort(),
@@ -124,6 +142,10 @@ for (const zone of [
 }
 assert.ok(template.a11y.graphInstructions);
 assert.ok(template.keyTips['vault-search'].some((tip) => tip.key === 'R' && tip.label === 'Results'));
+assert.ok(template.keyTips['vault-search'].some((tip) => tip.key === 'A' && tip.actionId === 'search-ai'));
+assert.ok(template.keyTips['ai-search'].some((tip) => tip.key === 'V' && tip.actionId === 'search-vault'));
+assert.ok(template.keyTips['file-atlas'].some((tip) => tip.key === 'T' && tip.actionId === 'atlas-tree'));
+assert.ok(template.keyTips['file-atlas'].some((tip) => tip.key === 'G' && tip.actionId === 'atlas-graph'));
 assert.ok(template.keyTips['chat-studio'].some((tip) => tip.key === 'Q' && tip.label === 'Chat input'));
 
 console.log('keyboard-navigation-surface-contract: passed');

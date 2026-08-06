@@ -7,6 +7,7 @@ import {
 import { resolveRovingKeyIntent } from '@/ui/keyboard/useRovingComposite';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import {
+	PEAK_KEY_TIP_ACTIVATION,
 	PEAK_KEYBOARD_SURFACE_LABELS,
 	PEAK_KEY_TIP_DEFINITIONS,
 } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -82,14 +83,30 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
 	PEAK_KEY_TIP_DEFINITIONS['vault-search'].map((tip) => tip.key),
-	['M', 'Q', 'F', 'R', 'D'],
+	['V', 'A', 'Q', 'F', 'R', 'D'],
 );
 assert.deepStrictEqual(
 	PEAK_KEY_TIP_DEFINITIONS['file-atlas']
-		.filter((tip) => tip.zoneId === 'fa-atlas')
-		.map((tip) => [tip.key, tip.zoneLabel]),
-	[['T', 'Atlas tree'], ['G', 'Atlas graph']],
+		.filter((tip) => tip.actionId?.startsWith('atlas-'))
+		.map((tip) => [tip.key, tip.actionId]),
+	[['T', 'atlas-tree'], ['G', 'atlas-graph']],
 );
+assert.deepStrictEqual(PEAK_KEY_TIP_ACTIVATION, {
+	holdDelayMs: 180,
+	gesture: 'press-or-tap',
+});
+for (const surfaceId of ['vault-search', 'ai-search'] as const) {
+	assert.ok(
+		PEAK_KEY_TIP_DEFINITIONS[surfaceId].some((tip) =>
+			tip.key === 'V' && tip.actionId === 'search-vault'),
+		`${surfaceId} must expose a direct route to Vault Search`,
+	);
+	assert.ok(
+		PEAK_KEY_TIP_DEFINITIONS[surfaceId].some((tip) =>
+			tip.key === 'A' && tip.actionId === 'search-ai'),
+		`${surfaceId} must expose a direct route to AI Search`,
+	);
+}
 assert.ok(
 	PEAK_KEY_TIP_DEFINITIONS['chat-studio'].some((tip) =>
 		tip.key === 'Q' && tip.zoneId === 'cs-composer'),
