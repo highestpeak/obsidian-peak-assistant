@@ -168,6 +168,40 @@ h1 { max-width: 620px; font-size: clamp(54px, 5.7vw, 86px); line-height: .98; }
 .statement-grid span { padding: 22px 12px; color: var(--ink-soft); border-right: 1px solid var(--line); font-size: 13px; font-weight: 680; }
 .statement-grid span:last-child { border-right: 0; }
 
+.vision-showcase {
+  color: white;
+  background: var(--night);
+}
+.vision-heading {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: end;
+  margin-bottom: 38px;
+}
+.vision-heading .eyebrow { margin: 0; }
+.vision-heading p { justify-self: end; max-width: 540px; color: rgba(255,255,255,.52); font-size: 14px; line-height: 1.7; }
+.vision-showcase figure {
+  margin: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  background: #070709;
+  box-shadow: 0 34px 90px rgba(0,0,0,.35);
+  overflow: hidden;
+}
+.vision-showcase figure img { width: 100%; aspect-ratio: 1731 / 909; object-fit: cover; }
+.vision-showcase figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 18px;
+  color: rgba(255,255,255,.42);
+  border-top: 1px solid rgba(255,255,255,.09);
+  font-size: 10px;
+}
+.vision-showcase figcaption b { color: rgba(255,255,255,.76); font-size: 11px; }
+
 .section { padding: 116px max(28px, calc((100vw - 1120px) / 2)); }
 .section-heading { max-width: 680px; }
 .section-heading.compact { max-width: 760px; }
@@ -592,6 +626,8 @@ footer a:hover { color: white; }
   .statement-grid span:nth-child(2) { border-right: 0; }
   .statement-grid span:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .section { padding: 84px 20px; }
+  .vision-heading { grid-template-columns: 1fr; gap: 18px; }
+  .vision-heading p { justify-self: start; }
   .capability-heading, .graph-heading { grid-template-columns: 1fr; gap: 24px; }
   .models-heading { grid-template-columns: 1fr; gap: 24px; }
   .capability-map { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto; }
@@ -641,6 +677,7 @@ footer a:hover { color: white; }
   .statement-grid, .workflow-steps { grid-template-columns: 1fr; }
   .statement-grid span { border-right: 0; border-bottom: 1px solid var(--line); }
   .statement-grid span:last-child { border-bottom: 0; }
+  .vision-showcase figcaption { align-items: flex-start; flex-direction: column; gap: 6px; }
   .workflow-steps li { padding-right: 0; }
   .status-legend { display: grid; grid-template-columns: 1fr 1fr; }
   .capability-map { grid-template-columns: 1fr; }
