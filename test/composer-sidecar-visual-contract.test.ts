@@ -9,10 +9,12 @@ function read(relPath: string): string {
 }
 
 function cssBlock(css: string, selector: string): string {
-	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'm'));
+	const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+	const rules = Array.from(withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g));
+	const match = rules.find((rule) => rule[1]?.trim() === selector)
+		?? rules.find((rule) => rule[1]?.trim().endsWith(` ${selector}`));
 	assert.ok(match, `missing CSS block for ${selector}`);
-	return match[1];
+	return match[2];
 }
 
 function assertDecl(block: string, declaration: string, message: string): void {
@@ -164,7 +166,10 @@ assertDecl(subtitle, 'font-size: var(--pk-text-xs);', 'sidecar subtitle must use
 const tabs = cssBlock(css, '.pk-sidecar-tabs');
 assertDecl(tabs, 'display: grid;', 'primary Copilot/History switch must be a segmented grid');
 assertDecl(tabs, 'grid-template-columns: 1fr 1fr;', 'primary switch must keep two equal columns');
+assertDecl(tabs, 'flex: 0 0 42px;', 'primary switch must not shrink when History has a taller content basis');
 assertDecl(tabs, 'height: 42px;', 'primary switch must keep the canonical 42px height');
+assertDecl(tabs, 'min-height: 42px;', 'primary switch must keep the canonical minimum height');
+assertDecl(tabs, 'max-height: 42px;', 'primary switch must keep the canonical maximum height');
 assertDecl(tabs, 'gap: 3px;', 'primary switch must keep the canonical 3px inner gap');
 assertDecl(tabs, 'padding: 3px;', 'primary switch must keep the canonical 3px inner padding');
 assertDecl(tabs, 'background: var(--pk-surface-sunken);', 'primary switch must keep the sunken segmented background');
@@ -185,6 +190,9 @@ assertDecl(scopeTrigger, 'width: auto !important;', 'scope trigger must not read
 
 const tab = cssBlock(css, '.pk-sidecar-tab');
 assertDecl(tab, 'justify-content: center;', 'primary switch labels must be centered');
+assertDecl(tab, 'height: 100% !important;', 'primary switch buttons must fill the locked tablist height');
+assertDecl(tab, 'min-height: 100% !important;', 'primary switch buttons must resist the Obsidian minimum-height reset');
+assertDecl(tab, 'max-height: 100% !important;', 'primary switch buttons must resist content-driven height changes');
 assertDecl(tab, 'border-radius: 9px;', 'primary switch active surface must keep the canonical inner radius');
 assertDecl(tab, 'font-weight: 620;', 'primary switch labels must keep the canonical weight');
 const activeTab = cssBlock(css, '.pk-sidecar-tab--active');

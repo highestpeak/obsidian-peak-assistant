@@ -5,6 +5,7 @@ const resetCss = readFileSync('src/styles/obsidian-reset.css', 'utf8');
 const primitiveCss = readFileSync('src/styles/peak-components.css', 'utf8');
 const fileAtlasCss = readFileSync('src/styles/file-atlas.css', 'utf8');
 const composerCss = readFileSync('src/styles/composer.css', 'utf8');
+const composerSidecarCss = readFileSync('src/styles/composer-sidecar.css', 'utf8');
 
 assert.match(
 	resetCss,
@@ -146,6 +147,12 @@ assert.match(
 	composerCss,
 	/\.peak-composer-root \.pk-composer-collection-handle\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*30px !important;[\s\S]*?min-width:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-width:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 !important;/,
 	'Composer collection handle must retain its 30px hit target under the Obsidian button reset',
+);
+
+assert.match(
+	composerSidecarCss,
+	/\.peak-design-root \.pk-sidecar-tab\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?max-width:\s*100% !important;[\s\S]*?height:\s*100% !important;[\s\S]*?min-height:\s*100% !important;[\s\S]*?max-height:\s*100% !important;[\s\S]*?padding:\s*0 12px !important;/,
+	'Composer sidecar tabs must keep identical fixed geometry under the Obsidian button reset',
 );
 
 for (const [selector, height] of [
