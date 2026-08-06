@@ -16,9 +16,11 @@
   <meta name="twitter:image" content="https://highestpeak.github.io/obsidian-peak-assistant/assets/og.png">
   <title>Peak Assistant — the AI workspace for your whole vault</title>
   <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
+  <div class="pointer-glow" aria-hidden="true"></div>
 
   <header class="site-header">
     <a class="brand" href="#top" aria-label="Peak Assistant home">
@@ -36,10 +38,21 @@
 
   <main id="main">
     <section class="hero" id="top">
-      <div class="hero-copy">
-        <div class="status"><span></span> Development preview · Obsidian desktop</div>
-        <h1>Turn your whole vault into a connected workspace.</h1>
-        <p class="hero-lede">Copilot for the document. Smart connections for the vault. Agents for work that takes more than one turn.</p>
+      <canvas class="hero-field" aria-hidden="true"></canvas>
+      <div class="hero-orbits" aria-hidden="true"><i></i><i></i><i></i></div>
+
+      <div class="hero-art" data-tilt="soft">
+        <div class="hero-art-glow" aria-hidden="true"></div>
+        <img src="assets/peak-product-universe.webp" width="1731" height="909" fetchpriority="high" decoding="async" alt="Peak Assistant vision showing Copilot, knowledge connections, graph intelligence, and agents connected to one Obsidian vault">
+        <span class="hero-art-label">Product universe · visual direction</span>
+      </div>
+
+      <div class="hero-dock">
+        <h1 class="visually-hidden">Peak Assistant — Copilot, connections, and agents for your whole Obsidian vault.</h1>
+        <div>
+          <div class="status"><span></span> Development preview · Obsidian desktop</div>
+          <p class="hero-lede">Search. Connect. Understand. Create. Keep the evidence in view.</p>
+        </div>
         <div class="hero-actions">
           <a class="button button-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">View on GitHub <span aria-hidden="true">↗</span></a>
           <a class="button button-secondary" href="#capabilities">Explore every capability <span aria-hidden="true">↓</span></a>
@@ -50,19 +63,6 @@
           <span>Bring your own models</span>
           <span>Markdown-first</span>
         </div>
-      </div>
-
-      <div class="hero-visual">
-        <div class="window window-hero">
-          <div class="window-bar">
-            <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span>Peak Composer · Obsidian</span>
-            <span class="capture-label">Product capture</span>
-          </div>
-          <img src="assets/peak-composer.webp" width="1225" height="768" alt="Peak Composer open in Obsidian with a Markdown document and its Intelligence sidecar">
-        </div>
-        <div class="signal signal-sources"><b>01</b><span>Source stays visible</span></div>
-        <div class="signal signal-review"><b>02</b><span>Changes stay reviewable</span></div>
       </div>
 
       <div class="hero-capability-rail" aria-label="Major Peak Assistant capabilities">
@@ -319,17 +319,28 @@
       </ol>
 
       <div class="evidence-stage">
-        <figure class="product-shot report-shot">
-          <div class="shot-topline"><span>Result</span><span>AI Search report</span></div>
-          <img src="assets/ai-search-report.webp" width="1120" height="920" loading="lazy" alt="AI Search report in Obsidian with an executive summary and evidence sections">
-          <figcaption><b>Read the result.</b><span>Structured and reviewable.</span></figcaption>
-        </figure>
+        <article class="evidence-card evidence-report">
+          <div class="evidence-topline"><span>AI Search</span><span>Report · live sources</span></div>
+          <div class="report-body">
+            <span class="report-kicker">Executive summary</span>
+            <h3>Your vault already contains the answer.</h3>
+            <div class="report-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="report-finding"><span>01</span><b>A strong hub connects six decisions.</b></div>
+            <div class="report-finding"><span>02</span><b>One missing link creates a blind spot.</b></div>
+          </div>
+          <div class="evidence-footer"><span>Process</span><b>Report</b><span>Sources</span></div>
+        </article>
         <div class="evidence-connector" aria-hidden="true"><span>same run</span><i>→</i></div>
-        <figure class="product-shot sources-shot">
-          <div class="shot-topline"><span>Evidence</span><span>6 source files</span></div>
-          <img src="assets/ai-search-sources.webp" width="1120" height="920" loading="lazy" alt="AI Search Sources view listing the vault notes used for a report">
-          <figcaption><b>Check the trail.</b><span>Sources stay attached.</span></figcaption>
-        </figure>
+        <article class="evidence-card evidence-sources">
+          <div class="evidence-topline"><span>Evidence</span><span>6 source files</span></div>
+          <div class="source-body">
+            <div class="source-row"><i>.94</i><span><b>Architecture decision</b><small>Projects / Peak</small></span><em>3×</em></div>
+            <div class="source-row"><i>.88</i><span><b>Graph research</b><small>Research / Knowledge</small></span><em>2×</em></div>
+            <div class="source-row"><i>.82</i><span><b>Composer brief</b><small>Delivery / Current work</small></span><em>1×</em></div>
+            <div class="source-network" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><span></span><span></span><span></span></div>
+          </div>
+          <div class="evidence-footer"><span>List</span><b>Graph</b><span>Open in Chat</span></div>
+        </article>
       </div>
     </section>
 
