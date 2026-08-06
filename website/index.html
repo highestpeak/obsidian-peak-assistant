@@ -38,7 +38,7 @@
       <div class="hero-copy">
         <div class="status"><span></span> Development preview · Obsidian desktop</div>
         <h1>Turn your whole vault into a connected workspace.</h1>
-        <p class="hero-lede">Search and map knowledge. Find hubs, gaps, and hidden structure. Write with Copilot, run project conversations, generate media, and route every AI task across the models you choose—without giving up your Markdown.</p>
+        <p class="hero-lede">A Copilot inside every document. Smart connections across the whole vault. An agent workspace for work that takes more than one turn—grounded by Search, Graph, evidence, and the models you choose.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">View on GitHub <span aria-hidden="true">↗</span></a>
           <a class="button button-secondary" href="#capabilities">Explore every capability <span aria-hidden="true">↓</span></a>
@@ -64,8 +64,8 @@
       </div>
 
       <div class="hero-capability-rail" aria-label="Major Peak Assistant capabilities">
-        <span>Vault Search</span>
-        <span>AI Search</span>
+        <span>Vault + AI Search</span>
+        <span>Smart connections</span>
         <span>File Atlas</span>
         <span>Knowledge Graph</span>
         <span>Vault Intelligence</span>
@@ -161,6 +161,92 @@
         </article>
       </div>
       <p class="map-note"><b>Status matters:</b> “In current source” means code exists in this development branch—not that a public release package is available. Preview and roadmap items keep their exact maturity visible below.</p>
+    </section>
+
+    <section class="interaction-models section" id="intelligence-modes">
+      <div class="models-heading">
+        <div>
+          <span class="eyebrow">Three kinds of intelligence · one product</span>
+          <h2>Write with a Copilot. Discover smart connections. Delegate to an agent.</h2>
+        </div>
+        <p>Peak brings three familiar AI workflows into one evidence-aware system. The active note can become the anchor, related material can become reviewable context, and a longer task can become a permissioned run—without installing a separate product for every step.</p>
+      </div>
+
+      <div class="model-grid">
+        <article class="model-card model-copilot">
+          <div class="model-card-head">
+            <span class="model-index">01 · In the document</span>
+            <span class="status-chip is-preview">In source · QA closing</span>
+          </div>
+          <h3>A Copilot that understands the exact scope.</h3>
+          <p>Select text, focus a block, use the current document, or bring a larger object into context. Ask, rewrite, transform, generate, compare, and review the result beside the source.</p>
+          <div class="model-demo copilot-demo" aria-label="Illustration of a source-aware Copilot edit">
+            <div class="demo-document">
+              <span class="demo-line is-long"></span><span class="demo-line is-medium"></span>
+              <span class="demo-selection">Selected source remains the anchor</span>
+              <span class="demo-line is-short"></span>
+            </div>
+            <div class="demo-review"><span>Candidate change</span><b>Review</b><b>Accept</b></div>
+          </div>
+          <ul>
+            <li>Selection, block, document, table, Base, Canvas, and Excalidraw-aware actions</li>
+            <li>Reusable actions, prompts, skills, and explicit context</li>
+            <li>Candidate, receipt, History, and source-preserving review paths</li>
+          </ul>
+        </article>
+
+        <article class="model-card model-connections">
+          <div class="model-card-head">
+            <span class="model-index">02 · Around the work</span>
+            <span class="status-chip is-preview">In source · data closing</span>
+          </div>
+          <h3>Smart connections that follow what you are doing.</h3>
+          <p>Let the current note, block, query, or selected graph region become the anchor. Preview why material is related, separate authored links from semantic edges, and carry the right sources into the next action.</p>
+          <div class="model-demo connection-demo" aria-label="Illustration of related notes and a semantic neighbourhood">
+            <div class="connection-list">
+              <span><i>.92</i><b>Prior decision</b></span>
+              <span><i>.87</i><b>Research source</b></span>
+              <span><i>.81</i><b>Missing perspective</b></span>
+            </div>
+            <div class="mini-graph" aria-hidden="true">
+              <i class="dot dot-a"></i><i class="dot dot-b"></i><i class="dot dot-c"></i><i class="dot dot-d"></i><i class="dot dot-e"></i>
+              <span class="edge edge-a"></span><span class="edge edge-b"></span><span class="edge edge-c"></span><span class="edge edge-d"></span>
+            </div>
+          </div>
+          <ul>
+            <li>Related notes and blocks, semantic lookup, neighbourhoods, clusters, and boundaries</li>
+            <li>List, Tree, Folder, and Graph views with source preview and filtering</li>
+            <li>Hub, gap, structural-hole, bridge, orphan, drift, and missing-link intelligence</li>
+          </ul>
+        </article>
+
+        <article class="model-card model-agent">
+          <div class="model-card-head">
+            <span class="model-index">03 · Across the task</span>
+            <span class="status-chip is-current">In current source</span>
+          </div>
+          <h3>An agent workspace with visible work, not invisible magic.</h3>
+          <p>Give a project or conversation files, resources, skills, tools, and clear boundaries. Peak can plan, search, inspect, create artifacts, call permissioned tools, and keep the run available for review.</p>
+          <div class="model-demo agent-demo" aria-label="Illustration of a permissioned multi-step agent run">
+            <span class="agent-step"><i>✓</i><b>Inspect current scope</b><small>4 sources</small></span>
+            <span class="agent-step"><i>✓</i><b>Search the vault</b><small>evidence kept</small></span>
+            <span class="agent-step is-active"><i>03</i><b>Prepare artifact</b><small>review required</small></span>
+          </div>
+          <ul>
+            <li>Projects, conversations, tabs, branching, assistants, artifacts, and media</li>
+            <li>MCP, skills, external plugin commands, permission gates, budgets, and cancellation</li>
+            <li>Multi-provider routing, RunEnvelope, tool trace, source receipts, and recovery</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="peak-difference">
+        <span class="difference-label">What makes it Peak</span>
+        <p>The three modes share one vault context and expand into capabilities that a standalone chat, connections list, or agent panel cannot cover alone.</p>
+        <div>
+          <span>Vault + AI Search</span><span>File Atlas</span><span>Actionable Graph</span><span>Vault Intelligence</span><span>Peak Composer</span><span>Chat Studio</span><span>Media generation</span><span>AI Control Center</span><span>Peak Sheet</span>
+        </div>
+      </div>
     </section>
 
     <section class="graph-section section" id="graph">

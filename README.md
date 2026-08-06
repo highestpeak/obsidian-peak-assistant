@@ -39,6 +39,20 @@ The core loop is deliberately simple:
 Ask → search → inspect evidence → explore the graph → continue in Composer or Chat
 ```
 
+## Three AI workflows. One Peak.
+
+You should not need one plugin to write with AI, another to rediscover related notes, and a third to run a serious agent. Peak brings all three interaction models into one vault-aware system:
+
+| Mode | The user promise | Peak surfaces |
+| --- | --- | --- |
+| **Copilot** | Work from the exact selection, block, document, table, Base, Canvas, or Excalidraw object; keep proposed changes reviewable | Peak Composer, Document Copilot, Intelligence, History |
+| **Smart connections** | Let the current note, query, or graph region anchor related material; preview why it is relevant and turn the right sources into action | Related Materials, Vault Search, AI Search, File Atlas, Graph, Vault Intelligence |
+| **Agent workspace** | Give a longer task projects, files, resources, skills, tools, permissions, budgets, and a visible run trail | Chat Studio, Peak Harness, MCP, Skills, artifacts, media, AI Control Center |
+
+The differentiator is the shared layer beneath them: the same evidence can move from Search to Graph, from Graph to a context set, from context to Composer or Chat, and from a run to a receipt or durable artifact. Peak also extends beyond these three modes with File Atlas, knowledge-health intelligence, media generation, multi-provider routing, and the Peak Sheet direction.
+
+Current-source, preview, in-development, and research capabilities remain separately labeled below. This is a product direction—not a claim that every interaction already has public-release acceptance.
+
 <table>
   <tr>
     <td width="50%"><img src="website/assets/ai-search-report.webp" alt="AI Search report with an executive summary and evidence sections"></td>

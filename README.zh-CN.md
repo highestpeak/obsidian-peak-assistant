@@ -39,6 +39,20 @@ Peak Assistant 是为 Obsidian 设计的证据感知 AI 工作台：搜索并绘
 提出任务 → 搜索 → 检查证据 → 探索图谱 → 进入 Composer 或 Chat
 ```
 
+## 三种 AI 工作方式，一个 Peak
+
+你不应该为了 AI 写作装一个插件，为了重新发现相关笔记再装一个，为了运行复杂 Agent 又装第三个。Peak 把三种成熟心智统一到同一套 Vault-aware 系统中：
+
+| 模式 | 对用户的承诺 | Peak 承载界面 |
+| --- | --- | --- |
+| **Copilot** | 从精确选区、Block、Document、Table、Base、Canvas 或 Excalidraw 对象出发，让建议改动保持可审阅 | Peak Composer、Document Copilot、Intelligence、History |
+| **智能连接** | 让当前笔记、Query 或 Graph Region 成为相关材料的锚点；先预览为什么相关，再把正确来源转成行动 | Related Materials、Vault Search、AI Search、File Atlas、Graph、Vault Intelligence |
+| **Agent 工作台** | 为长任务提供 Project、File、Resource、Skill、Tool、Permission、Budget 与可见运行轨迹 | Chat Studio、Peak Harness、MCP、Skills、Artifact、Media、AI Control Center |
+
+Peak 真正的差异是三种模式共享同一层证据：一次 Search 可以进入 Graph，Graph Region 可以成为 Context，Context 可以进入 Composer 或 Chat，Agent Run 则可以留下 Receipt 或持久 Artifact。除此之外，Peak 还继续覆盖 File Atlas、知识健康 Intelligence、媒体生成、多 Provider 路由与 Peak Sheet 方向。
+
+下面仍会分别标注“当前源码、Preview、开发中、研究方向”。这是产品方向，不代表所有交互都已获得公开 Release 级验收。
+
 <table>
   <tr>
     <td width="50%"><img src="website/assets/ai-search-report.webp" alt="包含执行摘要和证据章节的 AI Search 报告"></td>
