@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · Onboarding start variants</title>
+  <link rel="stylesheet" href="mock.css">
+  <script src="mock.js" defer></script>
+</head>
+<body>
+  <header class="prototype-bar">
+    <div class="prototype-bar__brand">
+      <svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>
+      <span>Peak design prototype</span>
+      <span class="prototype-bar__meta">First-step alternatives · choose a direction</span>
+    </div>
+    <nav class="prototype-bar__nav" aria-label="Prototype pages">
+      <a href="index.html">Review board</a>
+      <a href="start-variants.html" aria-current="page">Start variants</a>
+      <a href="onboarding.html">Onboarding</a>
+      <a href="settings.html">Settings</a>
+      <a href="provider-picker.html">Chooser detail</a>
+    </nav>
+  </header>
+
+  <main class="stage stage--variants">
+    <section class="variant-review" aria-label="Three onboarding start screen directions">
+      <aside class="variant-rail">
+        <div class="product-mark">
+          <span class="product-mark__icon"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span>
+          <span>First step</span>
+        </div>
+        <p class="variant-rail__intro">这三版解决不同问题。点击切换后选一个主方向，也可以指定组合。</p>
+
+        <button class="variant-option" data-variant-target="a" data-active="true">
+          <span class="variant-option__index">A</span>
+          <span><strong>Choose a goal</strong><small>任务优先，信息最均衡</small></span>
+          <span class="chip chip--accent">Recommended</span>
+        </button>
+        <button class="variant-option" data-variant-target="b" data-active="false">
+          <span class="variant-option__index">B</span>
+          <span><strong>See the workspace</strong><small>先理解模块与关系</small></span>
+        </button>
+        <button class="variant-option" data-variant-target="c" data-active="false">
+          <span class="variant-option__index">C</span>
+          <span><strong>Start from a note</strong><small>最短路径进入首次成功</small></span>
+        </button>
+
+        <div class="variant-rail__footer">
+          三版都不会要求用户此时理解 Provider、模型或 Index。
+        </div>
+      </aside>
+
+      <div class="variant-main">
+        <header class="variant-topbar">
+          <div>
+            <span class="variant-topbar__title" data-variant-title>Variant A · Choose a goal</span>
+            <span class="variant-topbar__sub" data-variant-sub>Task-first · balanced product coverage</span>
+          </div>
+          <span class="chip">Design choice only</span>
+        </header>
+
+        <div class="variant-canvas">
+          <section class="variant-panel" data-variant-panel="a">
+            <div class="variant-screen variant-screen--goals">
+              <div class="variant-screen__head">
+                <div class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>Choose your first outcome</div>
+                <h1>What would you like Peak to help with first?</h1>
+                <p>This choice only prepares your first task. Every Peak workspace stays available afterward.</p>
+              </div>
+
+              <div class="outcome-grid">
+                <button class="outcome-card outcome-card--featured">
+                  <span class="outcome-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span>
+                  <span class="outcome-card__copy">
+                    <strong>Ask and create</strong>
+                    <span>Discuss an idea, draft something useful, or create an image from your notes.</span>
+                    <small>Chat Studio · Wizard · Media creation</small>
+                  </span>
+                  <svg class="icon outcome-card__arrow" aria-hidden="true"><use href="#i-chevron"></use></svg>
+                </button>
+                <button class="outcome-card">
+                  <span class="outcome-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span>
+                  <span class="outcome-card__copy">
+                    <strong>Work on these notes</strong>
+                    <span>Continue writing, improve a section, or review suggestions in context.</span>
+                    <small>Composer · Copilot · History</small>
+                  </span>
+                  <svg class="icon outcome-card__arrow" aria-hidden="true"><use href="#i-chevron"></use></svg>
+                </button>
+                <button class="outcome-card">
+                  <span class="outcome-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span>
+                  <span class="outcome-card__copy">
+                    <strong>Find and understand</strong>
+                    <span>Ask across your vault, collect evidence, and trace related ideas.</span>
+                    <small>AI Search · Vault Search</small>
+                  </span>
+                  <svg class="icon outcome-card__arrow" aria-hidden="true"><use href="#i-chevron"></use></svg>
+                </button>
+                <button class="outcome-card">
+                  <span class="outcome-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg></span>
+                  <span class="outcome-card__copy">
+                    <strong>Explore how my vault connects</strong>
+                    <span>See active files, hubs, neighborhoods, and useful paths through your knowledge.</span>
+                    <small>File Atlas · Hubs · Graph</small>
+                  </span>
+                  <svg class="icon outcome-card__arrow" aria-hidden="true"><use href="#i-chevron"></use></svg>
+                </button>
+              </div>
+
+              <div class="variant-screen__footer">
+                <span><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>You stay in control of what Peak can read or change.</span>
+                <button class="btn btn--primary">Choose and continue <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></button>
+              </div>
+            </div>
+            <div class="variant-rationale"><strong>适合：</strong>既要让用户理解 Peak 做什么，又不想变成功能目录。四个选择都有真实例子和明确落点。</div>
+          </section>
+
+          <section class="variant-panel" data-variant-panel="b" hidden>
+            <div class="variant-screen variant-screen--workspace">
+              <div class="variant-screen__head variant-screen__head--split">
+                <div>
+                  <div class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg>Your Peak workspace</div>
+                  <h1>AI appears where your work already happens.</h1>
+                  <p>You do not need to learn every tool now. Here is the shape of the workspace you are setting up.</p>
+                </div>
+                <span class="chip chip--accent">One workspace · six surfaces</span>
+              </div>
+
+              <div class="workspace-map">
+                <article class="workspace-focus">
+                  <div class="workspace-focus__bar"><span>Current note · Product launch.md</span><span class="chip chip--success">Open</span></div>
+                  <div class="workspace-document">
+                    <span class="workspace-line workspace-line--title"></span>
+                    <span class="workspace-line"></span>
+                    <span class="workspace-line workspace-line--short"></span>
+                    <div class="workspace-selection">Launch readiness depends on the first useful outcome…</div>
+                    <span class="workspace-line"></span>
+                  </div>
+                  <div class="workspace-copilot"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg><span><strong>Composer + Copilot</strong><small>Write and review in context</small></span></div>
+                </article>
+
+                <div class="workspace-surfaces">
+                  <article><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg><span><strong>Chat Studio</strong><small>Ask, plan, create</small></span></article>
+                  <article><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><span><strong>AI Search</strong><small>Answers with evidence</small></span></article>
+                  <article><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg><span><strong>File Atlas</strong><small>Files, hubs, relationships</small></span></article>
+                  <article><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg><span><strong>Wizard</strong><small>Guided multi-step work</small></span></article>
+                </div>
+              </div>
+
+              <div class="variant-screen__footer">
+                <span>Setup connects the shared AI and search foundation behind these surfaces.</span>
+                <button class="btn btn--primary">Set up this workspace <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></button>
+              </div>
+            </div>
+            <div class="variant-rationale"><strong>适合：</strong>产品模块已经很多，需要建立完整心智地图；代价是首次动作比 A 稍弱。</div>
+          </section>
+
+          <section class="variant-panel" data-variant-panel="c" hidden>
+            <div class="variant-screen variant-screen--note">
+              <div class="note-context">
+                <span class="note-context__label">Peak found a good place to start</span>
+                <div class="note-context__title"><span class="brand-tile">PL</span><span><strong>Product launch.md</strong><small>Edited 12 minutes ago · 1,840 words</small></span></div>
+                <div class="note-context__preview">“The product needs a reliable path from setup to the first successful task…”</div>
+                <div class="note-context__links"><span>12 links</span><span>3 related hubs</span><span>7 recent edits</span></div>
+              </div>
+
+              <div class="first-task-panel">
+                <div class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>Start with something real</div>
+                <h1>What should Peak do with this note?</h1>
+                <p>We will connect one AI, verify your vault, and open the selected task when setup finishes.</p>
+                <div class="first-task-list">
+                  <button><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg><span><strong>Continue writing in Composer</strong><small>Open the note with Copilot ready</small></span><svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                  <button><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg><span><strong>Ask what is missing</strong><small>Start Chat Studio with this note attached</small></span><svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                  <button><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><span><strong>Find supporting notes</strong><small>Search the vault for relevant evidence</small></span><svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                  <button><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg><span><strong>Explore its neighborhood</strong><small>Open the note in File Atlas</small></span><svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="variant-rationale"><strong>适合：</strong>把 onboarding 直接绑定用户的真实 Vault，第一次成功最强；无当前文档时要有 recent-note fallback。</div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

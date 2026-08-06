@@ -5,9 +5,10 @@
 入口：
 
 - `index.html`：视觉 review board；
+- `start-variants.html`：Onboarding 第一步的三种结构候选；
 - `onboarding.html`：五阶段可点击 Onboarding；
-- `settings.html`：分组式 Settings；
-- `provider-picker.html`：OpenRouter 任务型模型选择器；
+- `settings.html`：Standard / Advanced 分层 Settings，包含 6 组、18 个模型 assignment；
+- `provider-picker.html`：Settings 内共享 task-model drawer 的 focused component review，不是独立产品页面；
 - `screens/`：本地验证时由 Playwright 生成的主画面快照；按仓库规则不提交。
 
 对应设计说明：

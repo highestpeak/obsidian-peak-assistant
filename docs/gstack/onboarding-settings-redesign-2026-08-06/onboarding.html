@@ -16,9 +16,10 @@
     </div>
     <nav class="prototype-bar__nav" aria-label="Prototype pages">
       <a href="index.html">Review board</a>
+      <a href="start-variants.html">Start variants</a>
       <a href="onboarding.html" aria-current="page">Onboarding</a>
       <a href="settings.html">Settings</a>
-      <a href="provider-picker.html">Model picker</a>
+      <a href="provider-picker.html">Chooser detail</a>
     </nav>
   </header>
 
@@ -33,7 +34,7 @@
         <nav class="step-nav" aria-label="Setup progress">
           <button class="step-nav__item" data-step-target="0" data-state="active">
             <span class="step-nav__number">1</span>
-            <span><span class="step-nav__label">Meet Peak</span><span class="step-nav__hint">What you can do</span></span>
+            <span><span class="step-nav__label">Choose a goal</span><span class="step-nav__hint">Prepare your first task</span></span>
           </button>
           <button class="step-nav__item" data-step-target="1" data-state="future">
             <span class="step-nav__number">2</span>
@@ -62,7 +63,7 @@
       <div class="wizard-main">
         <header class="wizard-header">
           <div>
-            <div class="wizard-header__title" data-step-counter>Step 1 of 5 · See what Peak can do</div>
+            <div class="wizard-header__title" data-step-counter>Step 1 of 5 · Choose your first goal</div>
             <div class="wizard-header__meta">Only the information you need for this step</div>
           </div>
           <div class="progress-mini" data-step-progress style="--progress:20%"><span></span></div>
@@ -70,35 +71,39 @@
 
         <div class="wizard-scroll">
           <section class="wizard-panel" data-onboarding-panel="0">
-            <div class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>Start with a real outcome</div>
-            <h1 class="page-title">Turn your vault into a place you can ask, create, and explore.</h1>
-            <p class="page-subtitle">Peak will configure the minimum needed for everyday work. Advanced models, routes, and indexing controls stay in Settings.</p>
+            <div class="connection-toolbar">
+              <div>
+                <div class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>Choose your first outcome</div>
+                <h1 class="page-title">What would you like Peak to help with first?</h1>
+                <p class="page-subtitle">This only prepares your first task. Every workspace stays available after setup.</p>
+              </div>
+              <a class="btn btn--quiet" href="start-variants.html">Compare 3 start screens</a>
+            </div>
 
-            <div class="goal-grid">
-              <article class="goal-card">
+            <div class="onboarding-outcome-grid">
+              <button class="onboarding-outcome" data-selected="true">
                 <span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span>
-                <h3>Ask and create</h3>
-                <p>Talk through ideas, draft content, and generate media without leaving your vault.</p>
-                <ul class="surface-list"><li>Chat Studio</li><li>Images & media</li></ul>
-              </article>
-              <article class="goal-card">
+                <span><strong>Ask and create</strong><small>Discuss an idea, draft content, or create an image.</small><em>Chat Studio · Wizard · Media</em></span>
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg>
+              </button>
+              <button class="onboarding-outcome" data-selected="false">
                 <span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span>
-                <h3>Work on this note</h3>
-                <p>Write, refine, review history, and bring focused assistance into the current document.</p>
-                <ul class="surface-list"><li>Composer</li><li>Copilot</li></ul>
-              </article>
-              <article class="goal-card">
+                <span><strong>Work on these notes</strong><small>Continue writing and review suggestions in context.</small><em>Composer · Copilot · History</em></span>
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg>
+              </button>
+              <button class="onboarding-outcome" data-selected="false">
                 <span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span>
-                <h3>Find and understand</h3>
-                <p>Search your own knowledge and see the files, hubs, and relationships behind it.</p>
-                <ul class="surface-list"><li>AI Search</li><li>File Atlas</li></ul>
-              </article>
+                <span><strong>Find and understand</strong><small>Ask across your vault and gather cited evidence.</small><em>AI Search · Vault Search</em></span>
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg>
+              </button>
+              <button class="onboarding-outcome" data-selected="false">
+                <span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg></span>
+                <span><strong>Explore how my vault connects</strong><small>See active files, hubs, and useful relationships.</small><em>File Atlas · Hubs · Graph</em></span>
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg>
+              </button>
             </div>
 
-            <div class="inline-note">
-              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-              <span>Peak keeps your vault under your control. You can review safety and data behavior before any agent task writes.</span>
-            </div>
+            <div class="inline-note"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Your goal decides the final launch action, not which Peak features you are allowed to use.</span></div>
           </section>
 
           <section class="wizard-panel" data-onboarding-panel="1" hidden>
@@ -168,35 +173,45 @@
 
           <section class="wizard-panel" data-onboarding-panel="2" hidden>
             <div class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg>No quiz required</div>
-            <h1 class="page-title">Peak has prepared sensible defaults.</h1>
-            <p class="page-subtitle">These choices are based on the capabilities we just verified. Keep Auto now; change any role later in Settings.</p>
+            <h1 class="page-title">Peak prepared 18 model assignments for you.</h1>
+            <p class="page-subtitle">They are grouped into six jobs so setup stays readable. Keep Auto now; advanced users can override every concrete assignment in Settings.</p>
 
             <div class="auto-summary">
               <div class="summary-row">
                 <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span>
-                <span><span class="row-title">Chat & writing</span><span class="row-desc">Chat Studio, Composer, and Copilot</span></span>
-                <span class="row-value"><strong>Auto · balanced</strong><br>OpenAI</span>
+                <span><span class="row-title">Conversation & writing · 3 assignments</span><span class="row-desc">Chat Studio, Composer Copilot, quick assist</span></span>
+                <span class="row-value"><strong>Auto · ready</strong><br>OpenAI</span>
               </div>
               <div class="summary-row">
                 <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span>
-                <span><span class="row-title">Search & research</span><span class="row-desc">AI Search and evidence-backed answers</span></span>
-                <span class="row-value"><strong>Auto · tools ready</strong><br>OpenAI</span>
+                <span><span class="row-title">Research & web · 5 assignments</span><span class="row-desc">AI Search planning/writing, web search, research, stronger fallback</span></span>
+                <span class="row-value"><strong>Auto · ready</strong><br>OpenAI</span>
               </div>
               <div class="summary-row">
                 <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span>
-                <span><span class="row-title">Knowledge Index</span><span class="row-desc">Meaning-based retrieval across your vault</span></span>
-                <span class="row-value"><strong>Auto · embeddings</strong><br>OpenAI</span>
+                <span><span class="row-title">Knowledge processing · 2 assignments</span><span class="row-desc">Embeddings and Vault intelligence</span></span>
+                <span class="row-value"><strong>Auto · ready</strong><br>OpenAI</span>
               </div>
               <div class="summary-row">
                 <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span>
-                <span><span class="row-title">Images & media</span><span class="row-desc">Native images first; other media when connected</span></span>
-                <span class="row-value"><strong>Auto · image ready</strong><br>OpenAI native</span>
+                <span><span class="row-title">Understand files · 2 assignments</span><span class="row-desc">Images/PDF/video understanding and audio transcription</span></span>
+                <span class="row-value"><strong>Auto · ready</strong><br>OpenAI</span>
+              </div>
+              <div class="summary-row">
+                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+                <span><span class="row-title">Agent work · 2 assignments</span><span class="row-desc">Agent run and fast tool helper</span></span>
+                <span class="row-value"><strong>Optional</strong><br>No runtime</span>
+              </div>
+              <div class="summary-row">
+                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span>
+                <span><span class="row-title">Create media · 4 assignments</span><span class="row-desc">Image, video, music, and speech</span></span>
+                <span class="row-value"><strong>Image ready</strong><br>3 optional</span>
               </div>
             </div>
 
             <details class="disclosure">
-              <summary>Customize model choices</summary>
-              <div class="disclosure__body">This advanced path opens task-specific model pickers. It is intentionally optional and never blocks first setup.</div>
+              <summary>See all 18 assignments</summary>
+              <div class="disclosure__body">Each task group expands into concrete model or runtime slots. Assignments can inherit from a group default, so advanced control does not require maintaining 18 unrelated choices.</div>
             </details>
           </section>
 

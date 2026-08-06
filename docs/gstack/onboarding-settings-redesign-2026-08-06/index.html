@@ -27,9 +27,10 @@
     </div>
     <nav class="prototype-bar__nav" aria-label="Prototype pages">
       <a href="index.html" aria-current="page">Review board</a>
+      <a href="start-variants.html">Start variants</a>
       <a href="onboarding.html">Onboarding</a>
       <a href="settings.html">Settings</a>
-      <a href="provider-picker.html">Model picker</a>
+      <a href="provider-picker.html">Chooser detail</a>
     </nav>
   </header>
 
@@ -40,9 +41,21 @@
       <p>这版不是给旧页面换皮。它把 Onboarding 重构成一次真实任务闭环，把 Settings 重构成系统状态与长期控制中心，并把 Provider、模型、Agent runtime 和媒体路由拆回正确层级。</p>
 
       <div class="report-summary">
-        <article class="report-card"><h3>Onboarding</h3><p>7 个技术步骤 → 5 个用户阶段；默认路径不再要求预算问卷和 bootstrap model。</p></article>
-        <article class="report-card"><h3>Settings</h3><p>6 个横向 tabs → 稳定左侧分组；Overview 只回答系统是否可用和怎么修。</p></article>
-        <article class="report-card"><h3>Connections</h3><p>Direct API、Local、Agent runtime、Media 与 Gateway 统一管理，但不抹平各自契约。</p></article>
+        <article class="report-card"><h3>Onboarding start</h3><p>不再用三张泛化营销卡定稿；提供任务优先、工作区地图、真实文档起步三版供选择。</p></article>
+        <article class="report-card"><h3>Settings depth</h3><p>Standard 保持清楚；Advanced 保留模型路由、索引、Agent、媒体、存储和诊断的完整控制。</p></article>
+        <article class="report-card"><h3>Model roles</h3><p>不是 Chat/Search/Knowledge/Image 四项：18 个 assignment 收成 6 个用户任务组，并允许逐项覆盖。</p></article>
+      </div>
+    </section>
+
+    <section class="report-section">
+      <h2>第二轮纠偏</h2>
+      <p class="report-section__intro">上一版把“减少首次复杂度”错误地延伸成“减少长期控制”。这轮把二者拆开。</p>
+      <div class="issue-lane">
+        <article class="issue-node issue-node--danger"><div class="issue-node__tag">不再使用</div><h3>AI connection / AI behavior</h3><p>它们是实现视角，用户不知道里面是账号、模型、runtime 还是路由。</p></article>
+        <div class="issue-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></div>
+        <article class="issue-node"><div class="issue-node__tag">新信息架构</div><h3>Providers & runtimes / Models by task</h3><p>先说 Peak 可以连接谁，再说每一种真实任务由哪个模型负责。</p></article>
+        <div class="issue-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></div>
+        <article class="issue-node issue-node--success"><div class="issue-node__tag">完整控制</div><h3>Standard / Advanced</h3><p>普通用户看可靠默认；高级用户仍能管理所有已存在且有真实作用的设置。</p></article>
       </div>
     </section>
 
@@ -76,16 +89,20 @@
       <p class="report-section__intro">视觉只使用中性色、清晰边框与少量紫色强调；导航稳定，内容区独立滚动，底部操作始终可见。</p>
       <div class="screen-pair">
         <figure class="screen-frame">
-          <div class="screen-live"><iframe src="onboarding.html" title="Onboarding live preview"></iframe></div>
-          <figcaption>Onboarding：一次只连接一个 AI；API、Local 与 Agent runtime 有明确类型。</figcaption>
+          <div class="screen-live"><iframe src="start-variants.html" title="Onboarding start variants live preview"></iframe></div>
+          <figcaption>首屏选择：A 任务优先、B 工作区地图、C 从真实文档开始。</figcaption>
         </figure>
         <figure class="screen-frame">
-          <div class="screen-live"><iframe src="settings.html" title="Settings live preview"></iframe></div>
-          <figcaption>Settings：Overview 先给真实健康状态、影响和唯一修复入口。</figcaption>
+          <div class="screen-live"><iframe src="onboarding.html" title="Onboarding live preview"></iframe></div>
+          <figcaption>Onboarding：五阶段保留；Review defaults 现在覆盖 6 组、18 个 assignment。</figcaption>
         </figure>
         <figure class="screen-frame screen-frame--wide">
-          <div class="screen-live"><iframe src="provider-picker.html" title="OpenRouter model picker live preview"></iframe></div>
-          <figcaption>OpenRouter：先给与当前任务匹配的 3 个推荐，再提供搜索、能力过滤和完整兼容列表；raw model id 只是次要信息。</figcaption>
+          <div class="screen-live"><iframe src="settings.html" title="Settings live preview"></iframe></div>
+          <figcaption>Settings：Providers & runtimes 与 Models by task 分开；Standard / Advanced 可以切换，原有设置没有被取消。</figcaption>
+        </figure>
+        <figure class="screen-frame screen-frame--wide">
+          <div class="screen-live"><iframe src="provider-picker.html" title="Task model chooser focused live preview"></iframe></div>
+          <figcaption>模型选择器是 Models by task 内部的共享 drawer；单独页面仅用于放大检查，不是产品新增导航。</figcaption>
         </figure>
       </div>
     </section>
@@ -94,6 +111,12 @@
       <h2>可点击模块</h2>
       <p class="report-section__intro">每个 mock 都可独立检查，不需要先阅读长 spec。</p>
       <div class="prototype-grid">
+        <a class="prototype-link" href="start-variants.html">
+          <span class="prototype-link__preview"><span></span><span></span></span>
+          <h3>Start screen variants</h3>
+          <p>三种不同结构，不只是换文案。用于选择 Onboarding 第一步的最终方向。</p>
+          <span class="prototype-link__cta">打开三版 →</span>
+        </a>
         <a class="prototype-link" href="onboarding.html">
           <span class="prototype-link__preview"><span></span><span></span></span>
           <h3>Onboarding click-through</h3>
@@ -103,13 +126,13 @@
         <a class="prototype-link" href="settings.html">
           <span class="prototype-link__preview"><span></span><span></span></span>
           <h3>Settings click-through</h3>
-          <p>Overview、Connections、Behavior、Knowledge、Creation & Tools、Advanced。</p>
+          <p>Overview、Providers & runtimes、Models by task、Vault、Media、Preferences 与 Advanced。</p>
           <span class="prototype-link__cta">打开原型 →</span>
         </a>
         <a class="prototype-link" href="provider-picker.html">
           <span class="prototype-link__preview"><span></span><span></span></span>
-          <h3>OpenRouter model picker</h3>
-          <p>任务推荐、能力过滤、搜索与 secondary model id，替代裸露长列表。</p>
+          <h3>Task model chooser detail</h3>
+          <p>一个共享 drawer 的 focused review：任务推荐、能力过滤、搜索与 secondary model id。</p>
           <span class="prototype-link__cta">打开原型 →</span>
         </a>
       </div>
@@ -121,7 +144,10 @@
         <li>Onboarding 默认零偏好问题，系统先用已验证 capability 生成 Auto defaults。</li>
         <li>Provider 的首发可见范围是 OpenAI、Anthropic、OpenRouter、Ollama、Codex、Claude Code。</li>
         <li>Codex 与 Claude Code 作为 Agent runtime，不伪装成普通 chat provider。</li>
-        <li>媒体能力回到核心产品叙事；高级 preset、route 与模板路径只在 Advanced 中出现。</li>
+        <li>模型选择采用 6 个任务组、18 个 assignment；普通用户管理组默认，高级用户逐项覆盖。</li>
+        <li>Settings 不删除旧设置；Standard 分组降噪，Advanced 保留索引、路由、媒体、Agent、数据与诊断。</li>
+        <li>模型选择器不是独立设置页，而是从任意具体 assignment 打开的共享 drawer。</li>
+        <li>媒体能力回到核心产品叙事；高级 preset、route 与模板路径在 Advanced 中保留。</li>
         <li>Onboarding 与 Settings 必须消费同一个 ReadinessProjection 和 verification receipt。</li>
         <li>Setup 完成条件是目标 surface 真正打开且预填任务，而不是 modal 被关闭。</li>
       </ul>

@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const pages = ['index.html', 'onboarding.html', 'settings.html', 'provider-picker.html'];
+const pages = ['index.html', 'start-variants.html', 'onboarding.html', 'settings.html', 'provider-picker.html'];
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 const failures = [];
@@ -49,9 +49,38 @@ if (!footerBox || footerBox.y + footerBox.height > 900) {
 }
 await page.screenshot({ path: join(root, 'screens/onboarding-connect.png'), fullPage: true });
 
+await page.goto(pathToFileURL(join(root, 'start-variants.html')).href, { waitUntil: 'load' });
+await page.locator('[data-variant-target="b"]').click();
+await page.locator('[data-variant-panel="b"]:not([hidden])').waitFor();
+if ((await page.locator('[data-variant-title]').textContent())?.includes('Variant B') !== true) {
+  failures.push('start-variants.html: switching variants did not update the review title');
+}
+await page.screenshot({ path: join(root, 'screens/onboarding-start-variant-b.png'), fullPage: true });
+await page.locator('[data-variant-target="a"]').click();
+await page.locator('[data-variant-panel="a"]:not([hidden])').waitFor();
+await page.screenshot({ path: join(root, 'screens/onboarding-start-variant-a.png'), fullPage: true });
+await page.locator('[data-variant-target="c"]').click();
+await page.locator('[data-variant-panel="c"]:not([hidden])').waitFor();
+await page.screenshot({ path: join(root, 'screens/onboarding-start-variant-c.png'), fullPage: true });
+
 await page.goto(pathToFileURL(join(root, 'settings.html')).href, { waitUntil: 'load' });
 await page.locator('[data-settings-panel="overview"]:not([hidden])').waitFor();
 await page.screenshot({ path: join(root, 'screens/settings-overview.png'), fullPage: true });
+await page.locator('[data-settings-target="models"]').click();
+if (await page.locator('.assignment-list:visible').count() !== 0) {
+  failures.push('settings.html: Standard mode exposed concrete assignment overrides');
+}
+await page.locator('[data-settings-mode-target="advanced"]').click();
+if (await page.locator('[data-settings-target="routing"]:visible').count() !== 1) {
+  failures.push('settings.html: Advanced mode did not reveal advanced navigation');
+}
+if (await page.locator('.assignment-list:visible').count() !== 6) {
+  failures.push('settings.html: Advanced mode did not reveal all six assignment groups');
+}
+if (await page.locator('.assignment-list > div:visible').count() !== 18) {
+  failures.push('settings.html: Advanced mode did not expose exactly 18 concrete assignments');
+}
+await page.screenshot({ path: join(root, 'screens/settings-models-advanced.png'), fullPage: true });
 
 await page.goto(pathToFileURL(join(root, 'provider-picker.html')).href, { waitUntil: 'load' });
 await page.screenshot({ path: join(root, 'screens/openrouter-picker.png'), fullPage: true });
@@ -71,5 +100,5 @@ if (failures.length > 0) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Verified 4 HTML pages at 1440x900: links, overflow, footer visibility, screenshots, and core prototype interactions.');
+  console.log('Verified 5 HTML pages at 1440x900: links, overflow, footer visibility, variants, settings depth, screenshots, and core prototype interactions.');
 }

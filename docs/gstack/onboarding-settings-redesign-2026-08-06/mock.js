@@ -50,7 +50,7 @@ function initOnboarding() {
   const progress = document.querySelector('[data-step-progress]');
   let current = 0;
 
-  const labels = ['See what Peak can do', 'Connect one AI', 'Review smart defaults', 'Check your vault', 'Start your first task'];
+  const labels = ['Choose your first goal', 'Connect one AI', 'Review smart defaults', 'Check your vault', 'Start your first task'];
 
   function render() {
     panels.forEach((panel, index) => {
@@ -110,6 +110,12 @@ function initOnboarding() {
     showToast(`Prototype launch: ${button.dataset.launchAction}`);
   }));
 
+  const outcomeCards = [...document.querySelectorAll('.onboarding-outcome')];
+  outcomeCards.forEach((card) => card.addEventListener('click', () => {
+    outcomeCards.forEach((candidate) => candidate.dataset.selected = 'false');
+    card.dataset.selected = 'true';
+  }));
+
   render();
 }
 
@@ -118,6 +124,8 @@ function initSettings() {
   if (!panels.length) return;
   const navItems = [...document.querySelectorAll('[data-settings-target]')];
   const title = document.querySelector('[data-settings-title]');
+  const root = document.querySelector('[data-settings-root]');
+  const modeButtons = [...document.querySelectorAll('[data-settings-mode-target]')];
 
   function openPanel(id) {
     panels.forEach((panel) => {
@@ -138,7 +146,51 @@ function initSettings() {
   }));
   document.querySelectorAll('[data-toast]').forEach((button) => button.addEventListener('click', () => showToast(button.dataset.toast)));
   const requested = window.location.hash.replace('#', '');
-  openPanel(panels.some((panel) => panel.dataset.settingsPanel === requested) ? requested : 'overview');
+  const advancedPanelIds = new Set(
+    panels.filter((panel) => panel.hasAttribute('data-advanced-only')).map((panel) => panel.dataset.settingsPanel),
+  );
+
+  function setMode(mode) {
+    if (root) root.dataset.mode = mode;
+    modeButtons.forEach((button) => {
+      button.dataset.active = button.dataset.settingsModeTarget === mode ? 'true' : 'false';
+    });
+    const activePanel = panels.find((panel) => !panel.hidden)?.dataset.settingsPanel;
+    if (mode === 'standard' && advancedPanelIds.has(activePanel)) openPanel('overview');
+    showToast(mode === 'advanced' ? 'Advanced controls are now visible.' : 'Standard view restored. Advanced settings are preserved.');
+  }
+
+  modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.settingsModeTarget)));
+  const initialPanel = panels.some((panel) => panel.dataset.settingsPanel === requested) ? requested : 'overview';
+  if (advancedPanelIds.has(initialPanel)) setMode('advanced');
+  openPanel(initialPanel);
+}
+
+function initStartVariants() {
+  const panels = [...document.querySelectorAll('[data-variant-panel]')];
+  if (!panels.length) return;
+  const options = [...document.querySelectorAll('[data-variant-target]')];
+  const title = document.querySelector('[data-variant-title]');
+  const sub = document.querySelector('[data-variant-sub]');
+  const copy = {
+    a: ['Variant A · Choose a goal', 'Task-first · balanced product coverage'],
+    b: ['Variant B · See the workspace', 'Surface-first · strongest product map'],
+    c: ['Variant C · Start from a note', 'Context-first · shortest path to first success'],
+  };
+
+  function openVariant(id) {
+    panels.forEach((panel) => {
+      panel.hidden = panel.dataset.variantPanel !== id;
+    });
+    options.forEach((option) => {
+      option.dataset.active = option.dataset.variantTarget === id ? 'true' : 'false';
+    });
+    if (title) title.textContent = copy[id][0];
+    if (sub) sub.textContent = copy[id][1];
+  }
+
+  options.forEach((option) => option.addEventListener('click', () => openVariant(option.dataset.variantTarget)));
+  openVariant('a');
 }
 
 function initPicker() {
@@ -170,3 +222,4 @@ function initPicker() {
 initOnboarding();
 initSettings();
 initPicker();
+initStartVariants();

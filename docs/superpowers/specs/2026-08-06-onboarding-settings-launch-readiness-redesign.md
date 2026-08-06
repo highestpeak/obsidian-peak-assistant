@@ -1,6 +1,6 @@
 # Peak Assistant Onboarding 与 Settings 上线准备设计
 
-> 状态：设计与可点击 mock 已完成，production implementation pending。
+> 状态：第二轮设计纠偏与可点击 mock 已完成，production implementation pending。
 >
 > 范围：只重新定义首次成功路径、Settings 信息架构、连接与模型选择体验；本轮没有修改 Onboarding、Settings、Provider 或索引生产代码。
 >
@@ -76,11 +76,15 @@ Onboarding 只显示“你马上能做什么”；Settings 才解释“由什么
 
 ### 阶段 1：认识 Peak
 
-目标：30 秒内形成价值预期，不做功能百科。
+目标：30 秒内形成价值预期，并为完成后的第一次真实动作留下 intent；不做功能百科。
 
-- 三个工作目标卡片：对话与创作、查找与理解、委托与推进。
-- 每张卡只给一个真实例子和对应 surface。
-- CTA：`Set up my first task`。
+首屏不再用三张过度简化的营销卡定稿，提供三种候选：
+
+- **A · Choose a goal（推荐）**：四个真实目标——Ask and create、Work on these notes、Find and understand、Explore how my vault connects；每项同时给例子与目标 surface。
+- **B · See the workspace**：用当前文档、Composer/Copilot、Chat Studio、AI Search、File Atlas、Wizard 建立工作区心智地图。
+- **C · Start from a note**：从当前或最近文档直接选择 Continue writing、Ask what is missing、Find supporting notes、Explore its neighborhood，第一次成功路径最短。
+
+最终可以选一个方向，也可以采用 A 的任务选择结构与 B 的模块关系表达组合。用户此时不接触 Provider、model、index 或 runtime 术语。
 
 ### 阶段 2：连接一个 AI
 
@@ -108,13 +112,14 @@ Custom OpenAI-compatible、LiteLLM、Google、Perplexity、fal.ai 等进入 `Mor
 
 Peak 根据已验证连接自动生成 task-based defaults：
 
-- Chat & writing；
-- Search & research；
-- Knowledge Index；
-- Images & media；
-- Agent tasks（仅已连接 agent runtime 时显示）。
+- Conversation & writing（3 assignments）；
+- Research & web（5 assignments）；
+- Knowledge processing（2 assignments）；
+- Understand files（2 assignments）；
+- Agent work（2 assignments）；
+- Create media（4 assignments）。
 
-默认只显示“系统将怎么工作”和 fallback，不显示 raw model id。用户可以展开 `Customize`，但不再强迫回答预算与速度问题，也不再要求选择 bootstrap model。
+共 18 个 concrete assignments。默认只显示六个组的可用状态、继承关系和 fallback，不显示 raw model id。用户可以展开查看，但不再强迫回答预算与速度问题，也不再要求选择 bootstrap model。
 
 ### 阶段 4：验证 Vault
 
@@ -147,32 +152,38 @@ Peak 根据已验证连接自动生成 task-based defaults：
 
 ## 5. 新 Settings 信息架构
 
-Settings 使用左侧稳定导航，主区每次只解决一个问题：
+`AI connection` 与 `AI behavior` 都是实现视角，无法让用户判断里面管理的是账号、模型、runtime 还是路由，因此不再作为导航名称。Settings 使用左侧稳定导航，并提供 `Standard / Advanced` 视图切换：
 
 ```text
 Overview
-AI
-  Connections
-  Behavior
-Vault
-  Knowledge & Search
-Capabilities
-  Creation & Tools
-Advanced
+AI setup
+  Providers & runtimes
+  Models by task
+Knowledge & capabilities
+  Vault & search
+  Media & tools
+Product
+  Preferences & data
+Advanced controls
+  Routing & output
+  Agent safety
+  Storage & diagnostics
 ```
+
+Standard 不是功能阉割版。它只把低频内部控制收起；Advanced 仍然展示所有存在真实消费路径、对产品行为有实际影响的设置。
 
 ### Overview
 
 Overview 是系统状态页，不是另一份设置表。只保留四个 readiness groups：
 
-- AI connection；
-- AI behavior；
-- Knowledge & Search；
-- Creation & Tools。
+- Providers & runtimes；
+- Models by task；
+- Vault & search；
+- Media & tools。
 
 每组显示状态、最后验证时间、影响范围和最多一个修复 CTA。页面顶部只在有问题时出现 `Fix 2 issues`，否则显示 `Everything needed for everyday work is ready`。
 
-### Connections
+### Providers & runtimes
 
 连接按运行方式分组，而不是把所有东西放进一个 Provider 名单：
 
@@ -184,24 +195,54 @@ Overview 是系统状态页，不是另一份设置表。只保留四个 readine
 
 卡片主信息是状态、认证方式和能力；model 数量与 raw endpoint 为次要信息。删除、重置、清除凭据进入 overflow menu，并有影响确认。
 
-### Behavior
+### Models by task
 
-按任务角色绑定，而不是暴露 Fast / Deep / Premium 内部术语。默认值保持 Auto；只有用户展开某一行时才选择 provider/model。角色包括：
+按任务绑定，而不是暴露 Fast / Deep / Premium 内部术语。Standard 只管理六个 group default；Advanced 展开 18 个 concrete assignments：
 
-- Chat & writing；
-- Quick assist；
-- Search & research；
-- Knowledge embeddings；
-- Images & media；
-- Agent tasks。
+- **Conversation & writing（3）**：Chat Studio、Composer Copilot、Quick assist。
+- **Research & web（5）**：Research、AI Search planner、AI Search report writer、Web search、Stronger fallback。
+- **Knowledge processing（2）**：Knowledge embeddings、Vault intelligence。
+- **Understand files（2）**：Images/PDF/video understanding、Audio transcription。
+- **Agent work（2）**：Agent run、Fast tool helper。
+- **Create media（4）**：Image generation、Video generation、Music generation、Speech generation。
 
-### Knowledge & Search
+组内 assignment 默认继承 group default；只有明确 override 的条目保持 pinned。模型、provider 或 runtime 变化后，Auto 重新评估未 pinned 的 assignment；任何 incompatible assignment 必须显示原因和修复入口。
+
+需要明确区分两个数字：当前 bundled catalog 有 113 个 LLM entries，其中 OpenRouter fallback catalog 为 55 个；这表示“可选模型库存”。18 个 assignments 表示“Peak 哪些工作职责需要模型或 runtime”，不是把模型库存缩成 18 个。OpenRouter 与 Ollama 还应使用 runtime discovery 覆盖 bundled fallback，因此实际候选可以更多且会变化。
+
+18 assignments 是新的产品配置合同，不等于当前已经有 18 个独立、完整接线的 persisted slots。当前源码分散存在 Active Agent、Agent Fast、Chat、Copilot、Embedding、Web Search，Harness fast/research/stronger，AI Search thought/search refs，四类 media overrides 与 transcription model。实施时应将重叠项映射为继承关系；只有真正需要独立选择且有 execution consumer 的 assignment 才新增 override storage，不能机械制造 18 份重复配置。
+
+### Vault & search
 
 默认只显示 readiness、coverage、自动更新、包含内容与一个维护动作。PageRank、chunk size、summary lengths、inspector 与 rebuild 进入 `Advanced indexing`，危险动作独立成 danger section。
 
-### Creation & Tools
+### Media & tools
 
 按能力显示：Image、Video、Audio、Web、External tools。用户面对的是 capability status 和默认 route。preset id、model override、模板文件路径只在 advanced editor 中出现。
+
+### Preferences & data
+
+承接原来散落在 AI Setup 与 Advanced 的长期产品偏好：
+
+- Composer defaults 与 sidecar/Copilot 行为；
+- Profile、personalization 与 ambient suggestions；
+- Command Center board 与 launcher preferences；
+- File Atlas / graph visualization 的 MST pruning、backbone、leaf opacity 与 width scaling；
+- code presentation 与 appearance；
+- usage tracking、retention、preview visibility 与 privacy；
+- Chat root、DataStore、custom prompts、skills、inbox、AI Analysis 与 media folders。
+
+### Advanced controls 保留清单
+
+本轮设计不以“看起来简洁”为理由删除已有必要设置。迁移原则如下：
+
+- **Routing & output**：temperature、top-p、top-k、penalties、reasoning effort、verbosity、step/total timeout、fallback、escalation、attachment handling、per-action overrides、provider base URL/custom headers 和 media route/preset/model overrides。
+- **Agent safety**：permission mode、allow escalation、maximum escalations、threshold、runtime hooks、monthly budget、reset day、alerts、MCP 与 plugin-command access。
+- **Vault advanced**：index level、refresh interval、document-type inclusion、ignore patterns、PPR、inspector link counts/depth、AI Analysis auto-save/history/exclusion/summary lengths、chunk size/overlap/minimum size/code handling、Hub curation schedule/interval，以及 rebuild/repair。
+- **Storage & diagnostics**：canonical data folders、SQLite projection backend、usage retention、debug trace mode/retention/copy format/raw content、DevTools graph inspector、maintenance、reset 与 diagnostics export。
+- **Media advanced**：native profile、fal.ai key、output folder、per-kind preset IDs、model/aspect/quantity/duration/max duration/voice overrides、validation receipt 与 music license acceptance。
+
+纯内部、没有真实 execution consumer 的字段不应继续伪装成可工作的设置；先标记 unavailable，再完成 resolver 接线或移除 dead path。
 
 ## 6. Provider 与 runtime 设计
 
@@ -239,7 +280,17 @@ Connection Registry
 
 两者都提供高层 agent runtime：有 session、工具、权限、事件流、工作目录和中断语义。UI 可以统一成 Connection 卡，但实现契约必须与 direct chat provider 分离。当前代码只定义了 `provider-direct` 与 `hermes-harness` backend；Codex / Claude Code adapter 是新的 implementation scope，不能因为 mock 出现就宣称已支持。
 
-### 6.3 OpenRouter 模型选择器
+### 6.3 共享 task-model chooser
+
+`provider-picker.html` 不是新产品页面，也不是 OpenRouter 专属设置入口。它只是为了设计审查而单独放大的 focused component。production 中它从 `Models by task` 的任意 group default 或 concrete assignment 打开为同一个 drawer，并接收：
+
+- 当前 assignment；
+- 可用 provider/profile；
+- required capabilities；
+- cost/privacy/context constraints；
+- 当前继承与 override 状态。
+
+当来源是 OpenRouter 时，选择器使用其动态 catalog，并按下面三层展示：
 
 新选择器分三层：
 
@@ -295,11 +346,11 @@ interface ReadinessItem {
 本设计建议按下面顺序实现，避免“先换皮、状态仍然不真”：
 
 1. 建立共享 `ReadinessProjection` 与 connection verification receipt。
-2. 把 Index、Provider、AI behavior、Media status 接入投影；删除 Onboarding 静态 status rows。
+2. 把 Index、Provider/runtime、task-model assignment、Media status 接入投影；删除 Onboarding 静态 status rows。
 3. 建立 Connection Registry 的 UI-facing manifest，区分 API、local、agent、media、gateway。
-4. 实现新版 Settings shell 与 Overview / Connections；迁移原有设置，保持存储兼容。
+4. 实现新版 Settings shell、Standard / Advanced depth、Overview、Providers & runtimes 与 Models by task；迁移原有设置，保持存储兼容。
 5. 实现 5 阶段 Onboarding，并让完成动作真正打开目标 surface。
-6. 实现 capability-aware model picker 和动态 OpenRouter catalog。
+6. 实现 capability-aware shared task-model chooser 和动态 OpenRouter catalog。
 7. 最后迁移 Knowledge / Media advanced controls，并补齐 Codex、Claude Code adapter。
 
 ## 10. 验收合同
@@ -330,9 +381,10 @@ interface ReadinessItem {
 ## 11. 可点击 mock
 
 - [Review board](../../gstack/onboarding-settings-redesign-2026-08-06/index.html)
+- [Onboarding start variants](../../gstack/onboarding-settings-redesign-2026-08-06/start-variants.html)
 - [Onboarding click-through](../../gstack/onboarding-settings-redesign-2026-08-06/onboarding.html)
 - [Settings click-through](../../gstack/onboarding-settings-redesign-2026-08-06/settings.html)
-- [OpenRouter model picker](../../gstack/onboarding-settings-redesign-2026-08-06/provider-picker.html)
+- [Task model chooser focused review](../../gstack/onboarding-settings-redesign-2026-08-06/provider-picker.html)
 
 ## 12. 外部实现参考
 

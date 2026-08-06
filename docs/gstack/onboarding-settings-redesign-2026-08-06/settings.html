@@ -16,14 +16,15 @@
     </div>
     <nav class="prototype-bar__nav" aria-label="Prototype pages">
       <a href="index.html">Review board</a>
+      <a href="start-variants.html">Start variants</a>
       <a href="onboarding.html">Onboarding</a>
       <a href="settings.html" aria-current="page">Settings</a>
-      <a href="provider-picker.html">Model picker</a>
+      <a href="provider-picker.html">Chooser detail</a>
     </nav>
   </header>
 
   <main class="stage">
-    <section class="window window--settings" aria-label="Peak Settings prototype">
+    <section class="window window--settings" data-settings-root data-mode="standard" aria-label="Peak Settings prototype">
       <aside class="settings-nav">
         <div class="product-mark">
           <span class="product-mark__icon"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span>
@@ -32,42 +33,60 @@
 
         <button class="nav-item" data-settings-target="overview" data-active="true">
           <svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg>Overview
-          <span class="nav-status" title="Two items need attention"></span>
+          <span class="nav-status" title="Two optional capabilities need attention"></span>
         </button>
 
-        <div class="nav-section">AI</div>
-        <button class="nav-item" data-settings-target="connections" data-active="false">
-          <svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg>Connections
+        <div class="nav-section">AI setup</div>
+        <button class="nav-item" data-settings-target="providers" data-active="false">
+          <svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg>Providers & runtimes
         </button>
-        <button class="nav-item" data-settings-target="behavior" data-active="false">
-          <svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg>Behavior
+        <button class="nav-item" data-settings-target="models" data-active="false">
+          <svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg>Models by task
         </button>
 
-        <div class="nav-section">Vault</div>
+        <div class="nav-section">Knowledge & capabilities</div>
         <button class="nav-item" data-settings-target="knowledge" data-active="false">
-          <svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg>Knowledge & Search
+          <svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg>Vault & search
+        </button>
+        <button class="nav-item" data-settings-target="media" data-active="false">
+          <svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg>Media & tools
         </button>
 
-        <div class="nav-section">Capabilities</div>
-        <button class="nav-item" data-settings-target="creation" data-active="false">
-          <svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg>Creation & Tools
+        <div class="nav-section">Product</div>
+        <button class="nav-item" data-settings-target="preferences" data-active="false">
+          <svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg>Preferences & data
         </button>
 
-        <div class="nav-section">System</div>
-        <button class="nav-item" data-settings-target="advanced" data-active="false">
-          <svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg>Advanced
-        </button>
+        <div data-advanced-only>
+          <div class="nav-section">Advanced controls</div>
+          <button class="nav-item" data-settings-target="routing" data-active="false">
+            <svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg>Routing & output
+          </button>
+          <button class="nav-item" data-settings-target="agents" data-active="false">
+            <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>Agent safety
+          </button>
+          <button class="nav-item" data-settings-target="system" data-active="false">
+            <svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg>Storage & diagnostics
+          </button>
+        </div>
 
         <div class="settings-nav__footer">
-          Peak Assistant 1.0 candidate<br>
-          Local settings · last saved just now
+          No settings were removed in this proposal.<br>
+          Standard view groups them; Advanced reveals every supported control.
         </div>
       </aside>
 
       <div class="settings-main">
         <header class="settings-topbar">
           <span class="settings-topbar__title" data-settings-title>Overview</span>
-          <span class="saved-state"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>All changes saved</span>
+          <div class="settings-topbar__right">
+            <span class="saved-state"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>All changes saved</span>
+            <div class="mode-switch" aria-label="Settings detail level">
+              <span>View</span>
+              <button data-settings-mode-target="standard" data-active="true">Standard</button>
+              <button data-settings-mode-target="advanced" data-active="false">Advanced</button>
+            </div>
+          </div>
         </header>
 
         <div class="settings-scroll">
@@ -75,334 +94,223 @@
             <div class="settings-heading">
               <div>
                 <h1>System overview</h1>
-                <p>See whether Peak is ready for everyday work. Each issue has one clear place to fix it.</p>
+                <p>Confirm what works now, what is optional, and where to fix the next issue.</p>
               </div>
               <button class="btn" data-toast="Prototype: all readiness checks refreshed."><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg>Run checks</button>
             </div>
 
             <div class="status-banner">
               <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
-              <div><strong>Two optional capabilities need attention</strong><span>Everyday chat and vault search are ready. Video and agent tasks need another connection.</span></div>
-              <button class="btn" data-settings-open="connections">Review</button>
+              <div><strong>Everyday work is ready</strong><span>Chat, Composer, AI Search, File Atlas, embeddings, and image creation are available. Agent and video connections are optional.</span></div>
+              <button class="btn" data-settings-open="providers">Review optional setup</button>
             </div>
 
             <div class="health-grid">
               <article class="health-card">
-                <div class="health-card__head">
-                  <span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg>AI connection</span>
-                  <span class="chip chip--success">Ready</span>
-                </div>
-                <div class="health-card__value">OpenAI verified</div>
-                <div class="health-card__desc">Chat, tools, embeddings, and images · checked 8 minutes ago.</div>
-                <button class="health-card__action" data-settings-open="connections">Manage connections →</button>
+                <div class="health-card__head"><span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg>Providers & runtimes</span><span class="chip chip--success">Ready</span></div>
+                <div class="health-card__value">1 service verified</div>
+                <div class="health-card__desc">OpenAI · chat, tools, embeddings, file understanding, and images · checked 8 minutes ago.</div>
+                <button class="health-card__action" data-settings-open="providers">Manage providers →</button>
               </article>
               <article class="health-card">
-                <div class="health-card__head">
-                  <span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg>AI behavior</span>
-                  <span class="chip chip--success">Ready</span>
-                </div>
-                <div class="health-card__value">Auto · balanced</div>
-                <div class="health-card__desc">Every everyday task has a working route and fallback.</div>
-                <button class="health-card__action" data-settings-open="behavior">Review behavior →</button>
+                <div class="health-card__head"><span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg>Models by task</span><span class="chip chip--success">Ready</span></div>
+                <div class="health-card__value">14 ready · 4 optional</div>
+                <div class="health-card__desc">Six task groups inherit reliable defaults; media and agent roles activate when their connections exist.</div>
+                <button class="health-card__action" data-settings-open="models">Review task models →</button>
               </article>
               <article class="health-card">
-                <div class="health-card__head">
-                  <span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg>Knowledge & Search</span>
-                  <span class="chip chip--warning">17 updates</span>
-                </div>
-                <div class="health-card__value">94% coverage</div>
-                <div class="health-card__desc">Search works now. A small background refresh is recommended.</div>
+                <div class="health-card__head"><span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg>Vault & search</span><span class="chip chip--success">Search ready</span></div>
+                <div class="health-card__value">94% current</div>
+                <div class="health-card__desc">1,246 files indexed; 17 changed notes can refresh in the background.</div>
                 <button class="health-card__action" data-settings-open="knowledge">Update changed notes →</button>
               </article>
               <article class="health-card">
-                <div class="health-card__head">
-                  <span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg>Creation & Tools</span>
-                  <span class="chip chip--warning">Partial</span>
-                </div>
-                <div class="health-card__value">Images ready</div>
-                <div class="health-card__desc">Video, music, and agent runtimes are optional and not connected.</div>
-                <button class="health-card__action" data-settings-open="creation">Review capabilities →</button>
+                <div class="health-card__head"><span class="health-card__title"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg>Media & tools</span><span class="chip chip--warning">Partial</span></div>
+                <div class="health-card__value">Images + 5 tools ready</div>
+                <div class="health-card__desc">Video, music, speech, MCP, and plugin commands stay visible without blocking core setup.</div>
+                <button class="health-card__action" data-settings-open="media">Review capabilities →</button>
               </article>
             </div>
 
             <div class="settings-section">
-              <div class="section-heading">
-                <div><h2 class="section-title">Quick actions</h2><p class="section-subtitle">Common maintenance without opening internal configuration.</p></div>
-              </div>
+              <div class="section-heading"><div><h2 class="section-title">Quick actions</h2><p class="section-subtitle">Common recovery and maintenance actions.</p></div></div>
               <div class="button-row">
                 <button class="btn" data-toast="Prototype: onboarding opens at the vault check.">Re-run setup</button>
+                <button class="btn" data-toast="Prototype: provider checks completed.">Test providers</button>
                 <button class="btn" data-toast="Prototype: diagnostics bundle prepared.">Export diagnostics</button>
-                <button class="btn" data-toast="Prototype: safe defaults restored after confirmation.">Restore safe defaults</button>
+                <button class="btn" data-toast="Prototype: confirmation required before restoring defaults.">Restore safe defaults</button>
               </div>
             </div>
           </section>
 
-          <section class="settings-panel" data-settings-panel="connections" hidden>
+          <section class="settings-panel" data-settings-panel="providers" hidden>
             <div class="settings-heading">
+              <div><h1>Providers & runtimes</h1><p>Add the services Peak can call. Model choices live separately under Models by task.</p></div>
+              <button class="btn btn--primary" data-toast="Prototype: add-provider sheet opened."><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg>Add provider</button>
+            </div>
+
+            <div class="inline-note"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><span><strong>Primary launch choices:</strong> OpenAI, Anthropic, OpenRouter, Ollama, Codex, and Claude Code. More compatible services remain available below.</span></div>
+
+            <div class="settings-section">
+              <div class="section-heading"><div><h2 class="section-title">API providers</h2><p class="section-subtitle">Direct model APIs for conversation, research, embeddings, and multimodal work.</p></div></div>
+              <div class="connection-card-list">
+                <article class="connection-card"><span class="brand-tile">OA</span><span><span class="connection-card__name">OpenAI</span><span class="connection-card__meta">API key · 18 bundled models · chat, tools, embeddings, images · verified 8 min ago</span></span><span class="connection-card__right"><span class="chip chip--success">Ready</span><button class="btn">Manage</button></span></article>
+                <article class="connection-card"><span class="brand-tile">AN</span><span><span class="connection-card__name">Anthropic</span><span class="connection-card__meta">Direct Claude API · writing, reasoning, vision, and tools</span></span><span class="connection-card__right"><span class="chip">Not connected</span><button class="btn">Connect</button></span></article>
+                <article class="connection-card"><span class="brand-tile">OR</span><span><span class="connection-card__name">OpenRouter</span><span class="connection-card__meta">One key · live multi-provider model catalog · capability and privacy filters</span></span><span class="connection-card__right"><span class="chip">Not connected</span><button class="btn">Connect</button></span></article>
+              </div>
+            </div>
+
+            <div class="settings-section split-sections">
               <div>
-                <h1>AI connections</h1>
-                <p>Connect services and runtimes once. Peak records what each connection can actually do.</p>
+                <div class="section-heading"><div><h2 class="section-title">Local models</h2><p class="section-subtitle">Models running on this computer.</p></div></div>
+                <div class="connection-card-list"><article class="connection-card connection-card--compact"><span class="brand-tile">OL</span><span><span class="connection-card__name">Ollama</span><span class="connection-card__meta">localhost:11434 · auto-detect installed models</span></span><span class="connection-card__right"><span class="chip chip--warning">Unavailable</span><button class="btn">Retry</button></span></article></div>
               </div>
-              <button class="btn btn--primary" data-toast="Prototype: add-connection sheet opened."><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg>Add connection</button>
-            </div>
-
-            <div class="settings-section">
-              <div class="section-heading">
-                <div><h2 class="section-title">API services</h2><p class="section-subtitle">Direct connections for chat, tools, embeddings, and media.</p></div>
-              </div>
-              <div class="connection-card-list">
-                <article class="connection-card">
-                  <span class="brand-tile">OA</span>
-                  <span><span class="connection-card__name">OpenAI</span><span class="connection-card__meta">API key · Chat, tools, embeddings, images · verified 8 min ago</span></span>
-                  <span class="connection-card__right"><span class="chip chip--success">Ready</span><button class="btn">Manage</button></span>
-                </article>
-                <article class="connection-card">
-                  <span class="brand-tile">OR</span>
-                  <span><span class="connection-card__name">OpenRouter</span><span class="connection-card__meta">API key missing · multi-model gateway</span></span>
-                  <span class="connection-card__right"><span class="chip chip--warning">Not connected</span><button class="btn">Connect</button></span>
-                </article>
-                <article class="connection-card">
-                  <span class="brand-tile">AN</span>
-                  <span><span class="connection-card__name">Anthropic</span><span class="connection-card__meta">Direct Claude API · not configured</span></span>
-                  <span class="connection-card__right"><button class="btn">Connect</button></span>
-                </article>
-              </div>
-            </div>
-
-            <div class="settings-section">
-              <div class="section-heading">
-                <div><h2 class="section-title">Local models</h2><p class="section-subtitle">Models running on this computer.</p></div>
-              </div>
-              <div class="connection-card-list">
-                <article class="connection-card">
-                  <span class="brand-tile">OL</span>
-                  <span><span class="connection-card__name">Ollama</span><span class="connection-card__meta">localhost:11434 · service not detected</span></span>
-                  <span class="connection-card__right"><span class="chip chip--warning">Unavailable</span><button class="btn">Retry</button></span>
-                </article>
-              </div>
-            </div>
-
-            <div class="settings-section">
-              <div class="section-heading">
-                <div><h2 class="section-title">Agent runtimes</h2><p class="section-subtitle">Longer, tool-driven tasks with separate permission and session controls.</p></div>
-              </div>
-              <div class="connection-card-list">
-                <article class="connection-card">
-                  <span class="brand-tile">CX</span>
-                  <span><span class="connection-card__name">Codex</span><span class="connection-card__meta">Requires runtime adapter · permissions and work directory</span></span>
-                  <span class="connection-card__right"><span class="chip">Planned</span><button class="btn">Learn more</button></span>
-                </article>
-                <article class="connection-card">
-                  <span class="brand-tile">CC</span>
-                  <span><span class="connection-card__name">Claude Code</span><span class="connection-card__meta">Requires runtime adapter · permissions and session events</span></span>
-                  <span class="connection-card__right"><span class="chip">Planned</span><button class="btn">Learn more</button></span>
-                </article>
+              <div>
+                <div class="section-heading"><div><h2 class="section-title">Agent runtimes</h2><p class="section-subtitle">Session-based work with tools and approvals.</p></div></div>
+                <div class="connection-card-list">
+                  <article class="connection-card connection-card--compact"><span class="brand-tile">CX</span><span><span class="connection-card__name">Codex</span><span class="connection-card__meta">Runtime adapter · session, work directory, approval events</span></span><span class="connection-card__right"><span class="chip">Implementation pending</span><button class="btn">Review</button></span></article>
+                  <article class="connection-card connection-card--compact"><span class="brand-tile">CC</span><span><span class="connection-card__name">Claude Code</span><span class="connection-card__meta">Runtime adapter · session, permissions, event stream</span></span><span class="connection-card__right"><span class="chip">Implementation pending</span><button class="btn">Review</button></span></article>
+                </div>
               </div>
             </div>
 
             <details class="disclosure">
-              <summary>More connections and gateways</summary>
-              <div class="disclosure__body">Custom OpenAI-compatible endpoints, LiteLLM, Google, Perplexity, and media-only services belong here. They remain available without competing with the six primary launch choices.</div>
+              <summary>More providers and compatible endpoints</summary>
+              <div class="disclosure__body">Google, Perplexity, LiteLLM, LM Studio, vLLM, custom OpenAI-compatible endpoints, Simulator for deterministic QA, and media-only services remain supported configuration targets. They are not deleted; they are removed from the primary add-provider grid.</div>
             </details>
           </section>
 
-          <section class="settings-panel" data-settings-panel="behavior" hidden>
+          <section class="settings-panel" data-settings-panel="models" hidden>
             <div class="settings-heading">
-              <div>
-                <h1>AI behavior</h1>
-                <p>Choose how Peak handles real tasks. Auto keeps a working route as connections change.</p>
-              </div>
-              <button class="btn" data-toast="Prototype: behavior defaults restored.">Restore defaults</button>
+              <div><h1>Models by task</h1><p>Six understandable groups own 18 concrete assignments. Auto inheritance keeps them coherent; Advanced view exposes every override.</p></div>
+              <button class="btn" data-toast="Prototype: all task models restored to Auto.">Restore Auto</button>
             </div>
 
-            <div class="inline-note inline-note--success">
-              <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
-              <span><strong>Balanced is active.</strong> Peak will prefer the verified OpenAI connection and keep local or gateway fallbacks when available.</span>
+            <div class="inline-note inline-note--success"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><span><strong>Auto is healthy.</strong> Changing a group default updates its inherited assignments; an explicit advanced override stays pinned.</span></div>
+            <div class="catalog-fact"><span><strong>113</strong><small>bundled LLM catalog entries</small></span><span><strong>55</strong><small>OpenRouter fallback entries</small></span><span><strong>18</strong><small>Peak task assignments</small></span><p>The catalog answers “what can I choose?” Assignments answer “which model does each Peak task use?” They are intentionally different counts.</p></div>
+
+            <div class="role-overview">
+              <article class="role-group" data-status="ready">
+                <div class="role-group__head"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span><span><strong>Conversation & writing</strong><small>3 assignments · Chat Studio, Composer Copilot, Quick assist</small></span><span class="chip chip--success">Ready</span></div>
+                <div class="role-group__default"><span>Group default</span><strong>Auto · OpenAI balanced</strong><button class="btn">Change</button></div>
+                <div class="assignment-list" data-advanced-only>
+                  <div><span><strong>Chat Studio</strong><small>Conversation and general creation</small></span><span>Inherits group</span><button class="btn">Override</button></div>
+                  <div><span><strong>Composer Copilot</strong><small>Contextual writing and document edits</small></span><span>Inherits group</span><button class="btn">Override</button></div>
+                  <div><span><strong>Quick assist</strong><small>Short edits, labels, and low-latency helpers</small></span><span>Auto · fast</span><button class="btn">Override</button></div>
+                </div>
+              </article>
+
+              <article class="role-group" data-status="ready">
+                <div class="role-group__head"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span><span><strong>Research & web</strong><small>5 assignments · research, AI Search plan/write, web search, stronger fallback</small></span><span class="chip chip--success">Ready</span></div>
+                <div class="role-group__default"><span>Group default</span><strong>Auto · tools + long context</strong><a class="btn" href="provider-picker.html">Change</a></div>
+                <div class="assignment-list" data-advanced-only>
+                  <div><span><strong>Research</strong><small>Multi-step evidence gathering</small></span><span>Inherits group</span><button class="btn">Override</button></div>
+                  <div><span><strong>AI Search planner</strong><small>Question decomposition and tool use</small></span><span>Inherits group</span><button class="btn">Override</button></div>
+                  <div><span><strong>AI Search report writer</strong><small>Cited synthesis and summaries</small></span><span>Inherits group</span><button class="btn">Override</button></div>
+                  <div><span><strong>Web search</strong><small>Provider-native or dedicated web model</small></span><span>Auto</span><button class="btn">Override</button></div>
+                  <div><span><strong>Stronger fallback</strong><small>Escalation for difficult tasks</small></span><span>Auto · reasoning</span><button class="btn">Override</button></div>
+                </div>
+              </article>
+
+              <article class="role-group">
+                <div class="role-group__head"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><span><strong>Knowledge processing</strong><small>2 assignments · embeddings and Vault intelligence</small></span><span class="chip chip--success">Ready</span></div>
+                <div class="role-group__default"><span>Group status</span><strong>OpenAI embeddings · research inherited</strong><button class="btn">Change</button></div>
+                <div class="assignment-list" data-advanced-only><div><span><strong>Knowledge embeddings</strong><small>Semantic retrieval and similarity</small></span><span>OpenAI embedding</span><button class="btn">Override</button></div><div><span><strong>Vault intelligence</strong><small>Hubs, patterns, reviews, and summaries</small></span><span>Inherits Research</span><button class="btn">Override</button></div></div>
+              </article>
+
+              <article class="role-group">
+                <div class="role-group__head"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><strong>Understand files</strong><small>2 assignments · multimodal understanding and transcription</small></span><span class="chip chip--success">Ready</span></div>
+                <div class="role-group__default"><span>Group default</span><strong>Auto · capability matched</strong><button class="btn">Change</button></div>
+                <div class="assignment-list" data-advanced-only><div><span><strong>Images, PDFs, and video</strong><small>Requires matching input capabilities</small></span><span>Inherits compatible</span><button class="btn">Override</button></div><div><span><strong>Audio transcription</strong><small>Speech-to-text before understanding</small></span><span>OpenAI transcription</span><button class="btn">Override</button></div></div>
+              </article>
+
+              <article class="role-group">
+                <div class="role-group__head"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span><span><strong>Agent work</strong><small>2 assignments · full agent run and fast tool helper</small></span><span class="chip">Optional</span></div>
+                <div class="role-group__default"><span>Runtime default</span><strong>Not connected</strong><button class="btn" data-settings-open="providers">Connect</button></div>
+                <div class="assignment-list" data-advanced-only><div><span><strong>Agent run</strong><small>Planning, tools, approvals, and sessions</small></span><span>Runtime required</span><button class="btn">Choose</button></div><div><span><strong>Fast tool helper</strong><small>Lower-cost helper inside tool loops</small></span><span>Auto · fast</span><button class="btn">Override</button></div></div>
+              </article>
+
+              <article class="role-group">
+                <div class="role-group__head"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><strong>Create media</strong><small>4 assignments · image, video, music, and speech</small></span><span class="chip chip--warning">Partial</span></div>
+                <div class="role-group__default"><span>Available now</span><strong>Image · OpenAI native</strong><button class="btn" data-settings-open="media">Review routes</button></div>
+                <div class="assignment-list" data-advanced-only><div><span><strong>Image generation</strong><small>Generate and edit images</small></span><span>OpenAI native</span><button class="btn">Override</button></div><div><span><strong>Video generation</strong><small>Asynchronous video jobs</small></span><span>Needs route</span><button class="btn">Choose</button></div><div><span><strong>Music generation</strong><small>Licensed music route</small></span><span>Needs route</span><button class="btn">Choose</button></div><div><span><strong>Speech generation</strong><small>Text to speech and voice</small></span><span>Needs route</span><button class="btn">Choose</button></div></div>
+              </article>
             </div>
 
-            <div class="settings-list">
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span>
-                <span><span class="row-title">Chat & writing</span><span class="row-desc">Chat Studio, Composer, and Copilot</span></span>
-                <span class="behavior-value"><strong>Auto · OpenAI</strong><button class="btn">Change</button></span>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg></span>
-                <span><span class="row-title">Quick assist</span><span class="row-desc">Short edits, labels, and low-latency actions</span></span>
-                <span class="behavior-value"><strong>Auto · fast</strong><button class="btn">Change</button></span>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span>
-                <span><span class="row-title">Search & research</span><span class="row-desc">AI Search, synthesis, and evidence gathering</span></span>
-                <span class="behavior-value"><strong>Auto · tools</strong><a class="btn" href="provider-picker.html">Change</a></span>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span>
-                <span><span class="row-title">Knowledge embeddings</span><span class="row-desc">Semantic retrieval and similarity</span></span>
-                <span class="behavior-value"><strong>Auto · OpenAI</strong><button class="btn">Change</button></span>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span>
-                <span><span class="row-title">Images & media</span><span class="row-desc">Image, video, music, and speech requests</span></span>
-                <span class="behavior-value"><strong>Auto · partial</strong><button class="btn" data-settings-open="creation">Review</button></span>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
-                <span><span class="row-title">Agent tasks</span><span class="row-desc">Long-running work through Codex or Claude Code</span></span>
-                <span class="behavior-value"><strong>Not connected</strong><button class="btn" data-settings-open="connections">Connect</button></span>
-              </div>
-            </div>
-
-            <details class="disclosure">
-              <summary>Fallback and escalation policy</summary>
-              <div class="disclosure__body">Advanced routing, retries, cost caps, and model-specific settings stay collapsed until a user intentionally takes control.</div>
-            </details>
+            <div class="model-picker-explainer"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><span><strong>Why there is a model chooser mock:</strong> it is one shared drawer opened from any assignment above. The separate HTML page is only a focused design review, not another Settings destination.</span><a class="btn" href="provider-picker.html">Open focused view</a></div>
           </section>
 
           <section class="settings-panel" data-settings-panel="knowledge" hidden>
-            <div class="settings-heading">
-              <div>
-                <h1>Knowledge & Search</h1>
-                <p>Confirm what is searchable, keep the index fresh, and control what Peak may include.</p>
-              </div>
-              <button class="btn btn--primary" data-toast="Prototype: 17 changed notes queued for update.">Update 17 notes</button>
-            </div>
-
-            <div class="coverage">
-              <div class="coverage__head">
-                <div><span class="row-title">Vault coverage</span><span class="row-desc">1,246 of 1,325 eligible files</span></div>
-                <span class="chip chip--success">Search ready</span>
-              </div>
-              <div class="coverage__bar"><span></span></div>
-              <div class="coverage__labels"><span>94% indexed</span><span>Last successful update 8 minutes ago</span></div>
-            </div>
-
+            <div class="settings-heading"><div><h1>Vault & search</h1><p>Keep search reliable without forcing ordinary users to understand indexing internals.</p></div><button class="btn btn--primary" data-toast="Prototype: 17 changed notes queued for update.">Update 17 notes</button></div>
+            <div class="coverage"><div class="coverage__head"><div><span class="row-title">Vault coverage</span><span class="row-desc">1,246 of 1,325 eligible files · existing index detected</span></div><span class="chip chip--success">Search ready</span></div><div class="coverage__bar"><span></span></div><div class="coverage__labels"><span>94% indexed</span><span>Last successful update 8 minutes ago</span></div></div>
             <div class="settings-list">
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span>
-                <span><span class="row-title">Keep changed notes up to date</span><span class="row-desc">Run safe incremental updates in the background</span></span>
-                <button class="toggle" data-on="true" aria-label="Toggle automatic updates"></button>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span>
-                <span><span class="row-title">Included content</span><span class="row-desc">Markdown, PDF, Canvas, and supported office files</span></span>
-                <button class="btn">Review</button>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span>
-                <span><span class="row-title">Semantic search</span><span class="row-desc">Uses the verified embedding route</span></span>
-                <span class="chip chip--success">Ready</span>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span>
-                <span><span class="row-title">Excluded folders</span><span class="row-desc">Private, templates, .trash</span></span>
-                <button class="btn">Edit</button>
-              </div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span><span><span class="row-title">Keep changed notes current</span><span class="row-desc">Safe incremental updates in the background</span></span><button class="toggle" data-on="true" aria-label="Toggle automatic updates"></button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><span class="row-title">Included content</span><span class="row-desc">Markdown, PDF, Canvas, and supported office files</span></span><button class="btn">Review</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span><span><span class="row-title">Search mode</span><span class="row-desc">Text + semantic + relationship ranking</span></span><strong>Full</strong></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><span class="row-title">Saved AI Search results</span><span class="row-desc">Auto-save, history limit, output folder, and exclusion from search</span></span><button class="btn">Manage</button></div>
             </div>
-
-            <details class="disclosure">
-              <summary>Advanced indexing</summary>
-              <div class="disclosure__body">PageRank, chunking, summary length, inspector links, and AI Analysis output controls live here with plain-language impact notes.</div>
-            </details>
-
-            <div class="danger-zone">
-              <div class="section-heading">
-                <div><h2 class="section-title">Rebuild and recovery</h2><p class="section-subtitle">These operations can take time and affect local read models.</p></div>
-                <button class="btn btn--danger">Open recovery actions</button>
-              </div>
-            </div>
+            <details class="disclosure" data-detail="index"><summary>Advanced indexing · existing controls preserved</summary><div class="disclosure__body settings-inventory">Index level; refresh interval; include-document map; ignore patterns; PageRank; keyword/tag/folder inspector limits; chunk size, overlap, minimum document size, code-block handling and placeholder; AI Analysis short/full/session summary lengths; Hub curation schedule and interval.</div></details>
+            <div class="danger-zone"><div class="section-heading"><div><h2 class="section-title">Repair & rebuild</h2><p class="section-subtitle">Shows impact, expected duration, and recovery path before destructive or expensive maintenance.</p></div><button class="btn btn--danger">Review rebuild options</button></div></div>
           </section>
 
-          <section class="settings-panel" data-settings-panel="creation" hidden>
-            <div class="settings-heading">
-              <div>
-                <h1>Creation & Tools</h1>
-                <p>See which capabilities work now. Configure routes only when a capability needs attention.</p>
-              </div>
-              <button class="btn" data-toast="Prototype: capability validation complete.">Validate all</button>
-            </div>
-
+          <section class="settings-panel" data-settings-panel="media" hidden>
+            <div class="settings-heading"><div><h1>Media & tools</h1><p>See what Peak can create or call. Configure only the capability you need.</p></div></div>
             <div class="media-grid">
-              <article class="media-card">
-                <div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><span class="media-card__title">Images</span><span class="row-desc">Create and edit</span></span><span class="chip chip--success" style="margin-left:auto">Ready</span></div>
-                <div class="media-card__route">Default route: <strong>Auto · OpenAI native</strong></div>
-              </article>
-              <article class="media-card">
-                <div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><span class="media-card__title">Video</span><span class="row-desc">Generate short video</span></span><span class="chip chip--warning" style="margin-left:auto">Needs route</span></div>
-                <div class="media-card__route">Connect fal.ai or a compatible native profile.</div>
-              </article>
-              <article class="media-card">
-                <div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg></span><span><span class="media-card__title">Audio & speech</span><span class="row-desc">Music and text to speech</span></span><span class="chip" style="margin-left:auto">Optional</span></div>
-                <div class="media-card__route">No external media service connected.</div>
-              </article>
-              <article class="media-card">
-                <div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg></span><span><span class="media-card__title">Web & external tools</span><span class="row-desc">Search and MCP tools</span></span><span class="chip" style="margin-left:auto">2 ready</span></div>
-                <div class="media-card__route">Review permissions before tools take actions.</div>
-              </article>
+              <article class="media-card"><div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><span class="media-card__title">Images</span><span class="row-desc">Generate and edit</span></span><span class="chip chip--success" style="margin-left:auto">Ready</span></div><div class="media-card__route">Default: <strong>Auto · OpenAI native</strong></div></article>
+              <article class="media-card"><div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><span class="media-card__title">Video</span><span class="row-desc">Generate short video</span></span><span class="chip chip--warning" style="margin-left:auto">Needs route</span></div><div class="media-card__route">Connect a native or fal.ai route.</div></article>
+              <article class="media-card"><div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg></span><span><span class="media-card__title">Music & speech</span><span class="row-desc">Music and text to speech</span></span><span class="chip" style="margin-left:auto">Optional</span></div><div class="media-card__route">No media service connected.</div></article>
+              <article class="media-card"><div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span><span><span class="media-card__title">Web access</span><span class="row-desc">Search and source retrieval</span></span><span class="chip chip--success" style="margin-left:auto">Ready</span></div><div class="media-card__route">Uses the compatible task model or dedicated web provider.</div></article>
+              <article class="media-card"><div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg></span><span><span class="media-card__title">External tools</span><span class="row-desc">MCP servers</span></span><span class="chip" style="margin-left:auto">3 configured</span></div><div class="media-card__route">2 ready · 1 needs attention.</div></article>
+              <article class="media-card"><div class="media-card__head"><span class="icon-box"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></span><span><span class="media-card__title">Obsidian commands</span><span class="row-desc">Plugin command gateway</span></span><span class="chip" style="margin-left:auto">Review</span></div><div class="media-card__route">Allow commands individually or by reviewed batch.</div></article>
             </div>
-
-            <div class="settings-section">
-              <div class="section-heading">
-                <div><h2 class="section-title">Everyday defaults</h2><p class="section-subtitle">User-facing choices only. Technical presets stay advanced.</p></div>
-              </div>
-              <div class="settings-list">
-                <div class="setting-row">
-                  <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span>
-                  <span><span class="row-title">Image quality</span><span class="row-desc">Balanced quality and generation time</span></span>
-                  <span class="behavior-value"><strong>Balanced</strong><button class="btn">Change</button></span>
-                </div>
-                <div class="setting-row">
-                  <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span>
-                  <span><span class="row-title">Save generated media</span><span class="row-desc">Vault-relative output location</span></span>
-                  <span class="behavior-value"><strong>Assets/Peak</strong><button class="btn">Change</button></span>
-                </div>
-              </div>
-            </div>
-
-            <details class="disclosure">
-              <summary>Advanced media routes and presets</summary>
-              <div class="disclosure__body">Provider routes, raw model IDs, preset IDs, aspect bounds, quantity, duration, voices, and the backing template become available here for expert users.</div>
-            </details>
+            <details class="disclosure"><summary>Advanced media settings · all existing controls preserved</summary><div class="disclosure__body settings-inventory">Default route; native profile; fal.ai key; output folder; per-kind preset IDs; model, aspect ratio, quantity, duration, maximum duration, and voice overrides; validation receipt; music license acceptance.</div></details>
           </section>
 
-          <section class="settings-panel" data-settings-panel="advanced" hidden>
-            <div class="settings-heading">
-              <div>
-                <h1>Advanced</h1>
-                <p>Internal routing, diagnostics, storage, and experimental behavior. Changes here may require reprocessing.</p>
-              </div>
-              <span class="chip chip--warning">Expert settings</span>
+          <section class="settings-panel" data-settings-panel="preferences" hidden>
+            <div class="settings-heading"><div><h1>Preferences & data</h1><p>Personalize everyday behavior and understand where Peak keeps its data.</p></div></div>
+            <div class="preference-grid">
+              <article><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><strong>Composer</strong><small>Default view, Copilot behavior, sidecar, and writing preferences</small></span><button class="btn">Manage</button></article>
+              <article><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span><span><strong>Profile & personalization</strong><small>Reviewed profile facts, ambient suggestions, and user preferences</small></span><button class="btn">Manage</button></article>
+              <article><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg></span><span><strong>Command Center</strong><small>Board layout, configured actions, and launcher preferences</small></span><button class="btn">Manage</button></article>
+              <article><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg></span><span><strong>Graphs & File Atlas</strong><small>MST pruning, backbone-only mode, leaf opacity, and width scaling</small></span><button class="btn">Manage</button></article>
+              <article><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><strong>Appearance</strong><small>Code block theme and supported presentation choices</small></span><button class="btn">Manage</button></article>
+              <article><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span><span><strong>Usage & privacy</strong><small>Usage tracking, retention, preview visibility, and receipts</small></span><button class="btn">Manage</button></article>
+              <article><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><span><strong>Folders & saved content</strong><small>Chat root, DataStore, prompts, skills, inbox, analysis, and media</small></span><button class="btn">Manage</button></article>
             </div>
+            <div class="inline-note"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><span>These settings were previously scattered across AI Setup and Advanced. They remain editable; this page gives them a user-facing home.</span></div>
+          </section>
 
-            <div class="inline-note inline-note--warning">
-              <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
-              <span>Peak explains the effect, save behavior, and recovery path before applying high-impact changes.</span>
-            </div>
-
+          <section class="settings-panel" data-settings-panel="routing" data-advanced-only hidden>
+            <div class="settings-heading"><div><h1>Routing & output</h1><p>Override automatic routing only when you need deterministic model or output behavior.</p></div><span class="chip chip--warning">Advanced view</span></div>
             <div class="settings-list">
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
-                <span><span class="row-title">Routing policy</span><span class="row-desc">Retries, escalation, timeouts, and compatible gateways</span></span>
-                <button class="btn">Open</button>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span>
-                <span><span class="row-title">Storage and diagnostics</span><span class="row-desc">Local read models, logs, and support bundle</span></span>
-                <button class="btn">Open</button>
-              </div>
-              <div class="setting-row">
-                <span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></span>
-                <span><span class="row-title">Experimental capabilities</span><span class="row-desc">Features with explicit stability labels and exit conditions</span></span>
-                <button class="btn">Open</button>
-              </div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg></span><span><span class="row-title">Fallback & escalation</span><span class="row-desc">Allow escalation, maximum escalations, threshold, and stronger-model policy</span></span><button class="btn">Configure</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span><span><span class="row-title">Default output controls</span><span class="row-desc">Temperature, top-p, top-k, penalties, reasoning effort, verbosity, step and total timeouts</span></span><button class="btn">Configure</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></span><span><span class="row-title">AI action overrides</span><span class="row-desc">Prompt/action model assignments only where the production resolver consumes them</span></span><button class="btn">Open AI Control Center</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><span class="row-title">Attachment handling</span><span class="row-desc">Direct multimodal input or text degradation fallback</span></span><button class="btn">Configure</button></div>
             </div>
+            <details class="disclosure" open><summary>Raw provider and media overrides</summary><div class="disclosure__body settings-inventory">Base URLs; custom headers; primary/fast/embedding model IDs; custom endpoint capability overrides; media preset IDs and per-kind model overrides. Every save must report requested and effective routing.</div></details>
+          </section>
 
-            <div class="danger-zone">
-              <div class="section-heading">
-                <div><h2 class="section-title">Reset Peak settings</h2><p class="section-subtitle">Credentials and user-owned content are preserved unless separately selected.</p></div>
-                <button class="btn btn--danger">Review reset</button>
-              </div>
+          <section class="settings-panel" data-settings-panel="agents" data-advanced-only hidden>
+            <div class="settings-heading"><div><h1>Agent safety</h1><p>Control what session-based work may do, how much it may spend, and when it must stop.</p></div><span class="chip chip--warning">Advanced view</span></div>
+            <div class="settings-list">
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span><span><span class="row-title">Default permission mode</span><span class="row-desc">Read only, ask before changes, or explicit bypass</span></span><strong>Ask</strong></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span><span><span class="row-title">Budget & alerts</span><span class="row-desc">Monthly budget, reset day, warning thresholds, and hard stop</span></span><button class="btn">Configure</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span><span><span class="row-title">Runtime hooks</span><span class="row-desc">Session events, pre/post tool hooks, work directory, and interruption policy</span></span><button class="btn">Configure</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg></span><span><span class="row-title">Tool and command permissions</span><span class="row-desc">MCP tools and Obsidian command gateway access</span></span><button class="btn">Review access</button></div>
             </div>
+            <div class="inline-note inline-note--warning"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg><span>Codex and Claude Code are agent runtimes, not ordinary text-model providers. Their session and permission controls remain separate from model selection.</span></div>
+          </section>
+
+          <section class="settings-panel" data-settings-panel="system" data-advanced-only hidden>
+            <div class="settings-heading"><div><h1>Storage & diagnostics</h1><p>Low-frequency maintenance, folder overrides, developer tools, and recoverable system operations.</p></div><span class="chip chip--warning">Advanced view</span></div>
+            <div class="settings-list">
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><span><span class="row-title">Storage backend</span><span class="row-desc">Canonical records, rebuildable SQLite projections, and local cache status</span></span><button class="btn">Inspect</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><span class="row-title">Folder overrides</span><span class="row-desc">DataStore, Chat, prompts, skills, inbox, AI Analysis, and media folders</span></span><button class="btn">Configure</button></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span><span><span class="row-title">Debug traces</span><span class="row-desc">Off, redacted, or local raw; retention and copy format</span></span><strong>Off</strong></div>
+              <div class="setting-row"><span class="row-icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span><span><span class="row-title">Developer tools</span><span class="row-desc">Graph inspector, diagnostics, and experimental flags</span></span><button class="toggle" data-on="false" aria-label="Toggle developer tools"></button></div>
+            </div>
+            <div class="danger-zone"><div class="section-heading"><div><h2 class="section-title">Maintenance & reset</h2><p class="section-subtitle">Rebuild projections, clear derived caches, reset settings, or export diagnostics with explicit impact and recovery information.</p></div><button class="btn btn--danger">Open maintenance</button></div></div>
           </section>
         </div>
       </div>

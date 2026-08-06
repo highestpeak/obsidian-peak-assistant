@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Assistant · OpenRouter model picker</title>
+  <title>Peak Assistant · Task model chooser detail</title>
   <link rel="stylesheet" href="mock.css">
   <script src="mock.js" defer></script>
 </head>
@@ -12,30 +12,33 @@
     <div class="prototype-bar__brand">
       <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
       <span>Peak design prototype</span>
-      <span class="prototype-bar__meta">OpenRouter picker · production unchanged</span>
+      <span class="prototype-bar__meta">Focused component review · not a standalone product page</span>
     </div>
     <nav class="prototype-bar__nav" aria-label="Prototype pages">
       <a href="index.html">Review board</a>
+      <a href="start-variants.html">Start variants</a>
       <a href="onboarding.html">Onboarding</a>
       <a href="settings.html">Settings</a>
-      <a href="provider-picker.html" aria-current="page">Model picker</a>
+      <a href="provider-picker.html" aria-current="page">Chooser detail</a>
     </nav>
   </header>
 
   <main class="stage">
-    <section class="picker-window" aria-label="OpenRouter model picker prototype">
+    <section class="picker-window" aria-label="Task model chooser focused prototype">
       <header class="picker-header">
         <div class="picker-header__title">
           <span class="brand-tile">OR</span>
           <div>
-            <h1>Choose a model for Search & research</h1>
-            <p>OpenRouter · showing models compatible with tools and long documents</p>
+            <span class="picker-breadcrumb">Settings / Models by task / Research & web</span>
+            <h1>Choose a model for AI Search planner</h1>
+            <p>OpenRouter catalog · requires tools and long context · inherits the Research & web default today</p>
           </div>
         </div>
-        <a class="btn btn--quiet" href="settings.html">Close</a>
+        <a class="btn btn--quiet" href="settings.html#models">Back to Models by task</a>
       </header>
 
       <div class="picker-controls">
+        <div class="picker-context-note"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg><span><strong>Product behavior:</strong> this opens as one shared drawer inside Settings. This separate file only makes the component large enough to review.</span></div>
         <div class="search-field">
           <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
           <input class="field" data-model-query placeholder="Search by model or provider" aria-label="Search models">
@@ -113,8 +116,8 @@
       <footer class="picker-footer">
         <span class="picker-footer__selection">Selected: <strong data-model-selection>Claude Sonnet · balanced research</strong></span>
         <div class="button-row">
-          <a class="btn" href="settings.html">Cancel</a>
-          <button class="btn btn--primary" data-use-model>Use this model</button>
+          <a class="btn" href="settings.html#models">Cancel</a>
+          <button class="btn btn--primary" data-use-model>Use for AI Search planner</button>
         </div>
       </footer>
     </section>
