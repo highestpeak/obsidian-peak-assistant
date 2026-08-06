@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { GripVertical, Search, SlidersHorizontal, X } from 'lucide-react';
+import { GripVertical, House, Search, SlidersHorizontal, X } from 'lucide-react';
 import {
 	buildProjectionPositions,
 	COMMAND_CENTER_CATALOG_DEFAULTS,
@@ -42,6 +42,13 @@ interface TabDropTarget {
 	tabId: CommandCenterTabId;
 	placement: CommandCenterDropPlacement;
 }
+
+const HOME_GROUP: CommandCenterGroup = {
+	id: 'home',
+	label: 'Home',
+	order: -1,
+	actions: [],
+};
 
 function useRuntimeConfig(runtime: CommandCenterRuntimePort) {
 	const [config, setConfig] = useState(() => runtime.getConfig());
@@ -187,8 +194,8 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const reducedMotion = useReducedMotion();
 	const groups = useMemo(() => config.groups.slice().sort((a, b) => a.order - b.order), [config.groups]);
 	const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
-	const tabOrder = useMemo(() => config.modal.tabOrder.filter((entry) => entry === 'all' || groupById.has(entry)), [config.modal.tabOrder, groupById]);
-	const [scope, setScope] = useState<string | 'all'>(() => tabOrder[0] ?? 'all');
+	const tabOrder = useMemo(() => config.modal.tabOrder.filter((entry) => entry === 'home' || groupById.has(entry)), [config.modal.tabOrder, groupById]);
+	const [scope, setScope] = useState<string | 'home'>(() => tabOrder[0] ?? 'home');
 	const [query, setQuery] = useState('');
 	const [items, setItems] = useState<ResolvedCommandCenterItem[]>([]);
 	const [allCommandMatches, setAllCommandMatches] = useState<CommandCenterCatalogEntry[]>([]);
@@ -215,7 +222,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 	useEffect(() => {
 		if (tabOrder.includes(scope)) return;
-		setScope(tabOrder[0] ?? 'all');
+		setScope(tabOrder[0] ?? 'home');
 	}, [scope, tabOrder]);
 
 	useEffect(() => {
@@ -246,9 +253,10 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		return () => { cancelled = true; };
 	}, [runtime, scope, query, config]);
 	const sections = useMemo(() => {
-		const visibleGroups = scope === 'all' ? groups : groups.filter((group) => group.id === scope);
-		return visibleGroups.map((group) => ({ group, items: items.filter((item) => item.groupId === group.id) }));
-	}, [groups, items, scope]);
+		if (scope === 'home') return [{ group: HOME_GROUP, items }];
+		const group = groupById.get(scope);
+		return group ? [{ group, items }] : [];
+	}, [groupById, items, scope]);
 
 	const resolvedModes = useMemo(() => {
 		const resolved = new Map<string, ResolvedCommandCenterDisplayMode>();
@@ -408,7 +416,10 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		}
 		const { groupId, itemId, placement } = dropTarget;
 		suppressClickRef.current = true;
-		void runtime.moveItem(draggedId, groupId, itemId, placement).catch((error) => {
+		const move = groupId === 'home'
+			? runtime.moveHomeItem(draggedId, itemId, placement)
+			: runtime.moveItem(draggedId, groupId, itemId, placement);
+		void move.catch((error) => {
 			console.error('[Peak Command Center] Failed to reorder launcher item.', error);
 		});
 		rootRef.current?.ownerDocument.defaultView?.setTimeout(() => { suppressClickRef.current = false; }, 120);
@@ -416,6 +427,10 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	};
 
 	const handleTabDragStart = (event: React.DragEvent<HTMLDivElement>, tabId: CommandCenterTabId): void => {
+		if (tabId === 'home') {
+			event.preventDefault();
+			return;
+		}
 		setDraggedTabId(tabId);
 		event.dataTransfer.effectAllowed = 'move';
 		event.dataTransfer.setData('text/plain', tabId);
@@ -437,7 +452,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			return;
 		}
 		const rect = event.currentTarget.getBoundingClientRect();
-		setTabDropTarget({ tabId, placement: event.clientX > rect.left + rect.width / 2 ? 'after' : 'before' });
+		setTabDropTarget({ tabId, placement: tabId === 'home' ? 'after' : event.clientX > rect.left + rect.width / 2 ? 'after' : 'before' });
 	};
 
 	const handleTabDrop = (event: React.DragEvent<HTMLDivElement>): void => {
@@ -508,7 +523,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			const current = Math.max(0, tabOrder.indexOf(scope));
 			const delta = event.shiftKey ? -1 : 1;
 			const next = (current + delta + tabOrder.length) % tabOrder.length;
-			setScope(tabOrder[next] ?? 'all');
+			setScope(tabOrder[next] ?? 'home');
 			return;
 		}
 		const direction = ({ ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' } as const)[event.key];
@@ -538,8 +553,9 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 			<div className="pk-cc-groups" role="tablist" aria-label="Command groups">
 				{tabOrder.map((tab) => {
-					const group = tab === 'all' ? null : groupById.get(tab);
-					if (tab !== 'all' && !group) return null;
+					const isHome = tab === 'home';
+					const group = isHome ? null : groupById.get(tab);
+					if (!isHome && !group) return null;
 					const dropPlacement = tabDropTarget?.tabId === tab ? tabDropTarget.placement : null;
 					return (
 						<motion.div
@@ -548,8 +564,9 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 							layout="position"
 							transition={reducedMotion ? { duration: 0 } : { layout: { type: 'spring', stiffness: 520, damping: 42 } }}
 							data-dragging={draggedTabId === tab ? 'true' : undefined}
+							data-fixed={isHome ? 'true' : undefined}
 							data-drop-placement={dropPlacement ?? undefined}
-							draggable
+							draggable={!isHome}
 							onDragStart={(event) => handleTabDragStart(event as unknown as React.DragEvent<HTMLDivElement>, tab)}
 							onDragOver={(event) => handleTabDragOver(event, tab)}
 							onDrop={handleTabDrop}
@@ -558,9 +575,9 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 							<Pill className="pk-cc-group-tab" selected={scope === tab} role="tab" aria-selected={scope === tab} onClick={() => {
 								if (!suppressClickRef.current) setScope(tab);
 							}}>
-								{group ? <CommandCenterIcon icon={group.icon} size={15} /> : null}
-								<span>{group?.label ?? 'All'}</span>
-								<GripVertical className="pk-cc-group-tab__grip" size={11} aria-hidden="true" />
+								{isHome ? <House size={15} aria-hidden="true" /> : <CommandCenterIcon icon={group?.icon} size={15} />}
+								<span>{isHome ? 'Home' : group?.label}</span>
+								{isHome ? null : <GripVertical className="pk-cc-group-tab__grip" size={11} aria-hidden="true" />}
 							</Pill>
 						</motion.div>
 					);
@@ -575,7 +592,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 						group={group}
 						items={groupItems}
 						resolvedModes={resolvedModes}
-						showGroupLabel={scope === 'all'}
+						showGroupLabel={false}
 						activeId={activeId}
 						draggedId={draggedId}
 						dropTarget={dropTarget}

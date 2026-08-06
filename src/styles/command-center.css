@@ -153,6 +153,10 @@
 	opacity: 0.24;
 }
 
+.pk-cc-tab-slot[data-fixed="true"] {
+	cursor: default;
+}
+
 .pk-cc-tab-slot[data-drop-placement]::after {
 	position: absolute;
 	z-index: 3;

@@ -5,6 +5,7 @@ import type {
 	CommandCenterDropPlacement,
 	CommandCenterDisplayMode,
 	CommandCenterGroup,
+	CommandCenterHomeLayoutItem,
 	CommandCenterItemIcon,
 	CommandCenterTabId,
 } from './types';
@@ -117,19 +118,54 @@ function normalizeGroup(value: unknown, index: number): CommandCenterGroup | nul
 	};
 }
 
-function normalizeTabOrder(value: unknown, groups: CommandCenterGroup[]): Array<string | 'all'> {
+function normalizeTabOrder(value: unknown, groups: CommandCenterGroup[]): Array<string | 'home'> {
 	const groupIds = groups.map((group) => group.id);
-	const valid = new Set<string>(['all', ...groupIds]);
+	const valid = new Set<string>(['home', ...groupIds]);
 	const requested = Array.isArray(value)
-		? value.map((item) => cleanText(item)).filter((item) => valid.has(item))
+		? value.map((item) => cleanText(item)).map((item) => item === 'all' ? 'home' : item).filter((item) => valid.has(item))
 		: [];
-	const ordered = Array.from(new Set(requested)) as Array<string | 'all'>;
-	if (ordered.length === 0) return ['all', ...groupIds];
-	if (!ordered.includes('all')) ordered.unshift('all');
+	const ordered = Array.from(new Set(requested.filter((item) => item !== 'home'))) as Array<string | 'home'>;
 	for (const groupId of groupIds) {
 		if (!ordered.includes(groupId)) ordered.push(groupId);
 	}
-	return ordered;
+	return ['home', ...ordered];
+}
+
+function normalizeHomeLayout(
+	value: unknown,
+	legacyIds: string[],
+	groups: CommandCenterGroup[],
+): CommandCenterHomeLayoutItem[] {
+	const sourceItems = groups.flatMap((group) => group.actions);
+	const sourceById = new Map(sourceItems.map((item) => [item.id, item]));
+	const seen = new Set<string>();
+	const normalized: CommandCenterHomeLayoutItem[] = [];
+	if (Array.isArray(value)) {
+		for (const [index, entry] of value.entries()) {
+			if (!entry || typeof entry !== 'object') continue;
+			const raw = entry as Record<string, unknown>;
+			const sourceItemId = cleanText(raw.sourceItemId);
+			const sourceItem = sourceById.get(sourceItemId);
+			if (!sourceItem || seen.has(sourceItemId)) continue;
+			seen.add(sourceItemId);
+			normalized.push({
+				sourceItemId,
+				display: normalizeDisplayMode(raw.display, sourceItem.icon),
+				order: typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : index,
+			});
+		}
+	} else {
+		const migratedIds = [...legacyIds, ...sourceItems.filter((item) => item.pinnedToHome).map((item) => item.id)];
+		for (const sourceItemId of migratedIds) {
+			const sourceItem = sourceById.get(sourceItemId);
+			if (!sourceItem || seen.has(sourceItemId)) continue;
+			seen.add(sourceItemId);
+			normalized.push({ sourceItemId, display: 'auto', order: normalized.length });
+		}
+	}
+	return normalized
+		.sort((left, right) => left.order - right.order)
+		.map((item, order) => ({ ...item, order }));
 }
 
 export function normalizeCommandCenterBoardConfig(
@@ -145,24 +181,31 @@ export function normalizeCommandCenterBoardConfig(
 	const orderedGroups = groups.sort((a, b) => a.order - b.order);
 	const rawModal = raw.modal && typeof raw.modal === 'object' ? raw.modal as Record<string, unknown> : {};
 	const tabOrder = normalizeTabOrder(rawModal.tabOrder, orderedGroups);
-	const groupOrder = tabOrder.filter((scope) => scope !== 'all');
+	const groupOrder = tabOrder.filter((scope) => scope !== 'home');
 	const orderByGroupId = new Map(groupOrder.map((groupId, order) => [groupId, order]));
 	const rawHome = raw.home && typeof raw.home === 'object' ? raw.home as Record<string, unknown> : {};
 	const strings = (entry: unknown): string[] => Array.isArray(entry)
 		? entry.map((item) => cleanText(item)).filter(Boolean)
 		: [];
+	const groupsInTabOrder = orderedGroups
+		.sort((a, b) => (orderByGroupId.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (orderByGroupId.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+		.map((group, order) => ({ ...group, order }));
+	const homeLayout = normalizeHomeLayout(rawHome.layout, strings(rawHome.quickAccessActionIds), groupsInTabOrder);
+	const homeItemIds = new Set(homeLayout.map((item) => item.sourceItemId));
 	return {
-		version: 1,
+		version: 2,
 		modal: { density: 'compact', tabOrder },
 		home: {
 			openOnStartup: rawHome.openOnStartup === true,
 			replaceEmptyTab: rawHome.replaceEmptyTab === true,
-			quickAccessActionIds: strings(rawHome.quickAccessActionIds),
+			layout: homeLayout,
+			quickAccessActionIds: homeLayout.map((item) => item.sourceItemId),
 			pinnedTargetIds: strings(rawHome.pinnedTargetIds),
 		},
-		groups: orderedGroups
-			.sort((a, b) => (orderByGroupId.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (orderByGroupId.get(b.id) ?? Number.MAX_SAFE_INTEGER))
-			.map((group, order) => ({ ...group, order })),
+		groups: groupsInTabOrder.map((group) => ({
+			...group,
+			actions: group.actions.map((item) => ({ ...item, pinnedToHome: homeItemIds.has(item.id) })),
+		})),
 	};
 }
 
@@ -200,6 +243,30 @@ export function moveCommandCenterItem(
 	return next;
 }
 
+export function moveCommandCenterHomeItem(
+	config: CommandCenterBoardConfig,
+	itemId: string,
+	targetItemId: string | null,
+	placement: CommandCenterDropPlacement,
+): CommandCenterBoardConfig {
+	const next = cloneCommandCenterConfig(config);
+	if (targetItemId === itemId) return next;
+	const sourceIndex = next.home.layout.findIndex((item) => item.sourceItemId === itemId);
+	if (sourceIndex < 0) return next;
+	const [moved] = next.home.layout.splice(sourceIndex, 1);
+	if (!moved) return next;
+	const targetIndex = targetItemId
+		? next.home.layout.findIndex((item) => item.sourceItemId === targetItemId)
+		: -1;
+	const insertionIndex = targetIndex < 0
+		? next.home.layout.length
+		: targetIndex + (placement === 'after' ? 1 : 0);
+	next.home.layout.splice(insertionIndex, 0, moved);
+	next.home.layout = next.home.layout.map((item, order) => ({ ...item, order }));
+	next.home.quickAccessActionIds = next.home.layout.map((item) => item.sourceItemId);
+	return next;
+}
+
 export function moveCommandCenterTab(
 	config: CommandCenterBoardConfig,
 	tabId: CommandCenterTabId,
@@ -207,16 +274,17 @@ export function moveCommandCenterTab(
 	placement: CommandCenterDropPlacement,
 ): CommandCenterBoardConfig {
 	const next = cloneCommandCenterConfig(config);
-	if (tabId === targetTabId) return next;
+	if (tabId === 'home' || tabId === targetTabId) return next;
 	const tabs = next.modal.tabOrder.slice();
 	const sourceIndex = tabs.indexOf(tabId);
 	if (sourceIndex < 0 || !tabs.includes(targetTabId)) return next;
 	const [moved] = tabs.splice(sourceIndex, 1);
 	if (!moved) return next;
 	const targetIndex = tabs.indexOf(targetTabId);
-	tabs.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, moved);
-	next.modal.tabOrder = tabs;
-	const groupOrder = tabs.filter((entry): entry is string => entry !== 'all');
+	const insertionIndex = targetTabId === 'home' ? 1 : targetIndex + (placement === 'after' ? 1 : 0);
+	tabs.splice(insertionIndex, 0, moved);
+	next.modal.tabOrder = ['home', ...tabs.filter((entry) => entry !== 'home')];
+	const groupOrder = next.modal.tabOrder.filter((entry): entry is string => entry !== 'home');
 	const orderByGroupId = new Map(groupOrder.map((groupId, order) => [groupId, order]));
 	next.groups = next.groups
 		.slice()

@@ -70,6 +70,13 @@ function findItem(group: CommandCenterGroup, key: string): CommandCenterActionIt
 	return group.actions.find((item) => commandCenterActionKey(item.action) === key);
 }
 
+function removeHomeItem(config: CommandCenterBoardConfig, itemId: string): void {
+	config.home.layout = config.home.layout
+		.filter((item) => item.sourceItemId !== itemId)
+		.map((item, order) => ({ ...item, order }));
+	config.home.quickAccessActionIds = config.home.layout.map((item) => item.sourceItemId);
+}
+
 export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCenterCustomizeProps): React.ReactElement {
 	const [config, setConfig] = useState(() => runtime.getConfig());
 	const groups = useMemo(() => config.groups.slice().sort((a, b) => a.order - b.order), [config.groups]);
@@ -159,7 +166,7 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 			const existing = findItem(group, entry.key);
 			if (existing) {
 				group.actions = group.actions.filter((item) => item.id !== existing.id).map((item, order) => ({ ...item, order }));
-				next.home.quickAccessActionIds = next.home.quickAccessActionIds.filter((id) => id !== existing.id);
+				removeHomeItem(next, existing.id);
 				setExpandedKey(null);
 				return;
 			}
@@ -305,8 +312,11 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 								}
 								const nextId = groups.find((group) => group.id !== activeGroup.id)?.id ?? '';
 								updateConfig((next) => {
+									const removedIds = new Set(next.groups.find((group) => group.id === activeGroup.id)?.actions.map((item) => item.id) ?? []);
 									next.groups = next.groups.filter((group) => group.id !== activeGroup.id).map((group, order) => ({ ...group, order }));
 									next.modal.tabOrder = next.modal.tabOrder.filter((tab) => tab !== activeGroup.id);
+									next.home.layout = next.home.layout.filter((item) => !removedIds.has(item.sourceItemId)).map((item, order) => ({ ...item, order }));
+									next.home.quickAccessActionIds = next.home.layout.map((item) => item.sourceItemId);
 								});
 								setGroupId(nextId);
 								setDeleteConfirmGroupId(null);
@@ -358,6 +368,7 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 					<div className="pk-cc-directory" role="list" aria-label={`Items for ${activeGroup.label}`} aria-busy={catalogLoading}>
 						{visibleCatalog.map((entry) => {
 							const item = findItem(activeGroup, entry.key);
+							const homeLayoutItem = item ? config.home.layout.find((candidate) => candidate.sourceItemId === item.id) : undefined;
 							const expanded = Boolean(item && expandedKey === entry.key);
 							return (
 								<div key={entry.key} className="pk-cc-directory-entry" data-active={item ? 'true' : 'false'} role="listitem">
@@ -373,10 +384,20 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 									{expanded && item ? (
 										<CommandCenterItemEditor
 											item={item}
+											shownOnHome={Boolean(homeLayoutItem)}
+											homeDisplay={homeLayoutItem?.display}
 											onUpdate={(mutate) => updateItem(entry.key, mutate)}
 											onPin={(checked) => updateItem(entry.key, (target, next) => {
 												target.pinnedToHome = checked;
-												next.home.quickAccessActionIds = checked ? Array.from(new Set([...next.home.quickAccessActionIds, target.id])) : next.home.quickAccessActionIds.filter((id) => id !== target.id);
+												if (checked && !next.home.layout.some((candidate) => candidate.sourceItemId === target.id)) {
+													next.home.layout.push({ sourceItemId: target.id, display: 'auto', order: next.home.layout.length });
+												}
+												if (!checked) removeHomeItem(next, target.id);
+												next.home.quickAccessActionIds = next.home.layout.map((candidate) => candidate.sourceItemId);
+											})}
+											onHomeDisplay={(display) => updateConfig((next) => {
+												const homeItem = next.home.layout.find((candidate) => candidate.sourceItemId === item.id);
+												if (homeItem) homeItem.display = display;
 											})}
 										/>
 									) : null}

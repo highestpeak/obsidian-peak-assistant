@@ -44,6 +44,7 @@ const adapter = readFileSync('src/app/command-center/ObsidianCommandCenterAdapte
 assert.match(modal, /runtime: CommandCenterRuntimePort/);
 assert.match(home, /runtime: CommandCenterRuntimePort/);
 assert.match(home, /runtime\.openCustomize\(\)/, 'Home must enter Customize directly');
+assert.match(home, /runtime\.resolveItems\('home'\)/, 'full Home workspace must consume the same independent Home layout');
 assert.match(customize, /pk-cc-directory/, 'Customize must keep one continuous catalog');
 assert.doesNotMatch(customize, /ADDED TO|AVAILABLE COMMANDS|window\.confirm/i, 'Customize must not split or jump between membership regions');
 assert.match(customize, /runtime\.getCatalog\(debouncedQuery, catalogScope\)/, 'Customize catalog search must be scoped and debounced');
@@ -54,6 +55,8 @@ assert.match(customize, /onBlur=\{commitGroupLabel\}/, 'group renaming must comm
 assert.doesNotMatch(customize, /onDone|>Done</, 'autosaving customization must not expose a fake Done action');
 assert.match(customize, /pk-cc-directory-row__copy/, 'directory rows must keep label and source in a stable two-line copy column');
 assert.match(customize, /CommandCenterArrangeItems/, 'membership and arrangement must be separate tasks without splitting the catalog');
+assert.match(customize, /next\.home\.layout\.push/, 'Customize pinning must add one action to the independent Home layout');
+assert.match(customize, /homeDisplay=\{homeLayoutItem\?\.display\}/, 'Home display must remain independent from its source group item');
 assert.doesNotMatch(customize, /CommandCenterArrangeTabs|Arrange launcher tabs|arrange-tabs/, 'tab ordering must not live in a separate Customize panel');
 assert.match(customize, /shortLabel: entry\.label/, 'new items must preserve the complete source command name');
 assert.doesNotMatch(customize, /compactCommandLabel|actionLayout/, 'Customize must not shorten names or impose a group-wide layout');
@@ -75,11 +78,15 @@ assert.match(iconBrowser, /Type or paste any emoji/, 'emoji customization must a
 assert.match(launcher, /draggable=\{dragEnabled\}/, 'configured items must be directly draggable in the launcher');
 assert.match(launcher, /runtime\.moveItem\(draggedId, groupId, itemId, placement\)/, 'launcher drag must persist through the runtime instead of remaining a visual mock');
 assert.match(launcher, /runtime\.moveTab\(draggedTabId, targetTabId, placement\)/, 'top-level tabs must persist direct drag ordering in place');
+assert.match(launcher, /draggable=\{!isHome\}/, 'Home must be fixed while ordinary tabs remain draggable');
+assert.match(launcher, /if \(scope === 'home'\) return \[\{ group: HOME_GROUP, items \}\]/, 'Home must render one independent mixed layout instead of aggregating groups');
+assert.doesNotMatch(launcher, /scope === 'all'/, 'launcher must not retain the old All aggregation branch');
+assert.match(launcher, /runtime\.moveHomeItem\(draggedId, itemId, placement\)/, 'direct Home drag must persist through its independent order');
 assert.match(launcher, /runtime\.getCatalog\(query, 'commands'\)/, 'launcher search must query the complete command-only catalog');
 assert.doesNotMatch(launcher, /runtime\.getCatalog\(query, 'all'\)/, 'launcher fallback must never expand into documents or other catalog scopes');
 assert.match(launcher, /runtime\.invokeCatalogEntry\(entry\)/, 'global fallback results must execute through the existing runtime boundary');
 assert.match(globalResults, /Show all \{total\} commands/, 'global command preview must expand in place');
-assert.match(launcher, /className="pk-cc-tab-slot"/, 'All and group tabs must share one directly draggable rail primitive');
+assert.match(launcher, /className="pk-cc-tab-slot"/, 'Home and group tabs must share one rail primitive while retaining distinct drag behavior');
 assert.match(launcher, /setDragImage\(ghost/, 'direct drag must provide a dedicated visual ghost');
 assert.match(launcher, /resolveAutoCommandCenterDisplayMode/, 'Auto display must measure and resolve the rendered label');
 

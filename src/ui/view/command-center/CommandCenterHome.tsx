@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, Clock3, FileText, Search, SlidersHorizontal } from 'lucide-react';
 import type {
 	CommandCenterCatalogEntry,
@@ -14,8 +14,8 @@ function useHomeData(runtime: CommandCenterRuntimePort) {
 	useEffect(() => runtime.subscribe(() => setConfig(runtime.getConfig())), [runtime]);
 	useEffect(() => {
 		let cancelled = false;
-		void Promise.all(config.groups.map((group) => runtime.resolveItems(group.id))).then((groups) => {
-			if (!cancelled) setItems(groups.flat());
+		void runtime.resolveItems('home').then((homeItems) => {
+			if (!cancelled) setItems(homeItems);
 		});
 		return () => { cancelled = true; };
 	}, [runtime, config]);
@@ -23,11 +23,9 @@ function useHomeData(runtime: CommandCenterRuntimePort) {
 }
 
 export function CommandCenterHome({ runtime }: { runtime: CommandCenterRuntimePort }): React.ReactElement {
-	const { config, items } = useHomeData(runtime);
-	const pinnedIds = useMemo(() => new Set(config.home.quickAccessActionIds), [config.home.quickAccessActionIds]);
-	const pinnedItems = items.filter((item) => item.pinnedToHome || pinnedIds.has(item.id));
-	const quickAccess = pinnedItems.filter((item) => item.action.kind !== 'vault-target');
-	const pinnedPages = pinnedItems.filter((item) => item.action.kind === 'vault-target');
+	const { items } = useHomeData(runtime);
+	const quickAccess = items.filter((item) => item.action.kind !== 'vault-target');
+	const pinnedPages = items.filter((item) => item.action.kind === 'vault-target');
 	const recent = runtime.getRecentTargets();
 
 	const openRecent = (path: string, label: string): void => {

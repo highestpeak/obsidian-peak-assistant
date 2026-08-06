@@ -7,6 +7,7 @@ import {
 	commandCenterCatalogScopeForAction,
 	COMMAND_CENTER_CATALOG_DEFAULTS,
 	moveCommandCenterItem,
+	moveCommandCenterHomeItem,
 	moveCommandCenterTab,
 	moveProjectionFocus,
 	normalizeCommandCenterBoardConfig,
@@ -19,8 +20,8 @@ import {
 const rawDefaults = JSON.parse(readFileSync('templates/config/command-center-defaults.json', 'utf8')) as CommandCenterBoardConfig;
 const defaults = normalizeCommandCenterBoardConfig(rawDefaults, rawDefaults);
 
-assert.strictEqual(defaults.version, 1);
-assert.deepStrictEqual(defaults.modal.tabOrder, ['all', 'pinned', 'peak-assistant', 'navigation']);
+assert.strictEqual(defaults.version, 2);
+assert.deepStrictEqual(defaults.modal.tabOrder, ['home', 'pinned', 'peak-assistant', 'navigation']);
 assert.deepStrictEqual(defaults.groups.map((group) => group.label), ['Pinned', 'Peak Assistant', 'Navigation']);
 assert.ok(
 	defaults.groups.flatMap((group) => group.actions).every((item) => item.display === 'auto'),
@@ -39,6 +40,13 @@ assert.deepStrictEqual(
 );
 assert.strictEqual(defaults.home.openOnStartup, false);
 assert.strictEqual(defaults.home.replaceEmptyTab, false);
+assert.deepStrictEqual(defaults.home.layout.map((item) => item.sourceItemId), ['pinned-home', 'pinned-usage']);
+
+const independentHomeDisplay = JSON.parse(JSON.stringify(defaults)) as any;
+independentHomeDisplay.home.layout[0].display = 'full';
+const normalizedIndependentHomeDisplay = normalizeCommandCenterBoardConfig(independentHomeDisplay, defaults);
+assert.strictEqual(normalizedIndependentHomeDisplay.home.layout[0]?.display, 'full');
+assert.strictEqual(normalizedIndependentHomeDisplay.groups[0]?.actions[0]?.display, 'auto', 'Home display overrides must not rewrite the source group layout');
 
 const roundTrip = normalizeCommandCenterBoardConfig(JSON.parse(JSON.stringify(defaults)), rawDefaults);
 assert.deepStrictEqual(roundTrip, defaults, 'normalized config must round-trip without drift');
@@ -46,7 +54,20 @@ assert.deepStrictEqual(roundTrip, defaults, 'normalized config must round-trip w
 const legacyBoard = JSON.parse(JSON.stringify(defaults)) as any;
 delete legacyBoard.modal.tabOrder;
 const migratedLegacyBoard = normalizeCommandCenterBoardConfig(legacyBoard, defaults);
-assert.deepStrictEqual(migratedLegacyBoard.modal.tabOrder, ['all', 'pinned', 'peak-assistant', 'navigation'], 'legacy boards must migrate to All-first tab order');
+assert.deepStrictEqual(migratedLegacyBoard.modal.tabOrder, ['home', 'pinned', 'peak-assistant', 'navigation'], 'boards without a tab order must migrate to fixed Home-first order');
+
+const versionOneBoard = JSON.parse(JSON.stringify(defaults)) as any;
+versionOneBoard.version = 1;
+versionOneBoard.modal.tabOrder = ['peak-assistant', 'all', 'navigation', 'pinned'];
+delete versionOneBoard.home.layout;
+versionOneBoard.home.quickAccessActionIds = ['peak-chat-studio', 'navigation-daily-note'];
+for (const group of versionOneBoard.groups) {
+	for (const item of group.actions) item.pinnedToHome = false;
+}
+versionOneBoard.groups[0].actions[0].pinnedToHome = true;
+const migratedVersionOneBoard = normalizeCommandCenterBoardConfig(versionOneBoard, defaults);
+assert.deepStrictEqual(migratedVersionOneBoard.modal.tabOrder, ['home', 'peak-assistant', 'navigation', 'pinned'], 'legacy All must become a fixed Home tab without preserving its draggable position');
+assert.deepStrictEqual(migratedVersionOneBoard.home.layout.map((item) => item.sourceItemId), ['peak-chat-studio', 'navigation-daily-note', 'pinned-home'], 'legacy quick access and pinned actions must migrate into one independent Home order');
 
 const missingIcon = JSON.parse(JSON.stringify(defaults)) as any;
 const firstItem = missingIcon.groups[0]!.actions[0]!;
@@ -127,9 +148,14 @@ assert.deepStrictEqual(moved.groups.find((group) => group.id === 'pinned')?.acti
 assert.strictEqual(moved.groups.find((group) => group.id === 'peak-assistant')?.actions.some((item) => item.id === 'peak-settings'), false, 'direct drag must support moving an item across groups');
 assert.deepStrictEqual(moved.groups.find((group) => group.id === 'pinned')?.actions.map((item) => item.order), [0, 1, 2], 'cross-group moves must normalize persisted order');
 
-const movedTabs = moveCommandCenterTab(defaults, 'all', 'peak-assistant', 'after');
-assert.deepStrictEqual(movedTabs.modal.tabOrder, ['pinned', 'peak-assistant', 'all', 'navigation']);
-assert.deepStrictEqual(movedTabs.groups.map((group) => group.id), ['pinned', 'peak-assistant', 'navigation'], 'direct tab drag must keep group order aligned with the launcher rail');
-assert.deepStrictEqual(moveCommandCenterTab(movedTabs, 'navigation', 'pinned', 'before').modal.tabOrder, ['navigation', 'pinned', 'peak-assistant', 'all']);
+assert.deepStrictEqual(moveCommandCenterTab(defaults, 'home', 'peak-assistant', 'after'), defaults, 'Home must never move with ordinary tabs');
+const movedTabs = moveCommandCenterTab(defaults, 'navigation', 'home', 'before');
+assert.deepStrictEqual(movedTabs.modal.tabOrder, ['home', 'navigation', 'pinned', 'peak-assistant']);
+assert.deepStrictEqual(movedTabs.groups.map((group) => group.id), ['navigation', 'pinned', 'peak-assistant'], 'direct tab drag must keep group order aligned after fixed Home');
+assert.deepStrictEqual(moveCommandCenterTab(movedTabs, 'peak-assistant', 'navigation', 'before').modal.tabOrder, ['home', 'peak-assistant', 'navigation', 'pinned']);
+
+const movedHome = moveCommandCenterHomeItem(defaults, 'pinned-usage', 'pinned-home', 'before');
+assert.deepStrictEqual(movedHome.home.layout.map((item) => item.sourceItemId), ['pinned-usage', 'pinned-home']);
+assert.deepStrictEqual(movedHome.home.quickAccessActionIds, ['pinned-usage', 'pinned-home'], 'Home compatibility ids must follow its independent layout order');
 
 console.log('command-center-config: passed');

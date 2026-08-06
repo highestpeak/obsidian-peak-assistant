@@ -5,6 +5,7 @@ import {
 	commandCenterActionKey,
 	commandCenterCatalogScopeForAction,
 	moveCommandCenterItem,
+	moveCommandCenterHomeItem,
 	moveCommandCenterTab,
 	normalizeCommandCenterBoardConfig,
 	type CommandCenterActionItem,
@@ -82,6 +83,14 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 		await this.saveConfig(moveCommandCenterItem(this.config, itemId, targetGroupId, targetItemId, placement));
 	}
 
+	async moveHomeItem(
+		itemId: string,
+		targetItemId: string | null,
+		placement: CommandCenterDropPlacement,
+	): Promise<void> {
+		await this.saveConfig(moveCommandCenterHomeItem(this.config, itemId, targetItemId, placement));
+	}
+
 	async moveTab(
 		tabId: CommandCenterTabId,
 		targetTabId: CommandCenterTabId,
@@ -90,38 +99,43 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 		await this.saveConfig(moveCommandCenterTab(this.config, tabId, targetTabId, placement));
 	}
 
-	async resolveItems(groupId: string | 'all', query = ''): Promise<ResolvedCommandCenterItem[]> {
+	async resolveItems(groupId: string | 'home', query = ''): Promise<ResolvedCommandCenterItem[]> {
 		const normalizedQuery = query.trim().toLocaleLowerCase();
-		const groups = this.config.groups
-			.filter((group) => groupId === 'all' || group.id === groupId)
-			.sort((a, b) => a.order - b.order);
-		const seen = new Set<string>();
-		const resolved: ResolvedCommandCenterItem[] = [];
-		for (const group of groups) {
-			for (const item of group.actions.slice().sort((a, b) => a.order - b.order)) {
-				const identity = commandCenterActionKey(item.action);
-				if (groupId === 'all' && seen.has(identity)) continue;
-				seen.add(identity);
-				const command = this.adapter.getCommand(item.action);
-				const available = isDestination(item) ? this.adapter.destinationAvailable(item.action) : command !== null;
-				const fullLabel = command?.name ?? item.shortLabel;
-				const sourceLabel = sourceForItem(item, this.adapter);
-				const searchable = [item.shortLabel, fullLabel, sourceLabel, group.label, ...item.aliases]
-					.join(' ')
-					.toLocaleLowerCase();
-				if (normalizedQuery && !searchable.includes(normalizedQuery)) continue;
-				resolved.push({
-					...item,
-					groupId: group.id,
-					groupLabel: group.label,
-					fullLabel,
-					sourceLabel,
-					layer: isDestination(item) ? 'destination' : 'command',
-					available,
-					unavailableReason: available ? undefined : 'This command or destination is not currently available.',
-					hotkey: this.adapter.resolveHotkey(item.action),
-				});
+		const candidates: Array<{ group: typeof this.config.groups[number]; item: CommandCenterActionItem }> = [];
+		if (groupId === 'home') {
+			const owners = new Map(this.config.groups.flatMap((group) => group.actions.map((item) => [item.id, { group, item }] as const)));
+			for (const layoutItem of this.config.home.layout.slice().sort((left, right) => left.order - right.order)) {
+				const owner = owners.get(layoutItem.sourceItemId);
+				if (!owner) continue;
+				candidates.push({ group: owner.group, item: { ...owner.item, display: layoutItem.display } });
 			}
+		} else {
+			const group = this.config.groups.find((candidate) => candidate.id === groupId);
+			if (group) {
+				for (const item of group.actions.slice().sort((left, right) => left.order - right.order)) candidates.push({ group, item });
+			}
+		}
+		const resolved: ResolvedCommandCenterItem[] = [];
+		for (const { group, item } of candidates) {
+			const command = this.adapter.getCommand(item.action);
+			const available = isDestination(item) ? this.adapter.destinationAvailable(item.action) : command !== null;
+			const fullLabel = command?.name ?? item.shortLabel;
+			const sourceLabel = sourceForItem(item, this.adapter);
+			const searchable = [item.shortLabel, fullLabel, sourceLabel, group.label, ...item.aliases]
+				.join(' ')
+				.toLocaleLowerCase();
+			if (normalizedQuery && !searchable.includes(normalizedQuery)) continue;
+			resolved.push({
+				...item,
+				groupId: groupId === 'home' ? 'home' : group.id,
+				groupLabel: groupId === 'home' ? 'Home' : group.label,
+				fullLabel,
+				sourceLabel,
+				layer: isDestination(item) ? 'destination' : 'command',
+				available,
+				unavailableReason: available ? undefined : 'This command or destination is not currently available.',
+				hotkey: this.adapter.resolveHotkey(item.action),
+			});
 		}
 		return resolved;
 	}

@@ -45,12 +45,18 @@ function commitTextDraft(
 
 export function CommandCenterItemEditor({
 	item,
+	shownOnHome,
+	homeDisplay,
 	onUpdate,
 	onPin,
+	onHomeDisplay,
 }: {
 	item: CommandCenterActionItem;
+	shownOnHome: boolean;
+	homeDisplay?: CommandCenterDisplayMode;
 	onUpdate: (mutate: (target: CommandCenterActionItem) => void) => void;
 	onPin: (checked: boolean) => void;
+	onHomeDisplay: (display: CommandCenterDisplayMode) => void;
 }): React.ReactElement {
 	const editorRef = React.useRef<HTMLDivElement>(null);
 	const reducedMotion = useReducedMotion();
@@ -119,8 +125,14 @@ export function CommandCenterItemEditor({
 			</div>
 			<div className="pk-cc-item-editor__row pk-cc-item-editor__home-row">
 				<span>Show on Home</span>
-				<span className="pk-cc-item-editor__control"><Toggle checked={item.pinnedToHome} label={`Show ${item.shortLabel} on Command Center Home`} onCheckedChange={onPin} /><span>Also place this action in the full Command Center Home workspace.</span></span>
+				<span className="pk-cc-item-editor__control"><Toggle checked={shownOnHome} label={`Show ${item.shortLabel} on Command Center Home`} onCheckedChange={onPin} /><span>Add this action to the independent Home layout.</span></span>
 			</div>
+			{shownOnHome ? (
+				<div className="pk-cc-item-editor__row">
+					<span>Home display</span>
+					<span className="pk-cc-item-editor__control"><Segmented value={homeDisplay ?? 'auto'} onValueChange={onHomeDisplay} options={displayOptions} variant="animated-pill" size="sm" aria-label="Home display mode" /><span>Home keeps its own size without changing this group.</span></span>
+				</div>
+			) : null}
 			{iconOpen ? (
 				<IconBrowser
 					value={item.icon}

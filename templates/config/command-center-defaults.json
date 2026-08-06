@@ -1,12 +1,16 @@
 {
-  "version": 1,
+  "version": 2,
   "modal": {
     "density": "compact",
-    "tabOrder": ["all", "pinned", "peak-assistant", "navigation"]
+    "tabOrder": ["home", "pinned", "peak-assistant", "navigation"]
   },
   "home": {
     "openOnStartup": false,
     "replaceEmptyTab": false,
+    "layout": [
+      { "sourceItemId": "pinned-home", "display": "auto", "order": 0 },
+      { "sourceItemId": "pinned-usage", "display": "auto", "order": 1 }
+    ],
     "quickAccessActionIds": [
       "pinned-home",
       "pinned-usage"

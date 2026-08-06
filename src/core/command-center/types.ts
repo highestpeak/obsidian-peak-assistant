@@ -13,7 +13,7 @@ export type CommandCenterItemIcon =
 export type CommandCenterDisplayMode = 'auto' | 'icon' | 'compact' | 'wide' | 'full';
 export type ResolvedCommandCenterDisplayMode = Exclude<CommandCenterDisplayMode, 'auto'>;
 export type CommandCenterDropPlacement = 'before' | 'after';
-export type CommandCenterTabId = string | 'all';
+export type CommandCenterTabId = string | 'home';
 
 export interface CommandCenterActionItem {
 	id: string;
@@ -34,8 +34,14 @@ export interface CommandCenterGroup {
 	actions: CommandCenterActionItem[];
 }
 
+export interface CommandCenterHomeLayoutItem {
+	sourceItemId: string;
+	display: CommandCenterDisplayMode;
+	order: number;
+}
+
 export interface CommandCenterBoardConfig {
-	version: 1;
+	version: 2;
 	modal: {
 		density: 'compact';
 		tabOrder: CommandCenterTabId[];
@@ -43,6 +49,8 @@ export interface CommandCenterBoardConfig {
 	home: {
 		openOnStartup: boolean;
 		replaceEmptyTab: boolean;
+		layout: CommandCenterHomeLayoutItem[];
+		/** Compatibility mirror retained while version 1 settings migrate to layout. */
 		quickAccessActionIds: string[];
 		pinnedTargetIds: string[];
 	};
@@ -98,8 +106,9 @@ export interface CommandCenterRuntimePort {
 	subscribe(listener: () => void): () => void;
 	saveConfig(config: CommandCenterBoardConfig): Promise<void>;
 	moveItem(itemId: string, targetGroupId: string, targetItemId: string | null, placement: CommandCenterDropPlacement): Promise<void>;
+	moveHomeItem(itemId: string, targetItemId: string | null, placement: CommandCenterDropPlacement): Promise<void>;
 	moveTab(tabId: CommandCenterTabId, targetTabId: CommandCenterTabId, placement: CommandCenterDropPlacement): Promise<void>;
-	resolveItems(groupId: string | 'all', query?: string): Promise<ResolvedCommandCenterItem[]>;
+	resolveItems(groupId: string | 'home', query?: string): Promise<ResolvedCommandCenterItem[]>;
 	getCatalog(query?: string, scope?: CommandCenterCatalogScope): Promise<CommandCenterCatalogEntry[]>;
 	invokeItem(item: CommandCenterActionItem): Promise<boolean>;
 	invokeCatalogEntry(entry: CommandCenterCatalogEntry): Promise<boolean>;
