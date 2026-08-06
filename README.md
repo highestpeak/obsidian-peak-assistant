@@ -147,6 +147,16 @@ Restart Obsidian after the build finishes.
 > [!NOTE]
 > The project does not currently publish release packages. If you prefer a signed, versioned, no-build installation, watch the repository for the first public release.
 
+## Cost and sustainability
+
+Peak Assistant is open source and currently has no Peak subscription, per-note fee, or usage meter.
+
+- **Local-first capabilities do not create a Peak bill.** Fast Index, local read models, file navigation, and other on-device workspace features run on your own machine.
+- **Provider costs remain your choice.** Cloud AI, embeddings, web search, and media generation may cost money through the provider you configure. Local runtimes can be used where the capability supports them.
+- **Supporting the project will remain optional.** Ways to support development may be added later to help cover maintainer tools, model access, and validation infrastructure. No payment or sponsorship link is active today.
+
+For now, the most useful support is to star the repository, share thoughtful feedback, report reproducible issues, or contribute within a clear scope.
+
 ## Data, privacy, and control
 
 Peak Assistant uses a storage boundary instead of treating every generated value as a note.
