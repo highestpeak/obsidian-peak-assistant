@@ -41,6 +41,7 @@ import type { DocumentComposerController } from '@/app/composer/DocumentComposer
 import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
+import { DEFAULT_FILE_ATLAS_CONFIG } from '@/ui/view/file-atlas/config/fileAtlasConfig';
 
 const VAULT_PREVIEW_CONTENT_KINDS = new Set<DocumentBlock['kind']>([
 	RawBlockKind.Paragraph,
@@ -133,7 +134,21 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 	const app = appContext.app;
 	const sessionViews = new Map<string, { lastViewedAt: number; viewCount: number }>();
 	const externalPreviewCache = new Map<string, AtlasExternalLinkPreview | null>();
+	let cacheCapacity = DEFAULT_FILE_ATLAS_CONFIG.rail.capacity;
 	let lastActivePath: string | null = null;
+	let activationVersion = 0;
+	let activationQueue: Promise<void> = Promise.resolve();
+	let documentReadQueue: Promise<void> = Promise.resolve();
+
+	const setBounded = <T>(map: Map<string, T>, key: string, value: T): void => {
+		map.delete(key);
+		map.set(key, value);
+		while (map.size > cacheCapacity) {
+			const oldestKey = map.keys().next().value as string | undefined;
+			if (!oldestKey) return;
+			map.delete(oldestKey);
+		}
+	};
 
 	const sourcePathForView = (view: unknown): string | null => {
 		if (view instanceof MarkdownView) return view.file?.path ?? null;
@@ -185,7 +200,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		if (!path || path === lastActivePath) return;
 		lastActivePath = path;
 		const current = sessionViews.get(path);
-		sessionViews.set(path, {
+		setBounded(sessionViews, path, {
 			lastViewedAt: Date.now(),
 			viewCount: (current?.viewCount ?? 0) + 1,
 		});
@@ -208,18 +223,27 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			controller: DocumentComposerController,
 			blockId: string,
 		) => T | Promise<T>,
+		options: { transient?: boolean; signal?: AbortSignal } = {},
 	): Promise<T | null> => {
+		if (options.signal?.aborted) return null;
 		const owner = appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
 		if (!owner) return null;
-		const controller = owner.createController(`file-atlas-action-${crypto.randomUUID()}`);
+		const hostId = `file-atlas-action-${crypto.randomUUID()}`;
+		const controller = options.transient
+			? owner.createTransientController(hostId, 'markdown', { capabilities: true })
+			: owner.createController(hostId);
+		const stop = (): void => controller.stop();
+		options.signal?.addEventListener('abort', stop, { once: true });
 		try {
 			controller.start(path);
 			await controller.settled();
+			if (options.signal?.aborted) return null;
 			const snapshot = controller.getState().snapshot;
 			const block = snapshot ? composerBlockForAtlasLocation(snapshot, location) : null;
 			if (!block) return null;
 			return await project(controller, block.blockId);
 		} finally {
+			options.signal?.removeEventListener('abort', stop);
 			controller.stop();
 		}
 	};
@@ -252,6 +276,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 
 		async listHistoryDocs(limit: number): Promise<OpenDocMeta[]> {
 			const safeLimit = Math.max(1, limit);
+			cacheCapacity = safeLimit;
 			const byPath = new Map<string, OpenDocMeta>();
 
 			if (sqliteStoreManager.isInitialized()) {
@@ -344,39 +369,49 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			};
 		},
 
-		async readDoc(path: string): Promise<string> {
-			const file = app.vault.getAbstractFileByPath(path);
-			return file instanceof TFile ? app.vault.cachedRead(file) : '';
+		readDoc(path: string, signal?: AbortSignal): Promise<string> {
+			let content = '';
+			const read = async (): Promise<void> => {
+				if (signal?.aborted) return;
+				const file = app.vault.getAbstractFileByPath(path);
+				if (!(file instanceof TFile)) return;
+				const loaded = await app.vault.cachedRead(file);
+				if (!signal?.aborted) content = loaded;
+			};
+			const request = documentReadQueue.then(read, read);
+			documentReadQueue = request.then(() => undefined, () => undefined);
+			return request.then(() => content);
 		},
 
-		async activateDoc(path: string): Promise<void> {
-			for (const leaf of fileContextLeaves()) {
-				if (leaf.path !== path) continue;
-				await leaf.reveal();
-				recordActiveView();
-				return;
-			}
+		activateDoc(path: string): Promise<void> {
+			const version = ++activationVersion;
+			const activate = async (): Promise<void> => {
+				if (version !== activationVersion) return;
+				for (const leaf of fileContextLeaves()) {
+					if (leaf.path !== path) continue;
+					await leaf.reveal();
+					if (version === activationVersion) recordActiveView();
+					return;
+				}
 
-			const file = app.vault.getAbstractFileByPath(path);
-			if (!(file instanceof TFile)) return;
-			const router = appContext.runtimeRegistry.tryGetDocumentComposerRuntime()?.navigation;
-			if (router && file.extension === 'md') {
-				await router.open({
-					filePath: file.path,
-					disposition: 'new-tab',
-					reason: 'file-atlas',
-				});
-				recordActiveView();
-				return;
-			}
-			let leaf;
-			try {
-				leaf = app.workspace.getLeaf('tab');
-			} catch {
-				leaf = app.workspace.getLeaf(false);
-			}
-			await leaf.openFile(file, { active: true });
-			recordActiveView();
+				const file = app.vault.getAbstractFileByPath(path);
+				if (!(file instanceof TFile) || version !== activationVersion) return;
+				const router = appContext.runtimeRegistry.tryGetDocumentComposerRuntime()?.navigation;
+				if (router && file.extension === 'md') {
+					await router.open({
+						filePath: file.path,
+						disposition: 'reuse-existing',
+						reason: 'file-atlas',
+					});
+					if (version === activationVersion) recordActiveView();
+					return;
+				}
+				const leaf = app.workspace.activeLeaf ?? app.workspace.getLeaf(false);
+				await leaf.openFile(file, { active: true });
+				if (version === activationVersion) recordActiveView();
+			};
+			activationQueue = activationQueue.then(activate, activate);
+			return activationQueue;
 		},
 
 		openLink(target: string, sourcePath: string, external: boolean): void {
@@ -481,14 +516,14 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 					throw: false,
 				});
 				if (response.status < 200 || response.status >= 400) {
-					externalPreviewCache.set(url.href, null);
+					setBounded(externalPreviewCache, url.href, null);
 					return null;
 				}
 				const preview = externalLinkPreview(url, response.text, app.workspace.containerEl.ownerDocument);
-				externalPreviewCache.set(url.href, preview);
+				setBounded(externalPreviewCache, url.href, preview);
 				return preview;
 			} catch {
-				externalPreviewCache.set(url.href, null);
+				setBounded(externalPreviewCache, url.href, null);
 				return null;
 			}
 		},
@@ -513,6 +548,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		async loadQuickActions(
 			path: string,
 			location: DocumentSourceLocation,
+			signal?: AbortSignal,
 		): Promise<AtlasQuickActionSnapshot> {
 			const actions = await withComposerBlock(path, location, (controller, blockId) => {
 				const runtime = controller.getRuntime();
@@ -532,7 +568,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 						...(action.disabledReason ? { disabledReason: action.disabledReason } : {}),
 					}));
 				return projectFileAtlasQuickActions(projected);
-			});
+			}, { transient: true, signal });
 			return actions ? { status: 'ready', actions } : { status: 'unavailable', actions: [] };
 		},
 
@@ -577,12 +613,15 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		async loadNeighborhood(
 			path: string,
 			opts: { hops: 1 | 2; semantic: boolean },
+			signal?: AbortSignal,
 		): Promise<AtlasGraphData> {
+			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
 			if (!sqliteStoreManager.isInitialized()) return { nodes: [], hubAnchors: [], edges: [] };
 			const neighborhood = await buildFileAtlasNeighborhood(path, opts, {
 				getConnectedLinks,
 				getDiscoveredConnections,
 			});
+			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
 			const hubs = await getHubsForDoc(path).catch(() => []);
 			const hubRuntime = appContext.runtimeRegistry.tryGetHubGenerationRuntime();
 			const resolvedHubs = await Promise.all(hubs.map(async (hub) => {
@@ -594,6 +633,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 					constituentCount: manifest?.members.length ?? 1,
 				};
 			}));
+			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
 			return {
 				...neighborhood,
 				hubAnchors: resolvedHubs,
@@ -609,13 +649,24 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			};
 		},
 
-		async loadCopilotSuggestions(path: string): Promise<AtlasCopilotSuggestionSnapshot> {
+		async loadCopilotSuggestions(
+			path: string,
+			signal?: AbortSignal,
+		): Promise<AtlasCopilotSuggestionSnapshot> {
+			if (signal?.aborted) return { status: 'unavailable', suggestions: [] };
 			const owner = appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
 			if (!owner) return { status: 'unavailable', suggestions: [] };
-			const controller = owner.createController(`file-atlas-${crypto.randomUUID()}`);
+			const controller = owner.createTransientController(
+				`file-atlas-${crypto.randomUUID()}`,
+				'markdown',
+				{ intelligence: true },
+			);
+			const stop = (): void => controller.stop();
+			signal?.addEventListener('abort', stop, { once: true });
 			try {
 				controller.start(path);
 				await controller.settled();
+				if (signal?.aborted) return { status: 'unavailable', suggestions: [] };
 				const intelligence = controller.getIntelligence();
 				if (!intelligence) return { status: 'unavailable', suggestions: [] };
 				intelligence.refreshBrief();
@@ -642,6 +693,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 				}).sort((left, right) => left.priority - right.priority);
 				return { status: 'ready', suggestions };
 			} finally {
+				signal?.removeEventListener('abort', stop);
 				controller.stop();
 			}
 		},

@@ -45,10 +45,25 @@ function keyForDocument(doc: Document): number {
  * to `doc`, since the WeakMap is keyed by `doc`) when it went stale.
  */
 const portalHosts = new WeakMap<Document, HTMLElement>();
+const attachedPortalHosts = new Set<HTMLElement>();
+const portalHostUnloadListeners = new Map<HTMLElement, { ownerWindow: Window; listener: () => void }>();
+
+function trackPortalHost(host: HTMLElement, doc: Document): void {
+	attachedPortalHosts.add(host);
+	if (portalHostUnloadListeners.has(host)) return;
+	const ownerWindow = doc.defaultView;
+	if (!ownerWindow) return;
+	const listener = (): void => {
+		attachedPortalHosts.delete(host);
+		portalHostUnloadListeners.delete(host);
+		host.remove();
+	};
+	ownerWindow.addEventListener('unload', listener, { once: true });
+	portalHostUnloadListeners.set(host, { ownerWindow, listener });
+}
 
 export function portalHostForDocument(doc: Document): HTMLElement {
 	let host = portalHosts.get(doc);
-	if (host && host.isConnected) return host;
 	if (!host) {
 		host = doc.createElement('div');
 		// Styles-neutral scope root: only carries the inherited --pk-* tokens +
@@ -58,7 +73,19 @@ export function portalHostForDocument(doc: Document): HTMLElement {
 	}
 	// Fresh host, or a cached one whose (popout) body was torn down: (re)attach.
 	if (!host.isConnected) doc.body.appendChild(host);
+	trackPortalHost(host, doc);
 	return host;
+}
+
+/** Remove document-body portal roots created by this plugin generation. */
+export function clearPortalHostsForUnload(): void {
+	for (const host of attachedPortalHosts) {
+		const tracked = portalHostUnloadListeners.get(host);
+		tracked?.ownerWindow.removeEventListener('unload', tracked.listener);
+		host.remove();
+	}
+	attachedPortalHosts.clear();
+	portalHostUnloadListeners.clear();
 }
 
 /**

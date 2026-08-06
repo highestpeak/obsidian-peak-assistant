@@ -75,6 +75,7 @@ import { openSettingsModal } from '@/app/commands/PeakCommandActions';
 import { composePluginCommandGatewayRuntime } from '@/app/commands/gateway/composePluginCommandGatewayRuntime';
 import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
 import { composePeakKeyboardRuntime } from '@/app/keyboard/composePeakKeyboardRuntime';
+import { clearPortalHostsForUnload } from '@/ui/react/ReactRenderer';
 // Note: `openSettingsModal` is also passed into `composeCommandGatewayBindings`
 // (below) via the same import binding; a second import would collide.
 
@@ -121,26 +122,21 @@ export default class MyPlugin extends Plugin {
 
 	/** Cleanup function for Usage Dashboard's chat receipt slot registration. */
 	private unregisterUsageDashboardReceipts?: () => void;
+	private unloading = false;
+
+	private scheduleTimeout(callback: () => void, delayMs: number): void {
+		const ownerWindow = this.app.workspace.containerEl.ownerDocument.defaultView ?? window;
+		const timer = ownerWindow.setTimeout(callback, delayMs);
+		this.register(() => ownerWindow.clearTimeout(timer));
+	}
 
 	/**
 	 * Bootstraps services, views, commands, and layout handling.
 	 */
 	async onload() {
+		this.unloading = false;
 		resetQuickSearchPluginSession();
-		// ── TEMP startup mem diagnostic ──
-		try {
-			const _fs = require('fs') as typeof import('fs');
-			const _L = '/tmp/peak-startup-mem.log';
-			_fs.writeFileSync(_L, `=== onload ${Date.now()} ===\n`);
-			const _a = (s: string): void => { try { _fs.appendFileSync(_L, `${Date.now()} rss=${Math.round(process.memoryUsage().rss/1048576)}MB | ${s}\n`); } catch {} };
-			const _o = { l: console.log, w: console.warn, e: console.error };
-			const _wrap = (fn: (...a: unknown[]) => void) => (...a: unknown[]): void => { _a(a.map(x => typeof x==='string'?x:(()=>{try{return JSON.stringify(x)}catch{return String(x)}})()).join(' ').slice(0,200)); fn(...(a as [])); };
-			console.log = _wrap(_o.l); console.warn = _wrap(_o.w); console.error = _wrap(_o.e);
-			const _t = setInterval(() => _a('·'), 150);
-			setTimeout(() => { clearInterval(_t); console.log=_o.l; console.warn=_o.w; console.error=_o.e; }, 180000);
-			(this as unknown as { _peakMemMark?: (s: string) => void })._peakMemMark = _a;
-		} catch {}
-		// ──────────────────────────────
+		IndexService.resetCancellation();
 		registerTemplateEngineHelpers();
 
 		// Route provider fetches that would otherwise be blocked by browser
@@ -154,7 +150,6 @@ export default class MyPlugin extends Plugin {
 		this.uninstallHoverMenuGlobals = installHoverMenuGlobals();
 
 		const data = await this.loadData();
-		console.log('[MEM] onload: after loadData');
 		this.settings = normalizePluginSettings(data);
 		// Initialize ProfileRegistry from persisted settings (must precede AIServiceManager)
 		const ps = this.settings.profileSettings ?? {
@@ -222,10 +217,8 @@ export default class MyPlugin extends Plugin {
 
 			// Load curator catalog for the Agent Harness onboarding wizard.
 			try {
-				console.log('[MEM] onload: before loadCuratorCatalog');
 				const { loadCuratorCatalog } = await import('@/service/agents/harness/curator');
 				await loadCuratorCatalog(this.templateManager);
-				console.log('[MEM] onload: after loadCuratorCatalog');
 			} catch (e) {
 				console.warn('[Peak Assistant] Failed to load curator catalog; harness onboarding will use fallback rules.', e);
 			}
@@ -353,9 +346,7 @@ export default class MyPlugin extends Plugin {
 		// the app layer (`AppContext.copilotReviewHistory`) with its
 		// folder-created notifier injected at construction time — no late
 		// setter, no service-side singleton.
-		console.log('[MEM] onload: before aiServiceManager.init');
 		await this.aiServiceManager.init();
-		console.log('[MEM] onload: after aiServiceManager.init');
 
 		// Debug Trace Infrastructure — one in-memory recorder per plugin load.
 		// Mode + retention read from `settings.debugTrace`; defaults keep the
@@ -770,8 +761,11 @@ export default class MyPlugin extends Plugin {
 			// initial startup spike has had time to release. Search + File Atlas
 			// warm up a few seconds after load instead of blocking / crashing it.
 			this.app.workspace.onLayoutReady(() => {
-				window.setTimeout(() => {
+				if (this.unloading) return;
+				this.scheduleTimeout(() => {
+					if (this.unloading) return;
 					this.initSqlite().catch((e) => {
+						if (this.unloading) return;
 						console.warn('[Peak Assistant] deferred SQLite init failed:', e);
 					});
 				}, 3500);
@@ -842,12 +836,12 @@ export default class MyPlugin extends Plugin {
 		const profiles = ProfileRegistry.getInstance().getAllProfiles();
 		if (profiles.length === 0) {
 			// Slight delay so the workspace is fully rendered before opening the modal
-			setTimeout(() => {
+			this.scheduleTimeout(() => {
+				if (this.unloading) return;
 				const { HarnessOnboardingModal } = require('@/app/ui-host/modals/HarnessOnboardingModal');
 				new HarnessOnboardingModal(appContext, { isReRun: false }).open();
 			}, 500);
 		}
-		console.log('[MEM] onload: END (returning)');
 	}
 
 	/**
@@ -857,11 +851,11 @@ export default class MyPlugin extends Plugin {
 	 * onboarding wizard after native module download completes.
 	 */
 	async initSqlite(): Promise<void> {
+		if (this.unloading) return;
 		if (this.sqliteInitPromise) return this.sqliteInitPromise;
 
 		this.sqliteInitPromise = (async () => {
 			try {
-				console.log('[MEM] initSqlite: before sqliteStoreManager.init');
 				await sqliteStoreManager.init({
 					app: this.app,
 					storageFolder: this.settings.dataStorageFolder,
@@ -874,6 +868,7 @@ export default class MyPlugin extends Plugin {
 						new Notice(message, durationMs);
 					},
 				});
+				if (this.unloading) return;
 				// T13: Usage services owned by AppRuntimeRegistry as a bundle.
 				// UsageTrackingService subscribes to EventBus in `init()`;
 				// `clearUsageServices` in onunload calls `destroy()` on all
@@ -903,9 +898,8 @@ export default class MyPlugin extends Plugin {
 				} catch (error) {
 					console.warn('[Peak Assistant] Generated-output migration/rebuild failed:', error);
 				}
-				console.log('[MEM] initSqlite: before initializeSearchService');
 				await this.initializeSearchService();
-				console.log('[MEM] initSqlite: after initializeSearchService');
+				if (this.unloading) return;
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
 				}
@@ -935,7 +929,6 @@ export default class MyPlugin extends Plugin {
 				// Hub Generation runtime (Curator + Materializer + Executor + Scheduler).
 				// Must run after sqlite + AIServiceManager + TemplateManager are ready.
 				try {
-					console.log('[MEM] initSqlite: before composeHubGenerationRuntime');
 					const { composeHubGenerationRuntime } = await import('@/app/hub/composeHubGenerationRuntime');
 					const templateManager = this.aiServiceManager.getTemplateManager?.();
 					if (templateManager) {
@@ -976,9 +969,8 @@ export default class MyPlugin extends Plugin {
 					// WorkingThemeInferrer no longer reaches into AppContext.
 					(promptId, vars) => this.aiServiceManager.queryText(promptId as any, vars as any),
 				);
-				console.log('[MEM] initSqlite: before sessionContext.init');
 				await sessionContext.init();
-				console.log('[MEM] initSqlite: after sessionContext.init');
+				if (this.unloading) return;
 				// Only start background AI services if an active profile is configured
 				// (invalid/missing API key causes unrecoverable subprocess crashes)
 				const hasActiveProfile = !!ProfileRegistry.getInstance().getActiveAgentProfile();
@@ -1092,9 +1084,7 @@ export default class MyPlugin extends Plugin {
 						},
 					});
 					this.aiServiceManager.conv.setArtifactProducer(artifactRuntime.producer);
-					console.log('[MEM] before artifactScheduler.start');
 					artifactRuntime.scheduler.start();
-					console.log('[MEM] after artifactScheduler.start');
 					this.register(() => {
 						try { artifactRuntime.scheduler.dispose(); } catch { /* ignore */ }
 					});
@@ -1109,22 +1099,19 @@ export default class MyPlugin extends Plugin {
 				// Ambient runtime instead of the retired `MorningBriefingService`
 				// singleton. `tryGetAmbientRuntime()` returns null if the
 				// runtime was not bound (e.g. Ambient disabled in settings).
-				setTimeout(async () => {
+				this.scheduleTimeout(async () => {
+					if (this.unloading) return;
 					try {
-						console.log('[MEM] briefing: timer fired');
 						const runtime = AppContext.tryGetAmbientRuntime();
 						const shouldShow = (await runtime?.tryShowMorningBriefing()) ?? false;
-						console.log(`[MEM] briefing: tryShow returned ${shouldShow}`);
-						if (shouldShow) {
+						if (shouldShow && !this.unloading) {
 							const { MorningBriefingModal } = await import('@/app/ui-host/modals/MorningBriefingModal');
-							if (!this.appContext) return;
+							if (!this.appContext || this.unloading) return;
 							const modal = new MorningBriefingModal(this.app, this.appContext);
-							console.log('[MEM] briefing: before modal.open');
 							modal.open();
-							console.log('[MEM] briefing: after modal.open');
 						}
 					} catch (err) {
-						console.warn('[MEM] briefing: FAILED', err);
+						if (!this.unloading) console.warn('[Peak Assistant] Morning briefing failed:', err);
 					}
 				}, 3000);
 			} catch (e) {
@@ -1141,6 +1128,7 @@ export default class MyPlugin extends Plugin {
 	 * Initialize search client and background indexing.
 	 */
 	private async initializeSearchService(): Promise<void> {
+		if (this.unloading) return;
 		// T13: IndexService constructed with AIServiceManager + env (chat root
 		// + live `App`) injected via constructor. Bound on the app-owned
 		// `AppRuntimeRegistry`; consumers reach it through
@@ -1156,6 +1144,11 @@ export default class MyPlugin extends Plugin {
 
 		this.searchClient = new SearchClient(this.app, this.aiServiceManager, this.settings.search);
 		await this.searchClient.init();
+		if (this.unloading) {
+			this.searchClient.dispose();
+			this.searchClient = null;
+			return;
+		}
 
 		// chat-studio RUN-01: wire real Vault retrieval into the chat tool
 		// layer. App-owned adapter over SearchClient; while unwired the
@@ -1198,10 +1191,9 @@ export default class MyPlugin extends Plugin {
 		const cascadeWorker = this.cascadeWorker;
 		const searchUpdateQueue = this.searchUpdateQueue;
 		this.app.workspace.onLayoutReady(() => {
-			console.log('[MEM] before cascadeWorker/searchUpdateQueue start');
+			if (this.unloading) return;
 			cascadeWorker.start();
 			searchUpdateQueue.start();
-			console.log('[MEM] after cascadeWorker/searchUpdateQueue start');
 		});
 
 		// Check index status and perform incremental indexing if needed
@@ -1249,12 +1241,13 @@ export default class MyPlugin extends Plugin {
 
 	/**
 	 * Cleans up registered views and services when plugin unloads.
-	 * Heap Retainers map: see docs/HEAP_RETAINERS_MAIN_JS.md (main.js:32730 Bluebird, :2989 Handlebars Exception, :26480 p-queue TimeoutError, :50721 sax ParseError).
-	 * Note: Error.__BluebirdErrorTypes__ is set configurable:false in bundle (main.js:32754-32758) so we cannot delete it; we still try for other envs.
+	 * Obsidian does not wait for a Promise returned by this hook, so every global,
+	 * listener and UI owner is released before deferred storage shutdown begins.
 	 */
-	async onunload() {
+	onunload(): void {
+		this.unloading = true;
 		// Obsidian's unload lifecycle is synchronous. Clear session-only UI state
-		// before any awaited teardown so hot reload cannot expose the old draft.
+		// before storage teardown so hot reload cannot expose the old draft.
 		resetQuickSearchPluginSession();
 		// Remove Mermaid zombie load listeners (Streamdown/Mermaid register window.load regardless of startOnLoad)
 		// getEventListeners is DevTools-only; when available (e.g. console open), remove by function body signature
@@ -1326,6 +1319,7 @@ export default class MyPlugin extends Plugin {
 
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();
+		clearPortalHostsForUnload();
 		removeAllChatViewButtons();
 		if (this.templateManager) {
 			this.templateManager.clear();
@@ -1365,11 +1359,13 @@ export default class MyPlugin extends Plugin {
 		this.cascadeWorker?.dispose();
 		this.cascadeWorker = null;
 
-		// Wait for in-flight index flush to settle so we close DB after and avoid OperationalError/Bluebird retaining bundle
-		if (this.searchUpdateQueue) {
-			await this.searchUpdateQueue.dispose();
-			this.searchUpdateQueue = null;
-		}
+		// Stop new indexing synchronously. The returned flush Promise only gates the
+		// old generation's database close; it never delays global/runtime cleanup.
+		IndexService.cancelIndexing();
+		const searchShutdown = this.searchUpdateQueue?.dispose();
+		this.searchUpdateQueue = null;
+		const sqliteInitialization = this.sqliteInitPromise;
+		this.sqliteInitPromise = null;
 		if (this.searchClient) {
 			this.searchClient.dispose();
 			this.searchClient = null;
@@ -1385,14 +1381,8 @@ export default class MyPlugin extends Plugin {
 			console.warn('[Peak Assistant] Store reset on unload:', e);
 		}
 
-		// Cancel any ongoing indexing operations
-		IndexService.cancelIndexing();
-
 		// Release AI service timers and subscriptions before closing DB so no async touches DB after close
 		this.aiServiceManager?.cleanup();
-
-		// Close global SQLite store (sync; already imported at top)
-		sqliteStoreManager.close();
 
 		// T10: abort all Quick Search background analysis sessions
 		// through the app-owned runtime registry. The retired
@@ -1420,29 +1410,38 @@ export default class MyPlugin extends Plugin {
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();
+		ProfileRegistry.resetInstance();
 		// T13: IndexService release now goes through `AppContext.clearForUnload()`
 		// invoked just above; no `clearInstance()` static remains.
 		DocumentLoaderManager.clearInstance();
-		SqliteStoreManager.clearInstance();
-		BetterSqliteStore.clearInstance();
-		NativeModuleManager.clearInstance();
 		this.uninstallHoverMenuGlobals?.();
+		this.uninstallHoverMenuGlobals = undefined;
 		clearFormatUtilsCaches();
+		this.appContext = null;
 
-		// Aggressively clear require.cache so old module instances (and their Bluebird/Handlebars/sax refs) can be GC'd
-		if (typeof require !== 'undefined' && require.cache) {
+		const finishStorageShutdown = (): void => {
+			sqliteStoreManager.close();
+			SqliteStoreManager.clearInstance();
+			BetterSqliteStore.clearInstance();
+			NativeModuleManager.clearInstance();
+			if (typeof require === 'undefined' || !require.cache) return;
 			const cache = require.cache;
 			const drop = [
 				'better-sqlite3', 'sqlite-vec', 'obsidian-peak-assistant',
-				'bluebird', 'handlebars', 'officeparser', 'mammoth', 'saxes', 'sax', 'p-queue', '@langchain'
+				'bluebird', 'handlebars', 'officeparser', 'mammoth', 'saxes', 'sax', 'p-queue', '@langchain',
 			];
 			for (const key in cache) {
-				if (drop.some((name) => key.includes(name))) {
-					delete cache[key];
-				}
+				if (drop.some((name) => key.includes(name))) delete cache[key];
 			}
+		};
+		const pendingStorageWork = [searchShutdown, sqliteInitialization].filter(
+			(value): value is Promise<void> => Boolean(value),
+		);
+		if (pendingStorageWork.length === 0) {
+			finishStorageShutdown();
+			return;
 		}
-
+		void Promise.allSettled(pendingStorageWork).then(finishStorageShutdown);
 	}
 
 	/**

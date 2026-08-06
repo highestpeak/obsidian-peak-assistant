@@ -44,12 +44,14 @@ export default class PeakShellPlugin extends Plugin {
 	private impl: Plugin | null = null;
 	private booted = false;
 	private pollTimer: number | null = null;
+	private disposed = false;
 
 	async onload() {
 		this.app.workspace.onLayoutReady(() => {
+			if (this.disposed) return;
 			const start = Date.now();
 			const tryBoot = () => {
-				if (this.booted) return;
+				if (this.booted || this.disposed) return;
 				const elapsed = Date.now() - start;
 				const rss = rendererRssMb();
 				const stormCleared = rss > 0 && rss < BOOT_RSS_SAFE_MB;
@@ -69,7 +71,7 @@ export default class PeakShellPlugin extends Plugin {
 	}
 
 	private async boot(): Promise<void> {
-		if (this.booted) return;
+		if (this.booted || this.disposed) return;
 		this.booted = true;
 		if (this.pollTimer !== null) {
 			window.clearTimeout(this.pollTimer);
@@ -79,6 +81,7 @@ export default class PeakShellPlugin extends Plugin {
 			// Lazy edge: esbuild defers evaluation of the entire main.ts module
 			// graph (~500MB) to this moment.
 			const { default: MyPlugin } = await import('./main');
+			if (this.disposed) return;
 			const impl = new MyPlugin(this.app, this.manifest);
 			this.impl = impl;
 			// Component child: load() runs impl.onload(); shell unload cascades.
@@ -90,6 +93,7 @@ export default class PeakShellPlugin extends Plugin {
 	}
 
 	onunload() {
+		this.disposed = true;
 		if (this.pollTimer !== null) {
 			window.clearTimeout(this.pollTimer);
 			this.pollTimer = null;

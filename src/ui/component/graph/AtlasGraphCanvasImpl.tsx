@@ -481,6 +481,12 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			if (n.hasClass('regionLabel') || n.hasClass('folderGroup') || n.hasClass('hub')) return;
 			dblRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '' });
 		});
+		return () => {
+			if (hoverTimer) clearTimeout(hoverTimer);
+			stopEdgeAnimation();
+			cy.destroy();
+			if (cyRef.current === cy) cyRef.current = null;
+		};
 	}, [subgraph, preset, showSemantic]);
 
 	useEffect(() => {

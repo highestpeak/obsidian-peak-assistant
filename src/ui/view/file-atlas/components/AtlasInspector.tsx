@@ -184,6 +184,7 @@ const AtlasQuickActions: React.FC<{
 		actions: [],
 	}));
 	useEffect(() => {
+		const controller = new AbortController();
 		let active = true;
 		if (!host.loadQuickActions) {
 			setSnapshot({ status: 'unavailable', actions: [] });
@@ -197,13 +198,14 @@ const AtlasQuickActions: React.FC<{
 			from: block.anchor.sourceFrom,
 			to: block.anchor.sourceTo,
 			text: block.source,
-		}).then((next) => {
+		}, controller.signal).then((next) => {
 			if (active) setSnapshot(next);
 		}).catch(() => {
 			if (active) setSnapshot({ status: 'unavailable', actions: [] });
 		});
 		return () => {
 			active = false;
+			controller.abort();
 		};
 	}, [block, host, sourcePath]);
 	const visibleActions = useMemo(
@@ -255,6 +257,7 @@ const AtlasReviewSuggestions: React.FC<{
 		suggestions: [],
 	}));
 	useEffect(() => {
+		const controller = new AbortController();
 		let active = true;
 		if (!host.loadCopilotSuggestions) {
 			setSnapshot({ status: 'unavailable', suggestions: [] });
@@ -263,7 +266,7 @@ const AtlasReviewSuggestions: React.FC<{
 			};
 		}
 		setSnapshot({ status: 'loading', suggestions: [] });
-		void host.loadCopilotSuggestions(sourcePath)
+		void host.loadCopilotSuggestions(sourcePath, controller.signal)
 			.then((next: AtlasCopilotSuggestionSnapshot) => {
 				if (!active) return;
 				setSnapshot({
@@ -276,6 +279,7 @@ const AtlasReviewSuggestions: React.FC<{
 			});
 		return () => {
 			active = false;
+			controller.abort();
 		};
 	}, [host, sourcePath]);
 	const groups = useMemo(

@@ -156,15 +156,19 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 			setData(null);
 			return;
 		}
+		const controller = new AbortController();
 		let alive = true;
 		setLoading(true);
 		setError(false);
 		setData(null);
 		host
-			.loadNeighborhood(path, { hops: scope === 'two-hop' ? 2 : 1, semantic: true })
+			.loadNeighborhood(path, { hops: scope === 'two-hop' ? 2 : 1, semantic: true }, controller.signal)
 			.then((res) => { if (alive) { setData(res); setLoading(false); } })
 			.catch(() => { if (alive) { setError(true); setLoading(false); } });
-		return () => { alive = false; };
+		return () => {
+			alive = false;
+			controller.abort();
+		};
 	}, [path, scope, host]);
 
 	const subgraph = useMemo(() => (data ? toSubgraph(data) : null), [data]);

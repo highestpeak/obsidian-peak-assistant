@@ -115,6 +115,13 @@ export interface DocumentComposerRuntimeAdapters {
 	modelSelection?: ComposerModelSelectionPort;
 }
 
+export interface TransientComposerFeatures {
+	/** Compose the action projection used to list block capabilities. */
+	capabilities?: boolean;
+	/** Compose the deterministic Intelligence projection used by companion suggestions. */
+	intelligence?: boolean;
+}
+
 export class DocumentComposerRuntime {
 	private transactionConfig: ComposerTransactionConfig;
 	private capabilityFactory: ComposerCapabilityRuntimeFactory | null = null;
@@ -205,6 +212,33 @@ export class DocumentComposerRuntime {
 			editing: {
 				acquire: (session, hostId, host) => this.acquireEditing(session, hostId, host),
 				rename: (oldPath, newPath, session) => this.renameDocument(oldPath, newPath, session),
+			},
+		});
+	}
+
+	/**
+	 * A short-lived, feature-scoped projection for companion surfaces such as
+	 * File Atlas. It reuses an actively open Composer document, but never inserts
+	 * a newly inspected document into the workspace-lifetime review cache.
+	 */
+	createTransientController(
+		originHostId?: string,
+		originHost: 'composer' | 'markdown' = 'markdown',
+		features: TransientComposerFeatures = { capabilities: true, intelligence: true },
+	): DocumentComposerController {
+		return new DocumentComposerController({
+			source: this.source,
+			events: this.events,
+			revisionService: this.revisionService,
+			originHostId,
+			originHost,
+			editing: {
+				acquire: (session, hostId, host) => this.acquireTransientEditing(
+					session,
+					hostId,
+					host,
+					features,
+				),
 			},
 		});
 	}
@@ -310,6 +344,75 @@ export class DocumentComposerRuntime {
 				entry!.refs = Math.max(0, entry!.refs - 1);
 				entry!.lastAccessedAt = Date.now();
 			},
+		};
+	}
+
+	private acquireTransientEditing(
+		session: ComposerDocumentSession,
+		originHostId?: string,
+		originHost: 'composer' | 'markdown' = 'markdown',
+		features: TransientComposerFeatures = {},
+	): { runtime: ComposerEditingRuntime; release(): void } {
+		const shared = this.documentEntries.get(session.filePath);
+		if (shared && shared.refs > 0) {
+			return this.acquireEditing(session, originHostId, originHost);
+		}
+
+		const runtime = this.composeTransientEditing(session, features);
+		let released = false;
+		return {
+			runtime: this.forOriginHost(runtime, originHostId, originHost),
+			release: () => {
+				if (released) return;
+				released = true;
+				for (const candidate of runtime.hub.projection().candidates) {
+					if (candidate.status !== 'streaming') continue;
+					runtime.candidateRuntime?.cancel(candidate.candidateId);
+				}
+				runtime.intelligence?.dispose();
+			},
+		};
+	}
+
+	/**
+	 * Build only the projections a short-lived companion read needs. In
+	 * particular this does not hydrate persisted comments, Copilot history,
+	 * image coordinators, or workspace review state for every Atlas hover/click.
+	 */
+	private composeTransientEditing(
+		session: ComposerDocumentSession,
+		features: TransientComposerFeatures,
+	): ComposerEditingRuntime {
+		const hub = this.createTransactionHub(session);
+		const capabilityRuntime = features.capabilities
+			? this.createCapabilityRuntime(session, hub)
+			: null;
+		const comments = new ComposerCommentStore(session.snapshot.documentId);
+		const intelligence = features.intelligence
+			? new IntelligenceRuntime({
+				hub,
+				...(this.relatedMaterials ? { related: this.relatedMaterials } : {}),
+				...(this.intelligenceTelemetry ? { telemetry: this.intelligenceTelemetry } : {}),
+				getSnapshot: () => session.snapshot,
+				produceFindings: (snapshot) => {
+					const config = this.openWritingMoves?.();
+					return config ? detectOpenWritingMoves(snapshot, config) : [];
+				},
+				briefSensing: this.briefSensing?.(),
+			})
+			: undefined;
+		intelligence?.updateBriefFocus(defaultBriefFocus(session.snapshot.filePath, session.snapshot.documentId));
+		intelligence?.refreshBrief();
+		return {
+			session,
+			hub,
+			transactionConfig: this.transactionConfig,
+			comments,
+			...(capabilityRuntime ? {
+				projection: capabilityRuntime,
+				candidateRuntime: capabilityRuntime,
+			} : {}),
+			...(intelligence ? { intelligence } : {}),
 		};
 	}
 

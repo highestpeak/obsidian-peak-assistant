@@ -38,8 +38,16 @@ export class FileAtlasSessionStore implements FileAtlasSessionPort {
 		return state ? cloneDocumentState(state) : null;
 	}
 
-	writeDocument(path: string, state: FileAtlasDocumentSessionState): void {
+	writeDocument(path: string, state: FileAtlasDocumentSessionState, capacity?: number): void {
+		this.documents.delete(path);
 		this.documents.set(path, cloneDocumentState(state));
+		if (capacity === undefined) return;
+		const boundedCapacity = Math.max(1, capacity);
+		while (this.documents.size > boundedCapacity) {
+			const oldestPath = this.documents.keys().next().value as string | undefined;
+			if (!oldestPath) return;
+			this.documents.delete(oldestPath);
+		}
 	}
 
 	deleteDocument(path: string): void {

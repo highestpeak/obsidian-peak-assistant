@@ -140,6 +140,8 @@ export class DocumentComposerController implements ComposerStateSource {
 	private readonly subscribers = new Set<(s: DocumentComposerState) => void>();
 	private unsubscribers: Array<() => void> = [];
 	private inflight: Promise<void> = Promise.resolve();
+	/** Invalidates source reads queued by a previous binding or a stopped host. */
+	private bindingVersion = 0;
 
 	constructor(deps: DocumentComposerControllerDeps) {
 		this.source = deps.source;
@@ -165,11 +167,14 @@ export class DocumentComposerController implements ComposerStateSource {
 
 	/** Stop tracking and drop subscriptions. Idempotent. */
 	stop(): void {
+		this.bindingVersion += 1;
 		for (const off of this.unsubscribers) off();
 		this.unsubscribers = [];
 		this.subscribers.clear();
 		this.disposeEditing();
 		this.session = null;
+		this.lastSnapshot = null;
+		this.state = { status: 'empty', filePath: null, snapshot: null };
 	}
 
 	getState(): DocumentComposerState {
@@ -273,16 +278,20 @@ export class DocumentComposerController implements ComposerStateSource {
 	}
 
 	private load(filePath: string): void {
+		const bindingVersion = ++this.bindingVersion;
 		this.setState({ status: 'loading', filePath, snapshot: this.state.snapshot });
 		this.run(async () => {
+			if (bindingVersion !== this.bindingVersion) return;
 			try {
 				const loadedSession = await ComposerDocumentSession.load(this.source, filePath, this.revisionService);
+				if (bindingVersion !== this.bindingVersion) return;
 				this.disposeEditing();
 				const runtime = this.composeEditingFor(loadedSession);
 				this.session = runtime?.session ?? loadedSession;
 				this.lastSnapshot = this.session.snapshot;
 				this.setState({ status: 'loaded', filePath, snapshot: this.session.snapshot });
 			} catch (err) {
+				if (bindingVersion !== this.bindingVersion) return;
 				this.disposeEditing();
 				this.session = null;
 				this.setState({

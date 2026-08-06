@@ -53,4 +53,10 @@ assert.ok(
 );
 assert.equal(store.readDocument('B.md'), null, 'documents have independent state snapshots');
 
+store.writeDocument('B.md', state, 2);
+store.writeDocument('C.md', state, 2);
+assert.equal(store.readDocument('A.md'), null, 'configured session capacity evicts the least-recent document');
+assert.ok(store.readDocument('B.md'));
+assert.ok(store.readDocument('C.md'));
+
 console.log('PASS: File Atlas session state and selection restoration');

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { StreamdownIsolatedProps } from './StreamdownIsolatedImpl';
+import { importWithoutMermaidLoadListener } from '@/ui/mermaid/importMermaidModule';
 
 export type { StreamdownIsolatedProps } from './StreamdownIsolatedImpl';
 
@@ -11,8 +12,13 @@ type ImplModule = typeof import('./StreamdownIsolatedImpl');
 let implPromise: Promise<ImplModule> | null = null;
 let LoadedImpl: ImplModule['StreamdownIsolated'] | null = null;
 
+/** Mermaid registers a permanent window.load listener during module evaluation. */
+async function importImplWithoutMermaidLoadListener(): Promise<ImplModule> {
+	return importWithoutMermaidLoadListener(() => import('./StreamdownIsolatedImpl'));
+}
+
 function loadImpl(): Promise<ImplModule> {
-	implPromise ??= import('./StreamdownIsolatedImpl');
+	implPromise ??= importImplWithoutMermaidLoadListener();
 	return implPromise;
 }
 

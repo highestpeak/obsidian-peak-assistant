@@ -50,9 +50,10 @@ assert.equal(useVaultSearchStore.getState().lastSearchDuration, null);
 
 const main = readFileSync('main.ts', 'utf8');
 const onloadStart = main.indexOf('async onload()');
-const onunloadStart = main.indexOf('async onunload()');
+const onunloadStart = main.indexOf('onunload(): void');
 const onloadBody = main.slice(onloadStart, onunloadStart);
-const onunloadBody = main.slice(onunloadStart);
+const onunloadEnd = main.indexOf('\n\t/**\n\t * Persists current plugin settings', onunloadStart);
+const onunloadBody = main.slice(onunloadStart, onunloadEnd);
 
 assert.ok(onloadStart >= 0 && onunloadStart > onloadStart);
 assert.ok(
@@ -61,8 +62,9 @@ assert.ok(
 );
 assert.ok(
 	onunloadBody.indexOf('resetQuickSearchPluginSession()')
-		< onunloadBody.indexOf('await this.searchUpdateQueue.dispose()'),
-	'plugin unload must clear Quick Search memory synchronously before waiting for index shutdown',
+		< onunloadBody.indexOf('this.searchUpdateQueue?.dispose()'),
+	'plugin unload must clear Quick Search memory before beginning index shutdown',
 );
+assert.doesNotMatch(onunloadBody, /\bawait\b/, 'Obsidian does not await an async plugin unload hook');
 
 console.log('quick-search-plugin-session-lifecycle: passed');

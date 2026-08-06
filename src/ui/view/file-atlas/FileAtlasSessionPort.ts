@@ -46,7 +46,7 @@ export interface FileAtlasDocumentSessionState {
 /** Session-only state. The app owns the implementation and drops it on plugin unload. */
 export interface FileAtlasSessionPort {
 	readDocument(path: string): FileAtlasDocumentSessionState | null;
-	writeDocument(path: string, state: FileAtlasDocumentSessionState): void;
+	writeDocument(path: string, state: FileAtlasDocumentSessionState, capacity?: number): void;
 	deleteDocument(path: string): void;
 	readTray(): TrayItem[];
 	writeTray(items: TrayItem[]): void;

@@ -134,7 +134,7 @@ export interface FileAtlasHostPort {
 	/** Subscribe to workspace layout / active-leaf changes; returns an unsubscribe. */
 	subscribeOpenDocs(cb: () => void): () => void;
 	/** Read a document's current content by path. */
-	readDoc(path: string): Promise<string>;
+	readDoc(path: string, signal?: AbortSignal): Promise<string>;
 	/** Focus an existing file leaf, or open the recent file in a new tab. */
 	activateDoc(path: string): Promise<void>;
 	/**
@@ -173,6 +173,7 @@ export interface FileAtlasHostPort {
 	loadQuickActions?(
 		path: string,
 		location: DocumentSourceLocation,
+		signal?: AbortSignal,
 	): Promise<AtlasQuickActionSnapshot>;
 	/** Open Composer at the source range and invoke the same canonical capability. */
 	runQuickAction?(
@@ -185,12 +186,16 @@ export interface FileAtlasHostPort {
 	 * optionally including index-discovered semantic edges. Optional so Phase 1
 	 * (tree-only) hosts can omit it.
 	 */
-	loadNeighborhood?(path: string, opts: { hops: 1 | 2; semantic: boolean }): Promise<AtlasGraphData>;
+	loadNeighborhood?(
+		path: string,
+		opts: { hops: 1 | 2; semantic: boolean },
+		signal?: AbortSignal,
+	): Promise<AtlasGraphData>;
 	/**
 	 * Read suggestions from the same per-document IntelligenceRuntime used by
 	 * Composer and the native Markdown companion. File Atlas owns no generator.
 	 */
-	loadCopilotSuggestions?(path: string): Promise<AtlasCopilotSuggestionSnapshot>;
+	loadCopilotSuggestions?(path: string, signal?: AbortSignal): Promise<AtlasCopilotSuggestionSnapshot>;
 	/** Escalate to the shared native Copilot surface; File Atlas never writes. */
 	openCopilot?(path: string, context?: {
 		blockId?: string;

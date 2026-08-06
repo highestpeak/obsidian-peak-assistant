@@ -18,6 +18,7 @@ import { MERMAID_EXPLAIN_CAPABILITY_ID, parseMermaidBlock } from '@/service/comp
 import { Button } from '@/ui/components/primitives';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { NativeBlockFrame, NativeSourceView, useNativeStrings, type NativeViewMode } from '../nativeBlockShared';
+import { importWithoutMermaidLoadListener } from '@/ui/mermaid/importMermaidModule';
 
 let mermaidSeq = 0;
 
@@ -124,7 +125,8 @@ function MermaidRender({
 }
 
 async function renderMermaid(host: HTMLElement, source: string): Promise<void> {
-	const mod = (await import('mermaid')) as unknown as { default: MermaidApi } | MermaidApi;
+	const mod = await importWithoutMermaidLoadListener(() => import('mermaid')) as unknown as
+		{ default: MermaidApi } | MermaidApi;
 	const mermaid: MermaidApi = 'default' in mod ? mod.default : mod;
 	const dark = detectDark(host);
 	mermaid.initialize({
@@ -142,6 +144,7 @@ async function renderMermaid(host: HTMLElement, source: string): Promise<void> {
 	mermaidSeq += 1;
 	const id = `pk-composer-mermaid-${mermaidSeq}`;
 	const { svg } = await mermaid.render(id, source);
+	if (!host.isConnected) return;
 	host.innerHTML = svg;
 }
 

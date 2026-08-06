@@ -334,8 +334,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 			...snapshot,
 			treeScrollTop: treeScrollTopRef.current,
 			inspectorScrollTop: inspectorScrollTopRef.current,
-		});
-	}, [activePath, session]);
+		}, config.rail.capacity);
+	}, [activePath, config.rail.capacity, session]);
 	useEffect(() => {
 		session.writeTray(state.tray);
 	}, [session, state.tray]);

@@ -158,12 +158,14 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 			return;
 		}
 		if (loadedDocument?.path === activePath) return;
+		const controller = new AbortController();
 		let alive = true;
-		host.readDoc(activePath).then((c) => {
+		host.readDoc(activePath, controller.signal).then((c) => {
 			if (alive) setLoadedDocument({ path: activePath, content: c });
 		});
 		return () => {
 			alive = false;
+			controller.abort();
 		};
 	}, [activePath, host, loadedDocument?.path]);
 
