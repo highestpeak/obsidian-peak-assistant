@@ -151,7 +151,8 @@ assert.deepStrictEqual(commandCenterGridSpan('compact'), { columnSpan: 10, rowSp
 assert.deepStrictEqual(commandCenterGridSpan('wide'), { columnSpan: 15, rowSpan: 1 });
 assert.deepStrictEqual(commandCenterGridSpan('full'), { columnSpan: 30, rowSpan: 1 });
 assert.strictEqual(resolveAutoCommandCenterDisplayMode(80, 600), 'compact');
-assert.strictEqual(resolveAutoCommandCenterDisplayMode(240, 600), 'wide');
+assert.strictEqual(resolveAutoCommandCenterDisplayMode(160, 600), 'wide', 'long document labels must reserve room for icon, metadata, and item controls');
+assert.strictEqual(resolveAutoCommandCenterDisplayMode(240, 600), 'full');
 assert.strictEqual(resolveAutoCommandCenterDisplayMode(400, 600), 'full');
 
 const positions = buildProjectionPositions([{ sectionId: 'g', items: [

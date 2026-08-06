@@ -2,7 +2,12 @@ import type { ResolvedCommandCenterDisplayMode } from './types';
 
 export const COMMAND_CENTER_GRID_COLUMNS = 30;
 export const COMMAND_CENTER_GRID_GAP = 4;
-export const COMMAND_CENTER_AUTO_TRAILING_WIDTH = 38;
+/**
+ * Non-label width reserved by an automatic launcher card. This includes the
+ * optional leading icon, grid gaps, horizontal padding, Auto/hotkey metadata,
+ * the drag affordance, and enough clearance for the hover menu trigger.
+ */
+export const COMMAND_CENTER_AUTO_TRAILING_WIDTH = 96;
 
 export interface CommandCenterProjectionItem {
 	id: string;

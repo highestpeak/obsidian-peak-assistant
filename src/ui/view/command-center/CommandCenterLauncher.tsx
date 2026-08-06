@@ -317,8 +317,10 @@ export function CommandCenterLauncher({ runtime, restoreState, onCustomize, onCl
 		const ownerDocument = rootRef.current?.ownerDocument;
 		const context = ownerDocument?.createElement('canvas').getContext('2d') ?? null;
 		if (context) {
-			const rootStyle = rootRef.current ? ownerDocument?.defaultView?.getComputedStyle(rootRef.current) : null;
-			context.font = `510 11px ${rootStyle?.fontFamily ?? '-apple-system, BlinkMacSystemFont, Inter, sans-serif'}`;
+			const sampleAction = rootRef.current?.querySelector<HTMLElement>('.pk-cc-action');
+			const measuredElement = sampleAction ?? rootRef.current;
+			const actionStyle = measuredElement ? ownerDocument?.defaultView?.getComputedStyle(measuredElement) : null;
+			context.font = `${actionStyle?.fontWeight ?? '500'} ${actionStyle?.fontSize ?? '13px'} ${actionStyle?.fontFamily ?? '-apple-system, BlinkMacSystemFont, Inter, sans-serif'}`;
 		}
 		for (const item of items) {
 			if (item.display !== 'auto') {
