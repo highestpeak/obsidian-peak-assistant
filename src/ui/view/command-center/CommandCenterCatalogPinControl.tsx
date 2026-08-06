@@ -94,7 +94,7 @@ export function CommandCenterCatalogPinControl({
 						onClick={() => void update(() => runtime.setCatalogEntryGroup(entry, group.id, !group.included))}
 					>
 						<span>{group.label}</span>
-						<Check size={14} data-visible={group.included ? 'true' : undefined} />
+						{group.included ? <Check size={14} aria-hidden="true" /> : null}
 					</PopoverItem>
 				))}
 				<span className="pk-cc-catalog-pin-menu__separator" />
@@ -105,7 +105,7 @@ export function CommandCenterCatalogPinControl({
 					onClick={() => void update(() => runtime.setCatalogEntryHome(entry, !membership.shownOnHome))}
 				>
 					<span className="pk-cc-catalog-pin-menu__home"><House size={14} />Show on Home</span>
-					<Check size={14} data-visible={membership.shownOnHome ? 'true' : undefined} />
+					{membership.shownOnHome ? <Check size={14} aria-hidden="true" /> : null}
 				</PopoverItem>
 			</PopoverContent>
 		</Popover>

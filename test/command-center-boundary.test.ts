@@ -102,6 +102,11 @@ assert.match(itemMenu, /'ArrowRight'[\s\S]*?openFromKeyboard/, 'keyboard users m
 assert.match(itemMenu, /'ArrowLeft'[\s\S]*?triggerRef\.current\?\.focus/, 'keyboard users must be able to return from a side submenu');
 assert.match(itemMenu, /Remove from/, 'item menu must remove only the current membership');
 assert.match(itemMenu, /Show on Home/, 'item menu must manage Home as an independent projection');
+assert.match(itemMenu, /if \(!visible\) return null/, 'unchecked item-menu states must omit the checkmark instead of recoloring it');
+assert.doesNotMatch(itemMenu, /data-visible/, 'item-menu checkmarks must use presence, not color or opacity, to communicate state');
+assert.match(catalogPin, /group\.included \? <Check[\s\S]*?: null/, 'unchecked catalog groups must omit the checkmark');
+assert.match(catalogPin, /membership\.shownOnHome \? <Check[\s\S]*?: null/, 'unchecked catalog Home state must omit the checkmark');
+assert.doesNotMatch(catalogPin, /data-visible/, 'catalog pin checkmarks must use presence, not color or opacity, to communicate state');
 assert.match(itemMenu, /createCommandCenterCustomizeIntent/, 'Customize must carry stable item identity instead of opening a generic directory');
 assert.match(customizeIntent, /itemId:/, 'Customize intent must identify the exact configured item');
 assert.match(customizeIntent, /groupId:/, 'Customize intent must identify the owning tab');

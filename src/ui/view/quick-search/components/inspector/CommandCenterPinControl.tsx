@@ -8,7 +8,6 @@ import {
 	PopoverItem,
 	PopoverTrigger,
 } from '@/ui/components/primitives';
-import { cn } from '@/ui/react/lib/utils';
 import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
 
 export function CommandCenterPinControl({
@@ -128,7 +127,7 @@ export function CommandCenterPinControl({
 						<House className="pktw-h-3.5 pktw-w-3.5" />
 						<span className="pktw-min-w-0 pktw-flex-1"><span className="pktw-block">Home · Recommended</span><span className="pktw-block pktw-text-[10px] pktw-text-pk-foreground-muted">Keep it in your launcher overview</span></span>
 					</span>
-					<Check className={cn('pktw-h-3.5 pktw-w-3.5', membership.shownOnHome ? 'pktw-opacity-100 pktw-text-pk-accent' : 'pktw-opacity-0')} />
+					{membership.shownOnHome ? <Check className="pktw-h-3.5 pktw-w-3.5" aria-hidden="true" /> : null}
 				</PopoverItem>
 				<div className="pktw-my-1 pktw-border-t pktw-border-pk-border" />
 				<div className="pktw-px-3 pktw-py-1.5 pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-pk-foreground-muted">
@@ -144,7 +143,7 @@ export function CommandCenterPinControl({
 						onClick={() => void update(() => host.setCommandCenterDocumentGroup(path, group.id, !group.included))}
 					>
 						<span className="pktw-min-w-0 pktw-flex-1 pktw-truncate">{group.label}</span>
-						<Check className={cn('pktw-h-3.5 pktw-w-3.5', group.included ? 'pktw-opacity-100 pktw-text-pk-accent' : 'pktw-opacity-0')} />
+						{group.included ? <Check className="pktw-h-3.5 pktw-w-3.5" aria-hidden="true" /> : null}
 					</PopoverItem>
 				))}
 			</PopoverContent>

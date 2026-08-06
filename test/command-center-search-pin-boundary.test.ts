@@ -44,6 +44,9 @@ assert.match(pinControl, /container=\{portalContainer\}/, 'the destination picke
 assert.match(pinControl, /pk-inspector-icon-button/, 'the pin must use the neutral Inspector icon-button state contract');
 assert.match(pinControl, /geometry="toolbar-icon"/, 'inspector controls must opt into reset-safe toolbar geometry');
 assert.match(pinControl, /aria-pressed=\{active\}/, 'the pin must expose membership across Home and tabs');
+assert.match(pinControl, /membership\.shownOnHome \? <Check[\s\S]*?: null/, 'unchecked Inspector Home state must omit the checkmark');
+assert.match(pinControl, /group\.included \? <Check[\s\S]*?: null/, 'unchecked Inspector tab states must omit the checkmark');
+assert.doesNotMatch(pinControl, /pktw-opacity-0|pktw-text-pk-accent/, 'Inspector checkmarks must communicate state by presence, not opacity or color');
 
 assert.match(inspector, /showCommandCenterPin\?: boolean/);
 assert.match(inspector, /<CommandCenterPinControl path=\{currentPath\} portalContainer=\{portalContainer\}/);

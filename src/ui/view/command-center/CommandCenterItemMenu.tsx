@@ -46,8 +46,9 @@ export interface CommandCenterItemMenuProps {
 	onCustomize: (intent: CommandCenterCustomizeIntent) => void;
 }
 
-function MenuCheck({ visible }: { visible: boolean }): React.ReactElement {
-	return <Check size={14} data-visible={visible ? 'true' : undefined} aria-hidden="true" />;
+function MenuCheck({ visible }: { visible: boolean }): React.ReactElement | null {
+	if (!visible) return null;
+	return <Check size={14} aria-hidden="true" />;
 }
 
 function isDestinationSubmenuTarget(target: EventTarget | null): boolean {
