@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · Native settings direction</title>
+  <link rel="stylesheet" href="mock.css">
+  <link rel="stylesheet" href="settings-native.css">
+  <script src="mock.js" defer></script>
+  <script src="settings-native.js" defer></script>
+</head>
+<body class="native-artifact">
+  <div class="native-artifact__links">
+    <a href="settings-research.html">Research notes</a>
+    <a href="settings-variants.html">Rejected variants</a>
+  </div>
+
+  <main class="native-settings" data-native-root aria-label="Peak Settings native direction prototype">
+    <header class="native-settings__toolbar">
+      <span class="native-settings__product"><span class="native-settings__mark"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span><strong>Peak Settings</strong></span>
+      <label class="native-search">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+        <input data-native-query aria-label="Search Peak settings" placeholder="Search settings">
+        <kbd>⌘F</kbd>
+      </label>
+      <button class="native-close" aria-label="Close settings">×</button>
+      <div class="native-search-results" data-native-results hidden>
+        <span class="native-search-results__label">Settings</span>
+        <button data-native-result="ai" data-native-keywords="provider openai openrouter ollama model ai connection"><span><strong>AI providers</strong><small>AI & models · Connections</small></span><em>Open →</em></button>
+        <button data-native-result="ai" data-native-keywords="model chat writing research embedding agent image media override"><span><strong>Models for work</strong><small>AI & models · Task defaults</small></span><em>Open →</em></button>
+        <button data-native-result="knowledge" data-native-keywords="index search vault embedding files update knowledge"><span><strong>Knowledge index</strong><small>Knowledge & search · Index</small></span><em>Open →</em></button>
+        <button data-native-result="tools" data-native-keywords="image video music speech web mcp tools media"><span><strong>Media generation</strong><small>Tools & media · Creation</small></span><em>Open →</em></button>
+        <button data-native-result="workspace" data-native-keywords="composer file atlas command center appearance workspace"><span><strong>Composer</strong><small>Workspace · Writing</small></span><em>Open →</em></button>
+        <button data-native-result="data" data-native-keywords="folder usage retention privacy data export"><span><strong>Data folders</strong><small>Data & privacy · Storage</small></span><em>Open →</em></button>
+        <button data-native-result="developer" data-native-keywords="temperature routing timeout debug trace diagnostics developer advanced"><span><strong>Model execution</strong><small>Developer · Routing</small></span><em>Open →</em></button>
+        <span class="native-search-results__empty" data-native-empty hidden>No matching setting</span>
+      </div>
+    </header>
+
+    <aside class="native-settings__sidebar">
+      <nav aria-label="Peak settings categories">
+        <button data-native-target="general" data-active="true"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg><span>General</span></button>
+        <span class="native-nav-label">AI & KNOWLEDGE</span>
+        <button data-native-target="ai" data-active="false"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg><span>AI & models</span></button>
+        <button data-native-target="knowledge" data-active="false"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg><span>Knowledge & search</span></button>
+        <button data-native-target="tools" data-active="false"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg><span>Tools & media</span></button>
+        <span class="native-nav-label">PEAK</span>
+        <button data-native-target="workspace" data-active="false"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg><span>Workspace</span></button>
+        <button data-native-target="data" data-active="false"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Data & privacy</span></button>
+      </nav>
+      <nav class="native-settings__sidebar-bottom" aria-label="System settings">
+        <button data-native-target="developer" data-active="false"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg><span>Developer</span></button>
+        <span class="native-version">Peak Assistant · 1.0 candidate</span>
+      </nav>
+    </aside>
+
+    <section class="native-settings__content">
+      <div class="native-page" data-native-panel="general">
+        <header class="native-page__header"><div><h1>General</h1><p>The defaults Peak uses across your workspace.</p></div><button class="native-more" aria-label="More General actions">•••</button></header>
+        <div class="native-notice"><span><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><div><strong>17 notes can be updated</strong><small>Your Vault is searchable now. Updating will improve coverage.</small></div><button data-native-open="knowledge">Review</button></div>
+
+        <section class="native-group">
+          <header><strong>Everyday defaults</strong></header>
+          <div class="native-row"><div><strong>When Peak needs permission</strong><small>Ask before changing files, running commands, or calling external tools.</small></div><select><option>Ask every time</option><option>Allow approved tools</option><option>Read only</option></select></div>
+          <div class="native-row"><div><strong>Open Markdown files with</strong><small>Used when Peak opens a note from Search, Chat Studio, or File Atlas.</small></div><select><option>Obsidian</option><option>Peak Composer</option></select></div>
+          <div class="native-row"><div><strong>Generated files</strong><small>Images, video, audio, and exported reports.</small></div><button class="native-value">_attachments/media <span>›</span></button></div>
+        </section>
+
+        <section class="native-group">
+          <header><strong>Setup</strong></header>
+          <div class="native-row"><div><strong>Setup assistant</strong><small>Review connections, model defaults, and Vault readiness without losing progress.</small></div><button class="native-action">Open setup</button></div>
+          <div class="native-row"><div><strong>Check Peak</strong><small>Test the connection and index state used by everyday features.</small></div><button class="native-action" data-native-toast="Checks complete · one update available">Run checks</button></div>
+        </section>
+      </div>
+
+      <div class="native-page" data-native-panel="ai" hidden>
+        <header class="native-page__header"><div><h1>AI & models</h1><p>Connect AI services and choose what Peak uses for each kind of work.</p></div><button class="native-primary">Add provider</button></header>
+
+        <section class="native-group">
+          <header><strong>Connections</strong><button>Manage all</button></header>
+          <div class="native-provider"><span class="native-provider__mark">OA</span><div><strong>OpenAI</strong><small>Chat, tools, embeddings, files, and images</small></div><em class="native-state native-state--ok">Connected</em><button class="native-action">Manage</button></div>
+          <div class="native-provider"><span class="native-provider__mark">OR</span><div><strong>OpenRouter</strong><small>One key for a live multi-provider model catalog</small></div><em class="native-state">Not connected</em><button class="native-action">Connect</button></div>
+          <div class="native-provider"><span class="native-provider__mark">OL</span><div><strong>Ollama</strong><small>Local models at localhost:11434</small></div><em class="native-state native-state--warn">Not detected</em><button class="native-action">Retry</button></div>
+          <details class="native-disclosure"><summary>Other providers and agent runtimes <span>Anthropic, Codex, Claude Code, compatible endpoints</span></summary><div>These connections stay available without competing with the three most common choices.</div></details>
+        </section>
+
+        <section class="native-group native-group--spaced">
+          <header><strong>Models for work</strong><button data-native-toast="Showing settings changed from Auto">Modified only</button></header>
+          <div class="native-row"><div><strong>Conversation & writing</strong><small>Chat Studio, Composer Copilot, and quick assist</small></div><button class="native-value">Auto · OpenAI <span>›</span></button></div>
+          <div class="native-row"><div><strong>Research & web</strong><small>Research, AI Search, web access, and stronger fallback</small></div><button class="native-value">Auto · tools ready <span>›</span></button></div>
+          <div class="native-row"><div><strong>Knowledge processing</strong><small>Embeddings and Vault intelligence</small></div><button class="native-value">OpenAI embeddings <span>›</span></button></div>
+          <div class="native-row"><div><strong>Understand files</strong><small>Images, PDF, video, office files, and transcription</small></div><button class="native-value">Auto · multimodal <span>›</span></button></div>
+          <div class="native-row"><div><strong>Agent work</strong><small>Long-running work through Codex or Claude Code</small></div><button class="native-value native-value--warn">Not connected <span>›</span></button></div>
+          <div class="native-row"><div><strong>Create media</strong><small>Images, video, music, and speech</small></div><button class="native-value">Image ready <span>›</span></button></div>
+          <details class="native-disclosure"><summary>Specific feature overrides <span>18 optional assignments · all inherit by default</span></summary><div>Pin a model only when one feature must stop inheriting its task default.</div></details>
+        </section>
+      </div>
+
+      <div class="native-page" data-native-panel="knowledge" hidden>
+        <header class="native-page__header"><div><h1>Knowledge & search</h1><p>Control what Peak can search and keep the Vault index current.</p></div><button class="native-primary">Update 17 notes</button></header>
+        <section class="native-group">
+          <header><strong>Knowledge index</strong><span class="native-header-state">Search ready · 94% current</span></header>
+          <div class="native-row"><div><strong>Keep changed notes current</strong><small>Run incremental updates quietly in the background.</small></div><button class="toggle" data-on="true" data-native-toggle aria-label="Toggle automatic indexing"></button></div>
+          <div class="native-row"><div><strong>Included content</strong><small>Markdown, PDF, images, Canvas, and supported office files.</small></div><button class="native-value">Review <span>›</span></button></div>
+          <div class="native-row"><div><strong>Search quality</strong><small>Text, semantic similarity, and relationship ranking.</small></div><select><option>Full</option><option>Semantic</option><option>Text only</option></select></div>
+          <div class="native-row"><div><strong>Saved AI Search results</strong><small>History, output folder, and exclusion from future searches.</small></div><button class="native-value">Manage <span>›</span></button></div>
+          <details class="native-disclosure"><summary>Indexing details <span>Chunking, relationships, ignore rules, Hub curation</span></summary><div>Low-frequency index settings remain here because they belong to Knowledge, not to a global advanced mode.</div></details>
+        </section>
+        <button class="native-danger-row"><span><strong>Repair or rebuild the index</strong><small>Review affected local data and expected duration before running.</small></span><em>Open maintenance ›</em></button>
+      </div>
+
+      <div class="native-page" data-native-panel="tools" hidden>
+        <header class="native-page__header"><div><h1>Tools & media</h1><p>Manage creation, web access, and tools Peak can call.</p></div></header>
+        <section class="native-group">
+          <header><strong>Creation</strong></header>
+          <div class="native-row"><div><strong>Images</strong><small>Generate and edit with the native OpenAI route.</small></div><span class="native-row-end"><em class="native-state native-state--ok">Ready</em><button class="native-action">Manage</button></span></div>
+          <div class="native-row"><div><strong>Video</strong><small>Use a native or fal.ai route for asynchronous jobs.</small></div><span class="native-row-end"><em class="native-state native-state--warn">Needs setup</em><button class="native-action">Set up</button></span></div>
+          <div class="native-row"><div><strong>Music & speech</strong><small>Licensing, voices, and generation defaults.</small></div><button class="native-action">Set up</button></div>
+          <details class="native-disclosure"><summary>Creation details <span>Routes, presets, aspect, duration, voice</span></summary><div>Detailed media controls remain next to the capability they affect.</div></details>
+        </section>
+        <section class="native-group native-group--spaced"><header><strong>Tools</strong></header><div class="native-row"><div><strong>Web access</strong><small>Search and retrieve sources when a task needs them.</small></div><button class="toggle" data-on="true" data-native-toggle aria-label="Toggle web access"></button></div><div class="native-row"><div><strong>External tools</strong><small>3 MCP servers · 2 ready · 1 needs attention.</small></div><button class="native-action">Manage</button></div><div class="native-row"><div><strong>Obsidian commands</strong><small>Review commands an agent may run.</small></div><button class="native-action">Review</button></div></section>
+      </div>
+
+      <div class="native-page" data-native-panel="workspace" hidden>
+        <header class="native-page__header"><div><h1>Workspace</h1><p>How Peak behaves while you write, navigate, and review knowledge.</p></div></header>
+        <section class="native-group"><header><strong>Writing</strong></header><div class="native-row"><div><strong>Composer</strong><small>Default view, Intelligence sidecar, Copilot, and document behavior.</small></div><button class="native-value">Manage <span>›</span></button></div><div class="native-row"><div><strong>Profile & personalization</strong><small>Reviewed profile facts and ambient suggestions.</small></div><button class="native-value">Manage <span>›</span></button></div></section>
+        <section class="native-group native-group--spaced"><header><strong>Navigation & appearance</strong></header><div class="native-row"><div><strong>Command Center</strong><small>Board layout, configured actions, and launcher preferences.</small></div><button class="native-value">Manage <span>›</span></button></div><div class="native-row"><div><strong>File Atlas & graph</strong><small>Backbone, pruning depth, opacity, and width scaling.</small></div><button class="native-value">Manage <span>›</span></button></div><div class="native-row"><div><strong>Code theme</strong><small>Syntax colors in messages, reports, and generated code.</small></div><select><option>GitHub Dark</option><option>One Dark Pro</option></select></div></section>
+      </div>
+
+      <div class="native-page" data-native-panel="data" hidden>
+        <header class="native-page__header"><div><h1>Data & privacy</h1><p>Where Peak stores local data and how long details are kept.</p></div><button class="native-action">Export settings</button></header>
+        <section class="native-group"><header><strong>Folders</strong></header><div class="native-row"><div><strong>Peak root</strong><small>Chat, prompts, skills, inbox, and saved analyses inherit from here.</small></div><button class="native-value">Peak <span>›</span></button></div><div class="native-row"><div><strong>Plugin data</strong><small>Canonical records and rebuildable local projections.</small></div><button class="native-value">Peak/DataStore <span>›</span></button></div><details class="native-disclosure"><summary>Folder overrides <span>Prompts, skills, inbox, analysis, media</span></summary><div>Only folders that stop inheriting the Peak root appear here.</div></details></section>
+        <section class="native-group native-group--spaced"><header><strong>Usage & privacy</strong></header><div class="native-row"><div><strong>Usage receipts</strong><small>Keep local model, token, cost, and duration details.</small></div><button class="toggle" data-on="true" data-native-toggle aria-label="Toggle usage receipts"></button></div><div class="native-row"><div><strong>Detailed retention</strong><small>Daily totals remain after detailed entries expire.</small></div><select><option>30 days</option><option>7 days</option><option>90 days</option></select></div><div class="native-row"><div><strong>Content previews</strong><small>Show prompt and response previews in local usage history.</small></div><button class="toggle" data-on="true" data-native-toggle aria-label="Toggle content previews"></button></div></section>
+      </div>
+
+      <div class="native-page" data-native-panel="developer" hidden>
+        <header class="native-page__header"><div><h1>Developer</h1><p>Precise execution controls and diagnostics. Everyday use does not require these settings.</p></div></header>
+        <div class="native-caution"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg><span><strong>Changes here may affect several Peak features.</strong><small>Each setting explains its scope and whether it applies immediately.</small></span></div>
+        <section class="native-group"><header><strong>Model execution</strong></header><div class="native-row"><div><strong>Fallback & escalation</strong><small>Upgrade policy, thresholds, and stronger-model behavior.</small></div><button class="native-value">Configure <span>›</span></button></div><div class="native-row"><div><strong>Output controls</strong><small>Temperature, top-p, reasoning, verbosity, and timeouts.</small></div><button class="native-value">Configure <span>›</span></button></div><div class="native-row"><div><strong>Raw provider overrides</strong><small>Base URLs, custom headers, and requested/effective routing.</small></div><button class="native-value">Configure <span>›</span></button></div></section>
+        <section class="native-group native-group--spaced"><header><strong>Diagnostics</strong></header><div class="native-row"><div><strong>Debug traces</strong><small>Off, redacted, or local raw; retention and copy format.</small></div><select><option>Off</option><option>Redacted</option><option>Local raw</option></select></div><div class="native-row"><div><strong>Graph inspector</strong><small>Expose developer-only graph inspection tools.</small></div><button class="toggle" data-on="false" data-native-toggle aria-label="Toggle graph inspector"></button></div></section>
+        <button class="native-danger-row"><span><strong>Maintenance & reset</strong><small>Rebuild projections, clear derived caches, reset settings, or export diagnostics.</small></span><em>Review actions ›</em></button>
+      </div>
+    </section>
+
+    <footer class="native-settings__footer"><span data-native-location>General</span><span><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>Changes save automatically</span></footer>
+  </main>
+</body>
+</html>

@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const pages = ['index.html', 'start-variants.html', 'onboarding.html', 'settings-variants.html', 'settings.html', 'provider-picker.html'];
+const pages = ['index.html', 'start-variants.html', 'onboarding.html', 'settings-research.html', 'settings-native.html', 'settings-variants.html', 'settings.html', 'provider-picker.html'];
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 const failures = [];
@@ -76,6 +76,18 @@ if (await page.locator('[data-search-entry]:visible').count() !== 1) {
   failures.push('settings-variants.html: search-first concept did not filter to the media route');
 }
 
+await page.goto(pathToFileURL(join(root, 'settings-native.html')).href, { waitUntil: 'load' });
+await page.locator('[data-native-panel="general"]:not([hidden])').waitFor();
+await page.locator('[data-native-target="ai"]').click();
+await page.locator('[data-native-panel="ai"]:not([hidden])').waitFor();
+await page.locator('[data-native-query]').fill('index');
+if (await page.locator('[data-native-result]:visible').count() !== 1) {
+  failures.push('settings-native.html: search did not filter to the Knowledge index destination');
+}
+await page.locator('[data-native-result]:visible').click();
+await page.locator('[data-native-panel="knowledge"]:not([hidden])').waitFor();
+await page.screenshot({ path: join(root, 'screens/settings-native-knowledge.png'), fullPage: true });
+
 await page.goto(pathToFileURL(join(root, 'settings.html')).href, { waitUntil: 'load' });
 await page.locator('[data-settings-panel="general"]:not([hidden])').waitFor();
 if (await page.locator('[data-settings-mode-target]').count() !== 0) {
@@ -122,5 +134,5 @@ if (failures.length > 0) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Verified 6 HTML pages at 1440x900: links, overflow, footer visibility, onboarding/settings variants, fixed Settings navigation/search, screenshots, and core prototype interactions.');
+  console.log('Verified 8 HTML pages at 1440x900: links, overflow, footer visibility, onboarding/settings concepts, native Settings search/navigation, screenshots, and core prototype interactions.');
 }

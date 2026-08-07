@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · Settings pattern research</title>
+  <link rel="stylesheet" href="mock.css">
+  <link rel="stylesheet" href="settings-native.css">
+  <script src="mock.js" defer></script>
+</head>
+<body class="settings-research-artifact">
+  <header class="research-header">
+    <div><span>PEAK ASSISTANT · SETTINGS RESEARCH</span><h1>成熟 Settings 的共同点，不是更像 Dashboard。</h1><p>调研只提取可复用的交互规律。新版 Peak 不照抄任何一个产品，也不把截图风格直接套进 Obsidian。</p></div>
+    <a href="settings-native.html">Open the new Peak direction →</a>
+  </header>
+
+  <main class="research-main">
+    <section class="research-sources">
+      <article>
+        <a href="https://manual.raycast.com/settings"><img src="https://manual.raycast.com/_next/image?q=75&amp;url=https%3A%2F%2Ffz1sd71lwhbqy6sh.public.blob.vercel-storage.com%2Fraycast%2Fimages%2Fapp%2Fbasics%2Fmac-settings-ai-general.png&amp;w=3840" alt="Raycast AI General settings screenshot"></a>
+        <div><span>RAYCAST</span><h2>Search can jump to the exact setting.</h2><p>Also supports contextual entry from the command or extension being configured.</p><strong>Peak adopts: direct search + contextual deep links.</strong></div>
+      </article>
+      <article>
+        <a href="https://code.visualstudio.com/docs/configure/settings"><img src="https://code.visualstudio.com/assets/docs/configure/settings/settings-search.png" alt="VS Code settings search screenshot"></a>
+        <div><span>VS CODE</span><h2>Large inventories need search, modified state, and reset.</h2><p>Commonly Used sits at the top; changed settings remain distinguishable from defaults.</p><strong>Peak adopts: search + Modified only + per-setting reset.</strong></div>
+      </article>
+      <article>
+        <a href="https://linear.app/docs/account-preferences"><img src="https://webassets.linear.app/images/ornj730p/production/4f79d61790a704d7e47e00611e8615a30f932979-2084x1633.png?auto=format&amp;dpr=2&amp;q=95&amp;w=1440" alt="Linear preferences screenshot"></a>
+        <div><span>LINEAR</span><h2>The content is ordinary rows, not a card wall.</h2><p>Short section labels, readable controls, restrained separators, and little explanatory chrome.</p><strong>Peak adopts: calm rows + short human descriptions.</strong></div>
+      </article>
+      <article>
+        <a href="https://www.jetbrains.com/help/idea/settings-preferences-dialog.html"><img src="https://resources.jetbrains.com/help/img/idea/2026.2/SettingsSearch.png" alt="IntelliJ settings search screenshot"></a>
+        <div><span>JETBRAINS</span><h2>Browse and search coexist.</h2><p>A stable category hierarchy remains available while search handles exact and unfamiliar terms.</p><strong>Peak adopts: stable browse + global search, neither replaces the other.</strong></div>
+      </article>
+    </section>
+
+    <section class="research-decisions">
+      <div><span>REMOVE</span><strong>Health dashboard</strong><p>Only actionable problems deserve a notice. “Everything is normal” does not need repeated cards.</p></div>
+      <div><span>REMOVE</span><strong>Global Standard / Advanced</strong><p>Low-frequency controls stay with the capability they affect; execution internals go to Developer.</p></div>
+      <div><span>KEEP</span><strong>Stable categories</strong><p>The category list is visually quiet, with no subtitles, status dots, counts, or marketing copy.</p></div>
+      <div><span>ADD</span><strong>Changed-state control</strong><p>Users can find modified settings and reset an individual value without hunting through raw files.</p></div>
+      <div><span>ADD</span><strong>Contextual entry</strong><p>Provider, Composer, Search, and File Atlas can deep-link directly to their own settings.</p></div>
+      <div><span>KEEP</span><strong>Action feedback</strong><p>Auto-save is visible; rebuild, restart, migration, and destructive actions explain impact first.</p></div>
+    </section>
+
+    <section class="research-conclusion">
+      <span>NEW DIRECTION</span>
+      <h2>A native utility window, not an AI control-center dashboard.</h2>
+      <p>One quiet category list, one strong search field, one focused content page, readable settings rows, and status only where an action is required.</p>
+      <a href="settings-native.html">Review the focused Peak mock →</a>
+    </section>
+  </main>
+</body>
+</html>
