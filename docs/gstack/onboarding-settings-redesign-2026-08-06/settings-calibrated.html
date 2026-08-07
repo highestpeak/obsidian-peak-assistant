@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Settings · Calibrated direction</title>
+  <link rel="stylesheet" href="settings-calibrated.css">
+  <script src="mock.js" defer></script>
+  <script src="settings-calibrated.js" defer></script>
+</head>
+<body class="calibrated-artifact" data-theme="light">
+  <nav class="artifact-links" aria-label="Design artifact links">
+    <a href="visual-calibration/index.html">视觉校准</a>
+    <span>偏好合成方向 · AI 与模型</span>
+    <button type="button" data-theme-toggle aria-label="切换明暗主题">切换深色</button>
+  </nav>
+
+  <main class="calibrated-stage">
+    <section class="settings-window" aria-label="Peak Assistant settings calibrated mock">
+      <header class="window-bar">
+        <span class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="history-buttons" aria-hidden="true"><button type="button">‹</button><button type="button">›</button></span>
+        <label class="global-search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+          <input data-settings-search aria-label="搜索所有 Peak 设置" placeholder="搜索所有设置">
+          <kbd>⌘F</kbd>
+          <div class="search-results" data-search-results hidden>
+            <span class="search-results__eyebrow">设置</span>
+            <button type="button" data-search-item data-keywords="provider openai connection 连接" data-target="provider-openai"><span><strong>OpenAI</strong><small>AI 与模型 · 连接</small></span><em>已连接</em></button>
+            <button type="button" data-search-item data-keywords="provider openrouter models connection 连接" data-target="provider-openrouter"><span><strong>OpenRouter</strong><small>AI 与模型 · 连接</small></span><em>已连接</em></button>
+            <button type="button" data-search-item data-keywords="ollama local model 本地" data-target="provider-ollama"><span><strong>Ollama</strong><small>AI 与模型 · 本地连接</small></span><em>6 个模型</em></button>
+            <button type="button" data-search-item data-keywords="codex cli code agent 本地 编码" data-target="provider-codex"><span><strong>Codex CLI</strong><small>AI 与模型 · 本地代理</small></span><em>就绪</em></button>
+            <button type="button" data-search-item data-keywords="claude code cli agent 本地 编码" data-target="provider-claude"><span><strong>Claude Code</strong><small>AI 与模型 · 本地代理</small></span><em>未连接</em></button>
+            <button type="button" data-search-item data-keywords="chat conversation writing composer model 对话 写作" data-target="model-chat"><span><strong>对话与写作模型</strong><small>AI 与模型 · 工作模型</small></span><em>自动</em></button>
+            <button type="button" data-search-item data-keywords="search web research model 搜索 研究" data-target="model-search"><span><strong>搜索与研究模型</strong><small>AI 与模型 · 工作模型</small></span><em>自动</em></button>
+            <button type="button" data-search-item data-keywords="knowledge index embedding vault 知识 索引 嵌入" data-target="model-index"><span><strong>知识索引模型</strong><small>AI 与模型 · 工作模型</small></span><em>本地索引</em></button>
+            <button type="button" data-search-item data-keywords="image generation media 图片 生成" data-target="model-image"><span><strong>图片生成模型</strong><small>AI 与模型 · 工作模型</small></span><em>GPT Image</em></button>
+            <span class="search-results__empty" data-search-empty hidden>没有匹配的设置</span>
+          </div>
+        </label>
+        <span class="window-bar__title">Peak Settings</span>
+        <button class="window-close" type="button" aria-label="关闭设置">×</button>
+      </header>
+
+      <div class="settings-layout">
+        <aside class="settings-sidebar">
+          <header class="sidebar-product">
+            <span class="sidebar-product__icon"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span>
+            <span><strong>Peak Assistant</strong><small>mobius-highestpeak-kb</small></span>
+          </header>
+
+          <nav class="settings-nav" aria-label="设置分类">
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--slate"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></span><span>通用</span></button>
+            <span class="nav-label">AI 与知识</span>
+            <button type="button" data-active="true"><span class="nav-icon nav-icon--violet"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span><span>AI 与模型</span><em>3</em></button>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--blue"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><span>知识与搜索</span><em class="nav-dot nav-dot--warning"></em></button>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--cyan"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span><span>AI Search</span></button>
+            <span class="nav-label">工作空间</span>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--orange"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span>Composer</span></button>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--green"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg></span><span>文件与 Atlas</span></button>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--pink"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span>图片与媒体</span></button>
+            <span class="nav-label">系统</span>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--indigo"><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg></span><span>自动化与工具</span></button>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--gray"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span><span>数据与隐私</span></button>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--yellow"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span>外观</span></button>
+          </nav>
+
+          <footer class="sidebar-footer">
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--gray"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span><span>诊断与维护</span></button>
+            <button type="button" data-preview-page><span class="nav-icon nav-icon--gray"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span><span>开发者</span></button>
+            <span>126 项设置 · 3 项已修改</span>
+          </footer>
+        </aside>
+
+        <section class="settings-main">
+          <div class="content-column">
+            <header class="content-header">
+              <div><h1>AI 与模型</h1><p>连接 Peak 可以使用的 AI，并为不同工作选择默认模型。</p></div>
+              <button class="primary-button" type="button" data-open-provider><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg>添加连接</button>
+            </header>
+
+            <div class="inline-status"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><span><strong>日常 AI 已就绪</strong>OpenAI、OpenRouter 和本地 Ollama 均可使用。</span><button type="button" data-test-all>全部测试</button></div>
+
+            <section class="settings-section" aria-labelledby="connections-title">
+              <header class="section-header"><div><h2 id="connections-title">连接</h2><p>API 服务、本地模型和编码代理。</p></div><button type="button" data-open-provider>管理全部</button></header>
+              <div class="native-group provider-group">
+                <div class="setting-row provider-row" id="provider-openai">
+                  <span class="provider-icon provider-icon--openai"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span>
+                  <span class="setting-copy"><strong>OpenAI</strong><small>默认连接 · 对话、文件、嵌入和图片</small></span>
+                  <span class="connection-state connection-state--ready"><i></i>已连接</span>
+                  <button class="row-action" type="button" data-row-action="OpenAI">管理</button>
+                </div>
+                <div class="setting-row provider-row" id="provider-openrouter">
+                  <span class="provider-icon provider-icon--router"><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg></span>
+                  <span class="setting-copy"><strong>OpenRouter</strong><small>41 个可用模型 · 目录已同步</small></span>
+                  <span class="connection-state connection-state--ready"><i></i>已连接</span>
+                  <button class="row-action" type="button" data-row-action="OpenRouter">管理</button>
+                </div>
+                <div class="setting-row provider-row" id="provider-ollama">
+                  <span class="provider-icon provider-icon--ollama"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span>
+                  <span class="setting-copy"><strong>Ollama</strong><small>localhost:11434 · 找到 6 个本地模型</small></span>
+                  <span class="connection-state connection-state--local"><i></i>本地</span>
+                  <button class="row-action" type="button" data-row-action="Ollama">管理</button>
+                </div>
+                <div class="setting-row provider-row" id="provider-codex">
+                  <span class="provider-icon provider-icon--codex"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+                  <span class="setting-copy"><strong>Codex CLI</strong><small>本地编码代理 · 工作区权限已验证</small></span>
+                  <span class="connection-state connection-state--ready"><i></i>就绪</span>
+                  <button class="row-action" type="button" data-row-action="Codex CLI">管理</button>
+                </div>
+                <div class="setting-row provider-row" id="provider-claude">
+                  <span class="provider-icon provider-icon--claude"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+                  <span class="setting-copy"><strong>Claude Code</strong><small>本地编码代理 · 尚未授权</small></span>
+                  <span class="connection-state"><i></i>未连接</span>
+                  <button class="row-action" type="button" data-row-action="Claude Code">连接</button>
+                </div>
+              </div>
+              <button class="text-row" type="button" data-open-provider><span>Anthropic 与兼容 OpenAI API</span><em>添加其他连接 ›</em></button>
+            </section>
+
+            <section class="settings-section" aria-labelledby="models-title">
+              <header class="section-header"><div><h2 id="models-title">不同工作使用什么模型</h2><p>保持“自动”即可；只有需要固定行为时才单独选择。</p></div><button type="button" data-reset-models>全部恢复自动</button></header>
+              <div class="native-group model-group">
+                <label class="setting-row model-row" id="model-chat">
+                  <span class="model-icon model-icon--chat"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span>
+                  <span class="setting-copy"><strong>对话与写作</strong><small>Chat Studio、Composer Copilot 和快速提问</small></span>
+                  <select data-model-select aria-label="对话与写作模型"><option>自动 · GPT-5</option><option>GPT-5</option><option>Claude Sonnet</option><option>Gemini Pro</option></select>
+                </label>
+                <label class="setting-row model-row" id="model-deep">
+                  <span class="model-icon model-icon--deep"><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg></span>
+                  <span class="setting-copy"><strong>复杂任务与代理</strong><small>多步骤分析、长任务和需要更强推理的工作</small></span>
+                  <select data-model-select aria-label="复杂任务与代理模型"><option>自动 · Claude Sonnet</option><option>Claude Sonnet</option><option>GPT-5</option><option>OpenRouter 自动</option></select>
+                </label>
+                <label class="setting-row model-row" id="model-search">
+                  <span class="model-icon model-icon--search"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span>
+                  <span class="setting-copy"><strong>搜索与研究</strong><small>AI Search、网页检索、资料综合和引用</small></span>
+                  <select data-model-select aria-label="搜索与研究模型"><option>自动 · 工具可用</option><option>GPT-5</option><option>Claude Sonnet</option><option>Perplexity Sonar</option></select>
+                </label>
+                <label class="setting-row model-row" id="model-index">
+                  <span class="model-icon model-icon--index"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span>
+                  <span class="setting-copy"><strong>知识索引</strong><small>Vault 嵌入、语义搜索和关系发现</small></span>
+                  <select data-model-select aria-label="知识索引模型"><option>本地 Peak 索引</option><option>OpenAI Embeddings</option><option>Ollama Embeddings</option></select>
+                </label>
+                <label class="setting-row model-row" id="model-files">
+                  <span class="model-icon model-icon--files"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span>
+                  <span class="setting-copy"><strong>理解文件</strong><small>图片、PDF、Office、音频、视频和转录</small></span>
+                  <select data-model-select aria-label="理解文件模型"><option>自动 · 多模态</option><option>GPT-5 Vision</option><option>Gemini Pro Vision</option></select>
+                </label>
+                <label class="setting-row model-row" id="model-image">
+                  <span class="model-icon model-icon--image"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span>
+                  <span class="setting-copy"><strong>生成与编辑图片</strong><small>Image Flow、Composer 图片和聊天中的视觉创作</small></span>
+                  <select data-model-select aria-label="图片生成模型"><option>GPT Image</option><option>OpenRouter 图片模型</option><option>自定义图片服务</option></select>
+                </label>
+                <label class="setting-row model-row" id="model-code">
+                  <span class="model-icon model-icon--code"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+                  <span class="setting-copy"><strong>编码任务</strong><small>Codex、Claude Code 和代码相关代理工作</small></span>
+                  <select data-model-select aria-label="编码任务模型"><option>自动 · Codex CLI</option><option>Codex CLI</option><option>Claude Code</option><option>OpenRouter Coder</option></select>
+                </label>
+              </div>
+            </section>
+
+            <section class="settings-section settings-section--last">
+              <details class="advanced-disclosure">
+                <summary><span class="summary-icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></span><span><strong>回退、成本与具体功能覆盖</strong><small>仅在你需要覆盖上面的工作默认值时修改。</small></span><em>›</em></summary>
+                <div class="advanced-content">
+                  <label class="setting-row"><span class="setting-copy"><strong>首选模型不可用时自动回退</strong><small>只使用已连接并通过能力检查的模型。</small></span><button type="button" class="native-toggle" data-toggle data-on="true" aria-label="切换自动回退"></button></label>
+                  <label class="setting-row"><span class="setting-copy"><strong>每次任务的成本上限</strong><small>达到上限前提醒，不会静默中断正在生成的内容。</small></span><select><option>不限制</option><option>NZ$1</option><option>NZ$5</option></select></label>
+                  <button class="setting-row feature-overrides" type="button"><span class="setting-copy"><strong>具体功能覆盖</strong><small>18 个功能全部继承上面的工作默认值。</small></span><em>查看 ›</em></button>
+                </div>
+              </details>
+            </section>
+          </div>
+        </section>
+      </div>
+
+      <footer class="window-footer"><span>AI 与模型</span><span data-save-state><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>所有更改已保存</span></footer>
+    </section>
+  </main>
+
+  <div class="drawer-backdrop" data-provider-backdrop hidden>
+    <aside class="provider-drawer" data-provider-drawer aria-label="添加 AI 连接">
+      <header><div><span>AI 连接</span><h2>添加或管理连接</h2><p>优先展示 Peak 完整支持并能立即验证的服务。</p></div><button type="button" data-close-provider aria-label="关闭">×</button></header>
+      <label class="drawer-search"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><input placeholder="搜索服务或本地代理"></label>
+      <section><h3>云端服务</h3><div class="drawer-list">
+        <button type="button"><span class="provider-icon provider-icon--openai"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span><span><strong>OpenAI</strong><small>对话、嵌入、文件和图片</small></span><em>已连接 ›</em></button>
+        <button type="button"><span class="provider-icon provider-icon--router"><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg></span><span><strong>OpenRouter</strong><small>一个密钥访问实时模型目录</small></span><em>已连接 ›</em></button>
+        <button type="button"><span class="provider-icon provider-icon--claude"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span><span><strong>Anthropic</strong><small>Claude API 与直接计费</small></span><em>连接 ›</em></button>
+      </div></section>
+      <section><h3>本地与编码代理</h3><div class="drawer-list">
+        <button type="button"><span class="provider-icon provider-icon--ollama"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span><span><strong>Ollama</strong><small>自动检测 localhost:11434</small></span><em>6 个模型 ›</em></button>
+        <button type="button"><span class="provider-icon provider-icon--codex"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span><span><strong>Codex CLI</strong><small>使用本地登录与工作区权限</small></span><em>就绪 ›</em></button>
+        <button type="button"><span class="provider-icon provider-icon--claude"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span><span><strong>Claude Code</strong><small>连接本地 CLI 会话</small></span><em>连接 ›</em></button>
+      </div></section>
+      <button class="compatible-row" type="button"><span><strong>兼容 OpenAI API 的服务</strong><small>自定义 Base URL、密钥和可用模型。</small></span><em>添加 ›</em></button>
+      <footer><span><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>密钥保存在本地 Obsidian 配置中</span></footer>
+    </aside>
+  </div>
+
+  <div class="calibrated-toast" data-toast hidden></div>
+</body>
+</html>
