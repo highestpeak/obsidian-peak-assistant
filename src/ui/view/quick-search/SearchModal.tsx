@@ -2005,7 +2005,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 							if (event.key !== 'ArrowLeft' && event.key !== 'Escape') return;
 							event.preventDefault();
 							event.stopPropagation();
-							restoreInspectorFocus(event.key === 'Escape');
+							restoreInspectorFocus(true);
 						}}
 					>
 						<InspectorSidePanel
@@ -2031,7 +2031,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 			{/* Footer — modal level, always visible */}
 			<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border-t pktw-border-pk-border pktw-flex pktw-items-center pktw-justify-between">
-				<VaultSearchFooterHints />
+				<VaultSearchFooterHints inspectorOpen={inspectorOpen} />
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
 					{hasSearchQuery && (
 						isSearching ? (

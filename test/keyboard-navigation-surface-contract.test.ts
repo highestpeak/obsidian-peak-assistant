@@ -8,6 +8,9 @@ const main = read('main.ts');
 const port = read('src/ui/keyboard/KeyboardNavigationPort.ts');
 const roving = read('src/ui/keyboard/useRovingComposite.ts');
 const search = read('src/ui/view/quick-search/SearchModal.tsx');
+const resultBrowserToolbar = read(
+	'src/ui/component/result-browser/toolbar/ResultBrowserToolbar.tsx',
+);
 const vaultSearch = read('src/ui/view/quick-search/tab-VaultSearch.tsx');
 const aiSearch = read('src/ui/view/quick-search/tab-AISearch.tsx');
 const aiFooter = read('src/ui/view/quick-search/components/V2Footer.tsx');
@@ -77,6 +80,14 @@ assert.match(search, /keyTipAction="search-vault"/);
 assert.match(search, /data-peak-keytip-action="search-ai"/);
 assert.match(search, /inspectorReturnFocusRef/);
 assert.match(search, /event\.key !== 'ArrowLeft' && event\.key !== 'Escape'/);
+assert.match(
+	search,
+	/restoreInspectorFocus\(true\);/,
+	'Left and Escape must both close the Inspector before restoring its source row',
+);
+assert.match(search, /<VaultSearchFooterHints inspectorOpen=\{inspectorOpen\} \/>/);
+assert.match(resultBrowserToolbar, /keys=\{inspectorOpen \? '←' : '→'\}/);
+assert.match(resultBrowserToolbar, /description=\{inspectorOpen \? 'close inspector' : 'inspector'\}/);
 assert.match(fileAtlas, /usePeakKeyboardSurface\('file-atlas'/);
 assert.match(fileAtlas, /data-peak-keytip-action="atlas-tree"/);
 assert.match(fileAtlas, /data-peak-keytip-action="atlas-graph"/);

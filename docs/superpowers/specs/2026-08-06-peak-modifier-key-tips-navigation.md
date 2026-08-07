@@ -72,8 +72,9 @@ Inspector、Outline、Selection tray 不产生空提示。
 - 按住修饰键 180ms 后在松键前显示；快速轻按仍在松键时显示。
 - 从命令/快捷键打开 Search、Atlas、Studio 后，不点击鼠标即可显示提示。
 - Vault Search / AI Search 和 Atlas Tree / Graph 均可连续双向往返。
-- Search 结果 `ArrowRight` 进入 Inspector，Inspector `ArrowLeft` 返回准确来源行，
-  `Escape` 关闭并恢复来源行。
+- Search 结果 `ArrowRight` 打开并进入 Inspector；Inspector `ArrowLeft` 和 `Escape`
+  均关闭 Inspector，并恢复到准确来源行。Inspector 打开时 footer 必须把提示从
+  `→ inspector` 切换为 `← close inspector`。
 - 每个可见提示键把 `activeElement` 移到对应目标。
 - 修饰键组合、AltGraph、IME 不误触发。
 - `Escape`、点击和窗口失焦清理所有提示节点与临时 class。

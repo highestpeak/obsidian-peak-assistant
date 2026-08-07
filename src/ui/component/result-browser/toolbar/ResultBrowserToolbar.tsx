@@ -76,14 +76,21 @@ export const ResultBrowserSearchInput = React.forwardRef<
 ResultBrowserSearchInput.displayName = 'ResultBrowserSearchInput';
 
 /** Keyboard contract shared by Search and other list-first Result Browsers. */
-export const ResultBrowserFooterHints: React.FC<{ showNewTab?: boolean }> = ({
+export const ResultBrowserFooterHints: React.FC<{
+	showNewTab?: boolean;
+	inspectorOpen?: boolean;
+}> = ({
 	showNewTab = true,
+	inspectorOpen = false,
 }) => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
 		<KeyboardShortcut keys="↑↓" description="navigate" />
 		<KeyboardShortcut keys="Enter" description="open" />
 		{showNewTab && <KeyboardShortcut keys="Ctrl+Enter" description="new tab" />}
-		<KeyboardShortcut keys="→" description="inspector" />
+		<KeyboardShortcut
+			keys={inspectorOpen ? '←' : '→'}
+			description={inspectorOpen ? 'close inspector' : 'inspector'}
+		/>
 	</div>
 );
 
