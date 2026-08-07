@@ -8,11 +8,16 @@
   <script src="mock.js" defer></script>
   <script src="settings-calibrated.js" defer></script>
 </head>
-<body class="calibrated-artifact" data-theme="light">
+<body class="calibrated-artifact" data-theme="pearl">
   <nav class="artifact-links" aria-label="Design artifact links">
     <a href="visual-calibration/index.html">视觉校准</a>
-    <span>偏好合成方向 · AI 与模型</span>
-    <button type="button" data-theme-toggle aria-label="切换明暗主题">切换深色</button>
+    <span class="artifact-links__label">保持布局 · 只比较主题</span>
+    <span class="theme-picker" aria-label="主题风格">
+      <button type="button" data-visual-theme="pearl" data-active="true"><i class="theme-swatch theme-swatch--pearl"></i>银白</button>
+      <button type="button" data-visual-theme="mist"><i class="theme-swatch theme-swatch--mist"></i>冷雾</button>
+      <button type="button" data-visual-theme="paper"><i class="theme-swatch theme-swatch--paper"></i>暖纸</button>
+      <button type="button" data-visual-theme="graphite"><i class="theme-swatch theme-swatch--graphite"></i>石墨</button>
+    </span>
   </nav>
 
   <main class="calibrated-stage">

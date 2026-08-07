@@ -1,5 +1,5 @@
 const root = document.body;
-const themeButton = document.querySelector('[data-theme-toggle]');
+const themeButtons = [...document.querySelectorAll('[data-visual-theme]')];
 const search = document.querySelector('[data-settings-search]');
 const searchResults = document.querySelector('[data-search-results]');
 const searchItems = [...document.querySelectorAll('[data-search-item]')];
@@ -21,11 +21,12 @@ function showSaved(message = '所有更改已保存') {
   window.setTimeout(() => { saveState.lastChild.textContent = '所有更改已保存'; }, 1400);
 }
 
-themeButton.addEventListener('click', () => {
-  const next = root.dataset.theme === 'light' ? 'dark' : 'light';
-  root.dataset.theme = next;
-  themeButton.textContent = next === 'dark' ? '切换浅色' : '切换深色';
-});
+for (const button of themeButtons) {
+  button.addEventListener('click', () => {
+    root.dataset.theme = button.dataset.visualTheme;
+    for (const candidate of themeButtons) candidate.dataset.active = candidate === button ? 'true' : 'false';
+  });
+}
 
 function closeSearch() {
   searchResults.hidden = true;
