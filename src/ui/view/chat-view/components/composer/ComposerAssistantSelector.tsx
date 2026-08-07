@@ -7,6 +7,7 @@ import { AssistantBuilderModal } from './AssistantBuilderModal';
 import { DEFAULT_ASSISTANT_ID, type ChatAssistantDefinition } from '@/core/types/chat-studio';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useEphemeralAssistantStore } from '../../store/ephemeralAssistantStore';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Assistant picker (chat-studio §8.6 / COMP-07).
@@ -91,6 +92,8 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 						data-nondefault={!isDefault ? 'true' : undefined}
 						data-preview={previewing ? 'true' : undefined}
 						aria-label={strings.composer.assistantDefaultLabel}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.assistant}
+						data-peak-keytip-label={strings.composer.assistantDefaultLabel}
 					>
 						<Bot aria-hidden />
 						{!isDefault && displayName && (

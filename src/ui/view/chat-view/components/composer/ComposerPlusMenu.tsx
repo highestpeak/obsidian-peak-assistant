@@ -5,6 +5,7 @@ import { usePromptInputContext } from '@/ui/component/prompt-input';
 import { useComposerStore } from '../../store/composerStore';
 import { useChatStudioStrings } from '../../chatStudioStringsContext';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * `+` menu — SOLE owner of INPUT-SIDE RESOURCE entry points (chat-studio
@@ -82,7 +83,12 @@ export const ComposerPlusMenu: React.FC<ComposerPlusMenuProps> = ({ insertAtCare
 			onOpenChange={changeOpen}
 		>
 			<PopoverTrigger asChild>
-				<IconButton label={strings.composer.attachMenuLabel} title={strings.composer.attachMenuLabel}>
+				<IconButton
+					label={strings.composer.attachMenuLabel}
+					title={strings.composer.attachMenuLabel}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.plus}
+					data-peak-keytip-label={strings.composer.attachMenuLabel}
+				>
 					<Plus />
 				</IconButton>
 			</PopoverTrigger>

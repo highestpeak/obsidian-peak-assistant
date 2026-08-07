@@ -62,8 +62,10 @@ import {
 } from './atlasDisplayModel';
 import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
-import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
-import { useServiceContext } from '@/ui/context/ServiceContext';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import {
 	defaultFileAtlasGraphSessionState,
 	type FileAtlasDocumentSessionState,
@@ -202,34 +204,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	const inspectorScrollRef = useRef<HTMLDivElement>(null);
 	const treeScrollTopRef = useRef(initialSession?.treeScrollTop ?? 0);
 	const inspectorScrollTopRef = useRef(initialSession?.inspectorScrollTop ?? 0);
-	const { keyboardNavigation } = useServiceContext();
-	const atlasKeyboardAdapter = useMemo(() => ({
-		getKeyTipAnchor: (actionId: string): HTMLElement | null =>
-			rootRef.current?.querySelector<HTMLElement>(
-				`[data-peak-keytip-action="${actionId}"]`,
-			) ?? null,
-		activateKeyTip: (actionId: string): boolean => {
-			const nextSubview = actionId === 'atlas-tree'
-				? 'tree'
-				: actionId === 'atlas-graph'
-					? 'graph'
-					: null;
-			const ownerWindow = rootRef.current?.ownerDocument.defaultView;
-			if (!nextSubview || !ownerWindow) return false;
-			setSubview(nextSubview);
-			ownerWindow.requestAnimationFrame(() => {
-				ownerWindow.requestAnimationFrame(() => {
-					keyboardNavigation?.requestSurfaceFocus(
-						'file-atlas',
-						'fa-atlas',
-						rootRef.current?.ownerDocument,
-					);
-				});
-			});
-			return true;
-		},
-	}), [keyboardNavigation]);
-	usePeakKeyboardSurface('file-atlas', rootRef, atlasKeyboardAdapter);
+	usePeakKeyboardSurface('file-atlas', rootRef);
 	useRovingComposite(viewTabsRef, {
 		itemSelector: '[role="tab"]',
 		orientation: 'horizontal',
@@ -508,7 +483,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							aria-selected={subview === 'tree'}
 							tabIndex={subview === 'tree' ? 0 : -1}
 							data-peak-focus-id="file-atlas-tree-view"
-							data-peak-keytip-action="atlas-tree"
+							data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.tree}
+							data-peak-keytip-label={s.viewTree}
 							className={`pkfa-atlas-tab${subview === 'tree' ? ' is-active' : ''}`}
 							onClick={() => setSubview('tree')}
 						>
@@ -522,7 +498,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							aria-selected={subview === 'graph'}
 							tabIndex={subview === 'graph' ? 0 : -1}
 							data-peak-focus-id="file-atlas-graph-view"
-							data-peak-keytip-action="atlas-graph"
+							data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graph}
+							data-peak-keytip-label={s.viewGraph}
 							className={`pkfa-atlas-tab${subview === 'graph' ? ' is-active' : ''}`}
 							onClick={() => setSubview('graph')}
 						>
@@ -554,6 +531,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 									placeholder={s.searchPlaceholder}
 									autoComplete="off"
 									value={searchTerm}
+									data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.search}
+									data-peak-keytip-label={s.searchPlaceholder}
 									onChange={(e) => setSearchTerm(e.target.value)}
 								/>
 								<span className="pkfa-search-hits">{searchTerm ? `${hits} hits` : ''}</span>

@@ -6,6 +6,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatStrings } from '../chatStringsContext';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useChatNavigation } from '../useChatNavigation';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export interface HeaderProps {}
 
@@ -121,6 +122,8 @@ export const Header: React.FC<HeaderProps> = () => {
 							parentTitle ?? parentConversationId,
 						)}
 						onClick={openParentConversation}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.header.branch}
+						data-peak-keytip-label="Open parent conversation"
 					>
 						<GitBranch className="pktw-w-3 pktw-h-3" />
 						<span className="pktw-truncate pktw-max-w-[140px]">
@@ -142,6 +145,8 @@ export const Header: React.FC<HeaderProps> = () => {
 						label={strings.header.openSourceLabel}
 						title={strings.header.openSourceLabel}
 						onClick={handleOpenSource}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.header.openSource}
+						data-peak-keytip-label={strings.header.openSourceLabel}
 					>
 						<ExternalLink />
 					</IconButton>
@@ -151,6 +156,8 @@ export const Header: React.FC<HeaderProps> = () => {
 					title={isRegenerating ? strings.header.refreshLabelBusy : strings.header.refreshLabel}
 					onClick={handleRefresh}
 					disabled={isRegenerating}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.header.refresh}
+					data-peak-keytip-label={isRegenerating ? strings.header.refreshLabelBusy : strings.header.refreshLabel}
 				>
 					<RefreshCw className={isRegenerating ? 'pktw-animate-spin' : undefined} />
 				</IconButton>
@@ -159,6 +166,8 @@ export const Header: React.FC<HeaderProps> = () => {
 						label={strings.header.restoreRightLabel}
 						title={strings.header.restoreRightLabel}
 						data-peak-chat-restore-right
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.header.restoreIndex}
+						data-peak-keytip-label={strings.header.restoreRightLabel}
 						onClick={restoreRight}
 					>
 						<PanelRight />

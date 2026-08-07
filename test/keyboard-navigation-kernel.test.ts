@@ -8,6 +8,7 @@ import { resolveRovingKeyIntent } from '@/ui/keyboard/useRovingComposite';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import {
 	PEAK_KEY_TIP_ACTIVATION,
+	PEAK_CONTROL_KEY_TIP_KEYS,
 	PEAK_KEYBOARD_SURFACE_LABELS,
 	PEAK_KEY_TIP_DEFINITIONS,
 } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -83,41 +84,37 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
 	PEAK_KEY_TIP_DEFINITIONS['vault-search'].map((tip) => tip.key),
-	['V', 'A', 'Q', 'F', 'R', 'D'],
+	['Q', 'R'],
 );
 assert.deepStrictEqual(
-	PEAK_KEY_TIP_DEFINITIONS['file-atlas']
-		.filter((tip) => tip.actionId?.startsWith('atlas-'))
-		.map((tip) => [tip.key, tip.actionId]),
-	[['T', 'atlas-tree'], ['G', 'atlas-graph']],
+	PEAK_KEY_TIP_DEFINITIONS['file-atlas'].map((tip) => tip.key),
+	['F', 'I', 'S'],
 );
 assert.deepStrictEqual(PEAK_KEY_TIP_ACTIVATION, {
 	holdDelayMs: 180,
 	gesture: 'press-or-tap',
 });
-for (const surfaceId of ['vault-search', 'ai-search'] as const) {
-	assert.ok(
-		PEAK_KEY_TIP_DEFINITIONS[surfaceId].some((tip) =>
-			tip.key === 'V' && tip.actionId === 'search-vault'),
-		`${surfaceId} must expose a direct route to Vault Search`,
-	);
-	assert.ok(
-		PEAK_KEY_TIP_DEFINITIONS[surfaceId].some((tip) =>
-			tip.key === 'A' && tip.actionId === 'search-ai'),
-		`${surfaceId} must expose a direct route to AI Search`,
-	);
-}
 assert.ok(
 	PEAK_KEY_TIP_DEFINITIONS['chat-studio'].some((tip) =>
 		tip.key === 'Q' && tip.zoneId === 'cs-composer'),
 );
 const template = JSON.parse(readFileSync('templates/config/keyboard-navigation.json', 'utf8')) as {
 	keyTips: typeof PEAK_KEY_TIP_DEFINITIONS;
+	controlKeys: typeof PEAK_CONTROL_KEY_TIP_KEYS;
 };
 assert.deepStrictEqual(
 	template.keyTips,
 	PEAK_KEY_TIP_DEFINITIONS,
 	'compiled Key Tips must mirror the product-owned template',
 );
+assert.deepStrictEqual(
+	template.controlKeys,
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	'compiled control Key Tips must mirror the product-owned template',
+);
+assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.search.vaultTab, 'V');
+assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.close, 'X');
+assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.ai, 'A');
+assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.send, 'E');
 
 console.log('keyboard-navigation-kernel: passed');

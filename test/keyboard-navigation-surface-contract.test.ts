@@ -18,13 +18,20 @@ const modeHelp = read('src/ui/view/quick-search/components/ModeHelpList.tsx');
 const fileAtlas = read('src/ui/view/file-atlas/FileAtlasPanel.tsx');
 const fileAtlasGraph = read('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const fileRail = read('src/ui/view/file-atlas/components/FileRail.tsx');
+const atlasBar = read('src/ui/view/file-atlas/components/AtlasBar.tsx');
 const chatStudio = read('src/ui/view/chat-studio-view/ChatStudioView.tsx');
+const projectList = read('src/ui/view/project-list-view/ProjectListView.tsx');
+const chatHeader = read('src/ui/view/chat-view/components/Header.tsx');
+const chatComposer = read('src/ui/view/chat-view/components/Composer.tsx');
+const chatIndex = read('src/ui/view/chat-view/components/ConversationIndex.tsx');
+const inspector = read('src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx');
 const chatMessages = read('src/ui/view/chat-view/components/messages/MessageListRenderer.tsx');
 const styles = `${read('src/styles/tailwind.css')}\n${read('src/styles/peak-components.css')}`;
 const templateRegistry = read('src/core/template/TemplateRegistry.ts');
 const template = JSON.parse(read('templates/config/keyboard-navigation.json')) as {
 	activation: Record<string, string>;
 	surfaceLabels: Record<string, string>;
+	controlKeys: Record<string, unknown>;
 	keyTips: Record<string, Array<{
 		key: string;
 		label: string;
@@ -57,6 +64,10 @@ assert.match(runtime, /state\.activeSurface/);
 assert.match(runtime, /showKeyTips\(surface\)/);
 assert.match(runtime, /MutationObserver/);
 assert.match(runtime, /pk-keytip-layer/);
+assert.match(runtime, /CONTROL_KEY_TIP_SELECTOR = '\[data-peak-keytip-key\]'/);
+assert.match(runtime, /badge\.append\(keycap\)/);
+assert.doesNotMatch(runtime, /badge\.append\(keycap, label\)/);
+assert.doesNotMatch(runtime, /activateKeyTip/);
 assert.match(runtime, /hideKeyTips\(ownerDocument\)/);
 assert.match(runtime, /dataset\.peakKeytips = 'visible'/);
 assert.doesNotMatch(runtime, /event\.key === 'F6'/);
@@ -76,8 +87,10 @@ assert.match(aiFooter, /'ai-search-table-of-contents'/);
 assert.match(modeHelp, /data-result-browser-row/);
 
 assert.match(search, /usePeakKeyboardSurface\([\s\S]*?'vault-search'[\s\S]*?'ai-search'/);
-assert.match(search, /keyTipAction="search-vault"/);
-assert.match(search, /data-peak-keytip-action="search-ai"/);
+assert.match(search, /PEAK_CONTROL_KEY_TIP_KEYS\.search\.vaultTab/);
+assert.match(search, /PEAK_CONTROL_KEY_TIP_KEYS\.search\.aiTab/);
+assert.match(search, /PEAK_CONTROL_KEY_TIP_KEYS\.search\.aiWorkspace/);
+assert.match(search, /PEAK_CONTROL_KEY_TIP_KEYS\.search\.refine/);
 assert.match(search, /inspectorReturnFocusRef/);
 assert.match(search, /event\.key !== 'ArrowLeft' && event\.key !== 'Escape'/);
 assert.match(
@@ -89,9 +102,19 @@ assert.match(search, /<VaultSearchFooterHints inspectorOpen=\{inspectorOpen\} \/
 assert.match(resultBrowserToolbar, /keys=\{inspectorOpen \? '←' : '→'\}/);
 assert.match(resultBrowserToolbar, /description=\{inspectorOpen \? 'close inspector' : 'inspector'\}/);
 assert.match(fileAtlas, /usePeakKeyboardSurface\('file-atlas'/);
-assert.match(fileAtlas, /data-peak-keytip-action="atlas-tree"/);
-assert.match(fileAtlas, /data-peak-keytip-action="atlas-graph"/);
+assert.match(fileAtlas, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.tree/);
+assert.match(fileAtlas, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.graph/);
+assert.match(fileAtlas, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.search/);
+assert.match(atlasBar, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.filters/);
+assert.match(fileAtlasGraph, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.graphScope\.ai/);
 assert.match(chatStudio, /usePeakKeyboardSurface\('chat-studio'/);
+assert.match(chatStudio, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.openLeft/);
+assert.match(projectList, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.newChat/);
+assert.match(chatHeader, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.header\.restoreIndex/);
+assert.match(chatComposer, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.composer\.send/);
+assert.match(chatIndex, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.index\[value\]/);
+assert.match(inspector, /PEAK_CONTROL_KEY_TIP_KEYS\.search\.inspector\.close/);
+assert.doesNotMatch(inspector, /<div\s+onClick=\{\(\) => setOpen/);
 assert.doesNotMatch(port, /\|\s*'composer'/, 'Composer adapter belongs to phase 2');
 
 for (const zone of [
@@ -143,6 +166,10 @@ assert.deepStrictEqual(
 	Object.keys(template.keyTips).sort(),
 	['ai-search', 'chat-studio', 'file-atlas', 'vault-search'],
 );
+assert.deepStrictEqual(
+	Object.keys(template.controlKeys).sort(),
+	['aiSearch', 'chatStudio', 'fileAtlas', 'search'],
+);
 for (const zone of [
 	'vs-query',
 	'as-mode-query',
@@ -153,10 +180,8 @@ for (const zone of [
 }
 assert.ok(template.a11y.graphInstructions);
 assert.ok(template.keyTips['vault-search'].some((tip) => tip.key === 'R' && tip.label === 'Results'));
-assert.ok(template.keyTips['vault-search'].some((tip) => tip.key === 'A' && tip.actionId === 'search-ai'));
-assert.ok(template.keyTips['ai-search'].some((tip) => tip.key === 'V' && tip.actionId === 'search-vault'));
-assert.ok(template.keyTips['file-atlas'].some((tip) => tip.key === 'T' && tip.actionId === 'atlas-tree'));
-assert.ok(template.keyTips['file-atlas'].some((tip) => tip.key === 'G' && tip.actionId === 'atlas-graph'));
+assert.deepStrictEqual(template.keyTips['vault-search'].map((tip) => tip.key), ['Q', 'R']);
+assert.deepStrictEqual(template.keyTips['file-atlas'].map((tip) => tip.key), ['F', 'I', 'S']);
 assert.ok(template.keyTips['chat-studio'].some((tip) => tip.key === 'Q' && tip.label === 'Chat input'));
 
 console.log('keyboard-navigation-surface-contract: passed');

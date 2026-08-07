@@ -29,6 +29,7 @@ import { OutlineTab } from './conversation-index/OutlineTab';
 import { ResourcesTab } from './conversation-index/ResourcesTab';
 import { ResourcesFilterBar } from './conversation-index/ResourcesFilterBar';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * ConversationIndex — right-side navigator with Outline / Resources tabs.
@@ -411,6 +412,8 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 						label={rightStrings.collapseLabel}
 						title={rightStrings.collapseLabel}
 						onClick={onCollapse}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.index.collapse}
+						data-peak-keytip-label={rightStrings.collapseLabel}
 					>
 						<PanelRightClose />
 					</IconButton>
@@ -435,6 +438,8 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 						role="tab"
 						data-chat-index-tab={value}
 						aria-selected={tab === value}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.index[value]}
+						data-peak-keytip-label={label}
 						tabIndex={tab === value ? 0 : -1}
 						className={`pkchat-idx__tab${tab === value ? ' pkchat-idx__tab--active' : ''}`}
 						onClick={() => setTab(value)}

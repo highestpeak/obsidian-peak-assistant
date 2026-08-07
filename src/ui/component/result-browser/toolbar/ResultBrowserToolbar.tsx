@@ -9,13 +9,15 @@
  * leaves as a callback. No store, no service context, no telemetry. Host
  * adapters bind these to their own state (Quick Search → `vaultSearchStore`).
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { List, ListTree, Network } from 'lucide-react';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { KeyboardShortcut } from '@/ui/component/mine/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import type {
 	ResultBrowserDensity,
 	ResultBrowserGraphPreset,
@@ -127,33 +129,48 @@ const VIEW_TITLES: Record<ResultBrowserView, string> = {
 	graph: 'Graph — relations between results',
 };
 
-export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({ view, onViewChange }) => (
-	<div
-		role="tablist"
-		aria-label="Result view mode"
-		className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
-	>
-		{VIEW_OPTIONS.map(([id, label, Icon]) => {
-			const active = view === id;
-			return (
+export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({ view, onViewChange }) => {
+	const rootRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(rootRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => onViewChange(item.dataset.resultView as ResultBrowserView),
+	});
+	return (
+		<div
+			ref={rootRef}
+			role="tablist"
+			aria-label="Result view mode"
+			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
+		>
+			{VIEW_OPTIONS.map(([id, label, Icon]) => {
+				const active = view === id;
+				return (
 					<Button
 						key={id}
 						type="button"
 						variant="unstyled"
 						size="sm"
+						role="tab"
+						aria-selected={active}
+						tabIndex={active ? 0 : -1}
+						data-result-view={id}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.view[id]}
+						data-peak-keytip-label={`${label} view`}
 						title={VIEW_TITLES[id]}
 						onClick={() => { if (view !== id) onViewChange(id); }}
 						className={cn(TOOLBAR_OPT_BASE, active ? ACTIVE_LABEL : IDLE_LABEL)}
-				>
-					{active && <Thumb layoutId="view-mode-thumb" />}
-					<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
+					>
+						{active && <Thumb layoutId="view-mode-thumb" />}
+						<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
 							<Icon className="pktw-w-3.5 pktw-h-3.5" /> {label}
 						</span>
 					</Button>
-			);
-		})}
-	</div>
-);
+				);
+			})}
+		</div>
+	);
+};
 
 // ---------------------------------------------------------------------------
 // Density toggle (Compact / Detailed) — shared by List + Tree
@@ -164,33 +181,46 @@ export interface DensityToggleProps {
 	onDensityChange: (density: ResultBrowserDensity) => void;
 }
 
-export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ density, onDensityChange }) => (
-	<div
-		role="tablist"
-		aria-label="Result panel density"
-		className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
-	>
-		{(['compact', 'detailed'] as const).map((d) => {
-			const active = density === d;
-			return (
+export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ density, onDensityChange }) => {
+	const rootRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(rootRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => onDensityChange(item.dataset.resultDensity as ResultBrowserDensity),
+	});
+	return (
+		<div
+			ref={rootRef}
+			role="tablist"
+			aria-label="Result panel density"
+			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
+		>
+			{(['compact', 'detailed'] as const).map((d) => {
+				const active = density === d;
+				return (
 					<Button
 						key={d}
 						type="button"
 						variant="unstyled"
 						size="sm"
 						role="tab"
-					aria-selected={active}
-					title={d === 'compact' ? 'Compact — one line per result' : 'Detailed — result title + snippet + path / anchor'}
-					onClick={() => onDensityChange(d)}
-					className={cn(TOOLBAR_OPT_BASE, active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors')}
-				>
-					{active && <Thumb layoutId="result-density-thumb" />}
-					<span className="pktw-relative pktw-z-10">{d === 'compact' ? 'Compact' : 'Detailed'}</span>
+						aria-selected={active}
+						tabIndex={active ? 0 : -1}
+						data-result-density={d}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.density[d]}
+						data-peak-keytip-label={`${d === 'compact' ? 'Compact' : 'Detailed'} results`}
+						title={d === 'compact' ? 'Compact — one line per result' : 'Detailed — result title + snippet + path / anchor'}
+						onClick={() => onDensityChange(d)}
+						className={cn(TOOLBAR_OPT_BASE, active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors')}
+					>
+						{active && <Thumb layoutId="result-density-thumb" />}
+						<span className="pktw-relative pktw-z-10">{d === 'compact' ? 'Compact' : 'Detailed'}</span>
 					</Button>
-			);
-		})}
-	</div>
-);
+				);
+			})}
+		</div>
+	);
+};
 
 // ---------------------------------------------------------------------------
 // Graph controls (preset segmented + semantic toggle)
@@ -206,42 +236,55 @@ export interface GraphControlsProps {
 	className?: string;
 }
 
-const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPresetChange'>> = ({ preset, onPresetChange }) => (
-	<div
-		role="tablist"
-		aria-label="Graph view preset"
-		className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
-	>
-		{PRESET_LABELS.map(([id, label, title]) => {
-			const active = preset === id;
-			return (
+const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPresetChange'>> = ({ preset, onPresetChange }) => {
+	const rootRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(rootRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => onPresetChange(item.dataset.graphPreset as ResultBrowserGraphPreset),
+	});
+	return (
+		<div
+			ref={rootRef}
+			role="tablist"
+			aria-label="Graph view preset"
+			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
+		>
+			{PRESET_LABELS.map(([id, label, title]) => {
+				const active = preset === id;
+				return (
 					<Button
 						key={id}
 						type="button"
 						variant="unstyled"
 						size="sm"
 						role="tab"
-					aria-selected={active}
-					title={title}
-					onClick={() => onPresetChange(id)}
+						aria-selected={active}
+						tabIndex={active ? 0 : -1}
+						data-graph-preset={id}
+						data-peak-keytip-key={active ? PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset : undefined}
+						data-peak-keytip-label={active ? 'Graph layout preset' : undefined}
+						title={title}
+						onClick={() => onPresetChange(id)}
 						className={cn(
 							TOOLBAR_OPT_BASE,
 							active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
 						)}
-				>
-					{active && (
-						<motion.div
-							layoutId="graph-preset-thumb"
-							className="pktw-absolute pktw-inset-0 pktw-rounded-full pktw-bg-pk-accent"
-							transition={{ type: 'spring', stiffness: 500, damping: 34 }}
-						/>
-					)}
-					<span className="pktw-relative pktw-z-10">{label}</span>
+					>
+						{active && (
+							<motion.div
+								layoutId="graph-preset-thumb"
+								className="pktw-absolute pktw-inset-0 pktw-rounded-full pktw-bg-pk-accent"
+								transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+							/>
+						)}
+						<span className="pktw-relative pktw-z-10">{label}</span>
 					</Button>
-			);
-		})}
-	</div>
-);
+				);
+			})}
+		</div>
+	);
+};
 
 const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemanticChange'>> = ({ semantic, onSemanticChange }) => (
 	<label
@@ -251,6 +294,8 @@ const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemantic
 		<input
 			type="checkbox"
 			checked={semantic}
+			data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic}
+			data-peak-keytip-label="Toggle semantic edges"
 			onChange={(e) => onSemanticChange(e.target.checked)}
 			className="pktw-sr-only peer"
 			aria-label="Toggle semantic edges"
@@ -258,7 +303,7 @@ const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemantic
 		<span
 			aria-hidden="true"
 			className={cn(
-				'pktw-relative pktw-inline-block pktw-w-[30px] pktw-h-4 pktw-rounded-full pktw-transition-colors',
+				'pktw-relative pktw-inline-block pktw-w-[30px] pktw-h-4 pktw-rounded-full pktw-transition-colors peer-focus-visible:pktw-ring-2 peer-focus-visible:pktw-ring-pk-accent peer-focus-visible:pktw-ring-offset-2',
 				semantic ? 'pktw-bg-pk-accent' : 'pktw-bg-pk-border',
 			)}
 		>

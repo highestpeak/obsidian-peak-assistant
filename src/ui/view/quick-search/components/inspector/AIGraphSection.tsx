@@ -4,6 +4,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { AIGraphHistoryRow } from '@/service/ai-graph';
 import { useSharedStore } from '../../store';
 import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export interface AIGraphSectionProps {
 	currentPath: string;
@@ -91,6 +92,8 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 				size="sm"
 				className="pk-inspector-action-button pktw-justify-start pktw-gap-1.5"
 				onClick={createForCurrentSearch}
+				data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.createGraph}
+				data-peak-keytip-label="Create AI Graph from this search"
 			>
 				<Network className="pktw-w-3.5 pktw-h-3.5" />
 				Create AI Graph from this search

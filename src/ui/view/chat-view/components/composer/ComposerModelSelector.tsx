@@ -20,6 +20,7 @@ import {
 import type { ModelSelection } from '@/core/types/chat-studio';
 import type { Profile } from '@/core/profiles/types';
 import { useChatStudioStrings } from '../../chatStudioStringsContext';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Profile-qualified model selector (chat-studio §8.5 / COMP-05).
@@ -141,6 +142,8 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 					className="pkchat-run-chip"
 					data-state={open ? 'open' : 'closed'}
 					aria-label={strings.composer.modelAutoLabel}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.model}
+					data-peak-keytip-label={strings.composer.modelAutoLabel}
 				>
 					{selection.mode === 'auto' && <Sparkles aria-hidden />}
 					<span className="pkchat-run-chip__mid">

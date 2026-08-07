@@ -22,7 +22,10 @@ import { AtlasGraphCanvas, type AtlasGraphPreset } from '@/ui/component/graph/At
 import type { AtlasGraphData, FileAtlasHostPort } from '../FileAtlasHostPort';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
-import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import { ContextualAIGraphView } from '@/ui/component/ai-graph';
 import type {
 	FileAtlasGraphScope,
@@ -201,6 +204,8 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 						tabIndex={scope === 'one-hop' ? 0 : -1}
 						data-graph-scope="one-hop"
 						data-peak-focus-id="file-atlas-graph-one-hop"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.oneHop}
+						data-peak-keytip-label={s.graphScopeLocal}
 						className={`pkfa-graph-scope-tab${scope === 'one-hop' ? ' is-active' : ''}`}
 						onClick={() => selectScope('one-hop')}
 					>
@@ -214,6 +219,8 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 						tabIndex={scope === 'two-hop' ? 0 : -1}
 						data-graph-scope="two-hop"
 						data-peak-focus-id="file-atlas-graph-two-hop"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.twoHop}
+						data-peak-keytip-label={s.graphScopeTwoHop}
 						className={`pkfa-graph-scope-tab${scope === 'two-hop' ? ' is-active' : ''}`}
 						onClick={() => selectScope('two-hop')}
 					>
@@ -227,6 +234,8 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 						tabIndex={scope === 'ai' ? 0 : -1}
 						data-graph-scope="ai"
 						data-peak-focus-id="file-atlas-graph-ai"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.ai}
+						data-peak-keytip-label={s.graphScopeAI}
 						className={`pkfa-graph-scope-tab${scope === 'ai' ? ' is-active' : ''}`}
 						onClick={() => selectScope('ai')}
 					>
@@ -245,6 +254,10 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 							tabIndex={layout === l.id ? 0 : -1}
 							data-graph-layout={l.id}
 							data-peak-focus-id={`file-atlas-layout-${l.id}`}
+							data-peak-keytip-key={layout === l.id
+								? PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout
+								: undefined}
+							data-peak-keytip-label={layout === l.id ? 'Graph layout' : undefined}
 							className={`pkfa-graph-scope-tab${layout === l.id ? ' is-active' : ''}`}
 							onClick={() => selectLayout(l.id)}
 						>
@@ -257,6 +270,8 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 					variant="unstyled"
 					type="button"
 					aria-pressed={semantic}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.semantic}
+					data-peak-keytip-label={s.graphSemanticLabel}
 					className={`pkfa-semantic-toggle${semantic ? ' is-on' : ''}`}
 					onClick={() => setSemantic((v) => !v)}
 				>

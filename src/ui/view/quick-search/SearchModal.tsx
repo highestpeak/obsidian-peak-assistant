@@ -56,6 +56,7 @@ import {
 } from '@/ui/keyboard/usePeakKeyboardSurface';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
 	PEAK_KEYBOARD_A11Y_STRINGS,
 	PEAK_KEYBOARD_ZONE_LABELS,
 } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -67,7 +68,7 @@ interface TabButtonProps {
 	label: string;
 	activeTab: TabType;
 	onClick: () => void;
-	keyTipAction: string;
+	keyTipKey: string;
 	className?: string;
 }
 
@@ -79,7 +80,7 @@ const TabButton: React.FC<TabButtonProps> = ({
 	label,
 	activeTab,
 	onClick,
-	keyTipAction,
+	keyTipKey,
 	className,
 }) => {
 	const isActive = activeTab === tab;
@@ -90,7 +91,8 @@ const TabButton: React.FC<TabButtonProps> = ({
 			aria-selected={isActive}
 			tabIndex={isActive ? 0 : -1}
 			data-peak-focus-id={`search-surface-${tab}`}
-			data-peak-keytip-action={keyTipAction}
+			data-peak-keytip-key={keyTipKey}
+			data-peak-keytip-label={label}
 			onClick={onClick}
 			className={cn(
 				'pktw-shadow-none pktw-rounded-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-0 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
@@ -153,6 +155,8 @@ function AIAnalysisQueryBar({
 					variant="outline"
 					geometry="action"
 					type="button"
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.cancel}
+					data-peak-keytip-label="Cancel analysis"
 					onClick={onCancel}
 					className="pk-ai-analysis-query-action"
 				>
@@ -164,6 +168,8 @@ function AIAnalysisQueryBar({
 					variant="outline"
 					geometry="action"
 					type="button"
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.newAnalysis}
+					data-peak-keytip-label="New analysis"
 					onClick={onNewAnalysis}
 					className="pk-ai-analysis-query-action"
 				>
@@ -319,6 +325,8 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 										variant="ghost"
 										geometry="action-icon"
 										type="button"
+										data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.web}
+										data-peak-keytip-label="Toggle web search"
 										className={cn('pk-ai-search-web-toggle', webEnabled && 'is-active')}
 										aria-pressed={webEnabled}
 										onClick={() => {
@@ -541,7 +549,8 @@ function AIWorkspaceSelector({
 				aria-selected={active}
 				tabIndex={active ? 0 : -1}
 				data-peak-focus-id="search-surface-ai"
-				data-peak-keytip-action="search-ai"
+				data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.aiTab}
+				data-peak-keytip-label="AI Search"
 				onClick={onActivate}
 				onKeyDown={(event) => {
 					if (event.key !== 'ArrowDown') return;
@@ -564,6 +573,8 @@ function AIWorkspaceSelector({
 				aria-expanded={open}
 				aria-controls={open ? menuId : undefined}
 				tabIndex={active ? 0 : -1}
+				data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.aiWorkspace}
+				data-peak-keytip-label="Choose AI workspace"
 				onClick={() => {
 					onActivate();
 					setOpen((current) => !current);
@@ -1726,6 +1737,8 @@ const SuggestButton: React.FC<{
 				aria-expanded={showPopover}
 				aria-label="AI suggests queries based on your browsing"
 				title="AI suggests queries based on your actions — hover for recent"
+				data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.refine}
+				data-peak-keytip-label="Refine search"
 				className={cn(
 					'pktw-inline-flex pktw-items-center pktw-gap-1.5',
 					'pktw-text-pk-sm pktw-font-medium pktw-whitespace-nowrap',
@@ -2089,72 +2102,15 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 		aiWorkspaceMode,
 		setAIWorkspaceMode,
 	} = useSharedStore();
-	const { keyboardNavigation } = useServiceContext();
 	// Graph view claims all available modal height (list view stays
 	// content-driven so short result sets don't leave empty space).
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const isGraph = activeTab === 'vault' && resultView === 'graph';
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const tabListRef = React.useRef<HTMLDivElement | null>(null);
-	const searchKeyboardAdapter = React.useMemo(() => ({
-		getKeyTipAnchor: (actionId: string): HTMLElement | null => {
-			const root = rootRef.current;
-			if (!root) return null;
-			if (actionId === 'search-inspector') {
-				return root.querySelector<HTMLElement>('[data-peak-keyboard-zone="vs-inspector"]')
-					?? root.querySelector<HTMLElement>('[data-result-browser-row][tabindex="0"]');
-			}
-			return root.querySelector<HTMLElement>(`[data-peak-keytip-action="${actionId}"]`);
-		},
-		activateKeyTip: (actionId: string): boolean => {
-			const root = rootRef.current;
-			const ownerWindow = root?.ownerDocument.defaultView;
-			if (!root || !ownerWindow) return false;
-			if (actionId === 'search-inspector') {
-				const inspector = root.querySelector<HTMLElement>(
-					'[data-peak-keyboard-zone="vs-inspector"]',
-				);
-				if (inspector) {
-					return keyboardNavigation?.focusSurface(
-						'vault-search',
-						'vs-inspector',
-						root.ownerDocument,
-					) ?? false;
-				}
-				const row = root.querySelector<HTMLElement>('[data-result-browser-row][tabindex="0"]');
-				if (!row) return false;
-				row.focus({ preventScroll: true });
-				row.dispatchEvent(new ownerWindow.KeyboardEvent('keydown', {
-					bubbles: true,
-					cancelable: true,
-					key: 'ArrowRight',
-				}));
-				return true;
-			}
-			const nextTab = actionId === 'search-vault'
-				? 'vault'
-				: actionId === 'search-ai'
-					? 'ai'
-					: null;
-			if (!nextTab) return false;
-			setActiveTab(nextTab);
-			const nextSurface = nextTab === 'vault' ? 'vault-search' : 'ai-search';
-			ownerWindow.requestAnimationFrame(() => {
-				ownerWindow.requestAnimationFrame(() => {
-					keyboardNavigation?.requestSurfaceFocus(
-						nextSurface,
-						'search-mode',
-						root.ownerDocument,
-					);
-				});
-			});
-			return true;
-		},
-	}), [keyboardNavigation, setActiveTab]);
 	usePeakKeyboardSurface(
 		activeTab === 'vault' ? 'vault-search' : 'ai-search',
 		rootRef,
-		searchKeyboardAdapter,
 	);
 	useRovingComposite(tabListRef, {
 		itemSelector: '[role="tab"]',
@@ -2203,7 +2159,7 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 					label="Vault Search"
 					activeTab={activeTab}
 					onClick={() => setActiveTab('vault')}
-					keyTipAction="search-vault"
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.search.vaultTab}
 					className="pktw-rounded-tl-lg"
 				/>
 				<AIWorkspaceSelector

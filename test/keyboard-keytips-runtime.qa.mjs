@@ -50,6 +50,8 @@ try {
 	await page.waitForTimeout(220);
 	assert.equal(await page.locator('#surface').getAttribute('data-peak-keytips'), 'visible');
 	assert.equal(await page.locator('[data-peak-keytip="Q"]').count(), 1);
+	assert.equal(await page.locator('[data-peak-keytip="Q"] > kbd').count(), 1);
+	assert.equal(await page.locator('[data-peak-keytip="Q"] > :not(kbd)').count(), 0);
 	assert.equal(await page.locator('#surface [data-peak-keytip]').count(), 0);
 	await page.keyboard.up('Alt');
 	assert.equal(await page.locator('#surface').getAttribute('data-peak-keytips'), 'visible');
@@ -116,46 +118,35 @@ try {
 	await page.waitForTimeout(50);
 	assert.equal(await page.locator('[data-peak-keytip="I"]').count(), 1);
 
-	// Action-backed destinations stay visible even when their content is unmounted.
+	// Exact-control Key Tips focus without clicking; Enter performs the action.
 	await page.evaluate(() => {
 		window.__peakRuntime.dispose();
 		document.body.innerHTML = `
 			<button id="outside">Outside trigger</button>
 			<div id="atlas" class="surface">
-				<div class="zone" data-peak-keyboard-zone="fa-file-rail"><button>Files</button></div>
+				<div class="zone" data-peak-keyboard-zone="fa-file-rail"><button id="files">Files</button></div>
 				<div class="zone" data-peak-keyboard-zone="fa-view-filters">
-					<button data-peak-keytip-action="atlas-tree">Tree</button>
-					<button data-peak-keytip-action="atlas-graph">Graph</button>
+					<button id="tree" data-peak-keytip-key="T" data-peak-keytip-label="Tree">Tree</button>
+					<button id="graph" data-peak-keytip-key="G" data-peak-keytip-label="Graph">Graph</button>
 				</div>
 				<div class="zone" data-peak-keyboard-zone="fa-atlas"><button>Tree item</button></div>
 			</div>`;
 		const atlas = document.querySelector('#atlas');
 		const runtime = new window.PeakKeyboardTest.PeakKeyboardRuntime();
 		window.__peakRuntime = runtime;
-		runtime.registerSurface('file-atlas', atlas, {
-			getKeyTipAnchor(actionId) {
-				return atlas.querySelector(`[data-peak-keytip-action="${actionId}"]`);
-			},
-			activateKeyTip(actionId) {
-				window.__peakAction = actionId;
-				return true;
-			},
-		});
+		window.__peakClicks = 0;
+		document.querySelector('#graph').addEventListener('click', () => { window.__peakClicks += 1; });
+		runtime.registerSurface('file-atlas', atlas);
 		document.querySelector('#outside').focus();
 	});
 	await page.keyboard.press('Alt');
 	assert.equal(await page.locator('[data-peak-keytip="T"]').count(), 1);
 	assert.equal(await page.locator('[data-peak-keytip="G"]').count(), 1);
-	assert.equal(await page.locator('[data-peak-keytip="V"]').count(), 1);
-	const viewBox = await page.locator('[data-peak-keytip="V"]').boundingBox();
-	const treeBox = await page.locator('[data-peak-keytip="T"]').boundingBox();
-	assert.ok(viewBox && treeBox);
-	assert.ok(
-		viewBox.y + viewBox.height <= treeBox.y || treeBox.y + treeBox.height <= viewBox.y,
-		'overlapping Atlas destinations must be vertically deconflicted',
-	);
 	await page.keyboard.press('g');
-	assert.equal(await page.evaluate(() => window.__peakAction), 'atlas-graph');
+	assert.equal(await page.evaluate(() => document.activeElement?.id), 'graph');
+	assert.equal(await page.evaluate(() => window.__peakClicks), 0);
+	await page.keyboard.press('Enter');
+	assert.equal(await page.evaluate(() => window.__peakClicks), 1);
 
 	console.log('keyboard-keytips-runtime.qa: passed');
 } finally {

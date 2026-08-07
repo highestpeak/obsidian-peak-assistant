@@ -8,6 +8,7 @@ import { AIGraphSection } from './AIGraphSection';
 import { useVaultSearchStore } from '../../store';
 import { renderSnippetContent } from '../snippet/renderSnippetHighlights';
 import { CommandCenterPinControl } from './CommandCenterPinControl';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Renders the current file's search-hit snippet at the top of the inspector.
@@ -34,15 +35,21 @@ const InspectorSnippetBlock: React.FC<{ currentPath: string }> = ({ currentPath 
 /** Collapsible section wrapper used by InspectorSidePanel. */
 const CollapsibleSection: React.FC<{
 	title: string;
+	keyTipKey: string;
 	defaultOpen?: boolean;
 	children: React.ReactNode;
-}> = ({ title, defaultOpen = true, children }) => {
+}> = ({ title, keyTipKey, defaultOpen = true, children }) => {
 	const [open, setOpen] = useState(defaultOpen);
 	return (
 		<div className="pktw-border-b pktw-border-pk-border">
-			<div
+			<Button
+				variant="unstyled"
+				type="button"
 				onClick={() => setOpen(!open)}
-				className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-4 pktw-py-2 pktw-cursor-pointer hover:pktw-bg-pk-surface-raised"
+				aria-expanded={open}
+				data-peak-keytip-key={keyTipKey}
+				data-peak-keytip-label={`${open ? 'Collapse' : 'Expand'} ${title}`}
+				className="pktw-flex pktw-w-full pktw-items-center pktw-justify-start pktw-gap-1.5 pktw-rounded-none pktw-px-4 pktw-py-2 hover:pktw-bg-pk-surface-raised"
 			>
 				{open
 					? <ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
@@ -50,7 +57,7 @@ const CollapsibleSection: React.FC<{
 				<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted pktw-uppercase pktw-tracking-wide">
 					{title}
 				</span>
-			</div>
+			</Button>
 			{open && <div className="pktw-px-4 pktw-pb-3">{children}</div>}
 		</div>
 	);
@@ -113,6 +120,8 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 					aria-label="Open in File Atlas"
 					className="pk-icon-btn pk-inspector-icon-button pktw-shadow-none"
 					onClick={() => onOpenFileAtlas(currentPath)}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.openAtlas}
+					data-peak-keytip-label="Open in File Atlas"
 				>
 					<Map className="pktw-h-4 pktw-w-4" />
 				</Button>
@@ -124,6 +133,8 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 					aria-label="Close inspector"
 					className="pk-icon-btn pk-inspector-icon-button pktw-shadow-none"
 					onClick={onClose}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.close}
+					data-peak-keytip-label="Close inspector"
 				>
 					<X className="pktw-h-4 pktw-w-4" />
 				</Button>
@@ -136,7 +147,10 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 				    when the current path isn't in the result set (e.g. inspecting
 				    a hub target the query didn't hit). */}
 				{showSearchSnippet && <InspectorSnippetBlock currentPath={currentPath} />}
-				<CollapsibleSection title="Connected">
+				<CollapsibleSection
+					title="Connected"
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.connected}
+				>
 					<ConnectedSection
 						currentPath={currentPath}
 						searchQuery={searchQuery}
@@ -144,7 +158,10 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 						onInspectInPanel={onInspectInPanel}
 					/>
 				</CollapsibleSection>
-				<CollapsibleSection title="Discovered">
+				<CollapsibleSection
+					title="Discovered"
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.discovered}
+				>
 					<DiscoveredSection
 						currentPath={currentPath}
 						searchQuery={searchQuery}
@@ -152,7 +169,10 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 						onInspectInPanel={onInspectInPanel}
 					/>
 				</CollapsibleSection>
-				<CollapsibleSection title="AI Graph">
+				<CollapsibleSection
+					title="AI Graph"
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.aiGraph}
+				>
 					<AIGraphSection currentPath={currentPath} searchQuery={searchQuery} />
 				</CollapsibleSection>
 			</div>

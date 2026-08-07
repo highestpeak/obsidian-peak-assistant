@@ -14,6 +14,7 @@ import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { iconForKind } from '../config/kindIcons';
 import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface AtlasBarProps {
 	config: FileAtlasConfig;
@@ -122,6 +123,10 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 						tabIndex={activePreset === preset.id ? 0 : -1}
 						data-preset-id={preset.id}
 						data-peak-focus-id={`file-atlas-preset-${preset.id}`}
+						data-peak-keytip-key={activePreset === preset.id
+							? PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset
+							: undefined}
+						data-peak-keytip-label={activePreset === preset.id ? 'Graph layer preset' : undefined}
 						className={`pkfa-preset-tab${activePreset === preset.id ? ' is-active' : ''}`}
 						onClick={() => onApplyPreset(preset.id)}
 					>
@@ -141,6 +146,8 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 					aria-label={config.strings.filtersButton}
 					title={config.strings.filtersButton}
 					onClick={() => setFilterOpen((v) => !v)}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.filters}
+					data-peak-keytip-label={config.strings.filtersButton}
 				>
 					<ListFilter />
 				</Button>
@@ -263,6 +270,8 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 					aria-label={flattened ? config.strings.treeView : config.strings.flattenView}
 					title={flattened ? config.strings.treeView : config.strings.flattenView}
 					onClick={() => onFlattenChange(!flattened)}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.flatten}
+					data-peak-keytip-label={flattened ? config.strings.treeView : config.strings.flattenView}
 				>
 					{flattened ? <ListTree /> : <Rows3 />}
 				</Button>
@@ -273,6 +282,8 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 					title={config.strings.expandAll}
 					aria-label={config.strings.expandAll}
 					onClick={onExpandAll}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.expandAll}
+					data-peak-keytip-label={config.strings.expandAll}
 				>
 					<UnfoldVertical />
 				</Button>
@@ -283,6 +294,8 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 					title={config.strings.collapseAll}
 					aria-label={config.strings.collapseAll}
 					onClick={onCollapseAll}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.collapseAll}
+					data-peak-keytip-label={config.strings.collapseAll}
 				>
 					<FoldVertical />
 				</Button>

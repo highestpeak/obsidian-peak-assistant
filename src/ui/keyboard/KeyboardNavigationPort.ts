@@ -15,7 +15,6 @@ export interface PeakKeyboardEscapeLayer {
 /** Surface-owned actions for destinations that are not currently mounted. */
 export interface PeakKeyboardSurfaceAdapter {
 	getKeyTipAnchor(actionId: string): HTMLElement | null;
-	activateKeyTip(actionId: string): boolean;
 }
 
 export interface PeakKeyboardNavigationPort {

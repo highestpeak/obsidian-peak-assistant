@@ -15,6 +15,82 @@ export interface PeakKeyTipDefinition {
 	zoneLabel?: string;
 }
 
+/**
+ * Stable button-level Key Tips. Components publish these keys on the exact
+ * focus target with `data-peak-keytip-key`; labels stay in the accessible name
+ * and are deliberately not rendered in the visual badge.
+ *
+ * Mirrored by `templates/config/keyboard-navigation.json#controlKeys`.
+ */
+export const PEAK_CONTROL_KEY_TIP_KEYS = {
+	search: {
+		vaultTab: 'V',
+		aiTab: 'A',
+		aiWorkspace: 'W',
+		refine: 'E',
+		view: { list: 'L', tree: 'T', graph: 'G' },
+		density: { compact: 'C', detailed: 'D' },
+		graphPreset: 'J',
+		graphSemantic: 'S',
+		clearPinnedHub: 'U',
+		inspector: {
+			pin: 'P',
+			openAtlas: 'M',
+			close: 'X',
+			connected: 'N',
+			discovered: 'H',
+			aiGraph: 'B',
+			createGraph: 'Y',
+		},
+	},
+	aiSearch: {
+		web: 'B',
+		cancel: 'X',
+		newAnalysis: 'N',
+		lifecycle: { process: 'P', report: 'R', sources: 'S', graph: 'F' },
+		outline: 'O',
+		actions: {
+			copy: 'C',
+			export: 'E',
+			saveGraph: 'G',
+			openSaved: 'D',
+			synthesize: 'Y',
+			continue: 'U',
+			openChat: 'H',
+		},
+	},
+	fileAtlas: {
+		sort: 'O',
+		tree: 'T',
+		graph: 'G',
+		search: 'Q',
+		preset: 'P',
+		filters: 'K',
+		flatten: 'L',
+		expandAll: 'E',
+		collapseAll: 'C',
+		graphScope: { oneHop: 'N', twoHop: 'H', ai: 'A' },
+		graphLayout: 'Y',
+		semantic: 'V',
+	},
+	chatStudio: {
+		openLeft: 'C',
+		closeLeft: 'X',
+		newChat: 'N',
+		searchVault: 'K',
+		header: { branch: 'D', openSource: 'O', refresh: 'R', restoreIndex: 'I' },
+		composer: {
+			plus: 'P',
+			sources: 'S',
+			graph: 'G',
+			assistant: 'A',
+			model: 'L',
+			send: 'E',
+		},
+		index: { collapse: 'X', outline: 'B', resources: 'U' },
+	},
+} as const;
+
 export const PEAK_KEY_TIP_ACTIVATION = {
 	holdDelayMs: 180,
 	gesture: 'press-or-tap',
@@ -24,35 +100,21 @@ export const PEAK_KEY_TIP_DEFINITIONS: Readonly<
 	Record<PeakKeyboardSurfaceId, readonly PeakKeyTipDefinition[]>
 > = {
 	'vault-search': [
-		{ key: 'V', label: 'Vault Search', zoneId: 'search-mode', actionId: 'search-vault' },
-		{ key: 'A', label: 'AI Search', zoneId: 'search-mode', actionId: 'search-ai' },
 		{ key: 'Q', label: 'Search', zoneId: 'vs-query' },
-		{ key: 'F', label: 'Filters and view', zoneId: 'vs-view-toolbar' },
 		{ key: 'R', label: 'Results', zoneId: 'vs-results' },
-		{ key: 'D', label: 'Details', zoneId: 'vs-inspector', actionId: 'search-inspector' },
 	],
 	'ai-search': [
-		{ key: 'V', label: 'Vault Search', zoneId: 'search-mode', actionId: 'search-vault' },
-		{ key: 'A', label: 'AI Search', zoneId: 'search-mode', actionId: 'search-ai' },
 		{ key: 'Q', label: 'Ask AI', zoneId: 'as-mode-query' },
 		{ key: 'S', label: 'Suggestions and history', zoneId: 'as-suggestions' },
-		{ key: 'L', label: 'Activity and sources', zoneId: 'as-lifecycle' },
-		{ key: 'R', label: 'Result', zoneId: 'as-primary' },
-		{ key: 'O', label: 'Outline', zoneId: 'as-outline' },
-		{ key: 'C', label: 'Result actions', zoneId: 'as-actions' },
 	],
 	'file-atlas': [
 		{ key: 'F', label: 'Files', zoneId: 'fa-file-rail' },
-		{ key: 'V', label: 'View and filters', zoneId: 'fa-view-filters' },
-		{ key: 'T', label: 'Tree', zoneId: 'fa-atlas', actionId: 'atlas-tree' },
-		{ key: 'G', label: 'Graph', zoneId: 'fa-atlas', actionId: 'atlas-graph' },
 		{ key: 'I', label: 'Inspector', zoneId: 'fa-inspector' },
 		{ key: 'S', label: 'Selection tray', zoneId: 'fa-selection-tray' },
 	],
 	'chat-studio': [
 		{ key: 'C', label: 'Conversations', zoneId: 'cs-left-navigation' },
 		{ key: 'M', label: 'Messages', zoneId: 'cs-message-timeline' },
-		{ key: 'M', label: 'Chat content', zoneId: 'cs-centre-content' },
 		{ key: 'Q', label: 'Chat input', zoneId: 'cs-composer' },
 		{ key: 'I', label: 'Conversation index', zoneId: 'cs-conversation-index' },
 	],

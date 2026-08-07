@@ -17,6 +17,7 @@ import type {
 } from '@/ui/keyboard/KeyboardNavigationPort';
 
 const ZONE_SELECTOR = '[data-peak-keyboard-zone]';
+const CONTROL_KEY_TIP_SELECTOR = '[data-peak-keytip-key]';
 const FOCUSABLE_SELECTORS = [
 	'[data-peak-keyboard-entry]',
 	'[data-peak-focus-id][tabindex="0"]',
@@ -40,8 +41,10 @@ interface RegisteredSurface {
 }
 
 interface ActiveKeyTip {
-	definition: PeakKeyTipDefinition;
+	key: string;
+	label: string;
 	anchor: HTMLElement;
+	zone: HTMLElement | null;
 	badge: HTMLElement;
 }
 
@@ -374,22 +377,14 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 
 		consume(event);
 		const session = state.keyTips;
-		const tip = session.tips.find((candidate) => candidate.definition.key === selectionKey);
+		const tip = session.tips.find((candidate) => candidate.key === selectionKey);
 		if (!tip) {
 			state.liveRegion.textContent = `${PEAK_KEY_TIP_STRINGS.unknownPrefix} ${selectionKey}`;
 			return;
 		}
 		this.hideKeyTips(ownerDocument);
-		if (tip.definition.actionId && session.surface.adapter?.activateKeyTip(
-			tip.definition.actionId,
-		)) {
-			state.activeSurface = session.surface;
-			state.liveRegion.textContent = `${PEAK_KEYBOARD_SURFACE_LABELS[session.surface.id]}, ${
-				tip.definition.label
-			}`;
-			return;
-		}
-		this.focusZone(session.surface, tip.anchor, tip.definition.label);
+		if (!this.focusElement(tip.anchor, session.surface, tip.zone)) return;
+		state.liveRegion.textContent = `${PEAK_KEYBOARD_SURFACE_LABELS[session.surface.id]}, ${tip.label}`;
 	}
 
 	private onKeyUp(ownerDocument: Document, event: KeyboardEvent): void {
@@ -453,7 +448,7 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			});
 		}
 		state.activeSurface = surface;
-		const keys = session.tips.map((tip) => tip.definition.key).join(', ');
+		const keys = session.tips.map((tip) => tip.key).join(', ');
 		state.liveRegion.textContent = `${PEAK_KEYBOARD_SURFACE_LABELS[surface.id]} ${
 			PEAK_KEY_TIP_STRINGS.shownSuffix
 		}. ${PEAK_KEY_TIP_STRINGS.availablePrefix}: ${keys}`;
@@ -466,27 +461,62 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 		for (const tip of session.tips) tip.badge.remove();
 		session.tips = [];
 		const usedKeys = new Set<string>();
+		for (const anchor of session.surface.root.querySelectorAll<HTMLElement>(
+			CONTROL_KEY_TIP_SELECTOR,
+		)) {
+			if (anchor.closest('[data-peak-keyboard-surface]') !== session.surface.root) continue;
+			if (!isVisible(anchor) || anchor.hasAttribute('disabled')) continue;
+			if (anchor.getAttribute('aria-disabled') === 'true') continue;
+			const key = anchor.dataset.peakKeytipKey?.trim().toLocaleUpperCase() ?? '';
+			if (!/^[A-Z]$/.test(key) || usedKeys.has(key)) continue;
+			this.appendKeyTip(session, usedKeys, {
+				key,
+				label: this.controlLabel(anchor, key),
+				anchor,
+				zone: currentZone(session.surface.root, anchor),
+			});
+		}
 		for (const definition of PEAK_KEY_TIP_DEFINITIONS[session.surface.id]) {
 			if (usedKeys.has(definition.key)) continue;
 			const anchor = this.findKeyTipAnchor(session.surface, definition);
 			if (!anchor) continue;
-			const badge = ownerDocument.createElement('span');
-			badge.className = 'pk-keytip';
-			badge.dataset.peakKeytip = definition.key;
-			const key = ownerDocument.createElement('kbd');
-			key.textContent = definition.key;
-			const label = ownerDocument.createElement('span');
-			label.textContent = definition.label;
-			badge.append(key, label);
-			session.layer.appendChild(badge);
-			session.tips.push({ definition, anchor, badge });
-			usedKeys.add(definition.key);
+			this.appendKeyTip(session, usedKeys, {
+				key: definition.key,
+				label: definition.label,
+				anchor,
+				zone: currentZone(session.surface.root, anchor),
+			});
 		}
 		if (session.tips.length === 0) {
 			this.hideKeyTips(ownerDocument);
 			return;
 		}
 		this.positionKeyTips(ownerDocument);
+	}
+
+	private appendKeyTip(
+		session: KeyTipSession,
+		usedKeys: Set<string>,
+		tip: Omit<ActiveKeyTip, 'badge'>,
+	): void {
+		const badge = session.surface.root.ownerDocument.createElement('span');
+		badge.className = 'pk-keytip';
+		badge.dataset.peakKeytip = tip.key;
+		badge.setAttribute('aria-hidden', 'true');
+		const keycap = session.surface.root.ownerDocument.createElement('kbd');
+		keycap.textContent = tip.key;
+		badge.append(keycap);
+		session.layer.appendChild(badge);
+		session.tips.push({ ...tip, badge });
+		usedKeys.add(tip.key);
+	}
+
+	private controlLabel(control: HTMLElement, fallback: string): string {
+		return control.dataset.peakKeytipLabel?.trim()
+			|| control.getAttribute('aria-label')?.trim()
+			|| control.getAttribute('title')?.trim()
+			|| control.textContent?.trim()
+			|| fallback;
 	}
 
 	private hideKeyTips(ownerDocument: Document): void {
@@ -575,14 +605,15 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			const anchor = surface.adapter?.getKeyTipAnchor(definition.actionId) ?? null;
 			return anchor && isVisible(anchor) ? anchor : null;
 		}
-		return Array.from(surface.root.querySelectorAll<HTMLElement>(ZONE_SELECTOR)).find((zone) => {
-			if (zone.closest('[data-peak-keyboard-surface]') !== surface.root) return false;
-			if (zone.dataset.peakKeyboardZone !== definition.zoneId) return false;
-			if (definition.zoneLabel && zone.dataset.peakKeyboardZoneLabel !== definition.zoneLabel) {
+		const zone = Array.from(surface.root.querySelectorAll<HTMLElement>(ZONE_SELECTOR)).find((candidate) => {
+			if (candidate.closest('[data-peak-keyboard-surface]') !== surface.root) return false;
+			if (candidate.dataset.peakKeyboardZone !== definition.zoneId) return false;
+			if (definition.zoneLabel && candidate.dataset.peakKeyboardZoneLabel !== definition.zoneLabel) {
 				return false;
 			}
-			return isVisible(zone);
+			return isVisible(candidate);
 		}) ?? null;
+		return zone ? this.findFocusable(zone) ?? zone : null;
 	}
 
 	private resolveActiveSurface(

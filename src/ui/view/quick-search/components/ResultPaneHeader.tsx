@@ -18,6 +18,7 @@ import {
 	ResultBrowserDensityToggle,
 	ResultBrowserGraphControls,
 } from '@/ui/component/result-browser/toolbar/ResultBrowserToolbar';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface ResultPaneHeaderProps {
 	mode: QuickSearchMode;
@@ -37,6 +38,8 @@ const PinnedHubChip: React.FC = () => {
 			variant="accent"
 			role="button"
 			tabIndex={0}
+			data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.clearPinnedHub}
+			data-peak-keytip-label="Clear pinned hub"
 			onClick={() => setPinned(null)}
 			onKeyDown={(e) => {
 				if (e.key === 'Enter' || e.key === ' ') {

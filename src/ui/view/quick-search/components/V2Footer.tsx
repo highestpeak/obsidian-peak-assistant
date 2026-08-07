@@ -13,6 +13,7 @@ import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
 import {
 	PEAK_KEYBOARD_A11Y_STRINGS,
+	PEAK_CONTROL_KEY_TIP_KEYS,
 	PEAK_KEYBOARD_ZONE_LABELS,
 } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
@@ -291,8 +292,10 @@ export const V2Footer: React.FC<{
 						role="tab"
 						aria-selected={v2View === id}
 						tabIndex={v2View === id ? 0 : -1}
-							data-peak-focus-id={`ai-lifecycle-${id}`}
-							data-ai-lifecycle-view={id}
+						data-peak-focus-id={`ai-lifecycle-${id}`}
+						data-ai-lifecycle-view={id}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.lifecycle[id]}
+						data-peak-keytip-label={label}
 						onClick={() => setV2View(id)}
 						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
@@ -320,6 +323,8 @@ export const V2Footer: React.FC<{
 						title="Table of Contents"
 						aria-haspopup="dialog"
 						aria-expanded={showToc}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.outline}
+						data-peak-keytip-label="Table of Contents"
 					>
 						<List className="pktw-h-4 pktw-w-4" />
 					</Button>
@@ -333,8 +338,10 @@ export const V2Footer: React.FC<{
 						role="tab"
 						aria-selected={v2View === id}
 						tabIndex={v2View === id ? 0 : -1}
-							data-peak-focus-id={`ai-lifecycle-${id}`}
-							data-ai-lifecycle-view={id}
+						data-peak-focus-id={`ai-lifecycle-${id}`}
+						data-ai-lifecycle-view={id}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.lifecycle[id]}
+						data-peak-keytip-label={label}
 						onClick={() => setV2View(id)}
 						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
@@ -386,6 +393,8 @@ export const V2Footer: React.FC<{
 						aria-expanded={showCopyMenu}
 						className="pktw-text-pk-text-secondary"
 						title={copied ? 'Copied!' : copyLabel}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.actions.copy}
+						data-peak-keytip-label={copyLabel}
 					>
 						{copied ? <Check className="pktw-h-4 pktw-w-4 pktw-text-pk-success" /> : <Copy className="pktw-h-4 pktw-w-4" />}
 					</Button>
@@ -447,6 +456,8 @@ export const V2Footer: React.FC<{
 					onClick={onSave}
 					className="pktw-text-pk-text-secondary"
 					title="Export analysis as Markdown note"
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.actions.export}
+					data-peak-keytip-label="Export analysis as Markdown note"
 				>
 					<Save className="pktw-h-4 pktw-w-4" />
 				</Button>
@@ -458,6 +469,8 @@ export const V2Footer: React.FC<{
 						onClick={onSaveGraph}
 						className="pktw-text-pk-text-secondary"
 						title="Save Graph to Vault"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.actions.saveGraph}
+						data-peak-keytip-label="Save Graph to Vault"
 					>
 						<Download className="pktw-h-4 pktw-w-4" />
 					</Button>
@@ -472,6 +485,8 @@ export const V2Footer: React.FC<{
 						}}
 						className="pktw-text-pk-text-secondary"
 						title="Open saved analysis note"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.actions.openSaved}
+						data-peak-keytip-label="Open saved analysis note"
 					>
 						<FileSearch className="pktw-h-4 pktw-w-4" />
 					</Button>
@@ -482,6 +497,8 @@ export const V2Footer: React.FC<{
 						size="sm"
 						geometry="action"
 						onClick={onSynthesize}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.actions.synthesize}
+						data-peak-keytip-label="Synthesize All"
 						className="pktw-text-xs"
 					>
 						<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
@@ -494,6 +511,8 @@ export const V2Footer: React.FC<{
 						size="sm"
 						geometry="action"
 						onClick={onContinue}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.actions.continue}
+						data-peak-keytip-label="Ask follow-up"
 						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
 						<MessageSquare className="pktw-h-4 pktw-w-4" />
@@ -505,6 +524,8 @@ export const V2Footer: React.FC<{
 					size="sm"
 					geometry="action"
 					onClick={onOpenInChat}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.actions.openChat}
+					data-peak-keytip-label="Open in Chat"
 					className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 				>
 					Open in Chat

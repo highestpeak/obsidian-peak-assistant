@@ -9,6 +9,7 @@ import {
 	PopoverTrigger,
 } from '@/ui/components/primitives';
 import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export function CommandCenterPinControl({
 	path,
@@ -95,6 +96,8 @@ export function CommandCenterPinControl({
 					aria-pressed={active}
 					aria-busy={saving}
 					data-active={active ? 'true' : undefined}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.pin}
+					data-peak-keytip-label={title}
 					className="pk-icon-btn pk-inspector-icon-button pktw-shadow-none"
 					disabled={saving}
 				>

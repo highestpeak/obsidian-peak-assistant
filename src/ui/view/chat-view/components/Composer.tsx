@@ -34,7 +34,10 @@ import { ComposerSourcesPopover } from './composer/ComposerSourcesPopover';
 import { ComposerModelSelector } from './composer/ComposerModelSelector';
 import { ComposerAssistantSelector } from './composer/ComposerAssistantSelector';
 import { ComposerGenerateActions, type GenerateKind } from './composer/ComposerGenerateActions';
-import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import type { ToolAvailability } from '@/service/chat/tools/toolAvailability';
 import {
 	normalizeAIInstructionAttachments,
@@ -80,6 +83,8 @@ const SendButton: React.FC<SendButtonProps> = ({ status, hasInput, onCancel }) =
 				type="button"
 				className="pkchat-send pkchat-send--stop"
 				aria-label={strings.composer.cancelLabel}
+				data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.send}
+				data-peak-keytip-label={strings.composer.cancelLabel}
 				onClick={async (e) => {
 					e.preventDefault();
 					e.stopPropagation();
@@ -108,6 +113,8 @@ const SendButton: React.FC<SendButtonProps> = ({ status, hasInput, onCancel }) =
 			className="pkchat-send"
 			aria-label={strings.composer.sendLabel}
 			disabled={!hasInput}
+			data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.send}
+			data-peak-keytip-label={strings.composer.sendLabel}
 		>
 			<ArrowUp />
 		</button>
@@ -678,6 +685,8 @@ export const Composer: React.FC<ComposerProps> = ({ scrollContainerRef }) => {
 									<IconButton
 										label={studioStrings.composer.openAIGraphsLabel}
 										title={studioStrings.composer.openAIGraphsLabel}
+										data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.graph}
+										data-peak-keytip-label={studioStrings.composer.openAIGraphsLabel}
 										onClick={() => quickSearchLauncher.open({
 											aiMode: 'graph',
 											...(activeConversation

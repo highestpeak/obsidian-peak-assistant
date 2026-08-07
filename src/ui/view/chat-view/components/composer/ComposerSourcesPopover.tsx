@@ -6,6 +6,7 @@ import { useChatViewStore } from '../../store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatStudioStrings } from '../../chatStudioStringsContext';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Source combinator (chat-studio §8.4 / COMP-04).
@@ -97,6 +98,8 @@ export const ComposerSourcesPopover: React.FC<{
 					data-state={open ? 'open' : 'closed'}
 					aria-label={strings.composer.sourcesLabel}
 					title={strings.composer.sourcesLabel}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.sources}
+					data-peak-keytip-label={strings.composer.sourcesLabel}
 				>
 					<Database aria-hidden />
 					<span className="pkchat-run-chip__mid">{summary}</span>

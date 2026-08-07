@@ -20,7 +20,10 @@ import {
 	usePeakEscapeLayer,
 	usePeakKeyboardSurface,
 } from '@/ui/keyboard/usePeakKeyboardSurface';
-import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /** Central column minimum width (mock `minmax(440px, 1fr)`). */
 const STUDIO_CENTRE_MIN_WIDTH_PX = 440;
@@ -195,6 +198,8 @@ const ChatStudioPanelInner: React.FC = () => {
 					<IconButton
 						label={shell.openLeftDrawerLabel}
 						title={shell.openLeftDrawerLabel}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.openLeft}
+						data-peak-keytip-label={shell.openLeftDrawerLabel}
 						onClick={() => setLeftDrawerOpen(true)}
 					>
 						<PanelLeftOpen aria-hidden style={{ width: 14, height: 14 }} />
@@ -216,6 +221,8 @@ const ChatStudioPanelInner: React.FC = () => {
 								<IconButton
 									label={shell.closeLeftDrawerLabel}
 									title={shell.closeLeftDrawerLabel}
+									data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.closeLeft}
+									data-peak-keytip-label={shell.closeLeftDrawerLabel}
 									onClick={() => setLeftDrawerOpen(false)}
 								>
 									<PanelLeftClose aria-hidden style={{ width: 14, height: 14 }} />

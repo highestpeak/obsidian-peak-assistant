@@ -15,7 +15,10 @@ import type { OpenDocMeta } from '../FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from '../fileRailModel';
 import type { FileAtlasRailConfig } from '../config/fileAtlasConfig';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
-import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface FileRailRowProps {
 	doc: OpenDocMeta;
@@ -238,6 +241,8 @@ export const FileRail: React.FC<FileRailProps> = ({
 						aria-expanded={sortOpen}
 						aria-controls={sortOpen ? sortMenuId : undefined}
 						aria-label={`${sortLabel}: ${sortLabels[sortMode]}`}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.sort}
+						data-peak-keytip-label={`${sortLabel}: ${sortLabels[sortMode]}`}
 						onClick={() => setSortOpen((open) => !open)}
 					>
 						<ArrowUpDown aria-hidden="true" />

@@ -18,7 +18,10 @@ import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { splitPinnedAndRecent } from '@/ui/view/chat-studio-view/chatStudioLeftLogic';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
-import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_A11Y_STRINGS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface ProjectListViewComponentProps {
 	/**
@@ -227,6 +230,8 @@ const ProjectListInner: React.FC = () => {
 					type="button"
 					className="pkstudio-sidebar-command pkstudio-sidebar-command--primary"
 					onClick={() => void handleNewChat()}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.newChat}
+					data-peak-keytip-label={strings.newChatLabel}
 				>
 					<SquarePen aria-hidden />
 					<span className="pkstudio-sidebar-command__label">{strings.newChatLabel}</span>
@@ -235,6 +240,8 @@ const ProjectListInner: React.FC = () => {
 					type="button"
 					className="pkstudio-sidebar-command"
 					onClick={handleSearchVault}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.searchVault}
+					data-peak-keytip-label={strings.searchVaultLabel}
 				>
 					<Search aria-hidden />
 					<span className="pkstudio-sidebar-command__label">{strings.searchVaultLabel}</span>

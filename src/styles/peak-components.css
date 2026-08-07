@@ -12263,9 +12263,10 @@
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  max-width: min(280px, calc(100vw - 16px));
-  padding: 4px 8px 4px 4px;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 2px;
   border: 1px solid var(--pk-border-strong, var(--background-modifier-border-hover));
   border-radius: var(--pk-radius-md, 8px);
   background: var(--pk-surface-raised, var(--background-primary));
@@ -12280,9 +12281,9 @@
 .pk-keytip kbd {
   display: inline-grid;
   place-items: center;
-  width: 22px;
-  min-width: 22px;
-  height: 22px;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--pk-accent, var(--interactive-accent)) 70%, black);
   border-radius: var(--pk-radius-sm, 5px);
@@ -12290,12 +12291,6 @@
   color: var(--text-on-accent, white);
   font: inherit;
   font-weight: 800;
-}
-
-.pk-keytip > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (forced-colors: active) {
