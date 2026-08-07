@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const pages = ['index.html', 'start-variants.html', 'onboarding.html', 'settings.html', 'provider-picker.html'];
+const pages = ['index.html', 'start-variants.html', 'onboarding.html', 'settings-variants.html', 'settings.html', 'provider-picker.html'];
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 const failures = [];
@@ -63,6 +63,19 @@ await page.locator('[data-variant-target="c"]').click();
 await page.locator('[data-variant-panel="c"]:not([hidden])').waitFor();
 await page.screenshot({ path: join(root, 'screens/onboarding-start-variant-c.png'), fullPage: true });
 
+await page.goto(pathToFileURL(join(root, 'settings-variants.html')).href, { waitUntil: 'load' });
+await page.locator('[data-settings-concept="tabs"]:not([hidden])').waitFor();
+await page.locator('[data-settings-concept-target="home"]').click();
+await page.locator('[data-settings-concept="home"]:not([hidden])').waitFor();
+await page.locator('[data-home-open="ai"]').click();
+await page.locator('[data-home-page="detail"]:not([hidden])').waitFor();
+await page.screenshot({ path: join(root, 'screens/settings-variant-home-detail.png'), fullPage: true });
+await page.locator('[data-settings-concept-target="search"]').click();
+await page.locator('[data-concept-search]').fill('media');
+if (await page.locator('[data-search-entry]:visible').count() !== 1) {
+  failures.push('settings-variants.html: search-first concept did not filter to the media route');
+}
+
 await page.goto(pathToFileURL(join(root, 'settings.html')).href, { waitUntil: 'load' });
 await page.locator('[data-settings-panel="general"]:not([hidden])').waitFor();
 if (await page.locator('[data-settings-mode-target]').count() !== 0) {
@@ -109,5 +122,5 @@ if (failures.length > 0) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Verified 5 HTML pages at 1440x900: links, overflow, footer visibility, variants, fixed Settings navigation/search, screenshots, and core prototype interactions.');
+  console.log('Verified 6 HTML pages at 1440x900: links, overflow, footer visibility, onboarding/settings variants, fixed Settings navigation/search, screenshots, and core prototype interactions.');
 }

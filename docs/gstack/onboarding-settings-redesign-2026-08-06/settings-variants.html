@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · Settings shell variants</title>
+  <link rel="stylesheet" href="mock.css">
+  <link rel="stylesheet" href="settings-variants.css">
+  <script src="mock.js" defer></script>
+  <script src="settings-variants.js" defer></script>
+</head>
+<body>
+  <header class="prototype-bar">
+    <div class="prototype-bar__brand">
+      <svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg>
+      <span>Peak design prototype</span>
+      <span class="prototype-bar__meta">Settings shell exploration · production unchanged</span>
+    </div>
+    <nav class="prototype-bar__nav" aria-label="Prototype pages">
+      <a href="index.html">Review board</a>
+      <a href="start-variants.html">Start variants</a>
+      <a href="onboarding.html">Onboarding</a>
+      <a href="settings-variants.html" aria-current="page">Settings variants</a>
+      <a href="settings.html">Settings v3</a>
+      <a href="provider-picker.html">Chooser detail</a>
+    </nav>
+  </header>
+
+  <main class="settings-variant-stage">
+    <section class="settings-variant-intro">
+      <div>
+        <span class="settings-variant-eyebrow">Four structural directions · same settings inventory</span>
+        <h1>Settings 不一定需要左侧栏。</h1>
+        <p>下面四版改变的是进入方式、导航方式和信息密度，不是换颜色。点击一个方向，每次只看一张完整画面。</p>
+      </div>
+      <div class="settings-variant-switcher" role="tablist" aria-label="Settings layout concepts">
+        <button data-settings-concept-target="tabs" data-active="true"><strong>A</strong><span>Top tabs<small>桌面传统型</small></span></button>
+        <button data-settings-concept-target="home" data-active="false"><strong>B</strong><span>Settings home<small>推荐探索</small></span></button>
+        <button data-settings-concept-target="search" data-active="false"><strong>C</strong><span>Search first<small>快速直达型</small></span></button>
+        <button data-settings-concept-target="outline" data-active="false"><strong>D</strong><span>One-page outline<small>高级用户型</small></span></button>
+      </div>
+      <div class="settings-variant-rationale">
+        <span data-concept-badge>Variant A · familiar</span>
+        <strong data-concept-title>顶部分类标签</strong>
+        <p data-concept-copy>最接近传统桌面设置。没有左栏，内容宽度更充足；但分类超过 7 个后会开始拥挤。</p>
+      </div>
+    </section>
+
+    <section class="settings-concept" data-settings-concept="tabs">
+      <div class="concept-window concept-tabs">
+        <header class="concept-tabs__header">
+          <div class="concept-brand"><span class="concept-logo"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span><span><strong>Peak Settings</strong><small>All changes save automatically</small></span></div>
+          <label class="concept-search"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><input aria-label="Search top-tab settings" placeholder="Search settings"></label>
+          <span class="saved-state"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>Saved</span>
+        </header>
+        <nav class="concept-tabs__nav" aria-label="Top settings categories">
+          <button data-active="true">General</button><button>AI & models</button><button>Knowledge</button><button>Tools & media</button><button>Workspace</button><button>Data & privacy</button><button>Developer</button>
+        </nav>
+        <main class="concept-tabs__body">
+          <div class="concept-page-title"><div><span class="concept-kicker">GENERAL</span><h2>Everything needed for everyday work is ready.</h2><p>Review system health and the defaults used across Peak.</p></div><button class="btn"><svg class="icon" aria-hidden="true"><use href="#i-zap"></use></svg>Run checks</button></div>
+          <div class="concept-health-line">
+            <span><i class="health-dot health-dot--ok"></i><strong>AI</strong><small>OpenAI connected</small></span>
+            <span><i class="health-dot health-dot--ok"></i><strong>Knowledge</strong><small>1,246 files searchable</small></span>
+            <span><i class="health-dot health-dot--warn"></i><strong>Updates</strong><small>17 notes waiting</small></span>
+            <button class="btn">Review</button>
+          </div>
+          <section class="concept-setting-section">
+            <div class="concept-section-heading"><strong>Common defaults</strong><small>Used across Peak</small></div>
+            <div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span><span><strong>Default safety</strong><small>Ask before an agent changes files or runs commands.</small></span><select><option>Ask before changes</option></select></div>
+            <div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><strong>Open Markdown files with</strong><small>Choose the normal view used for future document opens.</small></span><select><option>Obsidian Markdown</option><option>Peak Composer</option></select></div>
+            <div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><strong>Generated media folder</strong><small>Images, video, audio, and generated files.</small></span><span class="concept-row__value"><code>_attachments/media</code><button class="btn">Change</button></span></div>
+          </section>
+          <section class="concept-setting-section concept-setting-section--quiet">
+            <div class="concept-section-heading"><strong>Setup assistant</strong><small>Connections, model defaults, and Vault readiness</small></div>
+            <div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span><span><strong>Review setup again</strong><small>Your completed progress and working connections are preserved.</small></span><button class="btn">Open setup</button></div>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="settings-concept" data-settings-concept="home" hidden>
+      <div class="concept-window concept-home" data-settings-home>
+        <header class="concept-home__header">
+          <div class="concept-brand"><span class="concept-logo"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span><span><strong>Peak Settings</strong><small data-home-location>Home</small></span></div>
+          <label class="concept-search concept-search--wide"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><input aria-label="Search Settings home" placeholder="Search every setting"></label>
+          <button class="icon-button" aria-label="Close"><span>×</span></button>
+        </header>
+
+        <main class="concept-home__body" data-home-page="home">
+          <div class="home-welcome"><div><span class="concept-kicker">SETTINGS HOME</span><h2>What would you like to change?</h2><p>Start with a capability. The next page shows only settings for that area.</p></div><span class="home-ready"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><strong>Peak is ready</strong><small>1 item needs attention</small></span></div>
+          <button class="home-attention" data-home-preview="Knowledge & search"><span class="home-attention__icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><span><strong>17 changed notes are waiting to be indexed</strong><small>Search works now; updating improves coverage.</small></span><span>Review →</span></button>
+          <div class="home-category-grid">
+            <button data-home-open="ai"><span class="home-category-icon"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span><span><strong>AI & models</strong><small>Providers, runtimes, and task defaults</small></span><em class="home-category-status home-category-status--ok">Ready</em></button>
+            <button data-home-preview="Knowledge & search"><span class="home-category-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><span><strong>Knowledge & search</strong><small>Index, coverage, and AI Search</small></span><em class="home-category-status home-category-status--warn">17 updates</em></button>
+            <button data-home-preview="Tools & media"><span class="home-category-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><strong>Tools & media</strong><small>Web, MCP, images, video, and speech</small></span><em class="home-category-status">Image ready</em></button>
+            <button data-home-preview="Workspace"><span class="home-category-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><strong>Workspace</strong><small>Composer, File Atlas, and preferences</small></span><em class="home-category-status">Default</em></button>
+            <button data-home-preview="Data & privacy"><span class="home-category-icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span><span><strong>Data & privacy</strong><small>Folders, usage, retention, and exports</small></span><em class="home-category-status">Local</em></button>
+            <button data-home-preview="General"><span class="home-category-icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></span><span><strong>General</strong><small>Safety, defaults, and setup assistant</small></span><em class="home-category-status">3 defaults</em></button>
+          </div>
+          <button class="home-developer" data-home-preview="Developer"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg><span><strong>Developer settings</strong><small>Routing, output controls, diagnostics, and maintenance</small></span><span>Open →</span></button>
+        </main>
+
+        <main class="concept-home__body concept-home__detail" data-home-page="detail" hidden>
+          <button class="home-back" data-home-back><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>All settings</button>
+          <div class="concept-page-title"><div><span class="concept-kicker">AI & MODELS</span><h2>Connections and task defaults</h2><p>Connect services, then choose what Peak should use for each kind of work.</p></div><button class="btn btn--primary">Add provider</button></div>
+          <section class="home-detail-group">
+            <div class="concept-section-heading"><strong>Connections</strong><small>Most frequently used first</small></div>
+            <div class="concept-row"><span class="brand-tile">OA</span><span><strong>OpenAI</strong><small>Chat, tools, embeddings, files, and images</small></span><span class="concept-row__value"><em class="status-text status-text--ok">Connected</em><button class="btn">Manage</button></span></div>
+            <div class="concept-row"><span class="brand-tile">OR</span><span><strong>OpenRouter</strong><small>One key for a live multi-provider catalog</small></span><button class="btn">Connect</button></div>
+          </section>
+          <section class="home-detail-group">
+            <div class="concept-section-heading"><strong>Models for tasks</strong><small>Six defaults · 18 optional assignments</small></div>
+            <div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span><span><strong>Conversation & writing</strong><small>Chat Studio, Composer Copilot, and quick assist</small></span><button class="btn">Auto · OpenAI</button></div>
+            <div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span><span><strong>Research & web</strong><small>Research, AI Search, web, and stronger fallback</small></span><button class="btn">Auto · tools ready</button></div>
+            <div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><strong>Understand files</strong><small>Images, PDFs, video, office files, and transcription</small></span><button class="btn">Auto · multimodal</button></div>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="settings-concept" data-settings-concept="search" hidden>
+      <div class="concept-window concept-search-first">
+        <header class="search-first__header"><div class="concept-brand"><span class="concept-logo"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span><span><strong>Peak Settings</strong><small>Search-first control center</small></span></div><span class="saved-state"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>All changes saved</span></header>
+        <main class="search-first__body">
+          <div class="search-first__hero"><span class="concept-kicker">FIND A SETTING</span><h2>What do you want to change?</h2><label class="search-first__input"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><input value="model" data-concept-search aria-label="Search-first settings query"><kbd>⌘ K</kbd></label></div>
+          <div class="search-first__results" data-concept-search-results>
+            <div class="search-result-label">Best matches for “model”</div>
+            <button data-search-entry="model provider ai"><span class="search-result-icon"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span><span><strong>Models for common tasks</strong><small>AI & models · Six task defaults</small></span><span>Open →</span></button>
+            <button data-search-entry="model override feature assignment"><span class="search-result-icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></span><span><strong>Per-feature model overrides</strong><small>AI & models · 18 optional assignments</small></span><span>Open →</span></button>
+            <button data-search-entry="model media image video"><span class="search-result-icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><strong>Media creation route</strong><small>Tools & media · Image, video, music, speech</small></span><span>Open →</span></button>
+            <span class="search-result-empty" data-concept-search-empty hidden>No matching setting. Try provider, index, Composer, folder, or privacy.</span>
+          </div>
+          <div class="search-first__lower">
+            <section><div class="search-result-label">Quick destinations</div><div class="quick-destination-grid"><button><svg class="icon" aria-hidden="true"><use href="#i-plug"></use></svg><span><strong>Add provider</strong><small>Connections</small></span></button><button><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg><span><strong>Update index</strong><small>17 notes</small></span></button><button><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg><span><strong>Composer</strong><small>Workspace</small></span></button><button><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg><span><strong>Privacy</strong><small>Local data</small></span></button></div></section>
+            <section><div class="search-result-label">System status</div><div class="search-status-list"><span><i class="health-dot health-dot--ok"></i><strong>AI ready</strong><small>OpenAI verified</small></span><span><i class="health-dot health-dot--warn"></i><strong>Search ready</strong><small>17 updates waiting</small></span><span><i class="health-dot health-dot--ok"></i><strong>Images ready</strong><small>Native route</small></span></div></section>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <section class="settings-concept" data-settings-concept="outline" hidden>
+      <div class="concept-window concept-outline">
+        <header class="outline-header"><div class="concept-brand"><span class="concept-logo"><svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg></span><span><strong>Peak Settings</strong><small>One-page outline</small></span></div><label class="concept-search"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg><input aria-label="Search one-page settings" placeholder="Filter this page"></label><span class="saved-state"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>Saved</span></header>
+        <nav class="outline-jumpbar" aria-label="Jump to setting section"><button data-active="true">Status</button><button>AI</button><button>Knowledge</button><button>Tools</button><button>Workspace</button><button>Data</button><button>Developer</button></nav>
+        <main class="outline-body">
+          <div class="outline-title"><span class="concept-kicker">ALL SETTINGS</span><h2>Scan everything. Expand only what you need.</h2><p>Sections stay in one document; the jump bar follows your scroll position.</p></div>
+          <section class="outline-status"><span><i class="health-dot health-dot--ok"></i><strong>AI ready</strong><small>OpenAI · checked 8 min ago</small></span><span><i class="health-dot health-dot--warn"></i><strong>Search ready</strong><small>17 notes waiting</small></span><span><i class="health-dot health-dot--ok"></i><strong>Images ready</strong><small>Native route</small></span></section>
+          <details class="outline-section" open><summary><span class="outline-section__icon"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span><span><strong>AI & models</strong><small>3 connections · 6 task defaults · 18 optional assignments</small></span><em class="status-text status-text--ok">Ready</em></summary><div class="outline-section__content"><div class="concept-row"><span class="brand-tile">OA</span><span><strong>OpenAI</strong><small>Chat, tools, embeddings, files, and images</small></span><button class="btn">Manage</button></div><div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></span><span><strong>Conversation & writing</strong><small>Chat Studio, Composer Copilot, quick assist</small></span><button class="btn">Auto · OpenAI</button></div><div class="outline-more">Show 7 more AI settings</div></div></details>
+          <details class="outline-section" open><summary><span class="outline-section__icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></span><span><strong>Knowledge & search</strong><small>1,246 files searchable · 17 changed notes waiting</small></span><em class="status-text status-text--warn">Update available</em></summary><div class="outline-section__content"><div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span><span><strong>Keep changed notes current</strong><small>Run incremental updates in the background</small></span><button class="toggle" data-on="true" data-variant-toggle aria-label="Toggle automatic updates"></button></div><div class="concept-row"><span class="concept-row__icon"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></span><span><strong>Search quality</strong><small>Text, semantic similarity, and relationship ranking</small></span><select><option>Full</option></select></div><div class="outline-more">Show indexing details and maintenance</div></div></details>
+          <details class="outline-section"><summary><span class="outline-section__icon"><svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg></span><span><strong>Tools & media</strong><small>Web, MCP, image, video, music, and speech</small></span><em class="status-text">1 needs setup</em></summary></details>
+          <details class="outline-section"><summary><span class="outline-section__icon"><svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg></span><span><strong>Workspace</strong><small>Composer, File Atlas, Command Center, and appearance</small></span><em class="status-text">Default</em></summary></details>
+          <details class="outline-section"><summary><span class="outline-section__icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span><span><strong>Data & privacy</strong><small>Folders, usage, retention, and local data</small></span><em class="status-text">Local</em></summary></details>
+          <details class="outline-section outline-section--developer"><summary><span class="outline-section__icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span><span><strong>Developer</strong><small>Routing, output controls, diagnostics, and maintenance</small></span><em class="status-text">Collapsed</em></summary></details>
+        </main>
+      </div>
+    </section>
+
+    <section class="settings-variant-comparison">
+      <article><strong>A · Top tabs</strong><span>最熟悉、最容易实施</span><small>适合分类稳定在 6–7 个以内；横向空间是硬限制。</small></article>
+      <article class="settings-variant-comparison__recommended"><strong>B · Settings home</strong><span>我最建议继续深化</span><small>一眼看到全部能力和健康状态；代价是进入详细设置多一次点击。</small></article>
+      <article><strong>C · Search first</strong><span>最快，但不能单独使用</span><small>老用户效率最高；必须保留 Quick destinations 才有可发现性。</small></article>
+      <article><strong>D · One-page outline</strong><span>信息最完整</span><small>适合高级用户扫描；内容继续增长时会变成长页面。</small></article>
+    </section>
+  </main>
+</body>
+</html>
