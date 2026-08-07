@@ -42,20 +42,20 @@
 
       <div class="report-summary">
         <article class="report-card"><h3>Onboarding start</h3><p>不再用三张泛化营销卡定稿；提供任务优先、工作区地图、真实文档起步三版供选择。</p></article>
-        <article class="report-card"><h3>Settings depth</h3><p>Standard 保持清楚；Advanced 保留模型路由、索引、Agent、媒体、存储和诊断的完整控制。</p></article>
+        <article class="report-card"><h3>Settings v3</h3><p>固定七个分类，不再切换全局模式；常用项直接可见，低频项在所属页面展开。</p></article>
         <article class="report-card"><h3>Model roles</h3><p>不是 Chat/Search/Knowledge/Image 四项：18 个 assignment 收成 6 个用户任务组，并允许逐项覆盖。</p></article>
       </div>
     </section>
 
     <section class="report-section">
-      <h2>第二轮纠偏</h2>
-      <p class="report-section__intro">上一版把“减少首次复杂度”错误地延伸成“减少长期控制”。这轮把二者拆开。</p>
+      <h2>第三轮纠偏：拒绝全局模式</h2>
+      <p class="report-section__intro">上一版虽然保住了完整控制，但 Standard / Advanced 会改变导航和页面内容，用户仍然无法建立稳定的位置记忆。</p>
       <div class="issue-lane">
         <article class="issue-node issue-node--danger"><div class="issue-node__tag">不再使用</div><h3>AI connection / AI behavior</h3><p>它们是实现视角，用户不知道里面是账号、模型、runtime 还是路由。</p></article>
         <div class="issue-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></div>
-        <article class="issue-node"><div class="issue-node__tag">新信息架构</div><h3>Providers & runtimes / Models by task</h3><p>先说 Peak 可以连接谁，再说每一种真实任务由哪个模型负责。</p></article>
+        <article class="issue-node"><div class="issue-node__tag">稳定入口</div><h3>七个固定用户分类</h3><p>General、AI & models、Knowledge & search、Tools & media、Workspace、Data & privacy、Developer。</p></article>
         <div class="issue-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></div>
-        <article class="issue-node issue-node--success"><div class="issue-node__tag">完整控制</div><h3>Standard / Advanced</h3><p>普通用户看可靠默认；高级用户仍能管理所有已存在且有真实作用的设置。</p></article>
+        <article class="issue-node issue-node--success"><div class="issue-node__tag">局部渐进展开</div><h3>More options in context</h3><p>模型覆盖留在 AI，索引细节留在 Knowledge，媒体路由留在 Tools；只有运行级参数进入 Developer。</p></article>
       </div>
     </section>
 
@@ -98,7 +98,7 @@
         </figure>
         <figure class="screen-frame screen-frame--wide">
           <div class="screen-live"><iframe src="settings.html" title="Settings live preview"></iframe></div>
-          <figcaption>Settings：Providers & runtimes 与 Models by task 分开；Standard / Advanced 可以切换，原有设置没有被取消。</figcaption>
+          <figcaption>Settings v3：固定七分类、全局搜索和统一设置行；没有全局模式切换，原有能力按所属页面保留。</figcaption>
         </figure>
         <figure class="screen-frame screen-frame--wide">
           <div class="screen-live"><iframe src="provider-picker.html" title="Task model chooser focused live preview"></iframe></div>
@@ -126,7 +126,7 @@
         <a class="prototype-link" href="settings.html">
           <span class="prototype-link__preview"><span></span><span></span></span>
           <h3>Settings click-through</h3>
-          <p>Overview、Providers & runtimes、Models by task、Vault、Media、Preferences 与 Advanced。</p>
+          <p>General、AI & models、Knowledge、Tools、Workspace、Data 与底部 Developer；导航始终不变。</p>
           <span class="prototype-link__cta">打开原型 →</span>
         </a>
         <a class="prototype-link" href="provider-picker.html">
@@ -144,10 +144,11 @@
         <li>Onboarding 默认零偏好问题，系统先用已验证 capability 生成 Auto defaults。</li>
         <li>Provider 的首发可见范围是 OpenAI、Anthropic、OpenRouter、Ollama、Codex、Claude Code。</li>
         <li>Codex 与 Claude Code 作为 Agent runtime，不伪装成普通 chat provider。</li>
-        <li>模型选择采用 6 个任务组、18 个 assignment；普通用户管理组默认，高级用户逐项覆盖。</li>
-        <li>Settings 不删除旧设置；Standard 分组降噪，Advanced 保留索引、路由、媒体、Agent、数据与诊断。</li>
+        <li>模型选择采用 6 个任务组、18 个 assignment；默认管理任务组，需要精细控制时再逐项覆盖。</li>
+        <li>Settings 不使用全局 Standard / Advanced；七个分类始终可见，用户不会因切换模式而迷路。</li>
+        <li>Settings 不删除旧设置；常用项直接出现，低频配置在所属页面展开，运行级参数进入底部 Developer。</li>
         <li>模型选择器不是独立设置页，而是从任意具体 assignment 打开的共享 drawer。</li>
-        <li>媒体能力回到核心产品叙事；高级 preset、route 与模板路径在 Advanced 中保留。</li>
+        <li>媒体能力回到核心产品叙事；preset、route 与模板路径在 Tools & media 的详情或 Developer 中保留。</li>
         <li>Onboarding 与 Settings 必须消费同一个 ReadinessProjection 和 verification receipt。</li>
         <li>Setup 完成条件是目标 surface 真正打开且预填任务，而不是 modal 被关闭。</li>
       </ul>

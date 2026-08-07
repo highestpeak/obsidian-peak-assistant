@@ -64,23 +64,32 @@ await page.locator('[data-variant-panel="c"]:not([hidden])').waitFor();
 await page.screenshot({ path: join(root, 'screens/onboarding-start-variant-c.png'), fullPage: true });
 
 await page.goto(pathToFileURL(join(root, 'settings.html')).href, { waitUntil: 'load' });
-await page.locator('[data-settings-panel="overview"]:not([hidden])').waitFor();
+await page.locator('[data-settings-panel="general"]:not([hidden])').waitFor();
+if (await page.locator('[data-settings-mode-target]').count() !== 0) {
+  failures.push('settings.html: deprecated global Standard/Advanced mode is still present');
+}
+if (await page.locator('[data-settings-target]:visible').count() !== 7) {
+  failures.push('settings.html: fixed navigation does not expose exactly seven stable categories');
+}
 await page.screenshot({ path: join(root, 'screens/settings-overview.png'), fullPage: true });
-await page.locator('[data-settings-target="models"]').click();
-if (await page.locator('.assignment-list:visible').count() !== 0) {
-  failures.push('settings.html: Standard mode exposed concrete assignment overrides');
+await page.locator('[data-settings-target="ai"]').click();
+await page.locator('[data-settings-panel="ai"]:not([hidden])').waitFor();
+if (await page.locator('[data-settings-target]:visible').count() !== 7) {
+  failures.push('settings.html: navigation changed after opening AI & models');
 }
-await page.locator('[data-settings-mode-target="advanced"]').click();
-if (await page.locator('[data-settings-target="routing"]:visible').count() !== 1) {
-  failures.push('settings.html: Advanced mode did not reveal advanced navigation');
+await page.screenshot({ path: join(root, 'screens/settings-ai-models-v3.png'), fullPage: true });
+await page.locator('[data-settings-query]').fill('index');
+if (await page.locator('[data-setting-search-item]:visible').count() < 1) {
+  failures.push('settings.html: search did not reveal a matching index destination');
+} else {
+  await page.locator('[data-setting-search-item]:visible').first().click();
+  await page.locator('[data-settings-panel="knowledge"]:not([hidden])').waitFor();
 }
-if (await page.locator('.assignment-list:visible').count() !== 6) {
-  failures.push('settings.html: Advanced mode did not reveal all six assignment groups');
+await page.locator('[data-settings-target="developer"]').click();
+await page.locator('[data-settings-panel="developer"]:not([hidden])').waitFor();
+if (await page.locator('[data-settings-target]:visible').count() !== 7) {
+  failures.push('settings.html: Developer page replaced or hid the fixed navigation');
 }
-if (await page.locator('.assignment-list > div:visible').count() !== 18) {
-  failures.push('settings.html: Advanced mode did not expose exactly 18 concrete assignments');
-}
-await page.screenshot({ path: join(root, 'screens/settings-models-advanced.png'), fullPage: true });
 
 await page.goto(pathToFileURL(join(root, 'provider-picker.html')).href, { waitUntil: 'load' });
 await page.screenshot({ path: join(root, 'screens/openrouter-picker.png'), fullPage: true });
@@ -100,5 +109,5 @@ if (failures.length > 0) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Verified 5 HTML pages at 1440x900: links, overflow, footer visibility, variants, settings depth, screenshots, and core prototype interactions.');
+  console.log('Verified 5 HTML pages at 1440x900: links, overflow, footer visibility, variants, fixed Settings navigation/search, screenshots, and core prototype interactions.');
 }

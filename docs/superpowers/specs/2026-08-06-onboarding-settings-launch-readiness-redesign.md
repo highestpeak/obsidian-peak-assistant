@@ -152,52 +152,54 @@ Peak 根据已验证连接自动生成 task-based defaults：
 
 ## 5. 新 Settings 信息架构
 
-`AI connection` 与 `AI behavior` 都是实现视角，无法让用户判断里面管理的是账号、模型、runtime 还是路由，因此不再作为导航名称。Settings 使用左侧稳定导航，并提供 `Standard / Advanced` 视图切换：
+`AI connection` 与 `AI behavior` 都是实现视角，无法让用户判断里面管理的是账号、模型、runtime 还是路由，因此不再作为导航名称。第三版同样取消全局 `Standard / Advanced`：切换模式会改变导航和内容范围，用户必须先判断自己属于哪种用户，之后还要重新寻找同一个设置。这不是降低复杂度，而是增加一个元决策。
+
+Settings 只使用一套固定左侧导航：
 
 ```text
-Overview
-AI setup
-  Providers & runtimes
-  Models by task
-Knowledge & capabilities
-  Vault & search
-  Media & tools
-Product
-  Preferences & data
-Advanced controls
-  Routing & output
-  Agent safety
-  Storage & diagnostics
+General                 Status and setup
+AI & models             Providers, runtimes, and task defaults
+Knowledge & search      Index and AI Search
+Tools & media           Web, MCP, image, video, music, and speech
+Workspace               Composer and product preferences
+Data & privacy          Folders, usage, retention, and privacy
+Developer               Diagnostics and precise runtime control
 ```
 
-Standard 不是功能阉割版。它只把低频内部控制收起；Advanced 仍然展示所有存在真实消费路径、对产品行为有实际影响的设置。
+七个位置始终不变。分层发生在每个页面内部，而不是通过全局模式：
 
-### Overview
+1. 高频、影响明确的设置直接显示为标准设置行；
+2. 低频但仍属于该能力的设置在页面内以 `More options` / details 展开；
+3. 横跨多功能、会改变 execution semantics 的运行级参数集中到最底部 `Developer`；
+4. 搜索直接返回具体目标和所属分类，不要求用户先理解分类术语。
 
-Overview 是系统状态页，不是另一份设置表。只保留四个 readiness groups：
+这不是取消旧设置。判断一项配置是否保留，只看它是否存在真实 consumer、是否改变产品行为、用户是否有合理的长期控制需求；不以它是否“高级”作为删除依据。
 
-- Providers & runtimes；
-- Models by task；
-- Vault & search；
-- Media & tools。
+### General
 
-每组显示状态、最后验证时间、影响范围和最多一个修复 CTA。页面顶部只在有问题时出现 `Fix 2 issues`，否则显示 `Everything needed for everyday work is ready`。
+General 是入口状态页，不是另一份完整设置表。它只回答“Peak 是否可用”和“最常改的全局默认是什么”：
 
-### Providers & runtimes
+- 一条整体 readiness 结论；
+- AI setup、Knowledge index、Default safety 三项基础状态；
+- 默认 Markdown 打开方式；
+- Generated media folder；
+- 重新运行 Setup assistant。
 
-连接按运行方式分组，而不是把所有东西放进一个 Provider 名单：
+状态必须来自共享投影，并显示影响范围与修复入口。General 不重复渲染 Provider 列表、模型分配表或索引调参。
+
+### AI & models
+
+一个页面回答两个连续问题：Peak 可以调用谁，以及每类任务默认由谁负责。连接仍按运行方式区分：
 
 - API services；
 - Local models；
 - Agent runtimes；
 - Media services；
-- Advanced gateways。
+- compatible gateways。
 
-卡片主信息是状态、认证方式和能力；model 数量与 raw endpoint 为次要信息。删除、重置、清除凭据进入 overflow menu，并有影响确认。
+首屏只显示最常用连接：OpenAI、OpenRouter、Ollama；Anthropic、Codex、Claude Code 与 compatible endpoints 在同页 `Show all supported providers and runtimes` 内展开。Codex 与 Claude Code 必须标为 Agent runtime，不能伪装成普通 chat provider。连接行主信息是状态、能力与最后验证时间；model 数量、raw endpoint、删除凭据等进入 Manage。
 
-### Models by task
-
-按任务绑定，而不是暴露 Fast / Deep / Premium 内部术语。Standard 只管理六个 group default；Advanced 展开 18 个 concrete assignments：
+模型按任务绑定，而不是暴露 Fast / Deep / Premium 内部术语。常用视图显示六个 group default；同页 `Per-feature model overrides` 展开 18 个 concrete assignments：
 
 - **Conversation & writing（3）**：Chat Studio、Composer Copilot、Quick assist。
 - **Research & web（5）**：Research、AI Search planner、AI Search report writer、Web search、Stronger fallback。
@@ -212,35 +214,44 @@ Overview 是系统状态页，不是另一份设置表。只保留四个 readine
 
 18 assignments 是新的产品配置合同，不等于当前已经有 18 个独立、完整接线的 persisted slots。当前源码分散存在 Active Agent、Agent Fast、Chat、Copilot、Embedding、Web Search，Harness fast/research/stronger，AI Search thought/search refs，四类 media overrides 与 transcription model。实施时应将重叠项映射为继承关系；只有真正需要独立选择且有 execution consumer 的 assignment 才新增 override storage，不能机械制造 18 份重复配置。
 
-### Vault & search
+### Knowledge & search
 
-默认只显示 readiness、coverage、自动更新、包含内容与一个维护动作。PageRank、chunk size、summary lengths、inspector 与 rebuild 进入 `Advanced indexing`，危险动作独立成 danger section。
+默认只显示 readiness、coverage、自动更新、包含内容、搜索质量和 Saved AI Search results。PageRank、chunk size、summary lengths、ignore patterns、Hub curation 等留在本页 `Indexing details`；repair/rebuild 独立成 danger section。已有可用索引不得显示 `Not yet`；增量待处理与不可搜索必须是两个不同状态。
 
-### Media & tools
+### Tools & media
 
-按能力显示：Image、Video、Audio、Web、External tools。用户面对的是 capability status 和默认 route。preset id、model override、模板文件路径只在 advanced editor 中出现。
+按能力显示：Image、Video、Music & speech、Web、External tools、Obsidian commands。用户面对的是 capability status、默认 route 与原地修复入口。preset、model override、aspect/duration/voice、validation receipt 与模板路径留在本页 `Media route details`；真正影响底层调用语义的 raw endpoint/header 进入 Developer。
 
-### Preferences & data
+### Workspace
 
-承接原来散落在 AI Setup 与 Advanced 的长期产品偏好：
+承接原来散落在 AI Setup 与 Advanced 的长期交互偏好：
 
 - Composer defaults 与 sidecar/Copilot 行为；
 - Profile、personalization 与 ambient suggestions；
 - Command Center board 与 launcher preferences；
 - File Atlas / graph visualization 的 MST pruning、backbone、leaf opacity 与 width scaling；
-- code presentation 与 appearance；
+- code presentation 与 appearance。
+
+### Data & privacy
+
+集中所有“Peak 保存到哪里、保留多久、显示多少内容”的控制：
+
 - usage tracking、retention、preview visibility 与 privacy；
 - Chat root、DataStore、custom prompts、skills、inbox、AI Analysis 与 media folders。
 
-### Advanced controls 保留清单
+默认显示 Peak root、plugin data、usage receipts 与 privacy；各业务文件夹的独立覆盖在 `Individual folder overrides` 展开。路径变更、迁移或清除必须先说明影响、是否立即生效和恢复方式。
+
+### Developer
+
+Developer 固定在侧栏底部，不是另一种 Settings 模式。它只收纳跨能力、需要理解 execution semantics 的设置：
 
 本轮设计不以“看起来简洁”为理由删除已有必要设置。迁移原则如下：
 
-- **Routing & output**：temperature、top-p、top-k、penalties、reasoning effort、verbosity、step/total timeout、fallback、escalation、attachment handling、per-action overrides、provider base URL/custom headers 和 media route/preset/model overrides。
+- **Routing & output**：temperature、top-p、top-k、penalties、reasoning effort、verbosity、step/total timeout、fallback、escalation、attachment handling、per-action overrides、provider base URL 与 custom headers。
 - **Agent safety**：permission mode、allow escalation、maximum escalations、threshold、runtime hooks、monthly budget、reset day、alerts、MCP 与 plugin-command access。
-- **Vault advanced**：index level、refresh interval、document-type inclusion、ignore patterns、PPR、inspector link counts/depth、AI Analysis auto-save/history/exclusion/summary lengths、chunk size/overlap/minimum size/code handling、Hub curation schedule/interval，以及 rebuild/repair。
+- **Knowledge page details**：index level、refresh interval、document-type inclusion、ignore patterns、PPR、inspector link counts/depth、AI Analysis auto-save/history/exclusion/summary lengths、chunk size/overlap/minimum size/code handling、Hub curation schedule/interval，以及 rebuild/repair。它们不因为低频就被错误搬离 Knowledge。
 - **Storage & diagnostics**：canonical data folders、SQLite projection backend、usage retention、debug trace mode/retention/copy format/raw content、DevTools graph inspector、maintenance、reset 与 diagnostics export。
-- **Media advanced**：native profile、fal.ai key、output folder、per-kind preset IDs、model/aspect/quantity/duration/max duration/voice overrides、validation receipt 与 music license acceptance。
+- **Tools page details**：native profile、fal.ai key、output folder、per-kind preset IDs、model/aspect/quantity/duration/max duration/voice overrides、validation receipt 与 music license acceptance。raw provider headers 和 execution routing 才进入 Developer。
 
 纯内部、没有真实 execution consumer 的字段不应继续伪装成可工作的设置；先标记 unavailable，再完成 resolver 接线或移除 dead path。
 
@@ -336,10 +347,11 @@ interface ReadinessItem {
 
 - 采用 restrained neutral surface，紫色只用于主 CTA、选中态与少量 focus ring。
 - Onboarding 使用 920×680 左侧 5 步 rail + 主内容 + sticky footer；主区只滚动内容。
-- Settings 使用 1040×720 左侧分组导航 + 右侧主面板，避免六个横向 tabs 抢宽度。
+- Settings 使用约 1120×750 的固定七分类左侧导航 + 右侧主面板；导航不会因页面或用户模式而改变。
+- 页面主体采用标准设置行，不用 dashboard card 矩阵承载主要配置；分组标题只解释影响范围。
 - 边框与轻微 elevation 建立层级，不使用大面积紫底、渐变、过大圆角或彩色功能卡矩阵。
 - 状态用 icon + 一句人话 + timestamp 表达，chip 不承担长解释。
-- raw id、endpoint、template path、tuning knobs 全部降级为 advanced metadata。
+- raw id、endpoint、template path、tuning knobs 在所属页面的详情或 Developer 中逐步展开。
 
 ## 9. 实施边界与推荐顺序
 
@@ -348,10 +360,10 @@ interface ReadinessItem {
 1. 建立共享 `ReadinessProjection` 与 connection verification receipt。
 2. 把 Index、Provider/runtime、task-model assignment、Media status 接入投影；删除 Onboarding 静态 status rows。
 3. 建立 Connection Registry 的 UI-facing manifest，区分 API、local、agent、media、gateway。
-4. 实现新版 Settings shell、Standard / Advanced depth、Overview、Providers & runtimes 与 Models by task；迁移原有设置，保持存储兼容。
+4. 实现新版 Settings shell、固定七分类、全局搜索、General 与 AI & models；迁移原有设置，保持存储兼容。
 5. 实现 5 阶段 Onboarding，并让完成动作真正打开目标 surface。
 6. 实现 capability-aware shared task-model chooser 和动态 OpenRouter catalog。
-7. 最后迁移 Knowledge / Media advanced controls，并补齐 Codex、Claude Code adapter。
+7. 最后迁移 Knowledge / Media 页面内详情与 Developer controls，并补齐 Codex、Claude Code adapter。
 
 ## 10. 验收合同
 
@@ -367,7 +379,10 @@ interface ReadinessItem {
 ### Settings
 
 - 用户能在 10 秒内回答：AI 是否可用、Vault 是否可搜索、媒体是否可生成、哪里需要处理。
-- 普通路径只出现用户可理解的任务角色；内部参数进入 Advanced。
+- 左侧七个分类始终不变；不存在全局 Standard / Advanced 模式，也不会因打开 Developer 隐藏普通设置。
+- 用户能通过分类或搜索定位具体设置；普通路径只出现用户可理解的任务角色。
+- 低频设置在所属页面展开；只有跨能力、改变 execution semantics 的参数进入 Developer。
+- 旧 Settings 中存在真实 consumer 的设置全部有明确迁移归属，不能以简化视觉为理由静默删除。
 - 所有变更显示 saved/effective state；需要 rebuild/restart 时先确认影响。
 - Connection 的 `Ready` 来自测试 receipt，而不是 API key 是否非空。
 - Dangerous actions 与普通配置隔离，支持恢复默认值。

@@ -124,45 +124,71 @@ function initSettings() {
   if (!panels.length) return;
   const navItems = [...document.querySelectorAll('[data-settings-target]')];
   const title = document.querySelector('[data-settings-title]');
-  const root = document.querySelector('[data-settings-root]');
-  const modeButtons = [...document.querySelectorAll('[data-settings-mode-target]')];
+  const scroll = document.querySelector('.settings-v3__scroll');
+  const query = document.querySelector('[data-settings-query]');
+  const searchResults = document.querySelector('[data-settings-search-results]');
+  const searchItems = [...document.querySelectorAll('[data-setting-search-item]')];
+  const searchEmpty = document.querySelector('[data-settings-search-empty]');
 
   function openPanel(id) {
+    if (!panels.some((panel) => panel.dataset.settingsPanel === id)) return;
     panels.forEach((panel) => {
       panel.hidden = panel.dataset.settingsPanel !== id;
     });
     navItems.forEach((item) => {
       item.dataset.active = item.dataset.settingsTarget === id ? 'true' : 'false';
+      item.setAttribute('aria-current', item.dataset.settingsTarget === id ? 'page' : 'false');
     });
     const active = navItems.find((item) => item.dataset.settingsTarget === id);
-    if (title && active) title.textContent = active.textContent.trim();
+    const activeLabel = active?.querySelector('span')?.firstChild?.textContent?.trim();
+    if (title && activeLabel) title.textContent = activeLabel;
+    if (scroll) scroll.scrollTop = 0;
+  }
+
+  function clearSearch() {
+    if (query) query.value = '';
+    if (searchResults) searchResults.hidden = true;
+    searchItems.forEach((item) => {
+      item.hidden = false;
+    });
+    if (searchEmpty) searchEmpty.hidden = true;
   }
 
   navItems.forEach((item) => item.addEventListener('click', () => openPanel(item.dataset.settingsTarget)));
-  document.querySelectorAll('[data-settings-open]').forEach((button) => button.addEventListener('click', () => openPanel(button.dataset.settingsOpen)));
+  document.querySelectorAll('[data-settings-open]').forEach((button) => button.addEventListener('click', () => {
+    openPanel(button.dataset.settingsOpen);
+    clearSearch();
+  }));
   document.querySelectorAll('.toggle').forEach((button) => button.addEventListener('click', () => {
     button.dataset.on = button.dataset.on === 'true' ? 'false' : 'true';
     showToast('Saved · effective immediately');
   }));
   document.querySelectorAll('[data-toast]').forEach((button) => button.addEventListener('click', () => showToast(button.dataset.toast)));
-  const requested = window.location.hash.replace('#', '');
-  const advancedPanelIds = new Set(
-    panels.filter((panel) => panel.hasAttribute('data-advanced-only')).map((panel) => panel.dataset.settingsPanel),
-  );
 
-  function setMode(mode) {
-    if (root) root.dataset.mode = mode;
-    modeButtons.forEach((button) => {
-      button.dataset.active = button.dataset.settingsModeTarget === mode ? 'true' : 'false';
+  query?.addEventListener('input', () => {
+    const value = query.value.trim().toLowerCase();
+    if (searchResults) searchResults.hidden = value.length === 0;
+    let visibleCount = 0;
+    searchItems.forEach((item) => {
+      item.hidden = value.length > 0 && !item.textContent.toLowerCase().includes(value);
+      if (!item.hidden) visibleCount += 1;
     });
-    const activePanel = panels.find((panel) => !panel.hidden)?.dataset.settingsPanel;
-    if (mode === 'standard' && advancedPanelIds.has(activePanel)) openPanel('overview');
-    showToast(mode === 'advanced' ? 'Advanced controls are now visible.' : 'Standard view restored. Advanced settings are preserved.');
-  }
+    if (searchEmpty) searchEmpty.hidden = visibleCount > 0;
+  });
 
-  modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.settingsModeTarget)));
-  const initialPanel = panels.some((panel) => panel.dataset.settingsPanel === requested) ? requested : 'overview';
-  if (advancedPanelIds.has(initialPanel)) setMode('advanced');
+  query?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    clearSearch();
+    query.blur();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('.settings-search-wrap')) return;
+    if (searchResults) searchResults.hidden = true;
+  });
+
+  const requested = window.location.hash.replace('#', '');
+  const initialPanel = panels.some((panel) => panel.dataset.settingsPanel === requested) ? requested : 'general';
   openPanel(initialPanel);
 }
 
