@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Settings · 视觉偏好校准</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="calibration.js" defer></script>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="page-header">
+      <a class="back-link" href="../settings-native.html">← 返回旧方案</a>
+      <span class="eyebrow">PEAK SETTINGS REDESIGN · VISUAL CALIBRATION</span>
+      <h1>先不设计 Peak，先确定什么看起来舒服。</h1>
+      <p class="lede">下面全部是真实产品界面。不要判断功能是否适合 Peak，只判断视觉。你也不需要喜欢整张图——可以只选字体、导航、留白、密度或控件。</p>
+      <div class="instruction">
+        <span class="instruction__number">01</span>
+        <span>看到稍微顺眼的局部就点一下；没有喜欢的，直接点页面底部的“全部不喜欢”。</span>
+      </div>
+    </header>
+
+    <section class="reference-grid" aria-label="真实产品视觉参考">
+      <article class="reference" data-reference="Raycast">
+        <header class="reference__header">
+          <span class="reference__index">A</span>
+          <div><h2>Raycast</h2><p>强烈的窗口质感、明确分区、较大的字号与深色材料。</p></div>
+        </header>
+        <figure class="reference__media reference__media--portrait"><img src="assets/raycast-settings.png" alt="Raycast AI Settings"></figure>
+        <div class="aspect-picker" aria-label="选择喜欢 Raycast 的哪些部分">
+          <span>我喜欢它的</span>
+          <button data-aspect="整体气质" aria-pressed="false">整体气质</button>
+          <button data-aspect="字体" aria-pressed="false">字体</button>
+          <button data-aspect="导航" aria-pressed="false">导航</button>
+          <button data-aspect="留白" aria-pressed="false">留白</button>
+          <button data-aspect="控件" aria-pressed="false">控件</button>
+        </div>
+        <a class="source-link" href="https://manual.raycast.com/settings" target="_blank" rel="noreferrer">官方来源 ↗</a>
+      </article>
+
+      <article class="reference" data-reference="Linear">
+        <header class="reference__header">
+          <span class="reference__index">B</span>
+          <div><h2>Linear</h2><p>内容居中、设置行更宽松、弱化导航，把视觉重量放在正文。</p></div>
+        </header>
+        <figure class="reference__media reference__media--portrait"><img src="assets/linear-preferences.png" alt="Linear Preferences"></figure>
+        <div class="aspect-picker" aria-label="选择喜欢 Linear 的哪些部分">
+          <span>我喜欢它的</span>
+          <button data-aspect="整体气质" aria-pressed="false">整体气质</button>
+          <button data-aspect="字体" aria-pressed="false">字体</button>
+          <button data-aspect="内容宽度" aria-pressed="false">内容宽度</button>
+          <button data-aspect="密度" aria-pressed="false">密度</button>
+          <button data-aspect="控件" aria-pressed="false">控件</button>
+        </div>
+        <a class="source-link" href="https://linear.app/docs/account-preferences" target="_blank" rel="noreferrer">官方来源 ↗</a>
+      </article>
+
+      <article class="reference" data-reference="macOS">
+        <header class="reference__header">
+          <span class="reference__index">C</span>
+          <div><h2>macOS</h2><p>原生材料、彩色图标、分组面板和系统级控件。</p></div>
+        </header>
+        <figure class="reference__media reference__media--square"><img src="assets/macos-settings.png" alt="macOS System Settings"></figure>
+        <div class="aspect-picker" aria-label="选择喜欢 macOS 的哪些部分">
+          <span>我喜欢它的</span>
+          <button data-aspect="整体气质" aria-pressed="false">整体气质</button>
+          <button data-aspect="彩色图标" aria-pressed="false">彩色图标</button>
+          <button data-aspect="侧栏" aria-pressed="false">侧栏</button>
+          <button data-aspect="分组" aria-pressed="false">分组</button>
+          <button data-aspect="控件" aria-pressed="false">控件</button>
+        </div>
+        <a class="source-link" href="https://support.apple.com/en-au/guide/mac-help/mh15217/mac" target="_blank" rel="noreferrer">官方来源 ↗</a>
+      </article>
+
+      <article class="reference" data-reference="ChatGPT">
+        <header class="reference__header">
+          <span class="reference__index">D</span>
+          <div><h2>ChatGPT</h2><p>极少装饰、粗字号、紧凑行，几乎只保留设置本身。</p></div>
+        </header>
+        <figure class="reference__media reference__media--wide"><img src="assets/chatgpt-settings.png" alt="ChatGPT desktop Chat Bar Settings"></figure>
+        <div class="aspect-picker" aria-label="选择喜欢 ChatGPT 的哪些部分">
+          <span>我喜欢它的</span>
+          <button data-aspect="整体气质" aria-pressed="false">整体气质</button>
+          <button data-aspect="字体" aria-pressed="false">字体</button>
+          <button data-aspect="紧凑密度" aria-pressed="false">紧凑密度</button>
+          <button data-aspect="少装饰" aria-pressed="false">少装饰</button>
+          <button data-aspect="控件" aria-pressed="false">控件</button>
+        </div>
+        <a class="source-link" href="https://help.openai.com/en/articles/9295241-accessing-the-launcher-chatgpt-macos-app" target="_blank" rel="noreferrer">官方来源 ↗</a>
+      </article>
+
+      <article class="reference" data-reference="VS Code">
+        <header class="reference__header">
+          <span class="reference__index">E</span>
+          <div><h2>VS Code</h2><p>工具优先、全局搜索、树形目录和高信息密度。</p></div>
+        </header>
+        <figure class="reference__media reference__media--wide"><img src="assets/vscode-settings.png" alt="Visual Studio Code Settings Editor"></figure>
+        <div class="aspect-picker" aria-label="选择喜欢 VS Code 的哪些部分">
+          <span>我喜欢它的</span>
+          <button data-aspect="整体气质" aria-pressed="false">整体气质</button>
+          <button data-aspect="搜索" aria-pressed="false">搜索</button>
+          <button data-aspect="目录" aria-pressed="false">目录</button>
+          <button data-aspect="高密度" aria-pressed="false">高密度</button>
+          <button data-aspect="直白控件" aria-pressed="false">直白控件</button>
+        </div>
+        <a class="source-link" href="https://code.visualstudio.com/docs/configure/settings" target="_blank" rel="noreferrer">官方来源 ↗</a>
+      </article>
+
+      <article class="reference" data-reference="Peak 现有产品">
+        <header class="reference__header">
+          <span class="reference__index">F</span>
+          <div><h2>Peak 现有产品气质</h2><p>浅色主工作区、深色导航、紫色操作强调和三栏工作台。</p></div>
+        </header>
+        <figure class="reference__media reference__media--wide"><img src="assets/peak-chat-current.png" alt="Peak Chat existing design direction"></figure>
+        <div class="aspect-picker" aria-label="选择喜欢 Peak 现有产品的哪些部分">
+          <span>我喜欢它的</span>
+          <button data-aspect="整体气质" aria-pressed="false">整体气质</button>
+          <button data-aspect="字体" aria-pressed="false">字体</button>
+          <button data-aspect="深浅对比" aria-pressed="false">深浅对比</button>
+          <button data-aspect="留白" aria-pressed="false">留白</button>
+          <button data-aspect="紫色强调" aria-pressed="false">紫色强调</button>
+        </div>
+        <span class="source-link source-link--local">Peak 项目现有设计参考</span>
+      </article>
+    </section>
+
+    <section class="none-panel">
+      <div><strong>这些参考也全部不对？</strong><span>没关系，这同样是有效结论；下一轮会扩大到更轻、更实验或更专业的产品。</span></div>
+      <button class="none-button" data-none aria-pressed="false">全部不喜欢</button>
+    </section>
+  </main>
+
+  <aside class="selection-bar" aria-live="polite">
+    <div><span class="selection-bar__label">当前偏好</span><output data-summary>还没有选择。只点一个局部也可以。</output></div>
+    <div class="selection-bar__actions">
+      <button data-clear>清空</button>
+      <button class="copy-button" data-copy>复制给 Codex</button>
+    </div>
+  </aside>
+</body>
+</html>
