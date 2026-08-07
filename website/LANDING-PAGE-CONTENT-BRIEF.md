@@ -4,7 +4,9 @@
 >
 > 文档性质：内容 Brief、产品叙事约束与真实性边界。它不是网页结构稿、视觉规范、开发任务书，也不是要求沿用现有页面的改版清单。
 >
-> 更新日期：2026-08-07
+> 更新日期：2026-08-08
+>
+> 阅读规模：约 3.2 万字符；完整阅读约 65 分钟。产品定位、一级工作台与宣传优先级集中在 [3.4–3.7 节](#34-核心判断工作方式不等于产品目录)，可在 10 分钟内完成决策阅读。
 
 ## 1. 先读这一段
 
@@ -104,6 +106,91 @@ Peak Assistant 是一个面向 Obsidian 的、证据感知的 AI 工作空间。
 
 这些句子可以作为辅助描述，不能单独承担产品差异。
 
+### 3.4 核心判断：工作方式不等于产品目录
+
+Peak 有三种横向 AI 工作方式：Copilot、Smart connections 和 Agent workspace。它们帮助新用户理解 AI 如何参与工作，但不能代替完整产品结构。
+
+如果公开页面只展示这三种方式，会产生三个问题：
+
+- Command Center + Home 会被误解成辅助入口，而不是独立的返回工作与组织工作空间；
+- File Atlas、Search 和 Graph 会被压缩成 Smart connections 下的一组功能标签；
+- Peak Composer 与 Chat Studio 会被误解成 Copilot 和 Agent 的示例界面，而不是能够独立承担完整任务的一级工作台。
+
+因此，Peak 的公开产品结构固定为三层：
+
+```mermaid
+flowchart TB
+    platform["共享证据与控制底座<br/>Evidence · Context · History · Receipt · Provider · Harness · Usage"]
+    modes["横向 AI 工作方式<br/>Copilot · Smart connections · Agent workspace"]
+    surfaces["一级产品工作台<br/>Command Center + Home · Search · File Atlas · Graph + Intelligence · Composer · Chat Studio"]
+
+    platform -->|为所有 AI 工作提供来源、运行与控制| modes
+    modes -->|跨越并连接多个工作台| surfaces
+```
+
+阅读这张图时需要注意：
+
+- 用户实际进入的是一级产品工作台，不是抽象的 AI 工作方式；
+- 同一个工作台可以承载多种工作方式，例如 Composer 同时承载 Copilot 和 Smart connections；
+- Evidence、Context 与 Receipt 是跨工作台连续性的基础，不应被包装成另一个独立用户产品。
+
+### 3.5 六个一级产品工作台
+
+每个一级工作台都需要一个独立、完整、可演示的用户承诺。它们可以在一条工作流里连接，但不能在宣传中互相吞并。
+
+| 一级工作台 | 用户首先要完成的工作 | 不应被误解为 |
+| --- | --- | --- |
+| **Command Center + Home** | 回到文件、Workspace、Bookmark、Dashboard 和经过策展的 Peak Action | 设置页、命令网格或原生 Command Palette 替代品 |
+| **Vault Search + AI Search** | 找到材料、理解结果集合，并检查报告与 Sources | 只有一个输入框的语义搜索 |
+| **File Atlas** | 从当前文件看见文档结构、资源和局部知识邻域 | 文件管理器或 Graph 的附属面板 |
+| **Graph + Vault Intelligence** | 看见关系并诊断 Hub、Gap、Bridge、Orphan 和 Drift | 装饰性知识网络 |
+| **Peak Composer + Copilot** | 在原文附近完成精确、可审阅、可追踪的 AI 修改 | 一组 Rewrite 命令或普通 Markdown 预览器 |
+| **Chat Studio** | 用 Project、Resource、Assistant、Agent 和 Artifact 承载较长任务 | 带侧栏的聊天窗口 |
+
+支撑六个工作台的 Control 与 Ownership 产品面包括：
+
+- AI Control Center + My Content；
+- Usage Dashboard 与 Provider 配置；
+- 数据和持久内容边界。
+
+这些产品面需要公开说明，但不与六个一级工作台争夺同一种 Hero 位置。其中开发中的能力必须单独标注状态。
+
+### 3.6 宣传价值评分
+
+以下评分用于决定各类公开材料的投入顺序。满分为 10；“当前宣传可信度”衡量现阶段对外声明的把握，不代表长期产品潜力。宣传角色不是简单平均分，而是综合用户价值、差异化、演示效果和当前证据后的决策。
+
+| 能力 | 差异化 | 高频价值 | 演示力 | 当前宣传可信度 | 宣传角色 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| **Vault Search + AI Search** | 9.0 | 10.0 | 10.0 | 8.5 | 主 Hero 与完整故事 |
+| **File Atlas** | 9.5 | 9.0 | 9.5 | 7.0 | 独立主章节 |
+| **Graph + Vault 结构诊断** | 9.5 | 8.0 | 10.0 | 7.5 | 主 Hero 与独立 Feature Story |
+| **围绕当前笔记主动发现材料** | 9.0 | 8.5 | 8.5 | 8.0 | 独立 Feature Story |
+| **Peak Composer + Copilot** | 9.0 | 10.0 | 9.5 | 7.0 | 一级主工作台 |
+| **Chat Studio** | 9.0 | 9.0 | 9.0 | 8.5 | 一级主工作台 |
+| **Command Center + Home** | 8.5 | 9.5 | 9.0 | 7.0 | 一级主工作台 |
+| **Agent 与 Multi-provider 平台** | 8.5 | 8.0 | 7.5 | 8.0 | 平台可信度证明 |
+| **Media 与结构化 Artifact** | 7.5 | 7.0 | 9.0 | 6.5 | Chat Studio 的扩展证明 |
+| **本地、成本与数据控制** | 8.0 | 9.0 | 7.0 | 8.5 | 信任与转化章节 |
+| **AI Control Center + My Content** | 9.0 | 8.0 | 8.5 | 5.5 | Closing / Future，不作当前 Hero |
+
+这张表带来四项直接决策：
+
+1. Search、File Atlas 和 Graph 是最强的视觉获客面，但不能因此遮掉 Composer、Chat Studio 与 Command Center。
+2. Composer、Chat Studio 与 Command Center 必须分别拥有独立标题、独立截图或演示，以及独立用户结果。
+3. Related Materials 和 Vault 结构诊断需要单项宣传，因为它们分别回答“现在还该看什么”和“整个 Vault 哪里断裂”。
+4. AI Control Center + My Content 的长期差异化很高，但当前只能进入 Closing / Future 区域。
+
+### 3.7 产品入口顺序与营销顺序不同
+
+产品内部的自然循环可以从 Command Center + Home 开始。用户返回工作后寻找材料、理解结构，进入 Composer 或 Chat Studio，留下结果后再回到 Home。
+
+公开页面不必照搬这个入口顺序。营销内容应按以下顺序建立理解：
+
+1. 用 Search、File Atlas 和 Graph 建立差异；
+2. 用 Composer 与 Chat Studio 证明理解能够变成创作和任务结果；
+3. 用 Command Center 证明这些工作台可以被组织成每天返回的系统；
+4. 用 Provider、Usage、Permission、数据边界和当前成熟度建立信任。
+
 ## 4. 用户应在多长时间内理解什么
 
 ### 4.1 前 5 秒
@@ -200,11 +287,11 @@ Chat Studio 与 Peak Harness 应被解释为任务工作台，而不是另一个
 
 页面不需要在首屏枚举厂商，但必须传达“能力由用户选择的 Provider 承载，Peak 负责连接和控制工作流”。
 
-## 6. 最重要的产品心智
+## 6. 横向 AI 工作方式
 
 ### 6.1 三种 AI 工作方式
 
-Peak 可以被理解为三种已被用户熟悉的 AI 工作方式，建立在同一套 Vault-aware 基础上。
+Peak 可以被理解为三种已被用户熟悉的 AI 工作方式，建立在同一套 Vault-aware 基础上。它们是理解产品的横向切面，不是完整产品目录，也不能替代 3.5 节中的一级工作台。
 
 #### Copilot
 
@@ -261,7 +348,7 @@ Peak 可以被理解为三种已被用户熟悉的 AI 工作方式，建立在�
 
 页面不一定按这六步排版，但必须让用户感受到“工作在继续”，而不是每张功能图都从零开始。
 
-## 7. 建议优先讲清的三条完整故事
+## 7. 建议优先讲清的完整故事
 
 完整故事比功能数量更能证明价值。以下是内容优先级，不是强制页面布局。
 
@@ -318,15 +405,64 @@ Peak 可以被理解为三种已被用户熟悉的 AI 工作方式，建立在�
 
 **需要证明的能力**：Composer、Copilot、Candidate、Review、History、Markdown ownership。
 
-### 7.4 可作为第二层叙事的故事
+### 7.4 从当前笔记主动发现下一份材料
 
-如果页面容量允许，可以继续覆盖：
+**用户处境**：正在读写一篇笔记，但不知道 Vault 中还有哪些材料与当前工作真正相关。
 
-- 在 Chat Studio 中用 Project、Resource、Skill 与 Tool 完成一个长任务；
-- 从文本任务生成或编辑图片，再留下可追溯的媒体结果；
-- 在 Command Center 中进入文件、Workspace、Bookmark、Dashboard 与 Peak Action；
-- 在 AI Control Center 中为不同动作选择模型、工具、权限、预算和输出规则；
-- 将结构化材料交给 Peak Sheet 方向继续计算、可视化和多视图工作，但必须明确这是研究候选。
+**任务**：以当前 Document、focused Block 或 Graph Region 为锚点，发现值得继续阅读或加入任务的来源。
+
+**Peak 行为**：
+
+1. Related Materials 根据当前工作检索候选材料。
+2. 用户预览内容并检查相关原因，而不是只看到相似度分数。
+3. 用户保留、移除或打开候选来源。
+4. 选中的材料进入 File Atlas、Graph、Composer 或 Chat Studio。
+
+**结果**：用户无需先想出搜索词，也能从当前工作自然走向下一批有价值的材料。
+
+**需要证明的能力**：Related Materials、Inspector、Evidence、Context handoff。
+
+### 7.5 从 Home 回到一项真实工作
+
+**用户处境**：文件、Workspace、Bookmark、Dashboard 与插件动作分散，用户每天需要重新寻找入口。
+
+**任务**：从一个经过个人策展的 Home 返回最近工作、固定空间或常用 Peak Action。
+
+**Peak 行为**：
+
+1. Command Center + Home 展示用户组织过的目标和动作。
+2. 搜索在保留策展结构的同时，补充未配置命令的发现能力。
+3. 用户直接返回对应文件、Workspace、Dashboard 或工作台。
+
+**结果**：Peak 不再是一组分散功能，而是一个可以每天进入和返回的工作系统。
+
+**需要证明的能力**：Home、curated groups、Destination、Command fallback、native Command Palette coexistence。
+
+### 7.6 从 Project 到可继续的 Agent 结果
+
+**用户处境**：复杂任务无法通过一次问答完成，需要资源、工具、过程、权限和可回看的结果。
+
+**任务**：在 Chat Studio 中组织一个多步骤项目任务。
+
+**Peak 行为**：
+
+1. Project 与 Conversation 保留任务边界。
+2. Resource、Attachment 和 Assistant 形成明确上下文。
+3. Agent 使用经过授权的 Tool、Skill 或 MCP 能力运行。
+4. Artifact、Variant、Branch、Trace 与 Receipt 保留结果和过程。
+
+**结果**：用户得到的不是一次性聊天，而是可以继续、分支、检查和复用的项目工作。
+
+**需要证明的能力**：Chat Studio、Peak Harness、Permission、Artifact、History。
+
+### 7.7 支撑性和未来故事
+
+以下内容可以作为扩展证明或产品地平线，但不能替代六个一级工作台：
+
+- 从文本任务生成或编辑媒体，并留下可追溯结果；
+- 用 Provider、Usage、Permission 和 Receipt 解释控制边界；
+- 展示 AI Control Center + My Content 的收口方向；
+- 展示 Peak Sheet 对结构化材料的长期延伸，并明确它仍是研究候选。
 
 ## 8. 必须完整覆盖的能力
 
@@ -814,13 +950,13 @@ Pages 与 README 必须共享：
 
 所有主要能力都必须可被发现，但不应争夺同一级注意力。
 
-建议主次关系：
+建议按宣传任务分配注意力：
 
-- 第一层：产品定位与核心闭环；
-- 第二层：Search + Evidence、Graph + Intelligence、Composer + Copilot；
-- 第三层：Chat Studio + Agent、Command Center、Multi-provider、Media；
-- 信任层：Free、本地、数据、状态与安装；
-- 地平线：AI Control Center、Peak Sheet、Advanced Graph 与其他未来能力。
+- **建立差异**：Search、File Atlas、Graph 与 Vault Intelligence 负责最快证明 Peak 不只是 Chat with your notes；
+- **证明日常价值**：Peak Composer、Chat Studio、Command Center + Home 分别证明创作、长任务和返回工作的完整性，每项都需要独立内容；
+- **证明主动智能**：Related Materials 回答当前工作周围还有什么值得看，Vault 结构诊断回答整个知识库哪里需要处理；
+- **建立信任**：Multi-provider、Permission、Usage、Receipt、Free、本地边界和安装状态解释控制权；
+- **展示地平线**：AI Control Center、Peak Sheet、Advanced Graph 与其他未来能力必须明确状态。
 
 设计者可以调整顺序，但不应让 Roadmap 能力压过当前可证明的核心体验。
 
@@ -879,6 +1015,21 @@ Pages 与 README 必须共享：
 - 详细技术、安装、限制和长清单交给 README 或文档；
 - 用真实演示承担原本需要多段文字解释的内容。
 
+### 15.5 一级能力的工作文案
+
+以下句子是方向稿，不是必须逐字发布的最终文案。它们的作用是约束每个一级能力必须表达独立用户结果。
+
+| 能力 | 英文工作标题 | 必须传达的结果 |
+| --- | --- | --- |
+| **Vault Search + AI Search** | **One result set. Three ways to understand it.** | 用户不仅找到文件，还能通过 List、Tree、Graph、Sources 和 Report 理解结果 |
+| **File Atlas** | **See inside the file — and beyond it.** | 当前文件的结构、资源和知识邻域进入同一个工作空间 |
+| **Graph + Vault Intelligence** | **See where knowledge gathers — and where it breaks.** | Graph 能解释 Hub、Gap、Bridge、Orphan 和后续行动 |
+| **Related Materials** | **Discover what the current work should connect to next.** | 系统围绕当前笔记主动找材料，并允许用户检查相关原因 |
+| **Peak Composer** | **AI edits you can inspect before they become your words.** | AI 在原文附近提出可审阅修改，用户保留最终决定权 |
+| **Chat Studio** | **Projects, resources, agents, and artifacts in one workspace.** | 较长任务拥有稳定上下文、过程和可继续结果 |
+| **Command Center + Home** | **Return to the work that matters.** | 用户从个人化 Home 回到空间、文件和可信动作 |
+| **Control 与 Ownership** | **Choose the model, tool, and boundary for each kind of work.** | Provider、Permission、Usage、Budget 和保存边界由用户掌握；强声明取决于当前实现状态 |
+
 ## 16. 产品证据与素材原则
 
 这部分只约束证据质量，不限制设计风格。
@@ -934,6 +1085,20 @@ Pages 与 README 必须共享：
 - 通过“我们包含了某某插件”来定义 Peak。
 
 公开表达应回到用户心智：Peak 有 Copilot、智能连接、Graph 和 Agent 工作空间，而且这些能力共享 Evidence、Context 与 Control。
+
+### 17.1 内部竞品判断使用完整用户合同
+
+内部研究不能因为竞品出现相似按钮、命令或功能名称，就直接判断它拥有与 Peak 等价的能力。比较结论需要拆到完整用户合同，并把证据不足的项目标为“未知”或“部分支持”。
+
+| 能力类别 | 判断完整支持所需的最小证据 | 不能直接视为等价的情况 |
+| --- | --- | --- |
+| **原文内 AI 编辑与审阅** | 精确 Selection / Block / Document 作用域；在源内容附近产生修改；存在 Candidate 或 Difference；支持 Accept / Reject；存在恢复、History 或 Receipt | 读取当前笔记、提供 Rewrite 命令、在 Chat 中返回一段替换文本 |
+| **围绕当前笔记发现材料** | 当前工作作为实时锚点；候选材料可预览；相关原因可检查；来源可保留、移除或交给下一工作台 | 一次语义搜索、只有相似度数字、无后续动作的 Related list |
+| **Graph 与结构诊断** | 节点和边有明确含义；关系可解释；能发现 Hub / Gap / Bridge / Orphan 等结构；可以从发现进入来源或行动 | 只有全库节点图、随机语义连线、无法说明下一步 |
+| **Agent workspace** | Project / Conversation 边界；Resource / Tool / Permission；运行过程可见；Artifact / History 可继续 | 能调用一个 Agent、只有终端输出、一次性 Chat session |
+| **Command Center + Home** | 用户策展结构；文件和工作空间入口；分组 Action；搜索作为补充；与原生 Command Palette 共存 | 扁平命令搜索、快捷键列表、静态 Dashboard |
+
+这一规则尤其适用于 Composer：有“编辑”能力不等于有完整 Composer，有“当前笔记上下文”也不等于有原文内审阅工作台。公开页面不需要展示这张竞品表，但内部评分、定位和文案必须遵守同一判断标准。
 
 ## 18. 未来能力如何出现
 
@@ -1016,41 +1181,61 @@ Pages 与 README 必须共享：
 - GitHub / source preview 行动；
 - Development Preview 的轻量提示。
 
-### 20.2 Core proof
+### 20.2 Search、File Atlas 与 Graph
 
-优先证明：
+先用最有辨识度的证据建立产品差异：
 
-- Search → Evidence；
-- Evidence → Graph；
-- Graph / Context → Composer 或 Chat。
+- 同一结果集合如何在 List、Tree 与 Graph 中被理解；
+- File Atlas 如何从当前文件进入文档结构、资源和局部邻域；
+- Graph 如何从导航进入关系解释和 Vault 结构诊断；
+- Sources、Inspector 或原文跳转如何证明这些关系不是视觉装饰。
 
-这是页面最重要的完整闭环。
+这一章可以包含 Search → Evidence → Graph 的完整闭环，但不能把 File Atlas 压缩成 Search 的一个标签。
 
-### 20.3 Three ways of working
+### 20.3 Peak Composer
 
-让用户理解：
+用一段独立内容证明：
 
-- Copilot；
-- Smart connections；
-- Agent workspace；
-- 三者共享同一 Vault 与 Evidence。
+- AI 能在 Selection、Block、Document 或原生对象附近工作；
+- 修改先成为 Candidate 或可检查结果；
+- 用户可以 Review、Accept、Reject、继续或回看 History；
+- Markdown 与源内容所有权不会被隐藏。
 
-### 20.4 Graph and Intelligence
+Composer 不能只在 Search → Composer 的流程末端出现一次，也不能只用“write with AI”概括。
 
-解释 Graph 不只是视觉化，而是导航、解释、诊断、行动和历史。
+### 20.4 Chat Studio
 
-### 20.5 Broader platform
+独立内容需要证明：
 
-覆盖：
+- Project 与 Conversation 保留任务边界；
+- Assistant 与 Resource 形成明确上下文；
+- Agent、Tool 与 Permission 让运行过程可理解；
+- Artifact 与 Branch 让结果可以继续使用。
 
-- Chat Studio；
-- Command Center；
-- Multi-provider；
-- MCP、Skills 与外部命令；
-- Image / Video / Music / Voice；
-- Operations。
+Chat Studio 不能被归入“Broader platform”，因为它本身就是一级用户工作台。
 
-### 20.6 Trust
+### 20.5 Command Center + Home
+
+独立内容需要展示用户如何从经过策展的 Home 返回工作。可以出现的目标包括：
+
+- File 与 Workspace；
+- Bookmark 与 Dashboard；
+- 经过策展的 Peak Action。
+
+需要明确它与原生 Command Palette 并存。默认价值来自个人组织和返回工作，而不是收集最多命令。
+
+### 20.6 跨工作台连续性
+
+在主要工作台已经分别讲清后，再解释三种横向 AI 工作方式：
+
+- Copilot 在当前内容附近工作；
+- Smart connections 围绕当前工作发现材料与结构；
+- Agent workspace 承载项目级任务；
+- Evidence、Context、History 与 Receipt 让工作可以跨 Search、Graph、Composer 和 Chat Studio 继续。
+
+三种方式用于解释连接关系，不再承担完整产品目录的职责。
+
+### 20.7 Trust 与 platform
 
 说明：
 
@@ -1059,9 +1244,11 @@ Pages 与 README 必须共享：
 - Provider costs are user-selected；
 - Markdown ownership；
 - Review / Permission / Receipt；
+- Multi-provider、MCP、Skills 与经过授权的外部命令；
+- Image / Video / Music / Voice 如何作为任务结果进入 Chat Studio 或 Artifact；
 - 当前 Development Preview 和安装现实。
 
-### 20.7 Horizon
+### 20.8 Horizon
 
 以清楚状态展示：
 
@@ -1071,7 +1258,7 @@ Pages 与 README 必须共享：
 - File Workspace；
 - Peak Share 和其他研究方向。
 
-### 20.8 Final action
+### 20.9 Final action
 
 用户应能直接前往：
 
@@ -1091,16 +1278,19 @@ README 应比 Pages 更重视可信度和可执行性。
 2. 当前状态徽标；
 3. 主演示；
 4. 为什么是 Peak；
-5. Copilot / Smart connections / Agent workspace 心智；
-6. 完整能力地图与状态；
-7. Graph 专节；
-8. 快速开始；
-9. Free、Provider 成本与可持续维护；
-10. 数据、隐私与控制权；
-11. 项目状态与已知限制；
-12. Roadmap；
-13. 开发与贡献；
-14. License 与独立项目声明。
+5. Search、File Atlas、Graph 与 Vault Intelligence；
+6. Peak Composer；
+7. Chat Studio；
+8. Command Center + Home；
+9. Copilot / Smart connections / Agent workspace 如何跨工作台连接；
+10. 完整能力地图与状态；
+11. 快速开始；
+12. Free、Provider 成本与可持续维护；
+13. 数据、隐私与控制权；
+14. 项目状态与已知限制；
+15. Roadmap；
+16. 开发与贡献；
+17. License 与独立项目声明。
 
 README 的主演示不应是打开设置、填写 API Key 或快速扫过菜单。它应展示最强的用户结果，并在没有声音时仍可理解。
 
