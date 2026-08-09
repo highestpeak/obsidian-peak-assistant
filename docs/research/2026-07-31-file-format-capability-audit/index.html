@@ -390,6 +390,7 @@
       <nav class="nav-links" aria-label="报告导航">
         <a href="#judgment">结论</a>
         <a href="#target-model">目标 AI 能力</a>
+        <a href="#more-formats">更多文件族</a>
         <a href="#definition">如何定义支持</a>
         <a href="#matrix">完整矩阵</a>
         <a href="#editing">怎么修改</a>
@@ -411,8 +412,8 @@
         当前结论以代码、配置和测试为依据；目标模型单独标记，不把未来方案算成已交付能力。
       </p>
       <div class="meta">
-        <span>代码快照 7d31974d52a1</span>
-        <span>约 10,000 字 · 22 分钟</span>
+        <span>代码快照 1680e2e8</span>
+        <span>约 13,000 字 · 28 分钟</span>
         <span>只读调研 · 未修改生产代码</span>
         <span>未执行真实 Obsidian 文件交互验收</span>
       </div>
@@ -552,6 +553,125 @@
       </p>
     </section>
 
+    <section id="more-formats">
+      <h2>还有哪些值得纳入：优先看“文件族”，不是继续堆扩展名</h2>
+      <p>
+        除了当前主矩阵，Peak 还需要评估代码/配置、电子书、Notebook、字幕、邮件日历、地理数据和容器格式。
+        它们多数不需要新的完整编辑器，而应复用 Source Surface、Peak Sheet、native companion 或安全 container。
+      </p>
+
+      <h3>第一优先级：最贴近 AI 生成与知识工作</h3>
+      <div class="table-wrap">
+        <table>
+          <colgroup>
+            <col style="width: 190px">
+            <col style="width: 25%">
+            <col style="width: 31%">
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>文件族</th>
+              <th>典型格式与归属</th>
+              <th>AI context / actions</th>
+              <th>写回边界</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Web artifact bundle</td>
+              <td>项目目录或 ZIP：HTML + CSS/JS + JSON/WASM + assets；归 HTML Workspace project mode</td>
+              <td>依赖图、selected element、runtime/console；解释、修复与跨文件修改</td>
+              <td>multi-file patch transaction；安全预览，ZIP 不直接执行</td>
+            </tr>
+            <tr>
+              <td>Code / config / logs</td>
+              <td><code>.ts</code> <code>.py</code> <code>.css</code> <code>.sql</code> <code>.yaml</code> <code>.toml</code> <code>.env</code> <code>.log</code> <code>.diff</code></td>
+              <td>selection、symbol、diagnostic、related files；解释、审查、修复</td>
+              <td>guarded text patch；默认不执行代码、shell 或配置</td>
+            </tr>
+            <tr>
+              <td>Jupyter Notebook</td>
+              <td><code>.ipynb</code>；cell-aware companion</td>
+              <td>Markdown/code cells、output、execution order；解释、重构、清理输出</td>
+              <td>cell-level JSON patch；运行代码需独立 sandbox 与权限</td>
+            </tr>
+            <tr>
+              <td>EPUB</td>
+              <td><code>.epub</code>；Book reader + AI companion</td>
+              <td>TOC、chapter、selection、footnote/location；摘要、问答、引用</td>
+              <td>原书只读；保存 sibling annotation/note</td>
+            </tr>
+            <tr>
+              <td>流式/文本表格</td>
+              <td><code>.tsv</code> <code>.jsonl</code> <code>.ndjson</code>；Peak Sheet ingress</td>
+              <td>record sampling、schema drift、bad row；清洗、类型推断、导入</td>
+              <td>生成 DatasetDraft；输入文件只作 provenance/snapshot</td>
+            </tr>
+            <tr>
+              <td>字幕与歌词</td>
+              <td><code>.srt</code> <code>.vtt</code> <code>.lrc</code>；timed-text source</td>
+              <td>cue/time range、speaker、媒体引用；校对、翻译、分章、摘要</td>
+              <td>timecode-aware patch，不能只保留纯文本</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">HTML 的下一个关键对象其实是“文件夹”</div>
+        <p>
+          Codex 生成的 dashboard 往往不是单个 HTML，而是 <code>index.html + CSS/JS + data/assets</code>。
+          所以 Peak 需要 Web artifact bundle：显示纳入文件、依赖、运行权限和一次接受涉及的多文件 patch，
+          而不是只给 <code>.html</code> 增加一个 iframe。
+        </p>
+      </div>
+
+      <h3>第二优先级：有明确价值，但适合 companion / import</h3>
+      <div class="method-grid">
+        <article class="card">
+          <h3 class="card-title">Publishing source</h3>
+          <p><code>.tex</code>、<code>.bib</code>、<code>.mdx</code>、AsciiDoc、Org：源码/引用/编译诊断 AI；编译必须是显式工具动作。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">其他 Spreadsheet</h3>
+          <p><code>.ods</code>、legacy <code>.xls</code> 可作为后续 Peak Sheet import；必须各自经过 parser 和 fidelity gate，不能由 XLSX 自动推导。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Outline / reference interchange</h3>
+          <p><code>.opml</code>、<code>.ris</code>、<code>.enw</code>、<code>.csl.json</code>：导入 Markdown、Canvas 或引用系统，支持去重、标签和摘要。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Email / calendar / contact</h3>
+          <p><code>.eml</code>、<code>.mbox</code>、<code>.ics</code>、<code>.vcf</code>：结构化导入、摘要、行动项与去重；导入不等于外部发送或写回。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Geographic data</h3>
+          <p><code>.geojson</code>、<code>.gpx</code>、<code>.kml</code>：feature/route/region-aware companion；需要地图 renderer 和坐标系验证。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Columnar / database data</h3>
+          <p><code>.parquet</code>、Arrow、Feather、SQLite/DuckDB：query/import companion；可显式 materialize 为 Peak Dataset，不原位改 binary database。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Archive / package</h3>
+          <p><code>.zip</code>、TAR、GZ、7z、RAR：只做安全列表与选择性解压；防路径穿越和压缩炸弹，未解包内容不算 AI 已理解。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">明确后移</h3>
+          <p>PSD/AI/Sketch/Figma、CAD/3D、可执行文件、安装包和磁盘镜像没有清晰的 Peak 核心任务，暂不进入支持范围。</p>
+        </article>
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-title">URL 和 Folder 不是普通文件格式</div>
+        <p>
+          当前 URL Loader 读取的是显式网页地址，不扫描 Vault 的 <code>.url</code> 文件；Folder 更适合作为 context/bundle boundary。
+          Web capture、live connector、saved snapshot 和 project folder 应分别定义，不能塞进扩展名矩阵。
+        </p>
+      </div>
+    </section>
+
     <section id="definition">
       <h2>先定义“支持”到底指什么</h2>
       <p>
@@ -638,6 +758,12 @@
               <td>由 HTML/XML Loader 读取，但文档类型记为 HTML</td>
               <td>XML 开关与实际分类不一致；无结构化编辑</td>
               <td><span class="pill no">暂不宣传</span></td>
+            </tr>
+            <tr>
+              <td>Web URL<br><code>https://…</code></td>
+              <td>显式传入 URL 时可由 Playwright Loader 提取网页文本</td>
+              <td>不扫描 Vault <code>.url</code> 文件；无 capture/live/snapshot 产品合同</td>
+              <td><span class="pill internal">外部资源基础</span></td>
             </tr>
             <tr>
               <td>Word<br><code>.docx</code></td>
@@ -996,6 +1122,8 @@
           <h3>类型、读取与索引</h3>
           <a href="../../../src/core/document/types.ts">Document types</a>
           <a href="../../../src/core/document/loader/helper/DocumentLoaderManager.ts">Document loader registry</a>
+          <a href="../../../src/core/document/loader/UrlDocumentLoader.ts">URL loader boundary</a>
+          <a href="../../../src/core/document/helper/FileTypeUtils.ts">File/MIME classifiers</a>
           <a href="../../../src/core/config/settingsTypes.ts">Default search settings</a>
           <a href="../../../src/ui/view/settings/tabs/KnowledgeIndexTab.tsx">Knowledge Index settings UI</a>
         </article>

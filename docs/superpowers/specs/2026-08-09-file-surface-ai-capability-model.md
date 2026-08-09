@@ -467,7 +467,54 @@ DOCX/PPTX 不在上述产品线中；XLSX 属于 Peak Sheet 的输入/输出互�
 - 不因内部 Loader 存在而支持 DOCX/PPTX，也不因类型/UI 出现 XLSX 就宣称其 Peak Sheet 入口已经交付；
 - 不在没有 revision、review 和 recovery 的情况下让 AI 直接覆盖 native file。
 
-## 17. 本轮边界
+## 17. 后续候选文件族
+
+当前主矩阵还没有覆盖下列文件族。它们不应被简单加入 Loader 白名单，而应先确定自己属于 Source Surface、Peak Sheet ingress、native companion、container，还是明确不支持。
+
+### 17.1 第一优先级：能显著补齐 AI-era 工作流
+
+| 文件族 | 典型格式 | 推荐归属 | 关键 AI 能力与写回 |
+|---|---|---|---|
+| Web artifact bundle | folder / manifest / `.zip`，包含 HTML、CSS、JS、JSON、WASM、图片 | HTML Workspace 的 project/bundle mode | dependency graph、selected element → source、runtime/console、multi-file patch transaction；安全预览，不把 ZIP 当网页直接执行 |
+| Code / config / logs | `.js` `.ts` `.tsx` `.py` `.go` `.rs` `.java` `.css` `.sql` `.sh` `.yaml` `.toml` `.ini` `.env` `.log` `.diff` `.patch` | 共享 Code/Text Source Surface | selection、symbol、diagnostic、related files；解释、审查、修复和 guarded text patch；默认不执行代码或 shell |
+| Jupyter Notebook | `.ipynb` | cell-aware Notebook companion | selected cells、Markdown/code/output、execution order；解释、重构、清理输出、cell-level JSON patch；执行需独立 sandbox 与权限 |
+| EPUB | `.epub` | Book reader + AI companion | TOC、chapter、selection、footnote、location；摘要、问答、章节比较、引用；原书只读，写 sibling annotation/note |
+| 流式/文本表格 | `.tsv` `.jsonl` `.ndjson` | Peak Sheet ingress | delimiter/record sampling、schema drift、bad row diagnostics；生成 DatasetDraft，原文件只是 provenance/export snapshot |
+| 字幕与歌词 | `.srt` `.vtt` `.lrc` | timed-text source surface | cue/time range、speaker、媒体引用；校对、翻译、分章、摘要；使用 timecode-aware patch，不丢时间轴 |
+
+其中 **Web artifact bundle** 很关键：AI 编程工具生成的 dashboard 往往不是单个 `.html`，而是 `index.html + CSS/JS + data/assets`。如果 Peak 只接管单文件 HTML，就无法可靠解释依赖、修改组件或保存可运行结果。bundle 的 source of truth 是用户选择的项目目录/manifest；一次 accept 必须能够原子审阅多个文件的 patch。
+
+### 17.2 第二优先级：明确有知识价值，但不应抢占主工作面
+
+| 文件族 | 典型格式 | 推荐归属 | 关键边界 |
+|---|---|---|---|
+| Publishing source | `.tex` `.bib` `.mdx` `.adoc` `.org` | Source/compile companion | selection、citation、build diagnostic；文本 patch；编译是显式 tool action，不默认运行任意命令 |
+| Spreadsheet alternatives | `.ods`、legacy `.xls`；`.numbers` 仅在可验证转换后考虑 | Peak Sheet import backlog | 复用 WorkbookDraft/compatibility report，但每种格式需要独立 parser 与 fidelity gate，不能由 XLSX 支持自动推导 |
+| Outline/reference interchange | `.opml` `.ris` `.enw` `.csl.json` | Markdown / Canvas / reference import companion | tree/citation/item context；去重、标签、摘要与 typed import plan；原交换文件不作双向真值 |
+| Email | `.eml` `.mbox` | message/thread import companion | headers、thread、attachments、quoted text；摘要、行动项、知识化；导入不等于发送邮件 |
+| Calendar / contact | `.ics` `.vcf` | structured import companion | event/contact fields、timezone、recurrence；解释、去重和导入 plan；外部日历/通讯录写入另走 connector permission |
+| Geographic data | `.geojson` `.gpx` `.kml` | future Map/Dataset companion | feature/route/geometry、selected region；解释、清洗和结构化 patch；需要地图 renderer 与坐标系验证 |
+| Columnar/database data | `.parquet` `.arrow` `.feather` `.sqlite` `.db` `.duckdb` | query/import companion，不是 binary editor | schema、sample、query result、provenance；显式 materialize 到 Peak Dataset，不原位改数据库文件 |
+| Archive/package | `.zip` `.tar` `.gz` `.7z` `.rar` | secure container surface | 只列目录、选择性解压和 provenance；防 zip-slip、路径穿越、压缩炸弹；未解包内容不算已被 AI 理解 |
+
+### 17.3 暂不建议进入 Peak 产品范围
+
+- 专有设计源文件：`.psd`、`.ai`、`.sketch`、`.fig`；
+- CAD / 3D：`.dwg`、`.dxf`、`.blend`、`.glb`、`.gltf`、`.obj`、`.stl`；
+- executable / installer / disk image：`.exe`、`.dll`、`.dmg`、`.iso` 等；
+- fonts 与其他无明确 Peak 知识任务的二进制格式。
+
+这些格式可以作为附件保存，但在没有成熟 renderer、结构 parser、AI context 和安全写回合同前，不进入“支持文件类型”的宣传。
+
+### 17.4 不是文件类型，但需要单独治理的来源
+
+- **URL / web page**：当前 `UrlDocumentLoader` 接收显式 URL 并可通过 Playwright 提取网页；它不扫描 Vault `.url` 文件。目标应定义 web capture / live connector / saved snapshot 的区别，而不是把 URL 当成本地文件扩展名。
+- **Folder / project**：folder 是 context boundary 和 bundle carrier，不是普通 DocumentLoader 输出。选择整个项目时必须显示纳入的文件、ignore policy、size/token budget 和 write scope。
+- **Internal JSON/JSONL/SQLite**：Peak 自己的 machine record、history、projection、cache 和 telemetry 由存储治理约束，不能因为扩展名相同就暴露成普通用户文件 surface。
+
+上述候选只进入 research backlog。进入主矩阵前仍需 owner 决定优先级、source of truth、权限、fixture 和真实 Obsidian 验收计划。
+
+## 18. 本轮边界
 
 本轮仅梳理产品与架构能力模型：
 
