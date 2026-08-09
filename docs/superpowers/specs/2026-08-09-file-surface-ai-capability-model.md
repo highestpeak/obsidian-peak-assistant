@@ -22,6 +22,7 @@ Peak 不应把“支持文件”定义为扩展名白名单，也不应该试图
 - CSV 和 XLSX 都是进入 Peak Sheet 的互操作入口，不是创建后的长期电子表格真值；
 - TXT 复用 Markdown 的纯文本子集，但不会在原文件中偷偷写入 Markdown 语法；
 - HTML 是可预览、可编辑、可运行的 AI-era document，并通过受控 bridge 执行交互；
+- Python、TypeScript 等源码需要独立 Code Source Workspace；Markdown code block 不能替代原文件、import/reference graph 和 multi-file patch；
 - Canvas 与 Excalidraw 使用宿主/生态渲染器，Peak 提供结构感知的 AI companion 与可审阅写回；
 - Image 不只做“看图”，还要覆盖区域理解、OCR、确定性变换、生成式编辑和版本管理；
 - DOC / DOCX、PPT / PPTX **不属于 Peak 的产品支持范围**。内部 Loader、文件图标或偶然可提取文本都不构成支持，也不进入宣传；XLSX 则属于 Peak Sheet 的目标输入/输出格式，但当前尚未实现解析和产品闭环。
@@ -184,6 +185,7 @@ AI 运行开始时冻结 source revision、selection、surface mode 和数据 re
 |---|---|---|---|
 | Markdown | Composer | block、selection、document、frontmatter、embed | source-range / block transaction |
 | HTML | Source / Preview / Split + runtime companion | source range、selected element、visible DOM、runtime、data provenance | source patch 或受控 external action |
+| Code files | Code Source Workspace | selection、symbol、imports/exports、diagnostics、related code/notes | guarded source patch / reviewed multi-file transaction |
 | CSV / XLSX | Import preview + Open as Peak Sheet | row/column/range、worksheet、schema、formula/style compatibility、source hash | import plan；转换后走 Dataset/Sheet revision |
 | Peak Sheet | Table / Board / Calendar | cells、range、field、view、compute、data revision | typed Dataset / Formula / View plan |
 | Raster Image | Image Workspace | whole image、region、OCR、metadata、references | save as new version；显式 replace |
@@ -222,6 +224,8 @@ HTML 不只是待索引的源码。AI 编程工具会生成报告、仪表盘、
 - **Source**：语法感知源码编辑、搜索、错误定位、AI patch；
 - **Preview**：sandboxed render、element picker、可见 DOM 与 console companion；
 - **Split**：源码、渲染结果和 AI review 同步定位。
+
+还需要 **Project / Bundle** 模式：当入口 HTML 依赖同目录 CSS、JS、JSON、WASM 和图片资源时，以用户选择的 folder/manifest 作为 bundle boundary，显示依赖、ignore policy、运行权限和 multi-file candidate。ZIP 只能先安全解包为候选 bundle，不能直接执行。
 
 AI context 至少包括：
 
@@ -278,7 +282,36 @@ Peak Sheet 的 AI 能力：
 
 任意动作都绑定 Dataset/Sheet revision。复杂分析可以生成 insight，但数据变更只能通过 typed plan 进入新 revision。导出 CSV/XLSX 是显式 snapshot，不默认与原始文件双向同步。
 
-### 6.4 Raster Image：视觉理解与版本式编辑
+### 6.4 Code Source Workspace：原生源码、引用图与 AI 协作
+
+Markdown 中的 fenced code block 适合文档示例，但不能替代真实 `.py`、`.ts`、`.tsx`、`.js`、`.jsx`、`.go`、`.rs`、`.java`、`.css`、`.sql`、`.sh`、`.yaml`、`.toml` 等源码/配置文件。Code Source Workspace 的目标是让这些 native files 可以从 Vault 文件列表或链接单独打开、编辑、问 AI，并进入跨文件 context。
+
+首要 context：
+
+- 当前 file、selection、cursor 附近语法范围和 source revision；
+- symbol definition/reference、imports/exports、direct dependencies；
+- parse/type/lint/test diagnostics（仅在对应 adapter 可用时）；
+- 用户显式加入的 related code files 和 Markdown notes；
+- project root、ignore policy、纳入文件数、size/token budget。
+
+跨文件引用分三层：
+
+1. code → code：解析语言原生的 `import`、`from`、`require`、module path 或 include；
+2. Markdown → code：Vault link / file reference 可以打开源码并把目标加入 context；
+3. code ↔ note：通过显式文件路径、backlink 或 sidecar relation 关联，不向可执行源码强塞 Peak 私有语法。
+
+AI actions：Ask/explain selection、解释调用链、生成/修改函数、重构、补 docstring/comment、生成测试候选、诊断错误、跨文件 rename/import repair。单文件变化使用 guarded source patch；多文件变化必须显示 file list 和逐文件 diff，以一个 reviewed transaction 接受或全部拒绝。
+
+安全边界：
+
+- 查看和编辑源码不自动执行代码；
+- run/test/build、安装依赖、shell、network 和外部进程是另一类显式 permissioned action；
+- `.env`、credential、private key 和 ignore pattern 默认不进入模型 context；
+- Code Source Workspace 不是第二个 Codex/IDE，也不创建第二套 AI runtime；它提供 native file/context/review surface，可把执行委托给已授权的 agent/terminal integration。
+
+source of truth 始终是 native code file。symbol index、diagnostics、dependency graph 和 embeddings 都是 rebuildable derived state。
+
+### 6.5 Raster Image：视觉理解与版本式编辑
 
 PNG、JPEG 和 WebP 是第一阶段 raster baseline。Image Workspace 至少覆盖四组能力：
 
@@ -413,7 +446,7 @@ draw.io 当前/近期只适合定义为 **generate/export integration**：Peak �
 
 ### 13.1 四条产品线
 
-1. **完整 AI 文件工作面**：Markdown、HTML、Peak Sheet、Image；
+1. **完整 AI 文件工作面**：Markdown、HTML、Code Source、Peak Sheet、Image；
 2. **轻量文本/数据工作面**：TXT、JSON；
 3. **原生 viewer + Peak AI companion**：PDF、Canvas、Excalidraw、Bases；
 4. **媒体理解与生成 integration**：Audio、Video、draw.io 等，按任务精确宣传。
@@ -424,10 +457,11 @@ DOCX/PPTX 不在上述产品线中；XLSX 属于 Peak Sheet 的输入/输出互�
 
 1. 先完成 capability manifest 与 shared context/effect contract，消除 Loader 假阳性；
 2. 落地 File Workspace foundation，先让 Image、HTML、PDF 共享 shell 和 review；
-3. 将 TXT 作为 Composer plain-text adapter 收口；
-4. 将 CSV / flat JSON Array 接入 Peak Sheet draft/accept，再以 WorkbookDraft + compatibility report 接入 XLSX；
-5. 为 Canvas、Excalidraw、Bases 增加独立 native companion，不再依赖“先嵌入 Markdown”；
-6. 再评估 JSON tree、SVG、Audio、Video 等扩展 surface。
+3. 建立 Code Source Workspace 的单文件打开、跨文件 reference context 和 multi-file review；
+4. 将 TXT 作为 Composer plain-text adapter 收口；
+5. 将 CSV / flat JSON Array 接入 Peak Sheet draft/accept，再以 WorkbookDraft + compatibility report 接入 XLSX；
+6. 为 Canvas、Excalidraw、Bases 增加独立 native companion，不再依赖“先嵌入 Markdown”；
+7. 再评估 JSON tree、SVG、Audio、Video 等扩展 surface。
 
 顺序表达依赖，不是当前 implementation commitment。
 
@@ -467,52 +501,44 @@ DOCX/PPTX 不在上述产品线中；XLSX 属于 Peak Sheet 的输入/输出互�
 - 不因内部 Loader 存在而支持 DOCX/PPTX，也不因类型/UI 出现 XLSX 就宣称其 Peak Sheet 入口已经交付；
 - 不在没有 revision、review 和 recovery 的情况下让 AI 直接覆盖 native file。
 
-## 17. 后续候选文件族
+## 17. Owner 筛选后的候选边界
 
-当前主矩阵还没有覆盖下列文件族。它们不应被简单加入 Loader 白名单，而应先确定自己属于 Source Surface、Peak Sheet ingress、native companion、container，还是明确不支持。
+### 17.1 已提升为重点：Code Source Workspace
 
-### 17.1 第一优先级：能显著补齐 AI-era 工作流
+Python、TypeScript 等 native source files 已进入目标主矩阵，详细合同见 §6.4。这里锁定两个产品判断：
 
-| 文件族 | 典型格式 | 推荐归属 | 关键 AI 能力与写回 |
-|---|---|---|---|
-| Web artifact bundle | folder / manifest / `.zip`，包含 HTML、CSS、JS、JSON、WASM、图片 | HTML Workspace 的 project/bundle mode | dependency graph、selected element → source、runtime/console、multi-file patch transaction；安全预览，不把 ZIP 当网页直接执行 |
-| Code / config / logs | `.js` `.ts` `.tsx` `.py` `.go` `.rs` `.java` `.css` `.sql` `.sh` `.yaml` `.toml` `.ini` `.env` `.log` `.diff` `.patch` | 共享 Code/Text Source Surface | selection、symbol、diagnostic、related files；解释、审查、修复和 guarded text patch；默认不执行代码或 shell |
-| Jupyter Notebook | `.ipynb` | cell-aware Notebook companion | selected cells、Markdown/code/output、execution order；解释、重构、清理输出、cell-level JSON patch；执行需独立 sandbox 与权限 |
-| EPUB | `.epub` | Book reader + AI companion | TOC、chapter、selection、footnote、location；摘要、问答、章节比较、引用；原书只读，写 sibling annotation/note |
-| 流式/文本表格 | `.tsv` `.jsonl` `.ndjson` | Peak Sheet ingress | delimiter/record sampling、schema drift、bad row diagnostics；生成 DatasetDraft，原文件只是 provenance/export snapshot |
-| 字幕与歌词 | `.srt` `.vtt` `.lrc` | timed-text source surface | cue/time range、speaker、媒体引用；校对、翻译、分章、摘要；使用 timecode-aware patch，不丢时间轴 |
+- Markdown fenced code block 适合解释和展示代码，但不能替代独立源码文件、import/reference graph、原生扩展名和 multi-file change review；
+- Peak 的差异点不是复制一个 IDE，而是让 Vault 中的源码能和 Markdown notes、HTML artifact、其他源码共同成为可定位、可审阅的 AI context。
 
-其中 **Web artifact bundle** 很关键：AI 编程工具生成的 dashboard 往往不是单个 `.html`，而是 `index.html + CSS/JS + data/assets`。如果 Peak 只接管单文件 HTML，就无法可靠解释依赖、修改组件或保存可运行结果。bundle 的 source of truth 是用户选择的项目目录/manifest；一次 accept 必须能够原子审阅多个文件的 patch。
+HTML project/bundle 也保留为重点，因为它与 Code Source Workspace 共用 folder boundary、dependency graph、multi-file patch 和 execution permission，但 HTML 额外拥有 rendered/runtime context。
 
-### 17.2 第二优先级：明确有知识价值，但不应抢占主工作面
+### 17.2 保留规划位但暂不需要：Jupyter
 
-| 文件族 | 典型格式 | 推荐归属 | 关键边界 |
-|---|---|---|---|
-| Publishing source | `.tex` `.bib` `.mdx` `.adoc` `.org` | Source/compile companion | selection、citation、build diagnostic；文本 patch；编译是显式 tool action，不默认运行任意命令 |
-| Spreadsheet alternatives | `.ods`、legacy `.xls`；`.numbers` 仅在可验证转换后考虑 | Peak Sheet import backlog | 复用 WorkbookDraft/compatibility report，但每种格式需要独立 parser 与 fidelity gate，不能由 XLSX 支持自动推导 |
-| Outline/reference interchange | `.opml` `.ris` `.enw` `.csl.json` | Markdown / Canvas / reference import companion | tree/citation/item context；去重、标签、摘要与 typed import plan；原交换文件不作双向真值 |
-| Email | `.eml` `.mbox` | message/thread import companion | headers、thread、attachments、quoted text；摘要、行动项、知识化；导入不等于发送邮件 |
-| Calendar / contact | `.ics` `.vcf` | structured import companion | event/contact fields、timezone、recurrence；解释、去重和导入 plan；外部日历/通讯录写入另走 connector permission |
-| Geographic data | `.geojson` `.gpx` `.kml` | future Map/Dataset companion | feature/route/geometry、selected region；解释、清洗和结构化 patch；需要地图 renderer 与坐标系验证 |
-| Columnar/database data | `.parquet` `.arrow` `.feather` `.sqlite` `.db` `.duckdb` | query/import companion，不是 binary editor | schema、sample、query result、provenance；显式 materialize 到 Peak Dataset，不原位改数据库文件 |
-| Archive/package | `.zip` `.tar` `.gz` `.7z` `.rar` | secure container surface | 只列目录、选择性解压和 provenance；防 zip-slip、路径穿越、压缩炸弹；未解包内容不算已被 AI 理解 |
+`.ipynb` 未来可以使用 cell-aware companion：理解 Markdown/code/output、execution order，写回 cell-level JSON patch；执行 kernel 必须有独立 sandbox 与权限。当前不进入近期实施顺序，不为它预建 runtime、loader 或 UI。
 
-### 17.3 暂不建议进入 Peak 产品范围
+### 17.3 JSONL 已有实现，不重复建设
 
-- 专有设计源文件：`.psd`、`.ai`、`.sketch`、`.fig`；
-- CAD / 3D：`.dwg`、`.dxf`、`.blend`、`.glb`、`.gltf`、`.obj`、`.stl`；
-- executable / installer / disk image：`.exe`、`.dll`、`.dmg`、`.iso` 等；
-- fonts 与其他无明确 Peak 知识任务的二进制格式。
+当前生产已经用 `PartitionedJsonlStore` 和 generated artifact registry 将 JSONL 作为 durable machine record carrier，覆盖 conversation、run/artifact receipt、media job、Hub history、Composer workspace/history、profile proposal 和 migration/audit 等记录。
 
-这些格式可以作为附件保存，但在没有成熟 renderer、结构 parser、AI context 和安全写回合同前，不进入“支持文件类型”的宣传。
+这与“用户打开一个 `.jsonl` 文件并编辑/导入”是两件事：
 
-### 17.4 不是文件类型，但需要单独治理的来源
+- `DataStore/records/**/*.jsonl` 是内部 canonical machine history，不进入普通文件 surface、My Content 或知识索引；
+- 不新增一个笼统的 JSONL Workspace；
+- 未来若确有用户 NDJSON → Peak Sheet 需求，只做窄 import adapter，并明确排除 Peak 自己的 record streams。
+
+### 17.4 其他格式降为远期观察
+
+EPUB、字幕、LaTeX/AsciiDoc/Org、ODS/legacy XLS、OPML/RIS、EML/MBOX、ICS/VCF、GeoJSON/GPX/KML、Parquet/Arrow/SQLite、ZIP/TAR 等不再列为主优先级。只有出现明确用户任务、数据样本和 owner 需求时，才重新评估对应 companion/import/container；不会为了格式数量扩展 Loader。
+
+专有设计源文件、CAD/3D、可执行文件、安装包和磁盘镜像继续不进入 Peak 产品范围。
+
+### 17.5 不是文件类型，但需要单独治理的来源
 
 - **URL / web page**：当前 `UrlDocumentLoader` 接收显式 URL 并可通过 Playwright 提取网页；它不扫描 Vault `.url` 文件。目标应定义 web capture / live connector / saved snapshot 的区别，而不是把 URL 当成本地文件扩展名。
 - **Folder / project**：folder 是 context boundary 和 bundle carrier，不是普通 DocumentLoader 输出。选择整个项目时必须显示纳入的文件、ignore policy、size/token budget 和 write scope。
 - **Internal JSON/JSONL/SQLite**：Peak 自己的 machine record、history、projection、cache 和 telemetry 由存储治理约束，不能因为扩展名相同就暴露成普通用户文件 surface。
 
-上述候选只进入 research backlog。进入主矩阵前仍需 owner 决定优先级、source of truth、权限、fixture 和真实 Obsidian 验收计划。
+远期候选进入主矩阵前仍需 owner 决定优先级、source of truth、权限、fixture 和真实 Obsidian 验收计划。
 
 ## 18. 本轮边界
 
