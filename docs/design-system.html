@@ -85,6 +85,8 @@
       --pk-state-selected: rgba(156, 175, 202, .16);
     }
     body[data-density="compact"] .pktw-root { --pk-space-density: .78; }
+    body[data-density="compact"] .ds-theme-lab__body { padding: 20px; }
+    body[data-density="compact"] .ds-component-group { padding: 16px 24px; }
     body[data-motion="reduced"] .pktw-root *,
     body[data-motion="reduced"] .pktw-root *::before,
     body[data-motion="reduced"] .pktw-root *::after {
@@ -307,6 +309,24 @@
     .ds-theme-preview__head strong { color: var(--pk-text-primary); font-size: var(--pk-text-lg); }
     .ds-theme-preview__head small { color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
     .ds-theme-preview__actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .ds-apply-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      color: var(--pk-text-secondary);
+      font-size: var(--pk-text-sm);
+    }
+    .ds-apply-status::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--pk-warning);
+      box-shadow: 0 0 0 3px var(--pk-warning-bg);
+    }
+    .ds-apply-status[data-state="applied"]::before { background: var(--pk-success); box-shadow: 0 0 0 3px var(--pk-success-bg); }
+    .ds-apply-status[data-state="pending"]::before { background: var(--pk-warning); box-shadow: 0 0 0 3px var(--pk-warning-bg); }
 
     .ds-code {
       overflow: auto;
@@ -635,7 +655,7 @@
   </style>
 </head>
 
-<body data-pack="default" data-density="comfortable" data-motion="standard">
+<body data-pack="default" data-density="comfortable" data-radius="balanced" data-motion="standard">
   <header class="ds-header">
     <div class="ds-header__inner">
       <a class="ds-brand" href="#top"><strong>Peak Design System</strong><span>product contract · v3</span></a>
@@ -714,17 +734,18 @@
 
     <section class="ds-section" id="theme">
       <div class="ds-section-head">
-        <div><h2>Theme 是一等能力</h2><p>控制器放回主题章节，不再挤在全局导航。切换下面的选项，会直接改变使用生产 CSS 的组件 specimen；产品 iframe 保留各自原稿的主题状态，避免本页伪造效果。</p></div>
+        <div><h2>System Apply Lab</h2><p>先在本页预览 Theme Pack，再一键广播同一份 resolved theme。Search、Composer、Chat、Settings、Result Graph、File Atlas 与 AI Graph 会同步改变，不再只是互不相干的 iframe。</p></div>
         <span class="ds-index">03 · Theme Engine</span>
       </div>
       <div class="ds-theme-lab pktw-root peak-design-root">
         <div class="ds-theme-lab__bar">
-          <strong>Theme Preview Boundary</strong>
+          <strong>Resolved Theme Contract</strong>
           <div class="ds-theme-controls">
             <label>Pack
               <select id="packSelect">
                 <option value="default">Peak Default</option>
                 <option value="quiet-ink">Quiet Ink · 示例</option>
+                <option value="moss">Calm Moss · 示例</option>
               </select>
             </label>
             <label>Appearance
@@ -739,6 +760,13 @@
                 <option value="compact">Compact</option>
               </select>
             </label>
+            <label>Radius
+              <select id="radiusSelect">
+                <option value="balanced">Balanced</option>
+                <option value="crisp">Crisp</option>
+                <option value="soft">Soft</option>
+              </select>
+            </label>
             <label>Motion
               <select id="motionSelect">
                 <option value="standard">Standard</option>
@@ -750,14 +778,14 @@
         <div class="ds-theme-lab__body">
           <div class="ds-theme-preview">
             <div class="ds-theme-preview__head">
-              <span><strong>Theme pack validation</strong><br><small>Light / Dark 都完整，contrast 通过</small></span>
+              <span><strong>Apply once, inspect every surface</strong><br><small>同一 resolved theme → 生产组件 specimen + 7 个产品预览</small></span>
               <span class="pk-chip pk-chip--success">Ready</span>
             </div>
             <div class="ds-theme-preview__actions">
-              <button class="pk-btn pk-btn--primary">应用主题</button>
-              <button class="pk-btn pk-btn--secondary">隔离预览</button>
-              <button class="pk-btn pk-btn--ghost">导出 JSON</button>
-              <span class="pk-chip pk-chip--accent">Peak scoped</span>
+              <button class="pk-btn pk-btn--primary" id="applyAllButton">Apply to all surfaces</button>
+              <button class="pk-btn pk-btn--secondary" id="resetThemeButton">Reset Peak Default</button>
+              <span class="pk-chip pk-chip--accent">Preview bridge · docs only</span>
+              <span class="ds-apply-status" id="applyStatus" data-state="applied" aria-live="polite">等待产品原稿连接</span>
             </div>
           </div>
         </div>
@@ -765,11 +793,15 @@
       <pre class="ds-code">resolvedTheme = validate(themePack)
   + appearance(light | dark | follow)
   + density(comfortable | compact)
+  + radius(crisp | balanced | soft)
   + accessibility(normal | highContrast | reducedMotion | forcedColors)
   + fontOverrides
 
 failure -> keep current theme -> fallback Peak Default
-never -> fallback Obsidian variables</pre>
+never -> fallback Obsidian variables
+
+Apply -> one resolved payload -> parent specimens + every linked product surface
+preview bridge -> docs compatibility layer only; production uses Theme Resolver</pre>
     </section>
 
     <section class="ds-section" id="foundations">
@@ -926,7 +958,7 @@ never -> fallback Obsidian variables</pre>
             </div>
           </div>
           <div class="ds-live-frame" style="--frame-height:680px">
-            <iframe src="gstack/ai-search-unified-modes-2026-07-28/index.html?embed=1" title="AI Search unified modes 原始交互设计" loading="lazy"></iframe>
+            <iframe src="gstack/ai-search-unified-modes-2026-07-28/index.html?embed=1" title="AI Search unified modes 原始交互设计" loading="eager" data-preview-sync="linked"></iframe>
           </div>
           <div class="ds-live-caption">
             <div><b>事实源</b><span>原始 DOM、focus、menu 与 keyboard 事件，不是截图。</span></div>
@@ -945,7 +977,7 @@ never -> fallback Obsidian variables</pre>
             </div>
           </div>
           <div class="ds-live-frame" style="--frame-height:760px">
-            <iframe src="gstack/peak-composer-editing-view-2026-07-09/index.html" title="Peak Composer 真实数据编辑原稿" loading="lazy"></iframe>
+            <iframe src="gstack/peak-composer-editing-view-2026-07-09/index.html" title="Peak Composer 真实数据编辑原稿" loading="eager" data-preview-sync="linked"></iframe>
           </div>
           <div class="ds-live-caption">
             <div><b>Shape</b><span>文档是主 surface；AI 结果留在真实 anchor，不另开泛化 Modal。</span></div>
@@ -965,7 +997,7 @@ never -> fallback Obsidian variables</pre>
             </div>
           </div>
           <div class="ds-live-frame" style="--frame-height:780px">
-            <iframe src="gstack/chat-focused-redesign-2026-05-29/chat-retained-mock.html" title="Peak Chat retained playable mock" loading="lazy"></iframe>
+            <iframe src="gstack/chat-focused-redesign-2026-05-29/chat-retained-mock.html" title="Peak Chat retained playable mock" loading="eager" data-preview-sync="linked"></iframe>
           </div>
           <div class="ds-live-caption">
             <div><b>Message</b><span>长文本按文档阅读，不把用户与 AI 都做成大气泡。</span></div>
@@ -985,7 +1017,7 @@ never -> fallback Obsidian variables</pre>
             </div>
           </div>
           <div class="ds-live-frame" style="--frame-height:720px">
-            <iframe src="gstack/onboarding-settings-redesign-2026-08-06/settings-native.html" title="Peak Settings native direction 原稿" loading="lazy"></iframe>
+            <iframe src="gstack/onboarding-settings-redesign-2026-08-06/settings-native.html" title="Peak Settings native direction 原稿" loading="eager" data-preview-sync="linked"></iframe>
           </div>
           <div class="ds-live-caption">
             <div><b>Shell</b><span>稳定分类、全局搜索和自动保存，不以巨型 card 分割页面。</span></div>
@@ -1005,20 +1037,18 @@ never -> fallback Obsidian variables</pre>
       <div class="ds-surface-list">
         <article class="ds-live-surface">
           <div class="ds-live-surface__head">
-            <div><h3>Result Graph · Community projection</h3><p>当前 Search Result Graph 的 Community 候选：真实 Search shell、scope 状态、社区 hull、bridge node、semantic toggle 与视图工具都来自原始可交互稿。</p></div>
+            <div><h3>Result Graph · Real-data apply sandbox</h3><p>Apply Lab 使用已跟踪的真实查询数据与 Cytoscape layout sandbox，因此能接收同一 Theme Pack。最新 Community 候选继续保留为独立设计来源。</p></div>
             <div class="ds-live-source">
-              <span class="ds-artifact-badge" data-tone="target">current research</span>
-              <span class="ds-artifact-badge">workspace-local</span>
-              <a class="ds-open-source" href="research/2026-08-10-result-graph-community-mock/index.html" target="_blank">打开原稿 ↗</a>
-              <a class="ds-open-source" href="research/2026-07-07-result-graph-layout/index.html" target="_blank">真实数据 sandbox ↗</a>
+              <span class="ds-artifact-badge" data-tone="real">live apply source</span>
+              <span class="ds-artifact-badge">tracked sandbox</span>
+              <a class="ds-open-source" href="research/2026-07-07-result-graph-layout/index.html" target="_blank">打开 Apply sandbox ↗</a>
+              <a class="ds-open-source" href="research/2026-08-10-result-graph-community-mock/index.html" target="_blank">最新 Community 候选 ↗</a>
             </div>
           </div>
           <div class="ds-live-frame" style="--frame-height:720px" data-quiet-label="true">
-            <object data="research/2026-08-10-result-graph-community-mock/index.html" type="text/html" aria-label="Result Graph Community 可交互研究稿">
-              <div class="ds-object-fallback">当前 Community 研究稿未在此 checkout 中找到。<a href="research/2026-07-07-result-graph-layout/index.html" target="_blank">打开已跟踪的真实数据 layout sandbox ↗</a></div>
-            </object>
+            <iframe src="research/2026-07-07-result-graph-layout/index.html" title="Result Graph 真实数据 apply sandbox" loading="eager" data-preview-sync="linked"></iframe>
           </div>
-          <p class="ds-local-dependency">source status · existing untracked research artifact · referenced only, never staged by this task · clean checkout falls back to the tracked real-data sandbox</p>
+          <p class="ds-local-dependency">apply source · tracked real-data sandbox · current untracked Community candidate remains reference-only and is never staged by this task</p>
           <div class="ds-live-caption">
             <div><b>Scope</b><span>结果数量与 community coverage 始终可见；图不会静默扩大到全 Vault。</span></div>
             <div><b>Projection</b><span>Connections、Community、Links、Folders、Hubs 是同一 snapshot 的投影。</span></div>
@@ -1036,7 +1066,7 @@ never -> fallback Obsidian variables</pre>
             </div>
           </div>
           <div class="ds-live-frame" style="--frame-height:760px">
-            <iframe src="gstack/file-atlas-mock-2026-07-08/index-v4.html" title="File Atlas Tree 和 Graph 原始交互稿" loading="lazy"></iframe>
+            <iframe src="gstack/file-atlas-mock-2026-07-08/index-v4.html" title="File Atlas Tree 和 Graph 原始交互稿" loading="eager" data-preview-sync="linked"></iframe>
           </div>
           <div class="ds-live-caption">
             <div><b>Scope</b><span>Current file / one-to-two hops；不是全局搜索结果，也不是持久 AI artifact。</span></div>
@@ -1055,7 +1085,7 @@ never -> fallback Obsidian variables</pre>
             </div>
           </div>
           <div class="ds-live-frame" style="--frame-height:820px" data-crop="ai-graph-detail">
-            <iframe src="gstack/ai-graph-artifact-platform-2026-07-28/index.html?embed=1#detail" title="AI Graph production renderer 可交互原型" loading="lazy"></iframe>
+            <iframe src="gstack/ai-graph-artifact-platform-2026-07-28/index.html?embed=1#detail" title="AI Graph production renderer 可交互原型" loading="eager" data-preview-sync="linked"></iframe>
           </div>
           <div class="ds-live-caption">
             <div><b>Renderer</b><span>Graph canvas 和直接交互具有 production-stack parity。</span></div>
@@ -1109,14 +1139,306 @@ never -> fallback Obsidian variables</pre>
       var pack = document.getElementById("packSelect");
       var appearance = document.getElementById("appearanceSelect");
       var density = document.getElementById("densitySelect");
+      var radius = document.getElementById("radiusSelect");
       var motion = document.getElementById("motionSelect");
+      var applyButton = document.getElementById("applyAllButton");
+      var resetButton = document.getElementById("resetThemeButton");
+      var applyStatus = document.getElementById("applyStatus");
+      var linkedFrames = Array.from(document.querySelectorAll('[data-preview-sync="linked"]'));
+      var readyFrames = new Set();
+      var appliedFrames = new Set();
+      var activePayload = null;
+      var hasPendingChanges = false;
+      var payloadSequence = 0;
+      var APPLY_MESSAGE = "peak-design-system-preview:apply";
+      var READY_MESSAGE = "peak-design-system-preview:ready";
+      var APPLIED_MESSAGE = "peak-design-system-preview:applied";
 
-      pack.addEventListener("change", function () { body.dataset.pack = pack.value; });
-      density.addEventListener("change", function () { body.dataset.density = density.value; });
-      motion.addEventListener("change", function () { body.dataset.motion = motion.value; });
-      appearance.addEventListener("change", function () {
-        body.classList.toggle("theme-dark", appearance.value === "dark");
+      var appearancePalettes = {
+        light: {
+          bg: "#f4f6f3",
+          bgSecondary: "#eef1ed",
+          bgTertiary: "#e7ebe7",
+          surface: "#ffffff",
+          raised: "#fafbf9",
+          sunken: "#eef1ed",
+          text: "#1d2622",
+          secondary: "#647069",
+          tertiary: "#8b948f",
+          faint: "#aeb6b1",
+          border: "#dce2dd",
+          borderStrong: "#c7d0c9"
+        },
+        dark: {
+          bg: "#111613",
+          bgSecondary: "#151b18",
+          bgTertiary: "#0d110f",
+          surface: "#1c231f",
+          raised: "#232b27",
+          sunken: "#151b18",
+          text: "#e6ece8",
+          secondary: "#abb5ae",
+          tertiary: "#7f8b83",
+          faint: "#5f6a63",
+          border: "#303a34",
+          borderStrong: "#46534b"
+        }
+      };
+
+      var themePacks = {
+        "default": {
+          light: { accent: "#7c3aed", hover: "#6d28d9" },
+          dark: { accent: "#a78bfa", hover: "#c4b5fd" }
+        },
+        "quiet-ink": {
+          light: { accent: "#52647f", hover: "#3f506a" },
+          dark: { accent: "#9cafca", hover: "#bdcbe0" }
+        },
+        moss: {
+          light: { accent: "#2d6555", hover: "#1f4f42" },
+          dark: { accent: "#7bb9a4", hover: "#a7d4c4" }
+        }
+      };
+
+      var radii = {
+        crisp: { sm: "4px", md: "6px", lg: "8px", xl: "10px" },
+        balanced: { sm: "4px", md: "8px", lg: "12px", xl: "16px" },
+        soft: { sm: "6px", md: "10px", lg: "16px", xl: "22px" }
+      };
+
+      function hexToRgba(hex, alpha) {
+        var normalized = hex.replace("#", "");
+        var red = parseInt(normalized.slice(0, 2), 16);
+        var green = parseInt(normalized.slice(2, 4), 16);
+        var blue = parseInt(normalized.slice(4, 6), 16);
+        return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
+      }
+
+      function currentSelection() {
+        return {
+          pack: pack.value,
+          appearance: appearance.value,
+          density: density.value,
+          radius: radius.value,
+          motion: motion.value
+        };
+      }
+
+      function resolvePayload(selection) {
+        var palette = appearancePalettes[selection.appearance];
+        var accent = themePacks[selection.pack][selection.appearance];
+        var shape = radii[selection.radius];
+        var isDark = selection.appearance === "dark";
+        var accentTint = hexToRgba(accent.accent, isDark ? .16 : .10);
+        var accentSoft = hexToRgba(accent.accent, isDark ? .30 : .22);
+        var accentLine = hexToRgba(accent.accent, isDark ? .34 : .26);
+        var shadowColor = isDark ? "rgba(0, 0, 0, .48)" : "rgba(29, 38, 34, .10)";
+        var duration = selection.motion === "reduced" ? ".001ms" : "150ms";
+        var variables = {
+          "--pk-bg": palette.bg,
+          "--pk-bg-secondary": palette.bgSecondary,
+          "--pk-bg-tertiary": palette.bgTertiary,
+          "--pk-background": palette.bg,
+          "--pk-surface": palette.surface,
+          "--pk-surface-raised": palette.raised,
+          "--pk-surface-sunken": palette.sunken,
+          "--pk-surface-overlay": palette.raised,
+          "--pk-border": palette.border,
+          "--pk-border-soft": palette.border,
+          "--pk-border-strong": palette.borderStrong,
+          "--pk-border-accent": accentLine,
+          "--pk-text-primary": palette.text,
+          "--pk-text-secondary": palette.secondary,
+          "--pk-text-tertiary": palette.tertiary,
+          "--pk-text-faint": palette.faint,
+          "--pk-text-inverted": isDark ? palette.bg : "#ffffff",
+          "--pk-accent": accent.accent,
+          "--pk-accent-hover": accent.hover,
+          "--pk-accent-tint": accentTint,
+          "--pk-accent-soft": accentSoft,
+          "--pk-accent-text": accent.hover,
+          "--pk-accent-fg": isDark ? palette.bg : "#ffffff",
+          "--pk-state-hover": isDark ? "rgba(255, 255, 255, .06)" : "rgba(29, 38, 34, .05)",
+          "--pk-state-active": isDark ? "rgba(255, 255, 255, .10)" : "rgba(29, 38, 34, .08)",
+          "--pk-state-selected": accentTint,
+          "--pk-skeleton": palette.border,
+          "--pk-radius-sm": shape.sm,
+          "--pk-radius-md": shape.md,
+          "--pk-radius-lg": shape.lg,
+          "--pk-radius-xl": shape.xl,
+          "--pk-radius-full": "9999px",
+          "--pk-radius-pill": "9999px",
+          "--pk-shadow-sm": "0 1px 2px " + shadowColor,
+          "--pk-shadow-md": "0 4px 14px " + shadowColor,
+          "--pk-shadow-card": "0 0 0 1px " + hexToRgba(palette.text, isDark ? .26 : .05) + ", 0 1px 3px " + shadowColor,
+          "--pk-shadow-popover": "0 8px 24px " + shadowColor,
+          "--pk-shadow-modal": "0 20px 52px " + shadowColor,
+          "--pk-transition-fast": selection.motion === "reduced" ? ".001ms linear" : "100ms ease",
+          "--pk-transition-base": duration + " ease",
+          "--pk-transition-slow": selection.motion === "reduced" ? ".001ms linear" : "300ms ease",
+          "--pk-space-density": selection.density === "compact" ? ".78" : "1",
+          "--page": palette.bg,
+          "--bg": palette.bg,
+          "--canvas": palette.bg,
+          "--paper": palette.surface,
+          "--surface": palette.surface,
+          "--panel": palette.surface,
+          "--surface-soft": palette.raised,
+          "--surface-subtle": palette.bgSecondary,
+          "--surface-muted": palette.sunken,
+          "--soft": palette.bgSecondary,
+          "--soft-2": palette.bgTertiary,
+          "--ink": palette.text,
+          "--text": palette.text,
+          "--ink-2": palette.secondary,
+          "--ink-3": palette.tertiary,
+          "--muted": palette.secondary,
+          "--faint": palette.faint,
+          "--line": palette.border,
+          "--soft-line": palette.border,
+          "--line-strong": palette.borderStrong,
+          "--border": palette.border,
+          "--border-strong": palette.borderStrong,
+          "--accent": accent.accent,
+          "--accent-strong": accent.hover,
+          "--accent-soft": accentTint,
+          "--accent-line": accentLine,
+          "--violet": accent.accent,
+          "--violet-soft": accentTint,
+          "--violet-line": accentLine,
+          "--violet-weak": accentTint,
+          "--lavender": accentTint,
+          "--radius": shape.md,
+          "--radius-sm": shape.sm,
+          "--radius-md": shape.md,
+          "--radius-lg": shape.lg,
+          "--shadow": "0 1px 3px " + shadowColor,
+          "--pop-shadow": "0 8px 24px " + shadowColor,
+          "--peak-preview-bg": palette.bg,
+          "--peak-preview-surface": palette.surface,
+          "--peak-preview-surface-raised": palette.raised,
+          "--peak-preview-text": palette.text,
+          "--peak-preview-border": palette.border
+        };
+        payloadSequence += 1;
+        return {
+          id: "peak-preview-" + payloadSequence,
+          pack: selection.pack,
+          appearance: selection.appearance,
+          density: selection.density,
+          radius: selection.radius,
+          motion: selection.motion,
+          variables: variables,
+          documentationOnly: true
+        };
+      }
+
+      function applyVariables(target, variables) {
+        Object.keys(variables).forEach(function (name) {
+          target.style.setProperty(name, variables[name]);
+        });
+      }
+
+      function applyParentPreview(payload) {
+        body.dataset.pack = payload.pack;
+        body.dataset.density = payload.density;
+        body.dataset.radius = payload.radius;
+        body.dataset.motion = payload.motion;
+        body.classList.toggle("theme-dark", payload.appearance === "dark");
+
+        var palette = appearancePalettes[payload.appearance];
+        var accent = themePacks[payload.pack][payload.appearance];
+        body.style.setProperty("--ds-canvas", palette.bg);
+        body.style.setProperty("--ds-paper", palette.surface);
+        body.style.setProperty("--ds-ink", palette.text);
+        body.style.setProperty("--ds-muted", palette.secondary);
+        body.style.setProperty("--ds-faint", palette.tertiary);
+        body.style.setProperty("--ds-line", palette.border);
+        body.style.setProperty("--ds-line-strong", palette.borderStrong);
+        body.style.setProperty("--ds-accent", accent.accent);
+        body.style.setProperty("--ds-accent-strong", accent.hover);
+        body.style.setProperty("--ds-accent-soft", hexToRgba(accent.accent, payload.appearance === "dark" ? .16 : .10));
+        body.style.setProperty("--ds-code", palette.bgSecondary);
+        document.querySelectorAll(".pktw-root, .peak-design-root").forEach(function (root) {
+          applyVariables(root, payload.variables);
+        });
+      }
+
+      function frameForSource(source) {
+        return linkedFrames.find(function (frame) { return frame.contentWindow === source; });
+      }
+
+      function postToFrame(frame, payload) {
+        if (!frame.contentWindow) return;
+        frame.contentWindow.postMessage({ type: APPLY_MESSAGE, payload: payload }, "*");
+      }
+
+      function updateAppliedStatus() {
+        if (hasPendingChanges) return;
+        var total = linkedFrames.length;
+        var count = appliedFrames.size;
+        if (count < total) {
+          applyStatus.dataset.state = "pending";
+          applyStatus.textContent = "正在应用 · " + count + "/" + total + " surfaces";
+          return;
+        }
+        applyStatus.dataset.state = "applied";
+        applyStatus.textContent = "已应用 · " + count + "/" + total + " surfaces";
+      }
+
+      function applyToAll() {
+        activePayload = resolvePayload(currentSelection());
+        hasPendingChanges = false;
+        appliedFrames.clear();
+        applyParentPreview(activePayload);
+        updateAppliedStatus();
+        linkedFrames.forEach(function (frame) { postToFrame(frame, activePayload); });
+      }
+
+      function previewSelection() {
+        applyParentPreview(resolvePayload(currentSelection()));
+        hasPendingChanges = true;
+        applyStatus.dataset.state = "pending";
+        applyStatus.textContent = "有未应用更改 · 点击 Apply";
+      }
+
+      [pack, appearance, density, radius, motion].forEach(function (control) {
+        control.addEventListener("change", previewSelection);
       });
+
+      applyButton.addEventListener("click", applyToAll);
+      resetButton.addEventListener("click", function () {
+        pack.value = "default";
+        appearance.value = "light";
+        density.value = "comfortable";
+        radius.value = "balanced";
+        motion.value = "standard";
+        applyToAll();
+      });
+
+      linkedFrames.forEach(function (frame) {
+        frame.addEventListener("load", function () {
+          if (activePayload) postToFrame(frame, activePayload);
+        });
+      });
+
+      window.addEventListener("message", function (event) {
+        var message = event.data;
+        if (!message) return;
+        var frame = frameForSource(event.source);
+        if (!frame) return;
+        if (message.type === READY_MESSAGE) {
+          readyFrames.add(frame);
+          if (activePayload) postToFrame(frame, activePayload);
+          return;
+        }
+        if (message.type !== APPLIED_MESSAGE || !message.payload || !activePayload) return;
+        if (message.payload.id !== activePayload.id) return;
+        appliedFrames.add(frame);
+        updateAppliedStatus();
+      });
+
+      applyToAll();
 
       document.querySelectorAll("[data-segmented]").forEach(function (group) {
         group.addEventListener("click", function (event) {
