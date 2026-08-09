@@ -46,8 +46,8 @@
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	overflow: auto;
-	padding: var(--pkc-stage-pad-y-top) var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);
+	overflow: hidden;
+	padding: 0;
 	background: var(--pkc-page-bg);
 	color: var(--pkc-text);
 	font-family: var(--pk-font-sans);
@@ -68,6 +68,22 @@
 	--pkc-callout-accent: var(--pk-accent);
 	--pkc-block-hover-bg: var(--pk-accent-tint);
 	--pkc-block-hover-shadow: 0 0 0 1px var(--pk-border-accent), 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* The Composer main column owns document scrolling and stage gutters. Keeping
+   these below the root lets the persistent application toolbar bleed to the
+   leaf edges while the paper remains centered on the document stage. */
+.peak-composer-root .pk-composer-main {
+	box-sizing: border-box;
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	padding: 0 var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);
+	background: var(--pkc-page-bg);
 }
 
 /* ── block rows ─────────────────────────────────────────────────────────── */
@@ -291,7 +307,7 @@
 	width: 100%;
 	max-width: calc(var(--pkc-paper-width) + var(--pk-comment-rail-width) + var(--pk-comment-rail-gap));
 	min-height: 100%;
-	margin: 0 auto;
+	margin: var(--pkc-stage-pad-y-top) auto 0;
 }
 .peak-composer-root .pk-composer-shell {
 	position: relative;
@@ -2278,19 +2294,21 @@
 	z-index: 80;
 	box-sizing: border-box;
 	display: flex;
+	flex: 0 0 auto;
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: var(--pk-space-2);
-	width: 100%;
-	max-width: calc(var(--pkc-paper-width) + var(--pk-comment-rail-width) + var(--pk-comment-rail-gap));
-	min-height: 38px;
-	margin: 0 auto 12px;
-	padding: 4px 6px;
-	border: 1px solid var(--pk-border-soft);
-	border-radius: var(--pk-radius-lg);
-	background: color-mix(in srgb, var(--pk-surface) 94%, transparent);
-	box-shadow: var(--pk-shadow-card);
-	backdrop-filter: blur(10px);
+	width: calc(100% + (var(--pkc-stage-pad-x) * 2));
+	max-width: none;
+	min-height: 52px;
+	margin: 0 calc(var(--pkc-stage-pad-x) * -1);
+	padding: 8px var(--pkc-stage-pad-x);
+	border: 0;
+	border-bottom: 1px solid var(--pk-border-soft);
+	border-radius: 0;
+	background: var(--pk-surface);
+	box-shadow: none;
+	backdrop-filter: none;
 	overflow-x: auto;
 	overflow-y: hidden;
 	scrollbar-width: none;
@@ -2375,6 +2393,34 @@
 .peak-composer-root .pk-undo-redo__btn:hover:not(:disabled) {
 	background: var(--pk-accent-tint);
 	color: var(--pk-accent-text);
+}
+
+@media (max-width: 880px) {
+	.peak-composer-root .pk-composer-comment-toggle > span:not(.pk-composer-comment-count),
+	.peak-composer-root .pk-composer-intelligence-toggle > span,
+	.peak-composer-root .pk-composer-review-all > span {
+		display: none;
+	}
+	.peak-composer-root .pk-composer-comment-toggle,
+	.peak-composer-root .pk-composer-intelligence-toggle,
+	.peak-composer-root .pk-composer-review-all {
+		position: relative;
+		justify-content: center;
+		width: 28px !important;
+		min-width: 28px !important;
+		max-width: 28px !important;
+		padding: 0 !important;
+	}
+	.peak-composer-root .pk-composer-comment-count {
+		position: absolute;
+		top: -3px;
+		right: -3px;
+		min-width: 14px;
+		height: 14px;
+		padding: 0 3px;
+		font-size: 9px;
+		line-height: 14px;
+	}
 }
 
 /* ── transient transaction notice + guard toast ────────────────────────────── */

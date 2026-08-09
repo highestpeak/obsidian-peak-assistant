@@ -27,7 +27,6 @@
 	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
-	padding: var(--pkc-stage-pad-y-top) var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);
 	background: var(--pkc-page-bg);
 }
 .pk-native-intelligence-modal {

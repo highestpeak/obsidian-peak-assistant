@@ -134,7 +134,10 @@ assertDecl(controlbar, 'z-index: 80;', 'sticky Composer control bar is the layer
 
 const mainWithSidecar = cssBlock(css, ".peak-composer-root[data-with-sidecar='true'] .pk-composer-main");
 assertDecl(mainWithSidecar, 'overflow-y: auto;', 'Composer main must own vertical scrolling when the sidecar is mounted');
-assertDecl(mainWithSidecar, 'padding: var(--pkc-stage-pad-y-top) var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);', 'Composer main must own stage gutters when the sidecar is mounted');
+assert.ok(
+	!mainWithSidecar.includes('padding:'),
+	'sidecar layout must preserve the shared full-bleed Composer main gutters',
+);
 
 const closedSidecar = cssBlock(css, '.pk-sidecar--closed');
 assertDecl(closedSidecar, 'opacity: 0;', 'closed desktop sidecar child must fade while the outer track collapses');

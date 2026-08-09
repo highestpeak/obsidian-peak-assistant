@@ -11,7 +11,7 @@ function read(relPath: string): string {
 
 function cssBlock(css: string, selector: string): string {
 	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'm'));
+	const match = css.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`, 'm'));
 	assert.ok(match, `missing CSS block for ${selector}`);
 	return match[1];
 }
