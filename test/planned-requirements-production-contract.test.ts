@@ -36,7 +36,7 @@ const graphProjection = source('src/app/ai-graph/SqliteAIGraphProjection.ts');
 const graphAgent = source('src/service/agents/AIGraphAgent.ts');
 const graphContextArtifacts = source('src/ui/component/ai-graph/AIGraphContextArtifacts.tsx');
 const contextualAIGraph = source('src/ui/component/ai-graph/ContextualAIGraphView.tsx');
-const folderModel = source('src/ui/component/graph/folderCompoundModel.ts');
+const folderModel = source('src/ui/component/graph/folderTreeModel.ts');
 const timelineLayout = source('src/ui/component/mine/multi-lens-graph/layouts/timeline-layout.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
@@ -132,7 +132,8 @@ assert.match(contextualAIGraph, /Create AI Graph/);
 assert.match(contextualAIGraph, /graphVersionId: row\.versionId/);
 assert.match(timelineLayout, /No date \/ Unassigned/);
 
-assert.match(folderModel, /directFolders/);
-assert.match(folderModel, /parentPath/);
+assert.match(folderModel, /buildVisibleFolderTree/);
+assert.match(folderModel, /folderTreeSelectionScope/);
+assert.match(folderModel, /toggleFolderTreeSelection/);
 
 console.log('PASS: all planned requirements have production composition contracts');

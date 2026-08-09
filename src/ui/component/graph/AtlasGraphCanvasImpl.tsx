@@ -7,8 +7,8 @@
  * Result Graph View rendering stack … do NOT build a second graph renderer").
  *
  * Feature parity with the 2026-07-07 sandbox: 5 presets (Constellation / Flow ↓
- * / Flow → / Folder tree / Orbit), full-depth folder compound grouping, isolated
- * grid, hover neighborhood + ancestor spotlight with marching-ants on hovered
+ * / Flow → / Folder tree / Orbit), full-depth vertical folder-tree projection,
+ * isolated grid, hover neighborhood + ancestor spotlight with marching-ants on
  * semantic edges, and copy-as-Mermaid / copy-as-image.
  *
  * This component is data-source agnostic: it takes a {@link ResultSubgraphOutput}
@@ -30,9 +30,11 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { coalesceGraphEdges } from '@/core/types/graph-edge';
 import {
-	buildVisibleFolderGroups,
-	visibleFolderGroupIdForDocument,
-} from './folderCompoundModel';
+	buildVisibleFolderTree,
+	folderTreeSelectionScope,
+	toggleFolderTreeSelection,
+	type VisibleFolderTreeProjection,
+} from './folderTreeModel';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -52,31 +54,16 @@ function ensureExtensionsRegistered(): void {
 export type AtlasGraphPreset = 'constellation' | 'flow-tb' | 'flow-lr' | 'folder' | 'orbit';
 
 interface PresetBundle {
-	layout: 'fcose' | 'cola' | 'dagre-tb' | 'dagre-lr' | 'concentric-hub';
-	groupFolder: boolean;
+	layout: 'fcose' | 'cola' | 'dagre-tb' | 'dagre-lr' | 'concentric-hub' | 'folder-tree';
+	folderTree: boolean;
 }
 const PRESETS: Record<AtlasGraphPreset, PresetBundle> = {
-	constellation: { layout: 'fcose',          groupFolder: false },
-	'flow-tb':     { layout: 'dagre-tb',       groupFolder: false },
-	'flow-lr':     { layout: 'dagre-lr',       groupFolder: false },
-	folder:        { layout: 'cola',           groupFolder: true },
-	orbit:         { layout: 'concentric-hub', groupFolder: false },
+	constellation: { layout: 'fcose',          folderTree: false },
+	'flow-tb':     { layout: 'dagre-tb',       folderTree: false },
+	'flow-lr':     { layout: 'dagre-lr',       folderTree: false },
+	folder:        { layout: 'folder-tree',    folderTree: true },
+	orbit:         { layout: 'concentric-hub', folderTree: false },
 };
-
-// ─── Palette (folder wash background) ───────────────────────────────────────
-const FOLDER_COLORS = ['#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#e0e7ff', '#fed7aa', '#ccfbf1', '#f5d0fe', '#fef9c3'];
-function makeFolderColorPicker(): (folder: string) => string {
-	const map = new Map<string, string>();
-	return (folder) => {
-		if (!folder) return '#f5f5f5';
-		let c = map.get(folder);
-		if (!c) {
-			c = FOLDER_COLORS[map.size % FOLDER_COLORS.length];
-			map.set(folder, c);
-		}
-		return c;
-	};
-}
 
 /**
  * Turn subgraph → cytoscape elements. Physical reference and Hub membership
@@ -84,10 +71,25 @@ function makeFolderColorPicker(): (folder: string) => string {
  */
 function buildElements(
 	sub: ResultSubgraphOutput,
-	opts: { showSemantic: boolean; groupFolder: boolean },
-	folderPicker: (folder: string) => string,
+	opts: { showSemantic: boolean; folderTree: boolean },
 ): ElementDefinition[] {
 	const els: ElementDefinition[] = [];
+	const folderTree = opts.folderTree ? buildVisibleFolderTree(sub.resultNodes) : null;
+	const folderTreePositions = new Map<string, { x: number; y: number }>();
+	if (folderTree) {
+		folderTree.rows.forEach((row, index) => {
+			folderTreePositions.set(row.id, {
+				x: 90 + row.depth * 155,
+				y: 50 + index * 46,
+			});
+		});
+		sub.hubAnchors.forEach((hub, index) => {
+			folderTreePositions.set(hub.id, {
+				x: 90,
+				y: 110 + (folderTree.rows.length + index) * 46,
+			});
+		});
+	}
 	const visibleEdges = coalesceGraphEdges(
 		sub.edges.filter((edge) => (
 			(edge.kind !== 'semantic' || opts.showSemantic)
@@ -105,20 +107,20 @@ function buildElements(
 		sub.resultNodes.filter((n) => !refEndpoints.has(n.id)).map((n) => n.id),
 	);
 
-	if (opts.groupFolder) {
-		for (const group of buildVisibleFolderGroups(sub.resultNodes)) {
+	if (folderTree) {
+		for (const folder of folderTree.folders) {
 			els.push({
 				group: 'nodes',
 				data: {
-					id: group.id,
-					label: group.label,
-					path: group.path,
+					id: folder.id,
+					label: `${folder.label}   ${folder.documentIds.length}`,
+					path: folder.path,
 					kind: 'folderGroup',
-					parent: group.parentId,
-					color: folderPicker(group.top),
-					depth: group.depth,
+					depth: folder.depth,
+					documentIds: folder.documentIds,
 				},
-				classes: 'folderGroup',
+				classes: `folderGroup folderTreeNode${folder.depth === 0 ? ' folderRoot' : ''}`,
+				position: folderTreePositions.get(folder.id),
 			});
 		}
 	}
@@ -137,13 +139,11 @@ function buildElements(
 		els.push({
 			group: 'nodes',
 			data: { id: h.id, label: `${h.title || h.path || h.id}\n(${h.constituentCount} constituents)`, path: h.path ?? '', kind: 'hub', score: 1, degreeNorm: normDegree(h.id) },
-			classes: 'hub',
+			classes: `hub${folderTree ? ' folderTreeHub' : ''}`,
+			position: folderTreePositions.get(h.id),
 		});
 	}
 	for (const n of sub.resultNodes) {
-		const parent = opts.groupFolder
-			? visibleFolderGroupIdForDocument(n.path)
-			: undefined;
 		const degree = degreeMap.get(n.id) ?? 0;
 		const isHublike = degree >= HUBLIKE_THRESHOLD;
 		els.push({
@@ -157,17 +157,57 @@ function buildElements(
 				degree,
 				degreeNorm: normDegree(n.id),
 				folder: (n.path ? n.path.split('/')[0] : '') || '',
-				parent,
 			},
-			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}${isHublike ? ' hublike' : ''}`.trim(),
+			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}${isHublike ? ' hublike' : ''}${folderTree ? ' folderTreeDoc' : ''}`.trim(),
+			position: folderTreePositions.get(n.id),
 		});
 	}
 
+	if (folderTree) {
+		for (const folder of folderTree.folders) {
+			if (folder.parentId) {
+				els.push({
+					group: 'edges',
+					data: {
+						id: `hierarchy:${folder.parentId}:${folder.id}`,
+						source: folder.parentId,
+						target: folder.id,
+						kind: 'hierarchy',
+						directionality: 'undirected',
+					},
+					classes: 'hierarchy folderHierarchy',
+				});
+			}
+			for (const documentId of folder.directDocumentIds) {
+				els.push({
+					group: 'edges',
+					data: {
+						id: `hierarchy:${folder.id}:${documentId}`,
+						source: folder.id,
+						target: documentId,
+						kind: 'hierarchy',
+						directionality: 'undirected',
+					},
+					classes: 'hierarchy folderHierarchy',
+				});
+			}
+		}
+	}
+
 	const seen = new Set<string>();
-	for (const e of visibleEdges) {
+	visibleEdges.forEach((e, index) => {
 		const key = `${e.kind}|${e.directionality}|${e.from}|${e.to}`;
-		if (seen.has(key)) continue;
+		if (seen.has(key)) return;
 		seen.add(key);
+		const sourcePosition = folderTreePositions.get(e.from);
+		const targetPosition = folderTreePositions.get(e.to);
+		const verticalDistance = sourcePosition && targetPosition
+			? Math.abs(targetPosition.y - sourcePosition.y)
+			: 0;
+		const arcDepth = Math.min(240, Math.max(100, 88 + verticalDistance * 0.22 + (index % 5) * 14));
+		const curveDistance = sourcePosition && targetPosition && targetPosition.y >= sourcePosition.y
+			? -arcDepth
+			: arcDepth;
 		els.push({
 			group: 'edges',
 			data: {
@@ -176,10 +216,11 @@ function buildElements(
 				target: e.to,
 				kind: e.kind,
 				directionality: e.directionality,
+				curveDistance,
 			},
-			classes: e.kind,
+			classes: `${e.kind}${folderTree ? ' folderRelation' : ''}`,
 		});
-	}
+	});
 
 	return els;
 }
@@ -190,7 +231,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.doc', style: { 'background-color': 'mapData(score, 0, 1, #f5f3ff, #c4b5fd)', 'border-color': '#a78bfa', 'border-width': 1, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '10px', 'padding-right': '10px', 'padding-top': '5px', 'padding-bottom': '5px', label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '360px', 'font-size': 10, 'text-valign': 'center', 'text-halign': 'center', color: '#1e1b4b', 'min-width': '80px' } as never },
 	{ selector: 'node.doc.hublike', style: { 'background-color': '#c4b5fd', 'border-color': '#6d28d9', 'border-width': 3, 'padding-left': '14px', 'padding-right': '14px', 'padding-top': '9px', 'padding-bottom': '9px', 'font-size': 13, 'font-weight': 700, color: '#4c1d95' } as never },
 	{ selector: 'node.doc.isolated', style: { opacity: 0.55, 'border-style': 'dashed' } as never },
-	{ selector: 'node.folderGroup', style: { 'background-color': 'data(color)', 'background-opacity': 'mapData(depth, 0, 4, 0.55, 0.08)', 'border-color': '#94a3b8', 'border-width': 'mapData(depth, 0, 4, 1.6, 0.6)', 'border-style': 'dashed', shape: 'round-rectangle', label: 'data(label)', 'font-size': 'mapData(depth, 0, 4, 11, 8)', 'font-weight': 700, color: '#334155', 'text-valign': 'top', 'text-halign': 'left', 'text-margin-y': -4, 'text-margin-x': 8, padding: 'mapData(depth, 0, 4, 22, 10)' } as never },
+	{ selector: 'node.folderGroup', style: { 'background-color': '#f7f2fc', 'background-opacity': 1, 'border-width': 0, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '11px', 'padding-right': '11px', 'padding-top': '6px', 'padding-bottom': '6px', label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#51475e', 'text-valign': 'center', 'text-halign': 'center', 'min-width': '120px', 'z-index': 4 } as never },
 	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, 'arrow-scale': 0.7 } as never },
 	{ selector: 'edge[directionality = "directed"]', style: { 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "bidirectional"]', style: { 'source-arrow-shape': 'triangle', 'target-arrow-shape': 'triangle' } as never },
@@ -207,6 +248,34 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.reference.highlighted', style: { 'line-style': 'solid', width: 2.6 } as never },
 	{ selector: 'edge.semantic.highlighted', style: { 'line-style': 'dashed', 'line-dash-pattern': [10, 6], width: 2.0 } as never },
 	{ selector: 'node.regionLabel', style: { 'background-opacity': 0, 'border-width': 0, label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#94a3b8', 'text-transform': 'uppercase', 'letter-spacing': '2px', 'text-valign': 'center', 'text-halign': 'center', width: 200, height: 20 } as never },
+	{ selector: 'node.folderTreeNode.folderRoot', style: { 'background-color': '#f1e8fb', color: '#5b2d96', 'font-size': 12, 'padding-top': '7px', 'padding-bottom': '7px' } as never },
+	{ selector: 'node.doc.folderTreeDoc', style: { 'background-color': '#fbfafc', 'border-width': 0, width: 'label', height: 'label', 'padding-left': '10px', 'padding-right': '10px', 'padding-top': '6px', 'padding-bottom': '6px', 'font-size': 10.5, 'font-weight': 500, color: '#4d4853', opacity: 1, 'min-width': '150px', 'z-index': 4 } as never },
+	{ selector: 'node.doc.folderTreeDoc.hublike', style: { 'background-color': '#f7f1fd', 'border-width': 0, 'padding-left': '11px', 'padding-right': '11px', 'padding-top': '6px', 'padding-bottom': '6px', 'font-size': 10.8, 'font-weight': 650, color: '#51475e' } as never },
+	{ selector: 'node.doc.folderTreeDoc.isolated', style: { opacity: 1, 'border-width': 0 } as never },
+	{ selector: 'node.hub.folderTreeHub', style: { 'background-color': '#efe5fb', 'border-width': 0, 'padding-left': '12px', 'padding-right': '12px', 'padding-top': '7px', 'padding-bottom': '7px', 'font-size': 11, color: '#5b2d96' } as never },
+	{ selector: 'edge.folderHierarchy', style: { 'curve-style': 'taxi', 'taxi-direction': 'rightward', 'taxi-turn': '22px', 'line-color': '#e4dfe8', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', width: 1, opacity: 0.95, 'z-index': 1 } as never },
+	{ selector: 'edge.folderRelation', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(curveDistance)', 'control-point-weights': 0.5, 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65, opacity: 0.82, 'arrow-scale': 0.9, 'z-index': 3 } as never },
+	{ selector: 'edge.folderRelation.reference', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65 } as never },
+	{ selector: 'edge.folderRelation.hub_constituent', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', 'line-style': 'dotted', width: 1.7, opacity: 0.82 } as never },
+	{ selector: 'edge.folderRelation.semantic', style: { 'line-color': '#0f9d83', 'source-arrow-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'line-style': 'dashed', 'line-dash-pattern': [8, 7], width: 1.7, opacity: 0.88 } as never },
+	{ selector: 'node.folderFocusSelected', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1000 } as never },
+	{ selector: 'node.folderFocusScope', style: { 'background-color': '#eee3fb', color: '#5b2d96', 'border-width': 0, opacity: 1, 'z-index': 800 } as never },
+	{ selector: 'node.folderFocusConnected', style: { 'background-color': '#f7f1fd', color: '#51475e', opacity: 1, 'z-index': 700 } as never },
+	{ selector: 'node.folderFocusDimmed', style: { opacity: 0.45 } as never },
+	{ selector: 'edge.folderFocusHidden', style: { opacity: 0.04 } as never },
+	{ selector: 'edge.folderFocusActive', style: { opacity: 1, width: 2.05, 'arrow-scale': 1.08, 'z-index': 900 } as never },
+	{ selector: 'edge.folderFocusIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
+	{ selector: 'edge.folderFocusOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'source-arrow-color': '#0f9d83' } as never },
+	{ selector: 'edge.folderFocusInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
+	{ selector: 'edge.folderHierarchy.folderHierarchyActive', style: { 'line-color': '#d6c3ec', width: 1.35, opacity: 1 } as never },
+	{ selector: 'node.folderTreeNode.highlighted, node.folderTreeDoc.highlighted', style: { 'background-color': '#f1e8fb', 'border-width': 0, opacity: 1 } as never },
+	{ selector: 'edge.folderRelation.highlighted', style: { 'line-color': '#7c3aed', 'source-arrow-color': '#7c3aed', 'target-arrow-color': '#7c3aed', opacity: 1, width: 2.2 } as never },
+	// Focus meaning stays legible while the pointer is still over the node.
+	// These more-specific rules deliberately outrank generic hover highlighting.
+	{ selector: 'node.folderTreeNode.folderFocusSelected, node.folderTreeDoc.folderFocusSelected', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1001 } as never },
+	{ selector: 'edge.folderRelation.folderFocusIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
+	{ selector: 'edge.folderRelation.folderFocusOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'target-arrow-shape': 'triangle', 'source-arrow-color': '#0f9d83' } as never },
+	{ selector: 'edge.folderRelation.folderFocusInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
 ];
 
 // ─── Layout config picker ──────────────────────────────────────────────────
@@ -222,6 +291,8 @@ function layoutConfig(name: PresetBundle['layout']): cytoscape.LayoutOptions {
 			return { name: 'dagre', rankDir: 'LR', nodeSep: 20, edgeSep: 12, rankSep: 100, animate: true } as never;
 		case 'concentric-hub':
 			return { name: 'concentric', animate: true, concentric: (n: NodeSingular) => { if (n.data('kind') === 'hub') return 3; if (n.hasClass('isolated')) return 1; return 2; }, levelWidth: () => 1, minNodeSpacing: 22, spacingFactor: 1.1 } as never;
+		case 'folder-tree':
+			return { name: 'preset', fit: false, animate: true, animationDuration: 320 } as never;
 	}
 }
 
@@ -248,6 +319,112 @@ function layoutIsolatedGrid(cy: Core): void {
 		const col = i % cols;
 		const row = Math.floor(i / cols);
 		n.position({ x: gridStartX + col * cellW, y: baseY + row * cellH });
+	});
+}
+
+const FOLDER_TREE_MIN_INITIAL_ZOOM = 1.05;
+
+function fitGraphViewport(cy: Core, folderTree: boolean): void {
+	cy.fit(undefined, 40);
+	if (!folderTree || cy.zoom() >= FOLDER_TREE_MIN_INITIAL_ZOOM) return;
+
+	// A long tree should open at a readable scale and continue below the fold,
+	// like the regular Tree view. The user can pan vertically to later rows;
+	// shrinking every label to fit the entire tree defeats this preset.
+	const bounds = cy.nodes().boundingBox({ includeLabels: true });
+	cy.zoom(FOLDER_TREE_MIN_INITIAL_ZOOM);
+	cy.pan({
+		x: 56 - bounds.x1 * FOLDER_TREE_MIN_INITIAL_ZOOM,
+		y: 52 - bounds.y1 * FOLDER_TREE_MIN_INITIAL_ZOOM,
+	});
+}
+
+const FOLDER_FOCUS_NODE_CLASSES = 'folderFocusSelected folderFocusScope folderFocusConnected folderFocusDimmed';
+const FOLDER_FOCUS_EDGE_CLASSES = 'folderFocusHidden folderFocusActive folderFocusIncoming folderFocusOutgoing folderFocusInternal folderHierarchyActive';
+
+function folderAncestorIds(
+	projection: VisibleFolderTreeProjection,
+	selectedNodeId: string,
+): Set<string> {
+	const folderById = new Map(projection.folders.map((folder) => [folder.id, folder]));
+	const selectedFolderId = folderById.has(selectedNodeId)
+		? selectedNodeId
+		: projection.documentFolderIdById.get(selectedNodeId);
+	const ids = new Set<string>();
+	let cursor = selectedFolderId ? folderById.get(selectedFolderId) : undefined;
+	while (cursor) {
+		ids.add(cursor.id);
+		cursor = cursor.parentId ? folderById.get(cursor.parentId) : undefined;
+	}
+	return ids;
+}
+
+function applyFolderTreeFocus(
+	cy: Core,
+	projection: VisibleFolderTreeProjection,
+	selectedNodeId: string | null,
+): void {
+	cy.batch(() => {
+		cy.nodes().removeClass(FOLDER_FOCUS_NODE_CLASSES);
+		cy.edges().removeClass(FOLDER_FOCUS_EDGE_CLASSES);
+		if (!selectedNodeId) return;
+
+		const selectedNode = cy.getElementById(selectedNodeId);
+		if (!selectedNode || selectedNode.empty()) return;
+		const scope = folderTreeSelectionScope(projection, selectedNodeId);
+		const ancestorFolderIds = folderAncestorIds(projection, selectedNodeId);
+		const readableNodeIds = new Set<string>([
+			selectedNodeId,
+			...scope.documentIds,
+			...scope.folderIds,
+			...ancestorFolderIds,
+		]);
+
+		selectedNode.addClass('folderFocusSelected');
+		for (const id of [...scope.documentIds, ...scope.folderIds, ...ancestorFolderIds]) {
+			if (id === selectedNodeId) continue;
+			cy.getElementById(id).addClass('folderFocusScope');
+		}
+
+		cy.edges('.folderRelation').forEach((edge) => {
+			const sourceSelected = scope.documentIds.has(edge.source().id());
+			const targetSelected = scope.documentIds.has(edge.target().id());
+			if (!sourceSelected && !targetSelected) {
+				edge.addClass('folderFocusHidden');
+				return;
+			}
+
+			edge.addClass('folderFocusActive');
+			readableNodeIds.add(edge.source().id());
+			readableNodeIds.add(edge.target().id());
+			if (edge.data('directionality') === 'undirected') return;
+			if (sourceSelected && targetSelected) {
+				edge.addClass('folderFocusInternal');
+				return;
+			}
+			edge.addClass(sourceSelected ? 'folderFocusOutgoing' : 'folderFocusIncoming');
+		});
+
+		cy.nodes().not('.regionLabel').forEach((node) => {
+			if (readableNodeIds.has(node.id())) {
+				if (!node.hasClass('folderFocusSelected') && !node.hasClass('folderFocusScope')) {
+					node.addClass('folderFocusConnected');
+				}
+				return;
+			}
+			node.addClass('folderFocusDimmed');
+		});
+
+		const activeHierarchyNodeIds = new Set<string>([
+			...scope.documentIds,
+			...scope.folderIds,
+			...ancestorFolderIds,
+		]);
+		cy.edges('.folderHierarchy').forEach((edge) => {
+			if (!activeHierarchyNodeIds.has(edge.source().id())) return;
+			if (!activeHierarchyNodeIds.has(edge.target().id())) return;
+			edge.addClass('folderHierarchyActive');
+		});
 	});
 }
 
@@ -348,7 +525,6 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const nodeListRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const animRef = useRef<number | null>(null);
-	const folderPickerRef = useRef(makeFolderColorPicker());
 
 	// Keep the latest callbacks without re-running the (expensive) cytoscape mount.
 	const tapRef = useRef(onNodeTap);
@@ -383,16 +559,28 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	}, []);
 
 	useEffect(() => {
-		if (!containerRef.current || !subgraph) return;
+		const container = containerRef.current;
+		if (!container || !subgraph) return;
 		const bundle = PRESETS[preset];
-		const els = buildElements(subgraph, { showSemantic, groupFolder: bundle.groupFolder }, folderPickerRef.current);
+		const folderProjection = bundle.folderTree ? buildVisibleFolderTree(subgraph.resultNodes) : null;
+		const els = buildElements(subgraph, { showSemantic, folderTree: bundle.folderTree });
 		if (animRef.current) cancelAnimationFrame(animRef.current);
 		animRef.current = null;
 		cyRef.current?.destroy();
-		const cy = cytoscape({ container: containerRef.current, elements: els, style: CYTOSCAPE_STYLES, minZoom: 0.15, maxZoom: 3, wheelSensitivity: 0.2 });
+		const cy = cytoscape({
+			container,
+			elements: els,
+			style: CYTOSCAPE_STYLES,
+			// Cytoscape's constructor otherwise runs its default grid layout before
+			// our preset layout and discards the explicit folder-tree positions.
+			layout: bundle.folderTree ? { name: 'preset' } : undefined,
+			minZoom: 0.15,
+			maxZoom: 3,
+			wheelSensitivity: 0.2,
+		});
 		cyRef.current = cy;
 
-		const shouldSplitIsolated = !bundle.groupFolder;
+		const shouldSplitIsolated = !bundle.folderTree;
 		const connectedEles = shouldSplitIsolated
 			? cy.elements().filter((el) => {
 				if (el.isNode()) return !el.hasClass('isolated') && !el.hasClass('regionLabel');
@@ -411,7 +599,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				cy.pan(restored.pan);
 				return;
 			}
-			cy.fit(undefined, 40);
+			fitGraphViewport(cy, bundle.folderTree);
 		});
 		layoutObj.run();
 		cy.on('pan zoom', () => {
@@ -419,15 +607,20 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		});
 
 		let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+		let focusedFolderTreeNodeId: string | null = null;
+		const prefersReducedMotion = container.ownerDocument.defaultView
+			?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 		const startEdgeAnimation = () => {
-			if (animRef.current) cancelAnimationFrame(animRef.current);
+			if (prefersReducedMotion || animRef.current) return;
 			let offset = 0;
 			let last = performance.now();
 			const tick = (now: number) => {
 				const dt = Math.min(now - last, 50);
 				last = now;
 				offset -= dt * 0.024;
-				const edges = cy.edges('edge.highlighted');
+				const edges = bundle.folderTree
+					? cy.edges('edge.folderRelation.semantic').not('.folderFocusHidden')
+					: cy.edges('edge.semantic.highlighted');
 				if (edges.length === 0) { animRef.current = null; return; }
 				edges.style('line-dash-offset', offset);
 				animRef.current = requestAnimationFrame(tick);
@@ -450,7 +643,16 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			hoverTimer = setTimeout(() => {
 				const isCompound = n.hasClass('folderGroup');
 				let highlight;
-				if (isCompound) {
+				if (isCompound && folderProjection) {
+					const scope = folderTreeSelectionScope(folderProjection, n.id());
+					const ancestorIds = folderAncestorIds(folderProjection, n.id());
+					const scopedNodes = cy.nodes().filter((node) => (
+						scope.documentIds.has(node.id())
+						|| scope.folderIds.has(node.id())
+						|| ancestorIds.has(node.id())
+					));
+					highlight = n.union(scopedNodes).union(scopedNodes.connectedEdges('.folderRelation'));
+				} else if (isCompound) {
 					const descendants = n.descendants();
 					highlight = n.union(descendants).union(descendants.connectedEdges());
 				} else {
@@ -470,7 +672,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			hoverRef.current?.(null);
 			if (hoverTimer) clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
-				stopEdgeAnimation();
+				if (!bundle.folderTree) stopEdgeAnimation();
 				cy.batch(() => {
 					cy.elements().removeClass('dimmed').removeClass('highlighted');
 					cy.edges().removeStyle('line-dash-offset');
@@ -480,9 +682,18 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 
 		cy.on('tap', 'node', (evt) => {
 			const n = evt.target as NodeSingular;
-			if (n.hasClass('regionLabel') || n.hasClass('folderGroup')) return;
+			if (n.hasClass('regionLabel')) return;
 			const originalEvent = (evt as { originalEvent?: MouseEvent }).originalEvent;
 			const modKey = !!(originalEvent && (originalEvent.metaKey || originalEvent.ctrlKey));
+			if (bundle.folderTree && folderProjection && (n.hasClass('folderTreeNode') || n.hasClass('folderTreeDoc'))) {
+				focusedFolderTreeNodeId = toggleFolderTreeSelection(focusedFolderTreeNodeId, n.id());
+				applyFolderTreeFocus(cy, folderProjection, focusedFolderTreeNodeId);
+				if (focusedFolderTreeNodeId && n.hasClass('folderTreeDoc')) {
+					tapRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '', isHub: false, modKey });
+				}
+				return;
+			}
+			if (n.hasClass('folderGroup')) return;
 			tapRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '', isHub: n.hasClass('hub'), modKey });
 		});
 		cy.on('dbltap', 'node', (evt) => {
@@ -490,6 +701,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			if (n.hasClass('regionLabel') || n.hasClass('folderGroup') || n.hasClass('hub')) return;
 			dblRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '' });
 		});
+		if (bundle.folderTree) startEdgeAnimation();
 		return () => {
 			if (hoverTimer) clearTimeout(hoverTimer);
 			stopEdgeAnimation();
@@ -508,7 +720,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				const cy = cyRef.current;
 				if (!cy || container.clientWidth === 0 || container.clientHeight === 0) return;
 				cy.resize();
-				if (!viewportChangeRef.current) cy.fit(undefined, 40);
+				if (!viewportChangeRef.current) fitGraphViewport(cy, PRESETS[preset].folderTree);
 			});
 		});
 		observer.observe(container);
@@ -534,7 +746,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		const cy = cyRef.current;
 		if (!cy) return [];
 			return cy.nodes()
-				.filter((node) => !node.hasClass('folderGroup') && !node.hasClass('regionLabel'))
+				.filter((node) => !node.hasClass('regionLabel'))
 				.toArray() as NodeSingular[];
 	}, []);
 
@@ -555,7 +767,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		}
 		if (event.key === '0') {
 			event.preventDefault();
-			cyRef.current?.fit(undefined, 40);
+			const cy = cyRef.current;
+			if (cy) fitGraphViewport(cy, PRESETS[preset].folderTree);
 			return;
 		}
 		if (event.key === '+' || event.key === '=') {
@@ -572,18 +785,17 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		}
 		if (event.key === 'Enter') {
 			event.preventDefault();
+			if (active.hasClass('folderTreeNode')) {
+				active.emit('tap');
+				return;
+			}
 			const path = String(active.data('path') ?? '');
 			dblRef.current?.({ id: active.id(), path });
 			return;
 		}
 		if (event.key === ' ') {
 			event.preventDefault();
-			tapRef.current?.({
-				id: active.id(),
-				path: String(active.data('path') ?? ''),
-				isHub: active.hasClass('hub'),
-				modKey: false,
-			});
+			active.emit('tap');
 			return;
 		}
 		const direction = event.key === 'ArrowLeft' ? 'left'
@@ -603,7 +815,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			direction,
 		);
 		if (nextId) setKeyboardNodeId(nextId);
-	}, [graphNodes, keyboardNodeId]);
+	}, [graphNodes, keyboardNodeId, preset]);
 
 	const handleCopyMermaid = useCallback(() => {
 		if (!subgraph) return;
