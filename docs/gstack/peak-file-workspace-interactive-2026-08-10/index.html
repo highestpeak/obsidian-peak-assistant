@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Peak File Workspace · 六种文件交互原型</title>
+  <link rel="stylesheet" href="mock.css">
+</head>
+<body data-active-file="image">
+  <a class="skip-link" href="#workspace-main">跳到文件工作区</a>
+
+  <div class="app-shell">
+    <header class="app-bar">
+      <div class="brand-block">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <div>
+          <strong>Peak File Workspace</strong>
+          <span>Interactive design mock · not implemented</span>
+        </div>
+      </div>
+      <nav class="top-links" aria-label="原型资料">
+        <a href="../../superpowers/specs/2026-08-09-file-surface-ai-capability-model.md">AI 能力模型</a>
+        <a href="../../research/2026-07-31-file-format-capability-audit/index.html">能力审计</a>
+      </nav>
+    </header>
+
+    <div class="workspace-layout">
+      <aside class="file-rail" aria-label="示例文件">
+        <div class="rail-heading">
+          <span class="overline">VAULT FILES</span>
+          <strong>Format Lab</strong>
+        </div>
+
+        <label class="search-field">
+          <span aria-hidden="true">⌕</span>
+          <input id="file-search" type="search" placeholder="Filter files" autocomplete="off">
+        </label>
+
+        <div class="file-group">
+          <span class="group-label">Visual & reading</span>
+          <button class="file-item is-active" type="button" data-file-target="image" aria-pressed="true">
+            <span class="file-badge image-badge">PNG</span>
+            <span><strong>harbour-light.png</strong><small>Image Workspace</small></span>
+          </button>
+          <button class="file-item" type="button" data-file-target="pdf" aria-pressed="false">
+            <span class="file-badge pdf-badge">PDF</span>
+            <span><strong>information-foraging.pdf</strong><small>Native PDF companion</small></span>
+          </button>
+        </div>
+
+        <div class="file-group">
+          <span class="group-label">Web & source</span>
+          <button class="file-item" type="button" data-file-target="html" aria-pressed="false">
+            <span class="file-badge html-badge">HTML</span>
+            <span><strong>research-dashboard.html</strong><small>Source / Preview / Split</small></span>
+          </button>
+          <button class="file-item" type="button" data-file-target="code" aria-pressed="false">
+            <span class="file-badge code-badge">PY</span>
+            <span><strong>pipeline.py</strong><small>Code Source Workspace</small></span>
+          </button>
+        </div>
+
+        <div class="file-group">
+          <span class="group-label">Spatial & diagram</span>
+          <button class="file-item" type="button" data-file-target="canvas" aria-pressed="false">
+            <span class="file-badge canvas-badge">CAN</span>
+            <span><strong>knowledge-map.canvas</strong><small>Native Canvas companion</small></span>
+          </button>
+          <button class="file-item" type="button" data-file-target="excalidraw" aria-pressed="false">
+            <span class="file-badge excalidraw-badge">EX</span>
+            <span><strong>system-flow.excalidraw</strong><small>Scene-aware companion</small></span>
+          </button>
+        </div>
+
+        <div class="rail-note">
+          <span>6 visible surfaces</span>
+          <strong>Editing never implies execution.</strong>
+        </div>
+      </aside>
+
+      <main class="file-stage" id="workspace-main">
+        <header class="file-header">
+          <div class="file-identity">
+            <span class="header-badge image-badge" id="active-file-badge">PNG</span>
+            <div>
+              <h1 id="active-file-name">harbour-light.png</h1>
+              <p id="active-file-path">Assets/Photography/harbour-light.png</p>
+            </div>
+          </div>
+          <div class="file-status">
+            <span class="status-dot"></span>
+            <span id="active-file-status">Original preserved · revision 7</span>
+          </div>
+        </header>
+
+        <div class="format-toolbar" id="format-toolbar" aria-label="当前文件工具">
+          <div class="mode-group" data-toolbar-for="image">
+            <button class="toolbar-button is-active" type="button" data-image-tool="view">View</button>
+            <button class="toolbar-button" type="button" data-image-tool="crop">Crop</button>
+            <button class="toolbar-button" type="button" data-image-tool="inspect">Inspect</button>
+          </div>
+          <div class="mode-group" data-toolbar-for="html" hidden>
+            <button class="toolbar-button" type="button" data-html-mode="source">Source</button>
+            <button class="toolbar-button is-active" type="button" data-html-mode="split">Split</button>
+            <button class="toolbar-button" type="button" data-html-mode="preview">Preview</button>
+            <button class="toolbar-button" type="button" data-html-pick>Pick element</button>
+          </div>
+          <div class="mode-group" data-toolbar-for="pdf" hidden>
+            <button class="toolbar-button" type="button" data-pdf-page="6">Page 6</button>
+            <button class="toolbar-button is-active" type="button" data-pdf-page="7">Page 7</button>
+            <button class="toolbar-button" type="button" data-pdf-page="8">Page 8</button>
+            <button class="toolbar-button" type="button" data-pdf-selection>Use selection</button>
+          </div>
+          <div class="mode-group" data-toolbar-for="code" hidden>
+            <button class="toolbar-button is-active" type="button" data-code-mode="source">Source</button>
+            <button class="toolbar-button" type="button" data-code-mode="references">References</button>
+            <button class="toolbar-button" type="button" data-code-mode="review">Review 3 files</button>
+            <span class="execution-boundary">Run disabled · separate permission</span>
+          </div>
+          <div class="mode-group" data-toolbar-for="canvas" hidden>
+            <button class="toolbar-button is-active" type="button" data-canvas-scope="selection">Selection</button>
+            <button class="toolbar-button" type="button" data-canvas-scope="subgraph">Subgraph</button>
+            <button class="toolbar-button" type="button" data-canvas-scope="whole">Whole canvas</button>
+          </div>
+          <div class="mode-group" data-toolbar-for="excalidraw" hidden>
+            <button class="toolbar-button is-active" type="button" data-scene-mode="elements">Elements</button>
+            <button class="toolbar-button" type="button" data-scene-mode="bindings">Bindings</button>
+            <button class="toolbar-button" type="button" data-scene-mode="preview">Patch preview</button>
+          </div>
+          <div class="toolbar-meta" id="toolbar-meta">Natural pixels · 3024 × 2016</div>
+        </div>
+
+        <div class="surface-stack">
+          <section class="surface-panel image-surface is-active" data-surface="image" aria-label="Image Workspace">
+            <div class="image-stage">
+              <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration">
+              <div class="crop-region" data-image-overlay hidden>
+                <i class="corner top-left"></i><i class="corner top-right"></i>
+                <i class="corner bottom-left"></i><i class="corner bottom-right"></i>
+                <span>Region · 1840 × 1280</span>
+              </div>
+              <div class="inspect-pin" data-image-pin hidden>
+                <span>1</span>
+                <p>Diagram label · OCR confidence 96%</p>
+              </div>
+            </div>
+            <footer class="surface-footer">
+              <span>View original</span>
+              <span>AI candidate writes a new version</span>
+              <span>Replace requires backup + hash guard</span>
+            </footer>
+          </section>
+
+          <section class="surface-panel html-surface" data-surface="html" aria-label="HTML Workspace" hidden>
+            <div class="html-workbench" data-html-workbench data-mode="split">
+              <div class="code-pane html-code-pane" data-html-source-pane>
+                <div class="editor-tab">research-dashboard.html <span>local source</span></div>
+                <ol class="code-lines">
+                  <li><code><em>&lt;main</em> <b>class</b>=<u>"dashboard"</u><em>&gt;</em></code></li>
+                  <li><code>&nbsp;&nbsp;<em>&lt;header&gt;</em>Research health<em>&lt;/header&gt;</em></code></li>
+                  <li class="picked-line"><code>&nbsp;&nbsp;<em>&lt;section</em> <b>id</b>=<u>"signals"</u><em>&gt;</em></code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;<em>&lt;h2&gt;</em>Evidence coverage<em>&lt;/h2&gt;</em></code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;<em>&lt;output&gt;</em>78%<em>&lt;/output&gt;</em></code></li>
+                  <li><code>&nbsp;&nbsp;<em>&lt;/section&gt;</em></code></li>
+                  <li><code>&nbsp;&nbsp;<em>&lt;script</em> <b>src</b>=<u>"./dashboard.js"</u><em>&gt;&lt;/script&gt;</em></code></li>
+                  <li><code><em>&lt;/main&gt;</em></code></li>
+                </ol>
+              </div>
+              <div class="web-preview" data-html-preview-pane>
+                <div class="browser-strip"><span>vault://reports/research-dashboard.html</span><b>Safe preview</b></div>
+                <div class="dashboard-preview">
+                  <nav>PEAK RESEARCH <span>Library&nbsp;&nbsp;Projects&nbsp;&nbsp;Signals</span></nav>
+                  <div class="dashboard-title"><span>Research health</span><small>Updated from 42 source notes</small></div>
+                  <div class="metric-grid">
+                    <article class="selected-dom" data-selected-dom><small>Evidence coverage</small><strong>78%</strong><span>+6% this week</span></article>
+                    <article><small>Unverified claims</small><strong>14</strong><span>Review required</span></article>
+                    <article><small>Active sources</small><strong>42</strong><span>7 domains</span></article>
+                  </div>
+                  <div class="chart-card">
+                    <div class="chart-bars"><i style="height:28%"></i><i style="height:44%"></i><i style="height:39%"></i><i style="height:62%"></i><i style="height:74%"></i><i style="height:78%"></i></div>
+                    <span>Coverage over six review cycles</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="surface-panel pdf-surface" data-surface="pdf" aria-label="PDF Companion" hidden>
+            <aside class="page-rail" aria-label="PDF 页面">
+              <button type="button" data-pdf-page="6"><span>6</span><i></i><i></i></button>
+              <button class="is-active" type="button" data-pdf-page="7"><span>7</span><i></i><i></i></button>
+              <button type="button" data-pdf-page="8"><span>8</span><i></i><i></i></button>
+            </aside>
+            <div class="pdf-document">
+              <article class="pdf-page" data-pdf-document>
+                <span class="pdf-kicker">INFORMATION FORAGING · PAGE <b data-pdf-page-label>7</b></span>
+                <h2>Information scent and navigation choices</h2>
+                <p>Readers estimate the value of the next action from cues that suggest what information lies beyond a link or document boundary.</p>
+                <p class="pdf-selection" data-pdf-text>A strong information scent lowers the cost of deciding where to look next and when to stop searching.</p>
+                <p>Interfaces support this decision by preserving source context, showing likely relevance, and making return paths explicit.</p>
+                <div class="pdf-figure"><i></i><i></i><i></i><span>Figure 4. Navigation cost by scent strength</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="surface-panel code-surface" data-surface="code" aria-label="Code Source Workspace" hidden>
+            <aside class="symbol-rail">
+              <span class="panel-label">SYMBOLS</span>
+              <button type="button" data-symbol="PipelineRun">PipelineRun <small>class · L12</small></button>
+              <button class="is-active" type="button" data-symbol="build_context">build_context <small>function · L26</small></button>
+              <button type="button" data-symbol="run_pipeline">run_pipeline <small>function · L41</small></button>
+              <span class="panel-label references-label">RELATED</span>
+              <button type="button" data-related-file>context.py <small>4 references</small></button>
+              <button type="button" data-related-file>pipeline-test.md <small>linked note</small></button>
+            </aside>
+            <div class="code-workbench">
+              <div class="code-view is-active" data-code-view="source">
+                <div class="editor-tab">pipeline.py <span>Python · UTF-8 · LF</span></div>
+                <ol class="code-lines python-lines">
+                  <li value="23"><code><b>def</b> <strong>build_context</strong>(request: SearchRequest) -&gt; ContextBundle:</code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;files = resolve_related_files(request.source_path)</code></li>
+                  <li class="selected-code"><code>&nbsp;&nbsp;&nbsp;&nbsp;notes = load_linked_notes(files, max_notes=<u>8</u>)</code></li>
+                  <li class="selected-code"><code>&nbsp;&nbsp;&nbsp;&nbsp;symbols = symbol_index.references(request.symbol)</code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;<b>return</b> ContextBundle(</code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;files=files, notes=notes, symbols=symbols,</code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;revision=request.source_revision,</code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;)</code></li>
+                  <li><code></code></li>
+                  <li><code><b>async def</b> <strong>run_pipeline</strong>(request: SearchRequest) -&gt; RunResult:</code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;context = build_context(request)</code></li>
+                  <li><code>&nbsp;&nbsp;&nbsp;&nbsp;<b>return await</b> execute_plan(context)</code></li>
+                </ol>
+              </div>
+              <div class="code-view" data-code-view="references" hidden>
+                <div class="reference-heading"><span>build_context</span><strong>7 references in 4 files</strong></div>
+                <div class="reference-map">
+                  <article><small>DEFINITION</small><strong>pipeline.py · 23</strong><p>Builds revision-bound code and note context.</p></article>
+                  <article><small>CALLED BY</small><strong>pipeline.py · 34</strong><p>run_pipeline(request)</p></article>
+                  <article><small>TESTED BY</small><strong>tests/test_pipeline.py · 18</strong><p>test_context_respects_ignore_policy</p></article>
+                  <article><small>DOCUMENTED IN</small><strong>pipeline-test.md</strong><p>[[pipeline.py#build_context]]</p></article>
+                </div>
+                <svg class="reference-lines" viewBox="0 0 800 360" aria-hidden="true">
+                  <path d="M400 76 C250 120 220 170 170 242"></path>
+                  <path d="M400 76 C350 150 350 180 330 242"></path>
+                  <path d="M400 76 C500 145 510 184 510 242"></path>
+                  <path d="M400 76 C620 130 650 185 670 242"></path>
+                </svg>
+              </div>
+              <div class="code-view" data-code-view="review" hidden>
+                <div class="review-heading"><span>Atomic multi-file candidate</span><strong>3 files · +18 −7</strong></div>
+                <div class="file-diff-list">
+                  <article class="diff-file"><header><strong>pipeline.py</strong><span>+7 −3</span></header><p><del>notes = load_linked_notes(files)</del><ins>notes = load_linked_notes(files, policy=request.context_policy)</ins></p></article>
+                  <article class="diff-file"><header><strong>context.py</strong><span>+8 −4</span></header><p><del>def load_linked_notes(files):</del><ins>def load_linked_notes(files, policy: ContextPolicy):</ins></p></article>
+                  <article class="diff-file"><header><strong>tests/test_pipeline.py</strong><span>+3</span></header><p><ins>assert bundle.notes == allowed_notes</ins></p></article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="surface-panel canvas-surface" data-surface="canvas" aria-label="Canvas Companion" hidden>
+            <div class="canvas-board" data-canvas-board data-scope="selection">
+              <svg class="canvas-edges" viewBox="0 0 1000 650" aria-hidden="true">
+                <defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0 0 L0 6 L8 3 z"></path></marker></defs>
+                <path d="M280 190 C360 190 410 250 470 285" marker-end="url(#arrow)"></path>
+                <path d="M620 285 C700 250 735 205 785 190" marker-end="url(#arrow)"></path>
+                <path d="M545 355 C545 420 500 450 420 475" marker-end="url(#arrow)"></path>
+                <path d="M545 355 C590 420 650 448 720 480" marker-end="url(#arrow)"></path>
+              </svg>
+              <button class="canvas-node note-node" type="button" style="left:8%;top:18%" data-canvas-node="Sources"><small>12 NOTES</small><strong>Source evidence</strong><span>Claims, excerpts, citations</span></button>
+              <button class="canvas-node selected-node" type="button" style="left:40%;top:35%" data-canvas-node="Research question"><small>CURRENT NODE</small><strong>Research question</strong><span>How should context remain inspectable?</span></button>
+              <button class="canvas-node file-node" type="button" style="left:73%;top:18%" data-canvas-node="Dashboard"><small>HTML FILE</small><strong>Research dashboard</strong><span>reports/research-dashboard.html</span></button>
+              <button class="canvas-node" type="button" style="left:28%;top:70%" data-canvas-node="Decisions"><small>5 DECISIONS</small><strong>Product boundaries</strong><span>Accepted owner conclusions</span></button>
+              <button class="canvas-node" type="button" style="left:64%;top:70%" data-canvas-node="Open gaps"><small>7 GAPS</small><strong>Open questions</strong><span>Needs evidence or validation</span></button>
+              <div class="scope-outline" data-scope-outline></div>
+            </div>
+          </section>
+
+          <section class="surface-panel excalidraw-surface" data-surface="excalidraw" aria-label="Excalidraw Companion" hidden>
+            <div class="scene-board" data-scene-board data-mode="elements">
+              <svg viewBox="0 0 1000 650" role="img" aria-label="Source to review to output system flow">
+                <defs><marker id="scene-arrow" markerWidth="11" markerHeight="11" refX="9" refY="4" orient="auto"><path d="M0 0 L0 8 L10 4 z"></path></marker></defs>
+                <path class="rough-line" d="M270 235 C355 225 385 225 450 235" marker-end="url(#scene-arrow)"></path>
+                <path class="rough-line" d="M620 235 C700 220 730 225 790 235" marker-end="url(#scene-arrow)"></path>
+                <path class="binding-line" d="M535 310 C535 370 535 400 535 438" marker-end="url(#scene-arrow)"></path>
+                <rect class="rough-shape" x="80" y="160" width="190" height="145" rx="18"></rect>
+                <text x="175" y="215" text-anchor="middle">SOURCE</text>
+                <text class="scene-subtext" x="175" y="249" text-anchor="middle">selection + revision</text>
+                <rect class="rough-shape selected-shape" x="450" y="160" width="170" height="145" rx="18"></rect>
+                <text x="535" y="215" text-anchor="middle">REVIEW</text>
+                <text class="scene-subtext" x="535" y="249" text-anchor="middle">typed object patch</text>
+                <rect class="rough-shape" x="790" y="160" width="140" height="145" rx="18"></rect>
+                <text x="860" y="215" text-anchor="middle">OUTPUT</text>
+                <text class="scene-subtext" x="860" y="249" text-anchor="middle">native scene</text>
+                <ellipse class="rough-shape note-shape" cx="535" cy="500" rx="145" ry="62"></ellipse>
+                <text x="535" y="493" text-anchor="middle">Unknown metadata</text>
+                <text class="scene-subtext" x="535" y="520" text-anchor="middle">preserved on write</text>
+              </svg>
+              <div class="scene-selection" data-scene-selection>2 elements · 1 binding</div>
+              <div class="element-list">
+                <button class="is-active" type="button" data-scene-element="Review group">Review group <small>rect + 2 text</small></button>
+                <button type="button" data-scene-element="Source arrow">Source arrow <small>binding</small></button>
+                <button type="button" data-scene-element="Metadata note">Metadata note <small>ellipse + text</small></button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="candidate-bar" data-candidate-bar hidden>
+          <div>
+            <span class="candidate-label" id="candidate-label">Candidate ready</span>
+            <strong id="candidate-title">Original remains unchanged</strong>
+          </div>
+          <div class="candidate-actions">
+            <button type="button" data-candidate-dismiss>Dismiss</button>
+            <button type="button" data-candidate-review>View details</button>
+            <button class="primary-button" type="button" data-candidate-accept>Accept candidate</button>
+          </div>
+        </div>
+      </main>
+
+      <aside class="copilot-panel" aria-label="Peak AI companion">
+        <div class="sidecar-tabs" role="tablist" aria-label="AI companion tabs">
+          <button class="is-active" type="button" role="tab" aria-selected="true" data-sidecar-tab="copilot">Copilot</button>
+          <button type="button" role="tab" aria-selected="false" data-sidecar-tab="context">Context</button>
+          <button type="button" role="tab" aria-selected="false" data-sidecar-tab="history">History</button>
+        </div>
+
+        <section class="sidecar-view is-active" data-sidecar-view="copilot">
+          <div class="scope-card">
+            <span class="overline">ACTIVE CONTEXT</span>
+            <strong id="scope-title">Whole image</strong>
+            <p id="scope-detail">Original bitmap · 3024 × 2016 · source hash bound</p>
+            <div class="scope-chips" id="scope-chips"><span>pixels</span><span>OCR</span><span>metadata</span></div>
+          </div>
+          <div class="suggestion-list" id="suggestion-list">
+            <button type="button" data-suggestion="Describe the visual hierarchy and extract its labels.">Describe and OCR</button>
+            <button type="button" data-suggestion="Remove the selected object and preserve the surrounding layout.">Edit selected region</button>
+          </div>
+          <label class="prompt-field">
+            <span>Ask or transform this file</span>
+            <textarea id="copilot-prompt" rows="5">Describe the visual hierarchy and extract its labels.</textarea>
+          </label>
+          <div class="prompt-footer">
+            <span id="model-disclosure">Vision model · image will be sent</span>
+            <button class="primary-button" type="button" data-run-copilot>Generate candidate</button>
+          </div>
+          <div class="run-status" data-run-status hidden>
+            <span class="run-icon"></span>
+            <div><strong id="run-title">Candidate prepared</strong><p id="run-detail">Review before writing any source file.</p></div>
+          </div>
+        </section>
+
+        <section class="sidecar-view" data-sidecar-view="context" hidden>
+          <div class="context-inspector">
+            <span class="overline">CONTEXT MANIFEST</span>
+            <strong id="context-file-name">harbour-light.png</strong>
+            <dl id="context-manifest">
+              <div><dt>Scope</dt><dd>whole image</dd></div>
+              <div><dt>Revision</dt><dd>sha256:67a…9be</dd></div>
+              <div><dt>Included</dt><dd>bitmap, OCR, metadata</dd></div>
+              <div><dt>Excluded</dt><dd>other Vault files</dd></div>
+              <div><dt>Writeback</dt><dd>save as version</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="sidecar-view" data-sidecar-view="history" hidden>
+          <div class="history-list" id="history-list">
+            <article><span>09:42</span><strong>Image OCR extracted</strong><p>No source changes · local result</p></article>
+            <article><span>Yesterday</span><strong>Version 7 accepted</strong><p>harbour-light.v7.png</p></article>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" role="status" aria-live="polite" data-toast hidden>Workspace updated</div>
+  <script src="mock.js"></script>
+</body>
+</html>

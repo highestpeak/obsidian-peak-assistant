@@ -312,6 +312,46 @@
       margin-top: 16px;
     }
 
+    .prototype-launch {
+      margin-top: 26px;
+      border: 1px solid #b9c8bf;
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      background: #f8fbf9;
+      padding: 17px 18px;
+    }
+
+    .prototype-launch-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .prototype-launch-head strong { font-size: 15px; }
+    .prototype-launch-head span { color: var(--muted); font-size: 12px; }
+
+    .prototype-links {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .prototype-links a {
+      padding: 8px 7px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+      color: #2c4437;
+      text-align: center;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .prototype-links a:hover { border-color: var(--accent); background: var(--accent-soft); }
+
     blockquote {
       margin: 20px 0;
       border-left: 4px solid var(--accent);
@@ -370,6 +410,7 @@
       .hero { padding: 38px 30px; }
       .capability-ladder { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .evidence-list { grid-template-columns: 1fr; }
+      .prototype-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 
     @media (max-width: 680px) {
@@ -378,6 +419,8 @@
       .brand { display: none; }
       .verdict-grid, .method-grid, .copy-grid, .gap-grid { grid-template-columns: 1fr; }
       .capability-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .prototype-launch-head { display: grid; gap: 4px; }
+      .prototype-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .hero { padding: 30px 22px; }
       h1 { font-size: 34px; }
     }
@@ -416,6 +459,20 @@
         <span>约 12,000 字 · 26 分钟</span>
         <span>只读调研 · 未修改生产代码</span>
         <span>未执行真实 Obsidian 文件交互验收</span>
+      </div>
+      <div class="prototype-launch">
+        <div class="prototype-launch-head">
+          <strong>直接查看六种文件的统一交互原型</strong>
+          <span>Design mock · 点击后在同一个 Workspace 中切换</span>
+        </div>
+        <div class="prototype-links">
+          <a href="../../gstack/peak-file-workspace-interactive-2026-08-10/index.html#image">Image</a>
+          <a href="../../gstack/peak-file-workspace-interactive-2026-08-10/index.html#html">HTML</a>
+          <a href="../../gstack/peak-file-workspace-interactive-2026-08-10/index.html#pdf">PDF</a>
+          <a href="../../gstack/peak-file-workspace-interactive-2026-08-10/index.html#code">Code Source</a>
+          <a href="../../gstack/peak-file-workspace-interactive-2026-08-10/index.html#canvas">Canvas</a>
+          <a href="../../gstack/peak-file-workspace-interactive-2026-08-10/index.html#excalidraw">Excalidraw</a>
+        </div>
       </div>
     </section>
 
@@ -1124,6 +1181,7 @@
         </article>
         <article class="evidence-group">
           <h3>设计与未来状态</h3>
+          <a href="../../gstack/peak-file-workspace-interactive-2026-08-10/index.html">Six-surface interactive File Workspace mock</a>
           <a href="../../superpowers/specs/2026-08-09-file-surface-ai-capability-model.md">File Surface AI capability model</a>
           <a href="../../conventions/generated-artifact-registry.md">Generated artifact / JSONL governance</a>
           <a href="../../superpowers/specs/2026-07-24-peak-file-workspace.md">Peak File Workspace spec</a>

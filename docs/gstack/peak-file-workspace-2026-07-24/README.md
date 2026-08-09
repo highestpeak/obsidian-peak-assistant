@@ -5,6 +5,8 @@
 
 这个目录是 Peak Assistant 多文件工作区的快速审阅入口。它分别展示 Image、HTML 和 PDF 的目标工作区，不是生产截图，也不证明功能已经实现。
 
+> 2026-08-10：本页保留为历史视觉报告。需要实际切换 Image、HTML、PDF、Code Source、Canvas 与 Excalidraw，请打开[六格式统一交互原型](../peak-file-workspace-interactive-2026-08-10/index.html)。
+
 ## Authority
 
 | 需要 | 阅读入口 |
