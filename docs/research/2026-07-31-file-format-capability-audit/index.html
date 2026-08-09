@@ -505,10 +505,10 @@
               <td>source patch；外部动作走 typed bridge + permission + receipt</td>
             </tr>
             <tr>
-              <td>CSV → Peak Sheet</td>
-              <td>行/列/区域、schema inference、source hash；转换后绑定 Dataset revision</td>
-              <td>清洗、查重、类型推断、公式、筛选、统计、Table/Board/Calendar 视图</td>
-              <td>先 DatasetDraft preview/accept；之后只走 typed Dataset plan</td>
+              <td>CSV / XLSX → Peak Sheet</td>
+              <td>行/列/区域、worksheet、schema、公式/样式兼容性、source hash</td>
+              <td>清洗、查重、类型推断、公式诊断、统计和 Peak Sheet 多视图</td>
+              <td>DatasetDraft / WorkbookDraft preview/accept；之后走 typed plan</td>
             </tr>
             <tr>
               <td>TXT</td>
@@ -541,8 +541,8 @@
       <div class="callout">
         <div class="callout-title">已锁定的排除项</div>
         <p>
-          DOC / DOCX、PPT / PPTX、XLS / XLSX 不属于 Peak 的产品支持范围。
-          内部 Loader、文件图标或偶然能提取文本都不构成产品支持，也不能进入宣传。
+          DOC / DOCX、PPT / PPTX 不属于 Peak 的产品支持范围。
+          XLSX 属于 Peak Sheet 的目标互操作格式，但当前解析和导入闭环尚未实现，不能提前宣传。
         </p>
       </div>
 
@@ -694,8 +694,8 @@
             <tr>
               <td>Excel<br><code>.xlsx</code></td>
               <td>类型和设置 UI 中存在</td>
-              <td>Loader 明确返回不支持；依赖中也没有 XLSX 解析库</td>
-              <td><span class="pill no">不可宣传</span></td>
+              <td>当前 Loader 无解析实现；目标通过 WorkbookDraft 接入 Peak Sheet</td>
+              <td><span class="pill future">当前未交付 · 目标已定</span></td>
             </tr>
             <tr>
               <td>Canvas<br><code>.canvas</code></td>
@@ -868,7 +868,7 @@
         <article class="card copy-no">
           <h3 class="card-title">现在不要说</h3>
           <ul>
-            <li>支持 Word / PowerPoint / Excel 或 Office</li>
+            <li>支持 Word / PowerPoint，或声称 XLSX 已经可用</li>
             <li>支持独立编辑 CSV、JSON、HTML 或 PDF</li>
             <li>支持所有图片的语义搜索</li>
             <li>任何附件都能被模型直接理解</li>
@@ -957,7 +957,8 @@
       </ol>
 
       <p>
-        DOC/DOCX、PPT/PPTX、XLS/XLSX 不进入上述产品线。当前源码中的读取分支不改变这一产品决定。
+        DOC/DOCX、PPT/PPTX 不进入上述产品线。XLSX 与 CSV 一样归入 Peak Sheet 互操作路线，
+        但当前源码仍没有 XLSX 解析和导入闭环。
       </p>
 
       <h3>未来需要一个机器可读的文件能力清单</h3>

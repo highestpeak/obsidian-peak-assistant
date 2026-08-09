@@ -19,12 +19,12 @@ Peak 不应把“支持文件”定义为扩展名白名单，也不应该试图
 这意味着对外不能只说“支持 PDF”“支持 CSV”或“支持图片”，而要说清楚用户能完成的任务：
 
 - PDF 是可阅读、可按页/选区问 AI 的只读文档；
-- CSV 是进入 Peak Sheet 的数据入口，不是另一套独立电子表格真值；
+- CSV 和 XLSX 都是进入 Peak Sheet 的互操作入口，不是创建后的长期电子表格真值；
 - TXT 复用 Markdown 的纯文本子集，但不会在原文件中偷偷写入 Markdown 语法；
 - HTML 是可预览、可编辑、可运行的 AI-era document，并通过受控 bridge 执行交互；
 - Canvas 与 Excalidraw 使用宿主/生态渲染器，Peak 提供结构感知的 AI companion 与可审阅写回；
 - Image 不只做“看图”，还要覆盖区域理解、OCR、确定性变换、生成式编辑和版本管理；
-- DOC / DOCX、PPT / PPTX、XLS / XLSX **不属于 Peak 的产品支持范围**。内部 Loader、文件图标或偶然可提取文本都不构成支持，也不进入宣传。
+- DOC / DOCX、PPT / PPTX **不属于 Peak 的产品支持范围**。内部 Loader、文件图标或偶然可提取文本都不构成支持，也不进入宣传；XLSX 则属于 Peak Sheet 的目标输入/输出格式，但当前尚未实现解析和产品闭环。
 
 本文件定义目标产品合同，不把任何 implementation-pending 能力升级为已交付。
 
@@ -42,23 +42,25 @@ Peak 不应把“支持文件”定义为扩展名白名单，也不应该试图
 
 目标矩阵不能反向污染当前宣传。
 
-### 2.2 CSV 的目标归属是 Peak Sheet
+### 2.2 CSV 与 XLSX 的目标归属都是 Peak Sheet
 
-CSV 是可携带、可交换、可导入的数据文件，不是 Peak Sheet 创建后的长期 machine truth。
+CSV 和 XLSX 都是可携带、可交换、可导入/导出的表格文件，不是 Peak Sheet 创建后的长期 machine truth。二者共享 Peak Sheet 入口，但解析合同不同：CSV 是单一扁平表；XLSX 是 workbook container，可能包含多个 worksheet、公式、类型、样式、合并单元格与隐藏区域。
 
 目标闭环：
 
 ```text
-CSV / flat JSON Array
-  -> DatasetDraft
-  -> schema inference + preview
+CSV / flat JSON Array -> DatasetDraft
+XLSX -> WorkbookDraft -> choose worksheets -> DatasetDraft / SheetDraft
+  -> schema + compatibility diagnostics + preview
   -> owner accept
-  -> DatasetCreatePlan
-  -> Dataset revision 1
-  -> Table / Board / Calendar projections
+  -> DatasetCreatePlan / SheetCreatePlan
+  -> Dataset / Sheet revision 1
+  -> Peak Sheet views and compute
 ```
 
-创建之后，AI 和用户操作都作用于稳定的 Dataset / Field / View / Compute 合同，通过 typed patch 生成新 revision；不得重新生成整份 CSV 覆盖已有修改。原 CSV 保留为用户资产与 provenance，可显式导出新 CSV。
+创建之后，AI 和用户操作都作用于稳定的 Dataset / Sheet / Field / View / Compute 合同，通过 typed patch 生成新 revision；不得重新生成整份 CSV/XLSX 覆盖已有修改。原文件保留为用户资产与 provenance，可显式导出新的 CSV 或 XLSX snapshot。
+
+XLSX 导入必须先展示 worksheet 选择和 compatibility report：哪些公式、日期/数字类型、样式、合并单元格、隐藏行列或命名区域被保留、转换或丢弃。没有这层诊断，就不能把“能读单元格”称为支持 XLSX。
 
 ### 2.3 TXT 复用 Markdown 的纯文本子集
 
@@ -77,11 +79,11 @@ TXT 中不允许：
 - 把 Markdown preview 当成 TXT 的原生视图；
 - 以“用户可能想要格式化”为由改变文件类型。
 
-### 2.4 Office 文件明确不支持
+### 2.4 DOCX 与 PPTX 明确不支持
 
-产品不支持 DOC / DOCX、PPT / PPTX、XLS / XLSX。现有内部文本提取分支只能被视为实现细节或迁移/实验基础，不能出现在用户可见的支持清单、设置承诺或宣传话术里。
+产品不支持 DOC / DOCX、PPT / PPTX。现有内部文本提取分支只能被视为实现细节或迁移/实验基础，不能出现在用户可见的支持清单、设置承诺或宣传话术里。
 
-未来若重新评估，必须作为独立 import / conversion 项目进入 owner review，定义版式保真、批注、公式、媒体、导出和失败语义；不能因为“能提取一些文本”自动升级。
+未来若重新评估 DOCX/PPTX，必须作为独立 import / conversion 项目进入 owner review，定义版式保真、批注、媒体、导出和失败语义；不能因为“能提取一些文本”自动升级。XLSX 不受这项排除约束，它归 Peak Sheet 路线，但当前状态仍是 implementation pending。
 
 ## 3. 第一性原则
 
@@ -182,7 +184,7 @@ AI 运行开始时冻结 source revision、selection、surface mode 和数据 re
 |---|---|---|---|
 | Markdown | Composer | block、selection、document、frontmatter、embed | source-range / block transaction |
 | HTML | Source / Preview / Split + runtime companion | source range、selected element、visible DOM、runtime、data provenance | source patch 或受控 external action |
-| CSV | Raw preview + Open as Peak Sheet | column、row、range、schema inference、source hash | import plan；转换后走 Dataset revision |
+| CSV / XLSX | Import preview + Open as Peak Sheet | row/column/range、worksheet、schema、formula/style compatibility、source hash | import plan；转换后走 Dataset/Sheet revision |
 | Peak Sheet | Table / Board / Calendar | cells、range、field、view、compute、data revision | typed Dataset / Formula / View plan |
 | Raster Image | Image Workspace | whole image、region、OCR、metadata、references | save as new version；显式 replace |
 
@@ -246,9 +248,9 @@ HTML 分三级信任：
 
 重要业务数据不能只存进页面 `localStorage`、内存变量或隐藏 DOM。HTML source 是页面真值；可变数据应来自 Peak Dataset、CSV/JSON、Markdown、registered connector 或其他明确 carrier；AI run 与交互写入另记 durable receipt。sandbox、bridge 和 patch 细节由 Peak File Workspace spec 继续约束。
 
-### 6.3 CSV 与 Peak Sheet：入口和长期真值分离
+### 6.3 CSV、XLSX 与 Peak Sheet：入口和长期真值分离
 
-打开 CSV 时先提供轻量 raw surface：表格预览、delimiter/encoding 诊断、行列选区、字段推断和来源 hash。用户可以直接做低风险修复候选，也可以选择 **Open as Peak Sheet**。
+打开 CSV 时先提供轻量 raw surface：表格预览、delimiter/encoding 诊断、行列选区、字段推断和来源 hash。打开 XLSX 时进入 workbook import surface：列出 worksheet、used range、公式/类型/样式兼容情况和来源 hash。两种格式都以 **Open as Peak Sheet** 完成 preview/accept，不建立第二套 CSV/XLSX 编辑 runtime。
 
 Raw CSV 的 AI 能力：
 
@@ -258,6 +260,14 @@ Raw CSV 的 AI 能力：
 - 预览清洗、列拆分/合并、值映射；
 - 生成导入 schema 和 DatasetDraft。
 
+XLSX import 的 AI 能力：
+
+- 解释 workbook/worksheet 结构并推荐导入范围；
+- 识别 header、typed cells、公式、日期/数字格式、merged cells 和隐藏区域；
+- 诊断 unsupported formulas、跨 sheet reference 和可能的精度/样式损失；
+- 将规则表映射为 DatasetDraft，将保留自由网格语义的表映射为 SheetDraft；
+- 在 owner accept 前预览每个 worksheet 的目标、丢失项和转换规则。
+
 Peak Sheet 的 AI 能力：
 
 - 生成或修改公式、字段、筛选、排序、分组和视图；
@@ -266,7 +276,7 @@ Peak Sheet 的 AI 能力：
 - 创建 Table / Board / Calendar 的新 projection；
 - 把自然语言意图编译成可验证的 DatasetPatchPlan、FormulaPlan、FilterPlan、ViewPlan 或 ComputePlan。
 
-任意动作都绑定 Dataset revision。复杂分析可以生成 insight，但数据变更只能通过 typed plan 进入新 revision。
+任意动作都绑定 Dataset/Sheet revision。复杂分析可以生成 insight，但数据变更只能通过 typed plan 进入新 revision。导出 CSV/XLSX 是显式 snapshot，不默认与原始文件双向同步。
 
 ### 6.4 Raster Image：视觉理解与版本式编辑
 
@@ -357,13 +367,13 @@ Peak Sheet 与 Bases 的边界：Peak Sheet 拥有 Dataset revision 和计算链
 
 draw.io 当前/近期只适合定义为 **generate/export integration**：Peak 可以生成经过校验的 native artifact，但没有对应读取、AI companion 或编辑 surface。生成能力必须和完整支持分开标注。
 
-## 10. 明确不支持的格式
+## 10. 明确不支持或尚未交付的格式
 
 | 格式 | 产品状态 | 允许存在的内部事实 | 禁止表达 |
 |---|---|---|---|
 | DOC / DOCX | 不支持 | 旧 Loader 可能提取部分文本 | 支持 Word、可读取 Word、Office AI |
 | PPT / PPTX | 不支持 | 旧 Loader 可能提取部分文本 | 支持 PowerPoint、理解幻灯片 |
-| XLS / XLSX | 不支持 | 类型/UI 可能出现过扩展名 | 支持 Excel、可打开/计算 XLSX |
+| XLSX | 当前未交付；目标为 Peak Sheet 互操作 | 当前类型/UI 有扩展名，但 Loader 无解析实现 | 当前已支持 Excel；无诊断的 lossless import/export |
 | 未注册附件 | 不支持 | 可以保存为 Vault file | 模型可直接理解任意附件 |
 
 产品层应逐步消除设置、图标、Loader 和宣传之间的假阳性。内部兼容路径如需保留，应默认不可见，并有明确 owner、测试和删除/迁移条件。
@@ -373,7 +383,7 @@ draw.io 当前/近期只适合定义为 **generate/export integration**：Peak �
 | Surface | 用户内容真值 | AI candidate / derived state | 接受方式 |
 |---|---|---|---|
 | Markdown / TXT / HTML / JSON | native source file | patch、render、diagnostic | guarded source transaction |
-| CSV import | original CSV + accepted Dataset revision | DatasetDraft、schema inference | DatasetCreatePlan |
+| CSV/XLSX import | original file + accepted Dataset/Sheet revision | DatasetDraft/WorkbookDraft、schema/compatibility inference | DatasetCreatePlan / SheetCreatePlan |
 | Peak Sheet | Dataset revision | compute/cache/view projection | typed plan → next revision |
 | Raster Image | original + accepted version files | mask、candidate、thumbnail | save version / guarded replace |
 | PDF | original PDF | extracted text、OCR、page context | annotation / materialized note |
@@ -408,14 +418,14 @@ draw.io 当前/近期只适合定义为 **generate/export integration**：Peak �
 3. **原生 viewer + Peak AI companion**：PDF、Canvas、Excalidraw、Bases；
 4. **媒体理解与生成 integration**：Audio、Video、draw.io 等，按任务精确宣传。
 
-Office/XLSX 不在上述产品线中。
+DOCX/PPTX 不在上述产品线中；XLSX 属于 Peak Sheet 的输入/输出互操作格式。
 
 ### 13.2 推荐推进顺序
 
 1. 先完成 capability manifest 与 shared context/effect contract，消除 Loader 假阳性；
 2. 落地 File Workspace foundation，先让 Image、HTML、PDF 共享 shell 和 review；
 3. 将 TXT 作为 Composer plain-text adapter 收口；
-4. 将 CSV / flat JSON Array 接入 Peak Sheet draft/accept；
+4. 将 CSV / flat JSON Array 接入 Peak Sheet draft/accept，再以 WorkbookDraft + compatibility report 接入 XLSX；
 5. 为 Canvas、Excalidraw、Bases 增加独立 native companion，不再依赖“先嵌入 Markdown”；
 6. 再评估 JSON tree、SVG、Audio、Video 等扩展 surface。
 
@@ -427,9 +437,10 @@ Office/XLSX 不在上述产品线中。
 
 - 好：`在 PDF 当前页或选区上向 Peak 提问，并把结论保存为带引用的笔记。`
 - 好：`把 CSV 预览、清洗并确认导入 Peak Sheet，再用 AI 创建公式和视图。`
+- 好（XLSX 交付后）：`选择 XLSX worksheet，审阅公式与样式兼容性，再导入 Peak Sheet。`
 - 好：`在安全预览中检查 AI 生成的 HTML，并对选中组件提出可审阅修改。`
 - 差：`支持 PDF / CSV / HTML。`
-- 禁止：`支持 Office`、`支持 Excel`、`任意文件都能直接问 AI`。
+- 当前禁止：`已支持 Excel/XLSX`、`任意文件都能直接问 AI`；DOCX/PPTX 仍禁止笼统表达为 `支持 Office`。
 
 发布前必须从机器可读 manifest 生成/核对支持页，避免产品页、设置页、Loader 与真实 surface 四套口径漂移。
 
@@ -452,8 +463,8 @@ Office/XLSX 不在上述产品线中。
 - 不为每个扩展名建立独立 AI runtime 或聊天系统；
 - 不复制 Obsidian PDF/Canvas/Bases 或 Excalidraw 的成熟 renderer；
 - 不把所有文件转成 Markdown 后假装支持原格式；
-- 不把 CSV 和 Peak Dataset、Bases 和 Peak Sheet、HTML UI state 和业务数据混成同一个真值；
-- 不因内部 Loader 存在而支持 DOCX/PPTX/XLSX；
+- 不把 CSV/XLSX 和 Peak Dataset/Sheet、Bases 和 Peak Sheet、HTML UI state 和业务数据混成同一个真值；
+- 不因内部 Loader 存在而支持 DOCX/PPTX，也不因类型/UI 出现 XLSX 就宣称其 Peak Sheet 入口已经交付；
 - 不在没有 revision、review 和 recovery 的情况下让 AI 直接覆盖 native file。
 
 ## 17. 本轮边界

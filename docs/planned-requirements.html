@@ -121,10 +121,11 @@
         <span class="requirement-status">planned · spike-first · research candidate</span>
         <h3>Peak Sheet AI 创建与多视图闭环</h3>
         <code class="requirement-id">PR-PEAK-SHEET-VIEW-ADAPTER-SPIKES</code>
-        <p>先建立共享 DatasetDraft、Dataset、FieldDefinition、ViewDefinition、Compute 与 DatasetPatch 合同，再让 Copilot 生成的 CSV / 扁平 JSON Array 经预览确认创建 Peak Sheet；任何 AI 操作或视图都不能拥有第二份记录状态。</p>
+        <p>先建立共享 DatasetDraft、WorkbookDraft、Dataset / Sheet revision、FieldDefinition、ViewDefinition、Compute 与 typed patch 合同，再让 Copilot 生成的 CSV / 扁平 JSON Array 以及用户导入的 XLSX 经预览确认创建 Peak Sheet；任何 AI 操作、文件载体或视图都不能拥有第二份记录状态。</p>
         <ul class="requirement-list">
           <li>Copilot 可以生成 CSV 或扁平 JSON Array；系统将其解析为 DatasetDraft，用户确认字段和数据后创建 revision 1、receipt，并直接打开表格。</li>
-          <li>CSV / JSON Array 只是创建入口，不是 canonical Dataset；创建后的 AI 修改必须走 DatasetPatchPlan、FormulaPlan、FilterPlan、ViewPlan 或 ComputePlan，禁止整表覆盖。</li>
+          <li>XLSX 通过 WorkbookDraft 进入同一 Peak Sheet 入口：先选择 worksheet，展示公式、类型、样式、合并单元格和隐藏区域的兼容性诊断，再把每张表映射为 DatasetDraft 或经 owner gate 确认的 SheetDraft。</li>
+          <li>CSV / JSON Array / XLSX 只是创建、导入或导出载体，不是 canonical Dataset / Sheet；创建后的 AI 修改必须走 DatasetPatchPlan、FormulaPlan、FilterPlan、ViewPlan 或 ComputePlan，禁止整表覆盖和隐藏双向同步。</li>
           <li>Glide Data Grid 只作为表格 viewport 候选；字段、公式、统计、组合筛选 / 排序 / 分组、AI 与持久化继续由 Peak 管理。</li>
           <li>FullCalendar 只使用免费 MIT Standard 插件验证 range CRUD、drag / resize、sidecar 与失败回滚；禁止 Premium / Scheduler。</li>
           <li>看板保持自研，不使用 Atlassian Pragmatic Drag and Drop；显式 Move、键盘路径和 pointer drag 共用同一 DatasetPatch。</li>

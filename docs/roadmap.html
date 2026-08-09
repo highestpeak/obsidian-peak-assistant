@@ -295,7 +295,7 @@
               </tr>
               <tr>
                 <td><strong>Peak File Workspace · 多文件预览与 AI 编辑</strong></td>
-                <td>把 Image、HTML、PDF 从“可读取的附件”提升为一等文件工作区：共享 file surface registry、AI sidecar、candidate review 与版本保存。统一能力模型进一步锁定 CSV → Peak Sheet、TXT 复用纯文本能力、Canvas/Excalidraw native companion，以及 DOCX/PPTX/XLSX 产品不支持边界。默认不覆盖原文件，也不复制 AI runtime。</td>
+                <td>把 Image、HTML、PDF 从“可读取的附件”提升为一等文件工作区：共享 file surface registry、AI sidecar、candidate review 与版本保存。统一能力模型进一步锁定 CSV/XLSX → Peak Sheet、TXT 复用纯文本能力、Canvas/Excalidraw native companion，以及 DOCX/PPTX 产品不支持边界。默认不覆盖原文件，也不复制 AI runtime。</td>
                 <td><a href="superpowers/specs/2026-07-24-peak-file-workspace.md">正式方案</a><br><a href="superpowers/specs/2026-08-09-file-surface-ai-capability-model.md">跨格式 AI 能力模型</a><br><a href="research/2026-07-31-file-format-capability-audit/index.html">全格式能力矩阵</a><br><a href="gstack/peak-file-workspace-2026-07-24/index.html">视觉方案</a><br><a href="research/2026-07-24-peak-file-workspace/README.md">能力审计</a></td>
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
@@ -452,8 +452,8 @@
               <tr>
                 <td>2026-07-22</td>
                 <td><strong>Peak Sheet</strong>（Peak Dataset + Peak Compute Engine）</td>
-                <td>多维表格提案补齐 Dataset 层：自由 Sheet 可经确认转换为稳定 ID + 基础 Schema 的结构化数据。首版只验证 Markdown table → Dataset → Table + Chart → ComputePlan → preview / accept → manual refresh。<br><strong>2026-07-30 需求调整：</strong>外部多视图工作流信号确认“一份 Dataset，多种工作视图”的产品表达；早期增加 View adapter 合同和移动消费模式，但 Gallery、Calendar、Board、Map、3D globe、Relation、脚本、自动化与 Portal 继续后移。<br><strong>2026-07-31 计算工作面纠偏：</strong>Peak Sheet 不能退化成简单多维表格。默认工作面回到自由单元格 / 区域公式、公式栏、选区统计、数字与日期格式、对齐换行和条件格式；结构化字段、计算列与多视图叠加在这层能力之上。Mock 展示较完整的产品基线，不等于把全部函数和视图塞进同一实施波。仍属调研候选，不代表实施承诺。</td>
-                <td><a href="research/2026-07-22-peak-sheet-compute/README.md">产品与架构评估</a><br><a href="gstack/peak-sheet-multiview-2026-07-30/index.html">交互 Mock</a></td>
+                <td>多维表格提案补齐 Dataset 层：自由 Sheet 可经确认转换为稳定 ID + 基础 Schema 的结构化数据。首版只验证 Markdown table → Dataset → Table + Chart → ComputePlan → preview / accept → manual refresh。<br><strong>2026-07-30 需求调整：</strong>外部多视图工作流信号确认“一份 Dataset，多种工作视图”的产品表达；早期增加 View adapter 合同和移动消费模式，但 Gallery、Calendar、Board、Map、3D globe、Relation、脚本、自动化与 Portal 继续后移。<br><strong>2026-07-31 计算工作面纠偏：</strong>Peak Sheet 不能退化成简单多维表格。默认工作面回到自由单元格 / 区域公式、公式栏、选区统计、数字与日期格式、对齐换行和条件格式；结构化字段、计算列与多视图叠加在这层能力之上。<br><strong>2026-08-09 文件入口纠偏：</strong>CSV 与 XLSX 都归入 Peak Sheet 互操作路线。CSV 经 DatasetDraft；XLSX 经 WorkbookDraft、worksheet 选择和公式/类型/样式兼容性审阅，再映射为 DatasetDraft 或经 owner gate 批准的 SheetDraft。原文件只是输入/导出 snapshot，不成为隐藏 canonical store。Mock 与计划仍不等于生产已交付。</td>
+                <td><a href="research/2026-07-22-peak-sheet-compute/README.md">产品与架构评估</a><br><a href="superpowers/plans/2026-08-02-peak-sheet-view-adapter-spike-and-rollout-plan.md">当前实施计划</a><br><a href="superpowers/specs/2026-08-09-file-surface-ai-capability-model.md">跨格式 AI 能力模型</a><br><a href="gstack/peak-sheet-multiview-2026-07-30/index.html">交互 Mock</a></td>
               </tr>
               <tr>
                 <td>2026-07-27</td>
