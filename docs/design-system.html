@@ -3,494 +3,700 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Peak Assistant 设计系统：视觉基础、主题、宿主隔离、共享组件、产品应用与迁移治理。">
+  <meta name="description" content="Peak Assistant 设计系统：真实生产组件、独立主题、Obsidian 宿主隔离与产品应用。">
   <title>Peak Design System</title>
+
+  <!-- Production sources: specimens below intentionally consume the same CSS as Peak. -->
+  <link rel="stylesheet" href="../styles.tailwind.css">
+  <link rel="stylesheet" href="../src/styles/peak-tokens.css">
+  <link rel="stylesheet" href="../src/styles/peak-components.css">
+
   <style>
     * { box-sizing: border-box; }
 
     :root {
       color-scheme: light;
-      --page: #f4f4f7;
-      --surface: #ffffff;
-      --surface-raised: #fafafa;
-      --surface-sunken: #f3f4f6;
-      --surface-overlay: #ffffff;
-      --border: #e5e7eb;
-      --border-soft: #ececef;
-      --border-strong: #d1d5db;
-      --text: #2e3338;
-      --text-2: #6c757d;
-      --text-3: #999999;
-      --text-faint: #b9bcc1;
-      --accent: #7c3aed;
-      --accent-hover: #6d28d9;
-      --accent-text: #6d28d9;
-      --accent-fg: #ffffff;
-      --accent-tint: rgba(124, 58, 237, 0.10);
-      --accent-soft: rgba(124, 58, 237, 0.25);
-      --success: #15803d;
-      --success-bg: rgba(34, 197, 94, 0.12);
-      --warning: #b45309;
-      --warning-bg: rgba(245, 158, 11, 0.14);
-      --danger: #b91c1c;
-      --danger-bg: rgba(239, 68, 68, 0.12);
-      --info: #1d4ed8;
-      --info-bg: rgba(59, 130, 246, 0.12);
-      --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
-      --shadow-popover: 0 4px 12px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.04);
-      --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
-      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
-      --font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-      --radius-sm: 4px;
-      --radius-md: 8px;
-      --radius-lg: 12px;
-      --radius-xl: 16px;
-      --radius-pill: 9999px;
-      --space-density: 1;
-      --motion-fast: 100ms;
-      --motion-base: 150ms;
-      --motion-slow: 300ms;
-      --ease: cubic-bezier(.2, .8, .2, 1);
+      --ds-canvas: #f5f6f2;
+      --ds-paper: #fbfcf9;
+      --ds-ink: #19231f;
+      --ds-muted: #647069;
+      --ds-faint: #919a95;
+      --ds-line: #dbe1dc;
+      --ds-line-strong: #c8d0ca;
+      --ds-accent: #2d6555;
+      --ds-accent-strong: #1f4f42;
+      --ds-accent-soft: #e5efea;
+      --ds-blue: #42647a;
+      --ds-warm: #9b6738;
+      --ds-danger: #a74b49;
+      --ds-code: #eef1ed;
+      --ds-shadow: 0 14px 42px rgba(34, 50, 42, .08);
+      --ds-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+      --ds-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
     }
-
-    body[data-appearance="dark"] {
-      color-scheme: dark;
-      --page: #11111b;
-      --surface: #1e1e2e;
-      --surface-raised: #252535;
-      --surface-sunken: #181825;
-      --surface-overlay: #2a2a3c;
-      --border: #313244;
-      --border-soft: #2a2b3a;
-      --border-strong: #45475a;
-      --text: #cdd6f4;
-      --text-2: #a6adc8;
-      --text-3: #7f849c;
-      --text-faint: #585b70;
-      --accent: #a78bfa;
-      --accent-hover: #c4b5fd;
-      --accent-text: #c4b5fd;
-      --accent-fg: #1e1b2e;
-      --accent-tint: rgba(167, 139, 250, 0.16);
-      --accent-soft: rgba(167, 139, 250, 0.30);
-      --success: #86efac;
-      --success-bg: rgba(74, 222, 128, 0.15);
-      --warning: #fcd34d;
-      --warning-bg: rgba(251, 191, 36, 0.16);
-      --danger: #fca5a5;
-      --danger-bg: rgba(248, 113, 113, 0.16);
-      --info: #93c5fd;
-      --info-bg: rgba(96, 165, 250, 0.15);
-      --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
-      --shadow-popover: 0 6px 18px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
-      --shadow-modal: 0 18px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.5);
-    }
-
-    body[data-pack="quiet-moss"] {
-      --accent: #1f6b52;
-      --accent-hover: #17533f;
-      --accent-text: #175d47;
-      --accent-fg: #ffffff;
-      --accent-tint: rgba(31, 107, 82, 0.11);
-      --accent-soft: rgba(31, 107, 82, 0.28);
-    }
-
-    body[data-pack="quiet-moss"][data-appearance="dark"] {
-      --accent: #69c9a6;
-      --accent-hover: #90ddc1;
-      --accent-text: #90ddc1;
-      --accent-fg: #10251e;
-      --accent-tint: rgba(105, 201, 166, 0.15);
-      --accent-soft: rgba(105, 201, 166, 0.30);
-    }
-
-    body[data-density="compact"] { --space-density: .78; }
-    body[data-motion="reduced"] { --motion-fast: 0ms; --motion-base: 0ms; --motion-slow: 0ms; }
 
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      background: var(--page);
-      color: var(--text);
-      font-family: var(--font-sans);
-      font-size: 14px;
-      line-height: 1.6;
-      transition: background var(--motion-base) var(--ease), color var(--motion-base) var(--ease);
+      background: var(--ds-canvas);
+      color: var(--ds-ink);
+      font-family: var(--ds-font);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+    body.theme-dark {
+      --ds-canvas: #151a18;
+      --ds-paper: #1b211e;
+      --ds-ink: #e5ebe7;
+      --ds-muted: #a4ada7;
+      --ds-faint: #707b74;
+      --ds-line: #313b35;
+      --ds-line-strong: #465149;
+      --ds-accent: #7bb9a4;
+      --ds-accent-strong: #a7d4c4;
+      --ds-accent-soft: #243b33;
+      --ds-blue: #91b7cf;
+      --ds-warm: #d3a06f;
+      --ds-danger: #e08a86;
+      --ds-code: #222a26;
+      --ds-shadow: 0 18px 52px rgba(0, 0, 0, .28);
+    }
+
+    body[data-pack="quiet-ink"] .pktw-root,
+    body[data-pack="quiet-ink"] .peak-design-root {
+      --pk-accent: #52647f;
+      --pk-accent-hover: #3f506a;
+      --pk-accent-tint: rgba(82, 100, 127, .10);
+      --pk-accent-soft: rgba(82, 100, 127, .22);
+      --pk-accent-text: #42546f;
+      --pk-accent-fg: #ffffff;
+      --pk-border-accent: rgba(82, 100, 127, .26);
+      --pk-state-selected: rgba(82, 100, 127, .10);
+    }
+    body.theme-dark[data-pack="quiet-ink"] .pktw-root,
+    body.theme-dark[data-pack="quiet-ink"] .peak-design-root {
+      --pk-accent: #9cafca;
+      --pk-accent-hover: #bdcbe0;
+      --pk-accent-tint: rgba(156, 175, 202, .14);
+      --pk-accent-soft: rgba(156, 175, 202, .24);
+      --pk-accent-text: #bdcbe0;
+      --pk-accent-fg: #18202b;
+      --pk-border-accent: rgba(156, 175, 202, .30);
+      --pk-state-selected: rgba(156, 175, 202, .16);
+    }
+    body[data-density="compact"] .pktw-root { --pk-space-density: .78; }
+    body[data-motion="reduced"] .pktw-root *,
+    body[data-motion="reduced"] .pktw-root *::before,
+    body[data-motion="reduced"] .pktw-root *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
     }
 
     button, input, select { font: inherit; }
-    button { color: inherit; }
-    a { color: var(--accent-text); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-    a:hover { color: var(--accent-hover); }
-    code, pre { font-family: var(--font-mono); }
-    code { font-size: .9em; }
+    a { color: inherit; }
+    code, pre { font-family: var(--ds-mono); }
 
-    .topbar {
+    .ds-header {
       position: sticky;
       top: 0;
-      z-index: 30;
+      z-index: 100;
+      border-bottom: 1px solid color-mix(in srgb, var(--ds-line) 78%, transparent);
+      background: color-mix(in srgb, var(--ds-paper) 92%, transparent);
+      backdrop-filter: blur(18px);
+    }
+    .ds-header__inner {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      width: min(1180px, calc(100% - 40px));
+      min-height: 58px;
+      margin: 0 auto;
+    }
+    .ds-brand {
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
+      flex: 0 0 auto;
+      color: var(--ds-ink);
+      text-decoration: none;
+    }
+    .ds-brand strong { font-size: 14px; letter-spacing: -.015em; }
+    .ds-brand span { color: var(--ds-faint); font: 10px/1 var(--ds-mono); }
+    .ds-nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+      margin-left: auto;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .ds-nav::-webkit-scrollbar { display: none; }
+    .ds-nav a {
+      flex: 0 0 auto;
+      padding: 8px 9px;
+      border-radius: 5px;
+      color: var(--ds-muted);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .ds-nav a:hover,
+    .ds-nav a[aria-current="true"] { color: var(--ds-accent-strong); background: var(--ds-accent-soft); }
+
+    .ds-main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 64px 0 110px;
+    }
+    .ds-section {
+      padding-top: 86px;
+      scroll-margin-top: 36px;
+    }
+    .ds-section:first-child { padding-top: 0; }
+    .ds-section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      padding-top: 20px;
+      margin-bottom: 30px;
+      border-top: 1px solid var(--ds-line-strong);
+    }
+    .ds-section-head h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 50px);
+      line-height: 1.08;
+      letter-spacing: -.045em;
+    }
+    .ds-section-head p {
+      max-width: 720px;
+      margin: 10px 0 0;
+      color: var(--ds-muted);
+      font-size: 15px;
+    }
+    .ds-index { color: var(--ds-faint); font: 10px/1 var(--ds-mono); }
+
+    .ds-hero {
+      min-height: 560px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 52px 0 36px;
+      border-bottom: 1px solid var(--ds-line-strong);
+    }
+    .ds-kicker {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--ds-accent-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .ds-kicker::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: var(--ds-accent);
+    }
+    .ds-hero h1 {
+      max-width: 980px;
+      margin: 38px 0 28px;
+      font-size: clamp(54px, 8vw, 96px);
+      line-height: .96;
+      letter-spacing: -.07em;
+    }
+    .ds-hero__lead {
+      max-width: 760px;
+      margin: 0;
+      color: var(--ds-muted);
+      font-size: clamp(17px, 2vw, 21px);
+      line-height: 1.7;
+    }
+    .ds-hero__foot {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 30px;
+      margin-top: 72px;
+    }
+    .ds-principles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 24px;
+      color: var(--ds-muted);
+      font-size: 12px;
+    }
+    .ds-principles b { color: var(--ds-ink); }
+    .ds-status { color: var(--ds-faint); font: 10px/1.5 var(--ds-mono); text-align: right; }
+
+    .ds-statement-list { border-top: 1px solid var(--ds-line); }
+    .ds-statement {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 40px;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--ds-line);
+    }
+    .ds-statement h3 { margin: 0; font-size: 16px; }
+    .ds-statement p { margin: 0; color: var(--ds-muted); }
+    .ds-statement strong { color: var(--ds-ink); }
+
+    .ds-boundary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+      gap: 34px;
+      padding: 30px 0;
+      border-top: 1px solid var(--ds-line);
+      border-bottom: 1px solid var(--ds-line);
+    }
+    .ds-boundary__line { background: var(--ds-line); }
+    .ds-boundary h3 { margin: 0 0 14px; font-size: 18px; }
+    .ds-boundary ul { margin: 0; padding: 0; list-style: none; }
+    .ds-boundary li { display: flex; gap: 10px; padding: 7px 0; color: var(--ds-muted); }
+    .ds-boundary li::before { content: "—"; color: var(--ds-faint); }
+    .ds-boundary .is-denied::before { color: var(--ds-danger); }
+    .ds-boundary .is-allowed::before { color: var(--ds-accent); }
+
+    .ds-theme-lab {
+      overflow: hidden;
+      border: 1px solid var(--ds-line-strong);
+      border-radius: 8px;
+      background: var(--ds-paper);
+      box-shadow: var(--ds-shadow);
+    }
+    .ds-theme-lab__bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 54px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--ds-line);
+    }
+    .ds-theme-lab__bar strong { font-size: 13px; }
+    .ds-theme-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .ds-theme-controls label { display: flex; align-items: center; gap: 6px; color: var(--ds-muted); font-size: 10px; }
+    .ds-theme-controls select {
+      height: 30px;
+      padding: 0 26px 0 9px;
+      border: 1px solid var(--ds-line);
+      border-radius: 5px;
+      background: var(--ds-paper);
+      color: var(--ds-ink);
+      font-size: 11px;
+    }
+    .ds-theme-lab__body { padding: 28px; background: var(--pk-bg-secondary); }
+    .ds-theme-preview {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-lg);
+      background: var(--pk-surface);
+      box-shadow: var(--pk-shadow-card);
+    }
+    .ds-theme-preview__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .ds-theme-preview__head strong { color: var(--pk-text-primary); font-size: var(--pk-text-lg); }
+    .ds-theme-preview__head small { color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
+    .ds-theme-preview__actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .ds-code {
+      overflow: auto;
+      margin: 20px 0 0;
+      padding: 18px 20px;
+      border-left: 2px solid var(--ds-accent);
+      background: var(--ds-code);
+      color: var(--ds-muted);
+      font-size: 11px;
+      line-height: 1.75;
+    }
+
+    .ds-foundation { border-top: 1px solid var(--ds-line); }
+    .ds-foundation-row {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 40px;
+      padding: 30px 0;
+      border-bottom: 1px solid var(--ds-line);
+    }
+    .ds-foundation-row h3 { margin: 0; font-size: 17px; }
+    .ds-foundation-row > div > p { margin: 0 0 18px; color: var(--ds-muted); }
+    .ds-color-strip { display: grid; grid-template-columns: repeat(8, 1fr); min-height: 96px; border: 1px solid var(--ds-line); }
+    .ds-swatch { position: relative; background: var(--c); }
+    .ds-swatch span {
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      bottom: 6px;
+      padding: 3px 4px;
+      background: color-mix(in srgb, var(--ds-paper) 84%, transparent);
+      color: var(--ds-ink);
+      font: 8px/1.2 var(--ds-mono);
+      text-align: center;
+    }
+    .ds-type-scale { display: grid; gap: 0; border-top: 1px solid var(--ds-line); }
+    .ds-type-line {
+      display: grid;
+      grid-template-columns: 80px 1fr 110px;
+      gap: 20px;
+      align-items: baseline;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--ds-line);
+    }
+    .ds-type-line code, .ds-type-line small { color: var(--ds-faint); font-size: 10px; }
+    .ds-spacing { display: flex; align-items: end; gap: 13px; min-height: 86px; }
+    .ds-spacing span { display: grid; gap: 6px; place-items: end center; color: var(--ds-faint); font: 9px/1 var(--ds-mono); }
+    .ds-spacing i { display: block; width: 24px; height: calc(var(--s) * 1px); min-height: 4px; background: var(--ds-accent); }
+    .ds-shape-line { display: flex; flex-wrap: wrap; gap: 12px; }
+    .ds-shape {
+      display: grid;
+      place-items: center;
+      width: 112px;
+      height: 70px;
+      border: 1px solid var(--ds-line-strong);
+      border-radius: var(--r);
+      background: var(--ds-paper);
+      color: var(--ds-muted);
+      font-size: 10px;
+    }
+    .ds-motion-line { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--ds-line); }
+    .ds-motion-line div { padding: 15px; border-right: 1px solid var(--ds-line); }
+    .ds-motion-line div:last-child { border-right: 0; }
+    .ds-motion-line b { display: block; margin-bottom: 4px; font-size: 12px; }
+    .ds-motion-line span { color: var(--ds-muted); font-size: 11px; }
+
+    .ds-production-note {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 20px;
-      min-height: 58px;
-      padding: 10px 24px;
-      border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--surface) 92%, transparent);
-      backdrop-filter: blur(14px);
+      padding: 12px 0;
+      margin-bottom: 16px;
+      border-top: 1px solid var(--ds-line);
+      border-bottom: 1px solid var(--ds-line);
+      color: var(--ds-muted);
+      font-size: 11px;
+    }
+    .ds-production-note code { color: var(--ds-accent-strong); }
+
+    .ds-component-board {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid var(--ds-line-strong);
+      border-radius: 8px;
+      background: var(--pk-bg-secondary);
+    }
+    .ds-component-group {
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 26px;
+      align-items: start;
+      padding: 24px;
+      border-bottom: 1px solid var(--pk-border);
+    }
+    .ds-component-group:last-child { border-bottom: 0; }
+    .ds-component-copy b { display: block; color: var(--pk-text-primary); font-size: var(--pk-text-md); }
+    .ds-component-copy span { display: block; margin-top: 5px; color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
+    .ds-component-demo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .ds-icon {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
-    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .brand-mark {
+    .ds-surface-list { display: flex; flex-direction: column; gap: 58px; }
+    .ds-surface {
+      border-top: 1px solid var(--ds-line-strong);
+      padding-top: 18px;
+    }
+    .ds-surface__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+    .ds-surface__head h3 { margin: 0; font-size: 22px; letter-spacing: -.025em; }
+    .ds-surface__head p { margin: 5px 0 0; color: var(--ds-muted); }
+    .ds-surface__source { flex: 0 0 auto; color: var(--ds-faint); font: 9px/1.5 var(--ds-mono); text-align: right; }
+    .ds-stage {
+      overflow: hidden;
+      border: 1px solid var(--ds-line-strong);
+      border-radius: 8px;
+      background: var(--pk-bg-secondary);
+      box-shadow: var(--ds-shadow);
+    }
+    .ds-rules {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--ds-line);
+      background: var(--ds-paper);
+    }
+    .ds-rules div { padding: 14px 16px; border-right: 1px solid var(--ds-line); }
+    .ds-rules div:last-child { border-right: 0; }
+    .ds-rules b { display: block; margin-bottom: 3px; font-size: 11px; }
+    .ds-rules span { color: var(--ds-muted); font-size: 10px; }
+
+    /* Composer specimen: actual frontmatter classes from the production Tailwind bundle. */
+    .ds-composer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 48px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--pk-border-soft);
+      background: var(--pk-surface);
+    }
+    .ds-composer-bar__left, .ds-composer-bar__right { display: flex; align-items: center; gap: 8px; }
+    .ds-composer-title { color: var(--pk-text-secondary); font-size: var(--pk-text-base); }
+    .ds-composer-workspace { padding: 34px; background: var(--pk-bg-secondary); }
+    .ds-composer-paper {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      padding: 36px 42px 48px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-lg);
+      background: var(--pk-surface);
+      box-shadow: var(--pk-shadow-card);
+    }
+    .ds-composer-copy { margin-top: 22px; color: var(--pk-text-primary); font-size: var(--pk-text-lg); line-height: 1.8; }
+    .ds-composer-copy a { color: var(--pk-info-text); text-decoration: none; }
+    .ds-origin {
+      display: inline-flex;
+      margin-left: 5px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--pk-success-bg);
+      color: var(--pk-success-text);
+      font-size: 9px;
+      font-style: normal;
+    }
+    .ds-origin--manual { background: var(--pk-surface-sunken); color: var(--pk-text-secondary); }
+
+    /* Chat specimen: exact retained-surface classes plus small doc-only fixtures. */
+    .ds-chat-shell {
+      display: grid;
+      grid-template-columns: 205px minmax(0, 1fr) 190px;
+      height: 620px;
+      background: var(--pk-bg);
+    }
+    .ds-chat-left { padding: 10px 8px; overflow: hidden; }
+    .ds-chat-left__brand { display: flex; align-items: center; gap: 8px; padding: 7px 8px 12px; color: var(--pk-text-primary); font-size: var(--pk-text-md); font-weight: 650; }
+    .ds-chat-left__section { padding: 13px 8px 5px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); font-weight: 700; letter-spacing: .04em; }
+    .ds-chat-navrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 31px;
+      padding: 0 8px;
+      border-radius: var(--pk-radius-sm);
+      color: var(--pk-text-secondary);
+      font-size: var(--pk-text-base);
+    }
+    .ds-chat-navrow[data-active="true"] { background: var(--pk-state-selected); color: var(--pk-text-primary); }
+    .ds-chat-main { min-width: 0; height: 100%; }
+    .ds-chat-main .pkchat-shell { height: 100%; }
+    .ds-chat-main .pkchat-body { display: flex; min-height: 0; }
+    .ds-chat-main .pkchat-msg-list { justify-content: flex-start; }
+    .ds-chat-right { padding: 14px 12px; overflow: hidden; }
+    .ds-chat-right h4 { margin: 0 0 12px; color: var(--pk-text-primary); font-size: var(--pk-text-base); }
+    .ds-outline-row { display: flex; gap: 7px; padding: 7px 5px; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .ds-outline-row span:first-child { color: var(--pk-text-faint); font-family: var(--pk-font-mono); }
+    .ds-user-line { max-width: 72%; margin-left: auto; padding: 5px 0; color: var(--pk-text-primary); font-size: var(--pk-text-lg); line-height: 1.6; text-align: right; }
+    .ds-chat-answer { color: var(--pk-text-primary); font-size: var(--pk-text-lg-plus); line-height: 1.7; }
+    .ds-chat-answer p { margin: 0 0 10px; }
+    .ds-chat-meta { color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
+
+    /* Search specimen: production geometry and row anatomy. */
+    .ds-search-shell { display: grid; grid-template-columns: minmax(0, 1fr) 270px; min-height: 560px; background: var(--pk-surface); }
+    .ds-search-main { min-width: 0; border-right: 1px solid var(--pk-border-soft); }
+    .ds-search-head { padding: 16px; border-bottom: 1px solid var(--pk-border-soft); }
+    .ds-search-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-full);
+      background: var(--pk-surface-raised);
+      color: var(--pk-text-secondary);
+      box-shadow: var(--pk-shadow-sm);
+    }
+    .ds-search-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px 0;
+    }
+    .ds-result-list { padding: 10px 12px 18px; }
+    .ds-result-row {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 7px;
+      padding: 12px 36px 12px 14px;
+      border-radius: var(--pk-radius-md);
+      color: var(--pk-text-primary);
+    }
+    .ds-result-row[data-selected="true"] { background: var(--pk-indigo-bg); }
+    .ds-result-row[data-selected="true"]::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      border-radius: 0 var(--pk-radius-full) var(--pk-radius-full) 0;
+      background: var(--pk-accent);
+    }
+    .ds-file-icon {
       display: grid;
       place-items: center;
       width: 28px;
       height: 28px;
-      border-radius: var(--radius-md);
-      background: var(--accent);
-      color: var(--accent-fg);
-      box-shadow: var(--shadow-card);
-      font-weight: 800;
+      flex: 0 0 28px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-md);
+      background: var(--pk-surface);
+      color: var(--pk-text-secondary);
     }
-    .brand strong { font-size: 14px; letter-spacing: -.01em; }
-    .brand span { color: var(--text-3); font-size: 12px; }
+    .ds-result-copy { min-width: 0; flex: 1; }
+    .ds-result-title { display: flex; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 800; line-height: 1.2; }
+    .ds-result-score { margin-left: auto; padding: 2px 6px; border-radius: var(--pk-radius-full); background: var(--pk-accent-tint); color: var(--pk-accent-text); font-size: var(--pk-text-xs); font-weight: 600; }
+    .ds-result-snippet { margin-top: 5px; color: var(--pk-text-secondary); font-size: 12px; line-height: 1.45; }
+    .ds-result-meta { margin-top: 4px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); opacity: .72; }
+    .ds-search-inspector { padding: 17px; background: var(--pk-bg-secondary); }
+    .ds-search-inspector h4 { margin: 0 0 4px; color: var(--pk-text-primary); font-size: var(--pk-text-md); }
+    .ds-search-inspector > p { margin: 0 0 18px; color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
+    .ds-inspector-section { padding: 13px 0; border-top: 1px solid var(--pk-border-soft); }
+    .ds-inspector-section b { color: var(--pk-text-primary); font-size: var(--pk-text-sm); }
+    .ds-inspector-section p { margin: 5px 0 0; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
 
-    .theme-lab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-    .theme-lab label { display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 11px; }
-    .theme-lab select {
-      height: 32px;
-      padding: 0 28px 0 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      background: var(--surface);
-      color: var(--text);
-    }
+    /* Settings specimen uses the real pk-row primitive. */
+    .ds-settings-shell { display: grid; grid-template-columns: 180px minmax(0, 1fr); min-height: 530px; background: var(--pk-bg-secondary); }
+    .ds-settings-nav { padding: 18px 12px; border-right: 1px solid var(--pk-border-soft); }
+    .ds-settings-nav h4 { margin: 0 8px 13px; color: var(--pk-text-primary); font-size: var(--pk-text-md); }
+    .ds-settings-tab { padding: 8px; border-radius: var(--pk-radius-sm); color: var(--pk-text-secondary); font-size: var(--pk-text-base); }
+    .ds-settings-tab[data-active="true"] { background: var(--pk-state-selected); color: var(--pk-accent-text); font-weight: 600; }
+    .ds-settings-content { padding: 24px; }
+    .ds-settings-content h3 { margin: 0; color: var(--pk-text-primary); font-size: var(--pk-text-xl); }
+    .ds-settings-content > p { margin: 4px 0 22px; color: var(--pk-text-tertiary); font-size: var(--pk-text-base); }
+    .ds-settings-section { margin-top: 22px; }
+    .ds-settings-section__head { margin-bottom: 8px; }
+    .ds-settings-section__head b { display: block; color: var(--pk-text-primary); font-size: var(--pk-text-md); }
+    .ds-settings-section__head span { color: var(--pk-text-tertiary); font-size: var(--pk-text-base); }
 
-    .layout {
+    /* Graph specimen: Cytoscape palette and shape rules copied from production. */
+    .ds-graph-shell { display: grid; grid-template-columns: minmax(0, 1fr) 250px; min-height: 570px; background: var(--pk-surface); }
+    .ds-graph-main { position: relative; min-width: 0; overflow: hidden; border-right: 1px solid var(--pk-border-soft); background: var(--pk-bg-secondary); }
+    .ds-graph-toolbar { position: absolute; z-index: 2; left: 16px; right: 16px; top: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .ds-graph-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .ds-graph-inspector { padding: 18px; background: var(--pk-surface); }
+    .ds-graph-inspector h4 { margin: 0 0 4px; color: var(--pk-text-primary); font-size: var(--pk-text-md); }
+    .ds-graph-inspector > small { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .ds-graph-fact { padding: 13px 0; border-top: 1px solid var(--pk-border-soft); }
+    .ds-graph-fact:first-of-type { margin-top: 18px; }
+    .ds-graph-fact b { display: block; color: var(--pk-text-primary); font-size: var(--pk-text-sm); }
+    .ds-graph-fact span { color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+
+    .ds-matrix { width: 100%; border-collapse: collapse; table-layout: fixed; border-top: 1px solid var(--ds-line-strong); }
+    .ds-matrix th, .ds-matrix td { padding: 14px 12px; border-bottom: 1px solid var(--ds-line); vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+    .ds-matrix th { color: var(--ds-faint); font-size: 10px; font-weight: 600; }
+    .ds-matrix td { color: var(--ds-muted); font-size: 11px; }
+    .ds-matrix td:first-child { color: var(--ds-ink); font-weight: 700; }
+
+    .ds-roadmap { border-top: 1px solid var(--ds-line); counter-reset: phase; }
+    .ds-phase {
       display: grid;
-      grid-template-columns: 238px minmax(0, 1080px);
-      gap: 44px;
-      width: min(1400px, calc(100% - 48px));
-      margin: 0 auto;
-      padding: 34px 0 96px;
+      grid-template-columns: 80px 220px minmax(0, 1fr);
+      gap: 24px;
+      padding: 22px 0;
+      border-bottom: 1px solid var(--ds-line);
+      counter-increment: phase;
+    }
+    .ds-phase::before { content: "0" counter(phase); color: var(--ds-faint); font: 10px/1.5 var(--ds-mono); }
+    .ds-phase h3 { margin: 0; font-size: 15px; }
+    .ds-phase p { margin: 0; color: var(--ds-muted); }
+
+    .ds-footer { margin-top: 90px; padding-top: 22px; border-top: 1px solid var(--ds-line-strong); color: var(--ds-faint); font-size: 11px; }
+    .ds-footer a { color: var(--ds-accent-strong); }
+
+    @media (max-width: 900px) {
+      .ds-header__inner { width: min(100% - 24px, 1180px); }
+      .ds-brand span { display: none; }
+      .ds-main { width: min(100% - 28px, 1180px); padding-top: 38px; }
+      .ds-hero { min-height: 500px; padding-top: 28px; }
+      .ds-statement, .ds-foundation-row { grid-template-columns: 1fr; gap: 10px; }
+      .ds-boundary { grid-template-columns: 1fr; }
+      .ds-boundary__line { height: 1px; }
+      .ds-component-group { grid-template-columns: 1fr; gap: 14px; }
+      .ds-chat-shell { grid-template-columns: 160px minmax(0, 1fr); height: 600px; }
+      .ds-chat-right { display: none; }
+      .ds-search-shell, .ds-graph-shell { grid-template-columns: 1fr; }
+      .ds-search-inspector, .ds-graph-inspector { display: none; }
+      .ds-settings-shell { grid-template-columns: 145px minmax(0, 1fr); }
     }
 
-    .side-nav {
-      position: sticky;
-      top: 92px;
-      align-self: start;
-      max-height: calc(100vh - 116px);
-      overflow: auto;
-      padding-right: 8px;
-    }
-    .side-nav a {
-      display: block;
-      padding: 6px 10px;
-      border-left: 2px solid transparent;
-      color: var(--text-2);
-      text-decoration: none;
-      font-size: 12px;
-      transition: color var(--motion-fast), border-color var(--motion-fast), background var(--motion-fast);
-    }
-    .side-nav a:hover,
-    .side-nav a[aria-current="true"] { color: var(--text); border-left-color: var(--accent); background: var(--accent-tint); }
-    .side-nav strong { display: block; margin: 18px 10px 5px; color: var(--text); font-size: 12px; }
-    .side-nav strong:first-child { margin-top: 0; }
-    .side-links { margin-top: 18px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-    .side-links a { padding: 3px 0; border: 0; background: none; }
-
-    main { min-width: 0; }
-    section { scroll-margin-top: 82px; }
-    .section { margin-top: 76px; }
-    .section:first-child { margin-top: 0; }
-    .section-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-bottom: 24px; }
-    .section-head h2 { margin: 0; font-size: clamp(25px, 3vw, 38px); line-height: 1.12; letter-spacing: -.035em; }
-    .section-head p { margin: 8px 0 0; max-width: 720px; color: var(--text-2); }
-    .section-index { color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; }
-
-    .hero {
-      position: relative;
-      overflow: hidden;
-      padding: clamp(30px, 6vw, 72px);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-xl);
-      background: var(--surface);
-      box-shadow: var(--shadow-card);
-    }
-    .hero::after {
-      content: "";
-      position: absolute;
-      right: -90px;
-      top: -120px;
-      width: 330px;
-      height: 330px;
-      border-radius: 50%;
-      background: radial-gradient(circle, var(--accent-tint), transparent 68%);
-      pointer-events: none;
-    }
-    .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--accent-text); font-size: 12px; font-weight: 720; }
-    .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 5px var(--accent-tint); }
-    .hero h1 { max-width: 760px; margin: 22px 0 18px; font-size: clamp(43px, 7vw, 78px); line-height: .98; letter-spacing: -.065em; }
-    .hero .lede { max-width: 720px; margin: 0; color: var(--text-2); font-size: 17px; line-height: 1.72; }
-    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 30px; }
-    .meta-chip, .state {
-      display: inline-flex;
-      align-items: center;
-      min-height: 24px;
-      padding: 2px 9px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-pill);
-      background: var(--surface-raised);
-      color: var(--text-2);
-      font-size: 11px;
-      font-weight: 650;
-    }
-    .state.current { color: var(--success); background: var(--success-bg); border-color: color-mix(in srgb, var(--success) 28%, transparent); }
-    .state.target { color: var(--accent-text); background: var(--accent-tint); border-color: var(--accent-soft); }
-    .state.debt { color: var(--warning); background: var(--warning-bg); border-color: color-mix(in srgb, var(--warning) 28%, transparent); }
-
-    .thesis-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
-    .thesis {
-      padding: 20px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--surface);
-    }
-    .thesis b { display: block; margin-bottom: 8px; font-size: 16px; }
-    .thesis p { margin: 0; color: var(--text-2); font-size: 13px; }
-
-    .callout {
-      display: grid;
-      grid-template-columns: 150px minmax(0, 1fr);
-      gap: 20px;
-      padding: 20px;
-      border-left: 3px solid var(--accent);
-      background: var(--accent-tint);
-      border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-    }
-    .callout b { color: var(--accent-text); }
-    .callout p { margin: 0; }
-
-    .stack {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 1px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--border);
-    }
-    .stack article { padding: 18px; background: var(--surface); }
-    .stack small { display: block; color: var(--text-3); }
-    .stack b { display: block; margin: 6px 0; }
-    .stack p { margin: 0; color: var(--text-2); font-size: 12px; }
-
-    .boundary-diagram {
-      display: grid;
-      grid-template-columns: minmax(180px, .7fr) 36px minmax(0, 1.3fr);
-      gap: 14px;
-      align-items: stretch;
-      margin-top: 18px;
-    }
-    .host-box, .peak-box { padding: 22px; border: 1px solid var(--border); background: var(--surface); }
-    .host-box { border-radius: var(--radius-md); }
-    .peak-box { border: 2px solid var(--accent); border-radius: var(--radius-xl); box-shadow: inset 0 0 0 5px var(--accent-tint); }
-    .boundary-arrow { display: grid; place-items: center; color: var(--accent); font-size: 24px; }
-    .boundary-diagram h3 { margin: 0 0 12px; }
-    .boundary-diagram ul { margin: 0; padding-left: 18px; color: var(--text-2); }
-    .deny { color: var(--danger); }
-    .allow { color: var(--success); }
-
-    .token-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-    .swatch { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
-    .swatch-color { height: 64px; background: var(--swatch); }
-    .swatch-copy { padding: 10px; }
-    .swatch-copy b { display: block; font-size: 12px; }
-    .swatch-copy code { color: var(--text-3); font-size: 10px; }
-
-    .specimen-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    .specimen { padding: 22px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-    .specimen h3 { margin: 0 0 16px; font-size: 16px; }
-    .type-row { display: grid; grid-template-columns: 66px minmax(0, 1fr) 54px; gap: 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--border-soft); }
-    .type-row:last-child { border-bottom: 0; }
-    .type-row code, .type-row small { color: var(--text-3); font-size: 10px; }
-
-    .scale-row { display: flex; align-items: end; gap: 7px; min-height: 92px; }
-    .space-step { display: grid; place-items: end center; gap: 7px; color: var(--text-3); font-size: 9px; }
-    .space-step i { display: block; width: 26px; height: calc(var(--n) * 1px); min-height: 4px; border-radius: 3px 3px 0 0; background: var(--accent); opacity: calc(.42 + var(--n) / 100); }
-    .radius-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-    .radius-demo { display: grid; place-items: center; min-height: 74px; border: 1px solid var(--accent-soft); border-radius: var(--r); background: var(--accent-tint); color: var(--accent-text); font-size: 11px; }
-    .shadow-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 16px 8px 4px; }
-    .shadow-demo { display: grid; place-items: center; height: 82px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--s); color: var(--text-2); font-size: 11px; }
-
-    .motion-stage { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; min-height: 112px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-sunken); }
-    .motion-orb { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 10px var(--accent-tint); transform: translateX(0); transition: transform var(--motion-slow) var(--ease), border-radius var(--motion-slow) var(--ease); }
-    .motion-stage.is-active .motion-orb { transform: translateX(min(44vw, 420px)); border-radius: var(--radius-md); }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      min-height: 34px;
-      padding: 0 13px;
-      border: 1px solid transparent;
-      border-radius: var(--radius-md);
-      background: transparent;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 680;
-      transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), transform var(--motion-fast);
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn:focus-visible, .seg button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .btn-primary { background: var(--accent); color: var(--accent-fg); }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-secondary { border-color: var(--border); background: var(--surface); }
-    .btn-secondary:hover, .btn-ghost:hover { background: var(--surface-sunken); }
-    .btn-danger { color: var(--danger); background: var(--danger-bg); }
-    .btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
-    .icon-btn { width: 34px; padding: 0; border-radius: var(--radius-md); }
-    .ui-icon { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-
-    .seg { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-sunken); }
-    .seg button { position: relative; min-height: 28px; padding: 0 11px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--text-2); cursor: pointer; font-size: 11px; font-weight: 650; transition: color var(--motion-base), background var(--motion-base), transform var(--motion-base); }
-    .seg button[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow-card); }
-    .seg button:not([aria-selected="true"]):hover { color: var(--accent-text); }
-
-    .chip { display: inline-flex; align-items: center; gap: 5px; min-height: 22px; padding: 1px 8px; border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--text-2); font-size: 10px; font-weight: 680; }
-    .chip.accent { background: var(--accent-tint); color: var(--accent-text); }
-    .chip.success { background: var(--success-bg); color: var(--success); }
-    .chip.warning { background: var(--warning-bg); color: var(--warning); }
-    .chip.danger { background: var(--danger-bg); color: var(--danger); }
-
-    .field { display: grid; gap: 6px; }
-    .field label { color: var(--text-2); font-size: 11px; font-weight: 650; }
-    .input { width: 100%; height: 36px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text); }
-    .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); outline: 0; }
-
-    .component-catalog { display: grid; gap: 10px; }
-    details { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
-    summary { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(0, 1.3fr) auto; gap: 20px; align-items: center; padding: 16px 18px; cursor: pointer; list-style: none; }
-    summary::-webkit-details-marker { display: none; }
-    summary::after { content: "+"; color: var(--text-3); font-size: 18px; }
-    details[open] summary::after { content: "−"; }
-    summary b { font-size: 15px; }
-    summary span { color: var(--text-2); font-size: 12px; }
-    .detail-body { padding: 20px; border-top: 1px solid var(--border); background: var(--surface-raised); }
-    .demo-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .rule-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
-    .rule-list div { padding: 12px; border-left: 2px solid var(--border-strong); color: var(--text-2); font-size: 12px; }
-    .rule-list b { display: block; color: var(--text); }
-
-    .product-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-    .product-card { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); box-shadow: var(--shadow-card); }
-    .product-card > header { display: flex; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
-    .product-card > header h3 { margin: 0; font-size: 16px; }
-    .product-card > header p { margin: 3px 0 0; color: var(--text-2); font-size: 11px; }
-    .product-preview { min-height: 290px; padding: calc(18px * var(--space-density)); background: var(--surface-sunken); }
-    .product-rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; border-top: 1px solid var(--border); background: var(--border); }
-    .product-rules span { padding: 11px; background: var(--surface); color: var(--text-2); font-size: 10px; }
-    .product-rules b { display: block; color: var(--text); }
-
-    .document-shell { max-width: 600px; margin: 0 auto; padding: 22px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
-    .doc-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .fm-trigger { display: inline-flex; align-items: center; gap: 5px; min-height: 22px; padding: 0 8px; border: 1px solid var(--accent-soft); border-radius: var(--radius-pill); background: var(--accent-tint); color: var(--accent-text); font-size: 10px; font-weight: 700; }
-    .fm-grid { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 9px 16px; margin-top: 8px; padding: 13px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-raised); }
-    .fm-key { color: var(--text-3); font-size: 11px; font-weight: 700; }
-    .fm-value { font-size: 11px; font-weight: 650; }
-    .ai-suggestion { margin-top: 10px; border: 1px solid var(--accent-soft); border-radius: var(--radius-lg); background: var(--surface-overlay); overflow: hidden; animation: surfaceIn var(--motion-base) var(--ease) both; }
-    .ai-suggestion header, .suggestion-row, .suggestion-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
-    .ai-suggestion header { border-bottom: 1px solid var(--border); }
-    .suggestion-row { min-height: 58px; }
-    .suggestion-copy { display: grid; gap: 2px; }
-    .suggestion-copy small, .suggestion-foot { color: var(--text-3); font-size: 10px; }
-    .suggestion-foot { border-top: 1px solid var(--border); }
-    @keyframes surfaceIn { from { opacity: 0; transform: translateY(-4px) scale(.995); } to { opacity: 1; transform: none; } }
-
-    .chat-shell { display: grid; grid-template-columns: 92px 1fr; min-height: 270px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-    .chat-rail { padding: 10px; border-right: 1px solid var(--border); background: var(--surface-raised); }
-    .rail-line { height: 8px; margin: 8px 2px; border-radius: var(--radius-pill); background: var(--border); }
-    .message-list { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
-    .bubble { max-width: 84%; padding: 10px 12px; border-radius: var(--radius-lg); background: var(--surface-sunken); font-size: 11px; }
-    .bubble.ai { align-self: flex-start; border-top-left-radius: var(--radius-sm); }
-    .bubble.user { align-self: flex-end; border-top-right-radius: var(--radius-sm); background: var(--accent-tint); }
-    .chat-composer { margin-top: auto; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-    .chat-composer small { color: var(--text-3); }
-
-    .result-shell { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-    .result-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px; border-bottom: 1px solid var(--border); }
-    .result-row { display: grid; grid-template-columns: 20px 1fr auto; gap: 9px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
-    .result-row:last-child { border-bottom: 0; }
-    .result-row b { font-size: 11px; }
-    .result-row small { display: block; color: var(--text-3); font-size: 9px; }
-    .result-rank { color: var(--accent-text); font-family: var(--font-mono); font-size: 9px; }
-
-    .settings-row { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
-    .settings-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-md); background: var(--accent-tint); color: var(--accent-text); }
-    .settings-copy b { display: block; font-size: 12px; }
-    .settings-copy small { color: var(--text-3); font-size: 10px; }
-    .toggle { position: relative; width: 34px; height: 18px; border-radius: var(--radius-pill); background: var(--accent); }
-    .toggle::after { content: ""; position: absolute; top: 3px; right: 3px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-card); }
-
-    .graph-shell { position: relative; height: 268px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-lg); background: radial-gradient(circle at center, var(--accent-tint), transparent 48%), var(--surface); }
-    .graph-toolbar { position: absolute; z-index: 2; left: 10px; right: 10px; top: 10px; display: flex; justify-content: space-between; gap: 8px; }
-    .edge { position: absolute; height: 1px; transform-origin: left center; background: var(--border-strong); }
-    .edge.semantic { height: 0; border-top: 1px dashed var(--accent); background: none; }
-    .node { position: absolute; display: grid; place-items: center; width: 70px; min-height: 34px; padding: 5px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-card); font-size: 9px; text-align: center; }
-    .node.hub { border-color: var(--accent); background: var(--accent-tint); color: var(--accent-text); font-weight: 700; }
-
-    .graph-matrix, .surface-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface); }
-    .graph-matrix th, .graph-matrix td, .surface-table th, .surface-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; overflow-wrap: anywhere; }
-    .graph-matrix th, .surface-table th { background: var(--surface-raised); color: var(--text-2); font-size: 11px; }
-    .graph-matrix td, .surface-table td { font-size: 11px; }
-    .graph-matrix tr:last-child td, .surface-table tr:last-child td { border-bottom: 0; }
-
-    .contract-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    .contract-card { padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-    .contract-card h3 { margin: 0 0 10px; }
-    .contract-card ul { margin: 0; padding-left: 18px; color: var(--text-2); }
-    .code-block { overflow: auto; margin: 16px 0 0; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-sunken); color: var(--text-2); font-size: 11px; line-height: 1.65; }
-
-    .roadmap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: phase; }
-    .phase { position: relative; min-height: 220px; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); counter-increment: phase; }
-    .phase::before { content: "0" counter(phase); display: block; margin-bottom: 24px; color: var(--accent-text); font-family: var(--font-mono); font-size: 11px; }
-    .phase h3 { margin: 0 0 8px; font-size: 14px; }
-    .phase p { margin: 0; color: var(--text-2); font-size: 11px; }
-
-    .audit-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 18px 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--border); }
-    .audit-strip div { padding: 18px; background: var(--surface); }
-    .audit-strip b { display: block; font-size: 25px; letter-spacing: -.04em; }
-    .audit-strip span { color: var(--text-3); font-size: 10px; }
-
-    footer { margin-top: 72px; padding-top: 22px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 11px; }
-    .screen-reader { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-
-    @media (max-width: 1050px) {
-      .layout { grid-template-columns: 1fr; width: min(920px, calc(100% - 32px)); }
-      .side-nav { display: none; }
-      .stack, .roadmap { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 760px) {
-      .topbar { align-items: flex-start; padding: 10px 14px; }
-      .brand span { display: none; }
-      .theme-lab label > span { display: none; }
-      .theme-lab select { max-width: 112px; }
-      .thesis-grid, .specimen-grid, .product-grid, .contract-grid { grid-template-columns: 1fr; }
-      .token-grid { grid-template-columns: repeat(2, 1fr); }
-      .stack, .roadmap, .audit-strip { grid-template-columns: 1fr; }
-      .callout { grid-template-columns: 1fr; }
-      .boundary-diagram { grid-template-columns: 1fr; }
-      .boundary-arrow { transform: rotate(90deg); }
-      .radius-row, .shadow-row { grid-template-columns: repeat(2, 1fr); }
-      summary { grid-template-columns: 1fr auto; gap: 4px 14px; }
-      summary span { grid-column: 1; }
-      summary::after { grid-column: 2; grid-row: 1 / span 2; }
-      .rule-list, .product-rules { grid-template-columns: 1fr; }
-      .graph-matrix { min-width: 760px; }
-      .table-scroll { overflow-x: auto; }
-      .surface-table { min-width: 880px; }
+    @media (max-width: 640px) {
+      .ds-header__inner { display: block; padding: 9px 0; }
+      .ds-brand { margin: 0 6px 5px; }
+      .ds-nav { margin-left: 0; }
+      .ds-nav a { padding: 6px; }
+      .ds-main { width: min(100% - 22px, 1180px); }
+      .ds-hero { min-height: 560px; }
+      .ds-hero h1 { font-size: 52px; }
+      .ds-hero__foot { align-items: flex-start; flex-direction: column; }
+      .ds-status { text-align: left; }
+      .ds-section { padding-top: 66px; }
+      .ds-section-head { grid-template-columns: 1fr; }
+      .ds-index { display: none; }
+      .ds-theme-lab__bar { align-items: flex-start; flex-direction: column; }
+      .ds-theme-controls { justify-content: flex-start; }
+      .ds-theme-lab__body { padding: 12px; }
+      .ds-theme-preview { padding: 16px; }
+      .ds-color-strip { grid-template-columns: repeat(4, 1fr); }
+      .ds-type-line { grid-template-columns: 56px 1fr; }
+      .ds-type-line small { display: none; }
+      .ds-motion-line { grid-template-columns: 1fr; }
+      .ds-motion-line div { border-right: 0; border-bottom: 1px solid var(--ds-line); }
+      .ds-motion-line div:last-child { border-bottom: 0; }
+      .ds-production-note { align-items: flex-start; flex-direction: column; }
+      .ds-surface__head { flex-direction: column; }
+      .ds-surface__source { text-align: left; }
+      .ds-rules { grid-template-columns: 1fr; }
+      .ds-rules div { border-right: 0; border-bottom: 1px solid var(--ds-line); }
+      .ds-rules div:last-child { border-bottom: 0; }
+      .ds-composer-workspace { padding: 12px; }
+      .ds-composer-paper { padding: 20px 16px 28px; }
+      .ds-composer-bar { align-items: flex-start; flex-direction: column; padding: 10px; }
+      .ds-composer-bar__right { display: none; }
+      .ds-chat-shell { display: block; height: 580px; }
+      .ds-chat-left { display: none; }
+      .ds-search-toolbar { align-items: flex-start; flex-direction: column; }
+      .ds-settings-shell { display: block; }
+      .ds-settings-nav { display: none; }
+      .ds-settings-content { padding: 14px; }
+      .ds-settings-content .pk-row { grid-template-columns: 32px minmax(0, 1fr); }
+      .ds-settings-content .pk-row__right { grid-column: 2; justify-self: start; }
+      .ds-matrix { min-width: 760px; }
+      .ds-table-scroll { overflow-x: auto; }
+      .ds-phase { grid-template-columns: 42px 1fr; gap: 12px; }
+      .ds-phase p { grid-column: 2; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -499,630 +705,539 @@
     }
   </style>
 </head>
-<body data-appearance="light" data-pack="default" data-density="comfortable" data-motion="standard">
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">P</span>
-      <strong>Peak Design System</strong>
-      <span>产品视觉、主题与宿主边界</span>
-    </div>
-    <div class="theme-lab" aria-label="设计系统预览设置">
-      <label><span>主题包</span>
-        <select id="packSelect" aria-label="主题包">
-          <option value="default">Peak Default</option>
-          <option value="quiet-moss">Quiet Moss · 示例</option>
-        </select>
-      </label>
-      <label><span>外观</span>
-        <select id="appearanceSelect" aria-label="外观">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </label>
-      <label><span>密度</span>
-        <select id="densitySelect" aria-label="密度">
-          <option value="comfortable">Comfortable</option>
-          <option value="compact">Compact</option>
-        </select>
-      </label>
-      <label><span>动效</span>
-        <select id="motionSelect" aria-label="动效">
-          <option value="standard">Standard</option>
-          <option value="reduced">Reduced</option>
-        </select>
-      </label>
+
+<body data-pack="default" data-density="comfortable" data-motion="standard">
+  <header class="ds-header">
+    <div class="ds-header__inner">
+      <a class="ds-brand" href="#top"><strong>Peak Design System</strong><span>product contract · v2</span></a>
+      <nav class="ds-nav" aria-label="页面目录">
+        <a href="#principles">总则</a>
+        <a href="#boundary">边界</a>
+        <a href="#theme">主题</a>
+        <a href="#foundations">基础</a>
+        <a href="#components">组件</a>
+        <a href="#surfaces">产品界面</a>
+        <a href="#graph">Graph</a>
+        <a href="#governance">治理</a>
+      </nav>
     </div>
   </header>
 
-  <div class="layout">
-    <nav class="side-nav" aria-label="页面目录">
-      <strong>系统</strong>
-      <a href="#overview">总则</a>
-      <a href="#boundary">Obsidian 边界</a>
-      <a href="#theme">Theme Engine</a>
-      <strong>基础</strong>
-      <a href="#color">颜色</a>
-      <a href="#type">字体与字号</a>
-      <a href="#shape">间距、圆角与阴影</a>
-      <a href="#motion">动画</a>
-      <strong>应用</strong>
-      <a href="#components">共享组件</a>
-      <a href="#products">产品界面</a>
-      <a href="#graph">Graph 视图</a>
-      <strong>治理</strong>
-      <a href="#abstraction">抽象边界</a>
-      <a href="#adoption">界面迁移</a>
-      <a href="#enforcement">约束与验收</a>
-      <div class="side-links">
-        <a href="index.html">Docs 首页</a>
-        <a href="conventions/ui-design.md">工程 UI 规范</a>
-        <a href="mockups/_design-tokens-preview.html">现有 token 预览</a>
+  <main class="ds-main" id="top">
+    <section class="ds-section">
+      <div class="ds-hero">
+        <div>
+          <span class="ds-kicker">Peak 的视觉事实源</span>
+          <h1>一个系统，<br>不是一批相似的页面。</h1>
+          <p class="ds-hero__lead">Peak 自己定义颜色、字体、密度、圆角、层级、动画和组件行为。Obsidian 提供窗口与生命周期，但不参与 Peak 的视觉决定。</p>
+        </div>
+        <div class="ds-hero__foot">
+          <div class="ds-principles">
+            <span><b>真实组件</b> · 直接加载生产 CSS</span>
+            <span><b>单列叙事</b> · 一个 surface 一次讲清</span>
+            <span><b>独立主题</b> · Theme Pack 原子切换</span>
+          </div>
+          <div class="ds-status">2026-08-10<br>design artifact · no production code changed</div>
+        </div>
       </div>
-    </nav>
+    </section>
 
-    <main>
-      <section class="section" id="overview">
-        <div class="hero">
-          <span class="eyebrow">目标设计契约 · 2026-08-10</span>
-          <h1>Peak 被 Obsidian 承载，<br>但不被 Obsidian 设计。</h1>
-          <p class="lede">这套系统统一颜色、字体、密度、间距、圆角、阴影、动画、组件和 Graph 语义；同时建立独立 Theme Engine 与 Theme Boundary，让 Peak 的每一个界面在任意 Obsidian 主题下保持可预测。</p>
-          <div class="hero-meta">
-            <span class="meta-chip">阅读约 20 分钟</span>
-            <span class="meta-chip">面向产品、设计与工程</span>
-            <span class="state current">现有资产</span>
-            <span class="state target">目标约束</span>
-            <span class="state debt">待收敛</span>
-          </div>
-        </div>
+    <section class="ds-section" id="principles">
+      <div class="ds-section-head">
+        <div><h2>系统总则</h2><p>不是把所有东西涂成同一种颜色，而是让同一种意图只有一种视觉与行为表达。</p></div>
+        <span class="ds-index">01 · Principles</span>
+      </div>
+      <div class="ds-statement-list">
+        <article class="ds-statement"><h3>一个视觉真源</h3><p><strong><code>peak-tokens.css</code></strong> 定义 Peak Default；组件只读取 semantic roles，不读取 Obsidian visual variables，也不在 surface 内再造一套颜色和圆角。</p></article>
+        <article class="ds-statement"><h3>组件按意图复用</h3><p><strong>Button、Segmented、Toggle、Row、Chip、Popover、Candidate、Receipt</strong> 按交互任务选择。不能因为外形相近，就把普通 Button 拼成 view switch。</p></article>
+        <article class="ds-statement"><h3>产品保留领域语义</h3><p>Composer 编辑器、Streamdown、CodeMirror、Cytoscape、React Flow 与 Recharts 保留专用内核；它们共享主题、shell、状态与交互契约，而不是被塞进万能组件。</p></article>
+        <article class="ds-statement"><h3>密度不改变字号</h3><p>Compact / Comfortable 只改变间距、行高和信息展开程度。默认正文、label 与 metadata 字号保持稳定，避免每个页面形成自己的缩放体系。</p></article>
+      </div>
+    </section>
 
-        <div class="thesis-grid">
-          <article class="thesis">
-            <b>一个视觉真源</b>
-            <p>所有 Peak 管理的 DOM 只消费 Peak semantic tokens。颜色名描述角色，不描述某个固定色值。</p>
-          </article>
-          <article class="thesis">
-            <b>Theme 是参数，不是补丁</b>
-            <p>Theme Pack、Light/Dark、Density、Accessibility 和字体覆盖共同解析成一个完整主题。</p>
-          </article>
-          <article class="thesis">
-            <b>共享行为，保留领域语义</b>
-            <p>共享外壳、状态和交互；Composer、Graph、Streamdown 等复杂领域保留自己的渲染内核。</p>
-          </article>
-        </div>
-
-        <div class="table-scroll" style="margin-top:18px">
-          <table class="surface-table">
-            <colgroup><col style="width:22%"><col style="width:39%"><col style="width:39%"></colgroup>
-            <thead><tr><th>层</th><th>当前事实</th><th>本系统的目标约束</th></tr></thead>
-            <tbody>
-              <tr><td>Tokens</td><td><code>peak-tokens.css</code> 已有 Light/Dark、type、spacing、radius、shadow 与 transition。</td><td>继续作为 Peak Default 真源；全部产品 CSS 只消费 semantic roles。</td></tr>
-              <tr><td>Components</td><td>已有 primitives 与 Result Browser，但 Button、局部 controls 和 surface CSS 仍有并行实现。</td><td>每个公共 intent 只有一个组件族；产品表面只组合，不复制内部视觉与行为。</td></tr>
-              <tr><td>Host isolation</td><td>当前依赖 scoped root、reset 与 <code>!important</code> 对抗 Obsidian，历史上多次出现 geometry 回归。</td><td>Theme Boundary 覆盖普通 DOM、Portal 与 popout；Shadow Root 是长期硬边界。</td></tr>
-              <tr><td>Theme</td><td>现有 token 会跟随宿主 Light/Dark class，Appearance 里主要只有 code theme。</td><td>Peak 自主 Theme Pack 可注册、验证、预览、切换；非法 pack 原子回退 Peak Default。</td></tr>
-              <tr><td>Graph</td><td>Result Browser 与 File Atlas 有结构图；AI Graph 使用独立多 Lens 内核。</td><td>保留两个 renderer，统一 View / Scope / Layout / Lens 词汇和 Graph chrome。</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="callout" style="margin-top:18px">
-          <b>不是组件画廊</b>
-          <p>设计系统只有在真实产品里被约束才有意义。因此下文既展示组件，也规定 Composer 属性建议、Chat、Search、File Atlas、AI Graph、Settings、Onboarding 与 Usage Dashboard 应怎样组合它们。</p>
-        </div>
-      </section>
-
-      <section class="section" id="boundary">
-        <div class="section-head">
-          <div><h2>Theme Boundary</h2><p>宿主可以提供运行环境，但它的视觉变量、裸标签规则和第三方主题样式不能成为 Peak 的输入。</p></div>
-          <span class="section-index">01 · Boundary</span>
-        </div>
-
-        <div class="stack">
-          <article><small>输入</small><b>环境信号</b><p>ownerDocument、viewport、DPR、reduced motion、forced colors；只有用户选择“跟随”时才读取宿主明暗信号。</p></article>
-          <article><small>解析</small><b>Theme Resolver</b><p>验证 Theme Pack，叠加 mode、density、accessibility 和 font overrides，生成完整 resolved theme。</p></article>
-          <article><small>隔离</small><b>Peak Boundary</b><p>普通 UI、Portal、Modal、Popover 与 popout window 都挂载同一作用域；长期以 Shadow Root 为硬边界。</p></article>
-          <article><small>输出</small><b>Peak UI</b><p>组件只读取 Peak semantic tokens。主题缺失、非法或加载失败时回退 Peak Default。</p></article>
-        </div>
-
-        <div class="boundary-diagram">
-          <article class="host-box">
-            <h3>Obsidian Host</h3>
-            <ul>
-              <li class="allow">允许：窗口与辅助功能信号</li>
-              <li class="deny">拒绝：颜色与字体变量</li>
-              <li class="deny">拒绝：button / input 裸标签样式</li>
-              <li class="deny">拒绝：圆角、阴影、动画和 focus</li>
-            </ul>
-          </article>
-          <div class="boundary-arrow" aria-hidden="true">→</div>
-          <article class="peak-box">
-            <h3>Peak Theme Boundary</h3>
-            <ul>
-              <li>内部完整定义颜色、排版、形状、层级与 motion。</li>
-              <li>Portal 必须回到同一个 themed portal host。</li>
-              <li>popout 在所属 ownerDocument 重新挂载主题。</li>
-              <li>light DOM reset 只是迁移防线，不是最终架构。</li>
-            </ul>
-          </article>
-        </div>
-
-        <div class="callout" style="margin-top:18px">
-          <b>明确的失败策略</b>
-          <p>任何缺 token、非法值或不兼容版本的 Theme Pack 都不得部分生效。系统必须原子回退到 Peak Default，而不是穿透到 Obsidian 变量。</p>
-        </div>
-      </section>
-
-      <section class="section" id="theme">
-        <div class="section-head">
-          <div><h2>Theme Engine</h2><p>页面顶部的 Theme Lab 正在用同一套概念切换本页。Quiet Moss 只是展示“换主题不换组件行为”的示例，并非正式内置主题承诺。</p></div>
-          <span class="section-index">02 · Theme</span>
-        </div>
-
-        <div class="contract-grid">
-          <article class="contract-card">
-            <h3>Resolved Theme</h3>
-            <p><code>Theme Pack + Appearance + Density + Accessibility + Font overrides</code></p>
-            <ul>
-              <li>Appearance：Light / Dark / Follow preference</li>
-              <li>Density：Comfortable / Compact</li>
-              <li>Accessibility：Normal / High contrast / Reduced motion / Forced colors</li>
-              <li>Fonts：界面与等宽字体可独立覆盖</li>
-            </ul>
-          </article>
-          <article class="contract-card">
-            <h3>Theme 可以改变什么</h3>
-            <ul>
-              <li>语义颜色、字体家族与字重</li>
-              <li>经过设计系统允许的 shape、elevation、motion preset</li>
-              <li>Light 与 Dark 两套完整模式</li>
-              <li>不能改变键盘、命中区、组件状态机和信息层级</li>
-            </ul>
-          </article>
-        </div>
-
-        <pre class="code-block" aria-label="Theme Pack 示例">{
-  "id": "peak.default",
-  "schemaVersion": 1,
-  "modes": {
-    "light": { "surface": "#ffffff", "text.primary": "#2e3338", "accent": "#7c3aed" },
-    "dark":  { "surface": "#1e1e2e", "text.primary": "#cdd6f4", "accent": "#a78bfa" }
-  },
-  "typography": { "sans": "system-ui", "mono": "SF Mono" },
-  "presets": { "shape": "balanced", "elevation": "quiet", "motion": "standard" }
-}</pre>
-        <div class="rule-list">
-          <div><b>1 · Define</b>从 versioned Theme Pack 模板开始，只填写语义 token 与允许的 presets，不写组件 selector。</div>
-          <div><b>2 · Validate</b>检查 schema、Light/Dark 完整性、值类型、contrast、未知 token 和版本兼容。</div>
-          <div><b>3 · Preview</b>在隔离 Boundary 同时预览组件状态、产品样例、Compact 与 Reduced Motion。</div>
-          <div><b>4 · Apply</b>一次性发布 resolved theme；任何步骤失败都保持当前主题并回退 Peak Default。</div>
-          <div><b>5 · Persist</b>保存 Theme Pack id、版本和用户 overrides，不保存展开后的易漂移 CSS。</div>
-          <div><b>6 · Migrate</b>schema 升级走显式 migration；不认识的新字段不能静默吞掉。</div>
-        </div>
-      </section>
-
-      <section class="section" id="color">
-        <div class="section-head">
-          <div><h2>Color</h2><p>现有 <code>peak-tokens.css</code> 是 Peak Default 的起点。组件引用角色名；Theme Pack 为每个角色提供 Light 与 Dark 值。</p></div>
-          <span class="section-index">03 · Foundations</span>
-        </div>
-        <div class="token-grid">
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--page)"></div><div class="swatch-copy"><b>Canvas</b><code>page / bg-secondary</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--surface)"></div><div class="swatch-copy"><b>Surface</b><code>surface</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--surface-raised)"></div><div class="swatch-copy"><b>Raised</b><code>surface-raised</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--surface-sunken)"></div><div class="swatch-copy"><b>Sunken</b><code>surface-sunken</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--text)"></div><div class="swatch-copy"><b>Primary text</b><code>text-primary</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--text-2)"></div><div class="swatch-copy"><b>Secondary text</b><code>text-secondary</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--border)"></div><div class="swatch-copy"><b>Border</b><code>border</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--accent)"></div><div class="swatch-copy"><b>Accent</b><code>accent</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--success)"></div><div class="swatch-copy"><b>Success</b><code>success</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--warning)"></div><div class="swatch-copy"><b>Warning</b><code>warning</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--danger)"></div><div class="swatch-copy"><b>Danger</b><code>error</code></div></article>
-          <article class="swatch"><div class="swatch-color" style="--swatch:var(--info)"></div><div class="swatch-copy"><b>Info</b><code>info</code></div></article>
-        </div>
-        <div class="rule-list">
-          <div><b>Accent 只表示主选择与主动作</b>链接、活动 tab、主要 CTA、focus ring 和被选中的 Graph 节点。</div>
-          <div><b>状态色不装饰</b>Success、Warning、Error、Info 必须对应真实语义，并同时有文字或图标。</div>
-          <div><b>品牌色是登记例外</b>Provider、图表 series 与 Graph cluster 可以有专用 palette，但不可替代通用状态色。</div>
-        </div>
-      </section>
-
-      <section class="section" id="type">
-        <div class="section-head">
-          <div><h2>Typography</h2><p>字号保持固定阶梯；Compact 只改变间距和行密度，不缩小字体。中文优先走系统 CJK 字体，代码和 ID 使用等宽字体。</p></div>
-          <span class="section-index">04 · Type</span>
-        </div>
-        <div class="specimen-grid">
-          <article class="specimen">
-            <h3>固定字号阶梯</h3>
-            <div class="type-row"><code>10</code><span style="font-size:10px">微型辅助标签</span><small>xs</small></div>
-            <div class="type-row"><code>11</code><span style="font-size:11px">元数据与紧凑控制</span><small>sm</small></div>
-            <div class="type-row"><code>12</code><span style="font-size:12px">表格与密集信息</span><small>base</small></div>
-            <div class="type-row"><code>13</code><span style="font-size:13px">默认界面正文</span><small>md</small></div>
-            <div class="type-row"><code>14</code><span style="font-size:14px">强调正文与控件</span><small>lg</small></div>
-            <div class="type-row"><code>16</code><span style="font-size:16px">小节标题</span><small>xl</small></div>
-            <div class="type-row"><code>20</code><span style="font-size:20px">面板标题</span><small>2xl</small></div>
-            <div class="type-row"><code>28</code><span style="font-size:28px;line-height:1.2">页面主标题</span><small>3xl</small></div>
-          </article>
-          <article class="specimen">
-            <h3>语义角色</h3>
-            <div class="type-row"><code>Page</code><span style="font-size:28px;font-weight:760;letter-spacing:-.035em">页面标题</span><small>28 / 760</small></div>
-            <div class="type-row"><code>Panel</code><span style="font-size:20px;font-weight:730">面板标题</span><small>20 / 730</small></div>
-            <div class="type-row"><code>Section</code><span style="font-size:16px;font-weight:700">分组标题</span><small>16 / 700</small></div>
-            <div class="type-row"><code>Body</code><span style="font-size:13px">Peak 的默认界面正文</span><small>13 / 400</small></div>
-            <div class="type-row"><code>Control</code><span style="font-size:12px;font-weight:650">按钮与标签</span><small>12 / 650</small></div>
-            <div class="type-row"><code>Meta</code><span style="font-size:11px;color:var(--text-2)">时间、路径与解释</span><small>11 / 500</small></div>
-            <div class="type-row"><code>Code</code><span style="font:12px var(--font-mono)">run_01JPK · 42.8k</span><small>mono 12</small></div>
-          </article>
-        </div>
-        <article class="specimen" style="margin-top:16px">
-          <h3>Icons</h3>
-          <div class="demo-row">
-            <svg class="ui-icon" style="width:14px;height:14px" viewBox="0 0 24 24" aria-label="14px search icon"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
-            <svg class="ui-icon" viewBox="0 0 24 24" aria-label="16px settings icon"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.07A1.7 1.7 0 0 0 8.97 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3.07 14H3v-4h.07A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.97 4.6 1.7 1.7 0 0 0 10 3.07V3h4v.07A1.7 1.7 0 0 0 15.03 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9 1.7 1.7 0 0 0 20.93 10H21v4h-.07A1.7 1.7 0 0 0 19.4 15Z"></path></svg>
-            <svg class="ui-icon" style="width:18px;height:18px" viewBox="0 0 24 24" aria-label="18px network icon"><circle cx="12" cy="5" r="2"></circle><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="18" r="2"></circle><path d="M12 7v4M7 17l5-6 5 6"></path></svg>
-            <svg class="ui-icon" style="width:20px;height:20px" viewBox="0 0 24 24" aria-label="20px sparkles icon"><path d="m12 3-1.3 3.7L7 8l3.7 1.3L12 13l1.3-3.7L17 8l-3.7-1.3L12 3Z"></path><path d="m5 14-.8 2.2L2 17l2.2.8L5 20l.8-2.2L8 17l-2.2-.8L5 14Z"></path><path d="m19 13-.6 1.4L17 15l1.4.6L19 17l.6-1.4L21 15l-1.4-.6L19 13Z"></path></svg>
-            <span class="chip">14 · 紧凑行</span><span class="chip">16 · 默认控件</span><span class="chip">18/20 · 主要入口</span>
-          </div>
-          <div class="rule-list"><div><b>统一 Lucide</b>生产 UI 使用 Lucide React；默认 1.75–2px stroke 与 <code>currentColor</code>。</div><div><b>图标不单独决定颜色</b>跟随 control、status 或 text semantic role；品牌图标是登记例外。</div><div><b>不使用 Emoji 充当 UI icon</b>Emoji 只属于用户内容；操作图标必须稳定、可访问并有文字名称。</div></div>
+    <section class="ds-section" id="boundary">
+      <div class="ds-section-head">
+        <div><h2>拒绝宿主视觉</h2><p>Obsidian 可以承载 Peak，但它的主题、裸标签规则和第三方 CSS 不能穿过 Peak Theme Boundary。</p></div>
+        <span class="ds-index">02 · Boundary</span>
+      </div>
+      <div class="ds-boundary">
+        <article>
+          <h3>Obsidian 只提供环境</h3>
+          <ul>
+            <li class="is-allowed">ownerDocument、window、viewport 与 DPR</li>
+            <li class="is-allowed">reduced motion、forced colors 等辅助功能信号</li>
+            <li class="is-allowed">用户明确选择 Follow 时的明暗偏好信号</li>
+            <li class="is-denied">不提供 Peak 的颜色、字体、字号、圆角与阴影</li>
+          </ul>
         </article>
-      </section>
+        <div class="ds-boundary__line" aria-hidden="true"></div>
+        <article>
+          <h3>Peak Boundary 自己解析</h3>
+          <ul>
+            <li>Theme Pack + Appearance + Density + Accessibility + Fonts</li>
+            <li>普通 DOM、Modal、Popover、Portal 与 popout 使用同一 resolved theme</li>
+            <li>非法或缺失 Theme Pack 原子回退 Peak Default</li>
+            <li>light DOM reset 只是迁移防线；Shadow Root 是长期硬边界</li>
+          </ul>
+        </article>
+      </div>
+    </section>
 
-      <section class="section" id="shape">
-        <div class="section-head">
-          <div><h2>Spacing, Radius & Elevation</h2><p>统一 4px 网格。圆角表达层级与对象类型，不是“越圆越高级”；阴影只用于真正浮起或覆盖的表面。</p></div>
-          <span class="section-index">05 · Shape</span>
+    <section class="ds-section" id="theme">
+      <div class="ds-section-head">
+        <div><h2>Theme 是一等能力</h2><p>控制器放回主题章节，不再挤在全局导航。切换下面的选项，会直接改变使用生产 CSS 的 specimen。</p></div>
+        <span class="ds-index">03 · Theme Engine</span>
+      </div>
+      <div class="ds-theme-lab pktw-root peak-design-root">
+        <div class="ds-theme-lab__bar">
+          <strong>Theme Preview Boundary</strong>
+          <div class="ds-theme-controls">
+            <label>Pack
+              <select id="packSelect">
+                <option value="default">Peak Default</option>
+                <option value="quiet-ink">Quiet Ink · 示例</option>
+              </select>
+            </label>
+            <label>Appearance
+              <select id="appearanceSelect">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+            <label>Density
+              <select id="densitySelect">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </select>
+            </label>
+            <label>Motion
+              <select id="motionSelect">
+                <option value="standard">Standard</option>
+                <option value="reduced">Reduced</option>
+              </select>
+            </label>
+          </div>
         </div>
-        <div class="specimen-grid">
-          <article class="specimen">
-            <h3>4px 间距阶梯</h3>
-            <div class="scale-row">
-              <span class="space-step"><i style="--n:4"></i>4</span><span class="space-step"><i style="--n:8"></i>8</span><span class="space-step"><i style="--n:12"></i>12</span><span class="space-step"><i style="--n:16"></i>16</span><span class="space-step"><i style="--n:20"></i>20</span><span class="space-step"><i style="--n:24"></i>24</span><span class="space-step"><i style="--n:32"></i>32</span><span class="space-step"><i style="--n:40"></i>40</span><span class="space-step"><i style="--n:48"></i>48</span>
+        <div class="ds-theme-lab__body">
+          <div class="ds-theme-preview">
+            <div class="ds-theme-preview__head">
+              <span><strong>Theme pack validation</strong><br><small>Light / Dark 都完整，contrast 通过</small></span>
+              <span class="pk-chip pk-chip--success">Ready</span>
             </div>
-          </article>
-          <article class="specimen">
-            <h3>圆角角色</h3>
-            <div class="radius-row">
-              <div class="radius-demo" style="--r:0">0<br>表格与连续画布</div>
-              <div class="radius-demo" style="--r:4px">4<br>内嵌细节</div>
-              <div class="radius-demo" style="--r:8px">8<br>控件与输入</div>
-              <div class="radius-demo" style="--r:12px">12<br>卡片与面板</div>
-              <div class="radius-demo" style="--r:16px">16<br>大容器与 sidecar</div>
+            <div class="ds-theme-preview__actions">
+              <button class="pk-btn pk-btn--primary">应用主题</button>
+              <button class="pk-btn pk-btn--secondary">隔离预览</button>
+              <button class="pk-btn pk-btn--ghost">导出 JSON</button>
+              <span class="pk-chip pk-chip--accent">Peak scoped</span>
             </div>
-          </article>
+          </div>
         </div>
-        <article class="specimen" style="margin-top:16px">
-          <h3>Elevation</h3>
-          <div class="shadow-row">
-            <div class="shadow-demo" style="--s:none">Base · 无阴影</div>
-            <div class="shadow-demo" style="--s:var(--shadow-card)">Card · 轻边界</div>
-            <div class="shadow-demo" style="--s:var(--shadow-popover)">Popover · 浮层</div>
-            <div class="shadow-demo" style="--s:var(--shadow-modal)">Modal · 最高层</div>
+      </div>
+      <pre class="ds-code">resolvedTheme = validate(themePack)
+  + appearance(light | dark | follow)
+  + density(comfortable | compact)
+  + accessibility(normal | highContrast | reducedMotion | forcedColors)
+  + fontOverrides
+
+failure -> keep current theme -> fallback Peak Default
+never -> fallback Obsidian variables</pre>
+    </section>
+
+    <section class="ds-section" id="foundations">
+      <div class="ds-section-head">
+        <div><h2>Foundations</h2><p>基础规则纵向展开，每一项都回答“是什么”与“什么时候使用”，避免再做一墙互相竞争的小卡片。</p></div>
+        <span class="ds-index">04 · Foundations</span>
+      </div>
+      <div class="ds-foundation">
+        <article class="ds-foundation-row">
+          <h3>Color roles</h3>
+          <div>
+            <p>产品组件使用 semantic role；Provider、Graph cluster 和 chart series 是登记例外。页面文档 chrome 使用克制的中性配色，不冒充 Peak product token。</p>
+            <div class="ds-color-strip">
+              <div class="ds-swatch" style="--c:#ffffff"><span>surface</span></div>
+              <div class="ds-swatch" style="--c:#f7f7fa"><span>canvas</span></div>
+              <div class="ds-swatch" style="--c:#2e3338"><span>text</span></div>
+              <div class="ds-swatch" style="--c:#6c757d"><span>muted</span></div>
+              <div class="ds-swatch" style="--c:#e5e7eb"><span>border</span></div>
+              <div class="ds-swatch" style="--c:#7c3aed"><span>accent</span></div>
+              <div class="ds-swatch" style="--c:#22c55e"><span>success</span></div>
+              <div class="ds-swatch" style="--c:#ef4444"><span>error</span></div>
+            </div>
           </div>
         </article>
-        <div class="rule-list">
-          <div><b>什么时候不圆</b>正文画布、表格连续行、分隔线、贴边区域和需要连续扫描的列表不做卡片化。</div>
-          <div><b>什么时候用 Pill</b>Chip、filter、segmented thumb、状态 badge；普通 CTA 不因“好看”而变成胶囊。</div>
-          <div><b>什么时候用 Shadow</b>只有空间层级变化才加阴影；静态 card 首选边框或 card shadow，不能每层都抬起。</div>
-        </div>
-      </section>
-
-      <section class="section" id="motion">
-        <div class="section-head">
-          <div><h2>Motion</h2><p>动画用于解释状态如何变化，而不是装饰。上方可切换 Reduced Motion；它必须保留最终状态和可理解性。</p></div>
-          <span class="section-index">06 · Motion</span>
-        </div>
-        <div class="motion-stage" id="motionStage">
-          <div class="motion-orb" aria-hidden="true"></div>
-          <button class="btn btn-secondary" id="motionDemoButton" type="button">播放状态变化</button>
-        </div>
-        <div class="rule-list">
-          <div><b>100ms · Fast</b>hover、pressed、颜色和微型 icon 反馈。交互开始时不应等待动画。</div>
-          <div><b>150ms · Base</b>Popover、AI 属性建议、行展开与轻量 panel 出现。</div>
-          <div><b>300ms · Slow</b>Modal、sidecar 与大面积布局变化。禁止串联多段无意义过场。</div>
-          <div><b>Spring · Shared thumb</b>只用于视图、密度、lens 等连续互斥切换；统一 stiffness 500 / damping 34。</div>
-          <div><b>Streaming · 连续稳定</b>Chat 与 AI candidate 追加内容时固定已渲染前缀，避免整个 surface 跳动。</div>
-          <div><b>Reduced Motion</b>移除 spring、位移和呼吸效果；保留 opacity 或瞬时切换与完整 focus 反馈。</div>
-        </div>
-      </section>
-
-      <section class="section" id="components">
-        <div class="section-head">
-          <div><h2>Components</h2><p>按交互意图选择组件，不按外形猜。下列是全产品共享的核心组件族；展开查看示例和适用边界。</p></div>
-          <span class="section-index">07 · Components</span>
-        </div>
-        <div class="component-catalog">
-          <details open>
-            <summary><b>Buttons & actions</b><span>Primary、Secondary、Ghost、Danger、IconButton；同一动作在所有 surface 保持状态和命中区。</span></summary>
-            <div class="detail-body">
-              <div class="demo-row"><button class="btn btn-primary">应用更改</button><button class="btn btn-secondary">重新生成</button><button class="btn btn-ghost">稍后</button><button class="btn btn-danger">删除</button><button class="btn btn-secondary icon-btn" aria-label="关闭">×</button><button class="btn btn-primary" disabled>处理中</button></div>
-              <div class="rule-list"><div><b>每个区域最多一个 Primary</b>主动作竞争时必须先解决信息架构。</div><div><b>固定命中区是组件契约</b>宿主 reset 不得改变 32 / 36 / 40px 目标。</div><div><b>IconButton 必须有名称</b>用 aria-label 与 tooltip 说明行为。</div></div>
+        <article class="ds-foundation-row">
+          <h3>Typography</h3>
+          <div>
+            <p>字号固定；页面与产品层级用 role 命名。13.5 / 14.5px 只保留给已经验证需要半阶的 Chat 与 outline 场景。</p>
+            <div class="ds-type-scale">
+              <div class="ds-type-line"><code>10 / xs</code><span style="font-size:10px">微型辅助标签与 key tip</span><small>metadata</small></div>
+              <div class="ds-type-line"><code>11 / sm</code><span style="font-size:11px">按钮、chip 与紧凑控制</span><small>control</small></div>
+              <div class="ds-type-line"><code>12 / base</code><span style="font-size:12px">表格、路径与密集信息</span><small>dense body</small></div>
+              <div class="ds-type-line"><code>13 / md</code><span style="font-size:13px">默认界面正文</span><small>body</small></div>
+              <div class="ds-type-line"><code>14 / lg</code><span style="font-size:14px">强调正文与输入</span><small>emphasis</small></div>
+              <div class="ds-type-line"><code>16 / xl</code><span style="font-size:16px;font-weight:650">小节标题</span><small>section</small></div>
+              <div class="ds-type-line"><code>20 / 2xl</code><span style="font-size:20px;font-weight:700">面板标题</span><small>panel</small></div>
+              <div class="ds-type-line"><code>28 / 3xl</code><span style="font-size:28px;font-weight:740;letter-spacing:-.03em">页面标题</span><small>page</small></div>
             </div>
-          </details>
-          <details open>
-            <summary><b>Segmented, tabs & toggle</b><span>视图、密度、时间范围、模式和布尔设置；不能把三个普通按钮拼成 Button Group。</span></summary>
-            <div class="detail-body">
-              <div class="demo-row"><div class="seg" data-segmented><button aria-selected="true">List</button><button aria-selected="false">Tree</button><button aria-selected="false">Graph</button></div><div class="seg" data-segmented><button aria-selected="true">Compact</button><button aria-selected="false">Detailed</button></div><div class="toggle" aria-label="已开启"></div></div>
-              <div class="rule-list"><div><b>Segmented</b>同一层级、即时生效、互斥选项，通常 2–5 项。</div><div><b>Tabs</b>切换不同信息区域，可有独立滚动和内容结构。</div><div><b>Toggle</b>一个布尔设置；不能替代“运行命令”的按钮。</div></div>
+          </div>
+        </article>
+        <article class="ds-foundation-row">
+          <h3>Spacing & shape</h3>
+          <div>
+            <p>4px 网格：4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48。圆角表达对象角色，不把连续列表与文档正文切成卡片墙。</p>
+            <div class="ds-spacing">
+              <span><i style="--s:4"></i>4</span><span><i style="--s:8"></i>8</span><span><i style="--s:12"></i>12</span><span><i style="--s:16"></i>16</span><span><i style="--s:20"></i>20</span><span><i style="--s:24"></i>24</span><span><i style="--s:32"></i>32</span><span><i style="--s:40"></i>40</span><span><i style="--s:48"></i>48</span>
             </div>
-          </details>
-          <details>
-            <summary><b>Forms & selection</b><span>Input、SearchInput、Textarea、Select、Combobox、Checkbox、Radio、FieldRow 与验证状态。</span></summary>
-            <div class="detail-body"><div class="specimen-grid"><div class="field"><label for="demoName">Theme name</label><input id="demoName" class="input" value="Peak Default"></div><div class="field"><label for="demoModel">Default model</label><select id="demoModel" class="input"><option>Active profile</option><option>Fast tier</option></select></div></div></div>
-          </details>
-          <details>
-            <summary><b>Chips, tags & filters</b><span>Chip 表示状态或标签；Pill 表示可切换 filter；Badge 只传达短状态。</span></summary>
-            <div class="detail-body"><div class="demo-row"><span class="chip accent">AI 建议</span><span class="chip success">Ready</span><span class="chip warning">Needs review</span><span class="chip danger">Failed</span><span class="chip">Markdown</span></div></div>
-          </details>
-          <details>
-            <summary><b>Cards, rows & surfaces</b><span>Card 承载一个可独立理解的单元；Row 用于可扫描设置；Shell 定义页面、sidecar、popover 与 modal。</span></summary>
-            <div class="detail-body"><div class="settings-row"><span class="settings-icon">A</span><span class="settings-copy"><b>Accessibility</b><small>High contrast and reduced motion</small></span><span class="chip success">Configured</span></div></div>
-          </details>
-          <details>
-            <summary><b>Feedback & AI states</b><span>Inline notice、Toast、Progress、Skeleton、Empty、Error、Candidate、Review Controller 与 Run Receipt。</span></summary>
-            <div class="detail-body"><div class="demo-row"><span class="chip accent">Streaming</span><span class="chip warning">Stale</span><span class="chip success">Accepted</span><span class="chip danger">Failed</span></div><p style="color:var(--text-2);margin-bottom:0">AI 状态必须区分“正在生成、可审阅、过期、已接受、已拒绝、失败”，不能只用一个紫色 loading 卡覆盖所有阶段。</p></div>
-          </details>
-          <details>
-            <summary><b>Overlays & navigation</b><span>Popover、Menu、Tooltip、Drawer、Dialog、Modal、Breadcrumb、Rail、Command Surface 与 Key Tips。</span></summary>
-            <div class="detail-body"><p style="margin:0;color:var(--text-2)">Popover 12px + popover shadow；Modal 16px + modal shadow；Tooltip 保持短文本。所有 Portal 必须挂到 Peak themed portal host，而不是裸挂 Obsidian body。</p></div>
-          </details>
-        </div>
-      </section>
+            <div class="ds-shape-line">
+              <div class="ds-shape" style="--r:0">0 · 连续画布</div>
+              <div class="ds-shape" style="--r:4px">4 · 细节与行</div>
+              <div class="ds-shape" style="--r:8px">8 · 控件</div>
+              <div class="ds-shape" style="--r:12px">12 · 面板</div>
+              <div class="ds-shape" style="--r:16px">16 · 大容器</div>
+            </div>
+          </div>
+        </article>
+        <article class="ds-foundation-row">
+          <h3>Motion</h3>
+          <div>
+            <p>动画解释状态变化。流式内容保持已渲染前缀稳定；Reduced Motion 去掉 spring 与大位移，但不删除状态和 focus 反馈。</p>
+            <div class="ds-motion-line">
+              <div><b>100ms · Fast</b><span>hover、pressed、颜色与 icon</span></div>
+              <div><b>150ms · Base</b><span>Popover、candidate、行展开</span></div>
+              <div><b>300ms · Slow</b><span>Modal、sidecar 与大布局</span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
 
-      <section class="section" id="products">
-        <div class="section-head">
-          <div><h2>产品界面怎么用</h2><p>同一系统并不意味着所有界面长得一样。下面把真实 Peak 工作表面映射到共享组件、圆角、层级和 motion。</p></div>
-          <span class="section-index">08 · Product patterns</span>
+    <section class="ds-section" id="components">
+      <div class="ds-section-head">
+        <div><h2>Production components</h2><p>下面不是重画的示意图。它们直接使用生产 token 与组件 CSS；改动真源后，这里的 specimen 会同步变化。</p></div>
+        <span class="ds-index">05 · Components</span>
+      </div>
+      <div class="ds-production-note"><span>Loaded from <code>src/styles/peak-tokens.css</code> + <code>src/styles/peak-components.css</code></span><span>scope: <code>.pktw-root.peak-design-root</code></span></div>
+      <div class="ds-component-board pktw-root peak-design-root">
+        <div class="ds-component-group">
+          <div class="ds-component-copy"><b>Buttons</b><span>主动作、次级动作、幽灵动作、危险动作与 32px IconButton。</span></div>
+          <div class="ds-component-demo">
+            <button class="pk-btn pk-btn--primary"><svg class="ds-icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></svg>应用更改</button>
+            <button class="pk-btn pk-btn--secondary">重新生成</button>
+            <button class="pk-btn pk-btn--ghost">稍后</button>
+            <button class="pk-btn pk-btn--danger">删除</button>
+            <button class="pk-icon-btn" aria-label="关闭"><svg class="ds-icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+          </div>
         </div>
+        <div class="ds-component-group">
+          <div class="ds-component-copy"><b>Segmented & Toggle</b><span>默认 variant 用于密集表单；animated-pill 用于主要 view / mode 切换。</span></div>
+          <div class="ds-component-demo">
+            <div class="pk-segmented" data-variant="animated-pill" data-segmented>
+              <button class="pk-segmented__opt" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">List</span></button>
+              <button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Tree</span></button>
+              <button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Graph</span></button>
+            </div>
+            <button class="pk-toggle" data-on="true" aria-label="已开启"><span class="pk-toggle__thumb"></span></button>
+          </div>
+        </div>
+        <div class="ds-component-group">
+          <div class="ds-component-copy"><b>Chips & filters</b><span>Chip 表示状态；Pill 表示可切换 filter。Accent 不是通用装饰色。</span></div>
+          <div class="ds-component-demo">
+            <span class="pk-chip pk-chip--accent">AI 建议</span>
+            <span class="pk-chip pk-chip--success">Ready</span>
+            <span class="pk-chip pk-chip--warning">Needs review</span>
+            <span class="pk-chip pk-chip--danger">Failed</span>
+            <button class="pk-pill" data-selected="true">Markdown</button>
+            <button class="pk-pill" data-selected="false">PDF</button>
+          </div>
+        </div>
+        <div class="ds-component-group">
+          <div class="ds-component-copy"><b>Settings Row</b><span>真实 <code>Row</code> anatomy：32px icon、body、right slot；相邻行用 8px 间距。</span></div>
+          <div style="width:100%">
+            <div class="pk-row">
+              <span class="pk-row__icon"><svg class="ds-icon" viewBox="0 0 24 24"><path d="M12 3v18M5 7h14"></path></svg></span>
+              <span class="pk-row__body"><span class="pk-row__title">Peak theme</span><span class="pk-row__desc">Peak Default · independent from Obsidian</span></span>
+              <span class="pk-row__right"><span class="pk-chip pk-chip--accent">Default</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="ds-component-group">
+          <div class="ds-component-copy"><b>Chat Composer</b><span>真实 12px shell、accent border、28px run chip 与 30px circular send。</span></div>
+          <div style="width:100%;max-width:680px">
+            <div class="pkchat-composer">
+              <div class="pkchat-composer__editor" style="color:var(--pk-text-tertiary);font-size:var(--pk-text-md)">Ask Peak or add context…</div>
+              <div class="pkchat-composer__foot">
+                <div class="pkchat-composer__foot-left"><button class="pk-icon-btn" aria-label="添加附件">＋</button></div>
+                <div class="pkchat-composer__foot-right"><button class="pkchat-run-chip"><span class="pkchat-run-chip__label">Research</span><span class="pkchat-run-chip__sep">·</span><span class="pkchat-run-chip__mid">Auto</span><span class="pkchat-run-chip__ctx">2 ctx</span></button><button class="pkchat-send" aria-label="发送"><svg class="ds-icon" viewBox="0 0 24 24"><path d="m5 12 14-7-5 14-2-6-7-1Z"></path></svg></button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        <div class="product-grid">
-          <article class="product-card">
-            <header><div><h3>Composer · AI 属性建议</h3><p>文档内上下文面板，不是独立 Modal</p></div><span class="state target">基准范例</span></header>
-            <div class="product-preview">
-              <div class="document-shell">
-                <div class="doc-toolbar"><div class="seg" data-segmented><button aria-selected="true">编辑视图</button><button aria-selected="false">纯净阅读</button></div><span class="chip">B-软件</span></div>
-                <button class="fm-trigger" type="button"><svg class="ui-icon" style="width:13px;height:13px" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3-1.3 3.7L7 8l3.7 1.3L12 13l1.3-3.7L17 8l-3.7-1.3L12 3Z"></path><path d="m5 14-.8 2.2L2 17l2.2.8L5 20l.8-2.2L8 17l-2.2-.8L5 14Z"></path></svg>AI 属性建议 · 1</button>
-                <div class="fm-grid"><span class="fm-key">created <i class="chip success">程序</i></span><span class="fm-value">2023-04-30 11:42:31</span><span class="fm-key">updated <i class="chip success">程序</i></span><span class="fm-value">2023-05-05 19:47:49</span><span class="fm-key">aliases <i class="chip">人工</i></span><span class="fm-value"><i class="chip accent">B-软件</i></span></div>
-                <section class="ai-suggestion">
-                  <header><span><b>AI 属性建议 · 1</b><br><small style="color:var(--text-3)">基于当前文档与 Vault 属性规范</small></span><button class="btn btn-ghost">关闭</button></header>
-                  <div class="suggestion-row"><span class="suggestion-copy"><b>category</b><span>软件工具</span><small>新增属性候选 · 不会自动写入</small></span><span><button class="btn btn-primary">添加</button><button class="btn btn-ghost">拒绝</button></span></div>
-                  <span class="suggestion-foot">应用后仍通过 Composer transaction hub 写入</span>
+    <section class="ds-section" id="surfaces">
+      <div class="ds-section-head">
+        <div><h2>产品界面纵向应用</h2><p>每个 surface 单独占一整行，先看真实结构，再看半径、层级与 motion；不再把不同高度的界面硬塞进两列卡片。</p></div>
+        <span class="ds-index">06 · Product surfaces</span>
+      </div>
+      <div class="ds-surface-list">
+        <article class="ds-surface">
+          <div class="ds-surface__head">
+            <div><h3>Composer · Frontmatter & AI suggestion</h3><p>文档内上下文面板；候选留在真实属性位置，确认前不写入 YAML。</p></div>
+            <span class="ds-surface__source">production CSS<br>styles.tailwind.css</span>
+          </div>
+          <div class="ds-stage pktw-root peak-design-root peak-composer-root">
+            <div class="ds-composer-bar">
+              <div class="ds-composer-bar__left">
+                <button class="pk-icon-btn" aria-label="返回">←</button>
+                <div class="pk-segmented" data-variant="animated-pill" data-size="lg" data-segmented>
+                  <button class="pk-segmented__opt" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">编辑视图</span></button>
+                  <button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">纯净阅读</span></button>
+                  <button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">原生 Markdown</span></button>
+                </div>
+                <span class="ds-composer-title">B-软件</span>
+              </div>
+              <div class="ds-composer-bar__right"><button class="pk-btn pk-btn--ghost pk-btn--sm">评论 0</button><button class="pk-btn pk-btn--ghost pk-btn--sm">Intelligence</button></div>
+            </div>
+            <div class="ds-composer-workspace">
+              <div class="ds-composer-paper">
+                <div class="pk-fm-block">
+                  <div class="pk-fm-actions">
+                    <button class="pk-btn pk-btn--ghost pk-btn--sm"><svg class="ds-icon" viewBox="0 0 24 24"><path d="m12 3-1.3 3.7L7 8l3.7 1.3L12 13l1.3-3.7L17 8l-3.7-1.3L12 3Z"></path></svg>AI 属性建议 · 1</button>
+                  </div>
+                  <div class="pk-fm-grid">
+                    <span class="pk-fm-grid__key">created <i class="ds-origin">程序</i></span><strong class="pk-fm-grid__value">2023-04-30 11:42:31</strong>
+                    <span class="pk-fm-grid__key">updated <i class="ds-origin">程序</i></span><strong class="pk-fm-grid__value">2023-05-05 19:47:49</strong>
+                    <span class="pk-fm-grid__key">aliases <i class="ds-origin ds-origin--manual">人工</i></span><strong class="pk-fm-grid__value"><span class="pk-fm-tag">B-软件</span></strong>
+                  </div>
+                  <section class="pk-fm-suggestions">
+                    <div class="pk-fm-suggestions__head"><span><strong>AI 属性建议 · 1</strong><small>基于当前文档与 Vault 属性规范</small></span><button class="pk-btn pk-btn--ghost pk-btn--sm">关闭</button></div>
+                    <div class="pk-fm-suggestions__body"><div class="pk-fm-suggestion-row"><span class="pk-fm-suggestion-row__copy"><strong>category</strong><span>软件工具</span><small>新增属性候选 · 不会自动写入</small></span><span class="pk-fm-suggestion-row__actions"><button class="pk-btn pk-btn--primary pk-btn--sm">添加</button><button class="pk-btn pk-btn--ghost pk-btn--sm">拒绝</button></span></div></div>
+                    <small class="pk-fm-suggestions__footer">应用后仍通过 Composer transaction hub 写入</small>
+                  </section>
+                </div>
+                <div class="ds-composer-copy">· VPN 工具 <a href="#">GitHub – hiddify-next</a>：支持 Sing-box、X-ray、TUIC、Hysteria、Reality、Trojan 与 SSH。</div>
+              </div>
+            </div>
+            <div class="ds-rules"><div><b>Shape</b><span>Property grid 8px；suggestion panel 12px；trigger pill。</span></div><div><b>Elevation</b><span>文档 sheet 使用 card shadow；内嵌候选只用 border。</span></div><div><b>Motion</b><span>150ms 原位出现；Reduced Motion 瞬时但保留状态。</span></div></div>
+          </div>
+        </article>
+
+        <article class="ds-surface">
+          <div class="ds-surface__head">
+            <div><h3>Chat Studio · Retained conversation surface</h3><p>三列 workspace、document-style message、固定 reading rail 与共享 instruction composer。</p></div>
+            <span class="ds-surface__source">production CSS<br>pkchat-* retained surface</span>
+          </div>
+          <div class="ds-stage pktw-root peak-design-root">
+            <div class="ds-chat-shell">
+              <aside class="ds-chat-left pkchat-studio__left">
+                <div class="ds-chat-left__brand">Peak Chat</div>
+                <div class="ds-chat-navrow"><svg class="ds-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>New chat</div>
+                <div class="ds-chat-navrow"><svg class="ds-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search</div>
+                <div class="ds-chat-left__section">Recent</div>
+                <div class="ds-chat-navrow" data-active="true">Design system audit</div>
+                <div class="ds-chat-navrow">Graph relation model</div>
+                <div class="ds-chat-navrow">Composer QA</div>
+                <div class="ds-chat-left__section">Projects</div>
+                <div class="ds-chat-navrow">Peak Assistant</div>
+              </aside>
+              <div class="ds-chat-main">
+                <div class="pkchat-shell">
+                  <div class="pkchat-center">
+                    <div class="pkchat-header"><span class="pkchat-header__titlewrap"><span class="pkchat-header__title">Design system audit</span><span class="pkchat-header__scope">Peak Assistant</span></span><span class="pkchat-header__actions"><button class="pk-icon-btn" aria-label="更多">•••</button></span></div>
+                    <div class="pkchat-body">
+                      <div class="pkchat-msg-list">
+                        <article class="pkchat-msg pkchat-msg--user"><div class="ds-user-line">把各个界面的组件、颜色和主题边界统一起来。</div><div class="pkchat-msg__meta-row pkchat-msg__meta-row--user"><span>10:42</span></div></article>
+                        <article class="pkchat-msg">
+                          <div class="pkchat-msg__head"><span class="pkchat-msg__avatar">P</span><span class="pkchat-msg__name">Peak</span><span class="pk-chip pk-chip--accent pkchat-msg__mode-badge">Research</span><span class="pkchat-msg__head-meta">Auto · 4 sources</span></div>
+                          <div class="ds-chat-answer"><p>我会把视觉真源、Theme Boundary 和产品组件分开治理。</p><p>当前最先需要收敛的是并行 Button、Segmented、Portal scope 与 Result Browser controls。</p></div>
+                          <div class="pkchat-msg__meta-row"><span class="pk-chip pk-chip--neutral pkchat-msg__model-chip">Claude Sonnet</span><span class="ds-chat-meta">10:43 · 2.8k tokens</span></div>
+                        </article>
+                      </div>
+                    </div>
+                    <div class="pkchat-composer-wrap"><div class="pkchat-composer"><div class="pkchat-composer__editor" style="color:var(--pk-text-tertiary);font-size:var(--pk-text-md)">Ask Peak or add context…</div><div class="pkchat-composer__foot"><div class="pkchat-composer__foot-left"><button class="pk-icon-btn">＋</button></div><div class="pkchat-composer__foot-right"><button class="pkchat-run-chip"><span class="pkchat-run-chip__label">Research</span><span class="pkchat-run-chip__sep">·</span><span class="pkchat-run-chip__mid">Auto</span><span class="pkchat-run-chip__ctx">2 ctx</span></button><button class="pkchat-send" aria-label="发送"><svg class="ds-icon" viewBox="0 0 24 24"><path d="m5 12 14-7-5 14-2-6-7-1Z"></path></svg></button></div></div></div></div>
+                  </div>
+                </div>
+              </div>
+              <aside class="ds-chat-right pkchat-studio__right"><h4>Outline</h4><div class="ds-outline-row"><span>01</span>Theme Boundary</div><div class="ds-outline-row"><span>02</span>Shared primitives</div><div class="ds-outline-row"><span>03</span>Surface migration</div><h4 style="margin-top:26px">Resources</h4><div class="ds-outline-row"><span>·</span>ui-design.md</div><div class="ds-outline-row"><span>·</span>peak-tokens.css</div></aside>
+            </div>
+            <div class="ds-rules"><div><b>Shape</b><span>消息是 document beats，不做双向气泡；composer 12px。</span></div><div><b>Elevation</b><span>对话区 base；只有 composer shell 使用 card shadow。</span></div><div><b>Motion</b><span>稳定前缀 streaming；Stop 即时；splitter hover 100ms。</span></div></div>
+          </div>
+        </article>
+
+        <article class="ds-surface">
+          <div class="ds-surface__head">
+            <div><h3>General Search · Result Browser</h3><p>List / Tree / Graph 是同一 snapshot 的投影；真实 row anatomy 包含 file icon、title、snippet、meta 与 score。</p></div>
+            <span class="ds-surface__source">production source<br>ResultBrowserToolbar + ListRow</span>
+          </div>
+          <div class="ds-stage pktw-root peak-design-root">
+            <div class="ds-search-shell">
+              <div class="ds-search-main">
+                <div class="ds-search-head"><div class="ds-search-input"><svg class="ds-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span>design system host isolation</span><span class="pk-chip pk-chip--neutral" style="margin-left:auto">12 results</span></div><div class="ds-search-toolbar"><div class="pk-segmented" data-variant="animated-pill" data-segmented><button class="pk-segmented__opt" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">List</span></button><button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Tree</span></button><button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Graph</span></button></div><div class="pk-segmented" data-segmented><button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Compact</span></button><button class="pk-segmented__opt" data-selected="true"><span class="pk-segmented__label">Detailed</span></button></div></div></div>
+                <div class="ds-result-list">
+                  <div class="ds-result-row" data-selected="true"><span class="ds-file-icon"><svg class="ds-icon" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5"></path></svg></span><span class="ds-result-copy"><span class="ds-result-title">Peak Design System Migration <span class="ds-result-score">92%</span></span><span class="ds-result-snippet">统一 semantic tokens、公共 primitives 与 Obsidian Theme Boundary，减少并行实现。</span><span class="ds-result-meta">docs/superpowers/specs/design-system-migration.md · edited 2h ago</span></span></div>
+                  <div class="ds-result-row"><span class="ds-file-icon"><svg class="ds-icon" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5"></path></svg></span><span class="ds-result-copy"><span class="ds-result-title">Composer Component Consistency <span class="ds-result-score">86%</span></span><span class="ds-result-snippet">Block action、candidate、sidecar 与 review controller 使用同一交互 role。</span><span class="ds-result-meta">docs/superpowers/specs/composer-component-consistency.md · yesterday</span></span></div>
+                  <div class="ds-result-row"><span class="ds-file-icon"><svg class="ds-icon" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5"></path></svg></span><span class="ds-result-copy"><span class="ds-result-title">Obsidian UI Defense <span class="ds-result-score">79%</span></span><span class="ds-result-snippet">Host selector、Portal ownerDocument、computed geometry 与 hostile theme 验证。</span><span class="ds-result-meta">docs/conventions/ui-design.md · 3 days ago</span></span></div>
+                </div>
+              </div>
+              <aside class="ds-search-inspector"><h4>Peak Design System Migration</h4><p>Selected result</p><div class="ds-inspector-section"><b>Path</b><p>docs/superpowers/specs</p></div><div class="ds-inspector-section"><b>Why this matched</b><p>design system · theme boundary · host isolation</p></div><div class="ds-inspector-section"><b>Connected</b><p>Composer consistency<br>UI design convention<br>Theme engine audit</p></div><button class="pk-btn pk-btn--secondary pk-btn--sm" style="margin-top:12px">Open in new tab</button></aside>
+            </div>
+            <div class="ds-rules"><div><b>Default view</b><span>List 用于找、比较、打开；不是一打开就 Graph。</span></div><div><b>Projection</b><span>切换 List / Tree / Graph 不重新查询，不丢选择与 inspector。</span></div><div><b>Density</b><span>Compact 隐藏 snippet/meta；Detailed 保持三行 anatomy。</span></div></div>
+          </div>
+        </article>
+
+        <article class="ds-surface">
+          <div class="ds-surface__head">
+            <div><h3>Settings & Onboarding · Row system</h3><p>真实 Row primitive 纵向扫描；section 不再套一层巨型卡片，主题入口成为 Appearance 的正式设置。</p></div>
+            <span class="ds-surface__source">production CSS<br>pk-row + pkset-section</span>
+          </div>
+          <div class="ds-stage pktw-root peak-design-root">
+            <div class="ds-settings-shell">
+              <aside class="ds-settings-nav"><h4>Peak Settings</h4><div class="ds-settings-tab">Overview</div><div class="ds-settings-tab">AI Setup</div><div class="ds-settings-tab" data-active="true">Appearance</div><div class="ds-settings-tab">Knowledge Index</div><div class="ds-settings-tab">Tools</div><div class="ds-settings-tab">Advanced</div></aside>
+              <div class="ds-settings-content">
+                <h3>Appearance</h3><p>Peak visual preferences are independent from the Obsidian host theme.</p>
+                <section class="ds-settings-section">
+                  <div class="ds-settings-section__head"><b>Theme</b><span>Theme pack, appearance and density</span></div>
+                  <div class="pk-row"><span class="pk-row__icon"><svg class="ds-icon" viewBox="0 0 24 24"><path d="M12 3v18M5 7h14"></path></svg></span><span class="pk-row__body"><span class="pk-row__title">Peak theme</span><span class="pk-row__desc">Semantic colors, typography and approved presets</span></span><span class="pk-row__right"><span class="pk-chip pk-chip--accent">Peak Default</span><button class="pk-btn pk-btn--secondary pk-btn--sm">Change</button></span></div>
+                  <div class="pk-row"><span class="pk-row__icon"><svg class="ds-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 0 0 16V4Z"></path></svg></span><span class="pk-row__body"><span class="pk-row__title">Appearance</span><span class="pk-row__desc">Light, Dark or follow a preference signal</span></span><span class="pk-row__right"><div class="pk-segmented" data-segmented><button class="pk-segmented__opt" data-selected="true"><span class="pk-segmented__label">Light</span></button><button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Dark</span></button></div></span></div>
+                  <div class="pk-row"><span class="pk-row__icon"><svg class="ds-icon" viewBox="0 0 24 24"><path d="M4 7h16M4 12h12M4 17h8"></path></svg></span><span class="pk-row__body"><span class="pk-row__title">Density</span><span class="pk-row__desc">Changes spacing and information expansion, not type sizes</span></span><span class="pk-row__right"><span class="pk-row__value pk-row__value--sans">Comfortable</span></span></div>
+                </section>
+                <section class="ds-settings-section">
+                  <div class="ds-settings-section__head"><b>Accessibility</b><span>Input signals stay separate from the visual theme pack</span></div>
+                  <div class="pk-row"><span class="pk-row__icon"><svg class="ds-icon" viewBox="0 0 24 24"><circle cx="12" cy="6" r="2"></circle><path d="M5 10h14M12 8v13M8 21l4-7 4 7"></path></svg></span><span class="pk-row__body"><span class="pk-row__title">Reduced motion</span><span class="pk-row__desc">Removes springs and large movement while preserving state</span></span><span class="pk-row__right"><button class="pk-toggle" data-on="true"><span class="pk-toggle__thumb"></span></button></span></div>
                 </section>
               </div>
             </div>
-            <div class="product-rules"><span><b>Radius</b>grid 8 · panel 12 · trigger pill</span><span><b>Elevation</b>文档 card；建议面板只用 border</span><span><b>Motion</b>150ms 淡入 + 4px 位移；reduced 瞬时</span></div>
-          </article>
+            <div class="ds-rules"><div><b>Row anatomy</b><span>32px icon + body + right slot；title 13，description 12。</span></div><div><b>Grouping</b><span>section 只用标题、说明和 8px 行距，不重复套卡。</span></div><div><b>Preview</b><span>主题设置即时隔离预览；保存原子化并可回退。</span></div></div>
+          </div>
+        </article>
+      </div>
+    </section>
 
-          <article class="product-card">
-            <header><div><h3>Chat Studio</h3><p>连续对话、稳定 streaming 与同一 instruction composer</p></div><span class="state current">产品表面</span></header>
-            <div class="product-preview">
-              <div class="chat-shell">
-                <aside class="chat-rail"><div class="rail-line" style="width:70%"></div><div class="rail-line"></div><div class="rail-line" style="width:84%"></div></aside>
-                <div class="message-list"><span class="chip accent" style="align-self:flex-start">Research profile</span><div class="bubble ai">我找到 4 个相关文档，并保留了可追溯来源。</div><div class="bubble user">按时间关系整理，说明冲突。</div><div class="bubble ai">正在整理时间线…<span style="color:var(--accent-text)">▌</span></div><div class="chat-composer"><small>Ask Peak or add context…</small><div class="demo-row" style="justify-content:space-between;margin-top:8px"><span class="chip">2 contexts</span><button class="btn btn-primary">发送</button></div></div></div>
-              </div>
+    <section class="ds-section" id="graph">
+      <div class="ds-section-head">
+        <div><h2>Graph 是四层选择</h2><p>结构关系图与 AI multi-lens 图共享 shell、controls、selection、legend 和状态，但保留 Cytoscape 与 React Flow 两个内核。</p></div>
+        <span class="ds-index">07 · Graph system</span>
+      </div>
+      <div class="ds-surface">
+        <div class="ds-surface__head"><div><h3>Result graph · Constellation</h3><p>下面使用生产 Cytoscape palette：hub、hublike doc、普通 doc、reference、hub constituent 与 semantic edge。</p></div><span class="ds-surface__source">production palette<br>AtlasGraphCanvasImpl.tsx</span></div>
+        <div class="ds-stage pktw-root peak-design-root">
+          <div class="ds-graph-shell">
+            <div class="ds-graph-main">
+              <div class="ds-graph-toolbar"><div class="pk-segmented" data-variant="animated-pill" data-segmented><button class="pk-segmented__opt" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">Constellation</span></button><button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Flow ↓</span></button><button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Folder</span></button><button class="pk-segmented__opt" data-selected="false"><span class="pk-segmented__label">Orbit</span></button></div><span style="display:flex;align-items:center;gap:7px;color:var(--pk-text-secondary);font-size:var(--pk-text-sm)">Semantic <button class="pk-toggle" data-on="true"><span class="pk-toggle__thumb"></span></button></span></div>
+              <svg class="ds-graph-canvas" viewBox="0 0 900 570" role="img" aria-label="Peak Result Graph 示例">
+                <defs>
+                  <linearGradient id="docScore" x1="0" x2="1"><stop stop-color="#f5f3ff"></stop><stop offset="1" stop-color="#c4b5fd"></stop></linearGradient>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#334155"></path></marker>
+                </defs>
+                <path d="M218 274 C300 210 336 201 412 230" fill="none" stroke="#334155" stroke-width="1.4" marker-end="url(#arrow)"></path>
+                <path d="M497 230 C580 170 640 163 700 195" fill="none" stroke="#8b5cf6" stroke-width="1.8" stroke-dasharray="2 5"></path>
+                <path d="M500 254 C605 285 645 329 714 352" fill="none" stroke="#334155" stroke-width="1.4" marker-end="url(#arrow)"></path>
+                <path d="M215 291 C320 371 397 397 490 402" fill="none" stroke="#cbd5e1" stroke-width=".8" stroke-dasharray="7 6"></path>
+                <path d="M490 402 C570 405 617 390 714 352" fill="none" stroke="#cbd5e1" stroke-width=".8" stroke-dasharray="7 6"></path>
+                <g transform="translate(110 244)"><rect width="112" height="54" rx="10" fill="url(#docScore)" stroke="#a78bfa"></rect><text x="56" y="33" text-anchor="middle" font-size="12" fill="#1e1b4b">UI design</text></g>
+                <g transform="translate(410 202)"><rect width="112" height="78" rx="12" fill="#a78bfa" stroke="#4c1d95" stroke-width="4"></rect><text x="56" y="34" text-anchor="middle" font-size="14" font-weight="800" fill="#2e1065">Peak System</text><text x="56" y="54" text-anchor="middle" font-size="10" fill="#4c1d95">(8 constituents)</text></g>
+                <g transform="translate(685 170)"><rect width="112" height="54" rx="10" fill="url(#docScore)" stroke="#6d28d9" stroke-width="3"></rect><text x="56" y="33" text-anchor="middle" font-size="12" font-weight="700" fill="#4c1d95">Search</text></g>
+                <g transform="translate(700 327)"><rect width="112" height="54" rx="10" fill="url(#docScore)" stroke="#a78bfa"></rect><text x="56" y="33" text-anchor="middle" font-size="12" fill="#1e1b4b">Composer</text></g>
+                <g transform="translate(435 376)"><rect width="112" height="54" rx="10" fill="#f5f3ff" stroke="#a78bfa"></rect><text x="56" y="33" text-anchor="middle" font-size="12" fill="#1e1b4b">Theme Pack</text></g>
+              </svg>
             </div>
-            <div class="product-rules"><span><b>Radius</b>message 12，首角 4；composer 12</span><span><b>Elevation</b>对话区 base，不堆 card shadow</span><span><b>Motion</b>稳定前缀 streaming；Stop 即时</span></div>
-          </article>
+            <aside class="ds-graph-inspector"><h4>Peak System</h4><small>Hub · 8 constituents</small><div class="ds-graph-fact"><b>Role</b><span>Knowledge hub</span></div><div class="ds-graph-fact"><b>Reference edges</b><span>3 directed</span></div><div class="ds-graph-fact"><b>Semantic edges</b><span>2 optional layers</span></div><div class="ds-graph-fact"><b>Selection</b><span>Persists across layout changes</span></div><button class="pk-btn pk-btn--secondary pk-btn--sm" style="margin-top:12px">Open in File Atlas</button></aside>
+          </div>
+          <div class="ds-rules"><div><b>View</b><span>List 找与比较；Tree 看层级；Graph 看关系。</span></div><div><b>Layout</b><span>Constellation、Flow、Folder、Orbit 只改变投影。</span></div><div><b>Lens</b><span>Topology、Thinking Tree、Bridge、Timeline、Gaps 属于 AI artifact。</span></div></div>
+        </div>
+      </div>
+      <div class="ds-table-scroll" style="margin-top:30px">
+        <table class="ds-matrix">
+          <colgroup><col style="width:18%"><col style="width:24%"><col style="width:30%"><col style="width:28%"></colgroup>
+          <thead><tr><th>层</th><th>选项</th><th>什么时候使用</th><th>系统约束</th></tr></thead>
+          <tbody>
+            <tr><td>View</td><td>List · Tree · Graph</td><td>找/比较/打开；层级路径；关系理解。</td><td>同一 snapshot，切换不重新查询。</td></tr>
+            <tr><td>Scope</td><td>Current file · Results · Hub · Vault subset</td><td>先说明图里包含什么，再选 layout。</td><td>scope 与数量始终可见，不静默扩大。</td></tr>
+            <tr><td>Layout</td><td>Constellation · Flow ↓/→ · Folder · Orbit</td><td>聚类、引用方向、目录位置、Hub 重心。</td><td>保留 selection、inspector 与 edge layer。</td></tr>
+            <tr><td>Lens</td><td>Topology · Thinking Tree · Bridge · Timeline · Gaps</td><td>AI Graph 的分析问题，不是普通 layout。</td><td>重算时显示 loading、version 与 receipt。</td></tr>
+            <tr><td>Edge</td><td>Reference · Hub · Semantic · Inferred</td><td>实线表达确定关系；虚线表达弱关系或推断。</td><td>颜色之外还需线型、箭头、legend 与可访问名称。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-          <article class="product-card">
-            <header><div><h3>General Search · Result Browser</h3><p>List / Tree / Graph 是同一快照的三种投影</p></div><span class="state current">共享基础</span></header>
-            <div class="product-preview">
-              <div class="result-shell">
-                <div class="result-toolbar"><div class="seg" data-segmented data-product-view><button aria-selected="true">List</button><button aria-selected="false">Tree</button><button aria-selected="false">Graph</button></div><div class="seg" data-segmented><button aria-selected="true">Compact</button><button aria-selected="false">Detailed</button></div></div>
-                <div id="resultRows"><div class="result-row"><span class="result-rank">01</span><span><b>Design System Migration</b><small>docs/superpowers/specs · token 与组件迁移</small></span><span class="chip accent">92%</span></div><div class="result-row"><span class="result-rank">02</span><span><b>Composer Component Consistency</b><small>共享 action、sidecar 与 review surface</small></span><span class="chip">86%</span></div><div class="result-row"><span class="result-rank">03</span><span><b>Obsidian UI Defense</b><small>host selector、Portal 与 computed style</small></span><span class="chip">79%</span></div></div>
-              </div>
-            </div>
-            <div class="product-rules"><span><b>Default</b>List：找、比较、打开最快</span><span><b>Tree</b>只在层级与路径是任务时使用</span><span><b>Graph</b>只在关系理解是任务时使用</span></div>
-          </article>
+    <section class="ds-section" id="governance">
+      <div class="ds-section-head">
+        <div><h2>从补丁变成约束</h2><p>先建立 Boundary 与 Theme schema，再迁移共享组件和产品 family；不能继续按“哪里坏了补哪里”的顺序推进。</p></div>
+        <span class="ds-index">08 · Governance</span>
+      </div>
+      <div class="ds-roadmap">
+        <article class="ds-phase"><h3>冻结契约</h3><p>确认 semantic roles、Theme schema、Boundary、primitive inventory、Graph vocabulary 与合法例外；建立当前扫描基线。</p></article>
+        <article class="ds-phase"><h3>建立主题运行时</h3><p>Theme Resolver、validation、preview、atomic fallback、themed Portal host 与 popout ownerDocument 传播。</p></article>
+        <article class="ds-phase"><h3>收敛公共组件</h3><p>合并并行 Button；统一 Segmented、Input、Row、Overlay、AI state、Result Browser 与 Graph chrome。</p></article>
+        <article class="ds-phase"><h3>按 family 整体迁移</h3><p>Settings/Onboarding → Search → Chat → Composer chrome/sidecar → File Atlas/Graph → Usage Dashboard。</p></article>
+      </div>
+      <div class="ds-statement-list" style="margin-top:34px">
+        <article class="ds-statement"><h3>静态门禁</h3><p>Peak scope 禁止新增 Obsidian visual vars、未登记 literal color/radius/shadow、raw button 与 surface-local segmented。扫描基线只降不升。</p></article>
+        <article class="ds-statement"><h3>Hostile theme 验证</h3><p>准备夸张 button、input、font、radius 和 focus 的 Obsidian 测试主题；检查真实 computed style，而不是只看 source 与 build。</p></article>
+        <article class="ds-statement"><h3>真实宿主验收</h3><p>Light/Dark、自定义 pack、Compact、Reduced Motion、Portal、popout、keyboard 与 fixed geometry 必须在真实 Obsidian 里分别验证。</p></article>
+      </div>
+    </section>
 
-          <article class="product-card">
-            <header><div><h3>Settings & Onboarding</h3><p>Row 是扫描单元；Wizard 只组织任务顺序</p></div><span class="state debt">需主题入口</span></header>
-            <div class="product-preview" style="display:grid;gap:10px;align-content:start">
-              <div class="settings-row"><span class="settings-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M7 3h10"></path></svg></span><span class="settings-copy"><b>Peak theme</b><small>Peak Default · independent from Obsidian</small></span><span class="chip accent">Default</span></div>
-              <div class="settings-row"><span class="settings-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 0 0 16V4Z"></path></svg></span><span class="settings-copy"><b>Appearance</b><small>Light · Dark · Follow preference</small></span><div class="seg" data-segmented><button aria-selected="true">Light</button><button aria-selected="false">Dark</button></div></div>
-              <div class="settings-row"><span class="settings-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h12M4 17h8"></path></svg></span><span class="settings-copy"><b>Density</b><small>Spacing changes; type size stays fixed</small></span><span class="chip">Comfortable</span></div>
-              <div class="settings-row"><span class="settings-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="2"></circle><path d="M8 21l1.5-7M16 21l-1.5-7M6 11l6 2 6-2"></path></svg></span><span class="settings-copy"><b>Reduced motion</b><small>Remove springs and large movement</small></span><span class="toggle"></span></div>
-            </div>
-            <div class="product-rules"><span><b>Radius</b>Row 12 · control 8 · chip pill</span><span><b>Elevation</b>Row card shadow；section 不套卡</span><span><b>Motion</b>设置即时 preview，保存原子化</span></div>
-          </article>
-        </div>
-
-        <div class="table-scroll" style="margin-top:18px">
-          <table class="surface-table">
-            <colgroup><col style="width:16%"><col style="width:25%"><col style="width:21%"><col style="width:18%"><col style="width:20%"></colgroup>
-            <thead><tr><th>Surface</th><th>共享组合</th><th>密度与形状</th><th>Motion</th><th>禁止做法</th></tr></thead>
-            <tbody>
-              <tr><td>Peak Home / Command Center</td><td>PageShell、Destination matrix、Command row、SearchInput</td><td>comfortable；大区块 12，命令行 8</td><td>入口 hover fast，分组 base</td><td>每个入口做成巨型浮卡；装饰渐变竞争主任务</td></tr>
-              <tr><td>Composer + Copilot sidecar</td><td>Document canvas、Block action、Candidate、Review Controller、Receipt</td><td>正文不做卡片墙；sidecar 16，内面板 12</td><td>原位 candidate；导航同步；流式稳定</td><td>候选只出现在 sidecar；接受前自动写回</td></tr>
-              <tr><td>Chat Studio</td><td>Conversation rail、Message、Instruction Composer、Model Picker</td><td>默认 comfortable；消息 12</td><td>first-token、stop、regenerate 有独立状态</td><td>每条消息加重阴影；stream 导致布局跳动</td></tr>
-              <tr><td>Search / Vault Intelligence</td><td>SearchInput、Result Browser、Inspector、Report、Sources</td><td>List/Tree 可 compact；Graph 独立画布</td><td>投影切换不重新查询；thumb spring</td><td>Graph 默认；为换视图重跑检索</td></tr>
-              <tr><td>File Atlas</td><td>File rail、Tree、Inspector、Graph chrome</td><td>工具密集；树行低圆角或不圆</td><td>选择、折叠、定位 base</td><td>复制 Result Browser 的控制模型和 palette</td></tr>
-              <tr><td>Usage Dashboard</td><td>KPI、Chart shell、Filter、Explainer、Receipt link</td><td>卡片 12；数据表连续行</td><td>数值与图表 150–300ms；不做无限脉冲</td><td>把 series 色当状态色；所有 KPI 都抬高</td></tr>
-              <tr><td>Modal / Popover</td><td>Overlay shell、Header、Body、Footer、focus trap</td><td>Modal 16；Popover 12；Tooltip 8</td><td>Modal slow；Popover base</td><td>裸挂 body；继承 Obsidian modal/button 样式</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="section" id="graph">
-        <div class="section-head">
-          <div><h2>Graph System</h2><p>Graph 不是一个组件，而是四层选择：View、Scope、Layout、Analytic Lens。结构图与 AI 分析图共享外壳和语义，不强行合并渲染引擎。</p></div>
-          <span class="section-index">09 · Graph</span>
-        </div>
-
-        <div class="graph-shell" aria-label="Graph 视觉示例">
-          <div class="graph-toolbar"><div class="seg" data-segmented><button aria-selected="true">Constellation</button><button aria-selected="false">Flow</button><button aria-selected="false">Folder</button></div><span class="chip accent">Semantic on</span></div>
-          <span class="edge" style="left:24%;top:54%;width:24%;transform:rotate(-12deg)"></span><span class="edge" style="left:47%;top:48%;width:27%;transform:rotate(17deg)"></span><span class="edge" style="left:47%;top:49%;width:22%;transform:rotate(-42deg)"></span><span class="edge semantic" style="left:26%;top:58%;width:48%;transform:rotate(9deg)"></span>
-          <span class="node" style="left:17%;top:45%">UI design</span><span class="node hub" style="left:43%;top:39%">Peak System</span><span class="node" style="left:73%;top:53%">Composer</span><span class="node" style="left:66%;top:22%">Search</span><span class="node" style="left:34%;top:72%">Theme Pack</span>
-        </div>
-
-        <div class="table-scroll" style="margin-top:18px">
-          <table class="graph-matrix">
-            <colgroup><col style="width:18%"><col style="width:23%"><col style="width:31%"><col style="width:28%"></colgroup>
-            <thead><tr><th>层</th><th>选项</th><th>什么时候用</th><th>系统约束</th></tr></thead>
-            <tbody>
-              <tr><td>View</td><td>List · Tree · Graph</td><td>List 找/比较/打开；Tree 理解路径层级；Graph 理解关系。</td><td>默认 List；三者读取同一 snapshot，切换不重新查询。</td></tr>
-              <tr><td>Scope</td><td>Current file · Results · Hub · Vault subset</td><td>先回答“这张图里包含什么”，再选择布局。</td><td>scope chip 与结果数量必须可见；禁止悄悄扩展全 Vault。</td></tr>
-              <tr><td>Layout</td><td>Constellation · Flow ↓/→ · Folder · Orbit</td><td>聚类、引用方向、文件位置、Hub 重心分别使用不同 preset。</td><td>布局只是投影，不改变数据；切换保留选择与 inspector。</td></tr>
-              <tr><td>Lens</td><td>Topology · Thinking Tree · Bridges · Timeline · Gaps</td><td>AI Graph 的分析问题，不是普通结果图的布局按钮。</td><td>Lens 可重算分析 artifact；必须显示 loading、version 与 receipt。</td></tr>
-              <tr><td>Edge layer</td><td>Reference · Semantic · Inferred · Temporal</td><td>实线表达确定关系；虚线/弱色表达语义或推断关系。</td><td>不能只靠颜色；legend、形态与可访问名称共同编码。</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="callout" style="margin-top:18px">
-          <b>保留两个内核</b>
-          <p>Cytoscape 继续负责 Result Browser / File Atlas 的结构关系图；React Flow 继续负责 AI Multi-Lens 图。两者共享 GraphShell、toolbar、token、legend、selection、loading、empty、error 与 inspector contract。</p>
-        </div>
-      </section>
-
-      <section class="section" id="abstraction">
-        <div class="section-head">
-          <div><h2>哪些共享，哪些不抽象</h2><p>抽象目标是降低视觉与行为分叉，而不是制造一个吞掉领域语义的万能组件。</p></div>
-          <span class="section-index">10 · Abstraction</span>
-        </div>
-        <div class="contract-grid">
-          <article class="contract-card">
-            <h3>必须成为共享系统</h3>
-            <ul>
-              <li>semantic tokens、Theme Resolver 与 Theme Boundary</li>
-              <li>Button / IconButton / Segmented / Tabs / Toggle</li>
-              <li>Input / SearchInput / Combobox / FieldRow / validation</li>
-              <li>Chip / FilterPill / Badge / Tooltip</li>
-              <li>Card / Row / PageShell / SidecarShell / Modal / Popover</li>
-              <li>Result Browser 与 Graph chrome</li>
-              <li>AI Candidate / Review / Progress / Receipt 状态族</li>
-              <li>keyboard、focus、Portal、z-index 与 motion contract</li>
-            </ul>
-          </article>
-          <article class="contract-card">
-            <h3>共享外壳，保留专用内核</h3>
-            <ul>
-              <li>Composer 文档编辑、表格、图片、公式与 native file renderer</li>
-              <li>Cytoscape 与 React Flow 的布局/渲染实现</li>
-              <li>Streamdown Shadow DOM 的 markdown color mapping</li>
-              <li>CodeMirror 输入与代码编辑行为</li>
-              <li>Recharts 数据 series 与图表语义</li>
-              <li>Provider 品牌色与合法的领域 palette</li>
-            </ul>
-          </article>
-        </div>
-
-        <div class="audit-strip">
-          <div><b>158</b><span>当前 src TSX 原生 button 扫描命中；需逐项分类，不等于 158 个缺陷</span></div>
-          <div><b>306</b><span>当前 src 中疑似 Obsidian 视觉变量引用；含合法边界例外</span></div>
-          <div><b>464</b><span>styles 内 hex / rgb 表达式；含主题真源、图表和品牌例外</span></div>
-          <div><b>197</b><span>styles 内数字 border-radius 声明；应收敛到角色或登记例外</span></div>
-        </div>
-        <p style="color:var(--text-3);font-size:11px">扫描时间：2026-08-10。数字用于建立只降不升的治理基线，不能代替逐文件语义审计。</p>
-      </section>
-
-      <section class="section" id="adoption">
-        <div class="section-head">
-          <div><h2>怎么改</h2><p>先建立边界与真源，再迁移组件和产品表面。不能继续按“哪里坏了补哪里”的顺序推进。</p></div>
-          <span class="section-index">11 · Adoption</span>
-        </div>
-        <div class="roadmap">
-          <article class="phase"><h3>冻结契约与基线</h3><p>确认 token roles、Theme Schema、Boundary、primitive inventory、Graph vocabulary 和例外登记。记录 hostile-theme computed styles 与视觉基线。</p></article>
-          <article class="phase"><h3>建立主题运行时</h3><p>实现 Theme Resolver、Peak Default、preview、validation、atomic fallback、Portal host 和 popout ownerDocument 传播；Settings 提供主题入口。</p></article>
-          <article class="phase"><h3>收敛共享组件</h3><p>合并并行 Button；统一 Segmented、Input、Row、Overlay、AI state 与 Graph chrome。所有固定尺寸 primitive 建立宿主防御测试。</p></article>
-          <article class="phase"><h3>按 surface 整体迁移</h3><p>顺序建议：Settings/Onboarding → Search/Result Browser → Chat → Composer chrome/sidecar → File Atlas/Graph → Dashboard。每个 family 一次迁完。</p></article>
-        </div>
-
-        <div class="callout" style="margin-top:18px">
-          <b>迁移优先级</b>
-          <p>优先改共享频率高、宿主侵入风险高、视觉分叉明显的层：Theme Boundary、Button/Segmented、Overlay/Portal、SearchInput、Result Browser。复杂编辑器和 Graph renderer 只替换外壳，不在同一波重写内核。</p>
-        </div>
-      </section>
-
-      <section class="section" id="enforcement">
-        <div class="section-head">
-          <div><h2>以后怎么不再出现</h2><p>设计系统不是文档约定，而是“设计评审 + 静态门禁 + hostile host 测试 + 真实 Obsidian 验收”的组合。</p></div>
-          <span class="section-index">12 · Enforcement</span>
-        </div>
-        <div class="contract-grid">
-          <article class="contract-card">
-            <h3>自动门禁</h3>
-            <ul>
-              <li>Peak scope 内禁止新增 Obsidian visual vars</li>
-              <li>禁止未登记 literal color / radius / shadow / z-index</li>
-              <li>禁止新 raw button、重复 Segmented 与 surface-local Button Group</li>
-              <li>Theme Pack schema、完整 token、contrast 与 fallback 测试</li>
-              <li>Portal scope、fixed geometry、focus 与 reduced-motion 测试</li>
-              <li>扫描基线只降不升；新增例外必须有 owner 和删除条件</li>
-            </ul>
-          </article>
-          <article class="contract-card">
-            <h3>真实宿主验收</h3>
-            <ul>
-              <li>准备 hostile Obsidian theme：夸张按钮、字体、圆角与 input 规则</li>
-              <li>在 Light/Dark、Compact/Comfortable、Reduced Motion 下核对 computed style</li>
-              <li>在真实 Obsidian 中验证 Button geometry、Popover、Modal、Portal 与 popout</li>
-              <li>键盘验收读取 activeElement；hover 验收走真实 pointer path</li>
-              <li>截图只证明最终视觉；交互状态需 DOM/CDP 证据</li>
-            </ul>
-          </article>
-        </div>
-
-        <div class="component-catalog" style="margin-top:18px">
-          <details open>
-            <summary><b>新界面进入开发前</b><span>先完成 Surface Contract，不允许边写 JSX 边决定 token 和组件。</span></summary>
-            <div class="detail-body"><div class="rule-list"><div><b>1 · 任务</b>用户在这里做什么？默认信息密度与主要状态是什么？</div><div><b>2 · 组件映射</b>逐项映射到已有 primitive；缺口先补公共组件。</div><div><b>3 · 视觉角色</b>列出 surface、text、border、radius、elevation、motion 与 graph semantics。</div><div><b>4 · 边界</b>确认 root、Portal、popout、Shadow DOM 与第三方 renderer 的主题传播。</div><div><b>5 · 状态</b>empty、loading、streaming、ready、stale、error、disabled、focus、selected。</div><div><b>6 · 证据</b>focused test、build、real host computed style、交互与截图证据分开记录。</div></div></div>
-          </details>
-        </div>
-
-        <div class="callout" style="margin-top:18px">
-          <b>Definition of Done</b>
-          <p>一个 surface 只有在 Peak Default Light/Dark、自定义 Theme Pack preview、hostile Obsidian theme、Compact、Reduced Motion、键盘与 Portal 场景都通过后，才算完成设计系统迁移。Build 通过不等于真实宿主视觉通过。</p>
-        </div>
-      </section>
-
-      <footer>
-        <p>本页是产品级 Design System 入口，描述目标契约并引用当前代码事实；工程细节继续由 <a href="conventions/ui-design.md">UI Design System convention</a>、<a href="superpowers/specs/2026-05-22-design-system-migration.md">迁移决策</a> 与各产品 spec 承载。</p>
-        <p>本次只创建文档与交互式说明，没有修改 Peak 生产 UI、CSS token 或组件代码。</p>
-      </footer>
-    </main>
-  </div>
+    <footer class="ds-footer">
+      <p>产品级入口：本页。工程细则：<a href="conventions/ui-design.md">UI Design System convention</a>。迁移历史：<a href="superpowers/specs/2026-05-22-design-system-migration.md">Design System Migration</a>。</p>
+      <p>本页直接加载生产 CSS 作为组件 specimen；本次仍未修改任何 Peak 生产 UI、token 或 React 组件。</p>
+    </footer>
+  </main>
 
   <script>
     (function () {
       var body = document.body;
-      var bindings = [
-        ["packSelect", "pack"],
-        ["appearanceSelect", "appearance"],
-        ["densitySelect", "density"],
-        ["motionSelect", "motion"]
-      ];
-      bindings.forEach(function (pair) {
-        var input = document.getElementById(pair[0]);
-        input.addEventListener("change", function () { body.dataset[pair[1]] = input.value; });
+      var pack = document.getElementById("packSelect");
+      var appearance = document.getElementById("appearanceSelect");
+      var density = document.getElementById("densitySelect");
+      var motion = document.getElementById("motionSelect");
+
+      pack.addEventListener("change", function () { body.dataset.pack = pack.value; });
+      density.addEventListener("change", function () { body.dataset.density = density.value; });
+      motion.addEventListener("change", function () { body.dataset.motion = motion.value; });
+      appearance.addEventListener("change", function () {
+        body.classList.toggle("theme-dark", appearance.value === "dark");
       });
 
       document.querySelectorAll("[data-segmented]").forEach(function (group) {
         group.addEventListener("click", function (event) {
-          var button = event.target.closest("button");
+          var button = event.target.closest(".pk-segmented__opt");
           if (!button || !group.contains(button)) return;
-          group.querySelectorAll("button").forEach(function (candidate) {
-            candidate.setAttribute("aria-selected", String(candidate === button));
+          var oldThumb = group.querySelector(".pk-segmented__thumb");
+          group.querySelectorAll(".pk-segmented__opt").forEach(function (item) {
+            item.dataset.selected = String(item === button);
           });
+          if (group.dataset.variant === "animated-pill") {
+            if (oldThumb) oldThumb.remove();
+            var thumb = document.createElement("span");
+            thumb.className = "pk-segmented__thumb";
+            button.insertBefore(thumb, button.firstChild);
+          }
         });
       });
 
-      var motionStage = document.getElementById("motionStage");
-      document.getElementById("motionDemoButton").addEventListener("click", function () {
-        motionStage.classList.toggle("is-active");
+      document.querySelectorAll(".pk-toggle").forEach(function (toggle) {
+        toggle.addEventListener("click", function () {
+          toggle.dataset.on = String(toggle.dataset.on !== "true");
+        });
       });
 
-      var navLinks = Array.from(document.querySelectorAll(".side-nav > a"));
-      var sections = navLinks.map(function (link) { return document.querySelector(link.getAttribute("href")); }).filter(Boolean);
-      var updateCurrent = function () {
-        var current = sections[0];
-        sections.forEach(function (section) { if (section.getBoundingClientRect().top <= 150) current = section; });
-        navLinks.forEach(function (link) {
-          if (link.getAttribute("href") === "#" + current.id) link.setAttribute("aria-current", "true");
+      var links = Array.from(document.querySelectorAll(".ds-nav a"));
+      var sections = links.map(function (link) { return document.querySelector(link.getAttribute("href")); }).filter(Boolean);
+      var updateNav = function () {
+        var active = sections[0];
+        sections.forEach(function (section) {
+          if (section.getBoundingClientRect().top <= 100) active = section;
+        });
+        links.forEach(function (link) {
+          if (link.getAttribute("href") === "#" + active.id) link.setAttribute("aria-current", "true");
           else link.removeAttribute("aria-current");
         });
       };
-      document.addEventListener("scroll", updateCurrent, { passive: true });
-      updateCurrent();
+      document.addEventListener("scroll", updateNav, { passive: true });
+      updateNav();
     }());
   </script>
 </body>
