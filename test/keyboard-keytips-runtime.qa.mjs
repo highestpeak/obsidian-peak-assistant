@@ -118,7 +118,8 @@ try {
 	await page.waitForTimeout(50);
 	assert.equal(await page.locator('[data-peak-keytip="I"]').count(), 1);
 
-	// Exact-control Key Tips focus without clicking; Enter performs the action.
+	// Exact-control Key Tips perform their action immediately. Editable controls
+	// remain focus destinations so typing never receives a synthetic click.
 	await page.evaluate(() => {
 		window.__peakRuntime.dispose();
 		document.body.innerHTML = `
@@ -126,6 +127,8 @@ try {
 			<div id="atlas" class="surface">
 				<div class="zone" data-peak-keyboard-zone="fa-file-rail"><button id="files">Files</button></div>
 				<div class="zone" data-peak-keyboard-zone="fa-view-filters">
+					<input id="atlas-query" data-peak-keytip-key="Q" data-peak-keytip-label="Search" />
+					<button id="compact" data-peak-keytip-key="1" data-peak-keytip-label="Compact">Compact</button>
 					<button id="tree" data-peak-keytip-key="T" data-peak-keytip-label="Tree">Tree</button>
 					<button id="graph" data-peak-keytip-key="G" data-peak-keytip-label="Graph">Graph</button>
 				</div>
@@ -135,7 +138,9 @@ try {
 		const runtime = new window.PeakKeyboardTest.PeakKeyboardRuntime();
 		window.__peakRuntime = runtime;
 		window.__peakClicks = 0;
+		window.__peakCompactClicks = 0;
 		document.querySelector('#graph').addEventListener('click', () => { window.__peakClicks += 1; });
+		document.querySelector('#compact').addEventListener('click', () => { window.__peakCompactClicks += 1; });
 		runtime.registerSurface('file-atlas', atlas);
 		document.querySelector('#outside').focus();
 	});
@@ -144,12 +149,17 @@ try {
 	assert.equal(await page.locator('[data-peak-keytip="G"]').count(), 1);
 	await page.keyboard.press('g');
 	assert.equal(await page.evaluate(() => document.activeElement?.id), 'graph');
-	assert.equal(await page.evaluate(() => window.__peakClicks), 0);
-	await page.keyboard.press('Enter');
 	assert.equal(await page.evaluate(() => window.__peakClicks), 1);
+	await page.keyboard.press('Alt');
+	await page.keyboard.press('q');
+	assert.equal(await page.evaluate(() => document.activeElement?.id), 'atlas-query');
+	assert.equal(await page.evaluate(() => window.__peakClicks), 1);
+	await page.keyboard.press('Alt');
+	await page.keyboard.press('1');
+	assert.equal(await page.evaluate(() => window.__peakCompactClicks), 1);
 
-	// Composer phase 2 uses the same focus-first contract, including an
-	// adapter-owned document entry that is not a fixed header button.
+	// Composer buttons use the same immediate-action contract, while the
+	// adapter-owned document entry remains a focus destination.
 	await page.evaluate(() => {
 		window.__peakRuntime.dispose();
 		document.body.innerHTML = `
@@ -178,8 +188,6 @@ try {
 	assert.equal(await page.locator('[data-peak-keytip="Q"] > kbd').textContent(), 'Q');
 	await page.keyboard.press('e');
 	assert.equal(await page.evaluate(() => document.activeElement?.id), 'edit');
-	assert.equal(await page.evaluate(() => window.__composerClicks), 0);
-	await page.keyboard.press('Enter');
 	assert.equal(await page.evaluate(() => window.__composerClicks), 1);
 	await page.keyboard.press('Alt');
 	await page.keyboard.press('q');

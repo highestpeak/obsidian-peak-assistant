@@ -54,6 +54,7 @@ assert.strictEqual(
 	'AltGraph must remain available for text entry',
 );
 assert.strictEqual(keyTipSelectionKey(modifierEvent({ key: 'q', altKey: false })), 'Q');
+assert.strictEqual(keyTipSelectionKey(modifierEvent({ key: '7', altKey: false })), '7');
 assert.strictEqual(keyTipSelectionKey(modifierEvent({ key: 'q', altKey: true })), null);
 assert.strictEqual(keyTipSelectionKey(modifierEvent({ key: '?', altKey: false })), null);
 
@@ -122,5 +123,60 @@ assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.ai, 'A');
 assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.send, 'E');
 assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.composer.display.edit, 'E');
 assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.close, 'X');
+
+function assertUniqueKeys(label: string, keys: string[]): void {
+	assert.strictEqual(
+		new Set(keys).size,
+		keys.length,
+		`${label} must not hide visible Key Tips through duplicate keys`,
+	);
+}
+
+assertUniqueKeys('Vault Search graph with Inspector', [
+	PEAK_CONTROL_KEY_TIP_KEYS.search.vaultTab,
+	PEAK_CONTROL_KEY_TIP_KEYS.search.aiTab,
+	PEAK_CONTROL_KEY_TIP_KEYS.search.aiWorkspace,
+	PEAK_CONTROL_KEY_TIP_KEYS.search.refine,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.search.view),
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset),
+	PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.search.graphCanvas),
+	PEAK_CONTROL_KEY_TIP_KEYS.search.clearPinnedHub,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.search.inspector),
+	...PEAK_KEY_TIP_DEFINITIONS['vault-search'].map((tip) => tip.key),
+]);
+
+assertUniqueKeys('File Atlas tree', [
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.sort,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.tree,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graph,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.search,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset),
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.filters,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.flatten,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.expandAll,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.collapseAll,
+	...PEAK_KEY_TIP_DEFINITIONS['file-atlas'].map((tip) => tip.key),
+]);
+
+assertUniqueKeys('File Atlas graph', [
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.sort,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.tree,
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graph,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope),
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout),
+	PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.semantic,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphCanvas),
+	...PEAK_KEY_TIP_DEFINITIONS['file-atlas'].map((tip) => tip.key),
+]);
+
+assertUniqueKeys('AI Search sources graph', [
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources.view),
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources.graphScope),
+	PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources.copyLinks,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources.graphPreset),
+	PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources.graphSemantic,
+	...Object.values(PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources.graphCanvas),
+]);
 
 console.log('keyboard-navigation-kernel: passed');

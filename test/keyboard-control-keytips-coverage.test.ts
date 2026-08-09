@@ -20,6 +20,9 @@ const search = [
 	read('src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx'),
 	read('src/ui/view/quick-search/components/inspector/CommandCenterPinControl.tsx'),
 	read('src/ui/view/quick-search/components/inspector/AIGraphSection.tsx'),
+	read('src/ui/view/quick-search/components/V2SourcesView.tsx'),
+	read('src/ui/component/result-browser/graph/ResultBrowserGraph.tsx'),
+	read('src/ui/component/graph/AtlasGraphCanvasImpl.tsx'),
 ].join('\n');
 
 assertReferences(search, 'PEAK_CONTROL_KEY_TIP_KEYS.search', [
@@ -27,10 +30,15 @@ assertReferences(search, 'PEAK_CONTROL_KEY_TIP_KEYS.search', [
 	'aiTab',
 	'aiWorkspace',
 	'refine',
-	'view[id]',
-	'density[d]',
-	'graphPreset',
+	'view',
+	'density',
+	'graphPreset.constellation',
+	'graphPreset.flowTb',
+	'graphPreset.flowLr',
+	'graphPreset.folder',
+	'graphPreset.orbit',
 	'graphSemantic',
+	'graphCanvas',
 	'clearPinnedHub',
 	'inspector.pin',
 	'inspector.openAtlas',
@@ -46,6 +54,7 @@ assertReferences(search, 'PEAK_CONTROL_KEY_TIP_KEYS.aiSearch', [
 	'newAnalysis',
 	'lifecycle[id]',
 	'outline',
+	'sources',
 	'actions.copy',
 	'actions.export',
 	'actions.saveGraph',
@@ -53,6 +62,25 @@ assertReferences(search, 'PEAK_CONTROL_KEY_TIP_KEYS.aiSearch', [
 	'actions.synthesize',
 	'actions.continue',
 	'actions.openChat',
+]);
+
+const aiSources = read('src/ui/view/quick-search/components/V2SourcesView.tsx');
+assertReferences(aiSources, 'SOURCE_KEY_TIPS', [
+	'view',
+	'density',
+	'graphScope.oneHop',
+	'graphScope.twoHop',
+	'graphScope.ai',
+	'copyLinks',
+	'graphPreset.constellation',
+	'graphPreset.flowTb',
+	'graphPreset.flowLr',
+	'graphPreset.folder',
+	'graphPreset.orbit',
+	'graphSemantic',
+	'graphCanvas',
+	'empty.twoHop',
+	'empty.ai',
 ]);
 
 const atlas = [
@@ -67,7 +95,11 @@ assertReferences(atlas, 'PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas', [
 	'tree',
 	'graph',
 	'search',
-	'preset',
+	'preset.overview',
+	'preset.reading',
+	'preset.writing',
+	'preset.resources',
+	'preset.all',
 	'filters',
 	'flatten',
 	'expandAll',
@@ -75,8 +107,13 @@ assertReferences(atlas, 'PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas', [
 	'graphScope.oneHop',
 	'graphScope.twoHop',
 	'graphScope.ai',
-	'graphLayout',
+	'graphLayout.constellation',
+	'graphLayout.flowTb',
+	'graphLayout.flowLr',
+	'graphLayout.folder',
+	'graphLayout.orbit',
 	'semantic',
+	'graphCanvas',
 ]);
 
 const chat = [
@@ -142,5 +179,10 @@ assertReferences(composer, 'PEAK_CONTROL_KEY_TIP_KEYS.composer', [
 	'modal.next',
 	'modal.locate',
 ]);
+
+const graphCanvas = read('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
+assert.match(graphCanvas, /data-peak-keytip-key=\{keyTipKeys\?\.nodeList\}/);
+assert.match(graphCanvas, /data-peak-keytip-key=\{keyTipKeys\?\.copyMermaid\}/);
+assert.match(graphCanvas, /data-peak-keytip-key=\{keyTipKeys\?\.copyImage\}/);
 
 console.log('keyboard-control-keytips-coverage: passed');

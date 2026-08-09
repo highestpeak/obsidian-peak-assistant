@@ -3,6 +3,7 @@ import type { AtlasGraphCanvasProps } from './AtlasGraphCanvasImpl';
 
 export type {
 	AtlasGraphCanvasProps,
+	AtlasGraphKeyTipKeys,
 	AtlasGraphNodeTap,
 	AtlasGraphPreset,
 	AtlasGraphViewport,

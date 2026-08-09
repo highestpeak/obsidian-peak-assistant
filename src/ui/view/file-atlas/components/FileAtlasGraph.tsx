@@ -54,6 +54,14 @@ const LAYOUTS: Array<{ id: AtlasGraphPreset; label: string }> = [
 	{ id: 'orbit', label: 'Orbit' },
 ];
 
+const GRAPH_LAYOUT_KEY_TIPS: Readonly<Record<AtlasGraphPreset, string>> = {
+	constellation: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.constellation,
+	'flow-tb': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.flowTb,
+	'flow-lr': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.flowLr,
+	folder: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.folder,
+	orbit: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.orbit,
+};
+
 function scoreForHop(hop: 0 | 1 | 2): number {
 	return hop === 0 ? 1 : hop === 1 ? 0.6 : 0.3;
 }
@@ -254,10 +262,8 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 							tabIndex={layout === l.id ? 0 : -1}
 							data-graph-layout={l.id}
 							data-peak-focus-id={`file-atlas-layout-${l.id}`}
-							data-peak-keytip-key={layout === l.id
-								? PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout
-								: undefined}
-							data-peak-keytip-label={layout === l.id ? 'Graph layout' : undefined}
+							data-peak-keytip-key={GRAPH_LAYOUT_KEY_TIPS[l.id]}
+							data-peak-keytip-label={`${l.label} graph layout`}
 							className={`pkfa-graph-scope-tab${layout === l.id ? ' is-active' : ''}`}
 							onClick={() => selectLayout(l.id)}
 						>
@@ -305,6 +311,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 						subgraph={loading ? null : subgraph}
 						preset={layout}
 						showSemantic={semantic}
+						keyTipKeys={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphCanvas}
 						initialViewport={viewport}
 						onViewportChange={setViewport}
 						summary={meta}

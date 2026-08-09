@@ -29,10 +29,20 @@ import {
 } from './v2SourcesInteraction';
 import { sourcesToResultItems } from './sourceEvidenceAdapter';
 import { ContextualAIGraphView } from '@/ui/component/ai-graph';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export { sourcesToResultItems } from './sourceEvidenceAdapter';
 
 type GraphMode = 'one-hop' | 'two-hop' | 'ai';
+
+const SOURCE_KEY_TIPS = PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources;
+const SOURCE_GRAPH_PRESET_KEY_TIPS: Readonly<Record<ResultBrowserGraphPreset, string>> = {
+	constellation: SOURCE_KEY_TIPS.graphPreset.constellation,
+	'flow-tb': SOURCE_KEY_TIPS.graphPreset.flowTb,
+	'flow-lr': SOURCE_KEY_TIPS.graphPreset.flowLr,
+	folder: SOURCE_KEY_TIPS.graphPreset.folder,
+	orbit: SOURCE_KEY_TIPS.graphPreset.orbit,
+};
 
 interface V2SourcesViewProps {
 	onClose?: () => void;
@@ -43,12 +53,16 @@ const SegmentedButton: React.FC<{
 	onClick: () => void;
 	children: React.ReactNode;
 	title?: string;
-}> = ({ active, onClick, children, title }) => (
+	keyTipKey: string;
+	keyTipLabel: string;
+}> = ({ active, onClick, children, title, keyTipKey, keyTipLabel }) => (
 	<Button
 		variant={active ? 'default' : 'ghost'}
 		size="sm"
 		geometry="toolbar"
 		title={title}
+		data-peak-keytip-key={keyTipKey}
+		data-peak-keytip-label={keyTipLabel}
 		onClick={onClick}
 		className={cn(
 			'pktw-rounded-full pktw-text-sm',
@@ -65,13 +79,28 @@ const ScopeToggle: React.FC<{
 }> = ({ value, onChange }) => (
 	<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 		<div className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-rounded-full pktw-border pktw-border-pk-border pktw-bg-pk-surface-sunken pktw-p-0.5">
-			<SegmentedButton active={value === 'one-hop'} onClick={() => onChange('one-hop')}>
+			<SegmentedButton
+				active={value === 'one-hop'}
+				onClick={() => onChange('one-hop')}
+				keyTipKey={SOURCE_KEY_TIPS.graphScope.oneHop}
+				keyTipLabel="One-hop source graph"
+			>
 				One hop
 			</SegmentedButton>
-			<SegmentedButton active={value === 'two-hop'} onClick={() => onChange('two-hop')}>
+			<SegmentedButton
+				active={value === 'two-hop'}
+				onClick={() => onChange('two-hop')}
+				keyTipKey={SOURCE_KEY_TIPS.graphScope.twoHop}
+				keyTipLabel="Two-hop source graph"
+			>
 				Two hop
 			</SegmentedButton>
-			<SegmentedButton active={value === 'ai'} onClick={() => onChange('ai')}>
+			<SegmentedButton
+				active={value === 'ai'}
+				onClick={() => onChange('ai')}
+				keyTipKey={SOURCE_KEY_TIPS.graphScope.ai}
+				keyTipLabel="AI Graph"
+			>
 				AI Graph
 			</SegmentedButton>
 		</div>
@@ -103,11 +132,23 @@ function VaultRelationshipEmptyState({
 			</span>
 			<div className="pk-ai-sources-empty-graph-actions">
 				{canExpand && (
-					<Button variant="outline" geometry="action" onClick={onExpand}>
+					<Button
+						variant="outline"
+						geometry="action"
+						onClick={onExpand}
+						data-peak-keytip-key={SOURCE_KEY_TIPS.empty.twoHop}
+						data-peak-keytip-label="Explore two hop"
+					>
 						Explore two hop
 					</Button>
 				)}
-				<Button variant="outline" geometry="action" onClick={onOpenAIMap}>
+				<Button
+					variant="outline"
+					geometry="action"
+					onClick={onOpenAIMap}
+					data-peak-keytip-key={SOURCE_KEY_TIPS.empty.ai}
+					data-peak-keytip-label="Open AI Graph"
+				>
 					AI Graph
 				</Button>
 			</div>
@@ -313,10 +354,18 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 					</div>
 				</div>
 				<div className="pk-ai-sources-toolbar-controls">
-					<ResultBrowserViewToggle view={view} onViewChange={setView} />
+					<ResultBrowserViewToggle
+						view={view}
+						onViewChange={setView}
+						keyTipKeys={SOURCE_KEY_TIPS.view}
+					/>
 					{view === 'graph' && <ScopeToggle value={graphMode} onChange={setGraphMode} />}
 					{isSourcesDensityVisible(view) && (
-						<ResultBrowserDensityToggle density={density} onDensityChange={setDensity} />
+						<ResultBrowserDensityToggle
+							density={density}
+							onDensityChange={setDensity}
+							keyTipKeys={SOURCE_KEY_TIPS.density}
+						/>
 					)}
 					<Button
 						variant="ghost"
@@ -324,6 +373,8 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 						onClick={() => void copySourcePaths()}
 						title="Copy source links"
 						aria-label="Copy source links"
+						data-peak-keytip-key={SOURCE_KEY_TIPS.copyLinks}
+						data-peak-keytip-label="Copy source links"
 					>
 						<Copy />
 					</Button>
@@ -340,6 +391,10 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 							onPresetChange={setGraphPreset}
 							semantic={semantic}
 							onSemanticChange={setSemantic}
+							keyTipKeys={{
+								preset: SOURCE_GRAPH_PRESET_KEY_TIPS,
+								semantic: SOURCE_KEY_TIPS.graphSemantic,
+							}}
 						/>
 					)}
 				</div>
@@ -417,6 +472,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 									subgraph={subgraph}
 									preset={graphPreset}
 									semantic={semantic}
+									keyTipKeys={SOURCE_KEY_TIPS.graphCanvas}
 									onNodeTap={(node) => {
 										selectPath(node.path);
 										projectionRef.current?.focus();

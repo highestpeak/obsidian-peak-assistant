@@ -291,6 +291,12 @@ export interface AtlasGraphViewport {
 	pan: { x: number; y: number };
 }
 
+export interface AtlasGraphKeyTipKeys {
+	nodeList: string;
+	copyMermaid: string;
+	copyImage: string;
+}
+
 export interface AtlasGraphCanvasProps {
 	subgraph: ResultSubgraphOutput | null;
 	preset: AtlasGraphPreset;
@@ -313,6 +319,8 @@ export interface AtlasGraphCanvasProps {
 	initialViewport?: AtlasGraphViewport | null;
 	/** Emitted for user and keyboard pan/zoom changes. */
 	onViewportChange?: (viewport: AtlasGraphViewport) => void;
+	/** Surface-owned direct-action keys for the stable graph toolbar. */
+	keyTipKeys?: AtlasGraphKeyTipKeys;
 }
 
 export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
@@ -329,6 +337,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	onNodeHover,
 	initialViewport,
 	onViewportChange,
+	keyTipKeys,
 }) => {
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
 	const [hoveredLabel, setHoveredLabel] = useState<{ label: string; path: string } | null>(null);
@@ -676,6 +685,12 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 							: PEAK_KEYBOARD_A11Y_STRINGS.openGraphNodeList
 					}
 					aria-expanded={nodeListOpen}
+					data-peak-keytip-key={keyTipKeys?.nodeList}
+					data-peak-keytip-label={
+						nodeListOpen
+							? PEAK_KEYBOARD_A11Y_STRINGS.closeGraphNodeList
+							: PEAK_KEYBOARD_A11Y_STRINGS.openGraphNodeList
+					}
 					onClick={() => setNodeListOpen((open) => !open)}
 					data-active={nodeListOpen ? 'true' : undefined}
 				>
@@ -683,6 +698,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				</IconButton>
 				<IconButton
 					label={copiedMode === 'mermaid' ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
+					data-peak-keytip-key={keyTipKeys?.copyMermaid}
+					data-peak-keytip-label="Copy graph as Mermaid"
 					onClick={handleCopyMermaid}
 					data-active={copiedMode === 'mermaid' ? 'true' : undefined}
 				>
@@ -692,6 +709,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				</IconButton>
 				<IconButton
 					label={copiedMode === 'image' ? 'Copied image to clipboard' : 'Copy graph as image'}
+					data-peak-keytip-key={keyTipKeys?.copyImage}
+					data-peak-keytip-label="Copy graph as image"
 					onClick={handleCopyImage}
 					data-active={copiedMode === 'image' ? 'true' : undefined}
 				>

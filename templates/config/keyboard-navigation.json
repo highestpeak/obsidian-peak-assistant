@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "activation": {
     "macOS": "Option",
     "windowsLinux": "Alt",
@@ -21,8 +21,15 @@
       "refine": "E",
       "view": { "list": "L", "tree": "T", "graph": "G" },
       "density": { "compact": "C", "detailed": "D" },
-      "graphPreset": "J",
+      "graphPreset": {
+        "constellation": "C",
+        "flowTb": "D",
+        "flowLr": "F",
+        "folder": "K",
+        "orbit": "O"
+      },
       "graphSemantic": "S",
+      "graphCanvas": { "nodeList": "Z", "copyMermaid": "J", "copyImage": "I" },
       "clearPinnedHub": "U",
       "inspector": {
         "pin": "P",
@@ -40,6 +47,22 @@
       "newAnalysis": "N",
       "lifecycle": { "process": "P", "report": "R", "sources": "S", "graph": "F" },
       "outline": "O",
+      "sources": {
+        "view": { "list": "L", "tree": "T", "graph": "I" },
+        "density": { "compact": "1", "detailed": "2" },
+        "graphScope": { "oneHop": "J", "twoHop": "K", "ai": "Z" },
+        "copyLinks": "0",
+        "graphPreset": {
+          "constellation": "1",
+          "flowTb": "2",
+          "flowLr": "3",
+          "folder": "4",
+          "orbit": "5"
+        },
+        "graphSemantic": "6",
+        "graphCanvas": { "nodeList": "7", "copyMermaid": "8", "copyImage": "9" },
+        "empty": { "twoHop": "1", "ai": "2" }
+      },
       "actions": {
         "copy": "C",
         "export": "E",
@@ -55,14 +78,21 @@
       "tree": "T",
       "graph": "G",
       "search": "Q",
-      "preset": "P",
+      "preset": { "overview": "P", "reading": "R", "writing": "W", "resources": "U", "all": "A" },
       "filters": "K",
       "flatten": "L",
       "expandAll": "E",
       "collapseAll": "C",
       "graphScope": { "oneHop": "N", "twoHop": "H", "ai": "A" },
-      "graphLayout": "Y",
-      "semantic": "V"
+      "graphLayout": {
+        "constellation": "C",
+        "flowTb": "D",
+        "flowLr": "R",
+        "folder": "K",
+        "orbit": "P"
+      },
+      "semantic": "V",
+      "graphCanvas": { "nodeList": "L", "copyMermaid": "W", "copyImage": "B" }
     },
     "chatStudio": {
       "openLeft": "C",

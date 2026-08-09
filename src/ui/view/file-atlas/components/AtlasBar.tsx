@@ -34,6 +34,14 @@ interface AtlasBarProps {
 	onFlattenChange: (flattened: boolean) => void;
 }
 
+const FILE_ATLAS_PRESET_KEY_TIPS: Readonly<Record<string, string>> = {
+	overview: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset.overview,
+	reading: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset.reading,
+	writing: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset.writing,
+	resources: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset.resources,
+	all: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset.all,
+};
+
 export const AtlasBar: React.FC<AtlasBarProps> = ({
 	config,
 	activePreset,
@@ -123,10 +131,8 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 						tabIndex={activePreset === preset.id ? 0 : -1}
 						data-preset-id={preset.id}
 						data-peak-focus-id={`file-atlas-preset-${preset.id}`}
-						data-peak-keytip-key={activePreset === preset.id
-							? PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.preset
-							: undefined}
-						data-peak-keytip-label={activePreset === preset.id ? 'Graph layer preset' : undefined}
+						data-peak-keytip-key={FILE_ATLAS_PRESET_KEY_TIPS[preset.id]}
+						data-peak-keytip-label={`${preset.label} layer preset`}
 						className={`pkfa-preset-tab${activePreset === preset.id ? ' is-active' : ''}`}
 						onClick={() => onApplyPreset(preset.id)}
 					>

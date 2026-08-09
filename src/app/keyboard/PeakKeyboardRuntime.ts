@@ -45,6 +45,7 @@ interface ActiveKeyTip {
 	label: string;
 	anchor: HTMLElement;
 	zone: HTMLElement | null;
+	behavior: 'focus' | 'activate';
 	badge: HTMLElement;
 }
 
@@ -383,7 +384,7 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			return;
 		}
 		this.hideKeyTips(ownerDocument);
-		if (!this.focusElement(tip.anchor, session.surface, tip.zone)) return;
+		if (!this.runKeyTip(tip, session.surface)) return;
 		state.liveRegion.textContent = `${PEAK_KEYBOARD_SURFACE_LABELS[session.surface.id]}, ${tip.label}`;
 	}
 
@@ -468,12 +469,13 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			if (!isVisible(anchor) || anchor.hasAttribute('disabled')) continue;
 			if (anchor.getAttribute('aria-disabled') === 'true') continue;
 			const key = anchor.dataset.peakKeytipKey?.trim().toLocaleUpperCase() ?? '';
-			if (!/^[A-Z]$/.test(key) || usedKeys.has(key)) continue;
+			if (!/^[A-Z0-9]$/.test(key) || usedKeys.has(key)) continue;
 			this.appendKeyTip(session, usedKeys, {
 				key,
 				label: this.controlLabel(anchor, key),
 				anchor,
 				zone: currentZone(session.surface.root, anchor),
+				behavior: this.controlKeyTipBehavior(anchor),
 			});
 		}
 		for (const definition of PEAK_KEY_TIP_DEFINITIONS[session.surface.id]) {
@@ -485,6 +487,7 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 				label: definition.label,
 				anchor,
 				zone: currentZone(session.surface.root, anchor),
+				behavior: 'focus',
 			});
 		}
 		if (session.tips.length === 0) {
@@ -517,6 +520,30 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			|| control.getAttribute('title')?.trim()
 			|| control.textContent?.trim()
 			|| fallback;
+	}
+
+	private controlKeyTipBehavior(control: HTMLElement): 'focus' | 'activate' {
+		const explicit = control.dataset.peakKeytipBehavior;
+		if (explicit === 'focus' || explicit === 'activate') return explicit;
+		if (control.getAttribute('role') === 'textbox' || control.isContentEditable) return 'focus';
+		if (control.tagName === 'TEXTAREA' || control.tagName === 'SELECT') return 'focus';
+		if (control.tagName !== 'INPUT') return 'activate';
+		const type = (control.getAttribute('type') ?? 'text').toLocaleLowerCase();
+		return ['button', 'checkbox', 'radio', 'reset', 'submit'].includes(type)
+			? 'activate'
+			: 'focus';
+	}
+
+	private runKeyTip(tip: ActiveKeyTip, surface: RegisteredSurface): boolean {
+		if (tip.behavior === 'focus') {
+			return this.focusElement(tip.anchor, surface, tip.zone);
+		}
+		// Focus first so tabs and toggle buttons retain a visible focus position.
+		// The click then performs the advertised action immediately; popovers and
+		// dialogs remain free to move focus into their own content afterwards.
+		if (!this.focusElement(tip.anchor, surface, tip.zone)) return false;
+		tip.anchor.click();
+		return true;
 	}
 
 	private hideKeyTips(ownerDocument: Document): void {

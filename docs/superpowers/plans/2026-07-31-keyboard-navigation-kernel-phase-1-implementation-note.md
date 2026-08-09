@@ -115,3 +115,20 @@ drawer, graph, and detached-window evidence, the interaction status remains
 - No Obsidian CDP listener was available. macOS real-host Option behavior,
   Windows Electron Alt/menu behavior, detached-window interaction, and visual
   placement in production remain `INTERACTION NOT VERIFIED`.
+
+## 6. 2026-08-10 direct-action and complete-mode revision
+
+- Exact controls carrying `data-peak-keytip-key` now execute immediately after
+  selection. Text inputs, contenteditable editors, zone destinations and
+  adapter-owned document entries remain focus-only.
+- All five Result Graph presets, all five File Atlas layer presets, all five
+  File Atlas Graph layouts, and the three shared graph-canvas actions publish
+  their own Key Tips instead of labelling only the active item.
+- AI Search Sources owns a collision-free contextual map for view, density,
+  graph scope, presets, Semantic, source-copy and canvas actions. Single digit
+  keys are used where the persistent AI Search controls already consume the
+  available mnemonic letters.
+- Composer is now registered as phase 2 against the same app-owned runtime; the
+  historical phase-2 boundary above remains as the record of the earlier wave.
+- Focused kernel, surface, coverage and Playwright DOM contracts plus the
+  production build pass. Real Obsidian interaction remains separately gated.

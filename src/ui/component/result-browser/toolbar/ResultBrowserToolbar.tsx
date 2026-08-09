@@ -32,6 +32,14 @@ const PRESET_LABELS: Array<[ResultBrowserGraphPreset, string, string]> = [
 	['orbit',         'Orbit',         'Hubs at center, docs orbit — are hubs the center of gravity?'],
 ];
 
+const GRAPH_PRESET_KEY_TIPS: Readonly<Record<ResultBrowserGraphPreset, string>> = {
+	constellation: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.constellation,
+	'flow-tb': PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowTb,
+	'flow-lr': PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowLr,
+	folder: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.folder,
+	orbit: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.orbit,
+};
+
 // ---------------------------------------------------------------------------
 // Search / local-filter input
 // ---------------------------------------------------------------------------
@@ -103,6 +111,7 @@ export const ResultBrowserFooterHints: React.FC<{
 export interface ViewModeToggleProps {
 	view: ResultBrowserView;
 	onViewChange: (view: ResultBrowserView) => void;
+	keyTipKeys?: Readonly<Record<ResultBrowserView, string>>;
 }
 
 const Thumb: React.FC<{ layoutId: string }> = ({ layoutId }) => (
@@ -129,7 +138,11 @@ const VIEW_TITLES: Record<ResultBrowserView, string> = {
 	graph: 'Graph — relations between results',
 };
 
-export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({ view, onViewChange }) => {
+export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({
+	view,
+	onViewChange,
+	keyTipKeys = PEAK_CONTROL_KEY_TIP_KEYS.search.view,
+}) => {
 	const rootRef = useRef<HTMLDivElement>(null);
 	useRovingComposite(rootRef, {
 		itemSelector: '[role="tab"]',
@@ -155,7 +168,7 @@ export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({ view, o
 						aria-selected={active}
 						tabIndex={active ? 0 : -1}
 						data-result-view={id}
-						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.view[id]}
+						data-peak-keytip-key={keyTipKeys[id]}
 						data-peak-keytip-label={`${label} view`}
 						title={VIEW_TITLES[id]}
 						onClick={() => { if (view !== id) onViewChange(id); }}
@@ -179,9 +192,14 @@ export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({ view, o
 export interface DensityToggleProps {
 	density: ResultBrowserDensity;
 	onDensityChange: (density: ResultBrowserDensity) => void;
+	keyTipKeys?: Readonly<Record<ResultBrowserDensity, string>>;
 }
 
-export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ density, onDensityChange }) => {
+export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({
+	density,
+	onDensityChange,
+	keyTipKeys = PEAK_CONTROL_KEY_TIP_KEYS.search.density,
+}) => {
 	const rootRef = useRef<HTMLDivElement>(null);
 	useRovingComposite(rootRef, {
 		itemSelector: '[role="tab"]',
@@ -207,7 +225,7 @@ export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ densi
 						aria-selected={active}
 						tabIndex={active ? 0 : -1}
 						data-result-density={d}
-						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.density[d]}
+						data-peak-keytip-key={keyTipKeys[d]}
 						data-peak-keytip-label={`${d === 'compact' ? 'Compact' : 'Detailed'} results`}
 						title={d === 'compact' ? 'Compact — one line per result' : 'Detailed — result title + snippet + path / anchor'}
 						onClick={() => onDensityChange(d)}
@@ -234,9 +252,17 @@ export interface GraphControlsProps {
 	/** Optional host-owned chip (e.g. Quick Search's pinned-hub chip). */
 	leadingSlot?: React.ReactNode;
 	className?: string;
+	keyTipKeys?: {
+		preset: Readonly<Record<ResultBrowserGraphPreset, string>>;
+		semantic: string;
+	};
 }
 
-const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPresetChange'>> = ({ preset, onPresetChange }) => {
+const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPresetChange' | 'keyTipKeys'>> = ({
+	preset,
+	onPresetChange,
+	keyTipKeys,
+}) => {
 	const rootRef = useRef<HTMLDivElement>(null);
 	useRovingComposite(rootRef, {
 		itemSelector: '[role="tab"]',
@@ -262,8 +288,8 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 						aria-selected={active}
 						tabIndex={active ? 0 : -1}
 						data-graph-preset={id}
-						data-peak-keytip-key={active ? PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset : undefined}
-						data-peak-keytip-label={active ? 'Graph layout preset' : undefined}
+						data-peak-keytip-key={(keyTipKeys?.preset ?? GRAPH_PRESET_KEY_TIPS)[id]}
+						data-peak-keytip-label={`${label} graph layout`}
 						title={title}
 						onClick={() => onPresetChange(id)}
 						className={cn(
@@ -286,7 +312,11 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 	);
 };
 
-const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemanticChange'>> = ({ semantic, onSemanticChange }) => (
+const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemanticChange' | 'keyTipKeys'>> = ({
+	semantic,
+	onSemanticChange,
+	keyTipKeys,
+}) => (
 	<label
 		className="pktw-inline-flex pktw-min-h-8 pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-sm pktw-text-pk-foreground-muted"
 		title="Layer semantic-similarity edges on top of the current preset. Uses pre-indexed embeddings — instant, no AI credits, no network."
@@ -294,7 +324,7 @@ const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemantic
 		<input
 			type="checkbox"
 			checked={semantic}
-			data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic}
+			data-peak-keytip-key={keyTipKeys?.semantic ?? PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic}
 			data-peak-keytip-label="Toggle semantic edges"
 			onChange={(e) => onSemanticChange(e.target.checked)}
 			className="pktw-sr-only peer"
@@ -320,11 +350,11 @@ const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemantic
 );
 
 export const ResultBrowserGraphControls: React.FC<GraphControlsProps> = ({
-	preset, onPresetChange, semantic, onSemanticChange, leadingSlot, className,
+	preset, onPresetChange, semantic, onSemanticChange, leadingSlot, className, keyTipKeys,
 }) => (
 	<div className={cn('pktw-flex pktw-items-center pktw-gap-2.5', className)}>
 		{leadingSlot}
-		<GraphPresetSegmented preset={preset} onPresetChange={onPresetChange} />
-		<SemanticToggle semantic={semantic} onSemanticChange={onSemanticChange} />
+		<GraphPresetSegmented preset={preset} onPresetChange={onPresetChange} keyTipKeys={keyTipKeys} />
+		<SemanticToggle semantic={semantic} onSemanticChange={onSemanticChange} keyTipKeys={keyTipKeys} />
 	</div>
 );
