@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Segmented } from '@/ui/components/primitives';
 import { useComposerChrome } from './ComposerChromeContext';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * The two Composer display states plus the exit to Native Markdown:
@@ -42,10 +43,25 @@ export function DisplayStateSwitch({
 			value={value}
 			onValueChange={selectView}
 			options={[
-				{ value: 'edit', label: s.edit },
-				{ value: 'clean', label: s.clean },
+				{
+					value: 'edit',
+					label: s.edit,
+					keyTipKey: PEAK_CONTROL_KEY_TIP_KEYS.composer.display.edit,
+					keyTipLabel: s.edit,
+				},
+				{
+					value: 'clean',
+					label: s.clean,
+					keyTipKey: PEAK_CONTROL_KEY_TIP_KEYS.composer.display.clean,
+					keyTipLabel: s.clean,
+				},
 				...(onOpenNativeMarkdown
-					? [{ value: 'markdown' as const, label: s.nativeMarkdown }]
+					? [{
+						value: 'markdown' as const,
+						label: s.nativeMarkdown,
+						keyTipKey: PEAK_CONTROL_KEY_TIP_KEYS.composer.display.markdown,
+						keyTipLabel: s.nativeMarkdown,
+					}]
 					: []),
 			]}
 		/>

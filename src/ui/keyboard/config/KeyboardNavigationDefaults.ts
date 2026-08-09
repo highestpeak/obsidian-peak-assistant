@@ -89,6 +89,27 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 		},
 		index: { collapse: 'X', outline: 'B', resources: 'U' },
 	},
+	composer: {
+		workspaceBack: 'B',
+		workspaceForward: 'F',
+		display: { edit: 'E', clean: 'V', markdown: 'M' },
+		reviewAll: 'R',
+		comments: 'C',
+		intelligence: 'I',
+		undo: 'U',
+		redo: 'Y',
+		sidecar: {
+			close: 'X',
+			copilot: 'P',
+			history: 'H',
+			scope: 'W',
+			sensing: 'N',
+			ask: 'A',
+			graphs: 'G',
+			refresh: 'D',
+		},
+		modal: { close: 'X', previous: 'B', next: 'F', locate: 'L' },
+	},
 } as const;
 
 export const PEAK_KEY_TIP_ACTIVATION = {
@@ -118,6 +139,13 @@ export const PEAK_KEY_TIP_DEFINITIONS: Readonly<
 		{ key: 'Q', label: 'Chat input', zoneId: 'cs-composer' },
 		{ key: 'I', label: 'Conversation index', zoneId: 'cs-conversation-index' },
 	],
+	composer: [
+		{ key: 'Q', label: 'Document', zoneId: 'cv-document', actionId: 'document' },
+		{ key: 'T', label: 'Selection actions', zoneId: 'cv-contextual', actionId: 'selection-toolbar' },
+		{ key: 'K', label: 'Block actions', zoneId: 'cv-contextual', actionId: 'block-actions' },
+		{ key: 'O', label: 'Object actions', zoneId: 'cv-contextual', actionId: 'object-toolbar' },
+		{ key: 'S', label: 'Intelligence content', zoneId: 'cv-sidecar-content', actionId: 'sidecar-content' },
+	],
 } as const;
 
 export const PEAK_KEYBOARD_SURFACE_LABELS: Readonly<Record<PeakKeyboardSurfaceId, string>> = {
@@ -125,6 +153,7 @@ export const PEAK_KEYBOARD_SURFACE_LABELS: Readonly<Record<PeakKeyboardSurfaceId
 	'ai-search': 'AI Search',
 	'file-atlas': 'File Atlas',
 	'chat-studio': 'Chat Studio',
+	composer: 'Composer',
 };
 
 export const PEAK_KEYBOARD_ZONE_LABELS = {
@@ -150,6 +179,12 @@ export const PEAK_KEYBOARD_ZONE_LABELS = {
 	'cs-message-timeline': 'Messages',
 	'cs-composer': 'Composer',
 	'cs-conversation-index': 'Conversation index',
+	'cv-controlbar': 'Document controls',
+	'cv-document': 'Document',
+	'cv-contextual': 'Contextual actions',
+	'cv-sidecar-tabs': 'Intelligence tabs',
+	'cv-sidecar-content': 'Intelligence content',
+	'cv-comments': 'Comments',
 } as const;
 
 export const PEAK_KEYBOARD_A11Y_STRINGS = {

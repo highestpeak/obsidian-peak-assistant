@@ -79,8 +79,8 @@ assert.strictEqual(
 
 assert.deepStrictEqual(
 	Object.keys(PEAK_KEYBOARD_SURFACE_LABELS).sort(),
-	['ai-search', 'chat-studio', 'file-atlas', 'vault-search'],
-	'Key Tips must expose exactly the four non-Composer surfaces',
+	['ai-search', 'chat-studio', 'composer', 'file-atlas', 'vault-search'],
+	'Key Tips must expose the four original surfaces plus Composer phase 2',
 );
 assert.deepStrictEqual(
 	PEAK_KEY_TIP_DEFINITIONS['vault-search'].map((tip) => tip.key),
@@ -97,6 +97,10 @@ assert.deepStrictEqual(PEAK_KEY_TIP_ACTIVATION, {
 assert.ok(
 	PEAK_KEY_TIP_DEFINITIONS['chat-studio'].some((tip) =>
 		tip.key === 'Q' && tip.zoneId === 'cs-composer'),
+);
+assert.deepStrictEqual(
+	PEAK_KEY_TIP_DEFINITIONS.composer.map((tip) => tip.key),
+	['Q', 'T', 'K', 'O', 'S'],
 );
 const template = JSON.parse(readFileSync('templates/config/keyboard-navigation.json', 'utf8')) as {
 	keyTips: typeof PEAK_KEY_TIP_DEFINITIONS;
@@ -116,5 +120,7 @@ assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.search.vaultTab, 'V');
 assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.search.inspector.close, 'X');
 assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.ai, 'A');
 assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.chatStudio.composer.send, 'E');
+assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.composer.display.edit, 'E');
+assert.strictEqual(PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.close, 'X');
 
 console.log('keyboard-navigation-kernel: passed');

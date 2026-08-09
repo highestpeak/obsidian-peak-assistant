@@ -54,6 +54,11 @@ import {
 	composerHistoryActivityLabels,
 	HistoryView,
 } from './HistoryView';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export type SidecarMode = 'desktop' | 'drawer';
 
@@ -116,6 +121,12 @@ export function IntelligenceSidecar({
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [config, setConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
 	const [mode, setMode] = React.useState<SidecarMode | null>(null);
+	const closeOnUnhandledEscape = (event: React.KeyboardEvent<HTMLElement>): void => {
+		if (event.defaultPrevented || event.key !== 'Escape' || !open) return;
+		event.preventDefault();
+		event.stopPropagation();
+		onOpenChange(false);
+	};
 
 	React.useEffect(() => {
 		let alive = true;
@@ -204,6 +215,7 @@ export function IntelligenceSidecar({
 				data-sidecar-mode="drawer"
 				data-open={open ? 'true' : 'false'}
 				data-motion={motion}
+				onKeyDown={closeOnUnhandledEscape}
 			>
 				<div
 					className={cn(
@@ -239,6 +251,7 @@ export function IntelligenceSidecar({
 			data-sidecar-mode="desktop"
 			data-open={open ? 'true' : 'false'}
 			data-motion={motion}
+			onKeyDown={closeOnUnhandledEscape}
 		>
 			<div
 				className={cn(
@@ -308,6 +321,7 @@ function SidecarShell({
 	onClose?: () => void;
 	closable?: boolean;
 }): React.ReactElement {
+	const tabsRef = React.useRef<HTMLDivElement | null>(null);
 	const { hub, documentSnapshot } = useSidecar();
 	const projection = useSessionProjection(runtime);
 	const workspaceProjection = useWorkspaceProjection(workspaceRuntime);
@@ -344,6 +358,11 @@ function SidecarShell({
 			s,
 		],
 	);
+	useRovingComposite(tabsRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		rememberBy: 'data-peak-focus-id',
+	});
 	return (
 		<div className="pk-sidecar-shell peak-design-root">
 			<div className="pk-sidecar-header" data-chrome="true">
@@ -355,17 +374,31 @@ function SidecarShell({
 					</div>
 				</div>
 				{closable && (
-					<IconButton className="pk-sidecar-close" label={s.close} onClick={onClose}>
+					<IconButton
+						className="pk-sidecar-close"
+						label={s.close}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.close}
+						data-peak-keytip-label={s.close}
+						onClick={onClose}
+					>
 						<X size={15} />
 					</IconButton>
 				)}
 			</div>
-			<div className="pk-sidecar-tabs" role="tablist" aria-label={s.title}>
+			<div
+				ref={tabsRef}
+				className="pk-sidecar-tabs"
+				role="tablist"
+				aria-label={s.title}
+				data-peak-keyboard-zone="cv-sidecar-tabs"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-sidecar-tabs']}
+			>
 				<SidecarTab
 					active={surface === 'copilot'}
 					icon={<MessageSquare size={13} />}
 					label={s.tabCopilot}
 					onSelect={() => runtime.session.selectSurface('copilot')}
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.copilot}
 				/>
 				<SidecarTab
 					active={surface === 'history'}
@@ -373,9 +406,14 @@ function SidecarShell({
 					label={s.tabHistory}
 					count={historyActivityCount}
 					onSelect={() => runtime.session.selectSurface('history')}
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.history}
 				/>
 			</div>
-			<div className="pk-sidecar-body">
+			<div
+				className="pk-sidecar-body"
+				data-peak-keyboard-zone="cv-sidecar-content"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-sidecar-content']}
+			>
 				<div className="pk-sidecar-body-content">
 					{surface === 'copilot' && workspaceRuntime && documentId ? (
 						<WorkspaceScopeMenu
@@ -452,6 +490,8 @@ function WorkspaceScopeMenu({
 						variant="ghost"
 						size="sm"
 						className="pk-sidecar-scope-trigger"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.scope}
+						data-peak-keytip-label={`${s.scopeLabel}: ${activeLabel}`}
 						aria-label={`${s.scopeLabel}: ${activeLabel}`}
 						aria-haspopup="menu"
 						aria-expanded={open}
@@ -524,18 +564,23 @@ function SidecarTab({
 	label,
 	count = 0,
 	onSelect,
+	keyTipKey,
 }: {
 	active: boolean;
 	icon: React.ReactNode;
 	label: string;
 	count?: number;
 	onSelect: () => void;
+	keyTipKey: string;
 }): React.ReactElement {
 	return (
-			<Button
-				variant="ghost"
-				size="sm"
-				role="tab"
+		<Button
+			variant="ghost"
+			size="sm"
+			role="tab"
+			data-peak-focus-id={label}
+			data-peak-keytip-key={keyTipKey}
+			data-peak-keytip-label={label}
 			aria-selected={active}
 			className={cn('pk-sidecar-tab', active && 'pk-sidecar-tab--active')}
 			onClick={onSelect}
@@ -545,6 +590,6 @@ function SidecarTab({
 			</span>
 			<span>{label}</span>
 			{count > 0 && <b className="pk-sidecar-tab-count">{count}</b>}
-			</Button>
+		</Button>
 	);
 }

@@ -18,6 +18,8 @@ import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { ComposerImageLightbox } from './ComposerImageLightbox';
 import { ImageConverterPanel } from './ImageConverterPanel';
 import { DEFAULT_IMAGE_UI_STRINGS, loadImageActionStrings, loadImageUiStrings } from './imageUiConfig';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export const IMAGE_TOOLBAR_CONTROL = 'h-[28px] rounded-[var(--pk-radius-md)]';
 
@@ -69,6 +71,8 @@ export function ImageBlockView({
 	const [uiStrings, setUiStrings] = React.useState(DEFAULT_IMAGE_UI_STRINGS);
 	const figureRef = React.useRef<HTMLElement | null>(null);
 	const imageRef = React.useRef<HTMLImageElement | null>(null);
+	const toolbarRef = React.useRef<HTMLSpanElement | null>(null);
+	const panelTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
 	React.useEffect(() => {
 		let cancelled = false;
@@ -81,7 +85,26 @@ export function ImageBlockView({
 	}, [resolvedUri]);
 
 	const toolbarOpen = editing && Boolean(coordinator) && Boolean(hub);
+	useRovingComposite(toolbarRef, {
+		itemSelector: 'button:not([disabled])',
+		orientation: 'horizontal',
+		rememberBy: 'aria-label',
+		enabled: toolbarOpen,
+	});
 	const target: ComposerTarget = { kind: 'block', blockId: block.blockId };
+	const restorePanelTrigger = (): void => {
+		const trigger = panelTriggerRef.current;
+		trigger?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+		});
+	};
+	const closeInlinePanels = (): void => {
+		setConverterOpen(false);
+		setEditOpen(false);
+		setRenameOpen(false);
+		setCopyOpen(false);
+		restorePanelTrigger();
+	};
 	const runCaption = (): void => {
 		if (!coordinator || !hub) return;
 		coordinator.beginCaption({ blockId: block.blockId });
@@ -91,6 +114,7 @@ export function ImageBlockView({
 		coordinator.beginAiEdit({ instruction: instruction.trim(), target, sourcePath: imagePath });
 		setInstruction('');
 		setEditOpen(false);
+		restorePanelTrigger();
 	};
 	const runRename = (): void => {
 		const value = renameValue.trim();
@@ -104,6 +128,7 @@ export function ImageBlockView({
 		});
 		setRenameValue('');
 		setRenameOpen(false);
+		restorePanelTrigger();
 	};
 	const runConvert = async (output: {
 		bytes: Uint8Array;
@@ -119,6 +144,7 @@ export function ImageBlockView({
 			originalPath: imagePath,
 		});
 		setConverterOpen(false);
+		restorePanelTrigger();
 	};
 	const figure = (
 		<figure
@@ -153,7 +179,15 @@ export function ImageBlockView({
 			)}
 			{caption ? <figcaption className="pk-composer-image-caption">{caption}</figcaption> : null}
 			{toolbarOpen ? (
-				<span className="pk-composer-image-toolbar image-toolbar inline-flex items-center gap-1.5" data-chrome="true">
+				<span
+					ref={toolbarRef}
+					className="pk-composer-image-toolbar image-toolbar inline-flex items-center gap-1.5"
+					data-chrome="true"
+					data-composer-contextual-toolbar="image"
+					data-peak-keyboard-zone="cv-contextual"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-contextual']}
+					role="toolbar"
+				>
 					<Button
 						variant="secondary"
 						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
@@ -169,7 +203,10 @@ export function ImageBlockView({
 						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
 						disabled={!imagePath || imageError}
 						aria-label={uiStrings.editImage}
-						onClick={() => {
+						aria-haspopup="dialog"
+						aria-expanded={converterOpen}
+						onClick={(event) => {
+							panelTriggerRef.current = event.currentTarget;
 							setConverterOpen((value) => !value);
 							setEditOpen(false);
 							setRenameOpen(false);
@@ -184,7 +221,10 @@ export function ImageBlockView({
 						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
 						disabled={!imagePath}
 						aria-label={uiStrings.rename}
-						onClick={() => {
+						aria-haspopup="dialog"
+						aria-expanded={renameOpen}
+						onClick={(event) => {
+							panelTriggerRef.current = event.currentTarget;
 							setRenameValue(baseNameOfPath(imagePath ?? ''));
 							setRenameOpen((value) => !value);
 							setConverterOpen(false);
@@ -199,7 +239,10 @@ export function ImageBlockView({
 						variant="secondary"
 						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
 						aria-label={uiStrings.copy}
-						onClick={() => {
+						aria-haspopup="menu"
+						aria-expanded={copyOpen}
+						onClick={(event) => {
+							panelTriggerRef.current = event.currentTarget;
 							setCopyOpen((value) => !value);
 							setConverterOpen(false);
 							setEditOpen(false);
@@ -224,7 +267,10 @@ export function ImageBlockView({
 						disabled={!imagePath}
 						title={imagePath ? undefined : uiStrings.stale}
 						aria-label={actionStrings.editTitle}
-						onClick={() => {
+						aria-haspopup="dialog"
+						aria-expanded={editOpen}
+						onClick={(event) => {
+							panelTriggerRef.current = event.currentTarget;
 							setEditOpen((value) => !value);
 							setConverterOpen(false);
 							setRenameOpen(false);
@@ -257,7 +303,16 @@ export function ImageBlockView({
 	}
 
 	return (
-		<div className="pk-composer-image-block inline-flex flex-col gap-1.5 items-start">
+		<div
+			className="pk-composer-image-block inline-flex flex-col gap-1.5 items-start"
+			onKeyDown={(event) => {
+				if (event.defaultPrevented || event.key !== 'Escape') return;
+				if (!copyOpen && !renameOpen && !converterOpen && !editOpen) return;
+				event.preventDefault();
+				event.stopPropagation();
+				closeInlinePanels();
+			}}
+		>
 			{figure}
 			{lightboxOpen && imagePath && !imageError ? (
 				<ComposerImageLightbox
@@ -273,7 +328,7 @@ export function ImageBlockView({
 					markdown={block.renderModel.raw}
 					blockKind={block.kind}
 					rasterTargetRef={figureRef}
-					onClose={() => setCopyOpen(false)}
+					onClose={closeInlinePanels}
 				/>
 			) : null}
 			{renameOpen && imagePath ? (
@@ -307,7 +362,7 @@ export function ImageBlockView({
 					image={imageRef.current}
 					labels={uiStrings.converter}
 					defaultQuality={coordinator.converterDefaultQuality}
-					onCancel={() => setConverterOpen(false)}
+					onCancel={closeInlinePanels}
 					onConvert={runConvert}
 				/>
 			) : null}

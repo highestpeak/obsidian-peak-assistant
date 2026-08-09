@@ -41,6 +41,8 @@ import {
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import type { TableToolbarStrings } from './tableViewConfig';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export interface TableToolbarProps {
 	model: TableModel;
@@ -68,6 +70,7 @@ type StructureAction = {
 export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 	const { model, selection, strings, writable } = props;
 	const toolbarLabelId = React.useId();
+	const toolbarRef = React.useRef<HTMLDivElement | null>(null);
 	const [menu, setMenu] = React.useState<MenuKind>(null);
 	const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
 	const merges = hasMerges(model);
@@ -129,9 +132,36 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 	};
 
 	const disabled = !writable;
+	const closeMenu = (): void => {
+		const trigger = toolbarRef.current?.querySelector<HTMLElement>('[aria-expanded="true"]');
+		setMenu(null);
+		trigger?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+		});
+	};
+	useRovingComposite(toolbarRef, {
+		itemSelector: '.pk-table-tool__button:not([disabled])',
+		orientation: 'horizontal',
+		rememberBy: 'aria-label',
+	});
 
 	return (
-		<div className="pk-table-toolbar" role="toolbar" aria-labelledby={toolbarLabelId} data-chrome="true">
+		<div
+			ref={toolbarRef}
+			className="pk-table-toolbar"
+			role="toolbar"
+			aria-labelledby={toolbarLabelId}
+			data-chrome="true"
+			data-composer-contextual-toolbar="table"
+			data-peak-keyboard-zone="cv-contextual"
+			data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-contextual']}
+			onKeyDown={(event) => {
+				if (event.defaultPrevented || event.key !== 'Escape' || !menu) return;
+				event.preventDefault();
+				event.stopPropagation();
+				closeMenu();
+			}}
+		>
 			<span id={toolbarLabelId} className="pk-table-toolbar__a11y-label">{strings.format}</span>
 			<ToolbarButton icon={AlignLeft} label={strings.alignLeft} hint={strings.alignLeftHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(setColumnAlign(model, activeCol, 'left'))} active={activeAlign === 'left'} />
 			<ToolbarButton icon={AlignCenter} label={strings.alignCenter} hint={strings.alignCenterHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(setColumnAlign(model, activeCol, 'center'))} active={activeAlign === 'center'} />
@@ -155,7 +185,7 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 					commit(sortByColumn(model, activeCol, dir));
 				}}
 			/>
-			<ToolbarButton icon={Sigma} label={strings.formula} hint={strings.formulaHint} delayMs={strings.tooltipDelayMs} disabled={disabled || merges} onClick={() => setMenu(menu === 'formula' ? null : 'formula')} active={menu === 'formula'} />
+			<ToolbarButton icon={Sigma} label={strings.formula} hint={strings.formulaHint} delayMs={strings.tooltipDelayMs} disabled={disabled || merges} onClick={() => setMenu(menu === 'formula' ? null : 'formula')} active={menu === 'formula'} menuOpen={menu === 'formula'} />
 			{menu === 'formula' && (
 				<Menu>
 					<MenuItem icon={Sigma} label={strings.sumColumn} onClick={appendTotalsRow} />
@@ -169,7 +199,7 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 			)}
 			<ToolbarButton icon={Repeat2} label={strings.transpose} hint={strings.transposeHint} delayMs={strings.tooltipDelayMs} disabled={disabled || merges} onClick={() => commit(transpose(model))} />
 			<Divider />
-			<ToolbarButton icon={TableProperties} label={strings.csv} hint={strings.csvHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => setMenu(menu === 'csv' ? null : 'csv')} active={menu === 'csv'} />
+			<ToolbarButton icon={TableProperties} label={strings.csv} hint={strings.csvHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => setMenu(menu === 'csv' ? null : 'csv')} active={menu === 'csv'} menuOpen={menu === 'csv'} />
 			{menu === 'csv' && (
 				<Menu>
 					<MenuItem icon={Copy} label={strings.csvCopy} onClick={() => void copyCsv()} />
@@ -193,6 +223,7 @@ function ToolbarButton({
 	disabled,
 	reason,
 	active,
+	menuOpen,
 	structureAction,
 }: {
 	icon: LucideIcon;
@@ -203,6 +234,7 @@ function ToolbarButton({
 	disabled?: boolean;
 	reason?: string;
 	active?: boolean;
+	menuOpen?: boolean;
 	structureAction?: StructureAction;
 }): React.ReactElement {
 	const tooltipId = React.useId();
@@ -222,6 +254,8 @@ function ToolbarButton({
 				aria-label={label}
 				aria-describedby={tooltipId}
 				aria-pressed={active === undefined ? undefined : active}
+				aria-haspopup={menuOpen === undefined ? undefined : 'menu'}
+				aria-expanded={menuOpen}
 				onClick={onClick}
 			>
 				<span

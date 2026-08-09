@@ -85,7 +85,10 @@ export function useRovingComposite(
 						|| item.dataset.selected === 'true')
 					?? items.find((item) => item.tabIndex === 0)
 					?? items[0];
-			for (const item of items) item.tabIndex = item === active ? 0 : -1;
+			for (const item of items) {
+				const nextTabIndex = item === active ? 0 : -1;
+				if (item.tabIndex !== nextTabIndex) item.tabIndex = nextTabIndex;
+			}
 			activeIdentityRef.current = itemIdentity(
 				active,
 				current.rememberBy ?? 'data-peak-focus-id',
@@ -158,7 +161,20 @@ export function useRovingComposite(
 		const observer = MutationObserverCtor
 			? new MutationObserverCtor(() => refresh())
 			: null;
-		observer?.observe(root, { childList: true, subtree: true });
+		observer?.observe(root, {
+			attributes: true,
+			attributeFilter: [
+				'aria-current',
+				'aria-disabled',
+				'aria-selected',
+				'data-selected',
+				'disabled',
+				'hidden',
+				'tabindex',
+			],
+			childList: true,
+			subtree: true,
+		});
 		root.addEventListener('focusin', onFocusIn);
 		root.addEventListener('pointerdown', onPointerDown);
 		root.addEventListener('keydown', onKeyDown, true);

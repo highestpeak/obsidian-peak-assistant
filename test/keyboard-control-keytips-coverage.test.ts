@@ -110,4 +110,37 @@ assertReferences(chat, 'PEAK_CONTROL_KEY_TIP_KEYS.chatStudio', [
 	'index[value]',
 ]);
 
+const composer = [
+	read('src/ui/view/composer/chrome/UndoRedoBar.tsx'),
+	read('src/ui/view/composer/chrome/DisplayStateSwitch.tsx'),
+	read('src/ui/view/composer/sidecar/IntelligenceSidecar.tsx'),
+	read('src/ui/view/composer/sidecar/BriefView.tsx'),
+	read('src/ui/view/composer/sidecar/HistoryDetailModal.tsx'),
+].join('\n');
+
+assertReferences(composer, 'PEAK_CONTROL_KEY_TIP_KEYS.composer', [
+	'workspaceBack',
+	'workspaceForward',
+	'display.edit',
+	'display.clean',
+	'display.markdown',
+	'reviewAll',
+	'comments',
+	'intelligence',
+	'undo',
+	'redo',
+	'sidecar.close',
+	'sidecar.copilot',
+	'sidecar.history',
+	'sidecar.scope',
+	'sidecar.sensing',
+	'sidecar.ask',
+	'sidecar.graphs',
+	'sidecar.refresh',
+	'modal.close',
+	'modal.previous',
+	'modal.next',
+	'modal.locate',
+]);
+
 console.log('keyboard-control-keytips-coverage: passed');

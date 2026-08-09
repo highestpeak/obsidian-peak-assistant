@@ -18,6 +18,10 @@ import { DisplayStateSwitch, type ComposerDisplayState } from './DisplayStateSwi
 import { useComposerChrome } from './ComposerChromeContext';
 import { useHubProjection } from './useHubProjection';
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig } from '../sidecar/sidecarConfig';
+import {
+	PEAK_CONTROL_KEY_TIP_KEYS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Unified document control bar. Display state, comment visibility and document
@@ -46,6 +50,8 @@ export function UndoRedoBar({
 	reviewCandidateCount = 0,
 	reviewAll = false,
 	onReviewAll,
+	intelligenceTriggerRef,
+	commentTriggerRef,
 }: {
 	containerRef: React.RefObject<Element | null>;
 	displayState: ComposerDisplayState;
@@ -61,6 +67,8 @@ export function UndoRedoBar({
 	reviewCandidateCount?: number;
 	reviewAll?: boolean;
 	onReviewAll?: (open: boolean) => void;
+	intelligenceTriggerRef?: React.Ref<HTMLButtonElement>;
+	commentTriggerRef?: React.Ref<HTMLButtonElement>;
 }): React.ReactElement {
 	const { runtime, config } = useComposerChrome();
 	const hub = runtime.hub;
@@ -114,7 +122,13 @@ export function UndoRedoBar({
 	useOwnerDocumentListener(containerRef, 'keydown', onKeyDown);
 
 	return (
-		<div className="pk-composer-controlbar" data-chrome="true" aria-label={config.chrome.displayStates.groupLabel}>
+		<div
+			className="pk-composer-controlbar"
+			data-chrome="true"
+			data-peak-keyboard-zone="cv-controlbar"
+			data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-controlbar']}
+			aria-label={config.chrome.displayStates.groupLabel}
+		>
 			{workspaceNavigation && (
 				<div
 					className="pk-composer-workspace-navigation"
@@ -124,6 +138,8 @@ export function UndoRedoBar({
 					<IconButton
 						label={workspaceNavigationStrings.back}
 						className="pk-composer-workspace-navigation__btn"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.workspaceBack}
+						data-peak-keytip-label={workspaceNavigationStrings.back}
 						disabled={!workspaceNavigationState.canBack}
 						onClick={() => void workspaceNavigation.back()}
 					>
@@ -132,6 +148,8 @@ export function UndoRedoBar({
 					<IconButton
 						label={workspaceNavigationStrings.forward}
 						className="pk-composer-workspace-navigation__btn"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.workspaceForward}
+						data-peak-keytip-label={workspaceNavigationStrings.forward}
 						disabled={!workspaceNavigationState.canForward}
 						onClick={() => void workspaceNavigation.forward()}
 					>
@@ -153,6 +171,8 @@ export function UndoRedoBar({
 					variant={reviewAll ? 'primary' : 'ghost'}
 					size="sm"
 					className="pk-composer-review-all"
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.reviewAll}
+					data-peak-keytip-label={config.chrome.displayStates.reviewAll.replace('{count}', String(reviewCandidateCount))}
 					aria-pressed={reviewAll}
 					onClick={() => onReviewAll(!reviewAll)}
 				>
@@ -165,9 +185,12 @@ export function UndoRedoBar({
 			<span className="pk-composer-controlbar__spacer" />
 			{comments && (
 				<Button
+					ref={commentTriggerRef}
 					variant={commentOpen ? 'primary' : 'ghost'}
 					size="sm"
 					className="pk-composer-comment-toggle"
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.comments}
+					data-peak-keytip-label={commentOpen ? commentStrings.closeRail : commentStrings.openRail}
 					aria-pressed={commentOpen}
 					aria-label={commentOpen ? commentStrings.closeRail : commentStrings.openRail}
 					onClick={() => onCommentOpen(!commentOpen)}
@@ -181,9 +204,12 @@ export function UndoRedoBar({
 			)}
 			{intelligenceAvailable && (
 				<Button
+					ref={intelligenceTriggerRef}
 					variant={intelligenceOpen ? 'primary' : 'ghost'}
 					size="sm"
 					className="pk-composer-intelligence-toggle"
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.intelligence}
+					data-peak-keytip-label={intelligenceOpen ? intelligenceStrings.close : intelligenceStrings.openDrawer}
 					aria-pressed={intelligenceOpen}
 					aria-label={intelligenceOpen ? intelligenceStrings.close : intelligenceStrings.openDrawer}
 					onClick={() => onIntelligenceOpen(!intelligenceOpen)}
@@ -197,6 +223,8 @@ export function UndoRedoBar({
 					<IconButton
 						label={undo.nextUndoLabel ? `${c.undo} · ${undo.nextUndoLabel} (${c.shortcutUndo})` : `${c.undo} (${c.shortcutUndo})`}
 						className="pk-undo-redo__btn"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.undo}
+						data-peak-keytip-label={c.undo}
 						disabled={!undo.canUndo}
 						onClick={doUndo}
 					>
@@ -205,6 +233,8 @@ export function UndoRedoBar({
 					<IconButton
 						label={undo.nextRedoLabel ? `${c.redo} · ${undo.nextRedoLabel} (${c.shortcutRedo})` : `${c.redo} (${c.shortcutRedo})`}
 						className="pk-undo-redo__btn"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.redo}
+						data-peak-keytip-label={c.redo}
 						disabled={!undo.canRedo}
 						onClick={doRedo}
 					>

@@ -15,6 +15,9 @@ check('all four source-backed layout modes are styled', ['grid', 'hero', 'strip'
 check('mode toggles and hover controls have the reference 26px and 28px rungs', css.includes('height: 26px !important') && css.includes('height: 28px !important'));
 check('root passes editing through to rich block dispatch', root.includes('<BlockKindView block={block} editing={editing} />'));
 check('image view carries the parsed width without merging adjacent prose', imageView.includes('style={width ? { width: `${width}px`, maxWidth: \'100%\' } : undefined}'));
-check('image view roots are block containers so figure/input children are never reparented', imageView.includes('<div className="pk-composer-image-block'));
+check(
+	'image view roots are block containers so figure/input children are never reparented',
+/<div\s+[\s\S]*?className="pk-composer-image-block/.test(imageView),
+);
 check('layout root is a block container around shell and figure grid', layoutView.includes('<div className="pk-composer-image-layout"'));
 done('composer-image-parity-style');

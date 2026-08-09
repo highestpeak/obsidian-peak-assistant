@@ -37,9 +37,12 @@ import {
 	useSidecar,
 	useWorkspaceProjection,
 } from './SidecarContext';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 /** One mixed activity timeline; storage truths remain separate behind the projector. */
 export function HistoryView(): React.ReactElement {
+	const historyRef = React.useRef<HTMLDivElement | null>(null);
+	const selectedTriggerRef = React.useRef<HTMLElement | null>(null);
 	const {
 		runtime,
 		workspaceRuntime,
@@ -101,9 +104,14 @@ export function HistoryView(): React.ReactElement {
 		activity.activityId === selectedActivityId,
 	);
 	const days = groupActivitiesByDay(filtered, s, new Date());
+	useRovingComposite(historyRef, {
+		itemSelector: '.pk-history-main:not([disabled])',
+		orientation: 'vertical',
+		rememberBy: 'data-history-activity-id',
+	});
 
 	return (
-		<div className="pk-history" data-testid="pk-unified-history">
+		<div ref={historyRef} className="pk-history" data-testid="pk-unified-history">
 			<header className="pk-history-heading">
 				<div>
 					<span className="pk-history-title">{s.historyUnifiedTitle}</span>
@@ -142,7 +150,10 @@ export function HistoryView(): React.ReactElement {
 							<HistoryActivityRow
 								key={activity.activityId}
 								activity={activity}
-								onOpen={() => setSelectedActivityId(activity.activityId)}
+								onOpen={(trigger) => {
+									selectedTriggerRef.current = trigger;
+									setSelectedActivityId(activity.activityId);
+								}}
 								strings={s}
 							/>
 						))}
@@ -156,6 +167,7 @@ export function HistoryView(): React.ReactElement {
 					snapshot={documentSnapshot}
 					transactionResolver={transactionResolver}
 					strings={s}
+					opener={selectedTriggerRef.current}
 					onClose={() => setSelectedActivityId(null)}
 					onLocate={onLocate}
 					onRestore={(runId) => {
@@ -183,7 +195,7 @@ function HistoryActivityRow({
 	strings,
 }: {
 	activity: ComposerHistoryActivity;
-	onOpen(): void;
+	onOpen(trigger: HTMLElement): void;
 	strings: SidecarStrings;
 }): React.ReactElement {
 	return (
@@ -195,7 +207,8 @@ function HistoryActivityRow({
 			<Button
 				variant="ghost"
 				className="pk-history-main"
-				onClick={onOpen}
+				data-history-activity-id={activity.activityId}
+				onClick={(event) => onOpen(event.currentTarget)}
 				aria-label={`${strings.historyOpenDetail}: ${activity.actionLabel}`}
 			>
 				<span className="pk-history-source-icon" data-source={activity.source}>
@@ -234,6 +247,12 @@ function HistoryFilterBar({
 	strings: SidecarStrings;
 }): React.ReactElement {
 	const [open, setOpen] = React.useState(false);
+	const primaryRef = React.useRef<HTMLDivElement | null>(null);
+	useRovingComposite(primaryRef, {
+		itemSelector: 'button:not([disabled])',
+		orientation: 'horizontal',
+		rememberBy: 'data-history-source',
+	});
 	const activeCount = filters.effects.length + filters.statuses.length + filters.targets.length;
 	const sourceFiltered = filters.source === 'all'
 		? activities
@@ -259,6 +278,7 @@ function HistoryFilterBar({
 	return (
 		<div className="pk-history-filter-bar">
 			<div
+				ref={primaryRef}
 				className="pk-history-filter-primary"
 				role="group"
 				aria-label={strings.historyFilterSource}
@@ -269,6 +289,7 @@ function HistoryFilterBar({
 						variant="ghost"
 						size="sm"
 						className="pk-history-source-filter"
+						data-history-source={option.value}
 						aria-pressed={filters.source === option.value}
 						data-active={filters.source === option.value || undefined}
 						onClick={() => onChange({ ...filters, source: option.value })}
@@ -283,6 +304,7 @@ function HistoryFilterBar({
 							variant="outline"
 							size="sm"
 							className="pk-history-filter-trigger"
+							data-history-source="more"
 							data-active={activeCount > 0 || undefined}
 						>
 							<Filter aria-hidden />

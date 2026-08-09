@@ -20,6 +20,8 @@ import { useBriefProjection, useFindings, useSidecar } from './SidecarContext';
 import type { SidecarConfig } from './sidecarConfig';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 /** Brief state of the optional related-material request. */
 export type RelatedLoadState =
@@ -275,6 +277,8 @@ export function BriefViewContent({
 							size="sm"
 							aria-label={s.openAIGraphs}
 							title={s.openAIGraphs}
+							data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.graphs}
+							data-peak-keytip-label={s.openAIGraphs}
 							onClick={onOpenAIGraphs}
 						>
 							<Network aria-hidden />
@@ -284,6 +288,8 @@ export function BriefViewContent({
 						className="pk-brief-action pk-brief-action--primary"
 						variant="outline"
 						size="sm"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.ask}
+						data-peak-keytip-label={s.askCopilot}
 						onClick={() => onAskCopilot?.()}
 					>
 						<Sparkles aria-hidden />
@@ -293,6 +299,8 @@ export function BriefViewContent({
 						className="pk-brief-action"
 						variant="outline"
 						size="sm"
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.refresh}
+						data-peak-keytip-label={s.refreshSuggestions}
 						onClick={() => onRefreshSuggestions?.()}
 					>
 						<RefreshCw aria-hidden />
@@ -525,7 +533,10 @@ export function SensingControl({
 	const active = options.find((option) => option.mode === sensingMode) ?? options[1];
 	return (
 		<details className="pk-sensing-control">
-			<summary>
+			<summary
+				data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.sensing}
+				data-peak-keytip-label={`${strings.suggestionUpdate} · ${active.label}`}
+			>
 				<i className="pk-brief-status-indicator" data-paused={sensingMode === 'manual' || undefined} aria-hidden />
 				{`${strings.suggestionUpdate} · ${active.label}`}
 				<ChevronDown aria-hidden />
@@ -693,6 +704,12 @@ function RelatedMaterialList({
 	strings: SidecarConfig['strings'];
 }): React.ReactElement {
 	const [pinnedId, setPinnedId] = React.useState(nodes[0]?.sourceId ?? '');
+	const listRef = React.useRef<HTMLDivElement | null>(null);
+	useRovingComposite(listRef, {
+		itemSelector: '.pk-material-row',
+		orientation: 'vertical',
+		rememberBy: 'data-material-id',
+	});
 	const [previewedId, setPreviewedId] = React.useState<string | null>(null);
 	React.useEffect(() => {
 		if (!nodes.some((node) => node.sourceId === pinnedId)) setPinnedId(nodes[0]?.sourceId ?? '');
@@ -707,7 +724,7 @@ function RelatedMaterialList({
 				<strong>{strings.materialListTitle}</strong>
 				<span>{strings.materialHoverHint}</span>
 			</div>
-			<div className="pk-material-list">
+			<div ref={listRef} className="pk-material-list">
 				{nodes.map((node, index) => (
 					<Button
 						key={node.sourceId}
@@ -715,6 +732,7 @@ function RelatedMaterialList({
 						variant="ghost"
 						aria-pressed={node.sourceId === pinnedId}
 						data-previewed={node.sourceId === selected.sourceId || undefined}
+						data-material-id={node.sourceId}
 						onBlur={() => setPreviewedId(null)}
 						onClick={() => setPinnedId(node.sourceId)}
 						onFocus={() => setPreviewedId(node.sourceId)}

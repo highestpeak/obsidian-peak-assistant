@@ -29,12 +29,18 @@ import type {
 } from '@/core/composer';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { useComposerChrome } from './ComposerChromeContext';
-import { mapDomRangeToSource, mapDomSelectionToSource } from './selectionMapping';
+import {
+	mapDomRangeToSource,
+	mapDomSelectionToSource,
+	restoreDomSelectionFromSource,
+} from './selectionMapping';
 import {
 	clearCrossBlockTextSelection,
 	CROSS_BLOCK_SELECTION_EVENT,
 	type CrossBlockSelectionDetail,
 } from './crossBlockTextSelection';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Floating selection toolbar (WP4, §7.2–§7.5 / consistency §3).
@@ -87,43 +93,54 @@ export function SelectionToolbar({
 	const panelTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 	const toolbarRef = React.useRef<HTMLDivElement | null>(null);
 	const suppressUntilRef = React.useRef(0);
+	const dismissedLiveRef = React.useRef<LiveSelection | null>(null);
+	const entryFocusRef = React.useRef<HTMLElement | null>(null);
 
 	const recompute = React.useCallback(() => {
 		const root = containerRef.current;
-			if (!root || !snapshot) return;
-			if (Date.now() < suppressUntilRef.current) return;
-			if (root.hasAttribute('data-cross-block-selection')) return;
-			const doc = root.ownerDocument;
-			const activeElement = doc.activeElement as Element | null;
-			// A sub-panel input owns focus temporarily while the frozen document
-			// selection remains the operation target. Do not dismiss the toolbar
-			// when the browser moves its live selection into that chrome input.
-			if (activeElement?.closest('[data-chrome="true"]')) return;
-			const domSel = doc.getSelection();
-			if (!domSel || domSel.rangeCount === 0 || domSel.isCollapsed) {
-				setLive(null);
+		if (!root || !snapshot) return;
+		if (Date.now() < suppressUntilRef.current) return;
+		if (root.hasAttribute('data-cross-block-selection')) return;
+		const doc = root.ownerDocument;
+		const activeElement = doc.activeElement as Element | null;
+		// A sub-panel input owns focus temporarily while the frozen document
+		// selection remains the operation target. Do not dismiss the toolbar
+		// when the browser moves its live selection into that chrome input.
+		if (activeElement?.closest('[data-chrome="true"]')) return;
+		const domSel = doc.getSelection();
+		if (!domSel || domSel.rangeCount === 0 || domSel.isCollapsed) {
+			setLive(null);
+			dismissedLiveRef.current = null;
 			setPanel(null);
 			return;
 		}
 		const range = domSel.getRangeAt(0);
 		if (!root.contains(range.commonAncestorContainer)) {
 			setLive(null);
+			dismissedLiveRef.current = null;
 			return;
 		}
 		// Ignore selections inside chrome (comment textarea, panels).
 		const anchorEl =
-			range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+			range.commonAncestorContainer.nodeType === 3
 				? range.commonAncestorContainer.parentElement
 				: (range.commonAncestorContainer as Element);
 		if (anchorEl?.closest('[data-chrome="true"]')) return;
 		const mapped = mapDomSelectionToSource(root as HTMLElement, domSel);
 		if (!mapped || mapped.from === mapped.to) {
 			setLive(null);
+			dismissedLiveRef.current = null;
 			return;
 		}
+		const dismissed = dismissedLiveRef.current;
+		if (dismissed && dismissed.anchor === mapped.anchor && dismissed.focus === mapped.focus) {
+			return;
+		}
+		dismissedLiveRef.current = null;
 		const partitioned = partitionSourceRange(snapshot, mapped.from, mapped.to);
 		if (partitioned.collapsed) {
 			setLive(null);
+			dismissedLiveRef.current = null;
 			return;
 		}
 		const rectPx = range.getBoundingClientRect();
@@ -143,6 +160,47 @@ export function SelectionToolbar({
 	}, [containerRef, snapshot]);
 
 	useOwnerDocumentListener(containerRef, 'selectionchange', recompute);
+	useRovingComposite(toolbarRef, {
+		itemSelector: 'button:not([disabled])',
+		orientation: 'horizontal',
+		rememberBy: 'aria-label',
+		enabled: Boolean(live),
+	});
+	useOwnerDocumentListener(
+		containerRef,
+		'keydown',
+		(event) => {
+			if (event.defaultPrevented || event.isComposing || event.key === 'Process') return;
+			if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.key !== 'F10') return;
+			const root = containerRef.current;
+			const current = live ?? dismissedLiveRef.current;
+			if (!root || !current) return;
+			const target = event.target as Node | null;
+			if (target && !root.contains(target)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+			const toolbar = toolbarRef.current;
+			if (!toolbar?.contains(root.ownerDocument.activeElement)) {
+				const active = root.ownerDocument.activeElement;
+				const HTMLElementCtor = root.ownerDocument.defaultView?.HTMLElement;
+				entryFocusRef.current = HTMLElementCtor && active instanceof HTMLElementCtor
+					? active
+					: null;
+			}
+			if (!live) {
+				dismissedLiveRef.current = null;
+				setLive(current);
+			}
+			root.ownerDocument.defaultView?.requestAnimationFrame(() => {
+				const nextToolbar = toolbarRef.current;
+				const selected = nextToolbar?.querySelector<HTMLElement>('[tabindex="0"]');
+				const first = nextToolbar?.querySelector<HTMLElement>('button:not([disabled])');
+				(selected ?? first)?.focus({ preventScroll: true });
+			});
+		},
+		true,
+	);
 
 	React.useEffect(() => {
 		const root = containerRef.current;
@@ -151,19 +209,23 @@ export function SelectionToolbar({
 			const detail = (ev as CustomEvent<CrossBlockSelectionDetail | null>).detail;
 			if (!detail) {
 				setLive(null);
+				dismissedLiveRef.current = null;
 				setPanel(null);
 				return;
 			}
 			const mapped = mapDomRangeToSource(root, detail.range);
 			if (!mapped || mapped.from === mapped.to) {
 				setLive(null);
+				dismissedLiveRef.current = null;
 				return;
 			}
 			const partitioned = partitionSourceRange(snapshot, mapped.from, mapped.to);
 			if (partitioned.collapsed) {
 				setLive(null);
+				dismissedLiveRef.current = null;
 				return;
 			}
+			dismissedLiveRef.current = null;
 			const rectPx = detail.range.getBoundingClientRect();
 			const rootRect = root.getBoundingClientRect();
 			const forward = detail.direction === 'forward';
@@ -269,14 +331,43 @@ export function SelectionToolbar({
 			ref={toolbarRef}
 			className="pk-selection-toolbar"
 			data-chrome="true"
-				role="toolbar"
-				aria-label="Selection actions"
-				style={{ top: live.rect.top, left: live.rect.left }}
-				onMouseDown={(ev) => {
-					if ((ev.target as HTMLElement).closest('input')) return;
-					ev.preventDefault();
-				}}
-			>
+			data-composer-contextual-toolbar="selection"
+			data-peak-keyboard-zone="cv-contextual"
+			data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-contextual']}
+			role="toolbar"
+			aria-label="Selection actions"
+			style={{ top: live.rect.top, left: live.rect.left }}
+			onMouseDown={(ev) => {
+				if ((ev.target as HTMLElement).closest('input')) return;
+				ev.preventDefault();
+			}}
+			onFocusCapture={(event) => {
+				const previous = event.relatedTarget;
+				const HTMLElementCtor = event.currentTarget.ownerDocument.defaultView?.HTMLElement;
+				if (!HTMLElementCtor || !(previous instanceof HTMLElementCtor)) return;
+				if (toolbarRef.current?.contains(previous)) return;
+				entryFocusRef.current = previous;
+			}}
+			onKeyDown={(event) => {
+				if (event.defaultPrevented || panel || event.key !== 'Escape') return;
+				event.preventDefault();
+				event.stopPropagation();
+				dismissedLiveRef.current = live;
+				setLive(null);
+				const root = containerRef.current;
+				if (!root) return;
+				const restore = entryFocusRef.current;
+				if (restore?.isConnected) restore.focus({ preventScroll: true });
+				restoreDomSelectionFromSource(root, live);
+				const selection = root.ownerDocument.getSelection();
+				const anchorNode = selection?.anchorNode ?? null;
+				const anchorElement = anchorNode?.nodeType === 3
+					? anchorNode.parentElement
+					: anchorNode as HTMLElement | null;
+				anchorElement?.closest<HTMLElement>('[contenteditable="true"]')?.focus({ preventScroll: true });
+				restoreDomSelectionFromSource(root, live);
+			}}
+		>
 			<div className="pk-selection-toolbar__row">
 				{scopeLabel && <span className="pk-selection-scope">{scopeLabel}</span>}
 				<span className="pk-selection-group" data-group="format">

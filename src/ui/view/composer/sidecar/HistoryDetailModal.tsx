@@ -15,12 +15,15 @@ import {
 } from '@/service/composer';
 import { Button, IconButton, Modal } from '@/ui/components/primitives';
 import type { SidecarStrings } from './sidecarConfig';
+import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 export interface HistoryDetailModalProps {
 	activity: ComposerHistoryActivity;
 	snapshot?: ComposerDocumentSnapshot;
 	transactionResolver?: ComposerHistoryTransactionResolver;
 	strings: SidecarStrings;
+	opener?: HTMLElement | null;
 	onClose(): void;
 	onLocate?(blockId: string): boolean | void;
 	/**
@@ -37,9 +40,12 @@ export function HistoryDetailModal({
 	snapshot,
 	transactionResolver,
 	strings,
+	opener,
 	onClose,
 	onLocate,
 }: HistoryDetailModalProps): React.ReactElement {
+	const rootRef = React.useRef<HTMLDivElement | null>(null);
+	usePeakKeyboardSurface('composer', rootRef);
 	const runs = activity.generation?.runs ?? [];
 	const [variantIndex, setVariantIndex] = React.useState(Math.max(0, runs.length - 1));
 	React.useEffect(() => {
@@ -79,11 +85,16 @@ export function HistoryDetailModal({
 	return (
 		<Modal open onOpenChange={(open) => { if (!open) onClose(); }}>
 			<Modal.Content
+				ref={rootRef}
 				width="wide"
 				className="pk-history-modal"
 				portalClassName="peak-design-root"
 				data-comparison={activity.comparisonKind}
 				data-testid="pk-history-detail-modal"
+				onCloseAutoFocus={(event) => {
+					event.preventDefault();
+					if (opener?.isConnected) opener.focus({ preventScroll: true });
+				}}
 			>
 				<Modal.Header className="pk-history-modal__head">
 					<span className="pk-history-modal__heading">
@@ -94,7 +105,11 @@ export function HistoryDetailModal({
 							<span>{strings.historyDetailSubtitle}</span>
 						</Modal.Subtitle>
 					</span>
-					<Modal.Close label={strings.close} />
+					<Modal.Close
+						label={strings.close}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.modal.close}
+						data-peak-keytip-label={strings.close}
+					/>
 				</Modal.Header>
 
 				<Modal.Body className="pk-history-modal__body">
@@ -117,6 +132,8 @@ export function HistoryDetailModal({
 						<div className="pk-history-modal__variants">
 							<IconButton
 								label={strings.historyPreviousVersion}
+								data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.modal.previous}
+								data-peak-keytip-label={strings.historyPreviousVersion}
 								disabled={variantIndex <= 0}
 								onClick={() => setVariantIndex((currentIndex) => Math.max(0, currentIndex - 1))}
 							>
@@ -127,6 +144,8 @@ export function HistoryDetailModal({
 							</span>
 							<IconButton
 								label={strings.historyNextVersion}
+								data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.modal.next}
+								data-peak-keytip-label={strings.historyNextVersion}
 								disabled={variantIndex >= runs.length - 1}
 								onClick={() =>
 									setVariantIndex((currentIndex) =>
@@ -165,6 +184,8 @@ export function HistoryDetailModal({
 					<Modal.Footer className="pk-history-modal__footer">
 						<Button
 							variant="outline"
+							data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.modal.locate}
+							data-peak-keytip-label={strings.locateInDocument}
 							onClick={() => {
 								if (onLocate(current.blockId!) !== false) onClose();
 							}}

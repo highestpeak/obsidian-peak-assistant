@@ -142,6 +142,9 @@ interface ServiceContextValue {
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
 
+/** Optional probe for harnesses and statically rendered surface fixtures. */
+export const useOptionalServiceContext = () => useContext(ServiceContext);
+
 /**
  * Provider component that publishes the service context. Every value must
  * be supplied by the caller — there is no longer a `AppContext.getInstance()`
@@ -236,7 +239,7 @@ export const ServiceProvider: React.FC<{
  * @throws Error if used outside ServiceProvider
  */
 export const useServiceContext = () => {
-	const context = useContext(ServiceContext);
+	const context = useOptionalServiceContext();
 	if (!context) {
 		throw new Error('useServiceContext must be used within ServiceProvider');
 	}

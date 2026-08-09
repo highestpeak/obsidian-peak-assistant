@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useOptionalServiceContext } from '@/ui/context/ServiceContext';
 import type {
 	PeakKeyboardEscapeLayer,
 	PeakKeyboardSurfaceId,
@@ -11,7 +11,7 @@ export function usePeakKeyboardSurface(
 	rootRef: RefObject<HTMLElement | null>,
 	adapter?: PeakKeyboardSurfaceAdapter,
 ): void {
-	const { keyboardNavigation } = useServiceContext();
+	const keyboardNavigation = useOptionalServiceContext()?.keyboardNavigation;
 
 	useEffect(() => {
 		const root = rootRef.current;
@@ -28,7 +28,7 @@ export function usePeakEscapeLayer(
 	trigger?: HTMLElement | null,
 	documentWide = false,
 ): void {
-	const { keyboardNavigation } = useServiceContext();
+	const keyboardNavigation = useOptionalServiceContext()?.keyboardNavigation;
 
 	useEffect(() => {
 		const root = rootRef.current;

@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "activation": {
     "macOS": "Option",
     "windowsLinux": "Alt",
@@ -10,7 +10,8 @@
     "vault-search": "Vault Search",
     "ai-search": "AI Search",
     "file-atlas": "File Atlas",
-    "chat-studio": "Chat Studio"
+    "chat-studio": "Chat Studio",
+    "composer": "Composer"
   },
   "controlKeys": {
     "search": {
@@ -71,6 +72,27 @@
       "header": { "branch": "D", "openSource": "O", "refresh": "R", "restoreIndex": "I" },
       "composer": { "plus": "P", "sources": "S", "graph": "G", "assistant": "A", "model": "L", "send": "E" },
       "index": { "collapse": "X", "outline": "B", "resources": "U" }
+    },
+    "composer": {
+      "workspaceBack": "B",
+      "workspaceForward": "F",
+      "display": { "edit": "E", "clean": "V", "markdown": "M" },
+      "reviewAll": "R",
+      "comments": "C",
+      "intelligence": "I",
+      "undo": "U",
+      "redo": "Y",
+      "sidecar": {
+        "close": "X",
+        "copilot": "P",
+        "history": "H",
+        "scope": "W",
+        "sensing": "N",
+        "ask": "A",
+        "graphs": "G",
+        "refresh": "D"
+      },
+      "modal": { "close": "X", "previous": "B", "next": "F", "locate": "L" }
     }
   },
   "keyTips": {
@@ -92,6 +114,13 @@
       { "key": "M", "label": "Messages", "zoneId": "cs-message-timeline" },
       { "key": "Q", "label": "Chat input", "zoneId": "cs-composer" },
       { "key": "I", "label": "Conversation index", "zoneId": "cs-conversation-index" }
+    ],
+    "composer": [
+      { "key": "Q", "label": "Document", "zoneId": "cv-document", "actionId": "document" },
+      { "key": "T", "label": "Selection actions", "zoneId": "cv-contextual", "actionId": "selection-toolbar" },
+      { "key": "K", "label": "Block actions", "zoneId": "cv-contextual", "actionId": "block-actions" },
+      { "key": "O", "label": "Object actions", "zoneId": "cv-contextual", "actionId": "object-toolbar" },
+      { "key": "S", "label": "Intelligence content", "zoneId": "cv-sidecar-content", "actionId": "sidecar-content" }
     ]
   },
   "zoneLabels": {
@@ -116,7 +145,13 @@
     "cs-centre-content": "Centre content",
     "cs-message-timeline": "Messages",
     "cs-composer": "Composer",
-    "cs-conversation-index": "Conversation index"
+    "cs-conversation-index": "Conversation index",
+    "cv-controlbar": "Document controls",
+    "cv-document": "Document",
+    "cv-contextual": "Contextual actions",
+    "cv-sidecar-tabs": "Intelligence tabs",
+    "cv-sidecar-content": "Intelligence content",
+    "cv-comments": "Comments"
   },
   "a11y": {
     "searchSurface": "Search surface",

@@ -111,6 +111,7 @@ import type { ComposerDisplayState } from './chrome/DisplayStateSwitch';
 import { mapDomRangeToSource } from './chrome/selectionMapping';
 import { firstClipboardImage } from './chrome/pasteImage';
 import { containComposerEscape } from './escapeContainment';
+import { useComposerContextualToolbarNavigation } from './chrome/useComposerContextualToolbarNavigation';
 import { IntelligenceSidecar } from './sidecar';
 import { buildFocusRunContext, resolveRelatedFocus } from './sidecar/focusContext';
 import { HistoryDetailModal } from './sidecar/HistoryDetailModal';
@@ -121,6 +122,9 @@ import {
 } from './sidecar/sidecarConfig';
 import { restoreGenerationReview } from './generationHistory';
 import type { IntelligenceRuntime, SuggestionFinding } from '@/service/composer';
+import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
+import type { PeakKeyboardSurfaceAdapter } from '@/ui/keyboard/KeyboardNavigationPort';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Peak Composer — document host + shared editing chrome (WP1 host, WP4 chrome).
@@ -210,6 +214,7 @@ export function ComposerRoot({
 	revealRequest,
 }: ComposerRootProps): React.ReactElement {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
+	const intelligenceTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 	const subscribe = React.useCallback((cb: () => void) => source.subscribe(cb), [source]);
 	const getSnapshot = React.useCallback(() => source.getState(), [source]);
 	const state = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -336,6 +341,17 @@ export function ComposerRoot({
 	// that clicking a Brief action does not silently downgrade its document context
 	// to the whole note.
 	const lastFocusedBlockIdRef = React.useRef<string | null>(null);
+	const composerKeyboardAdapter = React.useMemo<PeakKeyboardSurfaceAdapter>(
+		() => ({
+			getKeyTipAnchor: (actionId) => resolveComposerKeyTipAnchor(
+				rootRef.current,
+				lastFocusedBlockIdRef.current,
+				actionId,
+			),
+		}),
+		[],
+	);
+	usePeakKeyboardSurface('composer', rootRef, composerKeyboardAdapter);
 	const locateBlock = React.useCallback((blockId: string) => {
 		return locateAndFlashComposerBlock(rootRef.current, blockId);
 	}, []);
@@ -412,6 +428,7 @@ export function ComposerRoot({
 							activeCommentId={activeCommentId}
 							onActiveComment={setActiveCommentId}
 							initialDisplayMode={initialDisplayMode}
+							intelligenceTriggerRef={intelligenceTriggerRef}
 							onDisplayModeChange={onDisplayModeChange}
 							onOpenNativeMarkdown={onOpenNativeMarkdown}
 						/>
@@ -428,7 +445,15 @@ export function ComposerRoot({
 							motion={intelligencePresentation.animate ? 'user' : 'none'}
 							presentationOrigin={intelligencePresentation.origin}
 							onPresentationOriginChange={openContextualIntelligence}
-							onOpenChange={(open) => setManualIntelligenceOpen(open)}
+							onOpenChange={(open) => {
+								setManualIntelligenceOpen(open);
+								if (open) return;
+								const trigger = intelligenceTriggerRef.current;
+								const ownerWindow = trigger?.ownerDocument.defaultView;
+								ownerWindow?.requestAnimationFrame(() => {
+									if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+								});
+							}}
 							onLocate={locateBlock}
 							onLocateComment={(commentId, blockId) => {
 								setActiveCommentId(commentId);
@@ -461,6 +486,7 @@ interface BodyProps {
 	initialDisplayMode?: ComposerDisplayMode;
 	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
 	onOpenNativeMarkdown?: () => void | Promise<void>;
+	intelligenceTriggerRef?: React.Ref<HTMLButtonElement>;
 }
 
 function ComposerBody(props: BodyProps): React.ReactElement {
@@ -471,6 +497,87 @@ function ComposerBody(props: BodyProps): React.ReactElement {
 	if (state.status === 'error') return <StateBanner title={strings.errorTitle} hint={state.error ?? ''} tone="error" />;
 	if (!state.snapshot) return <StateBanner title={strings.loading} hint="" />;
 	return <ComposerDocument {...props} />;
+}
+
+const COMPOSER_KEY_TIP_FOCUSABLE = [
+	'button:not([disabled])',
+	'input:not([disabled])',
+	'textarea:not([disabled])',
+	'[contenteditable="true"]',
+	'[tabindex="0"]',
+].join(',');
+
+type ComposerKeyTipResolver = (
+	root: HTMLElement,
+	activeBlock: HTMLElement | null,
+) => HTMLElement | null;
+
+const COMPOSER_KEY_TIP_RESOLVERS: Readonly<Record<string, ComposerKeyTipResolver>> = {
+	document: (root, activeBlock) => {
+		const selector = [
+			'[contenteditable="true"]',
+			'.pk-composer-table[tabindex]',
+			'.pk-composer-image-elem[tabindex]',
+			'[data-block-id] [tabindex="0"]',
+		].join(',');
+		return firstVisibleComposerKeyTip(activeBlock ?? root, selector)
+			?? firstVisibleComposerKeyTip(root, selector)
+			?? root.querySelector<HTMLElement>('.pk-composer-shell');
+	},
+	'selection-toolbar': (root) =>
+		firstVisibleComposerKeyTip(root, '.pk-selection-toolbar button:not([disabled])'),
+	'block-actions': (root, activeBlock) =>
+		firstVisibleComposerKeyTip(
+			activeBlock ?? root,
+			'.pk-block-action-row__shell button:not([disabled])',
+		) ?? firstVisibleComposerKeyTip(
+			root,
+			'.pk-block-action-row__shell button:not([disabled])',
+		),
+	'object-toolbar': (root, activeBlock) => {
+		const selector = [
+			'.pk-table-toolbar button:not([disabled])',
+			'.pk-composer-image-toolbar button:not([disabled])',
+		].join(',');
+		return firstVisibleComposerKeyTip(activeBlock ?? root, selector)
+			?? firstVisibleComposerKeyTip(root, selector);
+	},
+	'sidecar-content': (root) => {
+		const selector = COMPOSER_KEY_TIP_FOCUSABLE
+			.split(',')
+			.map((candidate) => `.pk-sidecar-body-content ${candidate}`)
+			.join(',');
+		return firstVisibleComposerKeyTip(root, selector);
+	},
+};
+
+function resolveComposerKeyTipAnchor(
+	root: HTMLElement | null,
+	lastFocusedBlockId: string | null,
+	actionId: string,
+): HTMLElement | null {
+	if (!root) return null;
+	const activeBlock = lastFocusedBlockId
+		? Array.from(root.querySelectorAll<HTMLElement>('[data-block-id]')).find(
+			(block) => block.dataset.blockId === lastFocusedBlockId,
+		) ?? null
+		: null;
+	return COMPOSER_KEY_TIP_RESOLVERS[actionId]?.(root, activeBlock) ?? null;
+}
+
+function firstVisibleComposerKeyTip(scope: ParentNode, selector: string): HTMLElement | null {
+	return Array.from(scope.querySelectorAll<HTMLElement>(selector))
+		.find(isComposerKeyTipVisible) ?? null;
+}
+
+function isComposerKeyTipVisible(element: HTMLElement): boolean {
+	if (!element.isConnected || element.hidden || element.closest('[aria-hidden="true"]')) return false;
+	const win = element.ownerDocument.defaultView;
+	if (!win) return true;
+	const style = win.getComputedStyle(element);
+	return style.display !== 'none'
+		&& style.visibility !== 'hidden'
+		&& element.getClientRects().length > 0;
 }
 
 function ComposerDocument({
@@ -487,6 +594,7 @@ function ComposerDocument({
 	initialDisplayMode = 'edit',
 	onDisplayModeChange,
 	onOpenNativeMarkdown,
+	intelligenceTriggerRef,
 }: BodyProps): React.ReactElement {
 	const chrome = useComposerChrome();
 	const { runtime, projection } = chrome;
@@ -496,7 +604,9 @@ function ComposerDocument({
 	const workspaceRef = React.useRef<HTMLDivElement | null>(null);
 	const findBarRef = React.useRef<ComposerFindBarHandle | null>(null);
 	const findRestoreFocusRef = React.useRef<HTMLElement | null>(null);
+	const commentTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 	const [findOpen, setFindOpen] = React.useState(false);
+	useComposerContextualToolbarNavigation(containerRef);
 
 	const [displayState, setDisplayState] = React.useState<ComposerDisplayState>(
 		hub ? initialDisplayMode : 'clean',
@@ -840,11 +950,15 @@ function ComposerDocument({
 				reviewCandidateCount={reviewCandidates.length}
 				reviewAll={reviewAll}
 				onReviewAll={setReviewAll}
+				intelligenceTriggerRef={intelligenceTriggerRef}
+				commentTriggerRef={commentTriggerRef}
 			/>
 			<div ref={workspaceRef} className="pk-composer-workspace">
 			<div
 				ref={containerRef}
 				className="pk-composer-shell"
+				data-peak-keyboard-zone="cv-document"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-document']}
 				data-display-state={displayState}
 				data-has-selection={hasSelection || undefined}
 				data-dragging={drag ? 'true' : undefined}
@@ -1009,6 +1123,7 @@ function ComposerDocument({
 				draftTarget={commentDraft}
 				activeCommentId={activeCommentId}
 				open={commentSurfaceVisible}
+				triggerRef={commentTriggerRef}
 				onOpenChange={setCommentSurfaceOpen}
 				onDraftClose={() => setCommentDraft(null)}
 				onActiveComment={onActiveComment}

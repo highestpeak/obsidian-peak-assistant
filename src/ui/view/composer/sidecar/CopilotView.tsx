@@ -54,6 +54,7 @@ import { RunReceiptCard } from './RunReceiptCard';
 import { useSessionProjection, useSidecar } from './SidecarContext';
 import type { SidecarStrings } from './sidecarConfig';
 import { AIInstructionComposer } from '@/ui/component/instruction-composer';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 export {
 	BriefView,
@@ -101,6 +102,18 @@ function SessionView(): React.ReactElement {
 	const candidates = React.useRef<readonly ComposerCandidate[]>([]);
 	const activeCancelRef = React.useRef<(() => void) | null>(null);
 	const [instruction, setInstruction] = React.useState('');
+	const recommendedRef = React.useRef<HTMLDivElement | null>(null);
+	const quickActionsRef = React.useRef<HTMLDivElement | null>(null);
+	useRovingComposite(recommendedRef, {
+		itemSelector: '.pk-session-suggestion:not([disabled])',
+		orientation: 'vertical',
+		rememberBy: 'data-capability-id',
+	});
+	useRovingComposite(quickActionsRef, {
+		itemSelector: 'button:not([disabled])',
+		orientation: 'horizontal',
+		rememberBy: 'data-capability-id',
+	});
 
 	const documentFallback = (): { snapshot: ComposerContextSnapshot; targetQuote: string } => ({
 		snapshot: {
@@ -271,11 +284,12 @@ function SessionView(): React.ReactElement {
 							<span>{formatPresentationOrigin(presentationOrigin, s) ?? s.currentContext}</span>
 							<strong>{contextLabel}</strong>
 						</div>
-						<div className="pk-session-start-actions" aria-label={s.capabilityRecommendedGroup}>
+						<div ref={recommendedRef} className="pk-session-start-actions" aria-label={s.capabilityRecommendedGroup}>
 							{availableCapabilities.slice(0, 3).map((action) => (
 								<Button
 									key={action.capabilityId}
 									className="pk-session-suggestion"
+									data-capability-id={action.capabilityId}
 									variant="outline"
 									onClick={() => chooseCapability(action)}
 								>
@@ -298,11 +312,12 @@ function SessionView(): React.ReactElement {
 				))}
 			</div>
 			<div className="pk-session-composer">
-				<div className="pk-session-quick-actions">
+				<div ref={quickActionsRef} className="pk-session-quick-actions">
 					{availableCapabilities.slice(0, 3).map((action) => (
 						<Button
 							key={action.capabilityId}
 							variant={selectedCapability?.capabilityId === action.capabilityId ? 'secondary' : 'ghost'}
+							data-capability-id={action.capabilityId}
 							onClick={() => chooseCapability(action)}
 						>
 							{action.title}
@@ -389,6 +404,21 @@ function CapabilityPicker({
 }): React.ReactElement {
 	const [open, setOpen] = React.useState(false);
 	const [query, setQuery] = React.useState('');
+	const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+	const dialogRef = React.useRef<HTMLDivElement | null>(null);
+	useRovingComposite(dialogRef, {
+		itemSelector: '.pk-capability-row:not([disabled])',
+		orientation: 'vertical',
+		rememberBy: 'data-capability-id',
+		enabled: open,
+	});
+	const closePicker = (): void => {
+		setOpen(false);
+		setQuery('');
+		triggerRef.current?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			if (triggerRef.current?.isConnected) triggerRef.current.focus({ preventScroll: true });
+		});
+	};
 	const normalized = query.trim().toLocaleLowerCase();
 	const filtered = catalog.filter((item) => {
 		if (!normalized) return true;
@@ -400,25 +430,35 @@ function CapabilityPicker({
 	const other = filtered.filter((item) => !item.action);
 	return (
 		<>
-			<Button className="pk-capability-picker-trigger" variant="ghost" onClick={() => setOpen(true)}>
+			<Button ref={triggerRef} className="pk-capability-picker-trigger" variant="ghost" onClick={() => setOpen(true)}>
 				{strings.allCapabilities}
 				<ChevronDown size={12} />
 			</Button>
 			{open && (
-				<div className="pk-capability-dialog-backdrop" onMouseDown={() => setOpen(false)}>
+				<div className="pk-capability-dialog-backdrop" onMouseDown={closePicker}>
 					<div
+						ref={dialogRef}
 						className="pk-capability-dialog"
 						role="dialog"
 						aria-modal="true"
 						aria-label={strings.capabilityDialogTitle}
 						onMouseDown={(event) => event.stopPropagation()}
+						onKeyDown={(event) => {
+							if (event.key === 'Escape') {
+								event.preventDefault();
+								event.stopPropagation();
+								closePicker();
+								return;
+							}
+							if (event.key === 'Tab') trapDialogTab(event, event.currentTarget);
+						}}
 					>
 						<div className="pk-capability-dialog-head">
 							<span>
 								<strong>{strings.capabilityDialogTitle}</strong>
 								<small>{strings.capabilityDialogSubtitle}</small>
 							</span>
-							<IconButton label={strings.close} onClick={() => setOpen(false)}>
+							<IconButton label={strings.close} onClick={closePicker}>
 								<X aria-hidden />
 							</IconButton>
 						</div>
@@ -443,8 +483,7 @@ function CapabilityPicker({
 									selectedId={selectedId}
 									onChoose={(action) => {
 										onChoose(action);
-										setOpen(false);
-										setQuery('');
+										closePicker();
 									}}
 								/>
 							)}
@@ -488,6 +527,7 @@ function CapabilityDialogGroup({
 				<Button
 					key={item.capabilityId}
 					className="pk-capability-row"
+					data-capability-id={item.capabilityId}
 					variant="ghost"
 					disabled={!item.action}
 					title={!item.action ? statusLabel : undefined}
@@ -543,6 +583,30 @@ function CapabilityIcon({ name }: { name?: string }): React.ReactElement {
 	return <Icon aria-hidden />;
 }
 
+function trapDialogTab(event: React.KeyboardEvent<HTMLElement>, dialog: HTMLElement): void {
+	const focusable = Array.from(dialog.querySelectorAll<HTMLElement>([
+		'button:not([disabled])',
+		'input:not([disabled])',
+		'textarea:not([disabled])',
+		'[tabindex]:not([tabindex="-1"])',
+	].join(','))).filter((element) => {
+		if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
+		return element.ownerDocument.defaultView?.getComputedStyle(element).display !== 'none';
+	});
+	if (focusable.length === 0) return;
+	const first = focusable[0];
+	const last = focusable[focusable.length - 1];
+	if (event.shiftKey && dialog.ownerDocument.activeElement === first) {
+		event.preventDefault();
+		last.focus();
+		return;
+	}
+	if (!event.shiftKey && dialog.ownerDocument.activeElement === last) {
+		event.preventDefault();
+		first.focus();
+	}
+}
+
 function collectAiCapabilities(
 	projection: ReturnType<typeof useComposerChrome>['projection'],
 	snapshot: ComposerContextSnapshot,
@@ -590,6 +654,12 @@ function ReviewView(): React.ReactElement {
 	const projection = useSessionProjection(runtime);
 	const s = config.strings;
 	const receipt = projection.receipts.find((entry) => entry.runId === projection.activeRunId);
+	const reviewRef = React.useRef<HTMLDivElement | null>(null);
+	useRovingComposite(reviewRef, {
+		itemSelector: '.pk-review-item:not([disabled])',
+		orientation: 'vertical',
+		rememberBy: 'data-change-id',
+	});
 	return (
 		<div className="pk-review" data-testid="pk-review">
 			<div className="pk-session-head">
@@ -598,11 +668,12 @@ function ReviewView(): React.ReactElement {
 				</IconButton>
 				<span className="pk-session-title">{receipt?.action ?? s.reviewClose}</span>
 			</div>
-			<div className="pk-review-list">
+			<div ref={reviewRef} className="pk-review-list">
 				{(receipt?.changes ?? []).map((change) => (
 					<Button
 						key={change.changeId}
 						className="pk-review-item"
+						data-change-id={change.changeId}
 						variant="ghost"
 						onClick={() => {
 							const blockId = composerTargetBlockId(change.target);

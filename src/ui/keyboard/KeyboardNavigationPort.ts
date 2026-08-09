@@ -2,7 +2,8 @@ export type PeakKeyboardSurfaceId =
 	| 'vault-search'
 	| 'ai-search'
 	| 'file-atlas'
-	| 'chat-studio';
+	| 'chat-studio'
+	| 'composer';
 
 export interface PeakKeyboardEscapeLayer {
 	id: string;

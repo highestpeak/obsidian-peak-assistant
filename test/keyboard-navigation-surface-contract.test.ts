@@ -26,6 +26,10 @@ const chatComposer = read('src/ui/view/chat-view/components/Composer.tsx');
 const chatIndex = read('src/ui/view/chat-view/components/ConversationIndex.tsx');
 const inspector = read('src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx');
 const chatMessages = read('src/ui/view/chat-view/components/messages/MessageListRenderer.tsx');
+const composerRoot = read('src/ui/view/composer/ComposerRoot.tsx');
+const composerSelection = read('src/ui/view/composer/chrome/SelectionToolbar.tsx');
+const composerContextual = read('src/ui/view/composer/chrome/useComposerContextualToolbarNavigation.ts');
+const composerSidecar = read('src/ui/view/composer/sidecar/IntelligenceSidecar.tsx');
 const styles = `${read('src/styles/tailwind.css')}\n${read('src/styles/peak-components.css')}`;
 const templateRegistry = read('src/core/template/TemplateRegistry.ts');
 const template = JSON.parse(read('templates/config/keyboard-navigation.json')) as {
@@ -75,8 +79,10 @@ assert.doesNotMatch(runtime, /KeyboardMap|QuestionMark/);
 assert.match(runtime, /registerEscapeLayer/);
 assert.match(runtime, /event\.stopImmediatePropagation\(\)/);
 
-assert.match(roving, /item\.tabIndex = item === active \? 0 : -1/);
+assert.match(roving, /const nextTabIndex = item === active \? 0 : -1/);
+assert.match(roving, /if \(item\.tabIndex !== nextTabIndex\) item\.tabIndex = nextTabIndex/);
 assert.match(roving, /root\.ownerDocument\.defaultView\?\.MutationObserver/);
+assert.match(roving, /attributeFilter:[\s\S]*?'tabindex'/);
 assert.match(roving, /MouseEventCtor\('contextmenu'/);
 assert.match(roving, /\[rootRef, options\.enabled\]/);
 assert.match(chatMessages, /onContextMenu=/);
@@ -115,7 +121,14 @@ assert.match(chatComposer, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.composer\.sen
 assert.match(chatIndex, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.index\[value\]/);
 assert.match(inspector, /PEAK_CONTROL_KEY_TIP_KEYS\.search\.inspector\.close/);
 assert.doesNotMatch(inspector, /<div\s+onClick=\{\(\) => setOpen/);
-assert.doesNotMatch(port, /\|\s*'composer'/, 'Composer adapter belongs to phase 2');
+assert.match(port, /\|\s*'composer'/, 'Composer must join the app-owned runtime in phase 2');
+assert.match(composerRoot, /usePeakKeyboardSurface\('composer'/);
+assert.match(composerRoot, /resolveComposerKeyTipAnchor/);
+assert.match(composerSelection, /event\.altKey[\s\S]*?event\.key !== 'F10'/);
+assert.match(composerSelection, /restoreDomSelectionFromSource/);
+assert.match(composerSelection, /useRovingComposite\(toolbarRef/);
+assert.match(composerContextual, /data-composer-contextual-toolbar/);
+assert.match(composerSidecar, /useRovingComposite\(tabsRef/);
 
 for (const zone of [
 	'vs-query',
@@ -160,15 +173,15 @@ assert.deepStrictEqual(template.activation, {
 });
 assert.deepStrictEqual(
 	Object.keys(template.surfaceLabels).sort(),
-	['ai-search', 'chat-studio', 'file-atlas', 'vault-search'],
+	['ai-search', 'chat-studio', 'composer', 'file-atlas', 'vault-search'],
 );
 assert.deepStrictEqual(
 	Object.keys(template.keyTips).sort(),
-	['ai-search', 'chat-studio', 'file-atlas', 'vault-search'],
+	['ai-search', 'chat-studio', 'composer', 'file-atlas', 'vault-search'],
 );
 assert.deepStrictEqual(
 	Object.keys(template.controlKeys).sort(),
-	['aiSearch', 'chatStudio', 'fileAtlas', 'search'],
+	['aiSearch', 'chatStudio', 'composer', 'fileAtlas', 'search'],
 );
 for (const zone of [
 	'vs-query',
@@ -183,5 +196,6 @@ assert.ok(template.keyTips['vault-search'].some((tip) => tip.key === 'R' && tip.
 assert.deepStrictEqual(template.keyTips['vault-search'].map((tip) => tip.key), ['Q', 'R']);
 assert.deepStrictEqual(template.keyTips['file-atlas'].map((tip) => tip.key), ['F', 'I', 'S']);
 assert.ok(template.keyTips['chat-studio'].some((tip) => tip.key === 'Q' && tip.label === 'Chat input'));
+assert.ok(template.keyTips.composer.some((tip) => tip.key === 'T' && tip.actionId === 'selection-toolbar'));
 
 console.log('keyboard-navigation-surface-contract: passed');

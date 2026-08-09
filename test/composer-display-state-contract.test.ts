@@ -16,7 +16,7 @@ assert.match(undoBar, /reviewAll/, 'review-all must remain a contextual action')
 assert.match(root, /reviewAll/, 'review-all must expand pending candidates without becoming a third mode');
 assert.match(
 	displaySwitch,
-	/\{ value: 'markdown' as const, label: s\.nativeMarkdown \}/,
+	/value: 'markdown' as const,[\s\S]*?label: s\.nativeMarkdown,[\s\S]*?keyTipKey: PEAK_CONTROL_KEY_TIP_KEYS\.composer\.display\.markdown/,
 	'Native Markdown must be the third current-view action',
 );
 assert.doesNotMatch(

@@ -13,6 +13,8 @@ import type { ComposerActionDescriptor, ComposerContextSnapshot } from '@/core/c
 import { Button, IconButton } from '@/ui/components/primitives';
 import { useComposerChrome } from './ComposerChromeContext';
 import { InsertTypeMenu } from './InsertTypeMenu';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Single flattened block action row (WP4, handoff §6.4 / consistency §1).
@@ -92,12 +94,19 @@ export function BlockActionRow({
 	);
 	const [instruction, setInstruction] = React.useState('');
 	const inputRef = React.useRef<HTMLInputElement | null>(null);
+	const toolbarRef = React.useRef<HTMLDivElement | null>(null);
 	const instructionOpen = openPanel === 'instruction';
 	const surfaceBlockId = snapshot.target.kind === 'document' ? snapshot.documentId : snapshot.target.blockId;
 	const insertOpen = openPanel === 'insert-menu';
 	const copyOpen = openPanel === 'copy';
 	const historyOpen = openPanel === 'history';
 	const actionTabIndex = instructionOpen ? -1 : 0;
+	useRovingComposite(toolbarRef, {
+		itemSelector: 'button:not([disabled])',
+		orientation: 'horizontal',
+		rememberBy: 'data-action',
+		enabled: !instructionOpen,
+	});
 	const previewCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const clearPreviewClose = () => {
 		if (!previewCloseTimer.current) return;
@@ -151,11 +160,16 @@ export function BlockActionRow({
 			data-composer-surface-owner={surfaceBlockId}
 			onKeyDown={(event) => {
 				if (event.key !== 'Escape' || (!insertOpen && !copyOpen && !historyOpen)) return;
+				const trigger = event.currentTarget.querySelector<HTMLElement>('[aria-expanded="true"]');
 				event.preventDefault();
+				event.stopPropagation();
 				if (openPanel) {
 					if (panelPinned) onOpenPanel(openPanel);
 					else hidePreview(openPanel, true);
 				}
+				trigger?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+					if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+				});
 			}}
 			>
 				<div
@@ -175,8 +189,12 @@ export function BlockActionRow({
 					}}
 				>
 				<div
+					ref={toolbarRef}
 					className="pk-block-action-row__shell"
 					role="toolbar"
+					data-composer-contextual-toolbar="block"
+					data-peak-keyboard-zone="cv-contextual"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-contextual']}
 				>
 				<span className="pk-block-action-row__options" aria-hidden={instructionOpen || undefined}>
 					{scopeLabel ? (

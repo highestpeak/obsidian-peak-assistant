@@ -148,6 +148,43 @@ try {
 	await page.keyboard.press('Enter');
 	assert.equal(await page.evaluate(() => window.__peakClicks), 1);
 
+	// Composer phase 2 uses the same focus-first contract, including an
+	// adapter-owned document entry that is not a fixed header button.
+	await page.evaluate(() => {
+		window.__peakRuntime.dispose();
+		document.body.innerHTML = `
+			<button id="outside">Outside trigger</button>
+			<div id="composer" class="surface">
+				<div class="zone" data-peak-keyboard-zone="cv-controlbar">
+					<button id="edit" data-peak-keytip-key="E" data-peak-keytip-label="Edit">Edit</button>
+				</div>
+				<div class="zone" data-peak-keyboard-zone="cv-document">
+					<div id="editor" contenteditable="true" tabindex="0">Document</div>
+				</div>
+			</div>`;
+		const runtime = new window.PeakKeyboardTest.PeakKeyboardRuntime();
+		window.__peakRuntime = runtime;
+		window.__composerClicks = 0;
+		document.querySelector('#edit').addEventListener('click', () => { window.__composerClicks += 1; });
+		runtime.registerSurface('composer', document.querySelector('#composer'), {
+			getKeyTipAnchor(actionId) {
+				return actionId === 'document' ? document.querySelector('#editor') : null;
+			},
+		});
+		document.querySelector('#outside').focus();
+	});
+	await page.keyboard.press('Alt');
+	assert.equal(await page.locator('[data-peak-keytip="E"] > kbd').textContent(), 'E');
+	assert.equal(await page.locator('[data-peak-keytip="Q"] > kbd').textContent(), 'Q');
+	await page.keyboard.press('e');
+	assert.equal(await page.evaluate(() => document.activeElement?.id), 'edit');
+	assert.equal(await page.evaluate(() => window.__composerClicks), 0);
+	await page.keyboard.press('Enter');
+	assert.equal(await page.evaluate(() => window.__composerClicks), 1);
+	await page.keyboard.press('Alt');
+	await page.keyboard.press('q');
+	assert.equal(await page.evaluate(() => document.activeElement?.id), 'editor');
+
 	console.log('keyboard-keytips-runtime.qa: passed');
 } finally {
 	await browser.close();

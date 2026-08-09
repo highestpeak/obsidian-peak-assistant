@@ -35,6 +35,7 @@ export interface CommentRailProps {
 	draftTarget: CommentDraftTarget | null;
 	activeCommentId: string | null;
 	open: boolean;
+	triggerRef?: React.RefObject<HTMLButtonElement | null>;
 	onOpenChange: (open: boolean) => void;
 	onDraftClose: () => void;
 	onActiveComment: (commentId: string | null) => void;
@@ -53,6 +54,7 @@ export function CommentRail({
 	draftTarget,
 	activeCommentId,
 	open,
+	triggerRef,
 	onOpenChange,
 	onDraftClose,
 	onActiveComment,
@@ -72,6 +74,7 @@ export function CommentRail({
 		sourceY: number;
 	}>>([]);
 	const cardRefs = React.useRef(new Map<string, HTMLDivElement>());
+	const railRef = React.useRef<HTMLElement | null>(null);
 
 	React.useEffect(() => {
 		if (!store) return;
@@ -206,12 +209,24 @@ export function CommentRail({
 				</svg>
 			)}
 			<aside
+				ref={railRef}
 				className="pk-comment-rail"
 				data-mode={mode}
 				data-open={open ? 'true' : 'false'}
 				data-chrome="true"
 				aria-hidden={!open}
 				aria-label={c.railTitle}
+				data-peak-keyboard-zone="cv-comments"
+				onKeyDown={(event) => {
+					if (event.defaultPrevented || event.key !== 'Escape') return;
+					event.preventDefault();
+					event.stopPropagation();
+					onOpenChange(false);
+					const trigger = triggerRef?.current;
+					trigger?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+						if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+					});
+				}}
 			>
 				<div className="pk-comment-rail__cards">
 					{draftTarget && (
@@ -418,7 +433,11 @@ const CommentDraftCard = React.forwardRef<HTMLDivElement, {
 				rows={3}
 				onChange={(event) => setDraft(event.target.value)}
 				onKeyDown={(event) => {
-					if (event.key === 'Escape') onCancel();
+					if (event.key === 'Escape') {
+						event.preventDefault();
+						event.stopPropagation();
+						onCancel();
+					}
 					if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) save();
 				}}
 			/>
@@ -513,7 +532,11 @@ const CommentThreadCard = React.forwardRef<HTMLDivElement, {
 						autoFocus
 						onChange={(event) => setReply(event.target.value)}
 						onKeyDown={(event) => {
-							if (event.key === 'Escape') setReplyOpen(false);
+							if (event.key === 'Escape') {
+								event.preventDefault();
+								event.stopPropagation();
+								setReplyOpen(false);
+							}
 							if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
 							store.reply(comment.commentId, reply, LOCAL_COMMENT_ACTOR);
 							setReply('');

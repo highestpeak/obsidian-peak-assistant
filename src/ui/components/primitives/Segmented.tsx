@@ -1,10 +1,16 @@
 import * as React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/ui/react/lib/utils';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 export interface SegmentedOption<T extends string> {
 	value: T;
 	label: React.ReactNode;
+	/** Optional stable focus identity for keyboard restoration. */
+	focusId?: string;
+	/** Optional exact modifier Key Tip for this option. */
+	keyTipKey?: string;
+	keyTipLabel?: string;
 }
 
 export interface SegmentedProps<T extends string> {
@@ -43,8 +49,15 @@ export function Segmented<T extends string>({
 }: SegmentedProps<T>) {
 	const instanceId = React.useId();
 	const reducedMotion = useReducedMotion();
+	const rootRef = React.useRef<HTMLDivElement | null>(null);
+	useRovingComposite(rootRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		rememberBy: 'data-peak-focus-id',
+	});
 	return (
 		<div
+			ref={rootRef}
 			className={cn('pk-segmented', className)}
 			data-variant={variant}
 			data-size={size}
@@ -60,6 +73,9 @@ export function Segmented<T extends string>({
 						role="tab"
 						aria-selected={isSelected}
 						data-selected={isSelected ? 'true' : undefined}
+						data-peak-focus-id={opt.focusId ?? opt.value}
+						data-peak-keytip-key={opt.keyTipKey}
+						data-peak-keytip-label={opt.keyTipLabel}
 						className="pk-segmented__opt"
 						onClick={() => onValueChange(opt.value)}
 					>

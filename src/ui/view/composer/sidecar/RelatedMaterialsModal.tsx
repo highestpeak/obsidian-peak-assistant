@@ -25,6 +25,9 @@ import {
 	resolveComposerOpenDisposition,
 	type ComposerBrowserState,
 } from './ComposerResultBrowserAdapter';
+import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
+import type { PeakKeyboardSurfaceAdapter } from '@/ui/keyboard/KeyboardNavigationPort';
+import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Peak Composer — related-material wide modal (WP9, handoff §12.4 / CMP-REL-02 +
@@ -55,6 +58,20 @@ export function RelatedMaterialsModal({
 	const openerRef = React.useRef<HTMLElement | null>(
 		(portalContainer?.ownerDocument.activeElement as HTMLElement | null) ?? null,
 	);
+	const keyboardAdapter = React.useMemo<PeakKeyboardSurfaceAdapter>(
+		() => {
+			const anchors: Readonly<Record<string, () => HTMLElement | null>> = {
+				document: () => rootRef.current?.querySelector<HTMLElement>(
+					'.cm-content[tabindex], input:not([disabled]), [role="textbox"]',
+				) ?? null,
+			};
+			return {
+				getKeyTipAnchor: (actionId) => anchors[actionId]?.() ?? null,
+			};
+		},
+		[],
+	);
+	usePeakKeyboardSurface('composer', rootRef, keyboardAdapter);
 
 	// Radix owns Escape + focus trapping. Preserve the exact Composer opener
 	// because this modal is conditionally mounted by BriefView.
@@ -176,7 +193,12 @@ export function RelatedMaterialsModal({
 							<span className="pk-related-modal-subtitle">{s.relatedModalSubtitle}</span>
 						</Modal.Subtitle>
 					</span>
-					<Modal.Close className="pk-icon-btn" label={s.close} />
+					<Modal.Close
+						className="pk-icon-btn"
+						label={s.close}
+						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.modal.close}
+						data-peak-keytip-label={s.close}
+					/>
 				</Modal.Header>
 
 				<div className="pk-related-search-row">
