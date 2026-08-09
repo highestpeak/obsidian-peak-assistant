@@ -79,6 +79,7 @@ export interface ToolAvailabilityContext {
 	 * as `unconfigured` (producer not wired at boot).
 	 */
 	artifactCreateReady?: boolean;
+	peakSheetReady?: boolean;
 }
 
 /**
@@ -108,6 +109,12 @@ export function resolveToolAvailability(
 
 	// ── artifact_create ──────────────────────────────────────────────────────
 	out.push(resolveArtifactCreateAvailability(ctx));
+
+	for (const toolId of ['peak_sheet_list', 'peak_sheet_query', 'peak_sheet_analyze', 'peak_sheet_patch', 'peak_sheet_create']) {
+		out.push(ctx.peakSheetReady
+			? { toolId, state: 'available' }
+			: { toolId, state: 'unconfigured', reason: 'Peak Sheet runtime is not wired' });
+	}
 
 	// ── mcp_* ────────────────────────────────────────────────────────────────
 	for (const rec of resolveMcpAvailability(ctx)) out.push(rec);

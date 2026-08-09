@@ -8,6 +8,16 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-10 · Peak Sheet production implementation
+
+- [x] **一个 Dataset 真值、四个视图**：新增 app-owned `PeakSheetRuntime`，Table、Chart、Board、Calendar 共用 stable ID、revision、typed patch 与进程内 subscription；三张发布管理 starter dataset 可直接使用。
+- [x] **本地表格工作面**：完成七种基础字段、表/行/列 CRUD、direct edit、选区与统计、TSV copy/paste、sort/filter/group、hidden fields、saved views、Undo / Redo、JSON 导出和 CSV / flat JSON / bounded multi-sheet XLSX preview-select-accept 导入。
+- [x] **公式与文件**：HyperFormula 提供 `[Field name]` 计算列；File cell 保存 Vault ref、复用 hover preview，并支持显式复制外部文件到 Peak media attachment 目录。仓库 GPL-3.0 与 HyperFormula `gpl-v3` 模式一致，第三方 notice 和 release obligation 已登记。
+- [x] **AI 查询、分析和修改**：Chat / harness 注册 list、query、analyze、patch、create 五个工具；analysis 只执行有行数/分组/输出上限的白名单 plan，不开放 arbitrary JavaScript / Python；edit 继续走现有 permission gate 和 revision conflict。
+- [x] **持久化与恢复**：登记 `UA-16` Dataset JSON snapshot 和 `DR-25` JSONL event history；event-first 写入、snapshot lag replay、create checkpoint、stale reject、串行 mutation 和重启恢复测试已覆盖。
+- [x] **自动验证**：8 个 focused suites 全通过；生产 build、bundle 与 simulator boundary 通过；新增 Peak Sheet 路径无 TypeScript 诊断。全量为 `453/458`，5 个失败来自未触碰的 code theme、Composer guards、Custom Prompt writer 和 inline prompt 基线。
+- [ ] **冻结门槛未完成**：当前没有 CDP listener，真实 Obsidian IME、clipboard、drag、focus、hover、reload 与 Undo sequence 保持 `INTERACTION NOT VERIFIED`；owner-device 200–500 行证据和连续七天 dogfood 尚未完成，因此不从 Planned Requirements 移除。详见 [`实施记录`](./superpowers/plans/2026-08-10-peak-sheet-production-implementation-note.md)。
+
 ## 2026-08-02 · Planned Requirements 清理
 
 - [x] **登记页只保留待办**：`planned-requirements.html` 只展示开放需求（当前 0）；已实现、合并或撤销的项目全部从页面移除，不再保留关闭卡片或 PR anchor。

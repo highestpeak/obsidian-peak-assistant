@@ -18,6 +18,7 @@ import type { MediaReferenceInput } from '@/core/types/media-generation';
 import type { ArtifactProducerService } from '@/service/chat/artifacts/artifactProducers';
 import type { ChatArtifactReceipt } from '@/core/types/chat-studio';
 import type { ToolDef } from '@/core/types/tool';
+import type { PeakSheetToolPort } from '@/core/ports/PeakSheetToolPort';
 
 /**
  * T11Y-6: web search tool system prompt body moved to
@@ -104,6 +105,8 @@ export interface ChatToolDeps {
     onArtifactReceipt?: (receipt: ChatArtifactReceipt) => void;
     /** Current human-approved external Obsidian command tool definitions. */
     pluginCommandTools?: readonly ToolDef[];
+	/** App-owned local Peak Sheet data runtime. */
+	peakSheet?: PeakSheetToolPort | null;
 }
 
 export interface ChatToolSet {

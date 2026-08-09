@@ -452,6 +452,21 @@ export default class MyPlugin extends Plugin {
 			console.warn('[Peak Composer] runtime compose failed:', e);
 		}
 
+		try {
+			const [{ PeakSheetRuntime }, { AppPeakSheetRepository }] = await Promise.all([
+				import('@/app/sheet/PeakSheetRuntime'),
+				import('@/app/sheet/AppPeakSheetRepository'),
+			]);
+			const peakSheetRuntime = new PeakSheetRuntime(new AppPeakSheetRepository(
+				appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
+			));
+			await peakSheetRuntime.initialize();
+			appContext.runtimeRegistry.setPeakSheetRuntime(peakSheetRuntime);
+			this.aiServiceManager.conv.setPeakSheetRuntime(peakSheetRuntime);
+		} catch (e) {
+			console.warn('[Peak Sheet] runtime compose failed:', e);
+		}
+
 		// Create ViewManager with AppContext only after file-bound view runtimes are
 		// ready. This registration point may immediately instantiate restored leaves.
 		this.viewManager = new ViewManager(this, appContext);
@@ -509,6 +524,7 @@ export default class MyPlugin extends Plugin {
 			},
 			openAIControlCenter: () => this.viewManager.activateAIControlCenterView(),
 			openMyContent: () => this.viewManager.activateMyContentView(),
+			openPeakSheet: () => this.viewManager.activatePeakSheetView(),
 			openSettingsModal,
 			openHarnessSetupWizard,
 			openQuickSearch,
@@ -1291,6 +1307,9 @@ export default class MyPlugin extends Plugin {
 		} catch { /* not bound — ignore */ }
 		try {
 			this.appContext?.runtimeRegistry.clearAIGraphArtifactRuntime();
+		} catch { /* not bound — ignore */ }
+		try {
+			this.appContext?.runtimeRegistry.clearPeakSheetRuntime();
 		} catch { /* not bound — ignore */ }
 
 		clearPendingConversationTimeouts();

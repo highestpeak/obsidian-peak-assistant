@@ -17,8 +17,8 @@ function documentationIds(prefix: string, count: number): string[] {
 function testCatalogMatchesCanonicalDocumentation(): void {
 	const registry = createDefaultGeneratedOutputRegistry();
 	const expected = [
-		...documentationIds('UA', 15),
-		...documentationIds('DR', 24),
+		...documentationIds('UA', 16),
+		...documentationIds('DR', 25),
 		...documentationIds('LP', 11),
 		...documentationIds('LG', 8),
 	].sort();

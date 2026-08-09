@@ -8,6 +8,7 @@ export const COMMAND_CENTER_HOME_VIEW_TYPE = 'peak-command-center-home';
 export const AI_CONTROL_CENTER_VIEW_TYPE = 'peak-ai-control-center';
 export const MY_CONTENT_VIEW_TYPE = 'peak-my-content';
 export const PLUGIN_COMMAND_GATEWAY_VIEW_TYPE = 'peak-plugin-command-gateway';
+export const PEAK_SHEET_VIEW_TYPE = 'peak-sheet-view';
 
 export const TRACKED_VIEW_TYPES = new Set<string>([
 	CHAT_VIEW_TYPE,
@@ -30,4 +31,5 @@ export const STANDALONE_PEAK_VIEW_TYPES = new Set<string>([
 	AI_CONTROL_CENTER_VIEW_TYPE,
 	MY_CONTENT_VIEW_TYPE,
 	PLUGIN_COMMAND_GATEWAY_VIEW_TYPE,
+	PEAK_SHEET_VIEW_TYPE,
 ]);

@@ -1,0 +1,186 @@
+.peak-sheet-view,
+.peak-sheet-view .view-content,
+.peak-sheet-view .peak-react-root {
+	height: 100%;
+	min-height: 0;
+	padding: 0 !important;
+	overflow: hidden;
+}
+
+.peak-sheet-root {
+	display: grid;
+	grid-template-columns: 218px minmax(0, 1fr);
+	height: 100%;
+	min-height: 0;
+	color: var(--pk-text-primary);
+	background: var(--pk-surface);
+	font-size: 12px;
+}
+
+.peak-sheet-sidebar {
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+	flex-direction: column;
+	padding: 16px 12px 12px;
+	border-right: 1px solid var(--pk-border);
+	background: var(--pk-bg-secondary);
+}
+
+.peak-sheet-brand { display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 6px; font-size: 14px; font-weight: 720; letter-spacing: -0.01em; }
+.peak-sheet-brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--pk-accent-border); border-radius: 6px; color: var(--pk-accent-text); background: var(--pk-accent-soft); }
+.peak-sheet-search { display: flex; align-items: center; gap: 6px; height: 31px; margin: 13px 2px 9px; padding: 0 8px; border: 1px solid var(--pk-border); border-radius: 6px; color: var(--pk-text-tertiary); background: var(--pk-surface); }
+.peak-sheet-search input { width: 100%; min-width: 0; height: 27px !important; padding: 0 !important; border: 0 !important; outline: 0; background: transparent !important; box-shadow: none !important; font-size: 11px !important; }
+.peak-sheet-dataset-list { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 2px; overflow-y: auto; }
+.peak-sheet-dataset-list button { display: flex !important; width: 100% !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important; justify-content: space-between !important; padding: 0 8px !important; border: 0 !important; border-radius: 5px !important; color: var(--pk-text-secondary) !important; background: transparent !important; font-size: 11px !important; text-align: left; }
+.peak-sheet-dataset-list button > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.peak-sheet-dataset-list button > span:last-child { color: var(--pk-text-tertiary); font-variant-numeric: tabular-nums; }
+.peak-sheet-dataset-list button:hover, .peak-sheet-dataset-list button.is-active { color: var(--pk-text-primary) !important; background: var(--pk-surface) !important; box-shadow: inset 2px 0 var(--pk-accent); }
+.peak-sheet-new-dataset { display: flex !important; width: 100% !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important; justify-content: flex-start !important; gap: 7px; padding: 0 8px !important; border: 1px solid var(--pk-border) !important; border-radius: 5px !important; background: var(--pk-surface) !important; font-size: 11px !important; }
+.peak-sheet-sidebar-foot { display: flex; justify-content: space-between; padding: 11px 4px 0; color: var(--pk-text-tertiary); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+
+.peak-sheet-workspace { position: relative; display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--pk-surface); }
+.peak-sheet-document-header { display: flex; min-height: 57px; align-items: center; justify-content: space-between; gap: 16px; padding: 7px 16px 7px 18px; border-bottom: 1px solid var(--pk-border); }
+.peak-sheet-document-header > div:first-child { display: flex; min-width: 0; flex-direction: column; }
+.peak-sheet-title-input { width: min(500px, 62vw) !important; height: 27px !important; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--pk-text-primary) !important; font-family: var(--font-text); font-size: 18px !important; font-weight: 690; letter-spacing: -0.025em; }
+.peak-sheet-document-header > div:first-child > span { color: var(--pk-text-tertiary); font-size: 10px; }
+.peak-sheet-header-actions { display: flex; gap: 3px; }
+.peak-sheet-hidden-input { display: none !important; }
+
+.peak-sheet-view-tabs { display: flex; min-height: 38px; align-items: end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--pk-border); overflow-x: auto; }
+.peak-sheet-view-tabs > button:not([data-geometry]) { display: flex !important; height: 37px !important; min-height: 37px !important; max-height: 37px !important; align-items: center !important; gap: 6px; padding: 0 9px !important; border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important; background: transparent !important; color: var(--pk-text-tertiary) !important; font-size: 11px !important; }
+.peak-sheet-view-tabs button > span { font-size: 8px; letter-spacing: .04em; text-transform: uppercase; }
+.peak-sheet-view-tabs button.is-active { border-bottom-color: var(--pk-accent) !important; color: var(--pk-text-primary) !important; }
+
+.peak-sheet-toolbar { display: flex; min-height: 39px; align-items: center; gap: 3px; padding: 4px 11px; border-bottom: 1px solid var(--pk-border); background: var(--pk-surface); overflow-x: auto; }
+.peak-sheet-toolbar button[data-geometry="toolbar"], .peak-sheet-add-views button[data-geometry="toolbar"], .peak-sheet-filter-editor button[data-geometry="toolbar"] { display: inline-flex !important; height: 29px !important; min-height: 29px !important; max-height: 29px !important; align-items: center !important; gap: 5px; padding: 0 8px !important; border: 1px solid transparent !important; border-radius: 5px !important; background: transparent !important; font-size: 10px !important; }
+.peak-sheet-toolbar button[data-geometry="toolbar"]:hover, .peak-sheet-toolbar button.is-active { border-color: var(--pk-border) !important; background: var(--pk-bg-secondary) !important; }
+.peak-sheet-header-actions button[data-geometry="toolbar-icon"], .peak-sheet-toolbar button[data-geometry="toolbar-icon"], .peak-sheet-view-tabs button[data-geometry="toolbar-icon"], .peak-sheet-panel-title button[data-geometry="toolbar-icon"], .peak-sheet-calendar-heading button[data-geometry="toolbar-icon"] { width: 29px !important; min-width: 29px !important; max-width: 29px !important; height: 29px !important; min-height: 29px !important; max-height: 29px !important; padding: 0 !important; border: 1px solid transparent !important; border-radius: 5px !important; background: transparent !important; }
+.peak-sheet-header-actions button:hover, .peak-sheet-toolbar button[data-geometry="toolbar-icon"]:hover { border-color: var(--pk-border) !important; background: var(--pk-bg-secondary) !important; }
+.peak-sheet-toolbar-separator { width: 1px; height: 18px; margin: 0 3px; background: var(--pk-border); }
+.peak-sheet-toolbar-spacer { flex: 1; }
+.peak-sheet-save-state { white-space: nowrap; color: var(--pk-text-tertiary); font-size: 9px; }
+.peak-sheet-toolbar-select { display: flex; height: 29px; align-items: center; gap: 4px; padding-left: 6px; border: 1px solid transparent; border-radius: 5px; color: var(--pk-text-tertiary); font-size: 9px; white-space: nowrap; }
+.peak-sheet-toolbar-select:hover { border-color: var(--pk-border); }
+.peak-sheet-toolbar-select select { width: auto; height: 25px !important; padding: 0 20px 0 2px !important; border: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--pk-text-secondary); font-size: 10px !important; }
+
+.peak-sheet-filter-editor { display: flex; min-height: 40px; align-items: center; gap: 5px; padding: 5px 12px; border-bottom: 1px solid var(--pk-border); background: var(--pk-accent-soft); }
+.peak-sheet-filter-editor select, .peak-sheet-filter-editor input { width: auto; min-width: 130px; height: 29px !important; padding: 0 7px !important; border: 1px solid var(--pk-border) !important; border-radius: 5px !important; background: var(--pk-surface) !important; font-size: 10px !important; }
+
+.peak-sheet-content-row { display: flex; min-height: 0; flex: 1; overflow: hidden; }
+.peak-sheet-content { min-width: 0; min-height: 0; flex: 1; overflow: hidden; }
+.peak-sheet-empty, .peak-sheet-empty-inline { display: flex; height: 100%; min-height: 120px; align-items: center; justify-content: center; color: var(--pk-text-tertiary); font-size: 12px; }
+.peak-sheet-empty-inline { height: 120px; }
+
+.peak-sheet-table-shell { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+.peak-sheet-table-scroll { min-height: 0; flex: 1; overflow: auto; }
+.peak-sheet-table { width: max-content; min-width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; color: var(--pk-text-primary); }
+.peak-sheet-table th { position: sticky; z-index: 2; top: 0; height: 35px; padding: 0 8px; border-right: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); background: var(--pk-bg-secondary); color: var(--pk-text-secondary); font-size: 10px; font-weight: 680; text-align: left; }
+.peak-sheet-table td { height: 38px; padding: 0; border-right: 1px solid color-mix(in srgb, var(--pk-border) 70%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--pk-border) 70%, transparent); background: var(--pk-surface); }
+.peak-sheet-table tbody tr:hover td { background: var(--pk-bg-secondary); }
+.peak-sheet-table td.is-selected-cell { position: relative; background: var(--pk-accent-soft) !important; box-shadow: inset 0 0 0 1px var(--pk-accent); }
+.peak-sheet-table input:not([type="checkbox"]), .peak-sheet-table select { width: 100%; height: 37px !important; padding: 0 8px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; font-size: 11px !important; }
+.peak-sheet-table input:focus, .peak-sheet-table select:focus { outline: 2px solid var(--pk-accent) !important; outline-offset: -2px; }
+.peak-sheet-table th:first-child, .peak-sheet-table td:first-child { width: 36px; text-align: center; }
+.peak-sheet-table input[type="checkbox"] { width: 14px; height: 14px; }
+.peak-sheet-select-column { width: 36px; }
+.peak-sheet-actions-column { width: 58px; }
+.peak-sheet-row-actions { display: flex; width: 58px; align-items: center; justify-content: center; gap: 1px; opacity: .28; }
+.peak-sheet-table tr:hover .peak-sheet-row-actions { opacity: 1; }
+.peak-sheet-row-actions button { width: 25px !important; min-width: 25px !important; height: 25px !important; min-height: 25px !important; padding: 0 !important; }
+.peak-sheet-group-row td { position: sticky; z-index: 1; left: 0; height: 30px; padding: 0 10px; background: var(--pk-accent-soft) !important; color: var(--pk-accent-text); font-size: 10px; font-weight: 700; }
+.peak-sheet-group-row td span { margin-left: 6px; color: var(--pk-text-tertiary); font-weight: 500; }
+.peak-sheet-formula-value { display: block; padding: 0 8px; color: var(--pk-accent-text); font-variant-numeric: tabular-nums; }
+.peak-sheet-file-cell { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; }
+.peak-sheet-file-copy { display: flex; width: 28px; height: 37px; cursor: pointer; align-items: center; justify-content: center; color: var(--pk-text-tertiary); }
+.peak-sheet-file-copy:hover { color: var(--pk-accent-text); background: var(--pk-accent-soft); }
+.peak-sheet-file-copy input { display: none !important; }
+.peak-sheet-selection-stats { display: flex; min-height: 34px; align-items: center; gap: 16px; padding: 0 12px; border-top: 1px solid var(--pk-border); background: var(--pk-bg-secondary); color: var(--pk-text-secondary); font-size: 10px; font-variant-numeric: tabular-nums; }
+.peak-sheet-selection-stats span:first-child { color: var(--pk-accent-text); font-weight: 700; }
+.peak-sheet-selection-stats button { display: inline-flex !important; height: 24px !important; min-height: 24px !important; max-height: 24px !important; align-items: center !important; gap: 4px; padding: 0 6px !important; border: 1px solid var(--pk-border) !important; border-radius: 4px !important; background: var(--pk-surface) !important; font-size: 9px !important; }
+
+.peak-sheet-field-panel { width: 288px; min-width: 288px; min-height: 0; padding: 0 11px 16px; border-left: 1px solid var(--pk-border); background: var(--pk-bg-secondary); overflow-y: auto; }
+.peak-sheet-panel-title { position: sticky; z-index: 3; top: 0; display: flex; height: 43px; align-items: center; justify-content: space-between; background: var(--pk-bg-secondary); font-size: 12px; font-weight: 700; }
+.peak-sheet-panel-section { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.peak-sheet-panel-label { margin: 4px 2px 2px; color: var(--pk-text-tertiary); font-size: 9px; font-weight: 720; letter-spacing: .06em; text-transform: uppercase; }
+.peak-sheet-field-card { padding: 8px; border: 1px solid var(--pk-border); border-radius: 6px; background: var(--pk-surface); }
+.peak-sheet-field-card-heading { display: grid; grid-template-columns: minmax(0, 1fr) 24px 24px; gap: 2px; align-items: center; }
+.peak-sheet-field-card-heading > input, .peak-sheet-view-card > input { width: 100%; height: 27px !important; padding: 0 5px !important; border-color: transparent !important; background: transparent !important; font-size: 11px !important; font-weight: 650; }
+.peak-sheet-field-card button, .peak-sheet-view-card > button:last-child { width: 24px !important; min-width: 24px !important; height: 24px !important; min-height: 24px !important; padding: 0 !important; }
+.peak-sheet-field-card-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; color: var(--pk-text-tertiary); font-size: 9px; }
+.peak-sheet-field-card-meta label { display: flex; align-items: center; gap: 4px; }
+.peak-sheet-field-card-meta input { width: 54px; height: 24px !important; padding: 0 4px !important; font-size: 9px !important; }
+.peak-sheet-formula-editor, .peak-sheet-options-editor { display: flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--pk-text-tertiary); font-size: 9px; }
+.peak-sheet-formula-editor input, .peak-sheet-options-editor input { min-width: 0; height: 25px !important; flex: 1; padding: 0 5px !important; font-size: 9px !important; }
+.peak-sheet-formula-editor input { font-family: var(--font-monospace); }
+.peak-sheet-field-delete-confirm { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px; align-items: center; margin-top: 7px; padding: 6px; border: 1px solid var(--pk-danger-border, var(--pk-border)); border-radius: 4px; background: var(--pk-danger-soft, var(--pk-bg-secondary)); color: var(--pk-text-secondary); font-size: 9px; }
+.peak-sheet-field-delete-confirm button:last-child { color: var(--text-error) !important; }
+.peak-sheet-add-field { display: grid; grid-template-columns: 1fr auto; gap: 5px; }
+.peak-sheet-add-field select { min-width: 0; height: 29px !important; padding: 0 6px !important; font-size: 10px !important; }
+.peak-sheet-add-field button { height: 29px !important; min-height: 29px !important; padding: 0 8px !important; border: 1px solid var(--pk-border) !important; background: var(--pk-surface) !important; font-size: 10px !important; }
+.peak-sheet-view-card { display: grid; grid-template-columns: minmax(0, 1fr) 24px; align-items: center; padding: 5px 5px 6px; border: 1px solid var(--pk-border); border-radius: 6px; background: var(--pk-surface); }
+.peak-sheet-view-card.is-active { border-color: var(--pk-accent-border); box-shadow: inset 2px 0 var(--pk-accent); }
+.peak-sheet-view-card > button:first-child { grid-column: 1 / -1; display: flex !important; width: 100% !important; height: 25px !important; min-height: 25px !important; justify-content: space-between !important; padding: 0 5px !important; font-size: 10px !important; }
+.peak-sheet-view-card > button:first-child span { color: var(--pk-text-tertiary); font-size: 8px; text-transform: uppercase; }
+.peak-sheet-add-views { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.peak-sheet-add-views button { justify-content: flex-start !important; border-color: var(--pk-border) !important; background: var(--pk-surface) !important; }
+
+.peak-sheet-chart-canvas { width: 100%; height: 100%; min-height: 340px; padding: 18px; }
+.peak-sheet-chart-canvas .recharts-text { fill: var(--pk-text-tertiary); font-size: 10px; }
+.peak-sheet-chart-canvas .recharts-cartesian-grid line { stroke: var(--pk-border); }
+.peak-sheet-chart-canvas .recharts-default-tooltip { border: 1px solid var(--pk-border) !important; border-radius: 6px; background: var(--pk-surface) !important; color: var(--pk-text-primary) !important; font-size: 10px; }
+
+.peak-sheet-board { display: flex; height: 100%; min-height: 0; gap: 10px; padding: 13px; overflow: auto; background: var(--pk-bg-secondary); }
+.peak-sheet-board-lane { width: 260px; min-width: 260px; min-height: 160px; align-self: flex-start; border: 1px solid var(--pk-border); border-radius: 7px; background: var(--pk-surface); }
+.peak-sheet-board-lane-title { display: flex; height: 36px; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid var(--pk-border); font-size: 10px; font-weight: 700; }
+.peak-sheet-board-lane-title span:last-child { color: var(--pk-text-tertiary); font-variant-numeric: tabular-nums; }
+.peak-sheet-board-cards { display: flex; min-height: 72px; flex-direction: column; gap: 7px; padding: 8px; }
+.peak-sheet-board-card { display: flex; cursor: grab; flex-direction: column; gap: 5px; padding: 10px; border: 1px solid var(--pk-border); border-radius: 6px; background: var(--pk-surface); box-shadow: 0 1px 2px rgba(20, 18, 32, .06); }
+.peak-sheet-board-card:active { cursor: grabbing; }
+.peak-sheet-board-card-title { font-size: 11px; font-weight: 650; line-height: 1.35; }
+.peak-sheet-board-card-meta, .peak-sheet-board-drop-hint { color: var(--pk-text-tertiary); font-size: 9px; }
+.peak-sheet-board-card select { width: 100%; height: 26px !important; margin-top: 2px; padding: 0 6px !important; border: 1px solid var(--pk-border) !important; background: var(--pk-bg-secondary) !important; font-size: 9px !important; }
+.peak-sheet-board-drop-hint { padding: 12px 4px; text-align: center; }
+
+.peak-sheet-calendar { display: flex; height: 100%; min-height: 0; flex-direction: column; padding: 12px 14px 14px; }
+.peak-sheet-calendar-heading { display: flex; min-height: 38px; align-items: center; justify-content: center; gap: 12px; font-size: 13px; font-weight: 700; }
+.peak-sheet-calendar-weekdays, .peak-sheet-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); }
+.peak-sheet-calendar-weekdays { color: var(--pk-text-tertiary); font-size: 9px; font-weight: 700; text-align: center; text-transform: uppercase; }
+.peak-sheet-calendar-weekdays span { padding: 5px; border-bottom: 1px solid var(--pk-border); }
+.peak-sheet-calendar-grid { min-height: 0; flex: 1; overflow: auto; border-left: 1px solid var(--pk-border); }
+.peak-sheet-calendar-grid > div { display: flex; min-height: 92px; flex-direction: column; gap: 3px; padding: 5px; border-right: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); background: var(--pk-surface); }
+.peak-sheet-calendar-grid > div.is-other-month { background: var(--pk-bg-secondary); opacity: .58; }
+.peak-sheet-calendar-day-heading { display: flex; height: 18px; align-items: center; justify-content: space-between; }
+.peak-sheet-calendar-day-heading button { width: 18px !important; min-width: 18px !important; height: 18px !important; min-height: 18px !important; padding: 0 !important; opacity: 0; }
+.peak-sheet-calendar-grid > div:hover .peak-sheet-calendar-day-heading button { opacity: 1; }
+.peak-sheet-calendar-day { color: var(--pk-text-tertiary); font-size: 9px; }
+.peak-sheet-calendar-event { overflow: hidden; min-height: 24px; border-left: 2px solid var(--pk-accent); border-radius: 2px; background: var(--pk-accent-soft); color: var(--pk-accent-text); font-size: 9px; }
+.peak-sheet-calendar-event input { width: 100%; height: 23px !important; padding: 0 5px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--pk-accent-text) !important; font-size: 9px !important; }
+.peak-sheet-calendar-more { padding-left: 5px; color: var(--pk-text-tertiary); font-size: 8px; }
+
+.peak-sheet-message { position: absolute; z-index: var(--pk-z-popover); right: 14px; bottom: 14px; display: flex; max-width: 460px; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--pk-border); border-radius: 7px; background: var(--pk-surface); box-shadow: 0 8px 24px rgba(20, 18, 32, .18); color: var(--pk-text-secondary); font-size: 10px; }
+.peak-sheet-message button { width: 24px !important; min-width: 24px !important; height: 24px !important; min-height: 24px !important; padding: 0 !important; }
+.peak-sheet-dialog-backdrop { position: absolute; z-index: var(--pk-z-modal); inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(16, 15, 22, .36); }
+.peak-sheet-dialog { display: flex; width: min(380px, calc(100% - 32px)); flex-direction: column; gap: 10px; padding: 18px; border: 1px solid var(--pk-border); border-radius: 8px; background: var(--pk-surface); box-shadow: 0 14px 40px rgba(16, 15, 22, .25); color: var(--pk-text-secondary); }
+.peak-sheet-dialog-title { color: var(--pk-text-primary); font-size: 15px; font-weight: 700; }
+.peak-sheet-dialog > div { display: flex; justify-content: flex-end; gap: 7px; margin-top: 5px; }
+.peak-sheet-dialog button { height: 32px !important; min-height: 32px !important; max-height: 32px !important; padding: 0 12px !important; }
+.peak-sheet-workbook-dialog { width: min(560px, calc(100% - 32px)); max-height: min(680px, calc(100% - 32px)); }
+.peak-sheet-workbook-diagnostics { display: flex !important; flex-direction: column; align-items: flex-start; margin: 0 !important; padding: 8px; border: 1px solid var(--pk-accent-border); border-radius: 5px; background: var(--pk-accent-soft); color: var(--pk-accent-text); font-size: 9px; }
+.peak-sheet-workbook-sheets { display: flex !important; min-height: 0; flex-direction: column; gap: 6px !important; justify-content: flex-start !important; margin: 0 !important; overflow-y: auto; }
+.peak-sheet-workbook-sheets label { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 7px; padding: 9px; border: 1px solid var(--pk-border); border-radius: 6px; background: var(--pk-bg-secondary); }
+.peak-sheet-workbook-sheets label > span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.peak-sheet-workbook-sheets strong { color: var(--pk-text-primary); font-size: 11px; }
+.peak-sheet-workbook-sheets small { color: var(--pk-text-tertiary); font-size: 9px; }
+.peak-sheet-dialog > .peak-sheet-dialog-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 5px; }
+
+@media (max-width: 900px) {
+	.peak-sheet-root { grid-template-columns: 166px minmax(0, 1fr); }
+	.peak-sheet-field-panel { position: absolute; z-index: 10; top: 135px; right: 0; bottom: 0; box-shadow: -8px 0 24px rgba(20, 18, 32, .12); }
+	.peak-sheet-toolbar-select { display: none; }
+}
+
+@media (max-width: 640px) {
+	.peak-sheet-root { grid-template-columns: minmax(0, 1fr); }
+	.peak-sheet-sidebar { display: none; }
+}

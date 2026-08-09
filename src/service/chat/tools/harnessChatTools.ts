@@ -41,6 +41,7 @@ import {
 } from './toolAvailability';
 import { buildMediaGenerateTool } from './mediaGenerateTool';
 import { buildArtifactCreateTool } from './artifactCreateTool';
+import { buildPeakSheetTools } from './peakSheetTools';
 
 export interface BuildHarnessToolsResult {
 	tools: ToolDef[];
@@ -72,6 +73,7 @@ export function buildChatHarnessToolsDetailed(
 		webSearchProvider: deps.webSearchProvider,
 		mediaGenerationProbe: deps.mediaGenerationProbe,
 		artifactCreateReady: !!deps.artifactProducer,
+		peakSheetReady: !!deps.peakSheet,
 	});
 	const availableIds = availableToolIds(availability);
 	const tools: ToolDef[] = [];
@@ -122,6 +124,12 @@ export function buildChatHarnessToolsDetailed(
 				onReceipt: deps.onArtifactReceipt,
 			}),
 		);
+	}
+
+	if (deps.peakSheet) {
+		for (const def of buildPeakSheetTools(deps.peakSheet)) {
+			if (availableIds.has(def.name)) tools.push(def);
+		}
 	}
 
 	// MCP: pull every discovered tool from connected servers. The availability

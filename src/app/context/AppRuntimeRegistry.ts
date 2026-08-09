@@ -40,6 +40,7 @@ import type { GeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
 import type { PeakKeyboardNavigationPort } from '@/ui/keyboard/KeyboardNavigationPort';
+import type { PeakSheetRuntime } from '@/app/sheet/PeakSheetRuntime';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -74,6 +75,7 @@ export class AppRuntimeRegistry {
 	private aiGraphArtifactRuntime: AIGraphArtifactRuntime | null = null;
 	private commandCenterRuntime: CommandCenterRuntime | null = null;
 	private keyboardNavigationRuntime: PeakKeyboardNavigationPort | null = null;
+	private peakSheetRuntime: PeakSheetRuntime | null = null;
 
 	constructor(generatedOutputRegistry: GeneratedOutputRegistry = createDefaultGeneratedOutputRegistry()) {
 		this.generatedOutputRegistry = generatedOutputRegistry;
@@ -748,6 +750,32 @@ export class AppRuntimeRegistry {
 
 	clearAIGraphArtifactRuntime(): void {
 		this.aiGraphArtifactRuntime = null;
+	}
+
+	// ── Peak Sheet runtime ────────────────────────────────────────────────
+
+	setPeakSheetRuntime(runtime: PeakSheetRuntime): void {
+		if (this.peakSheetRuntime !== null) {
+			throw new Error('AppRuntimeRegistry.setPeakSheetRuntime: a runtime is already bound.');
+		}
+		this.peakSheetRuntime = runtime;
+	}
+
+	getPeakSheetRuntime(): PeakSheetRuntime {
+		if (this.peakSheetRuntime === null) {
+			throw new Error('AppRuntimeRegistry.getPeakSheetRuntime: no runtime is bound.');
+		}
+		return this.peakSheetRuntime;
+	}
+
+	tryGetPeakSheetRuntime(): PeakSheetRuntime | null {
+		return this.peakSheetRuntime;
+	}
+
+	clearPeakSheetRuntime(): void {
+		const runtime = this.peakSheetRuntime;
+		this.peakSheetRuntime = null;
+		runtime?.dispose();
 	}
 
 }

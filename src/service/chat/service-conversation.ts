@@ -73,6 +73,7 @@ import {
 	routeAutoModel,
 	type AutoRoutingSignals,
 } from '@/service/chat/modelRouter';
+import type { PeakSheetToolPort } from '@/core/ports/PeakSheetToolPort';
 
 /**
  * B2 (plan §5.3.5): what the outer `streamChat` returns. Extends the harness
@@ -144,6 +145,7 @@ export class ConversationService {
 	 */
 	private mcpClientManager: MCPClientManager | null = null;
 	private pluginCommandGateway: PluginCommandGatewayPort | null = null;
+	private peakSheetRuntime: PeakSheetToolPort | null = null;
 	/**
 	 * Live permission-ask resolver (B1 §5.2 R4). App layer binds this via
 	 * `setPermissionAskResolver`. Absent → any `ask` decision defaults to
@@ -230,6 +232,10 @@ export class ConversationService {
 
 	setPluginCommandGateway(runtime: PluginCommandGatewayPort | null): void {
 		this.pluginCommandGateway = runtime;
+	}
+
+	setPeakSheetRuntime(runtime: PeakSheetToolPort | null): void {
+		this.peakSheetRuntime = runtime;
 	}
 
 	/**
@@ -335,6 +341,7 @@ export class ConversationService {
 			mediaGenerationProbe: this.mediaGenerationService
 				? mediaGenerationServiceAsProbe(() => this.mediaGenerationService)
 				: null,
+			peakSheetReady: this.peakSheetRuntime !== null,
 		});
 	}
 
@@ -632,6 +639,7 @@ export class ConversationService {
 					conversationId: params.conversation.meta.id,
 					assistantMessageId: params.assistantMessageId,
 					projectId: params.conversation.meta.projectId,
+					peakSheet: self.peakSheetRuntime,
 				},
 				modelCapabilities: prepared.modelCapabilities,
 				runtimeConfig,

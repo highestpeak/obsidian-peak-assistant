@@ -1,0 +1,20 @@
+{
+  "limits": {
+    "maxImportRows": 5000,
+    "maxImportColumns": 100,
+    "maxImportBytes": 8000000,
+    "maxWorkbookEntries": 2000,
+    "maxWorkbookExpandedBytes": 64000000,
+    "maxAnalysisRows": 500,
+    "maxAnalysisGroups": 100,
+    "maxAnalysisOutputBytes": 160000
+  },
+  "field": {
+    "defaultWidth": 160,
+    "minWidth": 72,
+    "maxWidth": 720
+  },
+  "chart": {
+    "palette": ["#7456a8", "#2f7d78", "#b56b3f", "#4f6f9d", "#9b496b", "#66724c"]
+  }
+}

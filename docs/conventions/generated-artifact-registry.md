@@ -12,7 +12,7 @@
 
 配套实施设计见 [生成产物与存储治理实现设计](../superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md)。较早的 [机器运行记录 JSONL 设计](../superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md) 仍保留历史背景；两者冲突时，以本文和 2026-08-02 实现设计为准。
 
-运行时 typed catalog 位于 `src/core/storage/generated-output/`，53 个 descriptor 与下方 53 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用。Chat、Project、Resource Summary、Profile proposal、receipts、Hub、旧 Review 与 Plugin Command Gateway audit 已登记 canonical carrier；旧文件只读保留，不自动删除。
+运行时 typed catalog 位于 `src/core/storage/generated-output/`，60 个 descriptor 与下方 60 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用。Chat、Project、Resource Summary、Profile proposal、receipts、Hub、Graph explanation、Peak Sheet、旧 Review 与 Plugin Command Gateway audit 已登记 canonical carrier；旧文件只读保留，不自动删除。
 
 ## Why
 
@@ -103,6 +103,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | UA-13 | 生成或编辑的媒体 | `Attachments/media/*` 或 Composer 目标目录 | 保持图片、音频、视频等原生 binary | 否 | 用户请求生成、接受编辑或插入文档 |
 | UA-14 | Copilot / Composer 接受写回 | 修改既有用户文档，或显式创建新 note | 继续由用户文档拥有；不再复制一份机器 Markdown truth | 是 | Accept / Apply / Create note |
 | UA-15 | Canvas、Base、HTML、PDF 等文件产物 | 各自 native format | 保持 content-type-aware；版本和 run receipt 另存 durable record | 依格式而定 | 用户创建、接受或显式保存版本 |
+| UA-16 | Peak Sheet 数据集 | `DataStore/artifacts/peak-sheets/<dataset-id>/dataset.json` | JSON snapshot 保存字段、行与视图；JSONL 事件用于恢复和 Undo 审计 | 否，AI 通过 Peak Sheet tool 读取 | 用户创建、导入或接受 AI 创建数据集 |
 
 主要 writer 证据：
 
@@ -113,6 +114,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 - [`AppArtifactVaultWriterAdapter.ts`](../../src/app/chat/AppArtifactVaultWriterAdapter.ts)
 - [`ObsidianMediaAttachmentWriter.ts`](../../src/app/platform/media/ObsidianMediaAttachmentWriter.ts)
 - [`AppCopilotPanelVaultAdapter.ts`](../../src/app/copilot/panels/AppCopilotPanelVaultAdapter.ts)
+- [`AppPeakSheetRepository.ts`](../../src/app/sheet/AppPeakSheetRepository.ts)
 
 ## 4. 需要同步的机器记录
 
@@ -144,6 +146,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | DR-22 | Result Graph community explanation history | explain / regenerate 的追加 run receipt；失败与取消也保留 | `records/graph-communities/<community-id>/events.jsonl` | 已实现 |
 | DR-23 | Shared Graph node explanation | 用户从 Vault Search 或 File Atlas 显式触发、绑定稳定节点证据 fingerprint 的当前 AI 解释 snapshot | `records/graph-nodes/<node-key>/explanation.json` | 已实现 |
 | DR-24 | Shared Graph node explanation history | 节点 explain / regenerate 的追加 run receipt；失败与取消也保留 | `records/graph-nodes/<node-key>/events.jsonl` | 已实现 |
+| DR-25 | Peak Sheet dataset events | 每次数据/结构/视图修改及 Undo/Redo 使用稳定事件追加记录 | `records/peak-sheets/<dataset-id>/events.jsonl`；snapshot 落后时按 revision 重放 | 已实现 |
 
 主要 writer 证据：
 
@@ -157,6 +160,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 - [`CopilotReviewRecordStore.ts`](../../src/service/copilot/CopilotReviewRecordStore.ts)
 - [`VaultArtifactStore.ts`](../../src/service/run-envelope/VaultArtifactStore.ts)
 - [AI Graph Artifact Platform](../superpowers/specs/2026-07-28-ai-graph-artifact-platform.md)
+- [`AppPeakSheetRepository.ts`](../../src/app/sheet/AppPeakSheetRepository.ts)
 
 ## 5. 本地可重建数据
 

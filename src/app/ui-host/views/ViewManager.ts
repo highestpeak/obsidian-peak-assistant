@@ -19,6 +19,7 @@ import {
 	PluginCommandGatewayView,
 	PLUGIN_COMMAND_GATEWAY_VIEW_TYPE,
 } from '@/app/ui-host/views/PluginCommandGatewayView';
+import { PeakSheetView, PEAK_SHEET_VIEW_TYPE } from '@/app/ui-host/views/PeakSheetView';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -66,6 +67,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(PLUGIN_COMMAND_GATEWAY_VIEW_TYPE, (leaf) => {
 			return new PluginCommandGatewayView(leaf, appContext);
+		});
+		this.viewCreators.set(PEAK_SHEET_VIEW_TYPE, (leaf) => {
+			return new PeakSheetView(leaf, appContext);
 		});
 	}
 
@@ -137,6 +141,11 @@ export class ViewManager {
 	/** Open the human-review control plane for external plugin commands. */
 	async activatePluginCommandGatewayView(): Promise<void> {
 		await this.activateStandaloneView(PLUGIN_COMMAND_GATEWAY_VIEW_TYPE);
+	}
+
+	/** Open the local Peak Sheet publishing-data workbench. */
+	async activatePeakSheetView(): Promise<void> {
+		await this.activateStandaloneView(PEAK_SHEET_VIEW_TYPE);
 	}
 
 	private async activateStandaloneView(type: string): Promise<void> {
