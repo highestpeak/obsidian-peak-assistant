@@ -7,7 +7,7 @@
  */
 export type IntelligencePresentationOrigin =
 	| { kind: 'automatic-suggestion'; findingId: string; blockId: string }
-	| { kind: 'ask-copilot'; blockId: string }
+	| { kind: 'ask-copilot'; blockId?: string }
 	| { kind: 'comment-handoff'; commentId: string; blockId: string }
 	| { kind: 'history-deep-link'; runId: string }
 	| { kind: 'native-editor'; filePath: string };

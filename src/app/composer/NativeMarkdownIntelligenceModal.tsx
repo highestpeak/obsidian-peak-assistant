@@ -20,26 +20,15 @@ import {
 	type ComposerChromeValue,
 } from '@/ui/view/composer/chrome/ComposerChromeContext';
 import {
-	DEFAULT_SIDECAR_CONFIG,
+	IntelligenceSidecar,
 	buildFocusRunContext,
-	loadSidecarConfig,
 	resolveRelatedFocus,
-	type SidecarConfig,
 } from '@/ui/view/composer/sidecar';
-import { BriefView } from '@/ui/view/composer/sidecar/BriefView';
-import { CopilotView } from '@/ui/view/composer/sidecar/CopilotView';
-import { HistoryView } from '@/ui/view/composer/sidecar/HistoryView';
-import {
-	SidecarProvider,
-	useSessionProjection,
-	useSidecar,
-	type SidecarContextValue,
-} from '@/ui/view/composer/sidecar/SidecarContext';
+import { useSessionProjection } from '@/ui/view/composer/sidecar/SidecarContext';
+import { Button } from '@/ui/components/primitives';
 import type { ComposerEditingRuntime } from './DocumentComposerController';
 import type { DocumentComposerController } from './DocumentComposerController';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from './ComposerNavigationDefaults';
-import { Button, IconButton } from '@/ui/components/primitives';
-import { History, MessageSquare, Sparkles, X } from 'lucide-react';
 import type { NativeMarkdownIntelligenceContext } from './NativeMarkdownIntelligenceContext';
 
 /**
@@ -218,39 +207,17 @@ function NativeMarkdownIntelligencePanel({
 		[candidateRegistry, config, editing, onOpenExternal, onOpenSource, snapshot],
 	);
 	const intelligence = editing.intelligence!;
+	const projection = useSessionProjection(intelligence);
 	const [includeInitialContext, setIncludeInitialContext] = React.useState(true);
 	const effectiveInitialContext = includeInitialContext ? initialContext : undefined;
 	const initialBlockId = React.useMemo(
 		() => resolveInitialBlockId(snapshot, effectiveInitialContext),
 		[effectiveInitialContext, snapshot],
 	);
-	const [sidecarConfig, setSidecarConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
-	React.useEffect(() => {
-		let active = true;
-		void loadSidecarConfig().then((loaded) => {
-			if (active) setSidecarConfig(loaded);
-		});
-		return () => {
-			active = false;
-		};
-	}, []);
-	const sidecarValue = React.useMemo<SidecarContextValue>(() => ({
-		runtime: intelligence,
-		workspaceRuntime: editing.workspaceIntelligence,
-		documentId: snapshot.documentId,
-		documentSnapshot: snapshot,
-		hub: editing.hub,
-		documentFilePath: snapshot.filePath,
-		config: sidecarConfig,
-		onOpenSource,
-		getFocusedBlockId: () => initialBlockId,
-		resolveFocusContext: () => buildNativeFocusRunContext(
-			snapshot,
-			initialBlockId,
-			effectiveInitialContext,
-		),
-		resolveRelatedFocus: () => resolveRelatedFocus(snapshot, initialBlockId),
-		presentationOrigin: effectiveInitialContext?.findingId && initialBlockId
+	const [presentationOrigin, setPresentationOrigin] = React.useState<
+		import('@/core/composer').IntelligencePresentationOrigin
+	>(
+		effectiveInitialContext?.findingId && initialBlockId
 			? {
 					kind: 'automatic-suggestion',
 					findingId: effectiveInitialContext.findingId,
@@ -260,27 +227,71 @@ function NativeMarkdownIntelligencePanel({
 					kind: 'native-editor',
 					filePath: snapshot.filePath,
 				},
-	}), [
-		editing,
-		effectiveInitialContext,
-		initialBlockId,
-		intelligence,
-		onOpenSource,
-		sidecarConfig,
-		snapshot,
-	]);
+	);
 	return (
 		<ComposerChromeProvider value={chromeValue}>
-			<SidecarProvider value={sidecarValue}>
-				<NativeIntelligenceWorkspace
-					filePath={snapshot.filePath}
-					revision={snapshot.revision}
-					initialContext={effectiveInitialContext}
-					onClearContext={() => setIncludeInitialContext(false)}
-					onClose={onClose}
-					onEscalate={onEscalate}
+			<div className="pk-native-intelligence-shell">
+				<div className="pk-native-intelligence-context" aria-label="Frozen Copilot context">
+					<span>
+						<strong>File</strong>
+						<small>{snapshot.filePath}</small>
+					</span>
+					{effectiveInitialContext?.selectionText ? (
+						<span>
+							<strong>Selection</strong>
+							<small>{effectiveInitialContext.selectionText.slice(0, 160)}</small>
+							<Button variant="ghost" size="sm" onClick={() => {
+								setIncludeInitialContext(false);
+								setPresentationOrigin({ kind: 'native-editor', filePath: snapshot.filePath });
+							}}>
+								Remove
+							</Button>
+						</span>
+					) : (
+						<span>
+							<strong>Heading / cursor</strong>
+							<small>{effectiveInitialContext?.heading ?? 'Current document'}</small>
+						</span>
+					)}
+					<span>
+						<strong>Source revision</strong>
+						<small>{snapshot.revision.slice(0, 12)}</small>
+					</span>
+					<span>
+						<strong>Run snapshot</strong>
+						<small>{projection.activeRunId ? `Frozen · ${projection.activeRunId}` : 'Freezes on send'}</small>
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onEscalate(projection.activeRunId ?? undefined)}
+					>
+						Open full Composer
+					</Button>
+				</div>
+				<IntelligenceSidecar
+					runtime={intelligence}
+					workspaceRuntime={editing.workspaceIntelligence}
+					documentId={snapshot.documentId}
+					documentSnapshot={snapshot}
+					hub={editing.hub}
+					documentFilePath={snapshot.filePath}
+					presentationOrigin={presentationOrigin}
+					onPresentationOriginChange={setPresentationOrigin}
+					open
+					onOpenChange={(open) => {
+						if (!open) onClose();
+					}}
+					onOpenSource={onOpenSource}
+					getFocusedBlockId={() => initialBlockId}
+					resolveFocusContext={() => buildNativeFocusRunContext(
+						snapshot,
+						initialBlockId,
+						effectiveInitialContext,
+					)}
+					resolveRelatedFocus={() => resolveRelatedFocus(snapshot, initialBlockId)}
 				/>
-			</SidecarProvider>
+			</div>
 		</ComposerChromeProvider>
 	);
 }
@@ -345,128 +356,4 @@ function buildNativeFocusRunContext(
 		},
 		targetQuote: targetSource.trim(),
 	};
-}
-
-function NativeIntelligenceWorkspace({
-	filePath,
-	revision,
-	initialContext,
-	onClearContext,
-	onClose,
-	onEscalate,
-}: {
-	filePath: string;
-	revision: string;
-	initialContext?: NativeMarkdownIntelligenceContext;
-	onClearContext(): void;
-	onClose(): void;
-	onEscalate(runId?: string): void;
-}): React.ReactElement {
-	const { runtime, config } = useSidecar();
-	const projection = useSessionProjection(runtime);
-	const [tab, setTab] = React.useState<'copilot' | 'history'>('copilot');
-	const conversationReady = projection.stage === 'session' || projection.stage === 'review';
-	return (
-		<div className="pk-native-intelligence-workspace">
-			<header className="pk-native-intelligence-head">
-				<span>
-					<Sparkles aria-hidden />
-					<strong>Copilot Intelligence</strong>
-					<small>{filePath}</small>
-				</span>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() => onEscalate(projection.activeRunId ?? undefined)}
-				>
-					Open full Composer
-				</Button>
-				<IconButton label={config.strings.close} onClick={onClose}>
-					<X />
-				</IconButton>
-			</header>
-			<div className="pk-native-intelligence-tabs" role="tablist" aria-label={config.strings.title}>
-				<Button
-					variant="ghost"
-					role="tab"
-					aria-selected={tab === 'copilot'}
-					onClick={() => setTab('copilot')}
-				>
-					<MessageSquare />
-					{config.strings.tabCopilot}
-				</Button>
-				<Button
-					variant="ghost"
-					role="tab"
-					aria-selected={tab === 'history'}
-					onClick={() => setTab('history')}
-				>
-					<History />
-					{config.strings.tabHistory}
-				</Button>
-			</div>
-			<div className="pk-native-intelligence-context" aria-label="Frozen Copilot context">
-				<span>
-					<strong>File</strong>
-					<small>{filePath}</small>
-				</span>
-				{initialContext?.selectionText ? (
-					<span>
-						<strong>Selection</strong>
-						<small>{initialContext.selectionText.slice(0, 160)}</small>
-						<Button variant="ghost" size="sm" onClick={onClearContext}>
-							Remove
-						</Button>
-					</span>
-				) : (
-					<span>
-						<strong>Heading / cursor</strong>
-						<small>{initialContext?.heading ?? 'Current document'}</small>
-						{initialContext && (
-							<Button variant="ghost" size="sm" onClick={onClearContext}>
-								Use whole file
-							</Button>
-						)}
-					</span>
-				)}
-				<span>
-					<strong>Source revision</strong>
-					<small>{revision.slice(0, 12)}</small>
-				</span>
-				<span>
-					<strong>Run snapshot</strong>
-					<small>{projection.activeRunId ? `Frozen · ${projection.activeRunId}` : 'Freezes on send'}</small>
-				</span>
-			</div>
-			{tab === 'history' ? (
-				<div className="pk-native-intelligence-history"><HistoryView /></div>
-			) : (
-				<div className="pk-native-intelligence-columns">
-					<section className="pk-native-intelligence-brief">
-						<BriefView />
-					</section>
-					<section className="pk-native-intelligence-conversation">
-						{conversationReady ? (
-							<CopilotView />
-						) : (
-							<div className="pk-native-intelligence-start">
-								<Sparkles />
-								<strong>Continue with Copilot</strong>
-								<span>
-									Context is frozen from this Markdown note. Changes still require
-									candidate review before writeback.
-								</span>
-								<Button
-									variant="primary"
-									onClick={() => runtime.session.openSession(config.strings.askCopilot)}
-								>
-									{config.strings.askCopilot}
-								</Button>
-							</div>
-						)}
-					</section>
-				</div>
-			)}
-		</div>
-	);
 }

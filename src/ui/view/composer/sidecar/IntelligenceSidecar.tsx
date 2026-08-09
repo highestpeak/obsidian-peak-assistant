@@ -79,6 +79,7 @@ export interface IntelligenceSidecarProps {
 	open: boolean;
 	motion?: 'none' | 'user';
 	presentationOrigin?: IntelligencePresentationOrigin | null;
+	onPresentationOriginChange?: (origin: IntelligencePresentationOrigin) => void;
 	onOpenChange: (open: boolean) => void;
 	onLocate?: (blockId: string) => void;
 	onLocateComment?: (commentId: string, blockId: string) => void;
@@ -102,6 +103,7 @@ export function IntelligenceSidecar({
 	open,
 	motion = 'none',
 	presentationOrigin = null,
+	onPresentationOriginChange,
 	onOpenChange,
 	onLocate,
 	onLocateComment,
@@ -165,6 +167,7 @@ export function IntelligenceSidecar({
 			resolveFocusContext,
 			resolveRelatedFocus,
 			presentationOrigin,
+			onPresentationOriginChange,
 		}),
 		[
 			runtime,
@@ -182,6 +185,7 @@ export function IntelligenceSidecar({
 			resolveFocusContext,
 			resolveRelatedFocus,
 			presentationOrigin,
+			onPresentationOriginChange,
 		],
 	);
 

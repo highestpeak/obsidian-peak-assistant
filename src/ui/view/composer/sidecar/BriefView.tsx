@@ -43,6 +43,7 @@ export function BriefView(): React.ReactElement {
 		getFocusedBlockId,
 		onLocate,
 		onOpenSource,
+		onPresentationOriginChange,
 		resolveRelatedFocus,
 	} = useSidecar();
 	const findings = useFindings(runtime);
@@ -77,6 +78,19 @@ export function BriefView(): React.ReactElement {
 		runtime.refreshBrief();
 		onRefreshRelated();
 	}, [onRefreshRelated, resolveCurrentFocus, runtime]);
+	const onAskCopilot = React.useCallback(() => {
+		const blockId = getFocusedBlockId?.() ?? undefined;
+		onPresentationOriginChange?.({
+			kind: 'ask-copilot',
+			...(blockId ? { blockId } : {}),
+		});
+		runtime.session.openSession(config.strings.askCopilot);
+	}, [
+		config.strings.askCopilot,
+		getFocusedBlockId,
+		onPresentationOriginChange,
+		runtime,
+	]);
 	const previewFocus = resolveRelatedFocus?.(getFocusedBlockId?.() ?? null) ?? {
 		anchorId: 'document',
 		documentId: 'document',
@@ -127,6 +141,23 @@ export function BriefView(): React.ReactElement {
 							: {}),
 					})
 					: undefined}
+				onAskCopilot={onAskCopilot}
+				onFindingDiscuss={(finding) => {
+					const blockId = composerTargetBlockId(finding.target);
+					if (blockId) {
+						onPresentationOriginChange?.({
+							kind: 'automatic-suggestion',
+							findingId: finding.findingId,
+							blockId,
+						});
+					}
+					runtime.session.openSession(
+						findingPresentation(finding).title,
+						[],
+						[],
+						finding.capabilityId,
+					);
+				}}
 				related={effectiveRelated}
 				relatedPreviewActive={relatedPreviewActive}
 				thoughtPreviewActive={thoughtPreviewActive}
@@ -164,6 +195,8 @@ export interface BriefViewContentProps {
 	onRefreshRelated: () => void;
 	onRefreshSuggestions?: () => void;
 	onOpenAIGraphs?: () => void;
+	onAskCopilot?: () => void;
+	onFindingDiscuss?: (finding: SuggestionFinding) => void;
 	onOrganizeThought?: (thought: BriefThought) => void;
 	related: RelatedLoadState;
 	relatedPreviewActive?: boolean;
@@ -182,6 +215,8 @@ export function BriefViewContent({
 	onRefreshRelated,
 	onRefreshSuggestions,
 	onOpenAIGraphs,
+	onAskCopilot,
+	onFindingDiscuss,
 	onOrganizeThought,
 	related,
 	relatedPreviewActive = false,
@@ -249,7 +284,7 @@ export function BriefViewContent({
 						className="pk-brief-action pk-brief-action--primary"
 						variant="outline"
 						size="sm"
-						onClick={() => runtime.session.openSession(s.askCopilot)}
+						onClick={() => onAskCopilot?.()}
 					>
 						<Sparkles aria-hidden />
 						{s.askCopilot}
@@ -280,14 +315,18 @@ export function BriefViewContent({
 									finding={finding}
 									index={index + 1}
 									onDefer={() => runtime.deferFinding(finding.findingId)}
-									onDiscuss={() =>
+									onDiscuss={() => {
+										if (onFindingDiscuss) {
+											onFindingDiscuss(finding);
+											return;
+										}
 										runtime.session.openSession(
 											findingPresentation(finding).title,
 											[],
 											[],
 											finding.capabilityId,
-										)
-									}
+										);
+									}}
 									onLocate={() => locateFinding(finding, onLocate)}
 									strings={s}
 								/>

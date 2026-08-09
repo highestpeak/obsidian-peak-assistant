@@ -1,7 +1,7 @@
 # Composer 视图、评论与 Intelligence 状态后续改动计划
 
 > 日期：2026-07-30
-> 状态：Ready for implementation
+> 状态：PARTIAL · INTERACTION NOT VERIFIED
 > 范围：Composer View、Native Markdown 本地入口、评论可见性、Intelligence 可见性与来源上下文
 > 不包含：AI provider、候选写回协议、Chat Composer、CodeMirror 编辑实现
 
@@ -93,9 +93,8 @@ Intelligence 的“打开”必须分成两类：
 
 ```ts
 type IntelligencePresentationOrigin =
-  | { kind: "toolbar" }
   | { kind: "automatic-suggestion"; findingId: string; blockId: string }
-  | { kind: "ask-copilot"; blockId: string }
+  | { kind: "ask-copilot"; blockId?: string }
   | { kind: "comment-handoff"; commentId: string; blockId: string }
   | { kind: "history-deep-link"; runId: string }
   | { kind: "native-editor"; filePath: string };
@@ -384,3 +383,33 @@ npm run build
 ```text
 PARTIAL · INTERACTION NOT VERIFIED
 ```
+
+## 11. 2026-07-30 实施结果
+
+Task 1–6 已写入原工作区：
+
+- 评论 rail 对每个新绑定文档默认关闭；
+- Intelligence 明确偏好默认关闭，只有工具栏/关闭按钮会持久化；
+- 自动建议、问 Copilot、评论交接、History 恢复和 Native Markdown companion
+  使用 leaf-local presentation origin，不覆盖明确偏好；
+- origin 冻结进 Copilot `FrozenRunContext`、`RunReceipt` 和 workspace
+  `FrozenComposerRunEnvelope`，并随 JSONL replay 恢复；
+- 初始 mount / preference restore 不带 sidecar transition，显式用户切换才添加 motion class；
+- Scope 和建议更新策略已合并到 Copilot 的一条紧凑上下文栏；
+- future-open preference 显示为“以后打开”，当前 Composer leaf 另有
+  “切到原生 Markdown”动作；
+- 每个原生 Markdown leaf 挂载 app-owned “在 Composer 中打开”按钮，同 leaf 转换仍由
+  `ComposerDocumentRouter` 负责校验与失败恢复；
+- 未新增 Command Palette 命令，也未修改 Chat Composer / CodeMirror。
+
+自动验证：
+
+- 本轮 16 项 Composer focused regression 全部通过；
+- `composer-brief-design-contract` 已按新的紧凑上下文栏合同更新并通过；
+- `npm run build` 通过；
+- 全量测试 `366 passed / 370 total`，剩余 4 项与本轮前记录的既有基线一致：
+  `chat-studio-message-state-ui`、`code-block-theme-settings`、
+  `composer-architecture-source-guards`、`composer-frontmatter-inline-tag-candidate`。
+
+真实交互尚未验收：当前 Obsidian 没有 CDP listener，且 owner 要求由其本人录屏。因此本轮
+保持 `PARTIAL · INTERACTION NOT VERIFIED`，收到录屏后再对照第 8 节逐项确认。

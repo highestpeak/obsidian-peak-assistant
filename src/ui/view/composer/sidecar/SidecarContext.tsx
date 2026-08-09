@@ -62,6 +62,8 @@ export interface SidecarContextValue {
 	resolveRelatedFocus?: (focusedBlockId: string | null) => SidecarRelatedFocus;
 	/** Leaf-local provenance for the current contextual Intelligence presentation. */
 	presentationOrigin?: IntelligencePresentationOrigin | null;
+	/** Replace the leaf-local provenance when a sidecar-local handoff begins. */
+	onPresentationOriginChange?: (origin: IntelligencePresentationOrigin) => void;
 }
 
 const SidecarContext = React.createContext<SidecarContextValue | null>(null);

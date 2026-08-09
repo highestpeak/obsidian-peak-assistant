@@ -49,6 +49,7 @@ export function HistoryView(): React.ReactElement {
 		config,
 		onLocate,
 		onRestoreGeneration,
+		onPresentationOriginChange,
 	} = useSidecar();
 	const workspace = useWorkspaceProjection(workspaceRuntime);
 	const session = useSessionProjection(runtime);
@@ -157,7 +158,15 @@ export function HistoryView(): React.ReactElement {
 					strings={s}
 					onClose={() => setSelectedActivityId(null)}
 					onLocate={onLocate}
-					onRestore={onRestoreGeneration}
+					onRestore={(runId) => {
+						const restored = onRestoreGeneration?.(runId) ?? false;
+						if (!restored) return false;
+						onPresentationOriginChange?.({
+							kind: 'history-deep-link',
+							runId,
+						});
+						return true;
+					}}
 					onRollback={async (historyId) => {
 						await hub?.rollback(historyId);
 						setSelectedActivityId(null);

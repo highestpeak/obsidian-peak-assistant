@@ -239,3 +239,28 @@ Owner 实机确认多 Composer tab 可用，但默认 Composer 打开会出现�
 - `npm run build` 通过；
 - 当前仍无 Obsidian CDP listener，因此修正后的真实默认打开与 Scope 菜单交互仍标记
   `INTERACTION NOT VERIFIED`，需要 plugin reload 后复测。
+
+## 9. 2026-07-30 评论、Intelligence 状态与双向入口增量
+
+已实现：
+
+- 评论默认关闭，文档绑定变化时也回到关闭状态；
+- Intelligence 明确打开/关闭偏好持久化，默认关闭；上下文打开不修改偏好；
+- 初始打开和 preference restore 无进入动画，只有真实用户切换使用 motion class；
+- 自动建议、问 Copilot、评论交接、History 恢复和 Native Markdown 来源进入
+  presentation/session/Frozen Run；
+- Scope 与建议更新策略合并为一条紧凑 Copilot 上下文栏；
+- Composer 中把“以后打开”和“切换当前 leaf”拆为两个操作；
+- Native Markdown 增加 app-owned、leaf-local 的“在 Composer 中打开”可见按钮；
+- 没有恢复常驻“入口 · 自动建议”标签。
+
+验证：
+
+- 16 项 Composer focused regression 通过；
+- `composer-brief-design-contract`、来源 freeze/JSONL replay、新状态模型和固定按钮几何
+  测试通过；
+- `npm run build` 通过；
+- 全量测试为 `366 passed / 370 total`，4 个失败与前述既有基线相同。
+
+交互状态仍为 `PARTIAL · INTERACTION NOT VERIFIED`。Owner 明确要求不由 Codex 操作
+Computer Use，将自行按验收清单录屏；收到录屏后再更新最终交付状态。

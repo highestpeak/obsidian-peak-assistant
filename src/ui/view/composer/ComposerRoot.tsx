@@ -427,6 +427,7 @@ export function ComposerRoot({
 							open={intelligencePresentation.open}
 							motion={intelligencePresentation.animate ? 'user' : 'none'}
 							presentationOrigin={intelligencePresentation.origin}
+							onPresentationOriginChange={openContextualIntelligence}
 							onOpenChange={(open) => setManualIntelligenceOpen(open)}
 							onLocate={locateBlock}
 							onLocateComment={(commentId, blockId) => {
