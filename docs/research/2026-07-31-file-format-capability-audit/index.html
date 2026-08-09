@@ -389,6 +389,7 @@
       <a class="brand" href="#top">文件能力审计</a>
       <nav class="nav-links" aria-label="报告导航">
         <a href="#judgment">结论</a>
+        <a href="#target-model">目标 AI 能力</a>
         <a href="#definition">如何定义支持</a>
         <a href="#matrix">完整矩阵</a>
         <a href="#editing">怎么修改</a>
@@ -402,16 +403,16 @@
 
   <main id="top">
     <section class="hero">
-      <p class="eyebrow">Owner-facing source audit · 2026-07-31</p>
+      <p class="eyebrow">Owner-facing source audit + target model · 2026-08-09</p>
       <h1>Peak Assistant 文件格式能力审计</h1>
       <p class="subtitle">
-        这份报告回答两个容易被混在一起的问题：插件今天到底能对哪些文件做什么，
-        以及哪些能力已经足够成为宣传卖点。结论以当前代码、配置、测试和已登记设计为依据，
-        不把文件图标、扩展名识别或未来方案算成已交付能力。
+        这份报告分开回答三个容易被混在一起的问题：插件今天到底能对哪些文件做什么、
+        哪些能力已经足够成为宣传卖点，以及每种文件未来应获得怎样的 AI context 与写回合同。
+        当前结论以代码、配置和测试为依据；目标模型单独标记，不把未来方案算成已交付能力。
       </p>
       <div class="meta">
-        <span>代码快照 eb827f63e761</span>
-        <span>约 6,000 字 · 15 分钟</span>
+        <span>代码快照 7d31974d52a1</span>
+        <span>约 10,000 字 · 22 分钟</span>
         <span>只读调研 · 未修改生产代码</span>
         <span>未执行真实 Obsidian 文件交互验收</span>
       </div>
@@ -431,7 +432,7 @@
         </article>
         <article class="card">
           <h3 class="card-title">覆盖最广：读取与索引</h3>
-          <p>Loader 已覆盖常见文档、数据、Office 与 Obsidian 原生画布格式，但多数默认关闭。</p>
+          <p>Loader 已覆盖部分文档、数据与 Obsidian 原生画布格式，但多数默认关闭；Office 内部分支不算产品支持。</p>
         </article>
         <article class="card">
           <h3 class="card-title">差异化：嵌入对象修改</h3>
@@ -450,6 +451,105 @@
           这一区分会直接决定宣传可信度。
         </p>
       </div>
+    </section>
+
+    <section id="target-model">
+      <h2>目标：每种文件都有合适的 AI 合同，而不是同一种编辑器</h2>
+      <p>
+        目标能力按用户任务组织：有些格式需要完整工作面，有些只需复用轻量文本编辑，
+        还有一些应保留 Obsidian 或生态插件的原生 renderer，由 Peak 增加 context-aware AI companion。
+        共同部分是当前文件、选区、revision、候选审阅与保存边界，而不是扩展名本身。
+      </p>
+
+      <div class="method-grid">
+        <article class="card">
+          <h3 class="card-title"><span class="rank">01</span>完整 AI 文件工作面</h3>
+          <p><strong>Markdown、HTML、Peak Sheet、Image。</strong>支持选区/当前视图上下文、格式动作、候选 review 和可靠写回。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">02</span>轻量文本与数据工作面</h3>
+          <p><strong>TXT、JSON。</strong>TXT 复用 Markdown 的纯文本子集；扁平 JSON 可进入 Peak Sheet，嵌套 JSON 保持 source/tree。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">03</span>原生 viewer + AI companion</h3>
+          <p><strong>PDF、Canvas、Excalidraw、Bases。</strong>不复制成熟 renderer，Peak 负责页/节点/元素/视图 context 与结构化写回。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">04</span>媒体理解与生成 integration</h3>
+          <p><strong>Audio、Video、draw.io 等。</strong>精确声明转录、时间轴问答或生成，不用“全格式支持”掩盖没有编辑 surface。</p>
+        </article>
+      </div>
+
+      <h3>目标能力摘要</h3>
+      <div class="table-wrap">
+        <table>
+          <colgroup>
+            <col style="width: 170px">
+            <col style="width: 28%">
+            <col style="width: 34%">
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>格式</th>
+              <th>AI context</th>
+              <th>AI actions</th>
+              <th>写回合同</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>HTML</td>
+              <td>源码范围、selected element、可见 DOM、console、数据来源与 runtime</td>
+              <td>Ask page、解释元素、修复渲染、修改组件、解释 dashboard、受控交互</td>
+              <td>source patch；外部动作走 typed bridge + permission + receipt</td>
+            </tr>
+            <tr>
+              <td>CSV → Peak Sheet</td>
+              <td>行/列/区域、schema inference、source hash；转换后绑定 Dataset revision</td>
+              <td>清洗、查重、类型推断、公式、筛选、统计、Table/Board/Calendar 视图</td>
+              <td>先 DatasetDraft preview/accept；之后只走 typed Dataset plan</td>
+            </tr>
+            <tr>
+              <td>TXT</td>
+              <td>选区、段落、全文</td>
+              <td>问答、改写、翻译、摘要、提取任务与实体</td>
+              <td>plain-text source patch；不自动写入 Markdown 语法</td>
+            </tr>
+            <tr>
+              <td>PDF</td>
+              <td>当前页、复制选区、页码范围、全文/OCR</td>
+              <td>按页提问、摘要、比较、带页码引用、扫描页 OCR</td>
+              <td>原 PDF 只读；保存 sibling annotation/note</td>
+            </tr>
+            <tr>
+              <td>Canvas / Excalidraw</td>
+              <td>节点/边/子图，或元素 ID/文本/group/bounds/scene</td>
+              <td>解释、聚类、补连接、改 label、增删元素、重排布局、生成新图</td>
+              <td>对象级 typed patch + revision guard + preview</td>
+            </tr>
+            <tr>
+              <td>Raster Image</td>
+              <td>原图、自然像素 region、OCR、metadata、reference images</td>
+              <td>描述/OCR、crop/resize、去背景、inpaint/outpaint、对象替换、变体</td>
+              <td>默认 save as version；replace source 需备份和显式确认</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">已锁定的排除项</div>
+        <p>
+          DOC / DOCX、PPT / PPTX、XLS / XLSX 不属于 Peak 的产品支持范围。
+          内部 Loader、文件图标或偶然能提取文本都不构成产品支持，也不能进入宣传。
+        </p>
+      </div>
+
+      <p>
+        完整的上下文范围、AI effect、各格式动作、source of truth 与验收门槛见
+        <a href="../../superpowers/specs/2026-08-09-file-surface-ai-capability-model.md"><strong>Peak 文件表面与 AI 能力模型</strong></a>。
+      </p>
     </section>
 
     <section id="definition">
@@ -518,7 +618,7 @@
             <tr>
               <td>纯文本<br><code>.txt</code></td>
               <td>读取与索引 Loader 已存在；默认关闭</td>
-              <td>无 Peak 独立编辑器；设置页未暴露 TXT 开关</td>
+              <td>当前无 Peak 编辑器；目标复用 Markdown Composer 的纯文本子集</td>
               <td><span class="pill internal">内部基础能力</span></td>
             </tr>
             <tr>
@@ -542,8 +642,8 @@
             <tr>
               <td>Word<br><code>.docx</code></td>
               <td>Mammoth 提取纯文本；可选索引</td>
-              <td>不保留 Word 排版；无 Peak 查看或写回</td>
-              <td><span class="pill conditional">限定为文本提取</span></td>
+              <td>内部实现事实；owner 已决定不作为 Peak 产品支持</td>
+              <td><span class="pill no">产品不支持</span></td>
             </tr>
             <tr>
               <td>旧 Word<br><code>.doc</code></td>
@@ -554,8 +654,8 @@
             <tr>
               <td>PowerPoint<br><code>.pptx</code></td>
               <td>officeparser 提取文本；可选索引</td>
-              <td>不还原幻灯片版式；无 Peak 查看或写回</td>
-              <td><span class="pill conditional">限定为文本提取</span></td>
+              <td>内部实现事实；owner 已决定不作为 Peak 产品支持</td>
+              <td><span class="pill no">产品不支持</span></td>
             </tr>
           </tbody>
         </table>
@@ -582,7 +682,7 @@
             <tr>
               <td>CSV<br><code>.csv</code></td>
               <td>读取、逐行切块、可选索引；默认关闭</td>
-              <td>Markdown 表格可导入、复制和导出 CSV；无独立 CSV 编辑器</td>
+              <td>当前仅 Markdown 表格互操作；目标以 DatasetDraft 接入 Peak Sheet</td>
               <td><span class="pill conditional">限定为互操作</span></td>
             </tr>
             <tr>
@@ -600,13 +700,13 @@
             <tr>
               <td>Canvas<br><code>.canvas</code></td>
               <td>提取节点文本、文件引用和边标签；可选索引</td>
-              <td>嵌入 Markdown 时可做 revision-guarded 结构化 AI 写回</td>
+              <td>当前在 Markdown 嵌入场景结构化写回；目标增加 node/edge-aware native companion</td>
               <td><span class="pill conditional">限定嵌入对象场景</span></td>
             </tr>
             <tr>
               <td>Excalidraw<br><code>.excalidraw</code></td>
               <td>读取与默认索引；Chat 可生成绘图文件</td>
-              <td>嵌入 Markdown 时可结构化 AI 写回；渲染依赖生态插件</td>
+              <td>当前嵌入式结构化写回；目标增加 element/scene-aware native companion</td>
               <td><span class="pill conditional">可作为生态卖点</span></td>
             </tr>
             <tr>
@@ -652,7 +752,7 @@
             <tr>
               <td>PNG / JPEG / WebP</td>
               <td>悬浮预览、附件保存、媒体生成与引用图读取</td>
-              <td>Chat/Composer 可调用 AI 改图并生成新文件；无独立 Image Workspace</td>
+              <td>当前可改图并生成新文件；目标覆盖区域理解、OCR、确定性变换与版本管理</td>
               <td><span class="pill conditional">可宣传生成与改图</span></td>
             </tr>
             <tr>
@@ -729,7 +829,7 @@
         <div class="callout-title">聊天附件的 AI 直读链路目前不能作为卖点</div>
         <p>
           默认配置选择 direct attachment，但当前最近消息渲染器没有把资源字节构造成模型消息 part。
-          转文本模式可以借助 Loader/转录生成摘要，但“把任意 PDF、图片、Office 文件拖进来直接问”尚缺闭环证据。
+          转文本模式可以借助 Loader/转录生成摘要，但“把任意 PDF 或图片拖进来直接问”尚缺闭环证据；Office 不在产品支持范围。
         </p>
       </div>
     </section>
@@ -739,9 +839,10 @@
 
       <h3>建议使用的总定位</h3>
       <blockquote>
-        Peak Assistant 是以 Markdown 为核心的多格式知识工作台。它能提取与检索 PDF、DOCX 和 PPTX 的文本，
-        并可按设置读取 CSV、JSON、HTML 与 TXT。在 Composer 中，用户可以审阅式修改 Markdown 与嵌入对象，
-        再把 AI 结果保存为可继续使用的 Vault 文件。
+        Peak Assistant 是以 Markdown 为核心、面向 AI 时代文件的知识工作台。当前可深度编辑 Markdown，
+        提取和检索 PDF 文本、与 CSV 互操作，并协作处理部分 Obsidian 原生对象和图片产物。
+        JSON、HTML 与 TXT 当前仍以可选或内部读取基础为主；
+        HTML、Peak Sheet、Image 与原生对象 companion 是已定义目标，但在交付前不会冒充当前支持。
       </blockquote>
 
       <div class="copy-grid">
@@ -758,8 +859,7 @@
         <article class="card copy-yes">
           <h3 class="card-title">带条件说</h3>
           <ul>
-            <li>启用后索引多种文本、数据、Office 与 Obsidian 原生对象格式</li>
-            <li>DOCX/PPTX 仅提取文本，不保留原始版式</li>
+            <li>启用后索引多种文本、数据与 Obsidian 原生对象格式</li>
             <li>Canvas/Base/Excalidraw 修改发生在 Markdown 嵌入对象场景</li>
             <li>音频转录取决于已配置的 provider</li>
             <li>生态格式的最终渲染依赖 Obsidian 或社区插件</li>
@@ -768,7 +868,7 @@
         <article class="card copy-no">
           <h3 class="card-title">现在不要说</h3>
           <ul>
-            <li>支持 Excel / XLSX</li>
+            <li>支持 Word / PowerPoint / Excel 或 Office</li>
             <li>支持独立编辑 CSV、JSON、HTML 或 PDF</li>
             <li>支持所有图片的语义搜索</li>
             <li>任何附件都能被模型直接理解</li>
@@ -778,7 +878,7 @@
         <article class="card copy-no">
           <h3 class="card-title">容易误导的短句</h3>
           <ul>
-            <li>“支持 Office”会把文本提取误解为版式查看与编辑</li>
+            <li>“支持 Office”与已锁定的产品范围直接冲突</li>
             <li>“支持 HTML”会被理解为浏览器式预览与修改</li>
             <li>“支持图片”会把预览、索引、理解和改图混成一件事</li>
             <li>“支持 CSV”会被理解为电子表格工作区</li>
@@ -831,7 +931,7 @@
     </section>
 
     <section id="roadmap">
-      <h2>建议把文件能力分成三条产品线</h2>
+      <h2>建议把文件能力分成四条产品线</h2>
       <p>
         宣传重点不应等待所有格式都达到同一成熟度。更稳妥的做法是保留一个统一总定位，
         同时把当前、下一阶段和远期能力明确拆开。
@@ -839,18 +939,26 @@
 
       <ol>
         <li>
-          <strong>当前：Markdown 与多格式知识摄取。</strong>
-          以 Markdown Composer、PDF/文本/数据/Office 读取索引、CSV 互操作、原生对象协作为主。
+          <strong>完整 AI 文件工作面。</strong>
+          Markdown 已是当前基线；HTML、Peak Sheet 和 Image 按各自 context 与写回合同推进。
         </li>
         <li>
-          <strong>下一阶段：Peak File Workspace。</strong>
-          图片、HTML 和 PDF 获得一致的打开、AI 协作与版本保存体验。
+          <strong>轻量文本与数据工作面。</strong>
+          TXT 复用 Markdown 纯文本子集；JSON 使用 source/tree，扁平数组可进入 Peak Sheet。
         </li>
         <li>
-          <strong>远期：Peak Sheet。</strong>
-          将现有表格基础升级为可计算的 Sheet 与结构化 Dataset 系统。
+          <strong>原生 viewer + Peak AI companion。</strong>
+          PDF、Canvas、Excalidraw 与 Bases 保留原生/生态 renderer，Peak 提供格式感知的上下文和写回。
+        </li>
+        <li>
+          <strong>媒体理解与生成 integration。</strong>
+          Audio、Video、draw.io 等按转录、时间轴问答或生成任务精确表达，不承诺通用编辑器。
         </li>
       </ol>
+
+      <p>
+        DOC/DOCX、PPT/PPTX、XLS/XLSX 不进入上述产品线。当前源码中的读取分支不改变这一产品决定。
+      </p>
 
       <h3>未来需要一个机器可读的文件能力清单</h3>
       <p>
@@ -899,6 +1007,7 @@
         </article>
         <article class="evidence-group">
           <h3>设计与未来状态</h3>
+          <a href="../../superpowers/specs/2026-08-09-file-surface-ai-capability-model.md">File Surface AI capability model</a>
           <a href="../../superpowers/specs/2026-07-24-peak-file-workspace.md">Peak File Workspace spec</a>
           <a href="../2026-07-24-peak-file-workspace/README.md">File Workspace source audit</a>
           <a href="../2026-07-22-peak-sheet-compute/README.md">Peak Sheet research</a>

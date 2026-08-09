@@ -12,6 +12,8 @@
 - [Roadmap](../../roadmap.html)
 
 > 本文定义目标产品与技术边界。当前生产代码尚未注册 Image / HTML / PDF 的 Peak file view；源码仍是 current behavior authority。
+>
+> 2026-08-09 owner update：跨格式 AI context、effect、CSV → Peak Sheet、TXT plain-text、Canvas/Excalidraw companion 和 Image 能力以 [Peak 文件表面与 AI 能力模型](./2026-08-09-file-surface-ai-capability-model.md) 为准；DOC/DOCX、PPT/PPTX、XLS/XLSX 明确不属于产品支持范围。
 
 ## 1. 核心判断
 
@@ -54,7 +56,7 @@ Peak Assistant 应从“Markdown 内的 AI 助手”扩展为“Vault 文件的 
 - 共享 File Workspace shell。
 - 文件能力注册、生命周期、权限、候选、版本与历史。
 - desktop Obsidian 主窗口和 native popout。
-- 为 JSON、CSV、Office、Audio、Video 保留扩展点。
+- 为 TXT、JSON、CSV、Canvas、Excalidraw、Audio、Video 与 SVG 保留受 capability model 约束的扩展点。
 
 ### 3.2 本方案不覆盖
 
@@ -1054,8 +1056,8 @@ File Workspace 声明能力：
 候选：
 
 - TXT / JSON / XML source workspace；
-- CSV table workspace；
-- DOCX / PPTX read + AI companion；
+- CSV → Peak Sheet import surface；
+- Canvas / Excalidraw native AI companion；
 - Audio / Video timeline + transcription；
 - SVG safe source/preview。
 
@@ -1220,4 +1222,3 @@ PDF：
 - 不新增 service-side runtime singleton。
 - 不把 feature-local action 倒回 Command Palette。
 - 不在没有真实 E2E 前把 roadmap 改成 built/shipped。
-
