@@ -24,6 +24,11 @@ assertDecl(root, 'overflow: hidden;', 'the Composer main scrollport must own doc
 
 const main = cssBlock(composerCss, '.peak-composer-root .pk-composer-main');
 assertDecl(main, 'overflow-y: auto;', 'the main column must own sticky-toolbar scrolling');
+assert.equal(
+	main.includes('display: flex;') || main.includes('flex-direction:'),
+	false,
+	'the scrolling main column must keep normal block flow so long document paper cannot flex-shrink',
+);
 assertDecl(
 	main,
 	'padding: 0 var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);',
