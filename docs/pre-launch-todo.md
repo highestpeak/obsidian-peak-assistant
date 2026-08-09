@@ -28,6 +28,9 @@
 - [ ] **P0/P1 · 持续工作** · [02 · Owner 代码接管与理解](pre-launch/02-owner-code-readiness.md)
   - 掌握核心 runtime、数据真值、验证与排障。
   - 每完成一个功能收口，同步完成该功能的代码走读。
+- [ ] **P0/P1 · Owner 人工任务** · [10 · Owner 人工通读全部文档与代码](pre-launch/10-owner-manual-code-and-doc-reading.md)
+  - Owner 主动阅读全部 first-party 文档与代码，不由 AI 摘要代替。
+  - 优先核对 Landing Page，并保留相关 Codex 调研的直达链接。
 
 ### 公开材料准备
 
@@ -73,6 +76,7 @@
 - [ ] 私有文档与 Git 历史风险已经处理。
 - [ ] README、公开文档、贡献指南和数据说明已经完成。
 - [ ] 网站与视频使用同一个版本真值。
+- [ ] Owner 已完成人工通读文档与代码任务。
 - [ ] Owner 能解释并维护核心代码和数据流。
 - [ ] Owner 能执行发布失败回滚。
 
