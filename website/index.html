@@ -3,210 +3,1253 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#08080a">
-  <meta name="description" content="Peak Assistant turns an Obsidian vault into one connected workspace for search, graph intelligence, writing, agents, media, and model control.">
+  <meta name="theme-color" content="#161826">
+  <meta name="description" content="Peak Assistant turns an Obsidian vault into a connected, context-aware AI workspace for search, graph intelligence, Composer, Chat Studio, agents, and more.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Peak Assistant — your vault, understood">
-  <meta property="og:description" content="Search every note. See how ideas connect. Create and run agents without losing the source.">
+  <meta property="og:title" content="Peak Assistant — turn your vault into living intelligence">
+  <meta property="og:description" content="Search, connect, maintain, compose, and act without rebuilding context.">
   <meta property="og:url" content="https://highestpeak.github.io/obsidian-peak-assistant/">
   <meta property="og:image" content="https://highestpeak.github.io/obsidian-peak-assistant/assets/og-cosmos.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Peak Assistant — your vault, understood">
-  <meta name="twitter:description" content="Search every note. See how ideas connect. Create and run agents without losing the source.">
+  <meta name="twitter:title" content="Peak Assistant — turn your vault into living intelligence">
+  <meta name="twitter:description" content="A context-aware AI workspace for your Obsidian vault.">
   <meta name="twitter:image" content="https://highestpeak.github.io/obsidian-peak-assistant/assets/og-cosmos.png">
-  <title>Peak Assistant — your vault, understood</title>
+  <title>Peak Assistant — turn your vault into living intelligence</title>
+  <link rel="icon" href="assets/og-cosmos.png" type="image/png">
   <link rel="stylesheet" href="site.css">
+  <script src="assets/landing/vendor/react.production.min.js"></script>
+  <script src="assets/landing/vendor/react-dom.production.min.js"></script>
+  <script src="assets/landing/vendor/dc-runtime.js"></script>
+  <script src="assets/landing/vendor/design-system.js"></script>
+  <script src="assets/landing/vendor/image-slot.js"></script>
   <script src="site.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <x-dc>
+    <helmet></helmet>
 
-  <header class="site-header">
-    <a class="brand" href="#top" aria-label="Peak Assistant home">
-      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-      <span>Peak Assistant</span>
-    </a>
-    <nav aria-label="Primary navigation">
-      <a href="#capabilities">What it does</a>
-      <a href="#graph">Graph</a>
-      <a href="#product">Product</a>
-      <a href="#roadmap">Roadmap</a>
-      <a class="nav-cta" href="https://github.com/highestpeak/obsidian-peak-assistant">GitHub <span aria-hidden="true">↗</span></a>
-    </nav>
-  </header>
 
-  <main id="main">
-    <section class="hero" id="top">
-      <div class="hero-backdrop" aria-hidden="true">
-        <img src="assets/peak-cosmos-hero.webp" width="1672" height="941" fetchpriority="high" decoding="async" alt="">
+
+<div style="min-height:100vh">
+
+<div data-screen-label="Nav" class="navbar" style="position:sticky;top:0;z-index:60;backdrop-filter:saturate(140%) blur(14px);-webkit-backdrop-filter:saturate(140%) blur(14px)">
+  <div class="nav" style="max-width:1200px;margin:0 auto;padding:22px clamp(20px,5vw,72px) 16px">
+    <span class="nav-brand" style="display:flex;align-items:center;gap:10px">Peak Assistant<span style="font-family:var(--font-body);font-size:11.5px;font-weight:400;letter-spacing:.04em;padding:2px 8px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);color:color-mix(in srgb, var(--color-text) 55%, transparent)">preview</span></span>
+    <div class="secmenu" style="position:relative">
+      <button type="button" class="secmenu-trigger" style="display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:14px;color:inherit;background:none;border:0;padding:6px 2px;cursor:pointer">Home<i class="ph ph-caret-down secmenu-caret" style="font-size:13px;transition:transform .25s ease"></i></button>
+      <div class="secmenu-list" style="position:absolute;min-width:248px;max-height:min(74vh,560px);overflow-y:auto;background:var(--color-surface);box-shadow:var(--shadow-lg), inset 0 0 0 1px var(--color-neutral-700);border-radius:var(--radius-md);padding:6px;display:grid;gap:1px;transition:opacity .2s ease, transform .2s ease, visibility .2s;left:50%;top:calc(100% + 10px)">
+        <a href="#context" style="font-size:13.5px;padding:8px 11px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 85%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Context Intelligence</a>
+        <a href="#graph" style="font-size:13.5px;padding:8px 11px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 85%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Graph</a>
+        <a href="#composer" style="font-size:13.5px;padding:8px 11px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 85%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Composer</a>
+        <span style="height:1px;margin:5px 8px;background:var(--color-divider)"></span>
+        <a href="#knowledge" style="display:flex;gap:9px;font-size:12.5px;letter-spacing:.01em;padding:9px 11px 5px;color:color-mix(in srgb, var(--color-text) 45%, transparent)" style-hover="color:var(--color-accent)"><span style="color:var(--color-accent)">01</span>Understand and maintain</a>
+        <a href="#search" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Vault Search</a>
+        <a href="#ai-search" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">AI Search</a>
+        <a href="#atlas" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">File Atlas</a>
+        <a href="#maintenance" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Knowledge Maintenance</a>
+        <a href="#related" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Related Materials</a>
+        <span style="height:1px;margin:5px 8px;background:var(--color-divider)"></span>
+        <a href="#studio" style="display:flex;gap:9px;font-size:12.5px;letter-spacing:.01em;padding:9px 11px 5px;color:color-mix(in srgb, var(--color-text) 45%, transparent)" style-hover="color:var(--color-accent)"><span style="color:var(--color-accent)">02</span>Work with AI in context</a>
+        <a href="#chat-studio" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Chat Studio</a>
+        <a href="#artifacts" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Artifacts</a>
+        <a href="#command" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Command Center</a>
+        <span style="height:1px;margin:5px 8px;background:var(--color-divider)"></span>
+        <a href="#configure" style="display:flex;gap:9px;font-size:12.5px;letter-spacing:.01em;padding:9px 11px 5px;color:color-mix(in srgb, var(--color-text) 45%, transparent)" style-hover="color:var(--color-accent)"><span style="color:var(--color-accent)">03</span>Configure intelligence</a>
+        <a href="#filetypes" style="font-size:13.5px;padding:6px 11px 6px 22px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 70%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">File types</a>
+        <span style="height:1px;margin:5px 8px;background:var(--color-divider)"></span>
+        <a href="#more" style="font-size:13.5px;padding:8px 11px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 85%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Also in the box</a>
+        <a href="#terms" style="font-size:13.5px;padding:8px 11px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 85%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">No Peak plan, no cloud copy</a>
+        <a href="#trust" style="font-size:13.5px;padding:8px 11px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 85%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Built to be checked</a>
+        <a href="#soon" style="font-size:13.5px;padding:8px 11px;border-radius:var(--radius-sm);color:color-mix(in srgb, var(--color-text) 85%, transparent)" style-hover="background:color-mix(in srgb, var(--color-accent) 10%, transparent);color:var(--color-text)">Coming soon</a>
       </div>
-      <div class="hero-copy">
-        <span class="hero-kicker">Peak Assistant for Obsidian</span>
-        <h1>Your vault,<br><em>understood.</em></h1>
-        <p>Search every note. See how ideas connect. Write, create, and run agents without losing the source.</p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">Explore on GitHub <span aria-hidden="true">↗</span></a>
-          <a class="button button-quiet" href="#capabilities">See what Peak does <span aria-hidden="true">↓</span></a>
+    </div>
+    <a href="https://github.com/highestpeak/obsidian-peak-assistant/tree/master/docs">Docs</a>
+    <a class="btn btn-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">GitHub</a>
+  </div>
+</div>
+
+<div style="max-width:1200px;margin:0 auto;padding:0 clamp(20px,5vw,72px)">
+
+  <div data-screen-label="Hero" style="padding:88px 0 24px;animation:fadeUp .7s ease both;position:relative">
+    <canvas id="peak-constellation" style="position:absolute;inset:-40px -60px 0 0;width:calc(100% + 60px);height:calc(100% + 40px);pointer-events:none;z-index:-1;mask-image:linear-gradient(to right, transparent 0, rgba(0,0,0,.35) 38%, black 62%);-webkit-mask-image:linear-gradient(to right, transparent 0, rgba(0,0,0,.35) 38%, black 62%)"></canvas>
+    <h1 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(42px,5.8vw,80px);line-height:1.11;letter-spacing:-.015em;margin:0 0 0 -.06em">
+      <span style="display:block">Turn your vault into</span>
+      {{ heroPhrase }}
+    </h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:28px">
+      <sc-for list="{{ heroChips }}" as="c" hint-placeholder-count="5">
+        <span sc-camel-on-click="{{ c.go }}" class="{{ c.cls }}" style="cursor:pointer">{{ c.t }}</span>
+      </sc-for>
+    </div>
+    <p style="font-size:17px;line-height:1.65;max-width:70ch;margin:24px 0 0;color:color-mix(in srgb, var(--color-text) 82%, transparent)">Peak Assistant is a context-aware AI workspace for Obsidian. It helps you <span style="color:var(--color-text)">search, navigate, map, and maintain</span> your knowledge — then carries context from your notes, activity, selected resources, projects, and the web into Composer, Chat Studio, and agents, so you can research, write, and act without starting over.</p>
+    <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;margin-top:26px;align-items:center">
+      <a class="btn btn-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">View on GitHub</a>
+      <a class="btn btn-ghost" href="#graph">See it work ↓</a>
+      <span style="font-size:12.5px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-left:6px">Local-first · Open source · Your providers</span>
+    </div>
+  </div>
+
+  <div data-screen-label="Spine" style="padding:34px 0 8px;display:flex;gap:10px 28px;flex-wrap:wrap;font-size:14.5px">
+    <a href="#graph" style="color:color-mix(in srgb, var(--color-text) 62%, transparent);transition:color .25s ease" style-hover="color:var(--color-accent)">See the whole system.</a>
+    <a href="#composer" style="color:color-mix(in srgb, var(--color-text) 62%, transparent);transition:color .25s ease" style-hover="color:var(--color-accent)">Work inside the source.</a>
+    <a href="#context" style="color:color-mix(in srgb, var(--color-text) 62%, transparent);transition:color .25s ease" style-hover="color:var(--color-accent)">Keep the thread as you move.</a>
+    <a href="#configure" style="color:color-mix(in srgb, var(--color-text) 62%, transparent);transition:color .25s ease" style-hover="color:var(--color-accent)">Configure intelligence around the work.</a>
+  </div>
+
+  <div id="context" data-screen-label="Overview" class="rule" style="padding:44px 0 44px;margin-top:18px;position:relative;overflow:hidden">
+    <canvas id="pitch-w4" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.7"></canvas>
+    <div style="position:relative">
+      <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent);margin:0 0 14px">Context Intelligence</p>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(34px,4.2vw,58px);line-height:1.07;letter-spacing:-.015em;margin:0;max-width:32ch">Keep the thread <span style="color:var(--color-accent)">as you move.</span></h2>
+      <p style="font-size:16.5px;line-height:1.65;margin:20px 0 0;max-width:70ch;color:color-mix(in srgb, var(--color-text) 78%, transparent)">Peak carries forward what you are working on, so moving from Search or Graph into Composer or Chat Studio does not mean rebuilding the context. One continuous working state, not a series of blank prompts.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:900px;margin-top:22px">
+        <span class="cloud-chip tag tag-neutral">current file, selection &amp; block</span>
+        <span class="cloud-chip tag tag-neutral">recent searches &amp; opened material</span>
+        <span class="cloud-chip tag tag-neutral">nodes and relations you're watching</span>
+        <span class="cloud-chip tag tag-neutral">projects, conversations &amp; history</span>
+        <span class="cloud-chip tag tag-neutral">chosen files, PDFs, pages &amp; resources</span>
+        <span class="cloud-chip tag tag-neutral">active model, provider, tools &amp; permissions</span>
+      </div>
+
+      <p style="font-size:15.5px;line-height:1.65;margin:34px 0 0;max-width:68ch;color:color-mix(in srgb, var(--color-text) 74%, transparent)">That continuity runs between the two places you spend the most time: the graph, where structure becomes something you can see and repair, and the source, where the change actually gets made.</p>
+
+      <div style="margin-top:22px;border-radius:var(--radius-lg);box-shadow:inset 0 0 0 1px var(--color-neutral-800);display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;overflow:hidden">
+        <div id="graph" data-screen-label="Graph" style="position:relative;height:clamp(180px,19vw,220px)">
+          <canvas id="viz-graph" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
         </div>
-        <div class="hero-facts" aria-label="Project facts">
-          <span>Open source</span><span>Local core is free</span><span>Bring your own models</span>
+        <div style="display:flex;align-items:center;justify-content:center;width:52px;color:var(--color-accent);background:linear-gradient(to bottom, transparent, color-mix(in srgb, var(--color-neutral-800) 60%, transparent) 22%, color-mix(in srgb, var(--color-neutral-800) 60%, transparent) 78%, transparent) no-repeat center / 1px 100%"><i class="ph ph-arrow-right" style="font-size:17px"></i></div>
+        <div id="composer" data-screen-label="Composer" style="position:relative;height:clamp(180px,19vw,220px)">
+          <canvas id="viz-composer" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
         </div>
       </div>
-      <ol class="hero-journey" aria-label="Peak Assistant workflow">
-        <li><b>01</b><span>Find</span><small>Search + Atlas</small></li>
-        <li><b>02</b><span>Connect</span><small>Graph + Intelligence</small></li>
-        <li><b>03</b><span>Create</span><small>Composer + Media</small></li>
-        <li><b>04</b><span>Run</span><small>Studio + Agents</small></li>
-      </ol>
-    </section>
-
-    <section class="capabilities section" id="capabilities">
-      <header class="section-intro">
-        <span class="section-number">01</span>
+      <div style="display:grid;grid-template-columns:1fr 52px 1fr;gap:0;margin-top:14px">
         <div>
-          <p>What Peak does</p>
-          <h2>From a question to a source-backed result.</h2>
+          <span style="font-size:15px;font-weight:500">See the whole system.</span>
+          <p style="font-size:13px;line-height:1.6;margin:5px 0 0;color:color-mix(in srgb, var(--color-text) 58%, transparent)">A flat list becomes structure, structure becomes a graph — and the graph tells you what is broken, orphaned, or holding everything together. <a href="#maintenance">Fixable</a>, not just viewable.</p>
         </div>
-        <p class="section-summary">Six connected stages. One vault context. No separate tool for every step.</p>
-      </header>
-
-      <div class="capability-lanes">
-        <article>
-          <span class="lane-number">01</span>
-          <div><h3>Find the right material.</h3><p>Search the vault, ask in natural language, or move through a file’s neighbourhood.</p></div>
-          <div class="capability-list"><span>Vault Search</span><span>AI Search</span><span>File Atlas</span></div>
-        </article>
-        <article>
-          <span class="lane-number">02</span>
-          <div><h3>See the structure.</h3><p>Separate authored links from semantic relationships. Find hubs, gaps, bridges, orphans, and drift.</p></div>
-          <div class="capability-list"><span>Knowledge Graph</span><span>Vault Intelligence</span><span>Find hubs</span><span>Find gaps</span></div>
-        </article>
-        <article>
-          <span class="lane-number">03</span>
-          <div><h3>Create with context.</h3><p>Work from a selection, block, document, or native Obsidian object and review the result beside its source.</p></div>
-          <div class="capability-list"><span>Peak Composer</span><span>Copilot</span><span>Image</span><span>Video</span><span>Music</span><span>Voice</span></div>
-        </article>
-        <article>
-          <span class="lane-number">04</span>
-          <div><h3>Run longer work.</h3><p>Give a project files, tools, skills, permissions, and a result that stays available for review.</p></div>
-          <div class="capability-list"><span>Chat Studio</span><span>Multi-provider AI</span><span>MCP</span><span>Skills</span><span>Plugin Commands</span></div>
-        </article>
-        <article>
-          <span class="lane-number">05</span>
-          <div><h3>Shape data.</h3><p>Move from tables and files toward revision-safe datasets, formulas, charts, and AI compute plans.</p></div>
-          <div class="capability-list"><span>Peak Sheet</span><span>Datasets</span><span>Charts</span><span>ComputePlan</span><em>Research</em></div>
-        </article>
-        <article>
-          <span class="lane-number">06</span>
-          <div><h3>Control the system.</h3><p>Choose entry points, models, tools, approvals, budgets, indexes, and what becomes durable.</p></div>
-          <div class="capability-list"><span>Command Center</span><span>AI Control Center</span><span>Setup</span><span>Index</span><span>Usage</span></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="graph-section section" id="graph">
-      <header class="section-intro graph-intro">
-        <span class="section-number">02</span>
+        <div></div>
         <div>
-          <p>Graph intelligence</p>
-          <h2>See where knowledge gathers — and where it breaks.</h2>
-        </div>
-        <p class="section-summary">The graph is not decoration. It answers what to open, what is missing, and what deserves attention.</p>
-      </header>
-
-      <div class="graph-story">
-        <div class="graph-questions">
-          <article><b>Find hubs</b><p>Which notes organise the rest of the vault?</p></article>
-          <article><b>Find gaps</b><p>Which ideas should connect, but do not yet?</p></article>
-          <article><b>Follow evidence</b><p>Which sources support this result or recommendation?</p></article>
-        </div>
-        <div class="semantic-map" aria-label="Animated semantic map with a current note, a hub, a gap, and evidence sources">
-          <canvas class="knowledge-field" aria-hidden="true"></canvas>
-          <span class="map-label label-current"><i></i>Current note</span>
-          <span class="map-label label-hub"><i></i>Hub</span>
-          <span class="map-label label-gap"><i></i>Gap</span>
-          <span class="map-label label-source"><i></i>Sources</span>
+          <span style="font-size:15px;font-weight:500">Work inside the source.</span>
+          <p style="font-size:13px;line-height:1.6;margin:5px 0 0;color:color-mix(in srgb, var(--color-text) 58%, transparent)">The candidate opens under the block it rewrites, with its difference shown. Accept, reject, or keep adjusting — <a href="#artifacts">history and receipts stay</a>.</p>
         </div>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <section class="product section" id="product">
-      <header class="section-intro">
-        <span class="section-number">03</span>
+  <div id="knowledge" data-screen-label="Line 01 — Knowledge" class="rule" style="padding:32px 0 0;margin-top:24px">
+    <div style="display:flex;align-items:baseline;gap:18px;flex-wrap:wrap">
+      <span style="font-size:15px;color:var(--color-accent);font-feature-settings:'tnum' 1">01</span>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(30px,3.4vw,46px);line-height:1.08;letter-spacing:-.014em;margin:0;max-width:34ch">Understand and maintain your knowledge.</h2>
+    </div>
+
+    <p style="font-size:15.5px;line-height:1.65;margin:16px 0 8px;max-width:70ch;color:color-mix(in srgb, var(--color-text) 76%, transparent)">Five surfaces read the same index from different angles: Vault Search finds material, AI Search researches a question, File Atlas opens a file as a map, Knowledge Maintenance watches the health of the whole vault, and Related Materials brings up what you did not think to ask for.</p>
+    <div id="search" data-screen-label="Vault Search" style="padding:20px 0 8px">
+      <p style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">Vault Search</p>
+      <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0 0 12px">Find the material. See where it belongs.</h4>
+      <div style="margin-bottom:14px">
+        <span style="font-size:14.5px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">One query — full-text, fuzzy, semantic, metadata. Reranked by your own graph.</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:var(--color-surface);box-shadow:inset 0 0 0 1px var(--color-neutral-700);border-radius:var(--radius-md);padding:12px 16px;font-size:15px;margin-bottom:14px;max-width:620px">
+        <span style="color:color-mix(in srgb, var(--color-text) 45%, transparent)">⌕</span>
+        <span style="min-height:1.4em">{{ typedQuery }}</span>
+        <span style="flex:none;width:2px;height:18px;background:var(--color-accent);animation:pulseDot 1s infinite"></span>
+        <sc-if value="{{ sFound }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent" style="margin-left:auto;white-space:nowrap;animation:fadeUp .3s ease both">{{ foundLabel }}</span></sc-if>
+        <sc-if value="{{ sRefined }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent" style="margin-left:auto;white-space:nowrap;animation:fadeUp .3s ease both">Refined ✓</span></sc-if>
+        <sc-if value="{{ sIdle }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral" style="margin-left:auto;white-space:nowrap">Refine</span></sc-if>
+      </div>
+      <p style="font-size:12.5px;margin:-6px 0 14px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Know what you want? Type keywords and operators — full-text, exact. Don't? Write plain language and hit <span style="color:var(--color-accent-300)">Refine</span>: Peak rewrites it into advanced query syntax for you.</p>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:44px;padding-top:28px;background:linear-gradient(to right, transparent, var(--color-neutral-700) 48px calc(100% - 48px), transparent) no-repeat top / 100% 1px">
+        <span style="font-size:17px;font-weight:500">One result set, <span style="color:var(--color-accent)">three shapes</span></span>
+        <div style="display:flex;gap:8px">
+          <span sc-camel-on-click="{{ goList }}" class="{{ listCls }}" style="cursor:pointer">List</span>
+          <span sc-camel-on-click="{{ goTree }}" class="{{ treeCls }}" style="cursor:pointer">Tree</span>
+          <span sc-camel-on-click="{{ goGraph }}" class="{{ graphCls }}" style="cursor:pointer">Graph</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px 24px;flex-wrap:wrap;margin:10px 0 14px;min-height:52px">
+        <sc-if value="{{ vList }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:fadeUp .4s ease both;max-width:72ch"><div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;margin-bottom:4px"><i class="ph ph-list-bullets" style="color:var(--color-accent);font-size:18px"></i>List</div><p style="font-size:13.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Ranked matches, each labeled by how it matched — exact, fuzzy, semantic, or metadata.</p></div>
+        </sc-if>
+        <sc-if value="{{ vTree }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:fadeUp .4s ease both;max-width:72ch"><div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;margin-bottom:4px"><i class="ph ph-tree-view" style="color:var(--color-accent);font-size:18px"></i>Tree</div><p style="font-size:13.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">The same results in your folder structure, with previews — see where knowledge lives.</p></div>
+        </sc-if>
+        <sc-if value="{{ vGraph }}" hint-placeholder-val="{{ true }}">
+          <div style="animation:fadeUp .4s ease both;max-width:72ch"><div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;margin-bottom:4px"><i class="ph ph-graph" style="color:var(--color-accent);font-size:18px"></i>Graph</div><p style="font-size:13.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Results as a constellation — hubs, clusters, and connections you didn't know were there.</p></div>
+        </sc-if>
+        <span style="font-size:12px;text-align:right;color:color-mix(in srgb, var(--color-text) 50%, transparent)">{{ cycleHint }}<br>Results stay a workspace — reshape them, or hand them to AI Search.</span>
+      </div>
+      <sc-if value="{{ vList }}" hint-placeholder-val="{{ false }}">
+        <div class="shot" style="aspect-ratio:2411/1512;animation:fadeUp .4s ease both"><image-slot id="shot-search-list" shape="rect" src="assets/landing/screens/vault-search-list.png" placeholder="Vault Search — list view"></image-slot></div>
+      </sc-if>
+      <sc-if value="{{ vTree }}" hint-placeholder-val="{{ false }}">
+        <div class="shot" style="aspect-ratio:2411/1512;animation:fadeUp .4s ease both"><image-slot id="shot-search-tree" shape="rect" src="assets/landing/screens/vault-search-tree.png" placeholder="Vault Search — tree view"></image-slot></div>
+      </sc-if>
+      <sc-if value="{{ vGraph }}" hint-placeholder-val="{{ true }}">
+        <div class="shot" style="aspect-ratio:2411/1512;animation:fadeUp .4s ease both"><image-slot id="shot-search-graph" shape="rect" src="assets/landing/screens/vault-search-graph.png" placeholder="Vault Search — graph view"></image-slot></div>
+      </sc-if>
+      <div style="margin-top:16px">
+        <div class="card elev-sm" style="padding:var(--space-8);display:grid;grid-template-columns:minmax(280px,420px) minmax(0,1fr);gap:24px;align-items:center">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;margin-bottom:6px"><i class="ph ph-sidebar-simple" style="color:var(--color-accent);font-size:18px"></i>Inspector — smart connections on every result</div>
+            <p style="font-size:13px;line-height:1.6;margin:0 0 12px;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Arrow into any result and a panel shows its neighborhood: <span style="color:color-mix(in srgb, var(--color-text) 85%, transparent)">Connected</span> notes it already links, <span style="color:color-mix(in srgb, var(--color-text) 85%, transparent)">Discovered</span> ones it should — unlinked mentions, suggested links — and one click to spin the whole search into an AI Graph.</p>
+            <div style="display:flex;gap:7px;flex-wrap:wrap"><span class="tag tag-neutral">connected</span><span class="tag tag-neutral">discovered</span><span class="tag tag-accent">suggest link</span><span class="tag tag-neutral">create AI Graph</span></div>
+          </div>
+          <div style="aspect-ratio:16/9;border-radius:var(--radius-md);overflow:hidden;box-shadow:inset 0 0 0 1px var(--color-neutral-700)"><image-slot id="shot-inspector" shape="rect" placeholder="Drop: inspector — Connected / Discovered panel"></image-slot></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cap-row flip">
+      <div class="shot" style="aspect-ratio:16/10;position:relative">
+        <sc-if value="{{ aiSearchA }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-aisearch-1" shape="rect" placeholder="Drop: AI Search — the plan"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ aiSearchB }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-aisearch-2" shape="rect" placeholder="Drop: AI Search — searching &amp; reading"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ aiSearchC }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-aisearch-3" shape="rect" placeholder="Drop: AI Search — sourced report"></image-slot></div>
+        </sc-if>
+      </div>
+      <div class="cap-copy">
+        <p id="ai-search" style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">AI Search</p>
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">Turn a question into a research session — not another list of matches.</h4>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0">
+          <sc-for list="{{ aiSearchSteps }}" as="st" hint-placeholder-count="3">
+            <span sc-camel-on-click="{{ st.go }}" style="{{ st.s }}">{{ st.t }}</span>
+            <sc-if value="{{ st.arrow }}" hint-placeholder-val="{{ true }}"><span style="color:color-mix(in srgb, var(--color-text) 35%, transparent);font-size:12px">→</span></sc-if>
+          </sc-for>
+        </div>
+        <p style="font-size:15px;line-height:1.65;margin:14px 0 0;color:color-mix(in srgb, var(--color-text) 74%, transparent)">AI Search plans around your question, retrieves, reads, and writes a report that keeps its sources — one click from the exact passage. An unfinished analysis can be picked up again later.</p>
+      </div>
+    </div>
+
+    <div class="cap-row">
+      <div class="cap-copy">
+        <p id="atlas" style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">File Atlas</p>
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">See the structure inside a file — and the knowledge around it.</h4>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0">
+          <sc-for list="{{ atlasSteps }}" as="st" hint-placeholder-count="3">
+            <span sc-camel-on-click="{{ st.go }}" style="{{ st.s }}">{{ st.t }}</span>
+            <sc-if value="{{ st.arrow }}" hint-placeholder-val="{{ true }}"><span style="color:color-mix(in srgb, var(--color-text) 35%, transparent);font-size:12px">→</span></sc-if>
+          </sc-for>
+        </div>
+        <p style="font-size:15px;line-height:1.65;margin:14px 0 0;color:color-mix(in srgb, var(--color-text) 74%, transparent)">Headings, blocks, links and resources within the note; one-hop and two-hop relations beyond it. Search inside the document, run quick actions on any block, send anything to Composer.</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:16px"><span class="tag tag-neutral">headings &amp; blocks</span><span class="tag tag-neutral">resources</span><span class="tag tag-accent">one &amp; two hops out</span></div>
+      </div>
+      <div class="shot" style="aspect-ratio:2411/1512;position:relative">
+        <sc-if value="{{ atlasA }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-atlas-1" shape="rect" src="assets/landing/screens/file-atlas.png" placeholder="File Atlas — open a note"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ atlasB }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-atlas-2" shape="rect" placeholder="File Atlas — blocks &amp; tables"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ atlasC }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-atlas-3" shape="rect" placeholder="File Atlas — quick action"></image-slot></div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div class="cap-row flip">
+      <div class="shot" style="aspect-ratio:16/10;position:relative">
+        <sc-if value="{{ intelA }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-intel-1" shape="rect" placeholder="Drop: Intelligence — scanning the vault"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ intelB }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-intel-2" shape="rect" placeholder="Drop: Intelligence — hubs, gaps, drift"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ intelC }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-intel-3" shape="rect" placeholder="Drop: Intelligence — acting on health"></image-slot></div>
+        </sc-if>
+      </div>
+      <div class="cap-copy">
+        <p id="maintenance" style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">Knowledge Maintenance</p>
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">See what's connected, broken, stale, or missing — and know what to do next.</h4>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0">
+          <sc-for list="{{ intelSteps }}" as="st" hint-placeholder-count="3">
+            <span sc-camel-on-click="{{ st.go }}" style="{{ st.s }}">{{ st.t }}</span>
+            <sc-if value="{{ st.arrow }}" hint-placeholder-val="{{ true }}"><span style="color:color-mix(in srgb, var(--color-text) 35%, transparent);font-size:12px">→</span></sc-if>
+          </sc-for>
+        </div>
+        <p style="font-size:15px;line-height:1.65;margin:14px 0 0;color:color-mix(in srgb, var(--color-text) 74%, transparent)">Vault Intelligence reads the shape of the whole vault and turns what it finds into fixes you can review in Composer — with evidence and a next step for each signal.</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:16px"><span class="tag tag-neutral">hubs &amp; structural gaps</span><span class="tag tag-neutral">broken links</span><span class="tag tag-neutral">missing backlinks</span><span class="tag tag-neutral">orphans &amp; islands</span><span class="tag tag-neutral">fragile bridges</span><span class="tag tag-neutral">stale hubs</span><span class="tag tag-accent">reviewable fixes</span></div>
+      </div>
+    </div>
+
+    <div class="cap-row">
+      <div class="cap-copy">
+        <p id="related" style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">Related Materials</p>
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">Discover what else matters while the work is still in motion.</h4>
+        <p style="font-size:15px;line-height:1.65;margin:14px 0 0;color:color-mix(in srgb, var(--color-text) 74%, transparent)">Peak watches the current content, where you've been navigating, and past associations, and quietly puts forward the material worth a second look.</p>
+      </div>
+      <div class="shot" style="aspect-ratio:16/10"><image-slot id="shot-related" shape="rect" placeholder="Drop: Related Materials panel"></image-slot></div>
+    </div>
+  </div>
+
+  <div id="studio" data-screen-label="Line 02 — AI in context" class="rule" style="padding:32px 0 0;margin-top:24px">
+    <div style="display:flex;align-items:baseline;gap:18px;flex-wrap:wrap">
+      <span style="font-size:15px;color:var(--color-accent);font-feature-settings:'tnum' 1">02</span>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(30px,3.4vw,46px);line-height:1.08;letter-spacing:-.014em;margin:0;max-width:34ch">Work with AI without leaving the context.</h2>
+    </div>
+
+    <p style="font-size:15.5px;line-height:1.65;margin:16px 0 8px;max-width:70ch;color:color-mix(in srgb, var(--color-text) 76%, transparent)">Longer work needs somewhere to live. Chat Studio holds the task, Artifacts hold what it produced, and Command Center is the way back to both.</p>
+    <div class="cap-row flip">
+      <div class="shot" style="aspect-ratio:2438/1512;position:relative">
+        <sc-if value="{{ studioA }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-studio-1" shape="rect" src="assets/landing/screens/chat-studio.png" placeholder="Chat Studio — start a project"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ studioB }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-studio-2" shape="rect" placeholder="Chat Studio — branch &amp; retry"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ studioC }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-studio-3" shape="rect" placeholder="Chat Studio — artifacts land in vault"></image-slot></div>
+        </sc-if>
+      </div>
+      <div class="cap-copy">
+        <p id="chat-studio" style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">Chat Studio</p>
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">Give longer AI work a project, resources, tools, and a place to continue.</h4>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0">
+          <sc-for list="{{ studioSteps }}" as="st" hint-placeholder-count="3">
+            <span sc-camel-on-click="{{ st.go }}" style="{{ st.s }}">{{ st.t }}</span>
+            <sc-if value="{{ st.arrow }}" hint-placeholder-val="{{ true }}"><span style="color:color-mix(in srgb, var(--color-text) 35%, transparent);font-size:12px">→</span></sc-if>
+          </sc-for>
+        </div>
+        <p style="font-size:15px;line-height:1.65;margin:14px 0 0;color:color-mix(in srgb, var(--color-text) 74%, transparent)">Complex work outgrows a single thread. Chat Studio gives it structure that survives across sessions — with a visible context stack, so you always know what the model sees.</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:16px"><span class="tag tag-neutral">projects &amp; conversations</span><span class="tag tag-neutral">resources &amp; attachments</span><span class="tag tag-neutral">assistants &amp; agents</span><span class="tag tag-neutral">tools, skills, MCP</span><span class="tag tag-neutral">permissions &amp; budget</span><span class="tag tag-neutral">branch, retry, variant</span><span class="tag tag-accent">history, trace &amp; receipts</span></div>
+      </div>
+    </div>
+
+    <div class="cap-row">
+      <div class="cap-copy">
+        <p id="artifacts" style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">Artifacts</p>
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">Turn AI work into usable outputs — not messages that disappear in a thread.</h4>
+        <p style="font-size:15px;line-height:1.65;margin:14px 0 0;color:color-mix(in srgb, var(--color-text) 74%, transparent)">Results land as real objects in your vault: saved, openable, and ready to be used again. Media jobs run as project work with cost confirmed up front.</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:16px"><span class="tag tag-neutral">Mermaid</span><span class="tag tag-neutral">Bases &amp; Dataview</span><span class="tag tag-neutral">Excalidraw &amp; Draw.io</span><span class="tag tag-neutral">extracts &amp; reminders</span><span class="tag tag-neutral">image, video, music, speech</span></div>
+      </div>
+      <div class="shot" style="aspect-ratio:16/10"><image-slot id="shot-artifacts" shape="rect" placeholder="Drop: an artifact — diagram, base, or media job"></image-slot></div>
+    </div>
+
+    <div class="cap-row flip">
+      <div class="shot" style="aspect-ratio:2411/1512;position:relative">
+        <sc-if value="{{ commandA }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-command-1" shape="rect" src="assets/landing/screens/command-center.png" placeholder="Command Center — summon"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ commandB }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-command-2" shape="rect" placeholder="Command Center — type intent"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ commandC }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-command-3" shape="rect" placeholder="Command Center — land anywhere"></image-slot></div>
+        </sc-if>
+      </div>
+      <div class="cap-copy">
+        <p id="command" style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 10px">Command Center</p>
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">Return to the work that matters — without rebuilding your setup.</h4>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0">
+          <sc-for list="{{ commandSteps }}" as="st" hint-placeholder-count="3">
+            <span sc-camel-on-click="{{ st.go }}" style="{{ st.s }}">{{ st.t }}</span>
+            <sc-if value="{{ st.arrow }}" hint-placeholder-val="{{ true }}"><span style="color:color-mix(in srgb, var(--color-text) 35%, transparent);font-size:12px">→</span></sc-if>
+          </sc-for>
+        </div>
+        <p style="font-size:15px;line-height:1.65;margin:14px 0 0;color:color-mix(in srgb, var(--color-text) 74%, transparent)">Files, workspaces, bookmarks, dashboards and the Peak actions you actually use, organised into one personal way in — alongside Obsidian's palette, not replacing it.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="configure" data-screen-label="Line 03 — Configure" class="rule" style="padding:32px 0 0;margin-top:24px">
+    <div style="display:flex;align-items:baseline;gap:18px;flex-wrap:wrap">
+      <span style="font-size:15px;color:var(--color-accent);font-feature-settings:'tnum' 1">03</span>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(30px,3.4vw,46px);line-height:1.08;letter-spacing:-.014em;margin:0;max-width:34ch">Configure intelligence around the work.</h2>
+    </div>
+    <p style="font-size:15.5px;line-height:1.65;margin:16px 0 26px;max-width:70ch;color:color-mix(in srgb, var(--color-text) 76%, transparent)">Use the right model, tools, and limits for each kind of work. Every capability picks its own provider — the ones you already pay for, or a local runtime. No migration, no lock-in, no silent fallback.</p>
+    <div style="background:var(--color-surface);box-shadow:var(--shadow-sm);border-radius:var(--radius-lg);padding:14px 14px 6px">
+      <div style="width:100%">{{ routeSvg }}</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;padding:8px 6px 6px;font-size:12px;border-top:1px solid var(--color-divider)">
+        <span style="color:var(--color-accent-300)">{{ routeCaption }}</span>
+        <span style="margin-left:auto;color:color-mix(in srgb, var(--color-text) 55%, transparent)">per-capability routing · local or cloud · your keys, your budgets</span>
+      </div>
+    </div>
+
+    <div class="cap-row">
+      <div class="cap-copy">
+        <h4 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:22px;line-height:1.25;margin:0">Honest operations — setup that tells the truth.</h4>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0">
+          <sc-for list="{{ opsSteps }}" as="st" hint-placeholder-count="3">
+            <span sc-camel-on-click="{{ st.go }}" style="{{ st.s }}">{{ st.t }}</span>
+            <sc-if value="{{ st.arrow }}" hint-placeholder-val="{{ true }}"><span style="color:color-mix(in srgb, var(--color-text) 35%, transparent);font-size:12px">→</span></sc-if>
+          </sc-for>
+        </div>
+        <div style="display:grid;gap:9px;margin-top:18px;font-size:14.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 72%, transparent)">
+          <div style="display:flex;gap:10px"><i class="ph ph-arrow-elbow-down-right" style="color:var(--color-accent);flex:none;margin-top:3px"></i><span>Chat, research, embedding, rerank, web search and media configured separately</span></div>
+          <div style="display:flex;gap:10px"><i class="ph ph-arrow-elbow-down-right" style="color:var(--color-accent);flex:none;margin-top:3px"></i><span>Local models or third-party cloud services</span></div>
+          <div style="display:flex;gap:10px"><i class="ph ph-arrow-elbow-down-right" style="color:var(--color-accent);flex:none;margin-top:3px"></i><span>Tools, skills, MCP and authorised commands</span></div>
+          <div style="display:flex;gap:10px"><i class="ph ph-arrow-elbow-down-right" style="color:var(--color-accent);flex:none;margin-top:3px"></i><span>Permission, budget and usage under your control</span></div>
+          <div style="display:flex;gap:10px"><i class="ph ph-arrow-elbow-down-right" style="color:var(--color-accent);flex:none;margin-top:3px"></i><span>Index readiness at a glance — when something isn't configured, Peak says so</span></div>
+        </div>
+      </div>
+      <div class="shot" style="aspect-ratio:2411/1512;position:relative">
+        <sc-if value="{{ opsA }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-settings-1" shape="rect" src="assets/landing/screens/settings.png" placeholder="Settings — index readiness"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ opsB }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-settings-2" shape="rect" placeholder="Settings — index modes"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ opsC }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;animation:fadeUp .35s ease both"><image-slot id="shot-settings-3" shape="rect" placeholder="Settings — provider routing"></image-slot></div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="margin-top:8px;padding-bottom:24px">
+      <div id="filetypes" style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+        <span style="font-size:13.5px;font-weight:500;color:color-mix(in srgb, var(--color-text) 78%, transparent)">Reads &amp; writes your whole vault</span>
+        <span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">12+ file types, one index</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px 16px;justify-content:center;align-items:center;padding:30px 18px;background:var(--color-surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)">
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:9px;padding:10px 20px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-accent-700);background:color-mix(in srgb, var(--color-accent) 8%, transparent);font-size:20px;font-weight:500"><i class="ph ph-file-md" style="color:var(--color-accent);font-size:24px"></i>Markdown</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-accent-700);background:color-mix(in srgb, var(--color-accent) 6%, transparent);font-size:17.5px"><i class="ph ph-file-pdf" style="color:var(--color-accent-300);font-size:21px"></i>PDF</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-accent-700);background:color-mix(in srgb, var(--color-accent) 6%, transparent);font-size:17.5px"><i class="ph ph-image" style="color:var(--color-accent-300);font-size:21px"></i>Images</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:8px;padding:8px 17px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:16px;color:color-mix(in srgb, var(--color-text) 82%, transparent)"><i class="ph ph-scribble" style="color:var(--color-accent-300);font-size:19px"></i>Excalidraw</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:8px;padding:8px 17px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:16px;color:color-mix(in srgb, var(--color-text) 82%, transparent)"><i class="ph ph-squares-four" style="color:var(--color-accent-300);font-size:19px"></i>Canvas</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)"><i class="ph ph-file-csv" style="color:color-mix(in srgb, var(--color-text) 55%, transparent);font-size:17px"></i>CSV</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)"><i class="ph ph-brackets-curly" style="color:color-mix(in srgb, var(--color-text) 55%, transparent);font-size:17px"></i>JSON</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)"><i class="ph ph-file-html" style="color:color-mix(in srgb, var(--color-text) 55%, transparent);font-size:17px"></i>HTML</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)"><i class="ph ph-file-doc" style="color:color-mix(in srgb, var(--color-text) 55%, transparent);font-size:17px"></i>DOCX</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)"><i class="ph ph-file-xls" style="color:color-mix(in srgb, var(--color-text) 55%, transparent);font-size:17px"></i>XLSX</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)"><i class="ph ph-file-ppt" style="color:color-mix(in srgb, var(--color-text) 55%, transparent);font-size:17px"></i>PPTX</span>
+        <span class="cloud-chip" style="display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)"><i class="ph ph-link" style="color:color-mix(in srgb, var(--color-text) 55%, transparent);font-size:17px"></i>URL</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="more" data-screen-label="More" class="rule" style="padding:48px 0 56px;margin-top:20px">
+    <span style="display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent);margin-bottom:20px">Also in the box</span>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px">
+      <div class="card elev-sm" style="padding:var(--space-8)">
+        <span class="card-title">MCP, skills &amp; tools</span>
+        <p class="card-body" style="font-size:13.5px;line-height:1.6">Extend agents with MCP servers, skills, and authorized plugin commands — always under your permissions and budgets.</p>
+      </div>
+      <div class="card elev-sm" style="padding:var(--space-8)">
+        <span class="card-title">Usage &amp; traces</span>
+        <p class="card-body" style="font-size:13.5px;line-height:1.6">A dashboard for what ran, what it cost, and why — every run inspectable after the fact.</p>
+      </div>
+      <div class="card elev-sm" style="padding:var(--space-8);grid-column:1/-1;display:grid;grid-template-columns:minmax(280px,1fr) minmax(280px,420px);gap:24px;align-items:center">
         <div>
-          <p>Three work modes</p>
-          <h2>The right kind of intelligence for the work in front of you.</h2>
+          <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;margin-bottom:6px"><i class="ph ph-keyboard" style="color:var(--color-accent);font-size:18px"></i>Keyboard-first — a key for everything, everywhere</div>
+          <p style="font-size:13px;line-height:1.6;margin:0 0 12px;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Nearly every Peak surface answers to single keys — jump between panes, reshape views, open inspectors — without ever touching the mouse.</p>
+          <div style="display:flex;gap:6px 8px;flex-wrap:wrap;align-items:center;font-size:12px;color:color-mix(in srgb, var(--color-text) 64%, transparent)">
+            <span style="padding:2px 8px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-600);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 85%, transparent)">V</span><span>vault</span>
+            <span style="padding:2px 8px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-600);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 85%, transparent)">A</span><span>AI</span>
+            <span style="padding:2px 8px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-600);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 85%, transparent)">Q</span><span>query</span>
+            <span style="padding:2px 8px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-600);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 85%, transparent)">F</span><span>filters</span>
+            <span style="padding:2px 8px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-600);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 85%, transparent)">R</span><span>results</span>
+            <span style="padding:2px 8px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-600);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 85%, transparent)">D</span><span>details</span>
+            <span style="padding:2px 8px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-600);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 85%, transparent)">→</span><span>inspector</span>
+          </div>
         </div>
-      </header>
-
-      <div class="work-modes">
-        <article><span>A</span><h3>Copilot</h3><p>Inside the note. Exact scope, explicit context, reviewable changes.</p><small>Selection · Block · Document · History</small></article>
-        <article><span>B</span><h3>Connections</h3><p>Around the note. Related material, neighbourhoods, hubs, and gaps.</p><small>List · Tree · Graph · Intelligence</small></article>
-        <article><span>C</span><h3>Agent</h3><p>Across the task. Projects, tools, permissions, artifacts, and recovery.</p><small>Studio · Skills · MCP · Providers</small></article>
+        <div style="aspect-ratio:16/9;border-radius:var(--radius-md);overflow:hidden;box-shadow:inset 0 0 0 1px var(--color-neutral-700)"><image-slot id="shot-keyboard" shape="rect" placeholder="Drop: key-hint overlays in the UI"></image-slot></div>
       </div>
+    </div>
+  </div>
 
-      <div class="product-tour">
-        <div class="tour-tabs" role="tablist" aria-label="Product surfaces">
-          <button type="button" role="tab" aria-selected="true" data-tour="graph" data-image="assets/file-atlas-graph-preview.webp" data-width="1440" data-height="900" data-title="Graph" data-copy="Move from one note to its local neighbourhood, then into the structure of the vault." data-alt="File Atlas graph showing the current note and its local knowledge neighbourhood">Graph</button>
-          <button type="button" role="tab" aria-selected="false" data-tour="studio" data-image="assets/chat-studio-preview.webp" data-width="1440" data-height="810" data-title="Chat Studio" data-copy="Keep projects, conversations, resources, artifacts, and agent runs in one workspace." data-alt="Chat Studio project workspace with conversations and project context">Chat Studio</button>
-          <button type="button" role="tab" aria-selected="false" data-tour="command" data-image="assets/command-center-preview.webp" data-width="1220" data-height="810" data-title="Command Center" data-copy="Return to files, workspaces, dashboards, bookmarks, and trusted actions." data-alt="Command Center home with files, destinations, and grouped actions">Command Center</button>
-          <button type="button" role="tab" aria-selected="false" data-tour="sheet" data-image="assets/peak-sheet-preview.webp" data-width="1440" data-height="900" data-title="Peak Sheet" data-copy="A designed-next data surface for datasets, formulas, charts, and revision-safe AI plans." data-alt="Peak Sheet design with a dataset and an AI formula plan">Peak Sheet</button>
-        </div>
-        <figure class="tour-visual">
-          <img src="assets/file-atlas-graph-preview.webp" width="1440" height="900" loading="lazy" alt="File Atlas graph showing the current note and its local knowledge neighbourhood">
-          <figcaption><b>Graph</b><span>Move from one note to its local neighbourhood, then into the structure of the vault.</span></figcaption>
-        </figure>
+  <div id="terms" data-screen-label="Terms" class="rule">
+    <div style="position:relative;overflow:hidden;padding:56px 0 48px">
+      <canvas id="pitch-w1" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.75"></canvas>
+      <div class="mark" style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(120px,15vw,200px);line-height:1;color:transparent;-webkit-text-stroke:1.5px color-mix(in srgb, var(--color-accent) 24%, transparent)">$0</div>
+      <div style="max-width:760px;position:relative">
+        <h3 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(38px,4.6vw,64px);line-height:1.06;letter-spacing:-.015em;margin:0">No Peak plan <span style="color:var(--color-accent)">required.</span></h3>
+        <p style="font-size:16.5px;line-height:1.65;margin:20px 0 0;max-width:54ch;color:color-mix(in srgb, var(--color-text) 78%, transparent)">Peak Assistant has no subscription, seat, or usage fee, and it does not resell tokens. Connect your own providers and pay them directly — or run local models and pay nothing at all.</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:18px"><span class="tag tag-accent">no plan</span><span class="tag tag-neutral">your keys</span><span class="tag tag-neutral">pay providers directly</span><span class="tag tag-neutral">open source</span></div>
       </div>
-    </section>
-
-    <section class="roadmap section" id="roadmap">
-      <header class="section-intro">
-        <span class="section-number">04</span>
-        <div>
-          <p>Roadmap</p>
-          <h2>What exists, what closes next, and what remains research.</h2>
-        </div>
-      </header>
-
-      <div class="roadmap-columns">
-        <article><span>Now</span><h3>In the current source</h3><p>Search · File Atlas · Graph · Vault Intelligence · Composer · Chat Studio · providers · media</p></article>
-        <article><span>Next</span><h3>Closing the product</h3><p>AI Control Center · Composer Intelligence · Command Center acceptance · durable media jobs</p></article>
-        <article><span>Later</span><h3>Designed and researched</h3><p>Peak Sheet · File Workspace · Peak Share · advanced graph · external source sync</p></article>
+    </div>
+    <div class="rule" style="position:relative;overflow:hidden;padding:48px 0">
+      <canvas id="pitch-w2" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.75"></canvas>
+      <i class="ph ph-lock-key mark" style="font-size:clamp(120px,15vw,190px);color:color-mix(in srgb, var(--color-accent) 10%, transparent)"></i>
+      <div style="max-width:760px;position:relative">
+        <h3 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(38px,4.6vw,64px);line-height:1.06;letter-spacing:-.015em;margin:0">Your data <span style="color:var(--color-accent)">never leaves.</span></h3>
+        <p style="font-size:16.5px;line-height:1.65;margin:20px 0 0;max-width:54ch;color:color-mix(in srgb, var(--color-text) 78%, transparent)">Peak keeps no cloud copy of your workspace — no accounts, no telemetry on your notes. Everything stays plain files on your machine; only a call you explicitly make sends the context it needs to the provider you chose.</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:18px"><span class="tag tag-accent">no cloud copy</span><span class="tag tag-neutral">plain Markdown</span><span class="tag tag-neutral">local index</span></div>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <section class="trust section" id="trust">
-      <header class="section-intro trust-intro">
-        <span class="section-number">05</span>
-        <div>
-          <p>Trust</p>
-          <h2>Your vault remains the source of truth.</h2>
-        </div>
-        <p class="section-summary">Local-first features carry no Peak fee. Provider-backed AI only uses the services you configure.</p>
-      </header>
-      <div class="trust-lines">
-        <span><b>Local core</b> No Peak subscription</span>
-        <span><b>Your files</b> Markdown stays yours</span>
-        <span><b>Your models</b> Local or cloud</span>
-        <span><b>Your changes</b> Review before accepting</span>
-      </div>
-      <p class="support-line">There is no payment link today. Stars, reproducible feedback, and focused contributions help the project move forward.</p>
-    </section>
+  <div id="trust" data-screen-label="Trust" class="rule" style="padding:48px 0 52px">
+    <span style="display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent);margin-bottom:24px">Built to be checked</span>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px 40px">
+      <div><div style="font-size:15.5px;font-weight:500;margin-bottom:5px">Answers keep their sources</div><p style="font-size:13px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Every report is one click from the exact passage it came from — no trust me, verify instead.</p></div>
+      <div><div style="font-size:15.5px;font-weight:500;margin-bottom:5px">Edits are candidates</div><p style="font-size:13px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Diff, review, accept, or reject — with history and receipts kept.</p></div>
+      <div><div style="font-size:15.5px;font-weight:500;margin-bottom:5px">Indexes are local projections</div><p style="font-size:13px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Notes stay plain files on your machine; the index is rebuildable and never leaves it.</p></div>
+      <div><div style="font-size:15.5px;font-weight:500;margin-bottom:5px">Runs where you work</div><p style="font-size:13px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Obsidian Desktop. Install by building from source; no binary release yet.</p></div>
+    </div>
+  </div>
 
-    <section class="final-cta section">
-      <p>Peak Assistant is an open-source development preview for Obsidian desktop.</p>
-      <h2>Make the whole vault useful.</h2>
-      <div class="hero-actions centered">
-        <a class="button button-light" href="https://github.com/highestpeak/obsidian-peak-assistant">Explore on GitHub <span aria-hidden="true">↗</span></a>
-        <a class="button button-quiet" href="https://github.com/highestpeak/obsidian-peak-assistant#quick-start">Build the preview</a>
-      </div>
-    </section>
-  </main>
+  <div id="soon" data-screen-label="Coming soon" class="rule" style="padding:48px 0 60px">
+    <span style="display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent);margin-bottom:20px">Coming soon</span>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:16px">
+      <div class="card" style="padding:var(--space-8)"><div style="display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:500;margin-bottom:5px"><i class="ph ph-plugs-connected" style="color:var(--color-accent);font-size:17px"></i>More providers</div><p style="font-size:12.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">A wider gateway — more clouds, more local runtimes, one consistent capability layer.</p></div>
+      <div class="card" style="padding:var(--space-8)"><div style="display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:500;margin-bottom:5px"><i class="ph ph-waveform" style="color:var(--color-accent);font-size:17px"></i>Smoother everywhere</div><p style="font-size:12.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Fewer clicks, faster panes, tighter flows across every surface.</p></div>
+      <div class="card" style="padding:var(--space-8)"><div style="display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:500;margin-bottom:5px"><i class="ph ph-sparkle" style="color:var(--color-accent);font-size:17px"></i>Better results</div><p style="font-size:12.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Smarter ranking, richer graphs, sharper answers from the same vault.</p></div>
+      <div class="card" style="padding:var(--space-8)"><div style="display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:500;margin-bottom:5px"><i class="ph ph-files" style="color:var(--color-accent);font-size:17px"></i>More file types</div><p style="font-size:12.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Audio, video, and more formats folded into the same index.</p></div>
+      <div class="card" style="padding:var(--space-8)"><div style="display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:500;margin-bottom:5px"><i class="ph ph-device-mobile" style="color:var(--color-accent);font-size:17px"></i>Mobile</div><p style="font-size:12.5px;line-height:1.6;margin:0;color:color-mix(in srgb, var(--color-text) 64%, transparent)">Obsidian Mobile support — the same assistant in your pocket.</p></div>
+    </div>
+  </div>
 
-  <footer>
-    <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Peak Assistant</span></a>
-    <p>Open source · GPL-3.0 · Obsidian desktop</p>
-    <div><a href="https://github.com/highestpeak/obsidian-peak-assistant">GitHub</a><a href="https://github.com/highestpeak/obsidian-peak-assistant/tree/master/docs">Docs</a><a href="https://github.com/highestpeak/obsidian-peak-assistant/issues">Issues</a></div>
-  </footer>
+  <div data-screen-label="Close" class="rule" style="padding:60px 0 56px;position:relative">
+    <canvas id="peak-constellation-close" style="position:absolute;inset:-30px -60px 0 0;width:calc(100% + 60px);height:calc(100% + 30px);pointer-events:none;z-index:-1;mask-image:linear-gradient(to right, transparent 0, rgba(0,0,0,.35) 45%, black 70%);-webkit-mask-image:linear-gradient(to right, transparent 0, rgba(0,0,0,.35) 45%, black 70%)"></canvas>
+    <div style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:clamp(28px,3.4vw,46px);line-height:1.28;letter-spacing:-.014em;display:grid;gap:2px">
+      <a href="#graph" style="color:var(--color-text);transition:color .25s ease" style-hover="color:var(--color-accent)">See the whole system.</a>
+      <a href="#composer" style="color:var(--color-text);transition:color .25s ease" style-hover="color:var(--color-accent)">Work inside the source.</a>
+      <a href="#context" style="color:var(--color-text);transition:color .25s ease" style-hover="color:var(--color-accent)">Keep the thread as you move.</a>
+      <a href="#configure" style="color:var(--color-accent)">Configure intelligence around the work.</a>
+    </div>
+    <p style="font-size:15.5px;line-height:1.65;margin:24px 0 0;max-width:64ch;color:color-mix(in srgb, var(--color-text) 78%, transparent)">Open source, in active development. Build it from source today or watch the repo for the first release.</p>
+    <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;margin-top:24px">
+      <a class="btn btn-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">View on GitHub</a>
+      <a class="btn btn-secondary" href="https://github.com/highestpeak/obsidian-peak-assistant/tree/master/docs">Docs</a>
+    </div>
+  </div>
+
+  <div data-screen-label="Footer" style="padding:0 0 40px;font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Peak Assistant — an independent open-source project. Not affiliated with Obsidian.</div>
+</div>
+
+</div>
+
+
+  </x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;repoUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;#&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Links&quot;},&quot;docsUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;#&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Links&quot;},&quot;autoCycleViews&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+class Component extends DCLogic {
+  state = { view: 'graph', paused: false, typed: '', phase: 'typing', tick: 0, heroIdx: 1, heroPaused: false, pins: {} };
+
+  componentDidMount() { try { this.bootAnimations(); } catch (e) { window.__bootErr = String(e && e.stack || e); } }
+  componentWillUnmount() {
+    window.__peakAnimGen = (window.__peakAnimGen || 0) + 1;
+    clearInterval(this.masterTimer);
+  }
+  bootAnimations() {
+    const gen = window.__peakAnimGen = (window.__peakAnimGen || 0) + 1;
+    clearInterval(this.masterTimer);
+    const beat = () => { window.__peakAnimBeat = Date.now(); };
+    beat();
+    if (!window.__peakMouseBound) {
+      window.__peakMouseBound = true;
+      window.addEventListener('mousemove', e => { window.__peakMouse = { x: e.clientX / window.innerWidth - .5, y: e.clientY / window.innerHeight - .5 }; });
+    }
+    const order = ['graph', 'list', 'tree'];
+    this.queries = [
+      { q: 'peakassistant', n: '50 results · 399 ms' },
+      { q: 'where did we validate the pricing change?', r: '"pricing" tag:#interview path:Projects/ after:2025-11' },
+      { q: '表格 性能 优化', n: '18 results · 212 ms' },
+      { q: 'notes about peak assistant agent mode', r: 'peakassistant tag:#agent -path:Archive/' },
+    ];
+    this.ty = { qi: 0, pos: 0, mode: 'type', wait: 0 };
+    let n = 0;
+    const timer = setInterval(() => {
+      if (gen !== window.__peakAnimGen) { clearInterval(timer); return; }
+      n++;
+      const t = this.ty, pair = this.queries[t.qi];
+      let typed = this.state.typed, phase = this.state.phase;
+      if (t.mode === 'type') {
+        t.pos++; typed = pair.q.slice(0, t.pos); phase = 'typing';
+        if (t.pos >= pair.q.length) { t.mode = 'hold'; t.wait = 14; }
+      } else if (t.mode === 'hold') {
+        if (--t.wait <= 0) {
+          if (pair.r) { t.mode = 'show'; t.wait = 32; typed = pair.r; phase = 'refined'; }
+          else { t.mode = 'show'; t.wait = 32; phase = 'found'; }
+        }
+      } else if (t.mode === 'show') {
+        if (--t.wait <= 0) { t.mode = 'del'; t.pos = typed.length; }
+      } else {
+        t.pos = Math.max(0, t.pos - 3); typed = (pair.r || pair.q).slice(0, t.pos); phase = 'typing';
+        if (t.pos === 0) { t.qi = (t.qi + 1) % this.queries.length; t.mode = 'type'; }
+      }
+      if (typed !== this.state.typed || phase !== this.state.phase) this.setState({ typed, phase });
+      if (n % 29 === 0) this.setState(s => ({ tick: s.tick + 1 }));
+      if (n % 80 === 0 && !this.state.paused && (this.props.autoCycleViews ?? true)) {
+        this.setState(s => ({ view: order[(order.indexOf(s.view) + 1) % 3] }));
+      }
+      if (n % 49 === 0 && !this.state.heroPaused) this.setState(s => ({ heroIdx: (s.heroIdx + 1) % 5 }));
+    }, 65);
+    this.masterTimer = timer;
+    this.painters = [];
+    this.spawnField('peak-constellation', { cx: .68, cy: .48, rw: .30, rh: .58, n: 110, rings: true, speed: .0018, docs: true, ops: true });
+    this.spawnWaves('peak-constellation-close');
+    this.spawnClusters('viz-graph');
+    this.spawnDiff('viz-composer');
+    for (let i = 1; i <= 4; i++) this.spawnWaves('pitch-w' + i, i * 1.7);
+    const paint = () => {
+      if (gen !== window.__peakAnimGen) return;
+      beat();
+      this.painters.forEach(p => { try { p(); } catch (e) { window.__paintErr = String(e && e.stack || e); } });
+      requestAnimationFrame(paint);
+    };
+    requestAnimationFrame(paint);
+  }
+  spawnWaves(id, seed) {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const s = seed || 0;
+    const waves = [
+      { base: .30, amp: .10, freq: 5.2, sp: .35, ph: 0 + s, a: .22 },
+      { base: .50, amp: .14, freq: 3.8, sp: .26, ph: 2.1 + s, a: .30 },
+      { base: .68, amp: .09, freq: 6.4, sp: .45, ph: 4.2 + s, a: .16 },
+    ];
+    const riders = [];
+    for (let i = 0; i < 7; i++) riders.push({ u: Math.random(), w: i % 3, sp: .018 + Math.random() * .022 });
+    const draw = () => {
+      const cv = document.getElementById(id);
+      if (cv) {
+        const rect = cv.getBoundingClientRect();
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const W = Math.round(rect.width * dpr), H = Math.round(rect.height * dpr);
+        if (W > 0 && H > 0) {
+          if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+          const ctx = cv.getContext('2d');
+          ctx.clearRect(0, 0, W, H);
+          const t = reduced ? 0 : performance.now() / 1000;
+          const yAt = (wv, u) => H * (wv.base + wv.amp * Math.sin(u * wv.freq + t * wv.sp * 2 + wv.ph) + wv.amp * .4 * Math.sin(u * wv.freq * 2.3 - t * wv.sp + wv.ph));
+          waves.forEach(wv => {
+            ctx.strokeStyle = 'rgba(145,132,217,' + wv.a + ')';
+            ctx.lineWidth = dpr;
+            ctx.beginPath();
+            const steps = 90;
+            for (let i = 0; i <= steps; i++) {
+              const u = i / steps, x = u * W, y = yAt(wv, u);
+              i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          });
+          riders.forEach(r => {
+            if (!reduced) { r.u += r.sp / 60; if (r.u > 1.02) r.u = -.02; }
+            const wv = waves[r.w], x = r.u * W, y = yAt(wv, r.u);
+            const g = ctx.createRadialGradient(x, y, 0, x, y, 9 * dpr);
+            g.addColorStop(0, 'rgba(185,175,235,.55)'); g.addColorStop(1, 'rgba(185,175,235,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(x, y, 9 * dpr, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(220,214,245,.9)';
+            ctx.beginPath(); ctx.arc(x, y, 1.6 * dpr, 0, Math.PI * 2); ctx.fill();
+          });
+        }
+      }
+    };
+    this.painters.push(draw);
+  }
+  /* Graph: a flat list becomes a tree, the tree becomes a graph, the graph shows what needs fixing */
+  spawnClusters(id) {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const items = [];
+    const tree = [[0,0],[1,0],[1,1],[2,1],[2,1],[1,2],[2,2],[0,3],[1,3],[2,3],[1,4],[2,4],[1,5],[2,5]];
+    const N = tree.length;
+    for (let i = 0; i < N; i++) {
+      const [depth, branch] = tree[i];
+      const a = (branch / 6) * 6.283 + .5, rr = depth === 0 ? .08 : depth === 1 ? .42 : .78;
+      items.push({
+        i, depth, branch,
+        w: .46 + Math.random() * .40,
+        gu: .5 + Math.cos(a + depth * .5) * rr * .46,
+        gv: .5 + Math.sin(a + depth * .5) * rr * .38,
+        hub: depth === 0,
+        orphan: i === 12,
+        ph: Math.random() * 6.28,
+      });
+    }
+    const links = [];
+    for (let i = 1; i < N; i++) {
+      if (items[i].orphan) continue;
+      let p = -1;
+      for (let j = i - 1; j >= 0; j--) if (items[j].depth === items[i].depth - 1) { p = j; break; }
+      if (p >= 0) links.push({ a: p, b: i, broken: i === 6 });
+    }
+    const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const draw = () => {
+      const cv = document.getElementById(id); if (!cv) return;
+      const rect = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+      const W = Math.round(rect.width * dpr), H = Math.round(rect.height * dpr);
+      if (W <= 0 || H <= 0) return;
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+      const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+      const T = reduced ? 11 : performance.now() / 1000;
+      const CYC = 15, u = (T % CYC) / CYC;
+      const kT = u < .10 ? 0 : ease(Math.min(1, (u - .10) / .16));           // list → tree
+      const kG = u < .34 ? 0 : ease(Math.min(1, (u - .34) / .20));           // tree → graph
+      const kM = u < .62 ? 0 : u < .90 ? ease((u - .62) / .12) : 1 - ease(Math.min(1, (u - .90) / .10)); // maintenance marks
+      const back = u > .90 ? ease((u - .90) / .10) : 0;
+      const kTf = kT * (1 - back), kGf = kG * (1 - back);
+      const padX = 20 * dpr, padY = 16 * dpr, lh = (H - padY * 2) / N;
+      const bh = Math.min(5 * dpr, lh * .48), indent = 16 * dpr;
+      const listX = padX, treeX = i => padX + items[i].depth * indent;
+      const pos = it => {
+        const lx = listX + (treeX(it.i) - listX) * kTf;
+        const ly = padY + it.i * lh + (lh - bh) / 2 + bh / 2;
+        const gx = padX + it.gu * (W - padX * 2), gy = padY + it.gv * (H - padY * 2);
+        return { x: lx + (gx - lx) * kGf, y: ly + (gy - ly) * kGf };
+      };
+      // tree connectors
+      if (kTf > .05 && kGf < .95) {
+        ctx.strokeStyle = 'rgba(164,158,194,' + (.22 * kTf * (1 - kGf)).toFixed(3) + ')';
+        ctx.lineWidth = dpr * .8;
+        links.forEach(l => {
+          const A = pos(items[l.a]), B = pos(items[l.b]);
+          ctx.beginPath(); ctx.moveTo(A.x + 1, A.y); ctx.lineTo(A.x + 1, B.y); ctx.lineTo(B.x - 5 * dpr, B.y); ctx.stroke();
+        });
+      }
+      // graph links
+      if (kGf > .05) {
+        links.forEach(l => {
+          const A = pos(items[l.a]), B = pos(items[l.b]);
+          const bad = l.broken && kM > 0;
+          ctx.strokeStyle = bad ? 'rgba(206,128,128,' + (.55 * kM * kGf).toFixed(3) + ')' : 'rgba(145,132,217,' + (.30 * kGf).toFixed(3) + ')';
+          ctx.lineWidth = dpr * (bad ? 1.2 : .9);
+          ctx.setLineDash(bad ? [4 * dpr, 4 * dpr] : []);
+          ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+          ctx.setLineDash([]);
+        });
+      }
+      items.forEach(it => {
+        const p = pos(it), tw = .7 + .3 * Math.sin(T * 1.2 + it.ph);
+        const barW = (W - padX * 2 - it.depth * indent) * it.w * (1 - kGf);
+        const dotW = (it.hub ? 6.4 : 4.4) * dpr;
+        if (it.hub && kGf > .2) {
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 22 * dpr);
+          g.addColorStop(0, 'rgba(145,132,217,' + (.36 * kGf * tw).toFixed(3) + ')');
+          g.addColorStop(1, 'rgba(145,132,217,0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 22 * dpr, 0, 6.284); ctx.fill();
+        }
+        ctx.fillStyle = it.hub ? 'rgba(203,195,246,' + (.55 + .4 * kGf).toFixed(3) + ')' : 'rgba(233,233,237,' + (.30 + .28 * tw * kGf).toFixed(3) + ')';
+        const w = Math.max(barW, dotW), h = bh + (dotW * 1.3 - bh) * kGf;
+        ctx.fillRect(p.x - (kGf > .5 ? w / 2 : 0), p.y - h / 2, w, h);
+        if (kM > 0 && it.orphan) {
+          ctx.strokeStyle = 'rgba(208,168,92,' + (.6 * kM).toFixed(3) + ')';
+          ctx.lineWidth = dpr; ctx.setLineDash([3 * dpr, 4 * dpr]);
+          ctx.beginPath(); ctx.arc(p.x, p.y, (10 + 4 * Math.sin(T * 2)) * dpr, 0, 6.284); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+      ctx.font = '500 ' + (11.5 * dpr) + 'px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      const lbl = kM > .4 ? 'hub · orphan · broken link — and the fix' : kGf > .5 ? 'the graph' : kTf > .5 ? 'structure' : 'a flat list';
+      ctx.fillStyle = 'rgba(200,192,244,.6)';
+      ctx.fillText(lbl, 16 * dpr, H - 10 * dpr);
+    };
+    this.painters.push(draw);
+  }
+
+  spawnHops(id) {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const R1 = 6, R2 = 11;
+    const build = () => {
+      const ring1 = [], ring2 = [];
+      for (let i = 0; i < R1; i++) {
+        const a = (i / R1) * 6.283 + Math.random() * .5;
+        ring1.push({ a, r: .30 + Math.random() * .07, hub: i === 1 });
+      }
+      for (let i = 0; i < R2; i++) {
+        const a = (i / R2) * 6.283 + Math.random() * .35;
+        ring2.push({ a, r: .62 + Math.random() * .12, par: Math.floor(Math.random() * R1) });
+      }
+      return { ring1, ring2 };
+    };
+    let g = build(), cycleN = 0;
+    const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const draw = () => {
+      const cv = document.getElementById(id); if (!cv) return;
+      const rect = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+      const W = Math.round(rect.width * dpr), H = Math.round(rect.height * dpr);
+      if (W <= 0 || H <= 0) return;
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+      const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+      const T = reduced ? 5 : performance.now() / 1000;
+      const CYC = 9, n = Math.floor(T / CYC), u = (T % CYC) / CYC;
+      if (n !== cycleN) { cycleN = n; g = build(); }
+      const cx = W * .5, cy = H * .52, S = Math.min(W * .40, H * .40);
+      const k1 = u < .12 ? 0 : ease(Math.min(1, (u - .12) / .22));
+      const k2 = u < .34 ? 0 : ease(Math.min(1, (u - .34) / .24));
+      const out = u > .86 ? ease((u - .86) / .14) : 0;
+      const alpha = 1 - out;
+      const mark = (x, y, sz, a, hub) => {
+        if (hub) {
+          const gr = ctx.createRadialGradient(x, y, 0, x, y, sz * 6);
+          gr.addColorStop(0, 'rgba(145,132,217,' + (.42 * a).toFixed(3) + ')');
+          gr.addColorStop(1, 'rgba(145,132,217,0)');
+          ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, sz * 6, 0, 6.284); ctx.fill();
+        }
+        ctx.fillStyle = hub ? 'rgba(203,195,246,' + a.toFixed(3) + ')' : 'rgba(233,233,237,' + (.62 * a).toFixed(3) + ')';
+        ctx.fillRect(x - sz / 2, y - sz * .65, sz, sz * 1.3);
+      };
+      const P = (o, kk) => ({ x: cx + Math.cos(o.a) * S * o.r * kk, y: cy + Math.sin(o.a) * S * o.r * kk * .82 });
+      ctx.setLineDash([3 * dpr, 6 * dpr]);
+      ctx.lineWidth = dpr * .7;
+      [.34, .66].forEach((rr, ri) => {
+        const kk = ri === 0 ? k1 : k2;
+        if (kk <= 0) return;
+        ctx.strokeStyle = 'rgba(145,132,217,' + (.14 * kk * alpha).toFixed(3) + ')';
+        ctx.beginPath(); ctx.ellipse(cx, cy, S * rr * 1.6, S * rr * 1.32, 0, 0, 6.284); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      if (k2 > 0) g.ring2.forEach((o, i) => {
+        const kk = Math.min(1, Math.max(0, (k2 - (i / R2) * .35) * 1.5));
+        if (kk <= 0) return;
+        const A = P(g.ring1[o.par], k1), B = P(o, k2);
+        ctx.strokeStyle = 'rgba(164,158,194,' + (.26 * kk * alpha).toFixed(3) + ')';
+        ctx.lineWidth = dpr * .8;
+        ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(A.x + (B.x - A.x) * kk, A.y + (B.y - A.y) * kk); ctx.stroke();
+      });
+      if (k1 > 0) g.ring1.forEach((o, i) => {
+        const kk = Math.min(1, Math.max(0, (k1 - (i / R1) * .3) * 1.5));
+        if (kk <= 0) return;
+        const B = P(o, k1);
+        ctx.strokeStyle = 'rgba(145,132,217,' + (.42 * kk * alpha).toFixed(3) + ')';
+        ctx.lineWidth = dpr * 1.1;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + (B.x - cx) * kk, cy + (B.y - cy) * kk); ctx.stroke();
+      });
+      if (k2 > 0) g.ring2.forEach((o, i) => {
+        const kk = Math.min(1, Math.max(0, (k2 - (i / R2) * .35) * 1.5));
+        if (kk > 0) { const p = P(o, k2); mark(p.x, p.y, 4 * dpr, .8 * kk * alpha, false); }
+      });
+      if (k1 > 0) g.ring1.forEach((o, i) => {
+        const kk = Math.min(1, Math.max(0, (k1 - (i / R1) * .3) * 1.5));
+        if (kk > 0) { const p = P(o, k1); mark(p.x, p.y, 5.4 * dpr, kk * alpha, o.hub); }
+      });
+      const pulse = .55 + .45 * Math.sin(T * 2);
+      const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, 30 * dpr);
+      gr.addColorStop(0, 'rgba(145,132,217,' + (.34 * pulse * alpha).toFixed(3) + ')');
+      gr.addColorStop(1, 'rgba(145,132,217,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, 30 * dpr, 0, 6.284); ctx.fill();
+      mark(cx, cy, 7.4 * dpr, alpha, false);
+      ctx.font = '500 ' + (11.5 * dpr) + 'px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(200,192,244,' + (.55 * alpha).toFixed(3) + ')';
+      ctx.fillText(k2 > .4 ? 'two hops out' : k1 > .4 ? 'one hop out' : 'one file', 16 * dpr, H - 13 * dpr);
+    };
+    this.painters.push(draw);
+  }
+
+  /* Composer: a candidate opens beside the source block, diffs resolve, the text settles */
+  spawnDiff(id) {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ROWS = 11, TARGET = [4, 5, 6];
+    const lines = [];
+    for (let i = 0; i < ROWS; i++) lines.push({ w: .34 + Math.random() * .58, w2: .34 + Math.random() * .58, head: i === 0 || i === 7 });
+    const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const draw = () => {
+      const cv = document.getElementById(id); if (!cv) return;
+      const rect = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+      const W = Math.round(rect.width * dpr), H = Math.round(rect.height * dpr);
+      if (W <= 0 || H <= 0) return;
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+      const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+      const T = reduced ? 5.5 : performance.now() / 1000;
+      const CYC = 10, u = (T % CYC) / CYC;
+      const sel = u < .10 ? ease(u / .10) : u > .93 ? 1 - ease((u - .93) / .07) : 1;
+      const open = u < .16 ? 0 : u < .40 ? ease((u - .16) / .24) : u > .84 ? 1 - ease((u - .84) / .09) : 1;
+      const diff = u < .40 ? 0 : u < .58 ? ease((u - .40) / .18) : 1;
+      const accept = u < .66 ? 0 : u < .84 ? ease((u - .66) / .18) : 1;
+      const padX = 26 * dpr, padY = 20 * dpr;
+      const colW = (W - padX * 2) * .82;
+      const lh = (H - padY * 2 - 16 * dpr - 18 * dpr) / (ROWS + TARGET.length);
+      const bh = Math.min(5.5 * dpr, lh * .42);
+      const panelH = (TARGET.length * lh + 18 * dpr) * open;
+      const drift = (1 - open) * (TARGET.length * lh + 18 * dpr) * .5;
+      const rowY = i => padY + drift + i * lh + (lh - bh) / 2 + (i > TARGET[TARGET.length - 1] ? panelH : 0);
+      if (sel > 0) {
+        const y0 = rowY(TARGET[0]) - 5 * dpr, y1 = rowY(TARGET[TARGET.length - 1]) + bh + 5 * dpr;
+        ctx.fillStyle = 'rgba(145,132,217,' + (.12 * sel).toFixed(3) + ')';
+        ctx.fillRect(padX - 9 * dpr, y0, colW + 18 * dpr, y1 - y0);
+        ctx.fillStyle = 'rgba(145,132,217,' + (.85 * sel).toFixed(3) + ')';
+        ctx.fillRect(padX - 9 * dpr, y0, 2 * dpr, y1 - y0);
+      }
+      lines.forEach((ln, i) => {
+        const isT = TARGET.indexOf(i) >= 0;
+        const w = colW * (isT && accept > 0 ? ln.w + (ln.w2 - ln.w) * accept : ln.w);
+        ctx.fillStyle = ln.head ? 'rgba(233,233,237,.55)'
+          : isT ? 'rgba(233,233,237,' + (.30 + .28 * accept).toFixed(3) + ')'
+          : 'rgba(233,233,237,.22)';
+        ctx.fillRect(padX, rowY(i), Math.max(w, 8 * dpr), bh);
+      });
+      if (open > 0) {
+        const y0 = rowY(TARGET[TARGET.length - 1]) + bh + 9 * dpr;
+        const ph = panelH - 12 * dpr, cw = colW + 18 * dpr, cx = padX - 9 * dpr;
+        ctx.globalAlpha = open * (1 - accept * .6);
+        ctx.fillStyle = 'rgba(30,32,50,.92)';
+        ctx.strokeStyle = 'rgba(145,132,217,.45)'; ctx.lineWidth = dpr;
+        const r = 7 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(cx + r, y0); ctx.lineTo(cx + cw - r, y0); ctx.quadraticCurveTo(cx + cw, y0, cx + cw, y0 + r);
+        ctx.lineTo(cx + cw, y0 + ph - r); ctx.quadraticCurveTo(cx + cw, y0 + ph, cx + cw - r, y0 + ph);
+        ctx.lineTo(cx + r, y0 + ph); ctx.quadraticCurveTo(cx, y0 + ph, cx, y0 + ph - r);
+        ctx.lineTo(cx, y0 + r); ctx.quadraticCurveTo(cx, y0, cx + r, y0);
+        ctx.fill(); ctx.stroke();
+        TARGET.forEach((ti, j) => {
+          const y = y0 + 9 * dpr + j * lh, grow = Math.min(1, Math.max(0, (diff - j * .12) * 2.2));
+          if (grow <= 0) return;
+          ctx.fillStyle = j === 1 ? 'rgba(196,120,120,.55)' : 'rgba(140,200,158,.55)';
+          ctx.fillRect(cx + 11 * dpr, y, 3 * dpr, bh);
+          ctx.fillStyle = 'rgba(233,233,237,.44)';
+          ctx.fillRect(cx + 19 * dpr, y, Math.max((cw - 32 * dpr) * lines[ti].w2 * grow, 6 * dpr), bh);
+        });
+        if (accept > 0) {
+          ctx.strokeStyle = 'rgba(140,200,158,' + (.5 * (1 - accept)).toFixed(3) + ')';
+          ctx.lineWidth = 1.4 * dpr; ctx.setLineDash([5 * dpr, 5 * dpr]);
+          const mx = cx + cw * .5, my = y0 - (y0 - rowY(TARGET[1])) * accept;
+          ctx.beginPath(); ctx.moveTo(mx, y0); ctx.lineTo(mx, my); ctx.stroke(); ctx.setLineDash([]);
+        }
+        ctx.globalAlpha = 1;
+      }
+      ctx.font = '500 ' + (11.5 * dpr) + 'px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      const lbl = open < .3 ? 'your document' : accept > .5 ? 'accepted — history kept' : diff > .5 ? 'the difference' : 'a candidate opens under the block';
+      ctx.fillStyle = 'rgba(200,192,244,.6)';
+      ctx.fillText(lbl, 16 * dpr, H - 10 * dpr);
+    };
+    this.painters.push(draw);
+  }
+
+  spawnField(id, o) {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const N = o.n, pts = [];
+    for (let i = 0; i < N; i++) {
+      let x, y, z, d;
+      do { x = Math.random() * 2 - 1; y = Math.random() * 2 - 1; z = Math.random() * 2 - 1; d = x * x + y * y + z * z; } while (d > 1);
+      pts.push({ x, y: y * .72, z, hub: Math.random() < (o.hubs ?? .08), r: .8 + Math.random() * 1.4, ph: Math.random() * Math.PI * 2 });
+    }
+    pts.forEach(p => { if (p.hub) p.r = 2.4 + Math.random() * 1.6; });
+    const edges = [], seen = {};
+    for (let i = 0; i < N; i++) {
+      const ds = pts.map((p, j) => ({ j, d: j === i ? 1e9 : (p.x - pts[i].x) ** 2 + (p.y - pts[i].y) ** 2 + (p.z - pts[i].z) ** 2 }));
+      ds.sort((a, b) => a.d - b.d);
+      for (let k = 0; k < 2; k++) {
+        const key = Math.min(i, ds[k].j) + '-' + Math.max(i, ds[k].j);
+        if (!seen[key]) { seen[key] = 1; edges.push([i, ds[k].j]); }
+      }
+    }
+    const dim = o.dim ?? 1;
+    const adj = {};
+    edges.forEach(([a, b]) => { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); });
+    const rnd = () => Math.floor(Math.random() * N);
+    const OPS = [
+      { label: 'Vault Search · matching notes', kind: 'match' },
+      { label: 'AI Search · reading sources', kind: 'trace' },
+      { label: 'Graph · new relations found', kind: 'link' },
+      { label: 'File Atlas · one hop out', kind: 'hop' },
+      { label: 'Composer · candidate edit', kind: 'edit' },
+      { label: 'Vault Intelligence · hub detected', kind: 'hub' },
+      { label: 'Agents · running a plan', kind: 'trace' },
+    ];
+    let op = null, nextOp = 0, sparks = [];
+    const cam = { z: 1, fx: null, fy: null };
+    const FOCUS = {};
+    const startOp = now => {
+      const def = OPS[Math.floor(Math.random() * OPS.length)];
+      const o2 = { def, t0: now, dur: 5200, nodes: [], links: [] };
+      if (def.kind === 'match') { for (let i = 0; i < 6; i++) o2.nodes.push(rnd()); }
+      else if (def.kind === 'link') {
+        for (let i = 0; i < 3; i++) { const a = rnd(), b = rnd(); if (a !== b) { o2.links.push([a, b]); o2.nodes.push(a, b); } }
+      } else if (def.kind === 'hop') {
+        const c = rnd(); o2.nodes.push(c); (adj[c] || []).slice(0, 2).forEach(n2 => { o2.nodes.push(n2); o2.links.push([c, n2]); });
+      } else if (def.kind === 'edit') { o2.nodes.push(rnd()); }
+      else if (def.kind === 'hub') {
+        let best = 0, bi = 0;
+        for (let i = 0; i < N; i++) { const d = (adj[i] || []).length; if (d > best) { best = d; bi = i; } }
+        o2.nodes.push(bi); (adj[bi] || []).slice(0, 3).forEach(n2 => o2.links.push([bi, n2]));
+      } else {
+        let c = rnd(); o2.nodes.push(c);
+        for (let i = 0; i < 4; i++) {
+          const nb = adj[c]; if (!nb || !nb.length) break;
+          const nx = nb[Math.floor(Math.random() * nb.length)];
+          o2.links.push([c, nx]); o2.nodes.push(nx); c = nx;
+        }
+      }
+      return o2;
+    };
+    let ang = .6, px = 0, py = 0;
+    const draw = () => {
+      const cv = document.getElementById(id);
+      if (cv) {
+        const rect = cv.getBoundingClientRect();
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const W = Math.round(rect.width * dpr), H = Math.round(rect.height * dpr);
+        if (W > 0 && H > 0) {
+          if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+          const ctx = cv.getContext('2d');
+          ctx.clearRect(0, 0, W, H);
+          const M = window.__peakMouse || { x: 0, y: 0 };
+          px += (M.x - px) * .04; py += (M.y - py) * .04;
+          const cx = W * o.cx, cy = H * o.cy, R = Math.min(W * o.rw, H * o.rh);
+          const rot = ang + px * .7, tilt = py * .4;
+          const cosA = Math.cos(rot), sinA = Math.sin(rot);
+          const base = pts.map(p => {
+            const x = p.x * cosA + p.z * sinA, z = -p.x * sinA + p.z * cosA;
+            const y = p.y + tilt * z;
+            const s = 2.8 / (2.8 + z);
+            return { X: cx + x * R * s, Y: cy + y * R * s, s };
+          });
+          let proj = base;
+          if (o.ops) {
+            const nowC = performance.now();
+            const active = op && nowC - op.t0 < op.dur && FOCUS[op.def.kind];
+            const tgt = active ? base[op.nodes[0]] : null;
+            const tz = active ? 1.5 : 1;
+            if (cam.fx === null) { cam.fx = cx; cam.fy = cy; }
+            const dfx = (tgt ? tgt.X : cx), dfy = (tgt ? tgt.Y : cy);
+            cam.fx += (dfx - cam.fx) * .018; cam.fy += (dfy - cam.fy) * .018;
+            cam.z += (tz - cam.z) * .016;
+            if (cam.z > 1.001) proj = base.map(q => ({ X: cx + (q.X - cam.fx) * cam.z, Y: cy + (q.Y - cam.fy) * cam.z, s: q.s * cam.z }));
+          }
+          if (o.rings) {
+            ctx.setLineDash([3 * dpr, 7 * dpr]); ctx.lineWidth = dpr * .7; ctx.strokeStyle = 'rgba(145,132,217,' + (.12 * dim).toFixed(3) + ')';
+            ctx.beginPath(); ctx.ellipse(cx, cy, R * .68, R * .26, -.28, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.02, R * .34, .22, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          for (const [a, b] of edges) {
+            const A = proj[a], B = proj[b];
+            ctx.strokeStyle = 'rgba(164,158,194,' + (.09 * dim * ((A.s + B.s) / 2)).toFixed(3) + ')';
+            ctx.lineWidth = dpr * .7;
+            ctx.beginPath(); ctx.moveTo(A.X, A.Y); ctx.lineTo(B.X, B.Y); ctx.stroke();
+          }
+          const t = reduced ? 0 : performance.now() / 1000;
+          pts.forEach((p, i) => {
+            const q = proj[i];
+            const tw = .55 + .45 * Math.sin(t * 1.2 + p.ph);
+            const r = p.r * q.s * dpr;
+            if (p.hub) {
+              const g = ctx.createRadialGradient(q.X, q.Y, 0, q.X, q.Y, r * 7);
+              g.addColorStop(0, 'rgba(145,132,217,' + (.4 * tw * dim).toFixed(3) + ')');
+              g.addColorStop(1, 'rgba(145,132,217,0)');
+              ctx.fillStyle = g;
+              ctx.beginPath(); ctx.arc(q.X, q.Y, r * 7, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = 'rgba(185,175,235,' + ((.7 + .3 * tw) * dim).toFixed(3) + ')';
+            } else {
+              ctx.fillStyle = 'rgba(233,233,237,' + ((.22 + .4 * tw * q.s) * dim).toFixed(3) + ')';
+            }
+            if (o.docs) {
+              const w = (p.hub ? 7 : 4.4) * q.s * dpr, hh = w * 1.28;
+              ctx.fillRect(q.X - w / 2, q.Y - hh / 2, w, hh);
+              if (p.hub) {
+                ctx.strokeStyle = 'rgba(30,28,44,.85)'; ctx.lineWidth = Math.max(1, dpr * .8);
+                ctx.beginPath();
+                ctx.moveTo(q.X - w * .28, q.Y - hh * .16); ctx.lineTo(q.X + w * .28, q.Y - hh * .16);
+                ctx.moveTo(q.X - w * .28, q.Y + hh * .14); ctx.lineTo(q.X + w * .12, q.Y + hh * .14);
+                ctx.stroke();
+              }
+            } else {
+              ctx.beginPath(); ctx.arc(q.X, q.Y, r, 0, Math.PI * 2); ctx.fill();
+            }
+          });
+          if (o.ops) {
+            const now = performance.now();
+            if (!reduced && now > nextOp) { op = startOp(now); nextOp = now + 6200; }
+            if (op && now - op.t0 < op.dur) {
+              const k = (now - op.t0) / op.dur, fade = Math.min(1, k * 4) * Math.max(0, 1 - Math.max(0, k - .78) / .22);
+              const isLink = op.def.kind === 'link';
+              op.links.forEach((ln, li) => {
+                const seg = op.links.length, sk = Math.min(1, Math.max(0, (k - li / (seg * 1.6)) * 2.2));
+                if (sk <= 0) return;
+                const A = proj[ln[0]], B = proj[ln[1]];
+                const x = A.X + (B.X - A.X) * sk, y = A.Y + (B.Y - A.Y) * sk;
+                ctx.setLineDash(isLink ? [4 * dpr, 5 * dpr] : []);
+                ctx.strokeStyle = 'rgba(185,175,235,' + (.5 * fade).toFixed(3) + ')';
+                ctx.lineWidth = dpr * 1.3;
+                ctx.beginPath(); ctx.moveTo(A.X, A.Y); ctx.lineTo(x, y); ctx.stroke();
+                ctx.setLineDash([]);
+                if (sk < 1) {
+                  const g = ctx.createRadialGradient(x, y, 0, x, y, 6 * dpr);
+                  g.addColorStop(0, 'rgba(215,208,252,' + (.9 * fade).toFixed(3) + ')');
+                  g.addColorStop(1, 'rgba(185,175,235,0)');
+                  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 6 * dpr, 0, Math.PI * 2); ctx.fill();
+                }
+              });
+              const BARC = ['rgba(140,200,158,', 'rgba(196,120,120,', 'rgba(185,175,235,', 'rgba(208,168,92,'];
+              op.nodes.forEach((ni, idx) => {
+                const q = proj[ni], grow = Math.min(1, Math.max(0, (k - idx * .035) * 3));
+                if (grow <= 0) return;
+                ctx.strokeStyle = 'rgba(185,175,235,' + (.55 * fade * grow).toFixed(3) + ')';
+                ctx.lineWidth = dpr * 1.1;
+                ctx.beginPath(); ctx.arc(q.X, q.Y, (5 + 9 * grow) * dpr * q.s, 0, Math.PI * 2); ctx.stroke();
+                ctx.fillStyle = 'rgba(215,208,252,' + (.85 * fade * grow).toFixed(3) + ')';
+                const w2 = 5.6 * q.s * dpr;
+                ctx.fillRect(q.X - w2 / 2, q.Y - w2 * .64, w2, w2 * 1.28);
+                const nb = 3, bh = 2.6 * dpr * q.s, bx = q.X + 9 * dpr * q.s;
+                for (let bi2 = 0; bi2 < nb; bi2++) {
+                  const seed2 = ((ni * 7 + bi2 * 13) % 10) / 10;
+                  const bw = (10 + seed2 * 16) * dpr * q.s * Math.min(1, Math.max(0, (grow - bi2 * .18) * 2));
+                  if (bw <= 0) continue;
+                  ctx.fillStyle = BARC[(ni + bi2) % 4] + (.62 * fade * grow).toFixed(3) + ')';
+                  ctx.fillRect(bx, q.Y - 5 * dpr * q.s + bi2 * (bh + 1.6 * dpr * q.s), bw, bh);
+                }
+              });
+              if (op.def.kind === 'edit') {
+                const q = proj[op.nodes[0]], bw = 26 * dpr * Math.min(1, k * 4), bh = 3.4 * dpr;
+                ctx.fillStyle = 'rgba(196,120,120,' + (.55 * fade).toFixed(3) + ')';
+                ctx.fillRect(q.X + 12 * dpr, q.Y - 10 * dpr, bw, bh);
+                ctx.fillStyle = 'rgba(140,200,158,' + (.6 * fade).toFixed(3) + ')';
+                ctx.fillRect(q.X + 12 * dpr, q.Y - 2 * dpr, bw * .82, bh);
+                ctx.fillRect(q.X + 12 * dpr, q.Y + 6 * dpr, bw * .55, bh);
+              }
+              {
+                const q = proj[op.nodes[0]], rr = (18 + 130 * Math.min(1, k * 1.5)) * dpr;
+                ctx.strokeStyle = 'rgba(185,175,235,' + (.18 * (1 - k)).toFixed(3) + ')';
+                ctx.lineWidth = dpr; ctx.beginPath(); ctx.arc(q.X, q.Y, rr, 0, Math.PI * 2); ctx.stroke();
+              }
+              ctx.font = '500 ' + (12 * dpr) + 'px system-ui, sans-serif';
+              ctx.textAlign = 'right';
+              ctx.fillStyle = 'rgba(200,192,244,' + (.9 * fade).toFixed(3) + ')';
+              ctx.fillText(op.def.label, W - 18 * dpr, H - 18 * dpr);
+            }
+            sparks = sparks.filter(s2 => s2.t < s2.life);
+            sparks.forEach(s2 => {
+              s2.t++; s2.x += s2.vx; s2.y += s2.vy; s2.vy += .002 * dpr;
+              const al = (1 - s2.t / s2.life) * .45;
+              ctx.fillStyle = 'rgba(215,208,252,' + al.toFixed(3) + ')';
+              ctx.beginPath(); ctx.arc(s2.x, s2.y, 1.3 * dpr, 0, Math.PI * 2); ctx.fill();
+            });
+          }
+          if (!reduced) ang += o.speed;
+        }
+      }
+    };
+    this.painters.push(draw);
+  }
+
+  renderVals() {
+    window.__peakBoot = () => this.bootAnimations();
+    const { view, paused, typed, tick } = this.state;
+    const cls = v => 'tag ' + (view === v ? 'tag-accent' : 'tag-neutral');
+    const go = v => () => this.setState({ view: v, paused: true });
+    const ACT = "cursor:pointer;font-size:12.5px;padding:4px 11px;border-radius:999px;background:color-mix(in srgb, var(--color-accent) 12%, transparent);box-shadow:inset 0 0 0 1px var(--color-accent-700);color:var(--color-accent-200);transition:all .45s ease";
+    const IDLE = "cursor:pointer;font-size:12.5px;padding:4px 11px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--color-neutral-700);color:color-mix(in srgb, var(--color-text) 55%, transparent);transition:all .45s ease";
+    const pins = this.state.pins || {};
+    const frames = {};
+    const mk = (name, arr) => {
+      const sel = pins[name] != null ? pins[name] : tick % arr.length;
+      frames[name + 'A'] = sel === 0;
+      frames[name + 'B'] = sel === 1;
+      frames[name + 'C'] = sel === 2;
+      return arr.map((t, i) => ({
+        t, arrow: i < arr.length - 1, s: i === sel ? ACT : IDLE,
+        go: () => this.setState(s => ({ pins: Object.assign({}, s.pins, { [name]: i }) })),
+      }));
+    };
+    const heroDefs = [
+      { t: 'Agentic Search', p: 'an agentic search engine.' },
+      { t: 'A living graph', p: 'a living knowledge graph.' },
+      { t: 'Vault Intelligence', p: 'a self-aware knowledge base.' },
+      { t: 'Composer', p: 'a place to write with AI inside.' },
+      { t: 'Chat Studio', p: 'a home for longer AI work.' },
+    ];
+    const hi = this.state.heroIdx;
+    const heroPhrase = React.createElement('span', {
+      key: hi,
+      style: { display: 'block', color: 'var(--color-accent)', animation: 'fadeUp .55s ease both' },
+    }, heroDefs[hi].p);
+    const heroChips = heroDefs.map((d, i) => ({
+      t: d.t,
+      cls: 'tag ' + (i === hi ? 'tag-accent' : 'tag-neutral'),
+      go: () => this.setState({ heroIdx: i, heroPaused: true }),
+    }));
+    const provs = [
+      { n: 'OpenAI', ph: 'open-ai-logo' }, { n: 'Anthropic', slug: 'anthropic' },
+      { n: 'Claude Code', slug: 'claude' }, { n: 'Codex', ph: 'brackets-angle' },
+      { n: 'OpenRouter', slug: 'openrouter' }, { n: 'Ollama · local', slug: 'ollama' },
+      { n: 'fal.ai', ph: 'lightning' }, { n: 'OpenAI-compatible', ph: 'plugs' },
+      { n: 'More', ph: 'dots-three-outline' },
+    ];
+    const works = [
+      { n: 'Chat', ph: 'chat-text' }, { n: 'Agents', ph: 'robot' }, { n: 'Embeddings', ph: 'vector-three' },
+      { n: 'Images', ph: 'image' }, { n: 'Video', ph: 'film-strip' }, { n: 'Music', ph: 'music-notes' },
+      { n: 'Voice', ph: 'waveform' }, { n: 'More', ph: 'dots-three-outline' },
+    ];
+    const routes = [
+      { p: [0, 1, 2, 4, 5], w: [0], c: 'Chat — many providers, one workspace' },
+      { p: [6], w: [3, 4, 5], c: 'fal.ai → images, video, music' },
+      { p: [2, 3], w: [1], c: 'Agents → Claude Code, Codex' },
+      { p: [0, 5, 7], w: [2], c: 'Embeddings → cloud or local' },
+      { p: [0, 6], w: [6], c: 'Voice → OpenAI, fal.ai' },
+      { p: [5], w: [0, 2], c: 'Ollama → chat and embeddings, on your machine' },
+      { p: [8], w: [7], c: 'More providers, more outputs — bring your own' },
+    ];
+    const route = routes[tick % routes.length];
+    const h = React.createElement;
+    const SRF = 'var(--color-bg)', NB = 'var(--color-neutral-700)', NT = 'var(--color-neutral-400)',
+          AC = 'var(--color-accent)', AT = 'var(--color-accent-200)',
+          AF = 'color-mix(in srgb, var(--color-accent) 12%, var(--color-bg))';
+    const kids = [];
+    const HY = 330, HR = 40, PX = 358, WX = 802;
+    const leftY = i => HY + (i - (provs.length - 1) / 2) * 62;
+    const rightY = i => HY + (i - (works.length - 1) / 2) * 62;
+    const pillW = () => 248;
+    const wire = (key, x1, y1, x2, y2, act) => {
+      const dx = (x2 - x1) * .55;
+      kids.push(h('path', { key, d: `M${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`, style: {
+        fill: 'none', stroke: act ? AC : NB, strokeWidth: act ? 2 : 1.1, strokeLinecap: 'round',
+        strokeDasharray: act ? '6 6' : 'none', animation: act ? 'dashFlow .8s linear infinite' : 'none',
+        transition: 'stroke .4s ease, stroke-width .4s ease',
+      } }));
+      kids.push(h('circle', { key: key + 'd', cx: x1, cy: y1, r: act ? 3 : 2, style: {
+        fill: act ? AC : NB, transition: 'fill .4s ease',
+      } }));
+    };
+    provs.forEach((d, i) => wire('lp' + i, PX, leftY(i), 580 - HR, HY, route.p.indexOf(i) >= 0));
+    works.forEach((d, i) => wire('lw' + i, 580 + HR, HY, WX, rightY(i), route.w.indexOf(i) >= 0));
+    const pill = (key, cx, y, t, act, icon) => {
+      const w = pillW(t, !!icon), lx = cx - w / 2;
+      const els = [
+        h('rect', { key: key + 'r', x: lx, y: y - 16, width: w, height: 32, rx: 16, style: {
+          fill: act ? AF : SRF, stroke: act ? AC : NB, strokeWidth: act ? 1.6 : 1, transition: 'all .4s ease',
+        } }),
+      ];
+      if (icon && icon.slug) {
+        els.push(h('image', { key: key + 'i', href: `https://cdn.simpleicons.org/${icon.slug}/${act ? '9184d9' : 'a49ec2'}`, x: lx + 12, y: y - 8, width: 16, height: 16 }));
+      } else if (icon && icon.ph) {
+        els.push(h('foreignObject', { key: key + 'fo', x: lx + 10, y: y - 10, width: 20, height: 20, style: { pointerEvents: 'none' } },
+          h('i', { className: 'ph ph-' + icon.ph, style: { fontSize: 17, lineHeight: '20px', display: 'block', textAlign: 'center', color: act ? AC : NT, transition: 'color .4s ease' } })));
+      }
+      els.push(h('text', { key: key + 't', x: icon ? lx + 36 : cx, y: y + 4.5, textAnchor: icon ? 'start' : 'middle', style: {
+        fontSize: 13, fill: act ? AT : NT, fontFamily: 'var(--font-body)', transition: 'fill .4s ease',
+      } }, t));
+      return els;
+    };
+    provs.forEach((d, i) => kids.push(...pill('p' + i, PX - pillW(d.n, true) / 2, leftY(i), d.n, route.p.indexOf(i) >= 0, d.slug ? { slug: d.slug } : { ph: d.ph })));
+    works.forEach((d, i) => kids.push(...pill('w' + i, WX + pillW(d.n, true) / 2, rightY(i), d.n, route.w.indexOf(i) >= 0, { ph: d.ph })));
+    kids.push(h('circle', { key: 'hub', cx: 580, cy: HY, r: HR, style: {
+      fill: SRF, stroke: AC, strokeWidth: 2, filter: 'drop-shadow(0 0 10px rgba(145,132,217,.5))',
+    } }));
+    kids.push(h('text', { key: 'hubt', x: 580, y: HY + 5, textAnchor: 'middle', style: {
+      fontSize: 14, fill: 'var(--color-text)', fontFamily: 'var(--font-heading)', fontWeight: 500,
+    } }, 'Peak'));
+    kids.push(h('text', { key: 'lbl-p', x: PX, y: 26, textAnchor: 'end', style: {
+      fontSize: 11.5, letterSpacing: '.08em', fill: 'color-mix(in srgb, var(--color-text) 45%, transparent)', fontFamily: 'var(--font-body)',
+    } }, 'PROVIDERS YOU CHOOSE'));
+    kids.push(h('text', { key: 'lbl-w', x: WX, y: 26, textAnchor: 'start', style: {
+      fontSize: 11.5, letterSpacing: '.08em', fill: 'color-mix(in srgb, var(--color-text) 45%, transparent)', fontFamily: 'var(--font-body)',
+    } }, 'WHAT PEAK PRODUCES'));
+    const routeSvg = h('svg', { viewBox: '0 0 1160 660', style: { width: '100%', display: 'block' } }, kids);
+
+    const out = {
+      heroPhrase, heroChips,
+      routeSvg, routeCaption: route.c,
+      repoUrl: this.props.repoUrl ?? '#',
+      docsUrl: this.props.docsUrl ?? '#',
+      roadmapUrl: this.props.roadmapUrl ?? '#',
+      vList: view === 'list', vTree: view === 'tree', vGraph: view === 'graph',
+      listCls: cls('list'), treeCls: cls('tree'), graphCls: cls('graph'),
+      goList: go('list'), goTree: go('tree'), goGraph: go('graph'),
+      cycleHint: paused ? 'paused — click List / Tree / Graph to switch' : 'auto-cycling — click a view to pause',
+      typedQuery: typed,
+      sFound: this.state.phase === 'found',
+      sRefined: this.state.phase === 'refined',
+      sIdle: this.state.phase === 'typing',
+      foundLabel: (this.queries && this.ty && this.queries[this.ty.qi] && this.queries[this.ty.qi].n) || '50 results · 399 ms',
+      graphSteps: mk('graph', ['Search or open a file', 'Expand relations', 'Continue in Composer']),
+      copilotSteps: mk('copilot', ['You write', 'Intelligence follows', 'You accept or reject']),
+      atlasSteps: mk('atlas', ['Open a note', 'Inspect blocks & tables', 'Run a quick action']),
+      studioSteps: mk('studio', ['Start a project', 'Branch & retry', 'Artifacts land in vault']),
+      commandSteps: mk('command', ['Summon', 'Type intent', 'Land anywhere']),
+      opsSteps: mk('ops', ['Check readiness', 'Pick index mode', 'Route providers']),
+      aiSearchSteps: mk('aiSearch', ['Plan', 'Search & read', 'Sourced report']),
+      intelSteps: mk('intel', ['Scan the vault', 'Hubs · gaps · drift', 'Act on health']),
+    };
+    return Object.assign(out, frames);
+  }
+}
+
+</script>
 </body>
 </html>
