@@ -36,6 +36,10 @@ import {
 	toggleFolderTreeSelection,
 	type VisibleFolderTreeProjection,
 } from './folderTreeModel';
+import {
+	buildFolderTreeLayout,
+	FOLDER_TREE_LAYOUT_DEFAULTS,
+} from './folderTreeLayoutModel';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -75,28 +79,45 @@ function buildElements(
 	opts: { showSemantic: boolean; folderTree: boolean },
 ): ElementDefinition[] {
 	const els: ElementDefinition[] = [];
-	const folderTree = opts.folderTree ? buildVisibleFolderTree(sub.resultNodes) : null;
-	const folderTreePositions = new Map<string, { x: number; y: number }>();
-	if (folderTree) {
-		folderTree.rows.forEach((row, index) => {
-			folderTreePositions.set(row.id, {
-				x: 90 + row.depth * 155,
-				y: 50 + index * 46,
-			});
-		});
-		sub.hubAnchors.forEach((hub, index) => {
-			folderTreePositions.set(hub.id, {
-				x: 90,
-				y: 110 + (folderTree.rows.length + index) * 46,
-			});
-		});
-	}
 	const visibleEdges = coalesceGraphEdges(
 		sub.edges.filter((edge) => (
 			(edge.kind !== 'semantic' || opts.showSemantic)
 			&& edge.from !== edge.to
 		)),
 	);
+	const degreeMap = new Map<string, number>();
+	for (const edge of visibleEdges) {
+		degreeMap.set(edge.from, (degreeMap.get(edge.from) ?? 0) + 1);
+		degreeMap.set(edge.to, (degreeMap.get(edge.to) ?? 0) + 1);
+	}
+
+	const folderTree = opts.folderTree ? buildVisibleFolderTree(sub.resultNodes) : null;
+	const folderTreeLayout = folderTree
+		? buildFolderTreeLayout(folderTree, {
+			labelById: new Map(sub.resultNodes.map((node) => [
+				node.id,
+				node.title || node.path || node.id,
+			])),
+			linkCountByDocumentId: degreeMap,
+		})
+		: null;
+	const folderTreePositions = new Map<string, { x: number; y: number }>();
+	if (folderTreeLayout) {
+		for (const row of folderTreeLayout.rows) {
+			folderTreePositions.set(row.id, { x: row.centerX, y: row.centerY });
+		}
+		const lastRow = folderTreeLayout.rows[folderTreeLayout.rows.length - 1];
+		const hubStartY = (lastRow?.top ?? FOLDER_TREE_LAYOUT_DEFAULTS.originY)
+			+ (lastRow?.height ?? 0)
+			+ FOLDER_TREE_LAYOUT_DEFAULTS.rootSectionGap
+			+ FOLDER_TREE_LAYOUT_DEFAULTS.rowStep;
+		sub.hubAnchors.forEach((hub, index) => {
+			folderTreePositions.set(hub.id, {
+				x: FOLDER_TREE_LAYOUT_DEFAULTS.originX + 110,
+				y: hubStartY + index * FOLDER_TREE_LAYOUT_DEFAULTS.rowStep,
+			});
+		});
+	}
 
 	const refEndpoints = new Set<string>();
 	for (const e of visibleEdges) {
@@ -110,27 +131,27 @@ function buildElements(
 
 	if (folderTree) {
 		for (const folder of folderTree.folders) {
+			const visual = folderTreeLayout?.rowById.get(folder.id);
+			if (!visual) continue;
 			els.push({
 				group: 'nodes',
 				data: {
 					id: folder.id,
-					label: `${folder.label}   ${folder.documentIds.length}`,
+					label: folder.label,
 					path: folder.path,
 					kind: 'folderGroup',
 					depth: folder.depth,
 					documentIds: folder.documentIds,
+					nodeWidth: visual.width,
+					nodeHeight: visual.height,
 				},
 				classes: `folderGroup folderTreeNode${folder.depth === 0 ? ' folderRoot' : ''}`,
 				position: folderTreePositions.get(folder.id),
+				locked: true,
 			});
 		}
 	}
 
-	const degreeMap = new Map<string, number>();
-	for (const e of visibleEdges) {
-		degreeMap.set(e.from, (degreeMap.get(e.from) ?? 0) + 1);
-		degreeMap.set(e.to, (degreeMap.get(e.to) ?? 0) + 1);
-	}
 	const DEGREE_CAP = 8;
 	const HUBLIKE_THRESHOLD = 3;
 	const normDegree = (id: string) => Math.min(degreeMap.get(id) ?? 0, DEGREE_CAP) / DEGREE_CAP;
@@ -146,7 +167,8 @@ function buildElements(
 	}
 	for (const n of sub.resultNodes) {
 		const degree = degreeMap.get(n.id) ?? 0;
-		const isHublike = degree >= HUBLIKE_THRESHOLD;
+		const isHublike = !folderTree && degree >= HUBLIKE_THRESHOLD;
+		const visual = folderTreeLayout?.rowById.get(n.id);
 		els.push({
 			group: 'nodes',
 			data: {
@@ -158,40 +180,97 @@ function buildElements(
 				degree,
 				degreeNorm: normDegree(n.id),
 				folder: (n.path ? n.path.split('/')[0] : '') || '',
+				nodeWidth: visual?.width,
+				nodeHeight: visual?.height,
 			},
 			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}${isHublike ? ' hublike' : ''}${folderTree ? ' folderTreeDoc' : ''}`.trim(),
 			position: folderTreePositions.get(n.id),
+			locked: Boolean(folderTree),
 		});
 	}
 
-	if (folderTree) {
-		for (const folder of folderTree.folders) {
-			if (folder.parentId) {
-				els.push({
-					group: 'edges',
-					data: {
-						id: `hierarchy:${folder.parentId}:${folder.id}`,
-						source: folder.parentId,
-						target: folder.id,
-						kind: 'hierarchy',
-						directionality: 'undirected',
-					},
-					classes: 'hierarchy folderHierarchy',
-				});
-			}
-			for (const documentId of folder.directDocumentIds) {
-				els.push({
-					group: 'edges',
-					data: {
-						id: `hierarchy:${folder.id}:${documentId}`,
-						source: folder.id,
-						target: documentId,
-						kind: 'hierarchy',
-						directionality: 'undirected',
-					},
-					classes: 'hierarchy folderHierarchy',
-				});
-			}
+	if (folderTreeLayout) {
+		for (const row of folderTreeLayout.rows) {
+			const labelWidth = Math.max(24, row.width - row.badgeWidth - 40);
+			const labelLeft = row.left + 28;
+			const decorationBase = {
+				ownerId: row.id,
+				ownerKind: row.kind,
+			};
+			els.push({
+				group: 'nodes',
+				data: {
+					id: `tree-icon:${row.id}`,
+					...decorationBase,
+				},
+				classes: `folderTreeDecoration folderTreeIcon ${row.kind === 'folder' ? 'folderTreeFolderIcon' : 'folderTreeFileIcon'}`,
+				position: { x: row.left + 15, y: row.centerY },
+				locked: true,
+				selectable: false,
+				grabbable: false,
+			});
+			els.push({
+				group: 'nodes',
+				data: {
+					id: `tree-label:${row.id}`,
+					...decorationBase,
+					label: row.label,
+					labelWidth,
+				},
+				classes: `folderTreeDecoration folderTreeLabel ${row.kind === 'folder' ? 'folderTreeFolderLabel' : 'folderTreeFileLabel'}`,
+				position: { x: labelLeft + labelWidth / 2, y: row.centerY },
+				locked: true,
+				selectable: false,
+				grabbable: false,
+			});
+			els.push({
+				group: 'nodes',
+				data: {
+					id: `tree-badge:${row.id}`,
+					...decorationBase,
+					label: String(row.count),
+					badgeWidth: row.badgeWidth,
+				},
+				classes: `folderTreeDecoration ${row.kind === 'folder' ? 'folderTreeCountBadge' : 'folderTreeLinkBadge'}${row.root ? ' folderTreeRootBadge' : ''}`,
+				position: {
+					x: row.left + row.width - row.badgeWidth / 2 - 6,
+					y: row.centerY,
+				},
+				locked: true,
+				selectable: false,
+				grabbable: false,
+			});
+		}
+
+		for (const point of folderTreeLayout.railPoints) {
+			els.push({
+				group: 'nodes',
+				data: {
+					id: point.id,
+					parentNodeId: point.parentId,
+					childNodeId: point.childId ?? '',
+				},
+				classes: 'folderTreeRailNode',
+				position: { x: point.x, y: point.y },
+				locked: true,
+				selectable: false,
+				grabbable: false,
+			});
+		}
+		for (const segment of folderTreeLayout.railSegments) {
+			els.push({
+				group: 'edges',
+				data: {
+					id: segment.id,
+					source: segment.sourceId,
+					target: segment.targetId,
+					kind: 'hierarchy',
+					directionality: 'undirected',
+					parentNodeId: segment.parentId,
+					childNodeId: segment.childId,
+				},
+				classes: `hierarchy folderHierarchy folderHierarchy${segment.kind === 'rail' ? 'Rail' : 'Branch'}`,
+			});
 		}
 	}
 
@@ -226,6 +305,40 @@ function buildElements(
 	return els;
 }
 
+function graphIconDataUri(paths: string, color: string): string {
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+	return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+const FOLDER_ICON_PURPLE = graphIconDataUri(
+	'<path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-11Z"/>',
+	'#7c3aed',
+);
+const FOLDER_ICON_WHITE = graphIconDataUri(
+	'<path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-11Z"/>',
+	'#ffffff',
+);
+const FILE_ICON_NEUTRAL = graphIconDataUri(
+	'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>',
+	'#8a8490',
+);
+const FILE_ICON_WHITE = graphIconDataUri(
+	'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>',
+	'#ffffff',
+);
+const LINK_ICON_NEUTRAL = graphIconDataUri(
+	'<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1"/>',
+	'#88818e',
+);
+const LINK_ICON_PURPLE = graphIconDataUri(
+	'<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1"/>',
+	'#6937ad',
+);
+const LINK_ICON_WHITE = graphIconDataUri(
+	'<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1"/>',
+	'#ffffff',
+);
+
 // ─── Style — mirrors the sandbox's CSS spec ────────────────────────────────
 const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.hub', style: { 'background-color': '#a78bfa', 'border-color': '#4c1d95', 'border-width': 4, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '18px', 'padding-right': '18px', 'padding-top': '12px', 'padding-bottom': '12px', label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '360px', 'font-size': 15, 'font-weight': 800, 'text-valign': 'center', 'text-halign': 'center', color: '#2e1065' } as never },
@@ -249,12 +362,22 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.reference.highlighted', style: { 'line-style': 'solid', width: 2.6 } as never },
 	{ selector: 'edge.semantic.highlighted', style: { 'line-style': 'dashed', 'line-dash-pattern': [10, 6], width: 2.0 } as never },
 	{ selector: 'node.regionLabel', style: { 'background-opacity': 0, 'border-width': 0, label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#94a3b8', 'text-transform': 'uppercase', 'letter-spacing': '2px', 'text-valign': 'center', 'text-halign': 'center', width: 200, height: 20 } as never },
-	{ selector: 'node.folderTreeNode.folderRoot', style: { 'background-color': '#f1e8fb', color: '#5b2d96', 'font-size': 12, 'padding-top': '7px', 'padding-bottom': '7px' } as never },
-	{ selector: 'node.doc.folderTreeDoc', style: { 'background-color': '#fbfafc', 'border-width': 0, width: 'label', height: 'label', 'padding-left': '10px', 'padding-right': '10px', 'padding-top': '6px', 'padding-bottom': '6px', 'font-size': 10.5, 'font-weight': 500, color: '#4d4853', opacity: 1, 'min-width': '150px', 'z-index': 4 } as never },
-	{ selector: 'node.doc.folderTreeDoc.hublike', style: { 'background-color': '#f7f1fd', 'border-width': 0, 'padding-left': '11px', 'padding-right': '11px', 'padding-top': '6px', 'padding-bottom': '6px', 'font-size': 10.8, 'font-weight': 650, color: '#51475e' } as never },
-	{ selector: 'node.doc.folderTreeDoc.isolated', style: { opacity: 1, 'border-width': 0 } as never },
+	{ selector: 'node.folderTreeNode', style: { label: '', width: 'data(nodeWidth)', height: 'data(nodeHeight)', padding: 0, 'min-width': 0, 'background-color': '#faf7fd', 'border-width': 0, shape: 'round-rectangle', opacity: 1, 'shadow-blur': 4, 'shadow-color': '#2d2637', 'shadow-opacity': 0.055, 'shadow-offset-y': 1, 'z-index': 4 } as never },
+	{ selector: 'node.folderTreeNode.folderRoot', style: { 'background-color': '#f3ecfd', 'shadow-blur': 7, 'shadow-color': '#523178', 'shadow-opacity': 0.075, 'shadow-offset-y': 2 } as never },
+	{ selector: 'node.doc.folderTreeDoc', style: { label: '', 'background-color': '#fbfafc', 'border-width': 0, width: 'data(nodeWidth)', height: 'data(nodeHeight)', padding: 0, 'min-width': 0, opacity: 1, 'shadow-blur': 4, 'shadow-color': '#2d2637', 'shadow-opacity': 0.055, 'shadow-offset-y': 1, 'z-index': 4 } as never },
+	{ selector: 'node.doc.folderTreeDoc.isolated', style: { opacity: 1, 'border-width': 0, 'background-color': '#fbfafc' } as never },
 	{ selector: 'node.hub.folderTreeHub', style: { 'background-color': '#efe5fb', 'border-width': 0, 'padding-left': '12px', 'padding-right': '12px', 'padding-top': '7px', 'padding-bottom': '7px', 'font-size': 11, color: '#5b2d96' } as never },
-	{ selector: 'edge.folderHierarchy', style: { 'curve-style': 'taxi', 'taxi-direction': 'rightward', 'taxi-turn': '22px', 'line-color': '#e4dfe8', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', width: 1, opacity: 0.95, 'z-index': 1 } as never },
+	{ selector: 'node.folderTreeRailNode', style: { width: 1, height: 1, padding: 0, 'background-opacity': 0, 'border-width': 0, label: '', events: 'no', 'z-index': 0 } as never },
+	{ selector: 'edge.folderHierarchy', style: { 'curve-style': 'straight', 'line-color': '#e9e5ec', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', width: 1, opacity: 0.9, 'line-cap': 'round', 'z-index': 1 } as never },
+	{ selector: 'node.folderTreeDecoration', style: { events: 'yes', 'border-width': 0, 'z-index': 6 } as never },
+	{ selector: 'node.folderTreeIcon', style: { width: 14, height: 14, padding: 0, 'background-opacity': 0, 'background-fit': 'contain', 'background-width': '100%', 'background-height': '100%', 'background-repeat': 'no-repeat', label: '' } as never },
+	{ selector: 'node.folderTreeFolderIcon', style: { 'background-image': FOLDER_ICON_PURPLE } as never },
+	{ selector: 'node.folderTreeFileIcon', style: { 'background-image': FILE_ICON_NEUTRAL } as never },
+	{ selector: 'node.folderTreeLabel', style: { width: 'data(labelWidth)', height: 18, padding: 0, 'background-opacity': 0, label: 'data(label)', color: '#4d4853', 'font-size': 10.8, 'font-weight': 500, 'text-wrap': 'ellipsis', 'text-max-width': 'data(labelWidth)', 'text-valign': 'center', 'text-halign': 'center' } as never },
+	{ selector: 'node.folderTreeFolderLabel', style: { color: '#51475e', 'font-size': 11, 'font-weight': 680 } as never },
+	{ selector: 'node.folderTreeCountBadge', style: { width: 'data(badgeWidth)', height: 17, padding: 0, shape: 'round-rectangle', 'background-color': '#f1e9fb', label: 'data(label)', color: '#8450c4', 'font-size': 9.5, 'font-weight': 740, 'text-valign': 'center', 'text-halign': 'center' } as never },
+	{ selector: 'node.folderTreeRootBadge', style: { 'background-color': '#7c3aed', color: '#ffffff' } as never },
+	{ selector: 'node.folderTreeLinkBadge', style: { width: 'data(badgeWidth)', height: 17, padding: 0, shape: 'round-rectangle', 'background-color': '#f7f6f8', 'background-image': LINK_ICON_NEUTRAL, 'background-fit': 'none', 'background-width': '9px', 'background-height': '9px', 'background-repeat': 'no-repeat', 'background-position-x': '5px', 'background-position-y': '50%', label: 'data(label)', color: '#88818e', 'font-size': 9, 'font-weight': 700, 'text-margin-x': 5, 'text-valign': 'center', 'text-halign': 'center' } as never },
 	{ selector: 'edge.folderRelation', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(curveDistance)', 'control-point-weights': 0.5, 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65, opacity: 0.82, 'arrow-scale': 0.9, 'z-index': 3 } as never },
 	{ selector: 'edge.folderRelation.reference', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65 } as never },
 	{ selector: 'edge.folderRelation.hub_constituent', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', 'line-style': 'dotted', width: 1.7, opacity: 0.82 } as never },
@@ -268,12 +391,24 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.folderFocusIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
 	{ selector: 'edge.folderFocusOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'source-arrow-color': '#0f9d83' } as never },
 	{ selector: 'edge.folderFocusInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
-	{ selector: 'edge.folderHierarchy.folderHierarchyActive', style: { 'line-color': '#d6c3ec', width: 1.35, opacity: 1 } as never },
+	{ selector: 'edge.folderHierarchy.folderHierarchyActive', style: { 'line-color': '#d6c3ec', width: 1.2, opacity: 0.95 } as never },
 	{ selector: 'node.folderTreeNode.highlighted, node.folderTreeDoc.highlighted', style: { 'background-color': '#f1e8fb', 'border-width': 0, opacity: 1 } as never },
+	{ selector: 'node.folderTreeDecoration.highlighted', style: { 'border-width': 0, opacity: 1 } as never },
 	{ selector: 'edge.folderRelation.highlighted', style: { 'line-color': '#7c3aed', 'source-arrow-color': '#7c3aed', 'target-arrow-color': '#7c3aed', opacity: 1, width: 2.2 } as never },
 	// Focus meaning stays legible while the pointer is still over the node.
 	// These more-specific rules deliberately outrank generic hover highlighting.
 	{ selector: 'node.folderTreeNode.folderFocusSelected, node.folderTreeDoc.folderFocusSelected', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1001 } as never },
+	{ selector: 'node.folderTreeDecoration.folderFocusSelected', style: { opacity: 1, 'z-index': 1002 } as never },
+	{ selector: 'node.folderTreeDecoration.folderFocusScope', style: { opacity: 1, 'z-index': 802 } as never },
+	{ selector: 'node.folderTreeDecoration.folderFocusConnected', style: { opacity: 1, 'z-index': 702 } as never },
+	{ selector: 'node.folderTreeLabel.folderFocusSelected', style: { color: '#ffffff' } as never },
+	{ selector: 'node.folderTreeIcon.folderFocusSelected', style: { 'background-image': FILE_ICON_WHITE } as never },
+	{ selector: 'node.folderTreeFolderIcon.folderFocusSelected', style: { 'background-image': FOLDER_ICON_WHITE } as never },
+	{ selector: 'node.folderTreeCountBadge.folderFocusSelected', style: { 'background-color': '#ffffff', color: '#7c3aed' } as never },
+	{ selector: 'node.folderTreeLinkBadge.folderFocusSelected', style: { 'background-color': '#9360ef', 'background-image': LINK_ICON_WHITE, color: '#ffffff' } as never },
+	{ selector: 'node.folderTreeFolderLabel.folderFocusScope', style: { color: '#6433a2' } as never },
+	{ selector: 'node.folderTreeCountBadge.folderFocusScope', style: { 'background-color': '#eadcf8', color: '#6f36af' } as never },
+	{ selector: 'node.folderTreeLinkBadge.folderFocusConnected', style: { 'background-color': '#eee5fb', 'background-image': LINK_ICON_PURPLE, color: '#6937ad' } as never },
 	{ selector: 'edge.folderRelation.folderFocusIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
 	{ selector: 'edge.folderRelation.folderFocusOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'target-arrow-shape': 'triangle', 'source-arrow-color': '#0f9d83' } as never },
 	{ selector: 'edge.folderRelation.folderFocusInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
@@ -323,7 +458,7 @@ function layoutIsolatedGrid(cy: Core): void {
 	});
 }
 
-const FOLDER_TREE_MIN_INITIAL_ZOOM = 1.05;
+const FOLDER_TREE_MIN_INITIAL_ZOOM = 1;
 
 function fitGraphViewport(cy: Core, folderTree: boolean): void {
 	cy.fit(undefined, 40);
@@ -332,7 +467,7 @@ function fitGraphViewport(cy: Core, folderTree: boolean): void {
 	// A long tree should open at a readable scale and continue below the fold,
 	// like the regular Tree view. The user can pan vertically to later rows;
 	// shrinking every label to fit the entire tree defeats this preset.
-	const bounds = cy.nodes().boundingBox({ includeLabels: true });
+	const bounds = cy.nodes().not('.folderTreeRailNode').boundingBox({ includeLabels: true });
 	cy.zoom(FOLDER_TREE_MIN_INITIAL_ZOOM);
 	cy.pan({
 		x: 56 - bounds.x1 * FOLDER_TREE_MIN_INITIAL_ZOOM,
@@ -342,6 +477,17 @@ function fitGraphViewport(cy: Core, folderTree: boolean): void {
 
 const FOLDER_FOCUS_NODE_CLASSES = 'folderFocusSelected folderFocusScope folderFocusConnected folderFocusDimmed';
 const FOLDER_FOCUS_EDGE_CLASSES = 'folderFocusHidden folderFocusActive folderFocusIncoming folderFocusOutgoing folderFocusInternal folderHierarchyActive';
+
+function mirrorFolderTreeFocusToDecorations(cy: Core): void {
+	cy.nodes('.folderTreeDecoration').forEach((decoration) => {
+		const ownerId = String(decoration.data('ownerId') ?? '');
+		const owner = ownerId ? cy.getElementById(ownerId) : null;
+		if (!owner || owner.empty()) return;
+		for (const className of FOLDER_FOCUS_NODE_CLASSES.split(' ')) {
+			if (owner.hasClass(className)) decoration.addClass(className);
+		}
+	});
+}
 
 function folderAncestorIds(
 	projection: VisibleFolderTreeProjection,
@@ -422,10 +568,13 @@ function applyFolderTreeFocus(
 			...ancestorFolderIds,
 		]);
 		cy.edges('.folderHierarchy').forEach((edge) => {
-			if (!activeHierarchyNodeIds.has(edge.source().id())) return;
-			if (!activeHierarchyNodeIds.has(edge.target().id())) return;
+			const parentNodeId = String(edge.data('parentNodeId') ?? '');
+			const childNodeId = String(edge.data('childNodeId') ?? '');
+			if (!activeHierarchyNodeIds.has(parentNodeId)) return;
+			if (!activeHierarchyNodeIds.has(childNodeId)) return;
 			edge.addClass('folderHierarchyActive');
 		});
+		mirrorFolderTreeFocusToDecorations(cy);
 	});
 }
 
@@ -637,9 +786,18 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			if (animRef.current) cancelAnimationFrame(animRef.current);
 			animRef.current = null;
 		};
+		const resolveFolderTreeOwner = (node: NodeSingular): NodeSingular | null => {
+			if (node.hasClass('folderTreeRailNode')) return null;
+			if (!node.hasClass('folderTreeDecoration')) return node;
+			const ownerId = String(node.data('ownerId') ?? '');
+			if (!ownerId) return null;
+			const owner = cy.getElementById(ownerId);
+			return owner && !owner.empty() ? owner as NodeSingular : null;
+		};
 
 		cy.on('mouseover', 'node', (evt) => {
-			const n = evt.target as NodeSingular;
+			const n = resolveFolderTreeOwner(evt.target as NodeSingular);
+			if (!n) return;
 			if (n.hasClass('regionLabel')) return;
 			const raw = (n.data('label') as string | undefined) ?? '';
 			const rawPath = (n.data('path') as string | undefined) ?? '';
@@ -665,6 +823,13 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					highlight = n.closedNeighborhood();
 				}
 				highlight = highlight.union(n.ancestors());
+				if (bundle.folderTree) {
+					const highlightedNodeIds = new Set(highlight.nodes().map((node) => node.id()));
+					const decorations = cy.nodes('.folderTreeDecoration').filter((decoration) => (
+						highlightedNodeIds.has(String(decoration.data('ownerId') ?? ''))
+					));
+					highlight = highlight.union(decorations);
+				}
 				cy.batch(() => {
 					cy.elements().addClass('dimmed');
 					highlight.removeClass('dimmed').addClass('highlighted');
@@ -687,7 +852,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		});
 
 		cy.on('tap', 'node', (evt) => {
-			const n = evt.target as NodeSingular;
+			const n = resolveFolderTreeOwner(evt.target as NodeSingular);
+			if (!n) return;
 			if (n.hasClass('regionLabel')) return;
 			const originalEvent = (evt as { originalEvent?: MouseEvent }).originalEvent;
 			const modKey = !!(originalEvent && (originalEvent.metaKey || originalEvent.ctrlKey));
@@ -703,7 +869,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			tapRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '', isHub: n.hasClass('hub'), modKey });
 		});
 		cy.on('dbltap', 'node', (evt) => {
-			const n = evt.target as NodeSingular;
+			const n = resolveFolderTreeOwner(evt.target as NodeSingular);
+			if (!n) return;
 			if (n.hasClass('regionLabel') || n.hasClass('folderGroup') || n.hasClass('hub')) return;
 			dblRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '' });
 		});
@@ -751,8 +918,12 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const graphNodes = useCallback((): NodeSingular[] => {
 		const cy = cyRef.current;
 		if (!cy) return [];
-			return cy.nodes()
-				.filter((node) => !node.hasClass('regionLabel'))
+		return cy.nodes()
+				.filter((node) => (
+					!node.hasClass('regionLabel')
+					&& !node.hasClass('folderTreeDecoration')
+					&& !node.hasClass('folderTreeRailNode')
+				))
 				.toArray() as NodeSingular[];
 	}, []);
 

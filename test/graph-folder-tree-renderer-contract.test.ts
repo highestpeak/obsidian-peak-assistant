@@ -9,7 +9,11 @@ const renderer = fs.readFileSync(
 
 assert.match(renderer, /folder:\s*\{ layout: 'folder-tree',\s*folderTree: true \}/);
 assert.match(renderer, /layout: bundle\.folderTree \? \{ name: 'preset' \} : undefined/);
-assert.match(renderer, /classes: 'hierarchy folderHierarchy'/);
+assert.match(renderer, /buildFolderTreeLayout/);
+assert.match(renderer, /folderTreeDecoration folderTreeIcon/);
+assert.match(renderer, /folderTreeCountBadge/);
+assert.match(renderer, /folderTreeLinkBadge/);
+assert.match(renderer, /folderHierarchy\$\{segment\.kind === 'rail' \? 'Rail' : 'Branch'\}/);
 assert.match(renderer, /classes: `\$\{e\.kind\}\$\{folderTree \? ' folderRelation' : ''\}`/);
 assert.match(renderer, /toggleFolderTreeSelection\(focusedFolderTreeNodeId, n\.id\(\)\)/);
 assert.match(renderer, /folderTreeSelectionScope\(projection, selectedNodeId\)/);
@@ -21,5 +25,7 @@ assert.match(renderer, /edge\.folderRelation\.semantic/);
 assert.match(renderer, /line-dash-offset/);
 assert.match(renderer, /prefers-reduced-motion: reduce/);
 assert.doesNotMatch(renderer, /buildVisibleFolderGroups/);
+assert.doesNotMatch(renderer, /row\.depth \* 155/);
+assert.doesNotMatch(renderer, /index \* 46/);
 
 console.log('PASS: folder tree renderer contract');
