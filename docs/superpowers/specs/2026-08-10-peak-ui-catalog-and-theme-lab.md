@@ -105,23 +105,26 @@ Theme Pack 提供 canvas、surface、raised、sunken、text、muted、border、a
 
 主题导入必须验证枚举和 accent；无效值安全回落。后续允许扩展完整 Light/Dark palette recipe，但 schema 必须版本化、可预览、可回退，不能把任意 CSS 当作 Theme Pack 导入。
 
-## 6. LLM image-to-theme 桥
+## 6. Codex 固定图片替换
 
-LLM 图像生成适合高带宽探索整体气质，但生成图无法证明 token 完整性、交互状态、Dark mode、对比度或工程可实现性。标准流程是：
+LLM 图像生成适合高带宽探索整体气质，但 Theme Lab 不承担图片上传、外部模型调用或 Prompt 搬运。它在页面中直接展示四个固定输出文件：
 
 ```text
-固定 Theme Lab 截图
-  -> image-to-image 只替换视觉主题
-  -> 生成图导回 Theme Lab 并排比较
-  -> 提取 semantic token recipe
-  -> 补齐 Light / Dark 与所有组件状态
-  -> schema + contrast + fallback 校验
-  -> 注册为 Theme Pack
+docs/ui-system/theme-concepts/current/search.jpg
+docs/ui-system/theme-concepts/current/composer.jpg
+docs/ui-system/theme-concepts/current/graph.jpg
+docs/ui-system/theme-concepts/current/chat.jpg
 ```
 
-给图像模型的约束必须包括：不增删元素、不改内容、不改布局和组件尺寸，只替换 semantic colors、typography character、radius、elevation 和 material treatment。推荐同时要求模型返回 Light/Dark token recipe。
+这些固定槽位与只读录屏来源登记在 `theme-concepts/manifest.json`。用户在 Theme Lab 调整 Theme、复制当前 JSON，然后在 Codex 中打开 `design-system-playground.html`，要求 Codex 按该 JSON 重新生成并覆盖四个固定输出。HTML 路径不变，刷新即显示新结果。
 
-生成图只作为参考输入，永远不能直接写进生产 CSS，也不能绕过 Theme Pack schema。
+Codex 必须遵守：
+
+- 读取当前固定图片、Theme JSON 和 manifest；
+- 保持原图信息架构、主要元素和几何，替换主题气质；
+- 只写 `theme-concepts/current/`，不得覆盖 `evidence/`；
+- 不把生成图直接写进生产 CSS；
+- 生成图只是方向预览，真正可应用的主题仍由 Theme Pack / Theme JSON 驱动并经过 Light/Dark、状态、对比度和 fallback 校验。
 
 ## 7. Obsidian 宿主拒绝策略
 
@@ -154,5 +157,5 @@ Peak 视觉完全自治，Obsidian 只提供挂载位置和可选 appearance int
 - 只改 Theme Pack：不修改 Inventory，也不修改标准试件几何；
 - 新增视觉角色：先进入 Design System，再进入 Theme runtime，最后由 specimen 覆盖；
 - 新增产品 UI：更新 Inventory manifest 与真实证据，不重画完整 HTML scene；
-- LLM 探索主题：保存参考图与 recipe 来源；只有通过 schema、Light/Dark、状态和对比度验证后才能成为 Theme Pack；
+- Codex 探索主题：覆盖固定 theme-concept 图片槽位并保留只读 evidence；只有通过 schema、Light/Dark、状态和对比度验证后才能成为 Theme Pack；
 - 文档页只做设计与证据管理。真实 Obsidian 没有完成 QA 时，结论必须保持 `INTERACTION NOT VERIFIED`。

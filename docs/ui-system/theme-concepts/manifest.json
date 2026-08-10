@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "purpose": "Fixed Codex image-generation replacement slots for Peak Theme Lab",
+  "policy": "Replace output files only. Never overwrite source evidence.",
+  "slots": [
+    {
+      "id": "search",
+      "label": "Search",
+      "output": "current/search.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/vault-search-list.jpg",
+      "geometry": "1280x802"
+    },
+    {
+      "id": "composer",
+      "label": "Composer",
+      "output": "current/composer.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/composer-selection.jpg",
+      "geometry": "1280x802"
+    },
+    {
+      "id": "graph",
+      "label": "Graph",
+      "output": "current/graph.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/file-atlas-graph.jpg",
+      "geometry": "1280x802"
+    },
+    {
+      "id": "chat",
+      "label": "Chat",
+      "output": "current/chat.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/chat-studio-states.jpg",
+      "geometry": "1280x802"
+    }
+  ]
+}

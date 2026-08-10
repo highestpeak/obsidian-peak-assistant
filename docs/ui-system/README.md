@@ -15,11 +15,18 @@
 5. 运行 `node docs/ui-system/validate.mjs`；
 6. 真实交互仍按 `docs/conventions/obsidian-real-ui-qa.md` 在 Obsidian 验收。
 
-## LLM 图片换肤
+## Codex 固定图片换肤
 
-推荐使用 Theme Lab 的固定试件截图作为 image-to-image 输入，要求模型不增删元素、不改变内容和几何，只替换配色、字体气质、圆角与材质表达。生成图可以导回 Theme Lab 并排比较，但不能直接成为 Theme Pack。
+Theme Lab 直接展示四个固定的 repo-local 图片槽位：
 
-真正可应用的产物必须是通过 schema 校验的 Theme JSON，并补齐：
+- `theme-concepts/current/search.jpg`；
+- `theme-concepts/current/composer.jpg`；
+- `theme-concepts/current/graph.jpg`；
+- `theme-concepts/current/chat.jpg`。
+
+槽位与只读录屏来源登记在 `theme-concepts/manifest.json`。上方 Theme 控件调整完成后，复制当前 Theme JSON，在 Codex 中打开 `design-system-playground.html` 并要求按 JSON 替换固定主题图。Codex 直接读取现有图片和 manifest，生成后覆盖上述四个文件；页面不提供上传控件，也不要求用户复制另一段 Prompt。
+
+`evidence/` 永远是只读真实证据，不能被生成图覆盖。固定主题图用于视觉方向；真正可应用的产物仍必须是通过 schema 校验的 Theme JSON，并补齐：
 
 - Light 与 Dark；
 - Rest、Hover、Focus、Selected、Disabled、Loading 与 Error；
@@ -32,4 +39,5 @@
 - 不把设计稿 iframe 到页面；
 - 不为 Search、Composer、Chat、Graph 或 File Atlas 另写一个“看起来差不多”的完整 HTML 产品；
 - 不在 scene/specimen CSS 写主题 hex 或读取 Obsidian theme variable；
-- 不把生成图、文档夹具或构建通过冒充真实 Obsidian 验收。
+- 不把生成图、文档夹具或构建通过冒充真实 Obsidian 验收；
+- 不在 Theme Lab 增加图片上传、Prompt 搬运或外部模型 API 流程。

@@ -21,6 +21,7 @@ const files = {
   themePacks: path.join(here, "theme-packs.js"),
   themeRuntime: path.join(here, "theme-runtime.js"),
   labRuntime: path.join(here, "theme-playground.js"),
+  themeConceptManifest: path.join(here, "theme-concepts/manifest.json"),
   manifest: path.join(here, "catalog-manifest.js"),
   inventoryRuntime: path.join(here, "catalog-runtime.js"),
   evidenceManifest: path.join(here, "evidence/recording-2026-08-10/manifest.json")
@@ -48,6 +49,7 @@ function loadGlobal(file, key) {
 const themeSystem = loadGlobal(files.themePacks, "PeakThemeSystem");
 const catalog = loadGlobal(files.manifest, "PeakUICatalog");
 const evidenceManifest = JSON.parse(sources.evidenceManifest);
+const themeConceptManifest = JSON.parse(sources.themeConceptManifest);
 
 function attributes(node) {
   return Object.fromEntries((node.attrs || []).map((attribute) => [attribute.name, attribute.value]));
@@ -132,13 +134,31 @@ assert(new Set(documents[1].doc.themeControls).size === axes.length, "Theme Lab:
   ["Chat specimen", "chat-message"],
   ["Graph specimen", "graph-node"],
   ["Overlay specimen", "overlay-panel"],
-  ["AI bridge", "id=\"ai-bridge\""],
-  ["Generated image import", "data-image-input"],
-  ["Image prompt", "data-image-prompt"]
+  ["Codex image slots", "id=\"ai-bridge\""],
+  ["Fixed image manifest", "data-theme-image-manifest=\"ui-system/theme-concepts/manifest.json\""],
+  ["Current Theme JSON", "data-theme-json"],
+  ["Search image slot", "data-theme-image-slot=\"search\""],
+  ["Composer image slot", "data-theme-image-slot=\"composer\""],
+  ["Graph image slot", "data-theme-image-slot=\"graph\""],
+  ["Chat image slot", "data-theme-image-slot=\"chat\""]
 ].forEach(([label, marker]) => assert(sources.labHtml.includes(marker), `Theme Lab: ${label}`));
 assert(sources.labHtml.includes("不复刻完整 Search、Composer 或 Graph"), "Theme Lab: explicitly rejects product parity claim");
-assert(sources.labRuntime.includes("FileReader") && sources.labRuntime.includes("readAsDataURL"), "Theme Lab: generated image stays local");
-assert(!/(?:fetch\(|XMLHttpRequest|https?:\/\/)/.test(sources.labRuntime), "Theme Lab: reference image runtime performs no network upload");
+assert(!sources.labHtml.includes("type=\"file\"") && !sources.labHtml.includes("data-copy-image-prompt"), "Theme Lab: has no upload or Prompt-transfer UI");
+assert(!/(?:FileReader|readAsDataURL|fetch\(|XMLHttpRequest|https?:\/\/)/.test(sources.labRuntime), "Theme Lab: runtime has no image transfer or network path");
+
+assert(themeConceptManifest.slots.length === 4, "Theme Lab: declares four fixed Codex image slots");
+assert(themeConceptManifest.policy.includes("Never overwrite source evidence"), "Theme Lab: manifest protects source evidence");
+const conceptIds = new Set();
+themeConceptManifest.slots.forEach((slot) => {
+  assert(!conceptIds.has(slot.id), `Theme Lab ${slot.id}: unique image slot`);
+  conceptIds.add(slot.id);
+  const output = path.resolve(path.dirname(files.themeConceptManifest), slot.output);
+  const sourceEvidence = path.resolve(path.dirname(files.themeConceptManifest), slot.sourceEvidence);
+  assert(fs.existsSync(output), `Theme Lab ${slot.id}: fixed output exists`);
+  assert(fs.existsSync(sourceEvidence), `Theme Lab ${slot.id}: source evidence exists`);
+  assert(sources.labHtml.includes(`data-theme-image-slot=\"${slot.id}\"`), `Theme Lab ${slot.id}: slot is displayed`);
+  assert(sources.labHtml.includes(`ui-system/theme-concepts/${slot.output}`), `Theme Lab ${slot.id}: HTML uses fixed output path`);
+});
 
 assert(catalog.scenes.length === 8, "UI Inventory: declares 8 product domains");
 catalog.scenes.forEach((scene) => {
@@ -192,7 +212,7 @@ assert(!/#[0-9a-f]{3,8}\b/i.test(sources.rulesCss), "Design System CSS contains 
   "--font-interface: var(--pk-font-sans)"
 ].forEach((binding) => assert(sources.hostCompatCss.includes(binding), `Host Boundary: owns ${binding}`));
 
-assert(sources.rulesHtml.includes("Image-to-theme"), "Design System: documents image-to-theme boundary");
+assert(sources.rulesHtml.includes("Codex image replacement"), "Design System: documents fixed Codex image replacement boundary");
 assert(sources.rulesHtml.includes("Theme Lab") && sources.rulesHtml.includes("UI Inventory"), "Design System: links both supporting surfaces");
 assert(!documents.some((entry) => entry.source.includes("design-system-preview-bridge")), "UI System: no legacy preview bridge");
 

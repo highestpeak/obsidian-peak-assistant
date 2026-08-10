@@ -20,7 +20,6 @@
     <symbol id="pk-icon-network" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"></circle><circle cx="5" cy="19" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="m10.5 7.7-4 8M13.5 7.7l4 8M8 19h8"></path></symbol>
     <symbol id="pk-icon-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"></path></symbol>
     <symbol id="pk-icon-alert" viewBox="0 0 24 24"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"></path><path d="M12 9v4M12 17h.01"></path></symbol>
-    <symbol id="pk-icon-upload" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 21h14a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2"></path></symbol>
     <symbol id="pk-icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></symbol>
   </svg>
 
@@ -28,7 +27,7 @@
     <header class="lab-header">
       <a class="lab-brand" href="#top"><span class="lab-brand__mark">P</span><span><b>Peak Theme Lab</b><small>固定试件 · 全局换肤</small></span></a>
       <nav class="lab-nav" aria-label="Theme Lab navigation">
-        <a href="#foundations">基础</a><a href="#primitives">组件</a><a href="#scenes">场景</a><a href="#ai-bridge">AI 换肤</a>
+        <a href="#foundations">基础</a><a href="#primitives">组件</a><a href="#scenes">场景</a><a href="#ai-bridge">Codex 主题图</a>
       </nav>
       <div class="lab-header__links"><a class="pk-btn pk-btn--ghost" href="design-system.html">设计规则</a><a class="pk-btn" href="ui-inventory.html">真实 UI Inventory</a></div>
     </header>
@@ -93,13 +92,18 @@
         </div>
       </section>
 
-      <section id="ai-bridge" class="lab-section">
-        <header class="lab-section__head"><div><span class="pk-eyebrow">04 · IMAGE-TO-THEME BRIDGE</span><h2>让 LLM 改图负责找方向，让 Theme Pack 负责落地</h2><p>生成图是一张视觉假设，不是设计系统源码。最稳的输入是本页固定试件截图；最稳的输出是完整 Light / Dark token recipe。</p></div></header>
-        <div class="ai-theme-grid">
-          <article class="specimen-card ai-workflow"><header><b>固定工作流</b><span>避免“改图很好看，产品无法实现”</span></header><ol><li><span>1</span><div><b>Capture</b><p>截取固定试件，锁定内容、布局和状态。</p></div></li><li><span>2</span><div><b>Generate</b><p>要求模型只替换主题，不增删元素、不改变几何。</p></div></li><li><span>3</span><div><b>Compare</b><p>把生成图放到右侧，与实时 Theme Lab 并排比较。</p></div></li><li><span>4</span><div><b>Tokenize</b><p>提取语义色、radius、type、elevation 和 motion recipe。</p></div></li><li><span>5</span><div><b>Validate</b><p>补齐 Dark、Hover、Focus、Disabled、Error，再进入 Theme Pack。</p></div></li></ol><button class="pk-btn" data-copy-image-prompt><svg class="pk-ui-icon"><use href="#pk-icon-copy"></use></svg>复制图片换肤 Prompt</button></article>
-          <article class="specimen-card ai-reference"><header><b>Generated reference</b><span>本地预览，不上传、不持久化</span></header><div class="ai-reference__well" data-image-reference><div class="ai-reference__empty"><svg class="pk-ui-icon"><use href="#pk-icon-upload"></use></svg><b>放入 LLM 生成的主题图</b><span>PNG / JPG / WebP</span></div><img alt="Generated theme reference" data-image-preview hidden></div><div class="ai-reference__actions"><label class="pk-btn pk-btn--primary" for="theme-reference-file">选择图片</label><input id="theme-reference-file" type="file" accept="image/png,image/jpeg,image/webp" data-image-input hidden><button class="pk-btn pk-btn--ghost" data-image-clear>清除</button></div><p class="ai-reference__note">图片只用于视觉对照。真正可应用的主题仍需导入 Theme JSON，并通过状态与对比度检查。</p></article>
+      <section id="ai-bridge" class="lab-section" data-theme-image-manifest="ui-system/theme-concepts/manifest.json">
+        <header class="lab-section__head"><div><span class="pk-eyebrow">04 · CODEX THEME IMAGE SLOTS</span><h2>图片就在仓库里，Codex 直接替换固定文件。</h2><p>上面调好 Theme 后复制当前 JSON；随后在 Codex 中打开本 HTML，要求它按 JSON 重新生成下面四张图。Codex 读取固定清单并覆盖固定输出文件，刷新本页即可看到结果，不需要上传图片或复制另一段 Prompt。</p></div><button class="pk-btn pk-btn--primary" data-theme-export><svg class="pk-ui-icon"><use href="#pk-icon-copy"></use></svg>复制当前 Theme JSON</button></header>
+        <div class="codex-theme-contract"><div><b>固定输入</b><span>本 HTML、当前 Theme JSON，以及 <a href="ui-system/theme-concepts/manifest.json"><code>theme-concepts/manifest.json</code></a> 登记的图片和只读来源。</span></div><div><b>固定输出</b><span><code>docs/ui-system/theme-concepts/current/*.jpg</code>；不得覆盖 evidence 目录。</span></div><div><b>刷新方式</b><span>图片文件名和 HTML 路径保持不变，Codex 替换后刷新页面。</span></div></div>
+        <div class="theme-image-layout">
+          <aside class="theme-image-json"><header><b>Current Theme JSON</b><span>复制后直接粘贴给 Codex</span></header><pre data-theme-json></pre><p>生成图只负责预览方向；生产主题仍由相同 JSON / Theme Pack 驱动。</p></aside>
+          <div class="theme-image-grid">
+            <figure class="theme-image-slot" data-theme-image-slot="search"><img src="ui-system/theme-concepts/current/search.jpg" alt="Search theme concept slot"><figcaption><div><b>Search</b><span>结果、选中态与信息密度</span></div><code>current/search.jpg</code></figcaption></figure>
+            <figure class="theme-image-slot" data-theme-image-slot="composer"><img src="ui-system/theme-concepts/current/composer.jpg" alt="Composer theme concept slot"><figcaption><div><b>Composer</b><span>文档表面、选区与附着动作</span></div><code>current/composer.jpg</code></figcaption></figure>
+            <figure class="theme-image-slot" data-theme-image-slot="graph"><img src="ui-system/theme-concepts/current/graph.jpg" alt="Graph theme concept slot"><figcaption><div><b>Graph</b><span>节点、边、标签与画布层级</span></div><code>current/graph.jpg</code></figcaption></figure>
+            <figure class="theme-image-slot" data-theme-image-slot="chat"><img src="ui-system/theme-concepts/current/chat.jpg" alt="Chat theme concept slot"><figcaption><div><b>Chat</b><span>消息、引用、状态与 composer</span></div><code>current/chat.jpg</code></figcaption></figure>
+          </div>
         </div>
-        <pre class="image-prompt" data-image-prompt>Keep every element, label, layout, spacing, component size and interaction state exactly unchanged. Replace only the visual theme: semantic colors, typography character, radius system, elevation and material treatment. Do not add or remove UI. Preserve information hierarchy and produce one coherent professional Peak product theme. Return a matching Light and Dark semantic token recipe alongside the image.</pre>
       </section>
     </main>
   </div>
