@@ -5,6 +5,7 @@
 > - 面向读者：产品负责人、产品设计师、交互设计师、后续实现与验收人员
 > - 适用范围：Peak Assistant 的首次配置、长期设置、模块内偏好、系统默认、状态与维护操作
 > - 配套文档：[Onboarding 与 Settings 能力、内容和流程 Brief](./2026-08-09-onboarding-settings-capability-content-flow-brief.md)
+> - 文档规模：约 1.2 万中文字符；完整审阅约 35 分钟
 
 ## 0. 这份文档解决什么问题
 
@@ -24,6 +25,7 @@
 - **不是所有可变参数都是用户设置。** 模板 JSON、算法阈值、运行时限制和状态缓存可以变化，但不因此自动获得 Settings 入口。
 - **不采用全局 Standard / Advanced 模式。** 高级程度属于具体配置项，由影响范围、风险、频率和理解成本决定；它不是一套替代 Settings。
 - **配置有四个权威责任域：Onboarding、Settings、功能模块、系统。** 同一项配置只能有一个写入权威，可以从其他位置深链进入，但不能复制出多份互相冲突的值。
+- **模型配置以产品入口为主导航。** 用户从熟悉的产品入口逐层进入；task family 负责继承，Provider / Connection 只是独立的可用资源池。
 - **普通用户控制意图，系统控制机制。** 用户可以决定“默认用哪个连接”“是否自动更新索引”“AI 能否编辑”；不应默认控制 PageRank 权重、路由打分、轮询间隔或 schema 版本。
 - **任何正式设置都必须有真实 consumer。** 仅有字段、表单或保存成功不算设置；必须能证明启动后可恢复、运行时会消费、修改后能验证实际生效。
 - **状态、操作和设置必须分开。** “索引覆盖率”是状态，“自动更新索引”是设置，“重建索引”是操作；它们不能混成同一种配置项。
@@ -216,7 +218,7 @@ Diagnostics 是只读事实和导出；Maintenance 是有明确影响的动作�
 | --- | --- | --- | --- |
 | Setup & Readiness | 无长期业务偏好；只拥有 setup 进度 | 检测、恢复、串联首次任务 | Provider 字段、索引参数、模型目录 |
 | Connections | 连接实例、认证、endpoint、启停 | 只补首次任务缺失的连接 | 任务路由、工具许可、模型能力事实 |
-| Task Models | 任务组默认、assignment override、fallback 意图 | 自动分配最小可用默认 | Provider 凭据、模型目录维护 |
+| Task Models | 产品能力层级、任务组默认、逐级 override、fallback 意图 | 自动分配最小可用默认 | Provider 凭据、模型目录维护 |
 | Safety & Agent Runtime | 默认写权限、升级策略、预算意图 | 只确认首次任务最低权限 | 单次 tool approval、内部 risk classification |
 | Knowledge Index & Search | 索引范围、更新策略、质量层级、分析输出 | 验证并执行最小必要索引 | 当前 query、索引覆盖率手工输入 |
 | Chat Studio | 对话级临时行为、附件和会话选择 | 首次 Chat handoff | 全局 Provider 管理、长期索引策略 |
@@ -291,6 +293,177 @@ Diagnostics 是只读事实和导出；Maintenance 是有明确影响的动作�
 ### 6.3 Models、任务默认与模型选择
 
 模型选择器不是一个独立的 Settings 模块。它是一种被多个任务配置复用的选择能力。真正的产品配置单位是“某类任务默认使用什么”，而不是“全局选一个模型”。
+
+#### 两张不同的地图：可用资源与使用位置
+
+模型配置不能以 Provider 为唯一导航起点。Provider / Connection 回答“Peak 现在能调用谁”，产品能力层级回答“它在什么地方被使用”。二者通过能力解析器关联，但不能合成一棵以 Provider 为根的树。
+
+```text
+可用资源池
+├─ OpenAI、Anthropic、OpenRouter 等云端连接
+├─ Ollama 等本地连接
+├─ Codex、Claude Code 等 Agent runtime
+└─ OpenAI native、fal.ai 等媒体连接
+
+        按能力、状态、用户 override 和安全策略解析
+
+产品能力树
+└─ 用户认识的产品入口
+   └─ 能力族
+      └─ 具体 action
+         └─ 必要时才到 execution step / Prompt
+```
+
+Provider 管理应提供反向关系，例如“这个连接当前被哪些产品能力使用”；产品能力叶子则显示正向关系，例如“这项能力当前继承哪个默认，实际解析到了哪个连接和模型”。
+
+#### 用户从产品入口逐层进入
+
+下面是目标内容层级示例，不是具体 UI，也不是当前注册表已经完整实现的声明：
+
+```text
+AI defaults
+├─ Conversation & writing
+├─ Research & web
+├─ Knowledge processing
+├─ Understand files
+├─ Agent work
+└─ Create media
+
+Product surfaces
+├─ Chat Studio
+│  ├─ Conversation
+│  ├─ Improve request / follow-up suggestions
+│  ├─ Plans、projects 与 assistants
+│  └─ Web 与附件任务
+├─ Composer
+│  ├─ Copilot
+│  │  ├─ Document actions
+│  │  └─ Block actions
+│  │     ├─ Prose、heading、list、task 与 quote
+│  │     ├─ Table、formula 与 chart
+│  │     ├─ Code、Mermaid 与 native object
+│  │     └─ Image 与 frontmatter
+│  └─ Document / Vault review
+├─ Vault Search
+│  ├─ Core retrieval：不使用文本生成模型
+│  └─ Query refinement：使用模型
+├─ AI Search
+│  ├─ Plan 与 gather evidence
+│  ├─ Report section 与 summary
+│  ├─ Follow-up 与 synthesis
+│  └─ Save assistance
+├─ File Atlas
+│  ├─ Browse、filter 与 relationship display：确定性能力
+│  └─ Summary / explanation：只有注册 caller 后才允许配置模型
+├─ AI Graph
+│  ├─ Relationship map
+│  ├─ Evidence graph
+│  ├─ Thinking map
+│  └─ Node / community explanation
+├─ Ambient
+│  ├─ Retrieval、scoring 与 dedup：确定性能力
+│  ├─ Suggestion explanation
+│  └─ Briefing generation：只有注册 caller 后才允许配置模型
+├─ Vault Intelligence
+│  ├─ Pattern 与 Hub discovery
+│  ├─ Note / Vault review
+│  └─ Lint repair actions
+├─ Agent / Wizard
+│  ├─ Main run
+│  ├─ Fast helper
+│  └─ Escalation / stronger fallback
+└─ Media
+   ├─ Generate image
+   ├─ Generate video
+   ├─ Generate music
+   └─ Generate speech
+```
+
+这个层级允许用户从自己认识的产品名称进入。内部的 task family 继续承担自动默认和继承，但不要求用户先理解它，更不能把 `quick / deep / premium` 等运行时术语放在第一层。
+
+#### 五个配置层级
+
+| 层级 | 用户问题 | 允许的控制 | 默认行为 |
+| --- | --- | --- | --- |
+| Task family | 这一大类工作通常由谁完成？ | Auto 或长期默认 | 系统自动建立 |
+| Product surface | Composer 或 AI Search 是否需要不同策略？ | 可选 surface override | 继承 task family |
+| Capability family | Composer 的 block actions 是否统一使用另一策略？ | 可选 family override | 继承 surface / task family |
+| Action / execution step | 只有这个动作是否需要特定模型或 Prompt？ | 高级 pinned override | 继承最近的兼容父级 |
+| Current run | 这一次是否临时换模型？ | 临时 override | 不改写长期设置 |
+
+父级 override 只对能力兼容的后代生效。如果 Composer 同时包含纯文本改写、图片理解和媒体生成，不能强迫一个模型覆盖所有后代；不兼容的节点继续继承自己的 task family，或在对应能力族形成独立 override。
+
+#### 解析优先级
+
+```text
+当前 run 临时选择
+  → execution step pinned override
+  → action override
+  → capability-family override
+  → product-surface override
+  → task-family default
+  → Peak Auto resolver
+```
+
+无论命中哪一级，required capabilities、安全硬边界和当前连接 readiness 都必须先通过。Pinned override 失效时进入 `action-required`；除非用户明确允许 fallback，否则不能静默换模型。
+
+#### 每个能力节点需要回答什么
+
+| 内容 | 作用 |
+| --- | --- |
+| 它属于哪个产品入口 | 让用户能从熟悉功能找到它 |
+| 它具体完成什么 | 避免只展示内部 capability id |
+| 它是否真的使用 AI 模型 | 确定性 helper 不显示假的模型配置 |
+| 当前配置来源 | Auto、继承、pinned 或本次临时选择 |
+| 当前 effective connection / model | 告诉用户实际使用结果，不只显示默认值 |
+| 为什么兼容 | tools、vision、PDF、context、media 或 runtime 能力 |
+| 修改影响范围 | 当前 step、action、能力族、surface 或整个 task family |
+| 当前 Prompt owner | 只在存在真实 production caller 时逐层进入 |
+| 最近验证与运行证据 | 区分“已配置”和“已真实使用” |
+
+#### Prompt 是叶子内容，不是模型导航根
+
+- 用户先定位产品入口和具体 action，再查看该 action 的执行步骤与 Prompt；
+- system / user companion Prompt 属于同一个 execution step，不产生两个模型配置；
+- shared Prompt 可以被多个 action 引用，编辑时必须说明影响范围；
+- 模型 override 仍属于 action / execution step，不属于 Prompt 文件；
+- 没有 production caller 的 Prompt 不进入正式层级；
+- locked system instruction、schema 和安全边界可以查看，但不能被普通 Prompt 编辑覆盖。
+
+这样 Composer 可以继续向下进入 block、table、formula、Mermaid 等具体动作，但普通用户停在 Composer 或 Copilot 层就能理解当前总体策略，不需要浏览所有 Prompt。
+
+#### 降低 Provider 与模型选择压力
+
+模型配置的默认路径应遵循以下顺序：
+
+1. 先检测已有且 verified 的 Connection；
+2. 根据当前能力自动过滤 required capabilities；
+3. 默认使用 Peak Auto，不要求用户同时选择 Provider 和 model；
+4. 只给出一个推荐结果和少量已验证替代项；
+5. 用户主动要求时，才进入完整兼容模型目录；
+6. 保存后立即显示 effective connection / model 与影响范围。
+
+允许四种明确策略：
+
+| 策略 | 用户承担的决定 | 适用情况 |
+| --- | --- | --- |
+| Peak Auto | 不选 Provider，也不选 model | 默认；跨已验证连接自动解析 |
+| Auto within connection | 只固定 Connection | 用户信任某个 Provider，但不想管理模型变更 |
+| Fixed model | 固定 Connection + model | 高级用户、可重复任务或严格成本控制 |
+| No model | 不使用生成模型 | 搜索、排序、过滤、图计算等确定性能力 |
+
+具体规则：
+
+- 新增 Connection 时，完成认证和真实验证即可，不强迫立刻选完所有模型；
+- 选择 Provider 后，模型默认保持 Auto within connection；
+- 选择 model 时自动确定其 Connection，不再重复询问 Provider；
+- 推荐候选优先来自已连接、已验证且能力匹配的模型；
+- OpenRouter 不默认平铺 55 个 fallback entries；先给任务匹配的 verified shortlist；
+- Ollama 只使用当前真实 discovery 到的本地模型；
+- Codex / Claude Code 只出现在 Agent work 的兼容候选中；
+- Image、video、music、speech 分别使用自己的 media preset / model 目录；
+- 不兼容候选不进入默认 shortlist，但需要提供可理解的排除原因；
+- 任何自动选择都在运行 receipt 中记录 requested policy、effective connection、model 和 fallback 原因。
 
 #### 任务组与 assignment
 
@@ -828,7 +1001,27 @@ Ambient 的高打扰载体默认关闭是产品安全默认；用户可以逐项
 
 ## 8. Onboarding 与 Settings 的共享数据合同
 
-### 8.1 单一配置记录
+### 8.1 产品能力节点
+
+产品层级不能只存在于 UI 文案中。每个可运行或确定性的能力节点至少需要：
+
+```text
+capabilityId
+parentCapabilityId or null
+productSurfaceId
+capabilityFamilyId
+taskFamilyId
+executionKind: deterministic | model | embedding | agent | media
+executionStepIds
+promptOwnerIds
+requiredCapabilities
+allowedOverrideScopes
+productionCallerEvidence
+```
+
+`executionKind=deterministic` 的节点明确没有模型配置。只有存在 production caller evidence 的 `model / embedding / agent / media` 节点才允许继续进入 execution step、Prompt 或模型 override。
+
+### 8.2 单一配置记录
 
 每一项长期配置至少需要：
 
@@ -837,7 +1030,9 @@ settingId
 moduleOwner
 value or overrideAbsent
 source: compiled | auto | user | migration
-scope: global | vault | connection | taskGroup | assignment | surface
+scope: global | vault | connection | taskGroup | surface | capabilityFamily | action | executionStep
+ownerCapabilityId
+inheritsFromSettingId or null
 updatedAt
 schemaVersion
 effectiveState
@@ -847,7 +1042,7 @@ requires: none | reconnect | restart | reindex | reprocess | migration
 
 Onboarding、Settings 和 owning surface 不应维护不同的数据结构。它们只是以不同上下文读取和写入同一条记录。
 
-### 8.2 Readiness 投影
+### 8.3 Readiness 投影
 
 每项能力状态至少需要：
 
@@ -865,7 +1060,7 @@ lastReceiptId
 
 `configured` 不等于 `ready`；`optional` 是优先级，不是状态；`Scanning` 只有在真实任务正在运行且有进度时才成立。
 
-### 8.3 保存与生效
+### 8.4 保存与生效
 
 ```text
 用户修改
@@ -879,10 +1074,11 @@ lastReceiptId
 
 保存成功但 consumer 未更新时，必须显示“已保存但尚未生效”，不能显示完成。
 
-### 8.4 Inheritance 与 override
+### 8.5 Inheritance 与 override
 
 - 任务组拥有 Auto 默认；
-- assignment 默认继承任务组；
+- product surface、capability family、action 和 execution step 逐级继承；
+- 每个能力节点同时引用一个 task family，以便跨 surface 共享可靠默认；
 - 用户明确固定后成为 pinned override；
 - 恢复 Auto 删除 pinned override；
 - Onboarding 只能填补未配置项，不能覆盖 pinned override；
@@ -897,7 +1093,7 @@ lastReceiptId
 2. 确定第一次真实任务
 3. 计算该任务的最小依赖差集
 4. 只补齐缺失 connection、最低 permission 或必要 consent
-5. 为未固定 assignment 应用 Auto 默认
+5. 为未固定的能力节点应用 Auto 与继承默认
 6. 验证 connection、index、runtime、media 或 tool 依赖
 7. 打开真实 owning surface，并带入安全的预填任务
 8. 观察真实结果：first success 或可恢复失败
@@ -938,6 +1134,7 @@ lastReceiptId
 - OpenAI、Anthropic、Google、Perplexity、Ollama、OpenRouter、LiteLLM、custom 和 Simulator 已有 Profile 类型；
 - Chat、Copilot、Embedding、Web Search、Agent 等已有多套 role / tier 字段；
 - Knowledge Index、Media、Ambient、Usage、MCP、Command Gateway、Composer、Command Center 等已有真实配置或 runtime 结构；
+- 当前 `AIControlActionCatalog` 有 60 个静态 source-backed actions，并会追加 Copilot runtime actions；
 - 模板配置已经承载 chat runtime、model routing、media、composer、file-atlas、command gateway、vault lint 等内部产品参数；
 - 当前设置保存入口会调用 `saveData(this.settings)`，但启动时会经过显式 `normalizePluginSettings()`。
 
@@ -956,24 +1153,27 @@ lastReceiptId
 | Index status 只有 builtAt、indexedDocs、isReady | `getIndexStatus()` 返回三字段 | 无法可靠表达 eligible、changed、missing、coverage、semantic freshness |
 | Codex / Claude Code 不在当前 ProfileKind | Profile 类型未包含 runtime adapter | 不得画成 verified 普通 Provider |
 | 连接、role、harness tier、search models 多处重复 | 多套字段并存 | 用户无法知道哪个是唯一有效模型默认 |
+| AI Control action 只有 5 个粗粒度 `area` | `AIControlProductArea` 没有 parent / child 或独立 File Atlas、Ambient 层级 | 无法从用户认识的 surface 逐层导航 |
+| AI Control port 没有 model policy | summary 只有 id、label、description、area、prompt slots | 当前 Prompt 目录不能冒充已实现的模型配置中心 |
 | 许多模板参数可热更新 | `templates/config/*` | 它们是产品配置，不等于用户设置 |
 
 ### 10.3 当前必须做的配置治理收口
 
-1. 建立配置注册表：每项配置有 owner、类型、默认来源、consumer、影响和恢复方式；
-2. 将 role、tier、legacy default model 收敛成 Task Models 的 task group / assignment；
-3. 补齐 normalize / migration / persistence tests，删除“能保存但重启丢失”的假设置；
-4. 建立 shared readiness projection，补齐 Index、Connection、Media、Agent、Tools 的真实状态；
-5. 将状态、设置、consent 和 operation 分开建模；
-6. 只有验证过 end-to-end consumer 的字段才进入正式 UI；
-7. 为每项 re-index、reconnect、restart、migration 建立 operation 和 receipt；
-8. 对 provider / model 动态目录记录来源、新鲜度和 fallback；
-9. 完成 Codex / Claude Code 专属 runtime adapter 后再开放；
-10. 先迁移旧字段再退役，不能直接删除用户已有配置。
+1. 建立层级化 capability registry：surface、能力族、action、execution step 和 caller evidence 可查询；
+2. 建立配置注册表：每项配置有 owner、类型、默认来源、consumer、影响和恢复方式；
+3. 将 role、tier、legacy default model 收敛成 Task Models 的继承与 override；
+4. 补齐 normalize / migration / persistence tests，删除“能保存但重启丢失”的假设置；
+5. 建立 shared readiness projection，补齐 Index、Connection、Media、Agent、Tools 的真实状态；
+6. 将状态、设置、consent 和 operation 分开建模；
+7. 只有验证过 end-to-end consumer 的字段才进入正式 UI；
+8. 为每项 re-index、reconnect、restart、migration 建立 operation 和 receipt；
+9. 对 provider / model 动态目录记录来源、新鲜度和 fallback；
+10. 完成 Codex / Claude Code 专属 runtime adapter 后再开放；
+11. 先迁移旧字段再退役，不能直接删除用户已有配置。
 
-## 11. 需要产品负责人确认的决策
+## 11. 产品负责人决策
 
-下列问题不应由 UI 设计师自行决定：
+下列问题不应由 UI 设计师自行决定。D7 已确定，其余仍需产品负责人确认。
 
 ### D1. 首次任务默认入口
 
@@ -997,11 +1197,32 @@ lastReceiptId
 
 ### D6. Provider 首发范围
 
-建议 P0 明确为 OpenAI、Anthropic、OpenRouter、Ollama、Codex、Claude Code；Google、Perplexity 和 compatible endpoints 保留在扩展 / 高级范围。Codex、Claude Code 必须作为 Agent runtime，不伪装成普通聊天 Provider。
+建议 P0 明确为：
 
-### D7. Task assignment 的可见粒度
+- OpenAI；
+- Anthropic；
+- OpenRouter；
+- Ollama；
+- Codex；
+- Claude Code。
 
-建议普通用户只管理 6 个任务组，单项 18 assignments 在对应组内按需展开；系统默认继承。这里规定的是内容层级，不是具体 UI。
+Google、Perplexity 和 compatible endpoints 保留在扩展 / 高级范围。Codex 与 Claude Code 必须作为 Agent runtime，不伪装成普通聊天 Provider。
+
+### D7. 产品入口优先的模型配置层级（已确定）
+
+模型配置以用户认识的产品入口作为主导航：
+
+- Chat Studio；
+- Composer 与 Copilot；
+- Vault Search 与 AI Search；
+- File Atlas 与 AI Graph；
+- Ambient 与 Vault Intelligence；
+- Agent / Wizard；
+- Media。
+
+用户可以继续进入能力族、action、execution step 和 Prompt。
+
+六个 task families 继续作为跨 surface 的自动默认与继承层，但不是普通用户必须先理解的一级导航。Provider / Connection 是独立的可用资源池，不作为产品能力树的根。
 
 ### D8. 用户自定义 Prompt 边界
 
@@ -1060,6 +1281,12 @@ lastReceiptId
 
 - 每个 persisted field 有 normalize / migration / round-trip test；
 - 每个用户可见设置有至少一个 consumer test；
+- 每个 model-using action 只有一个可查询的 surface → family → action → step 路径；
+- 确定性节点不会产生 model policy 或 model picker；
+- system / user Prompt pair 只对应一个 execution step；
+- surface / family / action / step 继承遵守最近兼容 override 优先；
+- Provider usage 反向查询与 capability effective assignment 一致；
+- shortlist 只包含已验证且能力兼容的候选；
 - 改值后能读取 effective state；
 - 恢复 Auto 会删除 override，而不是写死旧默认；
 - pinned assignment 不被 Onboarding 或 Provider refresh 覆盖；
@@ -1076,6 +1303,11 @@ lastReceiptId
 - 新用户只完成首次目标所需的最少决定；
 - 已有连接、index 和 pinned defaults 被正确复用；
 - 用户能从任一能力问题到达唯一配置 owner；
+- 用户能从熟悉的 product surface 逐层找到具体 AI action；
+- 普通用户无需先理解 Provider、task family 或 Prompt 即可知道当前 effective model；
+- 确定性能力明确显示不使用模型，不产生假的 model picker；
+- 父级 override 只影响兼容后代，不会错误覆盖其他 modality；
+- 默认候选不平铺完整 Provider catalog，完整兼容目录只在主动查看时出现；
 - 每项设置都能回答“影响什么、是否保存、是否生效、如何恢复”；
 - 高级能力没有被删除，也不会压过常用任务；
 - 状态、设置、操作、确认和危险行为不会混淆；
@@ -1096,6 +1328,9 @@ lastReceiptId
 - `src/core/types/mcp.ts`：MCP 配置与连接状态；
 - `src/core/types/plugin-command-gateway.ts`：用户 review、系统 finding、risk 与 receipt；
 - `src/core/ports/SettingsActionsPort.ts`：Settings 中的 setup / maintenance / index operations；
+- `src/core/ports/AIControlCenterPort.ts`：当前 AI action summary 与 Prompt 配置边界；
+- `src/app/ai-control-center/AIControlActionCatalog.ts`：当前 source-backed AI action 目录；
+- `src/app/ai-control-center/AIControlCenterRuntime.ts`：静态 action 与 Copilot runtime action 的合并；
 - `src/service/chat/chatRuntimeConfig.ts`：Chat loop 内部 budget / timeout；
 - `src/service/chat/modelRouter.ts`：Auto model 的能力筛选和内部路由配置；
 - `src/service/search/index/indexService.ts` 与 `src/core/types/index-status.ts`：当前 Index status 边界；
