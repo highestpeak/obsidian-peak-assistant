@@ -141,6 +141,7 @@ assertUniqueKeys('Vault Search graph with Inspector', [
 	PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.constellation,
 	PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.community,
 	PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowTb,
+	PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowLr,
 	PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.folder,
 	PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.orbit,
 	PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic,

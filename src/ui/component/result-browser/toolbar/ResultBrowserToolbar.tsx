@@ -11,7 +11,7 @@
  */
 import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { List, ListTree, Network, RefreshCw } from 'lucide-react';
+import { ArrowDown, List, ListTree, Network } from 'lucide-react';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { KeyboardShortcut } from '@/ui/component/mine/KeyboardShortcut';
 import { GraphSemanticToggle } from '@/ui/component/graph/GraphSemanticToggle';
@@ -262,8 +262,6 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 }) => {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const keyTips = keyTipKeys?.preset ?? GRAPH_PRESET_KEY_TIPS;
-	const linksActive = preset === 'flow-tb' || preset === 'flow-lr';
-	const linksHorizontal = preset === 'flow-lr';
 	const standardControls: Array<{
 		id: ResultBrowserGraphPreset;
 		label: string;
@@ -272,7 +270,7 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 		preset: ResultBrowserGraphPreset;
 		keyTip: string;
 		ariaLabel?: string;
-		directionSwitch?: boolean;
+		iconOnly?: boolean;
 	}> = [
 		{ id: 'constellation', label: 'Constellation', title: 'Force-directed cluster — how do these results cluster together?', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
 		{ id: 'flow-tb', label: 'Flow ↓', title: 'Top-down hierarchical flow — what references what?', active: preset === 'flow-tb', preset: 'flow-tb', keyTip: keyTips['flow-tb'] },
@@ -284,21 +282,22 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 		{ id: 'constellation', label: 'Constellation', title: 'Force-directed cluster — how do these results cluster together?', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
 		{ id: 'community', label: 'Community', title: 'Group current results by computed vault community', active: preset === 'community', preset: 'community', keyTip: keyTips.community },
 		{
+			id: 'flow-lr',
+			label: 'Links →',
+			title: 'Links horizontal — left-to-right reference flow',
+			ariaLabel: 'Links horizontal, left to right',
+			active: preset === 'flow-lr',
+			preset: 'flow-lr',
+			keyTip: keyTips['flow-lr'],
+		},
+		{
 			id: 'flow-tb',
-			label: `Links ${linksHorizontal ? '→' : '↓'}`,
-			title: !linksActive
-				? 'Open Links vertical (↓). Once selected, click again to switch to horizontal (→).'
-				: linksHorizontal
-					? 'Links horizontal (→). Click again to switch to vertical (↓).'
-					: 'Links vertical (↓). Click again to switch to horizontal (→).',
-			ariaLabel: !linksActive
-				? 'Open Links vertical. Once selected, click again to switch to horizontal.'
-				: linksHorizontal
-					? 'Links horizontal. Click again to switch to vertical.'
-					: 'Links vertical. Click again to switch to horizontal.',
-			directionSwitch: true,
-			active: linksActive,
-			preset: preset === 'flow-tb' ? 'flow-lr' : 'flow-tb',
+			label: 'Links ↓',
+			title: 'Links vertical — top-to-bottom reference flow',
+			ariaLabel: 'Links vertical, top to bottom',
+			iconOnly: true,
+			active: preset === 'flow-tb',
+			preset: 'flow-tb',
 			keyTip: keyTips['flow-tb'],
 		},
 		{ id: 'folder', label: 'Folders', title: 'Arrange current results by vault folder', active: preset === 'folder', preset: 'folder', keyTip: keyTips.folder },
@@ -318,13 +317,14 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
 		>
 			{controls.map((control) => {
-				const { id, label, title, active, ariaLabel, directionSwitch } = control;
+				const { id, label, title, active, ariaLabel, iconOnly } = control;
 				return (
 					<Button
 						key={id}
 						type="button"
 						variant="unstyled"
-						size="sm"
+						size={iconOnly ? 'icon' : 'sm'}
+						geometry={iconOnly ? 'toolbar-icon' : undefined}
 						role="tab"
 						aria-selected={active}
 						aria-label={ariaLabel}
@@ -335,7 +335,9 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 						title={title}
 						onClick={() => onPresetChange(control.preset)}
 						className={cn(
-							TOOLBAR_OPT_BASE,
+							iconOnly
+								? 'pktw-relative pktw-inline-flex pktw-items-center pktw-justify-center pktw-rounded-full pktw-text-sm pktw-font-medium'
+								: TOOLBAR_OPT_BASE,
 							active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
 						)}
 					>
@@ -347,13 +349,9 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 							/>
 						)}
 						<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
-							{label}
-							{directionSwitch && (
-								<RefreshCw
-									aria-hidden="true"
-									className="pktw-h-3 pktw-w-3 pktw-opacity-70"
-								/>
-							)}
+							{iconOnly
+								? <ArrowDown aria-hidden="true" className="pktw-h-3.5 pktw-w-3.5" />
+								: label}
 						</span>
 					</Button>
 				);

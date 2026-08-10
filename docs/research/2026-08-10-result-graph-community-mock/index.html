@@ -192,34 +192,13 @@
 
     .mode-button { padding: 0 12px; }
 
-    .links-button { padding-right: 8px; }
-
-    .links-divider {
-      width: 1px;
-      height: 15px;
-      background: currentColor;
-      opacity: 0.2;
-    }
-
-	.links-switch-hint {
-		width: 13px;
-		height: 13px;
-		opacity: 0.7;
-		flex: 0 0 auto;
-	}
-
-    .orientation {
-      width: 20px;
-      height: 24px;
+    .direction-only {
+      width: 34px;
       padding: 0;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      cursor: pointer;
-      border-radius: 6px;
+      justify-content: center;
     }
 
-    .orientation:hover { background: rgba(124, 58, 237, 0.08); }
+    .direction-only svg { width: 15px; height: 15px; }
 
     .switch-wrap {
       height: 34px;
@@ -722,9 +701,9 @@
           <div class="layout-modes" aria-label="Graph interpretation">
             <button class="mode-button" type="button" title="Force-directed cluster">Constellation</button>
             <button class="mode-button active" type="button" title="Group the current results by their vault community">Community</button>
-            <button class="mode-button links-button" type="button" title="Open Links vertical (↓). Once selected, click again to switch to horizontal (→)." aria-label="Open Links vertical. Once selected, click again to switch to horizontal.">
-              <span>Links</span><span class="links-divider" aria-hidden="true"></span><span id="orientationGlyph">↓</span>
-			  <svg class="links-switch-hint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-15.5-6.2L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15.5 6.2L21 16"/><path d="M16 16h5v5"/></svg>
+            <button class="mode-button links-horizontal" type="button" title="Links horizontal — left-to-right reference flow" aria-label="Links horizontal, left to right">Links →</button>
+            <button class="mode-button direction-only" type="button" title="Links vertical — top-to-bottom reference flow" aria-label="Links vertical, top to bottom">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
             </button>
             <button class="mode-button" type="button" title="Arrange by vault folder">Folders</button>
             <button class="mode-button" type="button" title="Hubs at center, documents orbit around them">Orbit</button>
@@ -1196,28 +1175,11 @@
       canvas.classList.toggle('semantic-hidden', !event.target.checked);
     });
 
-	const layoutButtons = [...document.querySelectorAll('.mode-button')];
-	layoutButtons.forEach((button) => button.addEventListener('click', () => {
-	  if (button.classList.contains('links-button')) return;
-	  layoutButtons.forEach((candidate) => candidate.classList.remove('active'));
-	  button.classList.add('active');
-	}));
-
-    document.querySelector('.links-button').addEventListener('click', (event) => {
-	  const button = event.currentTarget;
-      const glyph = document.getElementById('orientationGlyph');
-	  const alreadyActive = button.classList.contains('active');
-	  layoutButtons.forEach((candidate) => candidate.classList.remove('active'));
-	  button.classList.add('active');
-	  if (alreadyActive) glyph.textContent = glyph.textContent === '↓' ? '→' : '↓';
-	  const horizontal = glyph.textContent === '→';
-	  button.title = horizontal
-		? 'Links horizontal (→). Click again to switch to vertical (↓).'
-		: 'Links vertical (↓). Click again to switch to horizontal (→).';
-	  button.setAttribute('aria-label', horizontal
-		? 'Links horizontal. Click again to switch to vertical.'
-		: 'Links vertical. Click again to switch to horizontal.');
-    });
+    const layoutButtons = [...document.querySelectorAll('.mode-button')];
+    layoutButtons.forEach((button) => button.addEventListener('click', () => {
+      layoutButtons.forEach((candidate) => candidate.classList.remove('active'));
+      button.classList.add('active');
+    }));
   </script>
 </body>
 </html>

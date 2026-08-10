@@ -58,20 +58,16 @@ assert.match(
 	/typeof semantic === 'boolean' && onSemanticChange/,
 	'other Result Browser hosts retain the optional outer semantic control',
 );
-for (const label of ['Constellation', 'Community', 'Links ${', 'Folders', 'Orbit']) {
-	assert.ok(toolbar.includes(label), `graph toolbar must include the consolidated ${label} control`);
+for (const label of ['Constellation', 'Community', 'Links →', 'Links ↓', 'Folders', 'Orbit']) {
+	assert.ok(toolbar.includes(label), `graph toolbar must include the ${label} control`);
 }
-assert.match(toolbar, /directionSwitch: true/, 'the consolidated Links control must visibly advertise direction switching');
-assert.match(toolbar, /Click again to switch to horizontal/, 'Links direction switching must be explained without guesswork');
+assert.match(toolbar, /iconOnly: true/, 'the vertical Links control must stay compact without repeating the Links label');
+assert.match(toolbar, /keyTip: keyTips\['flow-lr'\]/, 'horizontal Links must expose its own Key Tip');
+assert.match(toolbar, /keyTip: keyTips\['flow-tb'\]/, 'vertical Links must expose its own Key Tip');
 assert.match(
 	toolbar,
 	/communityAvailable \? communityControls : standardControls/,
 	'shared graph hosts without community evidence retain their standard layout controls',
-);
-assert.doesNotMatch(
-	toolbar,
-	/\['flow-tb',[\s\S]*\['flow-lr'/,
-	'Links directions must not consume two visible preset buttons',
 );
 
 console.log('result-graph-canvas-toolbar: passed');

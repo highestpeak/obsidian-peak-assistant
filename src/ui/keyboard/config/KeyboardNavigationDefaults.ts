@@ -34,7 +34,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 			constellation: 'C',
 			community: 'F',
 			flowTb: 'D',
-			flowLr: 'F',
+			flowLr: '1',
 			folder: 'K',
 			orbit: 'O',
 		},
