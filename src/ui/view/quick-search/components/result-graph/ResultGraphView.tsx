@@ -36,6 +36,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	const results = useVaultSearchStore((s) => s.lastSearchResults);
 	const preset = useVaultSearchStore((s) => s.graphPreset) as ResultBrowserGraphPreset;
 	const showSemantic = useVaultSearchStore((s) => s.graphShowSemantic);
+	const setShowSemantic = useVaultSearchStore((s) => s.setGraphShowSemantic);
 	const { vaultNavigation, resultSubgraph: resultSubgraphDeps } = useServiceContext();
 
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
@@ -93,6 +94,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			subgraph={subgraph}
 			preset={preset}
 			semantic={showSemantic}
+			onSemanticChange={setShowSemantic}
 			nodeCap={NODE_CAP}
 			onNodeTap={({ id, path, isHub, modKey }) => {
 				if (modKey && isHub) { onOpenHubGraphSubview?.(id); return; }

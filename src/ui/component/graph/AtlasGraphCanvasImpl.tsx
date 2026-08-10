@@ -24,9 +24,10 @@ import fcose from 'cytoscape-fcose';
 import cise from 'cytoscape-cise';
 import cola from 'cytoscape-cola';
 import dagre from 'cytoscape-dagre';
-import { Check, Image as ImageIcon, List, Workflow } from 'lucide-react';
+import { Check, Image as ImageIcon, List, PanelRightOpen, Workflow } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import { Button } from '@/ui/component/shared-ui/button';
+import { GraphSemanticToggle } from './GraphSemanticToggle';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { coalesceGraphEdges } from '@/core/types/graph-edge';
 import {
@@ -478,6 +479,9 @@ export interface AtlasGraphCanvasProps {
 	subgraph: ResultSubgraphOutput | null;
 	preset: AtlasGraphPreset;
 	showSemantic: boolean;
+	/** Optional controlled layer action. When present, the canvas owns its visible placement. */
+	onShowSemanticChange?: (on: boolean) => void;
+	semanticKeyTipKey?: string;
 	/** For the overflow badge ("Showing top N of …"). Default 100. */
 	nodeCap?: number;
 	/** Message when the subgraph has no nodes. Default "No results to graph." */
@@ -504,6 +508,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	subgraph,
 	preset,
 	showSemantic,
+	onShowSemanticChange,
+	semanticKeyTipKey,
 	nodeCap = 100,
 	emptyLabel = 'No results to graph.',
 	buildingLabel = 'Building graph…',
@@ -856,6 +862,9 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		if (!subgraph.resultNodes.length) return emptyLabel;
 		return null;
 	}, [subgraph, buildingLabel, emptyLabel]);
+	const nodeListLabel = nodeListOpen
+		? PEAK_KEYBOARD_A11Y_STRINGS.closeGraphNodeList
+		: PEAK_KEYBOARD_A11Y_STRINGS.openGraphNodeList;
 
 	return (
 		<div
@@ -890,26 +899,53 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 						/>
 					</>
 				)}
-				<IconButton
-					label={
-						nodeListOpen
-							? PEAK_KEYBOARD_A11Y_STRINGS.closeGraphNodeList
-							: PEAK_KEYBOARD_A11Y_STRINGS.openGraphNodeList
-					}
-					aria-expanded={nodeListOpen}
-					data-peak-keytip-key={keyTipKeys?.nodeList}
-					data-peak-keytip-label={
-						nodeListOpen
-							? PEAK_KEYBOARD_A11Y_STRINGS.closeGraphNodeList
-							: PEAK_KEYBOARD_A11Y_STRINGS.openGraphNodeList
-					}
-					onClick={() => setNodeListOpen((open) => !open)}
-					data-active={nodeListOpen ? 'true' : undefined}
-				>
-					<List className="pktw-w-3.5 pktw-h-3.5" />
-				</IconButton>
+				{onShowSemanticChange && (
+					<>
+						<GraphSemanticToggle
+							checked={showSemantic}
+							onCheckedChange={onShowSemanticChange}
+							keyTipKey={semanticKeyTipKey}
+							label="Semantic edges"
+						/>
+						<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
+					</>
+				)}
+				{onShowSemanticChange ? (
+					<Button
+						type="button"
+						variant="ghost"
+						geometry="toolbar"
+						title={nodeListLabel}
+						aria-label={nodeListLabel}
+						aria-expanded={nodeListOpen}
+						data-peak-keytip-key={keyTipKeys?.nodeList}
+						data-peak-keytip-label={nodeListLabel}
+						onClick={() => setNodeListOpen((open) => !open)}
+						data-active={nodeListOpen ? 'true' : undefined}
+						className="pktw-gap-1.5 pktw-px-2.5 pktw-text-pk-foreground-muted"
+					>
+						<PanelRightOpen className="pktw-h-3.5 pktw-w-3.5" />
+						<span>Nodes</span>
+					</Button>
+				) : (
+					<IconButton
+						label={nodeListLabel}
+						title={nodeListLabel}
+						aria-expanded={nodeListOpen}
+						data-peak-keytip-key={keyTipKeys?.nodeList}
+						data-peak-keytip-label={nodeListLabel}
+						onClick={() => setNodeListOpen((open) => !open)}
+						data-active={nodeListOpen ? 'true' : undefined}
+					>
+						<List className="pktw-h-3.5 pktw-w-3.5" />
+					</IconButton>
+				)}
+				{onShowSemanticChange && (
+					<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
+				)}
 				<IconButton
 					label={copiedMode === 'mermaid' ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
+					title="Copy graph as Mermaid"
 					data-peak-keytip-key={keyTipKeys?.copyMermaid}
 					data-peak-keytip-label="Copy graph as Mermaid"
 					onClick={handleCopyMermaid}
@@ -921,6 +957,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				</IconButton>
 				<IconButton
 					label={copiedMode === 'image' ? 'Copied image to clipboard' : 'Copy graph as image'}
+					title="Copy graph as image"
 					data-peak-keytip-key={keyTipKeys?.copyImage}
 					data-peak-keytip-label="Copy graph as image"
 					onClick={handleCopyImage}
@@ -969,7 +1006,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 							<span>{node.path}</span>
 						</Button>
 					))}
-				</div>
+			</div>
 			)}
 			{hoveredLabel && (() => {
 				const [title, ...rest] = hoveredLabel.label.split('\n');

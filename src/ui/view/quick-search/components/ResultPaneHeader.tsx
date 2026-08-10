@@ -73,16 +73,15 @@ export const ResultDensityToggle: React.FC = () => {
 };
 
 /**
- * Right-side graph-specific controls: pinned hub chip + preset picker +
- * semantic toggle. Only visible on graph view; on list view renders just the
- * pinned-hub chip (or nothing).
+ * Right-side graph-specific controls: pinned hub chip + preset picker. The
+ * semantic-edge layer now lives with the Result Graph canvas controls. Only
+ * visible on graph view; on list view renders just the pinned-hub chip (or
+ * nothing).
  */
 export const ResultPaneGraphControls: React.FC<ResultPaneHeaderProps> = ({ mode, className }) => {
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const preset = useVaultSearchStore((s) => s.graphPreset);
 	const setPreset = useVaultSearchStore((s) => s.setGraphPreset);
-	const semantic = useVaultSearchStore((s) => s.graphShowSemantic);
-	const setSemantic = useVaultSearchStore((s) => s.setGraphShowSemantic);
 	const pinnedResultDocIds = useVaultSearchStore((s) => s.pinnedResultDocIds);
 	const setPinnedResultDocIds = useVaultSearchStore((s) => s.setPinnedResultDocIds);
 
@@ -101,8 +100,6 @@ export const ResultPaneGraphControls: React.FC<ResultPaneHeaderProps> = ({ mode,
 		<ResultBrowserGraphControls
 			preset={preset}
 			onPresetChange={setPreset}
-			semantic={semantic}
-			onSemanticChange={setSemantic}
 			leadingSlot={<PinnedHubChip />}
 			className={cn(className)}
 		/>

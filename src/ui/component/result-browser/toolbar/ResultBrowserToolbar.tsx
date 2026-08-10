@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import { List, ListTree, Network } from 'lucide-react';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { KeyboardShortcut } from '@/ui/component/mine/KeyboardShortcut';
+import { GraphSemanticToggle } from '@/ui/component/graph/GraphSemanticToggle';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
@@ -247,8 +248,8 @@ export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({
 export interface GraphControlsProps {
 	preset: ResultBrowserGraphPreset;
 	onPresetChange: (preset: ResultBrowserGraphPreset) => void;
-	semantic: boolean;
-	onSemanticChange: (on: boolean) => void;
+	semantic?: boolean;
+	onSemanticChange?: (on: boolean) => void;
 	/** Optional host-owned chip (e.g. Quick Search's pinned-hub chip). */
 	leadingSlot?: React.ReactNode;
 	className?: string;
@@ -312,49 +313,18 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 	);
 };
 
-const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemanticChange' | 'keyTipKeys'>> = ({
-	semantic,
-	onSemanticChange,
-	keyTipKeys,
-}) => (
-	<label
-		className="pktw-inline-flex pktw-min-h-8 pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-sm pktw-text-pk-foreground-muted"
-		title="Layer semantic-similarity edges on top of the current preset. Uses pre-indexed embeddings — instant, no AI credits, no network."
-	>
-		<input
-			type="checkbox"
-			checked={semantic}
-			data-peak-keytip-key={keyTipKeys?.semantic ?? PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic}
-			data-peak-keytip-label="Toggle semantic edges"
-			onChange={(e) => onSemanticChange(e.target.checked)}
-			className="pktw-sr-only peer"
-			aria-label="Toggle semantic edges"
-		/>
-		<span
-			aria-hidden="true"
-			className={cn(
-				'pktw-relative pktw-inline-block pktw-w-[30px] pktw-h-4 pktw-rounded-full pktw-transition-colors peer-focus-visible:pktw-ring-2 peer-focus-visible:pktw-ring-pk-accent peer-focus-visible:pktw-ring-offset-2',
-				semantic ? 'pktw-bg-pk-accent' : 'pktw-bg-pk-border',
-			)}
-		>
-			<span
-				className={cn(
-					'pktw-absolute pktw-top-0.5 pktw-left-0.5 pktw-w-3 pktw-h-3 pktw-bg-white pktw-rounded-full pktw-shadow-pk-card',
-					'pktw-transition-transform',
-					semantic ? 'pktw-translate-x-[14px]' : 'pktw-translate-x-0',
-				)}
-			/>
-		</span>
-		<span>Semantic</span>
-	</label>
-);
-
 export const ResultBrowserGraphControls: React.FC<GraphControlsProps> = ({
 	preset, onPresetChange, semantic, onSemanticChange, leadingSlot, className, keyTipKeys,
 }) => (
 	<div className={cn('pktw-flex pktw-items-center pktw-gap-2.5', className)}>
 		{leadingSlot}
 		<GraphPresetSegmented preset={preset} onPresetChange={onPresetChange} keyTipKeys={keyTipKeys} />
-		<SemanticToggle semantic={semantic} onSemanticChange={onSemanticChange} keyTipKeys={keyTipKeys} />
+		{typeof semantic === 'boolean' && onSemanticChange && (
+			<GraphSemanticToggle
+				checked={semantic}
+				onCheckedChange={onSemanticChange}
+				keyTipKey={keyTipKeys?.semantic ?? PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic}
+			/>
+		)}
 	</div>
 );

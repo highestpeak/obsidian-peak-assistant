@@ -28,27 +28,33 @@ export interface ResultBrowserGraphProps {
 	subgraph: ResultSubgraphOutput | null;
 	preset: ResultBrowserGraphPreset;
 	semantic: boolean;
+	onSemanticChange?: (on: boolean) => void;
 	nodeCap?: number;
 	onNodeTap?: (node: AtlasGraphNodeTap) => void;
 	onNodeDblTap?: (node: { id: string; path: string }) => void;
 	onNodeHover?: (node: { id: string; path: string } | null) => void;
 	keyTipKeys?: AtlasGraphKeyTipKeys;
+	semanticKeyTipKey?: string;
 }
 
 export const ResultBrowserGraph: React.FC<ResultBrowserGraphProps> = ({
 	subgraph,
 	preset,
 	semantic,
+	onSemanticChange,
 	nodeCap = RESULT_BROWSER_GRAPH_NODE_CAP,
 	onNodeTap,
 	onNodeDblTap,
 	onNodeHover,
 	keyTipKeys = PEAK_CONTROL_KEY_TIP_KEYS.search.graphCanvas,
+	semanticKeyTipKey = PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic,
 }) => (
 	<AtlasGraphCanvas
 		subgraph={subgraph}
 		preset={preset as AtlasGraphPreset}
 		showSemantic={semantic}
+		onShowSemanticChange={onSemanticChange}
+		semanticKeyTipKey={semanticKeyTipKey}
 		keyTipKeys={keyTipKeys}
 		nodeCap={nodeCap}
 		onNodeTap={onNodeTap}
