@@ -6,7 +6,7 @@
 >
 > 状态：未开始
 >
-> 前置任务：[公开仓库边界与英文化](03-public-repository-and-english.md)
+> 前置任务：[公开仓库边界与英文化](03-public-repository-and-english.md)、[English Default 与多语言配置收口](18-english-default-and-i18n-closure.md)
 
 ## 任务目标
 
