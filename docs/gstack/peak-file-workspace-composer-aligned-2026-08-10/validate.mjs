@@ -114,6 +114,9 @@ assert.match(css, /\.lasso-mask\{[^}]*fill-rule:nonzero[^}]*stroke:none[^}]*filt
 assert.match(css, /\.crop-freehand-mask\{[^}]*filter:url\(#lasso-outline-white\)/, "Freehand crop must use the same silhouette-only completion rule");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
 assert.match(css, /\.crop-studio\{position:absolute[^}]+bottom:calc\(100% \+ 12px\)[^}]+grid-template-areas:"mode spacer commit" "body body body"/, "Crop controls must float above the dock in a non-overlapping two-row hierarchy");
+assert.match(css, /\.crop-studio\{[^}]*transform:translateX\(-50%\)[^}]*animation:crop-studio-reveal/, "Crop studio must use its transform-safe reveal animation");
+assert.match(css, /@keyframes crop-studio-reveal\{from\{[^}]*transform:translateX\(-50%\)[^}]*\}to\{[^}]*transform:translateX\(-50%\)/, "Crop reveal must preserve horizontal centering in every keyframe");
+assert.doesNotMatch(css, /\.crop-studio\{[^}]*animation:lens-reveal/, "Generic lens animation must not override Crop horizontal centering");
 assert.match(css, /\.crop-rectangle-controls\{grid-area:body[^}]+justify-content:space-between[^}]+border-top:/, "Rectangle crop controls need a separate secondary row");
 assert.doesNotMatch(css, /\.image-context-toolbar:has\(/, "Opening Crop must not resize or move the image dock");
 assert.match(readme, /do not collapse every task into Lasso/i, "README must preserve multiple image selection and crop methods");
