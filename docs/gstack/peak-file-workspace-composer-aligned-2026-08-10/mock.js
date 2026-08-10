@@ -289,9 +289,10 @@ function hideImageSelections() {
 
 function showImageSelectionLens(kind, label, target) {
   const toolbar = document.querySelector("#imageSelectionToolbar");
+  const frame = document.querySelector("#imageFrame");
   document.querySelector("#imageSelectionKind").textContent = kind;
   document.querySelector("#imageSelectionLabel").textContent = label;
-  positionSelectionLens(toolbar, target, document.querySelector("#imageFrame"));
+  positionSelectionLens(toolbar, target, frame, "above", document.querySelector("#imageContextDock"));
 }
 
 function setImageScope(scope, button, preserveTool = false) {
@@ -721,7 +722,13 @@ function refreshImageLassoForZoom() {
   };
   selection.viewportBounds = viewportBounds;
   selection.viewTransform = { scale: imageScale, quarterRotation: imageQuarterRotation };
-  positionSelectionLens(document.querySelector("#imageSelectionToolbar"), viewportBounds, frame);
+  positionSelectionLens(
+    document.querySelector("#imageSelectionToolbar"),
+    viewportBounds,
+    frame,
+    "above",
+    document.querySelector("#imageContextDock"),
+  );
 }
 
 function handleImageSelectionAction(action) {
@@ -779,21 +786,52 @@ function useWholeHtmlPage() {
   selectionScope.textContent = "Whole rendered page + source";
 }
 
-function positionSelectionLens(bar, target, container, preferredPlacement = "above") {
+function positionSelectionLens(bar, target, container, preferredPlacement = "above", avoidElement = null) {
   const targetRect = typeof target.getBoundingClientRect === "function" ? target.getBoundingClientRect() : target;
   const containerRect = container.getBoundingClientRect();
   bar.hidden = false;
   const barRect = bar.getBoundingClientRect();
   const scrollLeft = container.scrollLeft || 0;
   const scrollTop = container.scrollTop || 0;
+  const safeTop = scrollTop + 6;
+  let safeBottom = scrollTop + container.clientHeight - 6;
+  if (avoidElement && !avoidElement.hidden) {
+    const avoidRect = avoidElement.getBoundingClientRect();
+    safeBottom = Math.min(safeBottom, avoidRect.top - containerRect.top + scrollTop - 8);
+  }
+
+  const targetTop = targetRect.top - containerRect.top + scrollTop;
+  const targetBottom = targetRect.bottom - containerRect.top + scrollTop;
   const centeredLeft = targetRect.left - containerRect.left + scrollLeft + (targetRect.width - barRect.width) / 2;
-  const aboveTop = targetRect.top - containerRect.top + scrollTop - barRect.height - 10;
-  const belowTop = targetRect.bottom - containerRect.top + scrollTop + 10;
-  const placeBelow = preferredPlacement === "below" || aboveTop < scrollTop + 6;
+  const aboveTop = targetTop - barRect.height - 10;
+  const belowTop = targetBottom + 10;
+  const aboveFits = aboveTop >= safeTop;
+  const belowFits = belowTop + barRect.height <= safeBottom;
+  let placement = "above";
+  let top = aboveTop;
+
+  if (preferredPlacement === "below" && belowFits) {
+    placement = "below";
+    top = belowTop;
+  } else if (aboveFits) {
+    placement = "above";
+    top = aboveTop;
+  } else if (belowFits) {
+    placement = "below";
+    top = belowTop;
+  } else {
+    placement = "inside";
+    const insideBottom = targetBottom - barRect.height - 10;
+    const insideTop = targetTop + 10;
+    const desiredInside = insideBottom >= safeTop ? insideBottom : insideTop;
+    const maxTop = Math.max(safeTop, safeBottom - barRect.height);
+    top = Math.max(safeTop, Math.min(maxTop, desiredInside));
+  }
+
   const maxLeft = Math.max(6, container.scrollWidth - barRect.width - 6);
   bar.style.left = `${Math.max(6, Math.min(maxLeft, centeredLeft))}px`;
-  bar.style.top = `${placeBelow ? belowTop : aboveTop}px`;
-  bar.dataset.placement = placeBelow ? "below" : "above";
+  bar.style.top = `${top}px`;
+  bar.dataset.placement = placement;
 }
 
 function addToComposer(kind, scope = "selection") {

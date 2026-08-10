@@ -109,6 +109,11 @@ assert.doesNotMatch(js, /(?:layer|lassoLayer)\.hidden\s*=/, "SVG lasso layers ca
 assert.match(js, /normalizedPoints[\s\S]+normalizedBounds/, "Shared normalized lasso envelope missing");
 assert.match(js, /knowledge-work-ai-era\.pdf[\s\S]+p\.\$\{page\}[\s\S]+lasso mask \+ normalized bounds/, "PDF Composer receipt must retain file, page, mask, and bounds");
 assert.match(css, /\.selection-context-bar\.follows-selection/, "shared selection-following capsule styles missing");
+assert.match(js, /function positionSelectionLens\(bar, target, container, preferredPlacement = "above", avoidElement = null\)/, "Selection Lens must accept a collision boundary");
+assert.match(js, /avoidRect\.top - containerRect\.top \+ scrollTop - 8/, "Selection Lens must reserve space above the image dock");
+assert.match(js, /placement = "inside"[\s\S]+targetBottom - barRect\.height - 10/, "Selection Lens must fall back inside a large selection");
+assert.match(js, /positionSelectionLens\(toolbar, target, frame, "above", document\.querySelector\("#imageContextDock"\)\)/, "Image selection controls must avoid the primary image dock");
+assert.match(css, /\.selection-context-bar\.follows-selection\[data-placement="inside"\]::after\{display:none\}/, "Inside Selection Lens placement must not render a misleading pointer");
 assert.match(css, /\.freehand-layer\{[^}]+touch-action:none/, "Shared freehand pointer layer missing");
 assert.match(css, /\.freehand-layer\.is-drawing \.lasso-mask\{fill:none;[^}]*stroke-dasharray:[^}]+\}/, "Freehand drawing must show only the sampled trail without a temporary closing fill");
 assert.match(css, /\.lasso-hit-area\{[^}]*fill:transparent[^}]*pointer-events:all/, "Lasso needs a painted full-surface SVG hit target");
