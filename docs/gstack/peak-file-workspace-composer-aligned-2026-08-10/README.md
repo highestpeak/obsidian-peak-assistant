@@ -29,14 +29,17 @@ Design-only successor to the rejected six-surface prototype in
 5. Keep Code Source always editable with syntax highlight, save feedback,
    selection Ask, and Add to Composer. Do not expose a separate Code Suggest
    Change path, project tree, or symbol UI.
-6. Keep Image canvas-first, but do not collapse every task into Lasso. Selection
-   supports the whole image, a resizable rectangle, a pen-drawn freehand mask,
-   and one detected object. All four scopes can feed Ask / Composer; object and
-   mask scopes can also feed contextual AI edits. Crop is a separate direct
-   tool with a movable eight-handle frame, Free / Original / 1:1 / 4:3 / 16:9
-   ratios, straighten, and left/right rotation. A lasso may additionally create
-   a transparent mask crop, but it does not replace ordinary framing. Format,
-   dimensions, quality, and live size estimates remain in Export copy rather
+6. Keep Image canvas-first, but do not collapse every task into Lasso. Whole,
+   Rectangle, and Freehand are three direct buttons in the dock—there is no
+   Select dropdown or Object-detect mode. All three scopes can feed Ask /
+   Composer, while Rectangle and Freehand can also feed contextual AI edits.
+   Crop is a separate popover above the dock, so opening it never moves the
+   toolbar. Crop offers Rectangle and Freehand methods: Rectangle has a movable
+   eight-handle frame, Unlocked / Original / 1:1 / 4:3 / 16:9 ratios,
+   straighten, and left/right rotation; Freehand uses the same closed-contour
+   pointer mechanics as selection but keeps independent crop state. Changing a
+   rectangle ratio preserves the current crop center instead of recentering it.
+   Format, dimensions, quality, and live size estimates remain in Export rather
    than an opaque Compress action.
 7. Treat Add to Composer as the shared handoff for an HTML element, PDF
    passage/region, code selection, Canvas subgraph, or Excalidraw selection.
@@ -45,9 +48,9 @@ Design-only successor to the rejected six-surface prototype in
    an explicit whole-file scope and a local selection scope. Ask / Add follows
    the active selection; format-owned write actions appear only where they make
    sense.
-9. Keep Image Select, Crop, Export, rotation, Ask, Add, and zoom anchored to one
-   compact dock. Select and Crop expand locally from that dock; a mask-crop
-   action appears only after a freehand selection exists.
+9. Keep Image selection, Crop, Export, rotation, Ask, Add, and zoom anchored to
+   one compact dock. Selection methods are always one click away. Crop and
+   Export float upward from the dock without changing its geometry.
 10. Make PDF scope explicit (`All pages / This page / Text / Lasso`). The lasso
     carries file identity, page, normalized point mask, bounds, selected text or
     OCR, and source revision into Composer. Code text selection immediately
@@ -63,8 +66,9 @@ Design-only successor to the rejected six-surface prototype in
   does not own Peak selection, crop, AI, or Composer semantics.
 - Do not add a second canvas/editor runtime merely to draw one lasso or rectangle.
   Store a shared `SelectionEnvelope`: source path/id + revision, surface,
-  selection kind, page, normalized points/bounds or object mask, selected
-  text/OCR, and preview snapshot.
+  selection kind, page, normalized points/bounds, selected text/OCR, and preview
+  snapshot. Selection and crop may share the contour input engine without
+  sharing product state or commit semantics.
 
 Every visible primary control in the mock must either change the file surface,
 change the current selection, or open a concrete Intelligence result. Decorative

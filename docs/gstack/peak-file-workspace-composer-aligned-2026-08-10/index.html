@@ -67,8 +67,8 @@
             <div class="image-stage">
               <div class="image-frame" id="imageFrame">
                 <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration" draggable="false" />
-                <div class="crop-overlay" id="cropOverlay" data-crop-ratio="free" hidden>
-                  <span class="crop-grid"></span><span class="crop-drag-label">Free · drag edges or frame</span>
+                <div class="crop-overlay" id="cropOverlay" data-crop-ratio="unlocked" hidden>
+                  <span class="crop-grid"></span><span class="crop-drag-label">Unlocked · drag edges or frame</span>
                   <i data-crop-handle="nw"></i><i data-crop-handle="n"></i><i data-crop-handle="ne"></i><i data-crop-handle="e"></i>
                   <i data-crop-handle="se"></i><i data-crop-handle="s"></i><i data-crop-handle="sw"></i><i data-crop-handle="w"></i>
                 </div>
@@ -76,32 +76,26 @@
                   <i data-region-handle="nw"></i><i data-region-handle="n"></i><i data-region-handle="ne"></i><i data-region-handle="e"></i>
                   <i data-region-handle="se"></i><i data-region-handle="s"></i><i data-region-handle="sw"></i><i data-region-handle="w"></i>
                 </div>
-                <div class="image-object-selection" id="imageObjectSelection" hidden><span>Detected object</span></div>
                 <svg class="freehand-layer image-lasso-layer" id="imageLassoLayer" aria-label="Draw a freehand image selection" hidden>
                   <rect class="lasso-hit-area" width="100%" height="100%" />
                   <path class="lasso-mask" id="imageLassoPath" d="" />
                 </svg>
+                <svg class="freehand-layer crop-freehand-layer" id="cropFreehandLayer" aria-label="Draw a freehand crop contour" hidden>
+                  <rect class="lasso-hit-area" width="100%" height="100%" />
+                  <path class="lasso-mask crop-freehand-mask" id="cropFreehandPath" d="" />
+                </svg>
                 <span class="lasso-hint" id="imageLassoHint" hidden><svg><use href="#i-pen"/></svg>Draw around the subject</span>
+                <span class="lasso-hint crop-freehand-hint" id="cropFreehandHint" hidden><svg><use href="#i-pen"/></svg>Draw the crop contour</span>
                 <div class="selection-context-bar image-selection-bar follows-selection" id="imageSelectionToolbar" hidden>
                   <span><small id="imageSelectionKind">Image selection</small><strong id="imageSelectionLabel">Whole image</strong></span>
                   <button data-ai-action="describe-image-region"><svg><use href="#i-sparkles"/></svg>Ask</button>
                   <button class="add-composer" data-add-composer="image" data-context-scope="selection">Add to Composer</button>
-                  <button id="imageObjectAction" data-ai-action="remove-object" hidden>Remove / replace</button>
-                  <button id="imageMaskCropAction" data-image-selection-action="crop-mask" hidden><svg><use href="#i-crop"/></svg>Crop mask</button>
+                  <button id="imageRegionEditAction" data-ai-action="remove-object">Remove / replace</button>
                   <button data-image-selection-action="clear">Clear</button>
                 </div>
                 <div class="image-context-toolbar" id="imageContextDock" aria-label="图片核心工具">
                   <div class="image-dock-primary">
-                    <div class="image-select-control">
-                      <button class="image-select-trigger is-active" id="imageSelectTrigger" data-image-select-menu aria-expanded="false"><svg><use href="#i-edit"/></svg>Select <span id="imageSelectModeLabel">Whole</span></button>
-                      <div class="image-select-popover" id="imageSelectPopover" hidden>
-                        <header><strong>Selection</strong><small>Choose context without changing the file</small></header>
-                        <button class="is-active" data-image-scope="all"><span><strong>Whole image</strong><small>All pixels and visible text</small></span></button>
-                        <button data-image-scope="region"><span><strong>Rectangle</strong><small>Drag a resizable area</small></span></button>
-                        <button data-image-scope="lasso"><span><strong>Freehand</strong><small>Draw an irregular mask</small></span></button>
-                        <button data-image-scope="object"><span><strong>Object</strong><small>Click to detect one subject</small></span></button>
-                      </div>
-                    </div>
+                    <div class="scope-switch image-scope-switch" aria-label="图片上下文范围"><button class="is-active" data-image-scope="all">Whole</button><button data-image-scope="region">Rectangle</button><button data-image-scope="lasso"><svg><use href="#i-pen"/></svg>Freehand</button></div>
                     <span class="toolbar-divider"></span>
                     <button data-image-tool="crop"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
                     <button data-image-rotate="left" aria-label="Rotate left 90 degrees"><svg class="rotate-left"><use href="#i-rotate"/></svg></button>
@@ -119,14 +113,18 @@
                     </div>
                   </div>
                   <div class="crop-studio" id="cropStudio" hidden>
-                    <div class="crop-presets" aria-label="裁剪比例">
-                      <button class="is-active" data-crop-ratio="free">Free</button><button data-crop-ratio="original">Original</button><button data-crop-ratio="square">1:1</button><button data-crop-ratio="classic">4:3</button><button data-crop-ratio="wide">16:9</button>
+                    <div class="scope-switch crop-mode-switch" aria-label="裁剪方式"><button class="is-active" data-crop-mode="rectangle">Rectangle</button><button data-crop-mode="freehand"><svg><use href="#i-pen"/></svg>Freehand</button></div>
+                    <div class="crop-rectangle-controls" id="cropRectangleControls">
+                      <div class="crop-presets" aria-label="裁剪比例">
+                        <button class="is-active" data-crop-ratio="unlocked">Unlocked</button><button data-crop-ratio="original">Original</button><button data-crop-ratio="square">1:1</button><button data-crop-ratio="classic">4:3</button><button data-crop-ratio="wide">16:9</button>
+                      </div>
+                      <div class="crop-angle">
+                        <button data-crop-rotate="left" aria-label="Rotate crop left 90 degrees"><svg class="rotate-left"><use href="#i-rotate"/></svg><span>90°</span></button>
+                        <label><span>Straighten</span><input id="cropAngle" type="range" min="-45" max="45" value="0" step="1"/><output id="cropAngleValue">0°</output></label>
+                        <button data-crop-rotate="right" aria-label="Rotate crop right 90 degrees"><span>90°</span><svg><use href="#i-rotate"/></svg></button>
+                      </div>
                     </div>
-                    <div class="crop-angle">
-                      <button data-crop-rotate="left" aria-label="Rotate crop left 90 degrees"><svg class="rotate-left"><use href="#i-rotate"/></svg><span>90°</span></button>
-                      <label><span>Straighten</span><input id="cropAngle" type="range" min="-45" max="45" value="0" step="1"/><output id="cropAngleValue">0°</output></label>
-                      <button data-crop-rotate="right" aria-label="Rotate crop right 90 degrees"><span>90°</span><svg><use href="#i-rotate"/></svg></button>
-                    </div>
+                    <div class="crop-freehand-controls" id="cropFreehandControls" hidden><span><strong>Freehand crop</strong><small>Draw a closed contour directly on the image.</small></span><button data-crop-action="redraw">Redraw</button></div>
                     <div class="crop-commit"><button data-crop-action="reset">Reset</button><button data-crop-action="cancel">Cancel</button><button class="primary" data-crop-action="done">Done</button></div>
                   </div>
                   <div class="image-export-sheet" id="imageExportSheet" hidden>
