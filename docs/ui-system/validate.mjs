@@ -164,6 +164,9 @@ assert(sources.labHtml.includes("data-lab-console-pin") && sources.labHtml.inclu
 assert(sources.labCss.includes(".lab-console[data-pinned=\"false\"]") && sources.labCss.includes(".lab-console[data-collapsed=\"true\"]"), "Theme Lab: Theme State console styles pinned and collapsed states");
 assert(sources.labRuntime.includes("peak-theme-lab-console-v1") && sources.labRuntime.includes("toggleConsolePin") && sources.labRuntime.includes("toggleConsoleCollapse"), "Theme Lab: console preferences persist independently from Theme JSON");
 assert(sources.labRuntime.includes("body.inert = consoleState.collapsed"), "Theme Lab: collapsed console controls leave the focus order");
+assert((sources.labHtml.match(/data-lab-theme-cycle=/g) || []).length === 7, "Theme Lab: collapsed console keeps all 7 enumerable theme axes clickable");
+assert(sources.labHtml.includes("lab-console__accent") && sources.labHtml.includes("data-theme-control=\"accent\""), "Theme Lab: collapsed console keeps Accent directly editable");
+assert(sources.labRuntime.includes("cycleThemeAxis") && sources.labRuntime.includes("renderCompactThemeControls"), "Theme Lab: collapsed axis icons cycle values and expose current-state labels");
 assert(sources.labHtml.includes("不复刻完整 Search、Composer 或 Graph"), "Theme Lab: explicitly rejects product parity claim");
 assert(!sources.labHtml.includes("type=\"file\"") && !sources.labHtml.includes("data-copy-image-prompt"), "Theme Lab: has no upload or Prompt-transfer UI");
 assert(!/(?:FileReader|readAsDataURL|fetch\(|XMLHttpRequest|https?:\/\/)/.test(sources.labRuntime), "Theme Lab: runtime has no image transfer or network path");

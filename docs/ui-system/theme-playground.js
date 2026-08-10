@@ -61,6 +61,46 @@
     renderConsoleState();
   }
 
+  function displayThemeValue(system, key, value) {
+    if (key === "pack" && system.packs[value]) return system.packs[value].label;
+    return String(value).charAt(0).toUpperCase() + String(value).slice(1);
+  }
+
+  function renderCompactThemeControls() {
+    var runtime = window.PeakThemeRuntime;
+    var system = window.PeakThemeSystem;
+    if (!runtime || !system) return;
+    var state = runtime.getState();
+    document.querySelectorAll("[data-lab-theme-cycle]").forEach(function (button) {
+      var key = button.dataset.labThemeCycle;
+      var values = system.axes[key];
+      if (!values || !values.length) return;
+      var currentIndex = Math.max(0, values.indexOf(state[key]));
+      var nextValue = values[(currentIndex + 1) % values.length];
+      var name = button.dataset.axisName || key;
+      var label = name + ": " + displayThemeValue(system, key, state[key]) + " · 点击切换到 " + displayThemeValue(system, key, nextValue);
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.dataset.value = state[key];
+    });
+    var accent = document.querySelector(".lab-console__accent");
+    if (accent) accent.title = "Accent: " + state.accent + " · 点击选择颜色";
+  }
+
+  function cycleThemeAxis(button) {
+    var runtime = window.PeakThemeRuntime;
+    var system = window.PeakThemeSystem;
+    if (!runtime || !system) return;
+    var key = button.dataset.labThemeCycle;
+    var values = system.axes[key];
+    if (!values || !values.length) return;
+    var next = runtime.getState();
+    var currentIndex = Math.max(0, values.indexOf(next[key]));
+    next[key] = values[(currentIndex + 1) % values.length];
+    if (key === "pack") next.accent = system.packs[next.pack].accent;
+    runtime.apply(next);
+  }
+
   function selectOption(button) {
     var group = button.closest("[data-lab-group]");
     if (!group) return;
@@ -92,6 +132,8 @@
     if (pin) { toggleConsolePin(); return; }
     var collapse = event.target.closest && event.target.closest("[data-lab-console-collapse]");
     if (collapse) { toggleConsoleCollapse(); return; }
+    var themeCycle = event.target.closest && event.target.closest("[data-lab-theme-cycle]");
+    if (themeCycle) { cycleThemeAxis(themeCycle); return; }
     var option = event.target.closest && event.target.closest("[data-lab-option]");
     if (option) { selectOption(option); return; }
     var toggle = event.target.closest && event.target.closest("[data-lab-toggle]");
@@ -100,5 +142,7 @@
     if (row) selectRow(row);
   });
 
+  document.addEventListener("peak-theme-change", renderCompactThemeControls);
   renderConsoleState();
+  renderCompactThemeControls();
 }());
