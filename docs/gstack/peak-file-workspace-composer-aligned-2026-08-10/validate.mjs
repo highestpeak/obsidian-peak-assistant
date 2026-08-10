@@ -28,7 +28,15 @@ assert.match(html, /id="imageLassoLayer"/, "Image freehand layer missing");
 assert.match(html, /id="imageLassoPath"/, "Image freehand mask path missing");
 assert.equal((html.match(/class="lasso-hit-area"/g) || []).length, 2, "Image and PDF lasso layers both need a full-surface hit target");
 assert.match(html, /data-image-scope="lasso"/, "Image Lasso scope missing");
-assert.match(html, /id="imageSelectionToolbar"[^>]+hidden[\s\S]+data-ai-action="describe-image-region"[\s\S]+data-add-composer="image"[\s\S]+data-image-lasso-action="crop"[\s\S]+data-image-lasso-action="clear"/, "Image lasso must expose Ask, Add, Crop to mask, and Clear together");
+assert.match(html, /id="imageSelectionToolbar"[^>]+hidden[\s\S]+data-ai-action="describe-image-region"[\s\S]+data-add-composer="image"[\s\S]+data-image-selection-action="crop-mask"[\s\S]+data-image-selection-action="clear"/, "Image selection lens must expose Ask, Add, optional mask crop, and Clear together");
+for (const scope of ["all", "region", "lasso", "object"]) assert.match(html, new RegExp(`data-image-scope="${scope}"`), `Image ${scope} selection missing`);
+assert.match(html, /id="imageRegionSelection"[^>]+hidden/, "Resizable rectangular image selection missing");
+assert.match(html, /id="imageObjectSelection"[^>]+hidden/, "Object image selection missing");
+assert.equal((html.match(/data-region-handle=/g) || []).length, 8, "Rectangle selection needs eight handles");
+assert.equal((html.match(/data-crop-handle=/g) || []).length, 8, "Crop needs eight handles");
+assert.match(html, /id="cropStudio"[^>]+hidden/, "Dock-anchored crop controls missing");
+for (const ratio of ["free", "original", "square", "classic", "wide"]) assert.match(html, new RegExp(`data-crop-ratio="${ratio}"`), `Crop ratio missing: ${ratio}`);
+assert.match(html, /id="cropAngle"[^>]+min="-45"[^>]+max="45"/, "Crop straighten control missing");
 assert.match(html, /data-image-rotate="left"/, "Left rotation missing");
 assert.match(html, /data-image-rotate="right"/, "Right rotation missing");
 assert.match(html, /class="image-export-sheet"/, "Image export sheet missing");
@@ -37,7 +45,7 @@ assert.match(html, /id="exportEstimate"/, "Live export estimate missing");
 assert.match(html, /id="exportWidth"/, "Optional export dimensions missing");
 assert.match(html, /data-image-scope="all"/, "Whole-image context missing");
 assert.match(html, /id="imageContextDock"[\s\S]+class="dock-zoom"[\s\S]+id="imageExportSheet"/, "Image zoom and Export must remain inside the originating dock");
-assert.doesNotMatch(html, /cropOverlay|cropStudio|data-crop-handle|imageRegionSelection|class="image-zoom"/, "Conflicting rectangle crop/selection controls must not return");
+assert.doesNotMatch(html, /class="image-zoom"/, "Detached image zoom controls must not return");
 assert.doesNotMatch(html, /data-image-tool="resize"/, "Resize must not return as a primary image tool");
 assert.doesNotMatch(html, /data-image-tool="compress"/, "Opaque one-click Compress must not return");
 assert.match(js, /remove-background/, "Image background removal action missing");
@@ -81,10 +89,10 @@ assert.match(css, /\.file-column[^}]+grid-template-rows:\s*58px minmax\(0,\s*1fr
 assert.match(css, /\.intelligence-panel[^}]+height:\s*100%/, "Intelligence must span the whole workspace height");
 assert.match(html, /current file connected/i, "context connection language missing from prototype");
 assert.match(js, /source surface remains active/i, "source-active AI response missing");
-assert.match(js, /handleImageTool|setImageScope|beginLasso|appendLassoPoint|finishLasso|normalizedLassoSelection|handleImageLassoAction|updateExportEstimate|toggleHtmlSource|positionSelectionLens|setPdfMode|completePdfLasso|selectPdfContent|addToComposer|codeEditor\.addEventListener\("input"\)|positionCanvasSelection|handleExcalStyle/, "direct interaction handlers missing");
+assert.match(js, /handleImageTool|setImageScope|startRectDrag|dragSurfaceRect|setCropRatio|closeCrop|beginLasso|appendLassoPoint|finishLasso|normalizedLassoSelection|handleImageSelectionAction|updateExportEstimate|toggleHtmlSource|positionSelectionLens|setPdfMode|completePdfLasso|selectPdfContent|addToComposer|codeEditor\.addEventListener\("input"\)|positionCanvasSelection|handleExcalStyle/, "direct interaction handlers missing");
 assert.match(js, /setPointerCapture\?\.\(event\.pointerId\)/, "Lasso drag must capture the active pointer");
 assert.match(js, /releasePointerCapture\(state\.pointerId\)/, "Lasso drag must release pointer capture");
-assert.match(js, /layer\.toggleAttribute\("hidden", !selectingLasso\)/, "Image SVG lasso visibility must remove the hidden attribute");
+assert.match(js, /layer\.toggleAttribute\("hidden", false\)/, "Image SVG lasso visibility must remove the hidden attribute");
 assert.match(js, /lassoLayer\.toggleAttribute\("hidden", mode !== "lasso"\)/, "PDF SVG lasso visibility must remove the hidden attribute");
 assert.doesNotMatch(js, /(?:layer|lassoLayer)\.hidden\s*=/, "SVG lasso layers cannot use HTMLElement.hidden assignment");
 assert.match(js, /normalizedPoints[\s\S]+normalizedBounds/, "Shared normalized lasso envelope missing");
@@ -94,6 +102,8 @@ assert.match(css, /\.freehand-layer\{[^}]+touch-action:none/, "Shared freehand p
 assert.match(css, /\.lasso-hit-area\{[^}]*fill:transparent[^}]*pointer-events:all/, "Lasso needs a painted full-surface SVG hit target");
 assert.match(css, /\.lasso-mask\{[^}]*pointer-events:none/, "Rendered lasso path must not steal the next redraw gesture");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
+assert.match(css, /\.image-context-toolbar:has\(\.crop-studio:not\(\[hidden\]\)\)/, "Crop controls must expand from the image dock");
+assert.match(readme, /do not collapse every task into Lasso/i, "README must preserve multiple image selection and crop methods");
 assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text selection must open contextual actions");
 
 const officialSources = [

@@ -14,7 +14,7 @@
       <section class="hero">
         <span class="kicker">RESEARCH → BOUNDARY → COMPOSER-ALIGNED PROTOTYPE</span>
         <h1>不是给每种文件堆一套工具栏，而是让原生文件表面进入 Peak 的 AI 工作流。</h1>
-        <p>本轮设计重置先承认 V1 失败：它把能力矩阵直接铺成界面，AI 入口不够明确，Image 缺乏直接操控感，Canvas 与 Excalidraw 又错误地被重新发明。新方案进一步统一为 Selection Lens：whole file 与 local selection 并存；Image 与 PDF 共用真正的手绘套索语义，选区同时服务 Ask、Add to Composer 与格式自己的后续动作。</p>
+        <p>本轮设计重置先承认 V1 失败：它把能力矩阵直接铺成界面，AI 入口不够明确，Image 缺乏直接操控感，Canvas 与 Excalidraw 又错误地被重新发明。新方案统一为 Selection Lens：whole file 与 local selection 并存；Image 的矩形、自由圈选与对象选择都能服务 Ask、Add to Composer 和上下文 AI，同时保留独立的直接裁剪；PDF 继续拥有文档、页面、文本与自由圈选粒度。</p>
         <span class="status"><i></i>Current design direction · production implementation pending</span>
       </section>
 
@@ -40,7 +40,7 @@
         <h2>六种文件的产品边界</h2>
         <p>下面的“不要做”与核心能力同样重要，它们阻止每个文件工作区膨胀成第二套专业软件。</p>
         <div class="format-grid">
-          <article class="format"><header><h3>Image</h3><span>Shared lasso</span></header><dl><dt>Selection</dt><dd>用笔自由圈出不规则区域；同一张 normalized mask 同时服务 Ask、Add to Composer 与 Crop to mask。</dd><dt>Crop</dt><dd>输出画布取套索 bounding box；PNG/WebP 的 mask 外像素透明，JPEG 必须显式选择背景色。</dd><dt>Dock</dt><dd>Whole image / Lasso、左右旋转、Export、Ask、Add 与缩放都留在同一主工具坞。</dd><dt>不要做</dt><dd class="exclude">第二个裁剪方框、主工具栏 Resize、黑盒 Compress 或 Photoshop 级面板。</dd></dl></article>
+          <article class="format"><header><h3>Image</h3><span>Selection + direct crop</span></header><dl><dt>Selection</dt><dd>整图、可调整矩形、自由圈选、对象识别都是一等上下文；Ask 与 Add to Composer 跟随当前选区，自由圈选还保留 normalized mask。</dd><dt>Crop</dt><dd>独立的八手柄裁剪框支持 Free / Original / 1:1 / 4:3 / 16:9、校正角度与左右旋转；自由圈选另有透明 mask crop，但不能取代普通构图裁剪。</dd><dt>Dock</dt><dd>Select、Crop、左右旋转、Export、Ask、Add 与缩放都从同一主工具坞就近展开。</dd><dt>不要做</dt><dd class="exclude">把选择与裁剪混成一个工具、主工具栏 Resize、黑盒 Compress 或 Photoshop 级面板。</dd></dl></article>
           <article class="format"><header><h3>HTML</h3><span>Live annotation</span></header><dl><dt>Core</dt><dd>页面始终可见；局部展开可编辑源码，修改状态即时反馈。</dd><dt>Selection</dt><dd>Whole page 或连续 Pick element；胶囊随 DOM 选区移动，并携带 selector、可见文本与源码位置。</dd><dt>AI</dt><dd>解释、修改、修复布局，并把页面或元素上下文加入 Composer。</dd><dt>不要做</dt><dd class="exclude">把 Preview / Edit / Split 做成所有文件共用的模式条。</dd></dl></article>
           <article class="format"><header><h3>PDF</h3><span>Explicit scope</span></header><dl><dt>Scope</dt><dd>All pages、This page、Text、Lasso 四种显式范围；Lasso 可以自由圈选文字、表格或图片。</dd><dt>AI</dt><dd>摘要、问答、解释、翻译、OCR/结构提取；局部动作贴选区，引用精确回跳。</dd><dt>Composer</dt><dd>必须写清 PDF 文件、页码、normalized point mask、bounds、选中文本/OCR 与 source revision。</dd><dt>不要做</dt><dd class="exclude">用矩形冒充 Free，Ask this PDF 却不说明范围，或让回答与 PDF 页面割裂。</dd></dl></article>
           <article class="format"><header><h3>Code Source</h3><span>Native selection</span></header><dl><dt>Core</dt><dd>语法高亮、行号、直接输入、保存反馈；不需要先切换编辑状态。</dd><dt>Selection</dt><dd>每次文本选中后，Ask / Add to Composer 胶囊立即出现在选区旁；Whole file 保留在 tab bar。</dd><dt>Boundary</dt><dd>运行、测试、构建是独立授权与环境，不混进文件编辑器。</dd><dt>不要做</dt><dd class="exclude">Code Suggest Change、选区动作固定底栏、Symbols、项目树或调试器。</dd></dl></article>
