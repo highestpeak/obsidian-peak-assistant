@@ -158,6 +158,12 @@ assert((sources.labHtml.match(/class="report-section(?:\s|\")/g) || []).length >
 assert((sources.labHtml.match(/class="outline-row(?:\s|\")/g) || []).length >= 27, "Theme Lab: long outline includes at least 27 rows");
 assert(sources.labRuntime.includes("selectRow") && sources.labRuntime.includes("data-lab-row"), "Theme Lab: long outline rows are interactive");
 assert(sources.labCss.includes(".report-section:hover") && sources.labCss.includes(".outline-row:hover") && sources.labCss.includes(".quick-actions button:hover"), "Theme Lab: representative hover states are implemented");
+assert(sources.labHtml.includes("class=\"pk-icon-sprite\" width=\"0\" height=\"0\""), "Theme Lab: icon sprite has zero intrinsic geometry");
+assert(sources.labCss.includes(".pk-icon-sprite") && sources.labCss.includes("position: absolute;"), "Theme Lab: icon sprite cannot create top-of-page whitespace");
+assert(sources.labHtml.includes("data-lab-console-pin") && sources.labHtml.includes("data-lab-console-collapse"), "Theme Lab: Theme State console exposes pin and collapse controls");
+assert(sources.labCss.includes(".lab-console[data-pinned=\"false\"]") && sources.labCss.includes(".lab-console[data-collapsed=\"true\"]"), "Theme Lab: Theme State console styles pinned and collapsed states");
+assert(sources.labRuntime.includes("peak-theme-lab-console-v1") && sources.labRuntime.includes("toggleConsolePin") && sources.labRuntime.includes("toggleConsoleCollapse"), "Theme Lab: console preferences persist independently from Theme JSON");
+assert(sources.labRuntime.includes("body.inert = consoleState.collapsed"), "Theme Lab: collapsed console controls leave the focus order");
 assert(sources.labHtml.includes("不复刻完整 Search、Composer 或 Graph"), "Theme Lab: explicitly rejects product parity claim");
 assert(!sources.labHtml.includes("type=\"file\"") && !sources.labHtml.includes("data-copy-image-prompt"), "Theme Lab: has no upload or Prompt-transfer UI");
 assert(!/(?:FileReader|readAsDataURL|fetch\(|XMLHttpRequest|https?:\/\/)/.test(sources.labRuntime), "Theme Lab: runtime has no image transfer or network path");

@@ -120,6 +120,8 @@ Theme Pack 提供 canvas、surface、raised、sunken、text、muted、border、a
 
 主题导入必须验证枚举和 accent；无效值安全回落。后续允许扩展完整 Light/Dark palette recipe，但 schema 必须版本化、可预览、可回退，不能把任意 CSS 当作 Theme Pack 导入。
 
+Theme State 控制台的折叠和吸顶锁定只属于文档查看偏好：默认锁定吸顶；折叠后从键盘 focus order 移除内部控件；解除锁定后恢复普通文档流。该状态使用独立 localStorage key，不能进入 Theme JSON、Theme BroadcastChannel 或生产 schema。SVG symbol sprite 必须为零尺寸并脱离文档流，避免浏览器默认 SVG intrinsic size 制造首屏空白。
+
 ## 6. Codex 固定图片替换
 
 LLM 图像生成适合高带宽探索整体气质，但 Theme Lab 不承担图片上传、外部模型调用或 Prompt 搬运。它在页面中直接展示 19 个固定输出文件，覆盖 8 个产品域：

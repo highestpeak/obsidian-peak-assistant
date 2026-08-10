@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="ui-system/theme-playground.css">
 </head>
 <body>
-  <svg class="pk-icon-sprite" aria-hidden="true">
+  <svg class="pk-icon-sprite" width="0" height="0" aria-hidden="true" focusable="false">
     <symbol id="pk-icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></symbol>
     <symbol id="pk-icon-file" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></symbol>
     <symbol id="pk-icon-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.4 3.6L7 8l3.6 1.4L12 13l1.4-3.6L17 8l-3.6-1.4L12 3zM5 14l-.9 2.1L2 17l2.1.9L5 20l.9-2.1L8 17l-2.1-.9L5 14z"></path></symbol>
@@ -36,6 +36,8 @@
     <symbol id="pk-icon-code" viewBox="0 0 24 24"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 5l-4 14"></path></symbol>
     <symbol id="pk-icon-quote" viewBox="0 0 24 24"><path d="M3 21c3 0 7-1 7-8V5H3v8h4c0 4-2 5-4 5v3ZM14 21c3 0 7-1 7-8V5h-7v8h4c0 4-2 5-4 5v3Z"></path></symbol>
     <symbol id="pk-icon-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
+    <symbol id="pk-icon-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></symbol>
+    <symbol id="pk-icon-unlock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 7.7-1.5"></path></symbol>
   </svg>
 
   <div class="peak-design-root pktw-root theme-lab">
@@ -53,19 +55,21 @@
         <div class="lab-intro__meta"><span class="pk-chip pk-chip--accent" data-theme-summary></span><span class="pk-chip">8 视觉覆盖板</span><span class="pk-chip">固定状态对照</span><span class="pk-chip">Light / Dark</span></div>
       </section>
 
-      <section class="lab-console" aria-label="Theme controls">
-        <header class="lab-console__head"><div><b>全局 Theme State</b><span>每个控件同时作用于下方所有试件；页面之间共享状态。</span></div><span data-theme-status>Theme state 已同步</span></header>
-        <div class="lab-controls">
-          <label><span>Theme Pack</span><select data-theme-control="pack"><option value="violet">Peak Violet</option><option value="ink">Quiet Ink</option><option value="moss">Calm Moss</option><option value="ocean">Clear Ocean</option></select></label>
-          <label><span>Appearance</span><select data-theme-control="appearance"><option value="light">Light</option><option value="dark">Dark</option></select></label>
-          <label><span>Accent</span><input type="color" data-theme-control="accent" aria-label="Accent color"></label>
-          <label><span>Density</span><select data-theme-control="density"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
-          <label><span>Radius</span><select data-theme-control="radius"><option value="square">Square</option><option value="balanced">Balanced</option><option value="soft">Soft</option></select></label>
-          <label><span>Typography</span><select data-theme-control="typography"><option value="compact">Compact</option><option value="default">Default</option><option value="large">Large</option></select></label>
-          <label><span>Elevation</span><select data-theme-control="elevation"><option value="flat">Flat</option><option value="subtle">Subtle</option><option value="layered">Layered</option></select></label>
-          <label><span>Motion</span><select data-theme-control="motion"><option value="reduced">Reduced</option><option value="standard">Standard</option></select></label>
+      <section class="lab-console" data-lab-console data-pinned="true" data-collapsed="false" aria-label="Theme controls">
+        <header class="lab-console__head"><div class="lab-console__title"><b>全局 Theme State</b><span>每个控件同时作用于下方所有试件；页面之间共享状态。</span></div><div class="lab-console__head-actions"><span data-theme-status>Theme state 已同步</span><button class="lab-console__control" data-lab-console-pin aria-pressed="true" title="取消吸顶锁定"><svg class="pk-ui-icon"><use href="#pk-icon-lock"></use></svg><span data-lab-console-pin-label>已锁定</span></button><button class="lab-console__control" data-lab-console-collapse aria-controls="lab-theme-console-body" aria-expanded="true" title="折叠 Theme State"><svg class="pk-ui-icon lab-console__chevron"><use href="#pk-icon-chevron"></use></svg><span data-lab-console-collapse-label>折叠</span></button></div></header>
+        <div id="lab-theme-console-body" class="lab-console__body" aria-hidden="false">
+          <div class="lab-controls">
+            <label><span>Theme Pack</span><select data-theme-control="pack"><option value="violet">Peak Violet</option><option value="ink">Quiet Ink</option><option value="moss">Calm Moss</option><option value="ocean">Clear Ocean</option></select></label>
+            <label><span>Appearance</span><select data-theme-control="appearance"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+            <label><span>Accent</span><input type="color" data-theme-control="accent" aria-label="Accent color"></label>
+            <label><span>Density</span><select data-theme-control="density"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
+            <label><span>Radius</span><select data-theme-control="radius"><option value="square">Square</option><option value="balanced">Balanced</option><option value="soft">Soft</option></select></label>
+            <label><span>Typography</span><select data-theme-control="typography"><option value="compact">Compact</option><option value="default">Default</option><option value="large">Large</option></select></label>
+            <label><span>Elevation</span><select data-theme-control="elevation"><option value="flat">Flat</option><option value="subtle">Subtle</option><option value="layered">Layered</option></select></label>
+            <label><span>Motion</span><select data-theme-control="motion"><option value="reduced">Reduced</option><option value="standard">Standard</option></select></label>
+          </div>
+          <div class="lab-console__actions"><button class="pk-btn pk-btn--sm" data-theme-export><svg class="pk-ui-icon"><use href="#pk-icon-copy"></use></svg>复制 Theme JSON</button><button class="pk-btn pk-btn--sm" data-theme-import>导入 Theme JSON</button><button class="pk-btn pk-btn--sm pk-btn--ghost" data-theme-reset>恢复默认</button></div>
         </div>
-        <div class="lab-console__actions"><button class="pk-btn pk-btn--sm" data-theme-export><svg class="pk-ui-icon"><use href="#pk-icon-copy"></use></svg>复制 Theme JSON</button><button class="pk-btn pk-btn--sm" data-theme-import>导入 Theme JSON</button><button class="pk-btn pk-btn--sm pk-btn--ghost" data-theme-reset>恢复默认</button></div>
       </section>
 
       <section id="foundations" class="lab-section">

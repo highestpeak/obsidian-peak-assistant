@@ -30,6 +30,8 @@ Theme Lab 除了 Foundations、共享 primitives 和代表性场景，还维护 
 
 新增视觉角色或高频 UI 组合时，必须先判断属于现有覆盖板还是需要新增 coverage contract，并同步扩展 `validate.mjs`。真实组件结构、数据和像素仍以 UI Inventory 与 Obsidian 实机为准。
 
+Theme State 控制台默认锁定吸顶，可以折叠成单行，也可以解除锁定后随页面滚动。折叠与锁定属于 Theme Lab 自身的查看偏好，使用独立 localStorage key，不进入 Theme JSON，也不跨页面广播。页面开头的 SVG symbol sprite 必须保持零尺寸并脱离文档流，禁止重新引入首屏空白。
+
 ## Codex 固定图片换肤
 
 Theme Lab 直接展示 19 个固定的 repo-local 图片槽位，覆盖 Vault Search、AI Search、Vault Intelligence、File Atlas、Composer、Composer Intelligence、Chat Studio、Settings & Usage。全部输出位于 `theme-concepts/current/*.jpg`，按产品域单列大图展示并可点击查看原始 1280×802 文件。
