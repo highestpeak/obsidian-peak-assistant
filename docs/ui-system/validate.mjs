@@ -160,9 +160,10 @@ assert(sources.labRuntime.includes("selectRow") && sources.labRuntime.includes("
 assert(sources.labCss.includes(".report-section:hover") && sources.labCss.includes(".outline-row:hover") && sources.labCss.includes(".quick-actions button:hover"), "Theme Lab: representative hover states are implemented");
 assert(sources.labHtml.includes("class=\"pk-icon-sprite\" width=\"0\" height=\"0\""), "Theme Lab: icon sprite has zero intrinsic geometry");
 assert(sources.labCss.includes(".pk-icon-sprite") && sources.labCss.includes("position: absolute;"), "Theme Lab: icon sprite cannot create top-of-page whitespace");
-assert(sources.labHtml.includes("data-lab-console-pin") && sources.labHtml.includes("data-lab-console-collapse"), "Theme Lab: Theme State console exposes pin and collapse controls");
-assert(sources.labCss.includes(".lab-console[data-pinned=\"false\"]") && sources.labCss.includes(".lab-console[data-collapsed=\"true\"]"), "Theme Lab: Theme State console styles pinned and collapsed states");
-assert(sources.labRuntime.includes("peak-theme-lab-console-v1") && sources.labRuntime.includes("toggleConsolePin") && sources.labRuntime.includes("toggleConsoleCollapse"), "Theme Lab: console preferences persist independently from Theme JSON");
+assert(!sources.labHtml.includes("class=\"lab-header\"") && !sources.labHtml.includes("data-lab-console-pin"), "Theme Lab: has no separate sticky header or lock control");
+assert(sources.labHtml.includes("class=\"lab-console__nav\"") && (sources.labHtml.match(/class="lab-console__nav"[^>]*>[\s\S]*?<\/nav>/g) || []).length === 1, "Theme Lab: page navigation is fused into Theme State");
+assert((sources.labCss.match(/position: sticky;/g) || []).length === 1 && sources.labCss.includes(".lab-console { position: sticky; z-index: 20; top: 12px;"), "Theme Lab: Theme State is the only sticky document surface");
+assert(sources.labRuntime.includes("peak-theme-lab-console-v1") && sources.labRuntime.includes("toggleConsoleCollapse") && !sources.labRuntime.includes("toggleConsolePin"), "Theme Lab: only collapse preference persists independently from Theme JSON");
 assert(sources.labRuntime.includes("body.inert = consoleState.collapsed"), "Theme Lab: collapsed console controls leave the focus order");
 assert((sources.labHtml.match(/data-lab-theme-menu-trigger=/g) || []).length === 7, "Theme Lab: collapsed console keeps all 7 enumerable theme axes clickable");
 assert(sources.labHtml.includes("lab-console__accent") && sources.labHtml.includes("data-theme-control=\"accent\""), "Theme Lab: collapsed console keeps Accent directly editable");
