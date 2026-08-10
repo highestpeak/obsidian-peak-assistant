@@ -118,14 +118,18 @@ assert(!themeHtml.includes("design-system-preview-bridge"), "Theme Lab does not 
 assert(!catalogHtml.includes("design-system-preview-bridge"), "UI Catalog does not load legacy preview bridge");
 
 assert(catalog.scenes.length === 8, "Catalog declares 8 product domains");
-catalog.scenes.forEach((item) => {
-  assert(catalogDoc.sceneIds.filter((id) => id === item.id).length === 1, `Scene ${item.id}: one HTML root`);
-  const start = catalogHtml.indexOf(`data-scene-id="${item.id}"`);
+function sceneMarkupFor(id) {
+  const start = catalogHtml.indexOf(`data-scene-id="${id}"`);
   const laterStarts = catalog.scenes
     .map((candidate) => catalogHtml.indexOf(`data-scene-id="${candidate.id}"`, start + 1))
     .filter((index) => index > start);
   const end = laterStarts.length ? Math.min(...laterStarts) : catalogHtml.length;
-  const sceneMarkup = catalogHtml.slice(start, end);
+  return catalogHtml.slice(start, end);
+}
+
+catalog.scenes.forEach((item) => {
+  assert(catalogDoc.sceneIds.filter((id) => id === item.id).length === 1, `Scene ${item.id}: one HTML root`);
+  const sceneMarkup = sceneMarkupFor(item.id);
   item.states.forEach((state) => {
     assert(sceneMarkup.includes(`data-scene-state="${state.id}"`) && sceneMarkup.includes(`data-scene-panel="${state.id}"`), `Scene ${item.id}: state ${state.id} has control and panel`);
   });
@@ -135,6 +139,34 @@ catalog.scenes.forEach((item) => {
   });
   assert(item.references.every((reference) => Number.isFinite(reference.second)), `Scene ${item.id}: recording timecodes declared`);
 });
+
+const vaultSearchMarkup = sceneMarkupFor("vault-search");
+const vaultResultCount = (vaultSearchMarkup.match(/data-result-browser-row/g) || []).length;
+const vaultGraphNodeCount = (vaultSearchMarkup.match(/class="pk-cy-node/g) || []).length;
+const vaultFileIconCount = (vaultSearchMarkup.match(/href="#pk-icon-file"/g) || []).length;
+assert(vaultResultCount >= 7, "Vault Search carries a realistic result dataset");
+assert(vaultGraphNodeCount >= 8, "Vault Search Graph carries a meaningful node set");
+assert(vaultFileIconCount >= 7, "Vault Search results use real SVG file icons");
+
+const fileAtlasMarkup = sceneMarkupFor("file-atlas");
+const atlasGridOrder = ["pkfa-search-band", "pkfa-atlas-bar", "pkfa-main", "pkfa-tray"]
+  .map((className) => fileAtlasMarkup.indexOf(`class="${className}`));
+assert(atlasGridOrder.every((index) => index >= 0), "File Atlas declares every production grid row");
+assert(atlasGridOrder.every((index, position) => position === 0 || index > atlasGridOrder[position - 1]), "File Atlas production grid rows stay in source order");
+assert(fileAtlasMarkup.includes('class="pkfa-tree-scene"'), "File Atlas tree scene preserves direct grid participation");
+assert(fileAtlasMarkup.includes('data-subview="tree"'), "File Atlas declares its production subview contract");
+
+const composerMarkup = sceneMarkupFor("composer");
+const composerWorkspaceCount = (composerMarkup.match(/class="pk-composer-workspace"/g) || []).length;
+const composerPaperCount = (composerMarkup.match(/class="pk-composer-shell"/g) || []).length;
+assert(composerWorkspaceCount === 1, "Composer owns exactly one workspace");
+assert(composerPaperCount === 1, "Composer owns exactly one paper");
+assert(composerMarkup.includes('class="pk-composer-controlbar"'), "Composer uses the production control bar");
+assert(composerMarkup.includes('data-group-attribute="displayState"'), "Composer display switch is interactive");
+assert(!composerMarkup.includes("pk-composer-demo-toolbar"), "Composer removes the catalog-only toolbar");
+assert(vaultSearchMarkup.includes('data-group-attribute="resultDensity"'), "Vault Search density is interactive");
+assert(fileAtlasMarkup.includes('data-group-attribute="atlasPreset"'), "File Atlas presets are interactive");
+assert(catalogCss.includes('.pkfa-tree-scene:not([hidden]) { display: contents; }'), "File Atlas tree wrapper does not alter production grid geometry");
 
 const axes = Object.keys(themeSystem.defaults);
 axes.forEach((axis) => {
@@ -167,6 +199,7 @@ const productionAnatomy = [
   ["Vault Intelligence metric", "pk-vault-metric-card"],
   ["File Atlas", "peak-file-atlas-modal pkfa-root"],
   ["Composer root", "peak-composer-root"],
+  ["Composer control bar", "pk-composer-controlbar"],
   ["Composer paper", "pk-composer-workspace"],
   ["Composer block", "pk-composer-block"],
   ["Composer sidecar", "pk-sidecar-shell"],
@@ -193,6 +226,7 @@ productionAnatomy.forEach(([label, contract]) => assert(catalogHtml.includes(con
   ".pk-vault-metric-card",
   ".peak-file-atlas-modal.pkfa-root",
   ".peak-composer-root .pk-composer-workspace",
+  ".peak-composer-root .pk-composer-controlbar",
   ".pk-sidecar-shell",
   ".pk-brief",
   ".pk-history",
@@ -228,6 +262,8 @@ productionAnatomy.forEach(([label, contract]) => assert(catalogHtml.includes(con
 assert(catalogHtml.includes("data-production-style-source=\"AtlasGraphCanvasImpl.tsx:430\""), "Canvas graph adapter declares its production style source");
 assert(catalogRuntime.includes('classList.toggle("pk-sidecar-tab--active", active)'), "Catalog runtime mirrors production sidecar active class");
 assert(catalogRuntime.includes('classList.toggle("is-active", active)'), "Catalog runtime mirrors production File Atlas active class");
+assert(catalogRuntime.includes('atlasRoot.dataset.subview = state === "tree" ? "tree" : "graph"'), "Catalog runtime mirrors File Atlas subview geometry");
+assert(catalogRuntime.includes('attribute === "displayState"'), "Catalog runtime updates Composer display state");
 
 assert(evidenceManifest.sha256 === catalog.recording.sha256, "Recording SHA matches evidence manifest");
 catalog.scenes.flatMap((item) => item.references).forEach((reference) => {

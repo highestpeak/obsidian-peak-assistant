@@ -1,6 +1,10 @@
 /* Catalog chrome only. Product surfaces below deliberately retain production
    class names and consume the compiled production bundle. */
 body { overflow-x: hidden; }
+.pk-icon-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.pk-ui-icon { display: inline-block; width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+.pk-ui-icon--chevron { transition: transform 120ms ease; }
+.pk-ui-icon--chevron.is-open, .pkfa-twisty.is-open .pk-ui-icon--chevron { transform: rotate(90deg); }
 .catalog-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100vh; }
 .catalog-rail { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 22px 16px; border-right: 1px solid var(--pk-border); background: var(--pk-surface); overflow: auto; }
 .catalog-brand { display: flex; align-items: center; gap: 10px; color: var(--pk-text-primary) !important; }
@@ -30,6 +34,7 @@ body { overflow-x: hidden; }
 .catalog-scene__head h2 { margin-top: 4px; font-size: clamp(28px, 3.5vw, 44px); letter-spacing: -.035em; }
 .catalog-scene__head p { max-width: 840px; margin-top: 7px; color: var(--pk-text-secondary); font-size: var(--pk-text-md); }
 .catalog-scene__head code { color: var(--pk-accent-text); font: var(--pk-text-sm)/1.4 var(--pk-font-mono); }
+.catalog-scene__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .catalog-source-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; min-height: 32px; margin-bottom: 12px; }
 .catalog-source-group { display: flex; align-items: center; gap: 5px; }
 .catalog-source-group__label { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
@@ -53,6 +58,21 @@ body { overflow-x: hidden; }
 .pk-result-browser-row-score { margin-left: auto; }
 .pk-result-browser-row-snippet { line-height: 1.55; }
 .pk-result-browser-row-snippet mark { border-radius: 2px; background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.pk-result-browser-row-title mark { border-radius: 2px; background: var(--pk-warning-bg); color: var(--pk-warning-text); }
+.pk-catalog-result-row { min-height: 70px; }
+.pk-catalog-result-row[data-selected="true"] { background: var(--pk-accent-tint); }
+.pk-catalog-result-accent { position: absolute; inset: 0 auto 0 0; width: 4px; border-radius: 0 999px 999px 0; background: var(--pk-accent); opacity: 0; }
+.pk-catalog-result-row[data-selected="true"] .pk-catalog-result-accent { opacity: 1; }
+.pk-search-workspace[data-result-density="compact"] .pk-catalog-result-row { min-height: 42px; padding-top: 7px !important; padding-bottom: 7px !important; }
+.pk-search-workspace[data-result-density="compact"] :is(.pk-result-browser-row-snippet, .pk-result-browser-row-meta) { display: none; }
+.pk-catalog-result-open { position: absolute; z-index: 2; top: 6px; right: 8px; display: grid; place-items: center; width: 30px !important; min-width: 30px !important; max-width: 30px !important; height: 30px !important; min-height: 30px !important; max-height: 30px !important; padding: 0 !important; border: 0 !important; border-radius: var(--pk-radius-md) !important; background: transparent !important; color: var(--pk-text-tertiary) !important; opacity: 0; }
+.pk-catalog-result-row:hover .pk-catalog-result-open, .pk-catalog-result-open:focus-visible { opacity: 1; }
+.pk-catalog-result-titleline { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.pk-catalog-result-titleline .pk-result-browser-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-catalog-result-titleline .pk-result-browser-row-score { flex: 0 0 auto; padding: 2px 6px; border-radius: var(--pk-radius-pill); background: var(--pk-accent-tint); color: var(--pk-accent-text); font-size: var(--pk-text-xs); font-weight: 700; }
+.pk-catalog-tree-summary { display: flex; gap: 8px; padding: 10px 14px 6px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+.pk-catalog-tree-summary span { padding: 2px 7px; border: 1px solid var(--pk-border-soft); border-radius: var(--pk-radius-pill); background: var(--pk-surface-raised); }
+.pk-catalog-tree-scroll { height: calc(100% - 42px); padding: 6px 0 14px; overflow: auto; }
 .pk-search-footer, .pk-ai-search-footer { display: flex; align-items: center; gap: 16px; min-height: 32px; padding: 0 12px; border-top: 1px solid var(--pk-border); background: var(--pk-bg); color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
 .pk-ai-search-footer button { height: 26px !important; min-height: 26px !important; padding: 0 7px !important; border: 0 !important; border-radius: var(--pk-radius-sm) !important; background: transparent !important; color: var(--pk-text-secondary) !important; }
 .pk-ai-search-footer button[data-selected="true"], .pk-ai-search-footer button.pk-btn--primary { background: var(--pk-accent) !important; color: var(--pk-accent-fg) !important; }
@@ -69,6 +89,11 @@ body { overflow-x: hidden; }
    AtlasGraphCanvasImpl's node/edge rules into inspectable SVG. */
 .pk-result-graph { position: relative; height: 100%; min-height: 0; overflow: hidden; background: var(--pk-surface); }
 .pk-result-graph__controls { position: absolute; z-index: 2; top: 8px; right: 8px; display: flex; align-items: center; gap: 7px; }
+.pk-result-graph__legend { position: absolute; z-index: 2; top: 12px; left: 14px; display: flex; align-items: center; gap: 12px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+.pk-result-graph__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.pk-result-graph__legend i { width: 8px; height: 8px; border: 1px solid var(--pk-accent); border-radius: 3px; background: var(--pk-accent-tint); }
+.pk-result-graph__legend i[data-tone="hub"] { border-width: 2px; background: color-mix(in srgb, var(--pk-accent) 35%, var(--pk-surface)); }
+.pk-result-graph__legend i[data-tone="result"] { background: var(--pk-accent-soft); }
 .pk-cytoscape-canvas { width: 100%; height: 100%; min-height: 430px; }
 .pk-cy-edges path { fill: none; stroke: var(--pk-text-tertiary); stroke-width: 1.25; opacity: .62; }
 .pk-cy-node { cursor: pointer; }
@@ -79,6 +104,10 @@ body { overflow-x: hidden; }
 .pk-cy-node--hub rect { fill: color-mix(in srgb, var(--pk-accent) 42%, var(--pk-surface)); stroke: var(--pk-accent); stroke-width: 3.5; }
 .pk-cy-node--hub text { fill: var(--pk-text-primary); font-weight: 800; }
 .pk-cy-node:hover rect, .pk-cy-node:focus rect { stroke: var(--pk-warning); stroke-width: 3; }
+.pk-result-graph__inspector { position: absolute; right: 12px; bottom: 12px; display: grid; gap: 4px; width: 260px; padding: 12px 14px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: color-mix(in srgb, var(--pk-surface-overlay) 94%, transparent); box-shadow: var(--pk-shadow-popover); }
+.pk-result-graph__inspector span, .pk-result-graph__inspector small { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+.pk-result-graph__inspector strong { color: var(--pk-text-primary); font-size: var(--pk-text-sm); }
+.pk-result-graph__inspector p { margin: 3px 0 0; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); line-height: 1.5; }
 .pk-result-graph[data-graph-layout="constellation"] [data-node="root"] { transform: translate(320px, -110px); }
 .pk-result-graph[data-graph-layout="folder"] [data-node="search"] { transform: translate(-150px, 80px); }
 .pk-result-graph[data-graph-layout="folder"] [data-node="composer"] { transform: translate(-175px, 115px); }
@@ -105,29 +134,36 @@ body { overflow-x: hidden; }
    the viewport that the real modal body normally owns. */
 .catalog-frame--workspace .pk-vault-intelligence-workspace { height: 720px; }
 
-/* File Atlas: CSS comes from production; only fit it into the documentation frame. */
+/* File Atlas: preserve the production grid. The scene wrapper uses
+   display:contents so Search / Presets / Main / Tray remain direct grid rows. */
 .catalog-frame--atlas .pkfa-root { height: 720px; --pkfa-rail-width: 255px; }
-.catalog-frame--atlas .pkfa-content { grid-template-rows: 42px 42px minmax(0, 1fr) auto; }
-.catalog-frame--atlas .pkfa-content > [data-scene-panel] { grid-row: 3; min-height: 0; }
-.catalog-frame--atlas .pkfa-main { min-height: 0; }
-.catalog-frame--atlas .pkfa-tree-pane { grid-template-rows: auto auto minmax(0, 1fr); }
-.catalog-frame--atlas .pkfa-tray { grid-row: 4; }
+.catalog-frame--atlas .pkfa-tree-scene:not([hidden]) { display: contents; }
+.catalog-frame--atlas .pkfa-main, .catalog-frame--atlas .pkfa-tree-pane, .catalog-frame--atlas .pkfa-graph { min-height: 0; }
 .catalog-frame--atlas .pkfa-graph { height: 100%; }
+.catalog-frame--atlas .pkfa-rail-item { width: 100%; }
+.catalog-frame--atlas .pkfa-rail-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: normal; }
+.pkfa-catalog-toolset { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; }
+.pkfa-catalog-toolset button { display: grid; place-items: center; width: 28px !important; min-width: 28px !important; max-width: 28px !important; height: 28px !important; min-height: 28px !important; max-height: 28px !important; padding: 0 !important; border: 1px solid var(--pk-border-soft) !important; border-radius: var(--pk-radius-sm) !important; background: var(--pk-surface) !important; color: var(--pk-text-secondary) !important; }
+.pkfa-node--child .pkfa-node-body { padding-left: 16px; }
+.pkfa-section-heading button { margin-left: auto; border: 0 !important; background: transparent !important; color: var(--pk-accent-text) !important; font-size: var(--pk-text-xs); }
 
-/* Composer: production owns the page. This wrapper only supplies viewport and
-   the Obsidian-like top action strip visible in the recording. */
+/* Composer: production owns the page; the catalog only fixes a host viewport. */
 .catalog-frame--composer .peak-composer-root { height: 760px; min-height: 760px; }
-.pk-composer-demo-toolbar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-bottom: 1px solid var(--pk-border); background: var(--pk-surface); }
-.pk-composer-demo-toolbar > span { flex: 1; }
-.catalog-frame--composer .pk-composer-main { height: calc(100% - 44px); overflow: auto; }
-.catalog-frame--composer .pk-composer-workspace { min-height: 100%; }
-.catalog-frame--composer .pk-composer-shell { min-height: 660px; }
+.catalog-frame--composer .pk-composer-main { height: 100%; overflow: auto; }
+.catalog-frame--composer .pk-composer-workspace { min-height: calc(100% - 52px); }
+.catalog-frame--composer .pk-composer-shell { min-height: 940px; }
+.pk-composer-scene-panel { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.pk-composer-block--selected { background: color-mix(in srgb, var(--pk-accent) 7%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pk-accent) 28%, transparent); }
+.pk-composer-block--selected .pk-composer-rail { opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(0); }
+.pk-composer-selection-highlight { background: var(--pk-accent-tint); }
+.catalog-frame--composer .pk-composer-controlbar .pk-btn { border: 0 !important; background: transparent !important; }
+.catalog-frame--composer .pk-composer-controlbar .pk-composer-intelligence-toggle { color: var(--pk-accent-text) !important; }
 .pk-composer-task-list { display: grid; gap: 8px; }
 .pk-composer-task-list label { display: flex; gap: 9px; align-items: start; color: var(--pk-text-primary); font-size: 15px; line-height: 1.55; }
 .pk-composer-task-list input { appearance: auto !important; width: 14px; height: 14px; margin-top: 4px; accent-color: var(--pk-accent); }
 .pk-selection-format-btn { height: 30px !important; min-height: 30px !important; padding: 0 9px !important; }
 .pk-composer-quote { margin: 0; padding: 12px 16px; border-left: 3px solid var(--pk-accent); background: var(--pk-accent-tint); color: var(--pk-text-secondary); font-size: 15px; line-height: 1.6; }
-.pk-composer-math { display: grid; place-items: center; min-height: 120px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface-raised); color: var(--pk-text-primary); font: 20px/1.5 var(--pk-font-mono); }
+.pk-composer-math { display: grid; place-items: center; gap: 8px; min-height: 160px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface-raised); color: var(--pk-text-primary); font: 20px/1.5 var(--pk-font-mono); }
 
 /* Composer Intelligence: the sidecar shell and its chrome are production. */
 .pk-intelligence-demo { display: grid; grid-template-columns: minmax(0, 1fr) 430px; height: 760px; background: var(--pk-bg-secondary); }

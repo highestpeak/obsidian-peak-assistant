@@ -13,6 +13,9 @@
     sceneRoot.dataset.activeState = state;
     sceneRoot.querySelectorAll("[data-scene-state]").forEach(function (button) {
       var active = button.dataset.sceneState === state;
+      if (button.classList.contains("pkfa-atlas-tab") && button.dataset.sceneState === "graph") {
+        active = state === "graph" || state === "ai-graph";
+      }
       button.dataset.selected = String(active);
       button.setAttribute("aria-pressed", String(active));
       button.setAttribute("aria-selected", String(active));
@@ -26,6 +29,16 @@
     sceneRoot.querySelectorAll("[data-scene-panel]").forEach(function (panel) {
       panel.hidden = panel.dataset.scenePanel !== state;
     });
+    var atlasRoot = sceneRoot.querySelector(".pkfa-root");
+    if (atlasRoot) {
+      atlasRoot.dataset.subview = state === "tree" ? "tree" : "graph";
+      var atlasHint = atlasRoot.querySelector(".pkfa-tab-hint");
+      if (atlasHint) {
+        atlasHint.textContent = state === "tree"
+          ? "Outline of every block, resource & heading in this note"
+          : "Read-only neighborhood of the current note";
+      }
+    }
     var title = sceneRoot.querySelector("[data-active-state-label]");
     var meta = scene(sceneRoot.dataset.sceneId);
     if (title && meta) {
@@ -40,11 +53,23 @@
       var active = button.dataset.groupOption === value;
       button.dataset.selected = String(active);
       button.setAttribute("aria-pressed", String(active));
+      if (button.classList.contains("pkfa-preset-tab")) button.classList.toggle("is-active", active);
     });
+    if (group.classList.contains("pk-segmented")) {
+      var selectedOption = group.querySelector('[data-group-option="' + value + '"]');
+      var thumb = group.querySelector(".pk-segmented__thumb");
+      if (selectedOption && thumb && thumb.parentElement !== selectedOption) selectedOption.prepend(thumb);
+    }
     var attribute = group.dataset.groupAttribute;
     if (attribute) {
       var scope = group.closest("[data-group-scope]");
-      if (scope) scope.dataset[attribute] = value;
+      if (scope) {
+        scope.dataset[attribute] = value;
+        if (attribute === "displayState") {
+          var paper = scope.querySelector(".pk-composer-shell");
+          if (paper) paper.dataset.displayState = value === "markdown" ? "clean" : value;
+        }
+      }
     }
     var target = group.dataset.groupTarget;
     if (!target) return;
