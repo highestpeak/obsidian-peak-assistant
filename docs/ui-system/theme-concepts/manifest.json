@@ -1,34 +1,177 @@
 {
-  "version": 1,
+  "version": 2,
   "purpose": "Fixed Codex image-generation replacement slots for Peak Theme Lab",
   "policy": "Replace output files only. Never overwrite source evidence.",
   "slots": [
     {
-      "id": "search",
-      "label": "Search",
-      "output": "current/search.jpg",
+      "id": "vault-search-list",
+      "group": "Vault Search",
+      "label": "List · Results & Inspector",
+      "output": "current/vault-search-list.jpg",
       "sourceEvidence": "../evidence/recording-2026-08-10/vault-search-list.jpg",
+      "second": 4,
       "geometry": "1280x802"
     },
     {
-      "id": "composer",
-      "label": "Composer",
-      "output": "current/composer.jpg",
-      "sourceEvidence": "../evidence/recording-2026-08-10/composer-selection.jpg",
+      "id": "vault-search-tree",
+      "group": "Vault Search",
+      "label": "Tree · Hierarchy",
+      "output": "current/vault-search-tree.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/vault-search-tree.jpg",
+      "second": 14,
       "geometry": "1280x802"
     },
     {
-      "id": "graph",
-      "label": "Graph",
-      "output": "current/graph.jpg",
+      "id": "vault-search-graph",
+      "group": "Vault Search",
+      "label": "Graph · Relationship projection",
+      "output": "current/vault-search-graph.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/vault-search-graph.jpg",
+      "second": 22,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "ai-search-report",
+      "group": "AI Search",
+      "label": "Report · Synthesized answer",
+      "output": "current/ai-search-report.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/ai-search-report.jpg",
+      "second": 34,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "ai-search-sources",
+      "group": "AI Search",
+      "label": "Sources · Evidence list",
+      "output": "current/ai-search-sources.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/ai-search-sources.jpg",
+      "second": 38,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "vault-intelligence",
+      "group": "Vault Intelligence",
+      "label": "Overview · Health & findings",
+      "output": "current/vault-intelligence.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/vault-intelligence.jpg",
+      "second": 52,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "file-atlas-tree",
+      "group": "File Atlas",
+      "label": "Tree · Outline & Inspector",
+      "output": "current/file-atlas-tree.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/file-atlas-tree.jpg",
+      "second": 58,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "file-atlas-graph",
+      "group": "File Atlas",
+      "label": "Graph · File neighborhood",
+      "output": "current/file-atlas-graph.jpg",
       "sourceEvidence": "../evidence/recording-2026-08-10/file-atlas-graph.jpg",
+      "second": 62,
       "geometry": "1280x802"
     },
     {
-      "id": "chat",
-      "label": "Chat",
-      "output": "current/chat.jpg",
+      "id": "composer-selection",
+      "group": "Composer",
+      "label": "Selection · Document action",
+      "output": "current/composer-selection.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/composer-selection.jpg",
+      "second": 70,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "composer-intelligence",
+      "group": "Composer Intelligence",
+      "label": "Sidecar · Copilot context",
+      "output": "current/composer-intelligence.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/composer-intelligence.jpg",
+      "second": 78,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "composer-related-materials",
+      "group": "Composer Intelligence",
+      "label": "Related Materials · Modal",
+      "output": "current/composer-related-materials.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/composer-related-materials.jpg",
+      "second": 82,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "composer-ai-graph",
+      "group": "Composer Intelligence",
+      "label": "AI Graph · Modal",
+      "output": "current/composer-ai-graph.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/composer-ai-graph.jpg",
+      "second": 96,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "chat-studio-empty",
+      "group": "Chat Studio",
+      "label": "Empty · First action",
+      "output": "current/chat-studio-empty.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/chat-studio-empty.jpg",
+      "second": 120,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "chat-studio-gallery",
+      "group": "Chat Studio",
+      "label": "Gallery · Conversation workspace",
+      "output": "current/chat-studio-gallery.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/chat-studio-gallery.jpg",
+      "second": 124,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "chat-studio-states",
+      "group": "Chat Studio",
+      "label": "Messages · Streaming & status",
+      "output": "current/chat-studio-states.jpg",
       "sourceEvidence": "../evidence/recording-2026-08-10/chat-studio-states.jpg",
+      "second": 128,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "settings-overview",
+      "group": "Settings & Usage",
+      "label": "Settings · Overview",
+      "output": "current/settings-overview.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/settings-overview.jpg",
+      "second": 132,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "settings-ai-setup",
+      "group": "Settings & Usage",
+      "label": "Settings · AI Setup",
+      "output": "current/settings-ai-setup.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/settings-ai-setup.jpg",
+      "second": 134,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "settings-media-generation",
+      "group": "Settings & Usage",
+      "label": "Settings · Media Generation",
+      "output": "current/settings-media-generation.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/settings-media-generation.jpg",
+      "second": 136,
+      "geometry": "1280x802"
+    },
+    {
+      "id": "usage-provider-model",
+      "group": "Settings & Usage",
+      "label": "Usage · Provider & Model",
+      "output": "current/usage-provider-model.jpg",
+      "sourceEvidence": "../evidence/recording-2026-08-10/usage-provider-model.jpg",
+      "second": 142,
       "geometry": "1280x802"
     }
   ]

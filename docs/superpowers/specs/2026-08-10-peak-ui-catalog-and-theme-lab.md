@@ -107,16 +107,13 @@ Theme Pack 提供 canvas、surface、raised、sunken、text、muted、border、a
 
 ## 6. Codex 固定图片替换
 
-LLM 图像生成适合高带宽探索整体气质，但 Theme Lab 不承担图片上传、外部模型调用或 Prompt 搬运。它在页面中直接展示四个固定输出文件：
+LLM 图像生成适合高带宽探索整体气质，但 Theme Lab 不承担图片上传、外部模型调用或 Prompt 搬运。它在页面中直接展示 19 个固定输出文件，覆盖 8 个产品域：
 
 ```text
-docs/ui-system/theme-concepts/current/search.jpg
-docs/ui-system/theme-concepts/current/composer.jpg
-docs/ui-system/theme-concepts/current/graph.jpg
-docs/ui-system/theme-concepts/current/chat.jpg
+docs/ui-system/theme-concepts/current/*.jpg
 ```
 
-这些固定槽位与只读录屏来源登记在 `theme-concepts/manifest.json`。用户在 Theme Lab 调整 Theme、复制当前 JSON，然后在 Codex 中打开 `design-system-playground.html`，要求 Codex 按该 JSON 重新生成并覆盖四个固定输出。HTML 路径不变，刷新即显示新结果。
+这些固定槽位与只读录屏来源登记在 `theme-concepts/manifest.json`。用户在 Theme Lab 调整 Theme、复制当前 JSON，然后在 Codex 中打开 `design-system-playground.html`，要求 Codex 按该 JSON 重新生成全部图片或指定产品域。HTML 路径不变，刷新即显示新结果。页面按产品域纵向分组，每张图片接近 1280px 原始宽度展示，并可单独打开原始文件。
 
 Codex 必须遵守：
 

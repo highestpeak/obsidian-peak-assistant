@@ -17,14 +17,9 @@
 
 ## Codex 固定图片换肤
 
-Theme Lab 直接展示四个固定的 repo-local 图片槽位：
+Theme Lab 直接展示 19 个固定的 repo-local 图片槽位，覆盖 Vault Search、AI Search、Vault Intelligence、File Atlas、Composer、Composer Intelligence、Chat Studio、Settings & Usage。全部输出位于 `theme-concepts/current/*.jpg`，按产品域单列大图展示并可点击查看原始 1280×802 文件。
 
-- `theme-concepts/current/search.jpg`；
-- `theme-concepts/current/composer.jpg`；
-- `theme-concepts/current/graph.jpg`；
-- `theme-concepts/current/chat.jpg`。
-
-槽位与只读录屏来源登记在 `theme-concepts/manifest.json`。上方 Theme 控件调整完成后，复制当前 Theme JSON，在 Codex 中打开 `design-system-playground.html` 并要求按 JSON 替换固定主题图。Codex 直接读取现有图片和 manifest，生成后覆盖上述四个文件；页面不提供上传控件，也不要求用户复制另一段 Prompt。
+槽位与只读录屏来源登记在 `theme-concepts/manifest.json`。上方 Theme 控件调整完成后，复制当前 Theme JSON，在 Codex 中打开 `design-system-playground.html` 并要求按 JSON 替换全部图片或指定产品域。Codex 直接读取现有图片和 manifest，生成后覆盖对应固定文件；页面不提供上传控件，也不要求用户复制另一段 Prompt。
 
 `evidence/` 永远是只读真实证据，不能被生成图覆盖。固定主题图用于视觉方向；真正可应用的产物仍必须是通过 schema 校验的 Theme JSON，并补齐：
 

@@ -136,19 +136,19 @@ assert(new Set(documents[1].doc.themeControls).size === axes.length, "Theme Lab:
   ["Overlay specimen", "overlay-panel"],
   ["Codex image slots", "id=\"ai-bridge\""],
   ["Fixed image manifest", "data-theme-image-manifest=\"ui-system/theme-concepts/manifest.json\""],
-  ["Current Theme JSON", "data-theme-json"],
-  ["Search image slot", "data-theme-image-slot=\"search\""],
-  ["Composer image slot", "data-theme-image-slot=\"composer\""],
-  ["Graph image slot", "data-theme-image-slot=\"graph\""],
-  ["Chat image slot", "data-theme-image-slot=\"chat\""]
+  ["Current Theme JSON", "data-theme-json"]
 ].forEach(([label, marker]) => assert(sources.labHtml.includes(marker), `Theme Lab: ${label}`));
 assert(sources.labHtml.includes("不复刻完整 Search、Composer 或 Graph"), "Theme Lab: explicitly rejects product parity claim");
 assert(!sources.labHtml.includes("type=\"file\"") && !sources.labHtml.includes("data-copy-image-prompt"), "Theme Lab: has no upload or Prompt-transfer UI");
 assert(!/(?:FileReader|readAsDataURL|fetch\(|XMLHttpRequest|https?:\/\/)/.test(sources.labRuntime), "Theme Lab: runtime has no image transfer or network path");
 
-assert(themeConceptManifest.slots.length === 4, "Theme Lab: declares four fixed Codex image slots");
+assert(themeConceptManifest.slots.length === 19, "Theme Lab: declares all 19 fixed Codex image slots");
+assert(new Set(themeConceptManifest.slots.map((slot) => slot.group)).size === 8, "Theme Lab: fixed slots cover 8 product domains");
 assert(themeConceptManifest.policy.includes("Never overwrite source evidence"), "Theme Lab: manifest protects source evidence");
 const conceptIds = new Set();
+const conceptDirectory = path.join(path.dirname(files.themeConceptManifest), "current");
+const conceptFiles = fs.readdirSync(conceptDirectory).filter((file) => file.endsWith(".jpg"));
+assert(conceptFiles.length === 19, "Theme Lab: fixed output directory contains exactly 19 JPG slots");
 themeConceptManifest.slots.forEach((slot) => {
   assert(!conceptIds.has(slot.id), `Theme Lab ${slot.id}: unique image slot`);
   conceptIds.add(slot.id);
@@ -156,9 +156,14 @@ themeConceptManifest.slots.forEach((slot) => {
   const sourceEvidence = path.resolve(path.dirname(files.themeConceptManifest), slot.sourceEvidence);
   assert(fs.existsSync(output), `Theme Lab ${slot.id}: fixed output exists`);
   assert(fs.existsSync(sourceEvidence), `Theme Lab ${slot.id}: source evidence exists`);
+  assert(evidenceManifest.frames.some((frame) => frame.file === path.basename(slot.sourceEvidence) && frame.second === slot.second), `Theme Lab ${slot.id}: source evidence timecode is locked`);
   assert(sources.labHtml.includes(`data-theme-image-slot=\"${slot.id}\"`), `Theme Lab ${slot.id}: slot is displayed`);
   assert(sources.labHtml.includes(`ui-system/theme-concepts/${slot.output}`), `Theme Lab ${slot.id}: HTML uses fixed output path`);
+  assert(sources.labHtml.includes(`href=\"ui-system/theme-concepts/${slot.output}\"`), `Theme Lab ${slot.id}: image opens at original size`);
 });
+assert((sources.labHtml.match(/class=\"theme-image-domain\"/g) || []).length === 8, "Theme Lab: renders 8 vertical image groups");
+assert((sources.labHtml.match(/class=\"theme-image-slot\"/g) || []).length === 19, "Theme Lab: renders 19 large image cards");
+assert(sources.labCss.includes("grid-template-columns: minmax(0, 1fr)"), "Theme Lab: image gallery uses a single large column");
 
 assert(catalog.scenes.length === 8, "UI Inventory: declares 8 product domains");
 catalog.scenes.forEach((scene) => {
