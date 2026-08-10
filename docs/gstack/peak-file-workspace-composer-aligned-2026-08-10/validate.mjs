@@ -98,6 +98,8 @@ assert.match(js, /#cropFreehandLayer"\)\.addEventListener\("pointerdown", \(even
 assert.match(js, /const currentRect = overlay\.getBoundingClientRect\(\)[\s\S]+const centerX =[\s\S]+const centerY =[\s\S]+centerX - width \/ 2[\s\S]+centerY - height \/ 2/, "Crop ratios must preserve the current crop center");
 assert.match(js, /setPointerCapture\?\.\(event\.pointerId\)/, "Lasso drag must capture the active pointer");
 assert.match(js, /releasePointerCapture\(state\.pointerId\)/, "Lasso drag must release pointer capture");
+assert.match(js, /renderLassoPath\(activeLasso\);[\s\S]+renderLassoPath\(state, true\);/, "Lasso must remain open while drawing and close only on pointer release");
+assert.match(js, /closed \? " Z" : ""/, "Lasso path must not connect the current point to the origin before completion");
 assert.match(js, /layer\.toggleAttribute\("hidden", false\)/, "Image SVG lasso visibility must remove the hidden attribute");
 assert.match(js, /lassoLayer\.toggleAttribute\("hidden", mode !== "lasso"\)/, "PDF SVG lasso visibility must remove the hidden attribute");
 assert.doesNotMatch(js, /(?:layer|lassoLayer)\.hidden\s*=/, "SVG lasso layers cannot use HTMLElement.hidden assignment");
@@ -105,7 +107,7 @@ assert.match(js, /normalizedPoints[\s\S]+normalizedBounds/, "Shared normalized l
 assert.match(js, /knowledge-work-ai-era\.pdf[\s\S]+p\.\$\{page\}[\s\S]+lasso mask \+ normalized bounds/, "PDF Composer receipt must retain file, page, mask, and bounds");
 assert.match(css, /\.selection-context-bar\.follows-selection/, "shared selection-following capsule styles missing");
 assert.match(css, /\.freehand-layer\{[^}]+touch-action:none/, "Shared freehand pointer layer missing");
-assert.match(css, /\.freehand-layer\.is-drawing \.lasso-mask\{visibility:hidden\}/, "Freehand drawing must reveal only the completed closed region");
+assert.match(css, /\.freehand-layer\.is-drawing \.lasso-mask\{fill:none;stroke-dasharray:[^}]+\}/, "Freehand drawing must show only the sampled trail without a temporary closing fill");
 assert.match(css, /\.lasso-hit-area\{[^}]*fill:transparent[^}]*pointer-events:all/, "Lasso needs a painted full-surface SVG hit target");
 assert.match(css, /\.lasso-mask\{[^}]*pointer-events:none/, "Rendered lasso path must not steal the next redraw gesture");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
@@ -117,6 +119,8 @@ assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text se
 const officialSources = [
   "helpx.adobe.com/photoshop",
   "helpx.adobe.com/acrobat",
+  "support.goodnotes.com/hc/en-us/articles/10779390143247",
+  "support.goodnotes.com/hc/en-us/articles/7353727617295",
   "support.google.com/photos",
   "support.apple.com",
   "canva.com/features/ai-photo-editing",
