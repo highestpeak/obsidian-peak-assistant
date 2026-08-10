@@ -105,6 +105,7 @@ assert.match(js, /normalizedPoints[\s\S]+normalizedBounds/, "Shared normalized l
 assert.match(js, /knowledge-work-ai-era\.pdf[\s\S]+p\.\$\{page\}[\s\S]+lasso mask \+ normalized bounds/, "PDF Composer receipt must retain file, page, mask, and bounds");
 assert.match(css, /\.selection-context-bar\.follows-selection/, "shared selection-following capsule styles missing");
 assert.match(css, /\.freehand-layer\{[^}]+touch-action:none/, "Shared freehand pointer layer missing");
+assert.match(css, /\.freehand-layer\.is-drawing \.lasso-mask\{visibility:hidden\}/, "Freehand drawing must reveal only the completed closed region");
 assert.match(css, /\.lasso-hit-area\{[^}]*fill:transparent[^}]*pointer-events:all/, "Lasso needs a painted full-surface SVG hit target");
 assert.match(css, /\.lasso-mask\{[^}]*pointer-events:none/, "Rendered lasso path must not steal the next redraw gesture");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
