@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak UI Inventory · 真实界面证据</title>
+  <link rel="stylesheet" href="../src/styles/peak-tokens.css">
+  <link rel="stylesheet" href="../src/styles/peak-components.css">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="ui-system/theme.css">
+  <link rel="stylesheet" href="ui-system/host-compat.css">
+  <link rel="stylesheet" href="ui-system/ui-catalog.css">
+</head>
+<body>
+  <div class="peak-design-root pktw-root inventory-page">
+    <header class="inventory-header">
+      <a class="inventory-brand" href="#top"><span>P</span><div><b>Peak UI Inventory</b><small>真实录屏帧 · 源码关系</small></div></a>
+      <nav aria-label="UI Inventory navigation" data-inventory-nav></nav>
+      <div class="inventory-header__actions"><span class="pk-chip" data-theme-summary></span><a class="pk-btn" href="design-system-playground.html">打开 Theme Lab</a></div>
+    </header>
+    <main id="top" class="inventory-main">
+      <section class="inventory-hero"><span class="pk-eyebrow">EVIDENCE, NOT A HAND-MADE REPLICA</span><h1>真实界面长什么样，以截图和实机为准。</h1><p>本页不再用 HTML 重画 Search、Composer、Graph 或 File Atlas。每个产品域直接展示录屏证据、状态、设计文件和生产源码；Theme Lab 只承担整体换肤试验。</p><div class="inventory-contract"><span><b>Reference</b>真实截图或录屏帧</span><span><b>Structure</b>生产组件与设计稿路径</span><span><b>Acceptance</b>Obsidian 实机交互</span></div></section>
+      <section class="inventory-recording" data-recording-meta></section>
+      <div class="inventory-list" data-inventory-root></div>
+    </main>
+  </div>
+  <script src="ui-system/theme-packs.js"></script>
+  <script src="ui-system/catalog-manifest.js"></script>
+  <script src="ui-system/theme-runtime.js"></script>
+  <script src="ui-system/catalog-runtime.js"></script>
+</body>
+</html>

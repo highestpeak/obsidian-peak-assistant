@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Design System · Theme Lab</title>
+  <title>Peak Design System · Rules & Theme Schema</title>
   <link rel="stylesheet" href="../src/styles/peak-tokens.css">
   <link rel="stylesheet" href="../src/styles/peak-components.css">
   <link rel="stylesheet" href="../styles.css">
@@ -16,7 +16,7 @@
     <header class="pk-doc-header">
       <a class="pk-doc-brand" href="#top">
         <span class="pk-doc-mark">P</span>
-        <span><b>Peak Design System</b><span>Theme Lab · v2</span></span>
+        <span><b>Peak Design System</b><span>Rules & Schema · v3</span></span>
       </a>
       <nav class="pk-doc-nav" aria-label="页面导航">
         <a href="#principles">原则</a>
@@ -27,8 +27,8 @@
         <a href="#schema">Schema</a>
       </nav>
       <div class="pk-doc-header__actions">
-        <span class="pk-doc-status" data-theme-status>两个页面共享同一 Theme State</span>
-        <a class="pk-btn pk-btn--primary" href="design-system-playground.html" data-open-theme-page>打开 UI Catalog</a>
+        <span class="pk-doc-status" data-theme-status>Theme State 已跨页面同步</span>
+        <a class="pk-btn pk-btn--primary" href="design-system-playground.html" data-open-theme-page>打开 Theme Lab</a>
       </div>
     </header>
 
@@ -36,10 +36,11 @@
       <section class="pk-hero">
         <span class="pk-eyebrow">PEAK / AUTONOMOUS PRODUCT UI</span>
         <h1>一套可切换、可验证、拒绝 Obsidian 样式侵入的设计系统。</h1>
-        <p>这里定义颜色、字体、密度、圆角、层级与 motion；UI Catalog 使用同一份 Theme State 展示 Vault Search、AI Search、Composer、Graph、Chat Studio 与 Settings 的真实状态。</p>
+        <p>这里定义颜色、字体、密度、圆角、层级、motion 与宿主边界；Theme Lab 用固定试件判断整体气质，UI Inventory 用真实录屏帧记录产品原貌。</p>
         <div class="pk-hero__actions">
           <a class="pk-btn pk-btn--primary" href="#theme">调试 Theme</a>
-          <a class="pk-btn" href="design-system-playground.html" data-open-theme-page>看全部产品界面</a>
+          <a class="pk-btn" href="design-system-playground.html" data-open-theme-page>用标准试件换肤</a>
+          <a class="pk-btn" href="ui-inventory.html">看真实 UI Inventory</a>
           <button class="pk-btn pk-btn--ghost" data-theme-reset>恢复默认</button>
         </div>
       </section>
@@ -56,13 +57,13 @@
           <article class="principle-row"><span class="principle-row__number">04</span><div><b>圆角表达层级</b><span>控件用 md，容器用 lg，浮层用 xl；pill 只给短标签和互斥切换。</span></div><code>control md → panel lg → modal xl</code></article>
           <article class="principle-row"><span class="principle-row__number">05</span><div><b>阴影只表达 elevation</b><span>文档内面板以 border 为主；popover、sidecar、modal 才逐级增加阴影。</span></div><code>base → card → popover → modal</code></article>
           <article class="principle-row"><span class="principle-row__number">06</span><div><b>Projection 不重新查询</b><span>List / Tree / Graph 是同一 snapshot 的视图，切换不丢 selection、inspector 与 query。</span></div><code>snapshot → projection</code></article>
-          <article class="principle-row"><span class="principle-row__number">07</span><div><b>状态必须可交互验证</b><span>空、加载、选中、错误、弹层和 sidecar 都进入 Catalog，不用一张静态“理想图”代替。</span></div><code>scene × state × theme</code></article>
+          <article class="principle-row"><span class="principle-row__number">07</span><div><b>主题感受与产品原貌分开</b><span>Theme Lab 使用固定标准试件；真实页面外观进入 UI Inventory；交互只在 Obsidian 实机验收。</span></div><code>specimen / evidence / acceptance</code></article>
         </div>
       </section>
 
       <section id="theme" class="pk-section">
         <header class="pk-section__head">
-          <div><h2>Theme 控制台</h2><p>任一参数变化会立即作用于本页；另开 UI Catalog 时，两页通过同一状态同步。</p></div>
+          <div><h2>Theme 控制台</h2><p>任一参数变化会立即作用于本页，并同步到 Theme Lab 与 UI Inventory 的文档外壳。</p></div>
           <span class="pk-section__index">02 · Theme</span>
         </header>
         <div class="theme-controller">
@@ -149,7 +150,7 @@
       <section id="schema" class="pk-section">
         <header class="pk-section__head"><div><h2>Theme Schema</h2><p>Theme 是数据，不是另复制一份组件 CSS。导出后可以版本化、校验、预览与安全回退。</p></div><span class="pk-section__index">06 · Schema</span></header>
         <div class="theme-schema-layout">
-          <article class="pk-card theme-schema-copy"><b>可配置轴</b><p><code>pack</code> 决定 neutral ramp；<code>appearance</code> 决定 light/dark；其余轴只映射各自职责。组件永远不知道当前 Theme 名称。</p><div class="pk-note"><div class="pk-note__title">Fallback</div>无效值回落到 Peak Violet / Light / Comfortable / Balanced；缺失 accent 回落到 pack 默认值。</div><div class="pk-inline-actions"><button class="pk-btn pk-btn--primary" data-theme-export>复制当前 Theme</button><button class="pk-btn" data-theme-import>导入 Theme</button></div></article>
+          <article class="pk-card theme-schema-copy"><b>可配置轴</b><p><code>pack</code> 决定 neutral ramp；<code>appearance</code> 决定 light/dark；其余轴只映射各自职责。组件永远不知道当前 Theme 名称。</p><div class="pk-note"><div class="pk-note__title">Fallback</div>无效值回落到 Peak Violet / Light / Comfortable / Balanced；缺失 accent 回落到 pack 默认值。</div><div class="pk-note"><div class="pk-note__title">Image-to-theme</div>LLM 生成图只作为视觉假设：固定 Theme Lab 截图 → 只换肤生成图 → 提取 token recipe → 补齐 Dark 与交互状态 → 校验后进入 Theme Pack。</div><div class="pk-inline-actions"><button class="pk-btn pk-btn--primary" data-theme-export>复制当前 Theme</button><button class="pk-btn" data-theme-import>导入 Theme</button><a class="pk-btn" href="design-system-playground.html#ai-bridge">打开 AI 换肤桥</a></div></article>
           <pre class="pk-code" data-theme-json></pre>
         </div>
       </section>

@@ -1,95 +1,90 @@
-# Peak UI Catalog 与 Theme Lab 设计
+# Peak Design System、Theme Lab 与 UI Inventory 设计
 
 > 状态：implemented in docs-only reference surfaces
 > 日期：2026-08-10
 > 读者：Peak 产品负责人、UI 维护者、后续实现代理
 > 范围：文档与可交互参考实现；不修改生产 React、CSS bundle 或运行时
 
-## 1. 为什么需要这两个页面
+## 1. 决策
 
-旧的 `design-system.html` 和 `design-system-playground.html` 把设计原则、通用组件、产品场景和旧设计稿混在同一个页面里。它能展示颜色和几个近似 mock，但不能回答四个关键问题：
+Design System 文档不能同时承担“定义规则”“查看换肤感觉”和“复刻真实产品”三种职责。静态 HTML 一旦手工重画完整 Search、Composer、Graph、File Atlas 或 Chat，就会出现元素多/少、错位和过期，并让文档夹具冒充产品事实。
 
-1. 录屏里的真实页面和交互状态是否被覆盖；
-2. 一个 scene 对应哪些生产组件和既有设计稿；
-3. Theme、Light/Dark、Density、Radius、Typography、Elevation、Motion 改动后，所有场景是否同时变化；
-4. 页面变更后，如何自动发现引用失效、状态缺失和主题旁路。
+本方案拆成三个入口：
 
-本方案把职责拆成两个入口，但只保留一套主题运行时和一份场景清单：
+- `docs/design-system.html`：设计规则、Foundation、Theme Schema 与 Obsidian Host Boundary；
+- `docs/design-system-playground.html`：Theme Lab，用固定内容、固定几何和标准试件判断整体主题；
+- `docs/ui-inventory.html`：UI Inventory，用真实录屏帧、源码和设计稿记录产品原貌；
+- `docs/ui-system/`：共享 Theme Pack、运行时、真实证据清单、文档样式与静态校验。
 
-- `docs/design-system.html`：定义允许变化的主题轴、语义 token、组件状态和 Obsidian 宿主边界；
-- `docs/design-system-playground.html`：展示真实产品界面的结构镜像、交互状态和录屏参照；
-- `docs/ui-system/`：共享主题、Catalog 清单、最小适配样式、运行时与校验器；产品外观直接消费根目录生产 `styles.css`。
+三个入口共享 Theme State，但只有 Theme Lab 的标准试件用于判断 Theme。UI Inventory 的截图不会随 Theme 改变；其页面 chrome 可以同步主题，但证据保持原样。
 
-## 2. 第一原则约束
+## 2. 三层证据边界
 
-### 2.1 必须保留
+| 层 | 回答的问题 | 允许的实现 | 禁止冒充 |
+| --- | --- | --- | --- |
+| Design System | 哪些角色、规则和边界必须统一 | 原则、token、schema、组件状态 contract | 真实产品实现 |
+| Theme Lab | 换 Theme 后整体感觉是否协调 | 标准 primitives 与代表性 scene specimens | Search / Composer 等完整页面复刻 |
+| UI Inventory | 产品界面实际上长什么样 | 真实截图/录屏、状态、源码和设计文件 | 可交互 Theme 预览 |
+| Obsidian QA | 几何与交互是否真的正确 | CDP + 实机截图/录屏 | 文档页或 harness 验收 |
 
-- 录屏中的真实布局比例、控件层级和主要状态；
-- `real UI -> recording frame -> production source -> tracked design artifact` 的可追溯关系；
-- 两个页面共享同一 Theme State，并可通过 BroadcastChannel、opener postMessage 和 localStorage 同步；
-- 所有交互都在同一 DOM 中运行，不用 iframe，也不复制旧 HTML runtime；
-- 所有产品颜色只读取 `--pk-*` 语义变量，场景不能拥有自己的主题色；仍读取 Obsidian 名称的旧生产 selector 只能通过单独的 `host-compat.css` 反向绑定到 Peak token。
+因此：
 
-### 2.2 明确删除
+- Theme Lab 的场景只保留决定观感的结构与关键状态；
+- UI Inventory 以真实帧为第一视觉内容，不再维护产品 DOM 镜像；
+- 焦点、键盘、拖拽、流式输出、Portal 和宿主侵入只在真实 Obsidian 验证；
+- 文档构建或截图相似不能升级为产品验收。
 
-- 以“像某个产品”为目标的通用 mock；
-- 只平铺几张卡片、没有状态转换的组件画廊；
-- 两个新入口对 iframe 预览桥和旧页面 DOM 全局 CSS 注入的依赖；历史设计稿仍可为其独立预览保留兼容脚本，但不得进入新 Catalog runtime；
-- 把 Result Graph、File Atlas Graph、AI Graph 当成同一个 Graph；
-- 在 scene CSS 中散落主题 hex，或引用 Obsidian `--background-*` / `--text-*` 变量。
+## 3. Theme Lab 标准试件
 
-### 2.3 重要取舍
+### 3.1 Foundations
 
-生产 React runtime 不直接装入文档页。Catalog 使用“源码锁定的结构镜像”：直接加载当前生产 `styles.css`，DOM anatomy 和 class contract 从生产 TSX 提取，只有数据使用静态 fixture。Catalog 不得再用文档专属 class 重新设计 Search、Composer、Chat、File Atlas 或 Settings。这样可以直接 `file://` 打开、稳定复现状态，也不会启动索引、模型、数据库或 Obsidian API。
+- semantic color roles：canvas、surface、sunken、text、border、accent；
+- type ladder：page、section、component、body、supporting、meta；
+- radius/elevation：control、panel、overlay、pill；
+- density 与 motion：只改变各自职责，不缩放整页。
 
-Graph 是例外：当前 Result Browser / File Atlas Graph 由 Cytoscape canvas 绘制，没有可复制的节点 DOM。文档页使用 SVG adapter 复现 `AtlasGraphCanvasImpl.tsx` 的 node/edge style contract；adapter 必须通过 `data-production-style-source` 声明精确源码位置，并且仍只消费 Peak 语义 token。
+### 3.2 Shared primitives
 
-结构镜像不能冒充真实运行验收。它用于主题与结构回归；真实 Obsidian 的焦点、键盘、拖拽、流式输出和几何仍按 `docs/conventions/obsidian-real-ui-qa.md` 验证。
+- Primary / secondary / ghost / disabled actions；
+- segmented selection、chip 和 semantic status；
+- search/input、setting row、switch；
+- Rest、Hover、Focus、Selected、Disabled、Loading、Error contract。
 
-## 3. 信息架构
+### 3.3 Representative scenes
 
-```text
-docs/design-system.html
-  -> theme controls
-  -> semantic tokens
-  -> foundations
-  -> shared component states
-  -> host boundary
+- Search result row：层级、选中态、score 与 density；
+- Composer document block：文档表面、选区、附着动作；
+- Chat message + composer：消息层级、来源、输入与 primary action；
+- Graph canvas：node、edge、selection、semantic label 与 toolbar；
+- Overlay feedback：surface elevation、warning、error、loading 与 stable geometry。
 
-docs/design-system-playground.html
-  -> catalog filters
-  -> product scene mirrors
-  -> state and interaction controls
-  -> recording reference viewer
-  -> source/design evidence
+标准试件允许使用文档专属布局 class，因为它们明确不是生产页面镜像；所有视觉值仍只能消费 `--pk-*` semantic token。
 
-docs/ui-system/
-  -> theme-packs.js        theme schema and built-in packs
-  -> theme-runtime.js      resolve/apply/sync/import/export
-  -> theme.css             autonomous root and shared primitives
-  -> host-compat.css       legacy Obsidian token names -> Peak semantic tokens
-  -> design-system.css     Theme Lab presentation
-  -> catalog-manifest.js   screen/state/source/reference inventory
-  -> catalog-runtime.js    scene state machines and reference viewer
-  -> ui-catalog.css        docs viewport, fixture and canvas adapters only
-  -> validate.mjs          static contract checks
-  -> evidence/             normalized recording keyframes
-```
-
-## 4. 录屏场景清单
+## 4. UI Inventory 清单
 
 录屏：`iShot_2026-08-10_16.23.51.mp4`，145.13 秒，3456×2168，SHA-256 `87441fc768b532d227cb396965510058cae8017dcb26da794faa23f0752e62df`。
 
-| 场景 | 录屏状态 | Catalog 必须可操作的状态 |
-| --- | --- | --- |
-| Vault Search | List、Tree、Graph、Compact/Detailed、Key Tips | 视图切换、密度切换、结果选择、Inspector、Graph preset、Semantic |
-| AI Search | Report、Sources List/Tree/Graph | 底部 workspace 切换、source 投影切换、source 选择 |
-| Vault Intelligence | Health、metrics、community、issues | metric 选择、Run review 状态 |
-| File Atlas | Tree、Graph、file rail、Inspector | 文件选择、Tree/Graph、scope、layout、Inspector |
-| Composer | 文档、选中块、列表 action、公式、callout | display state、block selection、action bar、评论标记 |
-| Composer Intelligence | Copilot、History、Related Materials、AI Graph | sidecar tab、material modal、AI Graph overlay、关闭/返回 |
-| Chat Studio | Empty、Gallery、status/error、Outline/Resources | 会话选择、空态/内容态、右栏 tab、composer focus |
-| Settings / Usage | Overview、AI Setup、Media Generation、Usage | tab 切换、preset 选择、segmented control、usage period |
+| 产品域 | 已锁定的真实帧 |
+| --- | --- |
+| Vault Search | List、Tree、Graph |
+| AI Search | Report、Sources |
+| Vault Intelligence | Overview |
+| File Atlas | Tree / Inspector、Graph |
+| Composer | Selection |
+| Composer Intelligence | Sidecar、Related Materials、AI Graph |
+| Chat Studio | Empty、Gallery、Message states |
+| Settings / Usage | Overview、AI Setup、Media、Provider & Model |
+
+每个 Inventory 项必须拥有：
+
+1. 产品职责；
+2. 状态清单；
+3. 一张或多张真实截图/录屏帧及时间码；
+4. 生产组件路径；
+5. 已有设计稿路径；
+6. 明确的验收边界说明。
+
+新增 UI 时先更新 `catalog-manifest.js`，不在 Inventory 写第二套产品 DOM。
 
 ## 5. Theme State 与 Theme Pack
 
@@ -106,37 +101,58 @@ interface PeakThemeState {
 }
 ```
 
-Theme Pack 只提供基础角色：canvas、surface、raised、sunken、text、muted、border、accent 和 semantic colors。运行时负责派生 hover、selected、soft border、shadow、radius、type scale 和 motion。Scene 不得读取 pack 名，也不得根据 pack 写分支。
+Theme Pack 提供 canvas、surface、raised、sunken、text、muted、border、accent 和 semantic colors。运行时派生 hover、selected、soft border、shadow、radius、type scale 与 motion。任何 specimen 或生产组件不得根据 pack 名写视觉分支。
 
-主题导入必须先验证 pack/axis 枚举和 accent hex；非法字段回退到当前值。导出 JSON 是 Theme Pack 定义的最小可交换格式，不包含 scene state。
+主题导入必须验证枚举和 accent；无效值安全回落。后续允许扩展完整 Light/Dark palette recipe，但 schema 必须版本化、可预览、可回退，不能把任意 CSS 当作 Theme Pack 导入。
 
-## 6. Obsidian 宿主拒绝策略
+## 6. LLM image-to-theme 桥
 
-Peak 视觉完全自治，Obsidian 只提供挂载位置和可选的外观意图。边界分四层：
+LLM 图像生成适合高带宽探索整体气质，但生成图无法证明 token 完整性、交互状态、Dark mode、对比度或工程可实现性。标准流程是：
 
-1. 每个完全自治的 surface 根必须带 `pktw-root peak-design-root`；
-2. Portal 只能挂到带相同 scope 的 ownerDocument portal host；
-3. button/input/select/textarea 和标题/链接等裸标签在 root 内先 reset，再由 Peak primitive 显式声明 geometry、状态和焦点。
-4. 尚未迁移的 production selector 若读取 `--background-*` / `--text-*` 等宿主名称，自治 root 内必须由 compatibility boundary 把这些名称重新绑定到 `--pk-*`；组件和 scene 不得直接消费该层。
+```text
+固定 Theme Lab 截图
+  -> image-to-image 只替换视觉主题
+  -> 生成图导回 Theme Lab 并排比较
+  -> 提取 semantic token recipe
+  -> 补齐 Light / Dark 与所有组件状态
+  -> schema + contrast + fallback 校验
+  -> 注册为 Theme Pack
+```
 
-禁止从 Obsidian 继承颜色、字体、圆角、阴影、控件高度和 hover transform。若产品选择“跟随宿主 Light/Dark”，只读取稳定的 appearance intent，不读取宿主主题变量。
+给图像模型的约束必须包括：不增删元素、不改内容、不改布局和组件尺寸，只替换 semantic colors、typography character、radius、elevation 和 material treatment。推荐同时要求模型返回 Light/Dark token recipe。
 
-## 7. 自动化门槛
+生成图只作为参考输入，永远不能直接写进生产 CSS，也不能绕过 Theme Pack schema。
+
+## 7. Obsidian 宿主拒绝策略
+
+Peak 视觉完全自治，Obsidian 只提供挂载位置和可选 appearance intent：
+
+1. 完全自治 surface 根带 `pktw-root peak-design-root`；
+2. Portal 挂到带相同 scope 的 ownerDocument portal host；
+3. root 内重建 font、color、line-height、box sizing 与控件 reset；
+4. 固定 hit target 显式声明 width / height / min / max / padding；
+5. 旧 production selector 需要 Obsidian 名称时，只能由 `host-compat.css` 反向绑定到 `--pk-*`；
+6. 生产组件和文档试件不得直接消费 Obsidian theme variable。
+
+“Follow host”若将来存在，也只读取 Light/Dark 意图，不读取宿主颜色、圆角、字体和控件几何。
+
+## 8. 自动化门槛
 
 `node docs/ui-system/validate.mjs` 必须检查：
 
-- 两个入口同时加载生产 `styles.css`、共享 production tokens、Theme runtime、Theme Pack 和 host compatibility boundary；
-- Catalog 的 scene id、state id、production/design/reference 路径全部存在；
-- 每个清单状态在 HTML 中有对应可点击 control 或 panel；
-- 不存在 iframe、Obsidian theme variable、scene-local theme hex；
-- 所有录屏证据文件存在，SHA 和时间码有登记；
-- Theme controls 与 `PeakThemeState` 字段一一对应；
-- 页面 anchor 和 cross-page links 存在。
-- Search、Result row、AI Sources、File Atlas、Composer、Sidecar、Chat Studio、Message、Composer input、Conversation Index 与 Settings row 的生产 class contract 均存在；
-- `search-shell`、`composer-page`、`chat-message__bubble`、`graph-node` 等已知平行实现不能再次进入 Catalog；canvas adapter 必须声明生产样式来源。
+- 三个入口都有且只拥有一个 autonomous root；
+- Theme Lab 覆盖 Theme State 的全部轴、Foundation、primitive、代表性 scene 与 AI bridge；
+- UI Inventory 的 scene、state、production/design/reference 路径全部存在；
+- Inventory 的真实证据 SHA 与时间码匹配 manifest；
+- Theme Lab 和 UI Inventory 都没有 iframe；
+- specimen/inventory CSS 不含主题 hex 或 Obsidian theme variable；
+- UI Inventory 不再出现手工重画的产品 anatomy contract；
+- 所有 anchor、cross-page link、script 和 stylesheet 均可解析。
 
-## 8. 更新方式
+## 9. 更新与验收
 
-新增或修改产品 UI 时，先改 `catalog-manifest.js`：登记 scene、状态、生产源、设计稿和录屏/截图。随后从生产 TSX 同步 DOM/class contract 并运行校验；禁止为了文档方便创建第二套组件外观。若只改 Theme Pack，不应修改任何 scene HTML；若 scene 需要额外颜色，先增加语义 token，再由 Theme Pack 解析。
-
-视觉核对至少包含：录屏/真实截图、Catalog 当前状态、相同 Theme State。没有真实 Obsidian 环境时只能结论为文档镜像已验证，不能升级为产品交互验收。
+- 只改 Theme Pack：不修改 Inventory，也不修改标准试件几何；
+- 新增视觉角色：先进入 Design System，再进入 Theme runtime，最后由 specimen 覆盖；
+- 新增产品 UI：更新 Inventory manifest 与真实证据，不重画完整 HTML scene；
+- LLM 探索主题：保存参考图与 recipe 来源；只有通过 schema、Light/Dark、状态和对比度验证后才能成为 Theme Pack；
+- 文档页只做设计与证据管理。真实 Obsidian 没有完成 QA 时，结论必须保持 `INTERACTION NOT VERIFIED`。

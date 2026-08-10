@@ -1,19 +1,35 @@
 # Peak UI System docs
 
-这个目录维护 Design System Theme Lab 与全量 UI Catalog 的共享资源。
+这个目录维护三个职责严格分开的文档表面，共享同一套 Theme Pack 与语义 token：
 
-入口：
+- `../design-system.html`：设计约束、Foundation、Theme Schema 与 Obsidian Host Boundary；
+- `../design-system-playground.html`：Theme Lab，用固定几何和标准试件观察整体换肤效果；
+- `../ui-inventory.html`：UI Inventory，只用真实截图/录屏、生产源码与设计稿说明产品原貌。
 
-- `../design-system.html`：主题、基础、组件和宿主边界；
-- `../design-system-playground.html`：产品场景、交互状态和录屏对照。
+## 维护顺序
 
-维护顺序：
-
-1. 在 `catalog-manifest.js` 登记新的 scene/state/source/reference；
-2. 从 production TSX 复制组件的 DOM anatomy 与 class contract；不要另起 Catalog 专用组件名；
-3. Catalog 直接消费根目录 `styles.css`，`ui-catalog.css` 只允许做文档 viewport、fixture 和 canvas adapter；
-4. 产品视觉只通过 `--pk-*` 语义变量变化；旧 production selector 需要 Obsidian 名称时，只能在 `host-compat.css` 里反向绑定到 Peak token；
+1. 设计规则或 Theme Schema 变化时，先更新 `design-system.html`；
+2. 新视觉角色进入 `theme-packs.js` / `theme-runtime.js`，标准试件只能消费 `--pk-*` 语义 token；
+3. 新产品界面在 `catalog-manifest.js` 登记 scene、state、production source、design reference 与真实截图；
+4. UI Inventory 不重画产品界面，Theme Lab 不承诺产品像素复刻；
 5. 运行 `node docs/ui-system/validate.mjs`；
-6. 真实产品行为仍按 Obsidian real UI QA 单独验收。
+6. 真实交互仍按 `docs/conventions/obsidian-real-ui-qa.md` 在 Obsidian 验收。
 
-不要把旧设计稿 iframe 到 Catalog，也不要添加 `search-shell`、`composer-page`、`chat-message__bubble`、`graph-node` 一类平行实现。Cytoscape/canvas 没有可复制 DOM 时，适配层必须声明生产源码行来源。
+## LLM 图片换肤
+
+推荐使用 Theme Lab 的固定试件截图作为 image-to-image 输入，要求模型不增删元素、不改变内容和几何，只替换配色、字体气质、圆角与材质表达。生成图可以导回 Theme Lab 并排比较，但不能直接成为 Theme Pack。
+
+真正可应用的产物必须是通过 schema 校验的 Theme JSON，并补齐：
+
+- Light 与 Dark；
+- Rest、Hover、Focus、Selected、Disabled、Loading 与 Error；
+- 文字、按钮和状态色对比度；
+- radius、elevation、density、typography 与 motion 角色；
+- 无效 recipe 的 fallback。
+
+## 禁止事项
+
+- 不把设计稿 iframe 到页面；
+- 不为 Search、Composer、Chat、Graph 或 File Atlas 另写一个“看起来差不多”的完整 HTML 产品；
+- 不在 scene/specimen CSS 写主题 hex 或读取 Obsidian theme variable；
+- 不把生成图、文档夹具或构建通过冒充真实 Obsidian 验收。

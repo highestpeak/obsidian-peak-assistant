@@ -320,7 +320,7 @@
     var node = document.querySelector("[data-theme-status]");
     if (!node) return;
     node.textContent = message;
-    global.setTimeout(function () { node.textContent = "两个页面共享同一 Theme State"; }, 1800);
+    global.setTimeout(function () { node.textContent = "Theme State 已跨页面同步"; }, 1800);
   }
 
   function boot() {
