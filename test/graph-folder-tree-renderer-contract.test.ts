@@ -11,12 +11,15 @@ assert.match(renderer, /folder:\s*\{ layout: 'folder-tree',\s*folderTree: true,\
 assert.match(renderer, /layout: bundle\.folderTree \? \{ name: 'preset' \} : undefined/);
 assert.match(renderer, /buildFolderTreeLayout/);
 assert.match(renderer, /buildFolderTreeRelationRoutes/);
+assert.match(renderer, /buildFolderTreeHubLayout/);
+assert.match(renderer, /folderTreeHubLayout\?\.positionById\.get\(hub\.id\)/);
 assert.match(renderer, /controlPointDistances: relationRoute/);
 assert.match(renderer, /edgeDistances: relationRoute \? 'node-position' : 'intersection'/);
 assert.match(renderer, /'control-point-distances': 'data\(controlPointDistances\)'/);
 assert.match(renderer, /folderTreeDecoration folderTreeIcon/);
 assert.match(renderer, /folderTreeCountBadge/);
 assert.match(renderer, /folderTreeLinkBadge/);
+assert.match(renderer, /node\.hub\.folderTreeHub/);
 assert.match(renderer, /folderHierarchy\$\{segment\.kind === 'rail' \? 'Rail' : 'Branch'\}/);
 assert.match(renderer, /classes: `\$\{e\.kind\}\$\{folderTree \? ' folderRelation' : ''\}\$\{opts\.community \? ' communityRelation' : ''\}/);
 assert.match(renderer, /toggleFolderTreeSelection\(focusedFolderTreeNodeId, n\.id\(\)\)/);

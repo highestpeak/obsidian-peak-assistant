@@ -38,9 +38,9 @@ import {
 } from './folderTreeModel';
 import {
 	buildFolderTreeLayout,
-	FOLDER_TREE_LAYOUT_DEFAULTS,
 } from './folderTreeLayoutModel';
 import { buildFolderTreeRelationRoutes } from './folderTreeRelationRoutingModel';
+import { buildFolderTreeHubLayout } from './folderTreeHubLayoutModel';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -148,22 +148,24 @@ function buildElements(
 			})),
 		)
 		: new Map();
+	const folderTreeHubLayout = folderTreeLayout
+		? buildFolderTreeHubLayout(folderTreeLayout, {
+			hubs: sub.hubAnchors,
+			constituentEdges: allRelationEdges
+				.filter((edge) => edge.kind === 'hub_constituent')
+				.map((edge) => ({ sourceId: edge.from, targetId: edge.to })),
+			relationRouteXs: [...folderTreeRelationRoutes.values()].map((route) => route.routeX),
+		})
+		: null;
 	const folderTreePositions = new Map<string, { x: number; y: number }>();
 	if (folderTreeLayout) {
 		for (const row of folderTreeLayout.rows) {
 			folderTreePositions.set(row.id, { x: row.centerX, y: row.centerY });
 		}
-		const lastRow = folderTreeLayout.rows[folderTreeLayout.rows.length - 1];
-		const hubStartY = (lastRow?.top ?? FOLDER_TREE_LAYOUT_DEFAULTS.originY)
-			+ (lastRow?.height ?? 0)
-			+ FOLDER_TREE_LAYOUT_DEFAULTS.rootSectionGap
-			+ FOLDER_TREE_LAYOUT_DEFAULTS.rowStep;
-		sub.hubAnchors.forEach((hub, index) => {
-			folderTreePositions.set(hub.id, {
-				x: FOLDER_TREE_LAYOUT_DEFAULTS.originX + 110,
-				y: hubStartY + index * FOLDER_TREE_LAYOUT_DEFAULTS.rowStep,
-			});
-		});
+		for (const hub of sub.hubAnchors) {
+			const position = folderTreeHubLayout?.positionById.get(hub.id);
+			if (position) folderTreePositions.set(hub.id, position);
+		}
 	}
 
 	const refEndpoints = new Set<string>();
@@ -207,7 +209,16 @@ function buildElements(
 	for (const h of sub.hubAnchors) {
 		els.push({
 			group: 'nodes',
-			data: { id: h.id, label: `${h.title || h.path || h.id}\n(${h.constituentCount} constituents)`, path: h.path ?? '', kind: 'hub', score: 1, degreeNorm: normDegree(h.id) },
+			data: {
+				id: h.id,
+				label: `${h.title || h.path || h.id}\n(${h.constituentCount} constituents)`,
+				path: h.path ?? '',
+				kind: 'hub',
+				score: 1,
+				degreeNorm: normDegree(h.id),
+				nodeWidth: folderTreeHubLayout?.nodeWidth,
+				nodeHeight: folderTreeHubLayout?.nodeHeight,
+			},
 			classes: `hub${folderTree ? ' folderTreeHub' : ''}`,
 			position: folderTreePositions.get(h.id),
 		});
@@ -448,7 +459,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.folderTreeNode.folderRoot', style: { 'background-color': '#f3ecfd', 'shadow-blur': 7, 'shadow-color': '#523178', 'shadow-opacity': 0.075, 'shadow-offset-y': 2 } as never },
 	{ selector: 'node.doc.folderTreeDoc', style: { label: '', 'background-color': '#fbfafc', 'border-width': 0, width: 'data(nodeWidth)', height: 'data(nodeHeight)', padding: 0, 'min-width': 0, opacity: 1, 'shadow-blur': 4, 'shadow-color': '#2d2637', 'shadow-opacity': 0.055, 'shadow-offset-y': 1, 'z-index': 4 } as never },
 	{ selector: 'node.doc.folderTreeDoc.isolated', style: { opacity: 1, 'border-width': 0, 'background-color': '#fbfafc' } as never },
-	{ selector: 'node.hub.folderTreeHub', style: { 'background-color': '#efe5fb', 'border-width': 0, 'padding-left': '12px', 'padding-right': '12px', 'padding-top': '7px', 'padding-bottom': '7px', 'font-size': 11, color: '#5b2d96' } as never },
+	{ selector: 'node.hub.folderTreeHub', style: { 'background-color': '#efe5fb', 'border-width': 0, width: 'data(nodeWidth)', height: 'data(nodeHeight)', padding: 0, 'text-wrap': 'wrap', 'text-max-width': '170px', 'font-size': 11, color: '#5b2d96' } as never },
 	{ selector: 'node.folderTreeRailNode', style: { width: 1, height: 1, padding: 0, 'background-opacity': 0, 'border-width': 0, label: '', events: 'no', 'z-index': 0 } as never },
 	{ selector: 'edge.folderHierarchy', style: { 'curve-style': 'straight', 'line-color': '#e9e5ec', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', width: 1, opacity: 0.9, 'line-cap': 'round', 'z-index': 1 } as never },
 	{ selector: 'node.folderTreeDecoration', style: { events: 'yes', 'border-width': 0, 'z-index': 6 } as never },
