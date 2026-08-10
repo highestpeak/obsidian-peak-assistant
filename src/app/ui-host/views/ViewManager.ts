@@ -9,7 +9,7 @@ import { RelatedNotesView, RELATED_NOTES_VIEW_TYPE } from '@/app/ui-host/views/R
 import { DocumentComposerView, DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer';
 import { ViewSwitchConsistentHandler } from '@/app/ui-host/views/ViewSwitchConsistentHandler';
 import { InputModal } from '@/app/ui-host/modals/InputModal';
-import { App, Notice, ViewCreator } from 'obsidian';
+import { App, Notice, TFile, ViewCreator } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from '@/app/composer/ComposerNavigationDefaults';
 import { CommandCenterHomeView, COMMAND_CENTER_HOME_VIEW_TYPE } from '@/app/ui-host/views/CommandCenterHomeView';
@@ -78,6 +78,7 @@ export class ViewManager {
 	 */
 	init(): void {
 		this.registerViews();
+		this.plugin.registerExtensions(['peaksheet'], PEAK_SHEET_VIEW_TYPE);
 		this.registerRibbon();
 	}
 
@@ -143,9 +144,22 @@ export class ViewManager {
 		await this.activateStandaloneView(PLUGIN_COMMAND_GATEWAY_VIEW_TYPE);
 	}
 
-	/** Open the local Peak Sheet publishing-data workbench. */
-	async activatePeakSheetView(): Promise<void> {
-		await this.activateStandaloneView(PEAK_SHEET_VIEW_TYPE);
+	/** Open a visible Peak Sheet file through Obsidian's native file view. */
+	async openPeakSheetFile(path: string): Promise<void> {
+		const file = this.plugin.app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof TFile) || file.extension.toLocaleLowerCase() !== 'peaksheet') {
+			throw new Error(`Peak Sheet file “${path}” does not exist.`);
+		}
+		const existing = this.plugin.app.workspace.getLeavesOfType(PEAK_SHEET_VIEW_TYPE).find((leaf) => {
+			return (leaf.view as { file?: TFile | null }).file?.path === file.path;
+		});
+		if (existing) {
+			this.plugin.app.workspace.revealLeaf(existing);
+			return;
+		}
+		const leaf = this.plugin.app.workspace.getLeaf('tab');
+		await leaf.openFile(file);
+		this.plugin.app.workspace.revealLeaf(leaf);
 	}
 
 	private async activateStandaloneView(type: string): Promise<void> {

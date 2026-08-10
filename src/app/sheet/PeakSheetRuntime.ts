@@ -6,23 +6,30 @@ import {
 	stableSortRows,
 	parsePeakSheetCsv,
 	parsePeakSheetJson,
+	serializePeakSheetCsv,
+	serializePeakSheetFile,
 } from '@/core/sheet';
 import type {
 	PeakSheetAnalysisPlan,
 	PeakSheetAnalysisResult,
+	PeakSheetCommitEvent,
+	PeakSheetCreateOptions,
 	PeakSheetDatasetDraft,
 	PeakSheetDatasetPatch,
 	PeakSheetDatasetSnapshot,
 	PeakSheetDatasetSummary,
 	PeakSheetPatchOperation,
 	PeakSheetPatchPair,
+	PeakSheetLegacyMigrationRequest,
 	PeakSheetViewDefinition,
 	PeakSheetWorkbookDraft,
 } from '@/core/sheet';
 import type { PeakSheetRepository } from '@/service/sheet/PeakSheetRepository';
+import type { PeakSheetFileChange, PeakSheetFileRepository } from '@/service/sheet/PeakSheetRepository';
 import { HyperFormulaPeakSheetEngine } from '@/service/sheet/formula/HyperFormulaPeakSheetEngine';
 import { createPeakSheetStarterDrafts } from './PeakSheetStarterDatasets';
 import { parsePeakSheetXlsx } from '@/service/sheet/import/PeakSheetXlsxImporter';
+import { exportPeakSheetXlsx } from '@/service/sheet/export/PeakSheetXlsxExporter';
 
 type PeakSheetListener = () => void;
 
@@ -33,6 +40,7 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	private readonly listeners = new Set<PeakSheetListener>();
 	private readonly queues = new Map<string, Promise<unknown>>();
 	private requestedDatasetId: string | null = null;
+	private unsubscribeFiles: (() => void) | null = null;
 	private disposed = false;
 
 	constructor(
@@ -49,6 +57,9 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 			this.datasets.set(datasetId, snapshot);
 			await this.restoreHistory(datasetId);
 		}
+		if (isFileRepository(this.repository)) {
+			this.unsubscribeFiles = this.repository.subscribeFiles((change) => void this.handleFileChange(change));
+		}
 		this.emit();
 	}
 
@@ -57,14 +68,14 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 		for (const draft of createPeakSheetStarterDrafts(this.now())) await this.createDataset(draft);
 	}
 
-	createBlankDataset(): Promise<PeakSheetDatasetSnapshot> {
+	createBlankDataset(options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot> {
 		return this.createDataset({
 			name: 'Untitled sheet',
 			fields: [{ id: `field-${this.idFactory()}`, name: 'Name', type: 'text', width: 240 }],
 			rows: [],
 			diagnostics: [],
 			source: 'manual',
-		});
+		}, options);
 	}
 
 	requestDatasetFocus(datasetId: string): void {
@@ -90,6 +101,7 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 				rowCount: dataset.rows.length,
 				fieldCount: dataset.fields.length,
 				updatedAt: dataset.updatedAt,
+				filePath: this.getFilePath(dataset.datasetId) ?? undefined,
 			}));
 	}
 
@@ -97,6 +109,78 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 		const snapshot = this.datasets.get(datasetId);
 		if (!snapshot || snapshot.deletedAt) throw new Error(`Unknown Peak Sheet dataset ${datasetId}.`);
 		return this.formulaEngine.resolve(snapshot);
+	}
+
+	async openFile(path: string): Promise<PeakSheetDatasetSnapshot> {
+		if (!isFileRepository(this.repository)) throw new Error('This Peak Sheet runtime is not file-native.');
+		const snapshot = await this.repository.loadPath(path);
+		this.datasets.set(snapshot.datasetId, snapshot);
+		await this.restoreHistory(snapshot.datasetId);
+		this.emit();
+		return this.formulaEngine.resolve(snapshot);
+	}
+
+	getFilePath(datasetId: string): string | null {
+		if (!isFileRepository(this.repository)) return null;
+		return this.repository.getPath(datasetId);
+	}
+
+	async renameFile(datasetId: string, title: string): Promise<string> {
+		if (!isFileRepository(this.repository)) {
+			await this.mutate(datasetId, [{ type: 'renameDataset', name: title }]);
+			return '';
+		}
+		const path = await this.repository.renameFile(datasetId, title);
+		const snapshot = this.requireCanonicalDataset(datasetId);
+		this.datasets.set(datasetId, { ...snapshot, name: title.trim() || snapshot.name });
+		this.emit();
+		return path;
+	}
+
+	async trashFile(datasetId: string): Promise<void> {
+		if (!isFileRepository(this.repository)) {
+			await this.mutate(datasetId, [{ type: 'setDatasetDeleted', deletedAt: this.now() }]);
+			return;
+		}
+		await this.repository.trashFile(datasetId);
+		this.removeDataset(datasetId);
+		this.emit();
+	}
+
+	async listLegacyDatasets(): Promise<readonly PeakSheetDatasetSummary[]> {
+		if (!isFileRepository(this.repository)) return [];
+		const summaries: PeakSheetDatasetSummary[] = [];
+		for (const datasetId of await this.repository.listLegacyDatasetIds()) {
+			const snapshot = await this.repository.loadLegacyDataset(datasetId);
+			if (!snapshot || snapshot.deletedAt) continue;
+			summaries.push(summary(snapshot));
+		}
+		return summaries.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+	}
+
+	async migrateLegacyDatasets(request: PeakSheetLegacyMigrationRequest): Promise<readonly PeakSheetDatasetSnapshot[]> {
+		if (!isFileRepository(this.repository)) return [];
+		const migrated: PeakSheetDatasetSnapshot[] = [];
+		for (const datasetId of request.datasetIds) {
+			const snapshot = await this.repository.loadLegacyDataset(datasetId);
+			if (!snapshot || snapshot.deletedAt) continue;
+			const event: PeakSheetCommitEvent = {
+				eventId: `event-migrate-${this.idFactory()}`,
+				datasetId,
+				kind: 'create',
+				baseRevision: 0,
+				nextRevision: snapshot.revision,
+				snapshot,
+				recordedAt: this.now(),
+			};
+			const path = createTargetPath(snapshot.name, request.folderPath);
+			await this.repository.createAt(path, snapshot, event);
+			this.datasets.set(datasetId, snapshot);
+			await this.restoreHistory(datasetId);
+			migrated.push(this.formulaEngine.resolve(snapshot));
+		}
+		this.emit();
+		return migrated;
 	}
 
 	query(input: PeakSheetQueryInput): PeakSheetDatasetSnapshot {
@@ -113,7 +197,7 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 		return executePeakSheetAnalysis(snapshot, plan, this.formulaEngine);
 	}
 
-	async createDataset(draft: PeakSheetDatasetDraft): Promise<PeakSheetDatasetSnapshot> {
+	async createDataset(draft: PeakSheetDatasetDraft, options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot> {
 		this.assertActive();
 		const createdAt = this.now();
 		const datasetId = `sheet-${this.idFactory()}`;
@@ -129,7 +213,7 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 			updatedAt: createdAt,
 		};
 		const eventId = `event-${this.idFactory()}`;
-		await this.repository.create(snapshot, {
+		const event: PeakSheetCommitEvent = {
 			eventId,
 			datasetId,
 			kind: 'create',
@@ -137,7 +221,12 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 			nextRevision: 1,
 			snapshot,
 			recordedAt: createdAt,
-		});
+		};
+		if (isFileRepository(this.repository)) {
+			await this.repository.createAt(options?.filePath ?? createTargetPath(snapshot.name, options?.folderPath), snapshot, event);
+		} else {
+			await this.repository.create(snapshot, event);
+		}
 		this.datasets.set(datasetId, snapshot);
 		this.undoStacks.set(datasetId, []);
 		this.redoStacks.set(datasetId, []);
@@ -145,31 +234,43 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 		return this.formulaEngine.resolve(snapshot);
 	}
 
-	importCsv(text: string, name?: string): Promise<PeakSheetDatasetSnapshot> {
-		return this.createDataset(parsePeakSheetCsv(text, name));
+	importCsv(text: string, name?: string, options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot> {
+		return this.createDataset(parsePeakSheetCsv(text, name), options);
 	}
 
-	importJson(text: string, name?: string): Promise<PeakSheetDatasetSnapshot> {
-		return this.createDataset(parsePeakSheetJson(text, name));
+	importJson(text: string, name?: string, options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot> {
+		return this.createDataset(parsePeakSheetJson(text, name), options);
 	}
 
 	previewXlsx(buffer: ArrayBuffer, name?: string): Promise<PeakSheetWorkbookDraft> {
 		return parsePeakSheetXlsx(buffer, name);
 	}
 
-	async importWorkbook(workbook: PeakSheetWorkbookDraft, sheetIndexes: readonly number[]): Promise<readonly PeakSheetDatasetSnapshot[]> {
+	async importWorkbook(workbook: PeakSheetWorkbookDraft, sheetIndexes: readonly number[], options?: PeakSheetCreateOptions): Promise<readonly PeakSheetDatasetSnapshot[]> {
 		const created: PeakSheetDatasetSnapshot[] = [];
 		for (const index of [...new Set(sheetIndexes)].sort((left, right) => left - right)) {
 			const sheet = workbook.sheets[index];
 			if (!sheet) throw new Error(`Unknown workbook sheet index ${index}.`);
-			created.push(await this.createDataset(sheet.draft));
+			created.push(await this.createDataset(sheet.draft, options));
 		}
 		return created;
 	}
 
-	async importXlsx(buffer: ArrayBuffer, name?: string): Promise<readonly PeakSheetDatasetSnapshot[]> {
+	async importXlsx(buffer: ArrayBuffer, name?: string, options?: PeakSheetCreateOptions): Promise<readonly PeakSheetDatasetSnapshot[]> {
 		const workbook = await this.previewXlsx(buffer, name);
-		return this.importWorkbook(workbook, workbook.sheets.map((_, index) => index));
+		return this.importWorkbook(workbook, workbook.sheets.map((_, index) => index), options);
+	}
+
+	exportCsv(datasetId: string): string {
+		return serializePeakSheetCsv(this.getDataset(datasetId));
+	}
+
+	exportXlsx(datasetId: string): Promise<ArrayBuffer> {
+		return exportPeakSheetXlsx(this.getDataset(datasetId));
+	}
+
+	exportNative(datasetId: string): string {
+		return serializePeakSheetFile(this.requireCanonicalDataset(datasetId));
 	}
 
 	applyPatch(patch: PeakSheetDatasetPatch): Promise<PeakSheetDatasetSnapshot> {
@@ -243,6 +344,9 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 
 	dispose(): void {
 		this.disposed = true;
+		this.unsubscribeFiles?.();
+		this.unsubscribeFiles = null;
+		if (isFileRepository(this.repository)) this.repository.dispose();
 		this.listeners.clear();
 		this.datasets.clear();
 		this.queues.clear();
@@ -282,7 +386,11 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	private async restoreHistory(datasetId: string): Promise<void> {
 		const undo: PeakSheetPatchPair[] = [];
 		const redo: PeakSheetPatchPair[] = [];
+		const revision = this.datasets.get(datasetId)?.revision ?? 0;
+		let coveredRevision = 0;
 		for (const event of await this.repository.readEvents(datasetId)) {
+			if (event.nextRevision > revision) continue;
+			coveredRevision = Math.max(coveredRevision, event.nextRevision);
 			if (event.kind === 'apply' && event.patch && event.inverse) {
 				undo.push({ forward: event.patch, inverse: event.inverse });
 				redo.length = 0;
@@ -298,8 +406,37 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 				if (index >= 0) undo.push(...redo.splice(index, 1));
 			}
 		}
-		this.undoStacks.set(datasetId, undo);
-		this.redoStacks.set(datasetId, redo);
+		this.undoStacks.set(datasetId, coveredRevision === revision ? undo : []);
+		this.redoStacks.set(datasetId, coveredRevision === revision ? redo : []);
+	}
+
+	private async handleFileChange(change: PeakSheetFileChange): Promise<void> {
+		if (this.disposed || !isFileRepository(this.repository)) return;
+		try {
+			if (change.type === 'delete') {
+				if (change.datasetId) this.removeDataset(change.datasetId);
+				this.emit();
+				return;
+			}
+			if (change.type === 'rename' && change.datasetId && !this.repository.getPath(change.datasetId)) {
+				this.removeDataset(change.datasetId);
+				this.emit();
+				return;
+			}
+			const snapshot = await this.repository.loadPath(change.path);
+			this.datasets.set(snapshot.datasetId, snapshot);
+			await this.restoreHistory(snapshot.datasetId);
+			this.emit();
+		} catch (error) {
+			console.error(`[Peak Sheet] Could not refresh ${change.path}.`, error);
+		}
+	}
+
+	private removeDataset(datasetId: string): void {
+		this.datasets.delete(datasetId);
+		this.undoStacks.delete(datasetId);
+		this.redoStacks.delete(datasetId);
+		this.queues.delete(datasetId);
 	}
 
 	private requireCanonicalDataset(datasetId: string): PeakSheetDatasetSnapshot {
@@ -372,4 +509,24 @@ function findHistoryPair(stack: readonly PeakSheetPatchPair[], patchId: string):
 		if (stack[index].forward.patchId === patchId) return index;
 	}
 	return -1;
+}
+
+function isFileRepository(repository: PeakSheetRepository): repository is PeakSheetFileRepository {
+	return 'loadPath' in repository && 'createAt' in repository;
+}
+
+function createTargetPath(title: string, folderPath?: string): string {
+	const name = title.trim().replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ') || 'Untitled sheet';
+	return folderPath ? `${folderPath.replace(/\/$/, '')}/${name}.peaksheet` : `${name}.peaksheet`;
+}
+
+function summary(snapshot: PeakSheetDatasetSnapshot): PeakSheetDatasetSummary {
+	return {
+		datasetId: snapshot.datasetId,
+		name: snapshot.name,
+		revision: snapshot.revision,
+		rowCount: snapshot.rows.length,
+		fieldCount: snapshot.fields.length,
+		updatedAt: snapshot.updatedAt,
+	};
 }

@@ -23,8 +23,8 @@ async function testTools(): Promise<void> {
 	const runtime = new PeakSheetRuntime(new MemoryRepository());
 	await runtime.initialize();
 	const tools = buildPeakSheetTools(runtime);
-	assert.deepEqual(tools.map((tool) => tool.name), ['peak_sheet_list', 'peak_sheet_query', 'peak_sheet_analyze', 'peak_sheet_patch', 'peak_sheet_create']);
-	assert.deepEqual(tools.map((tool) => tool.kind), ['read', 'read', 'read', 'edit', 'edit']);
+	assert.deepEqual(tools.map((tool) => tool.name), ['peak_sheet_list', 'peak_sheet_query', 'peak_sheet_analyze', 'peak_sheet_script', 'peak_sheet_patch', 'peak_sheet_create']);
+	assert.deepEqual(tools.map((tool) => tool.kind), ['read', 'read', 'read', 'read', 'edit', 'edit']);
 	const create = tools.find((tool) => tool.name === 'peak_sheet_create')!;
 	const context = { loopId: 'run-1', stepIndex: 0, tier: 'balanced', signal: new AbortController().signal } as never;
 	const created = await create.execute({
@@ -44,6 +44,9 @@ async function testTools(): Promise<void> {
 	}, context);
 	assert.equal(analysis.ok, true);
 	if (analysis.ok) assert.equal((analysis.data as { metrics: Record<string, number> }).metrics.sum, 8);
+	const script = tools.find((tool) => tool.name === 'peak_sheet_script')!;
+	const scripted = await script.execute({ scriptId: 'script-1', datasetId: dataset.datasetId, baseRevision: dataset.revision, steps: [{ op: 'chart', chartType: 'bar', categoryFieldId: 'task', metrics: [{ id: 'score', fieldId: 'score', operation: 'sum' }] }] }, context);
+	assert.equal(scripted.ok, true);
 	const patch = tools.find((tool) => tool.name === 'peak_sheet_patch')!;
 	const changed = await patch.execute({ datasetId: dataset.datasetId, baseRevision: dataset.revision, operations: [{ type: 'setCell', rowId: 'r1', fieldId: 'score', value: 10 }] }, context);
 	assert.equal(changed.ok, true);

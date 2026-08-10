@@ -54,7 +54,7 @@ export class AtomicJsonSnapshotStore {
 	) {}
 
 	async writeSnapshot<T>(input: JsonSnapshotWriteInput<T>): Promise<JsonSnapshotEnvelope<T>> {
-		const path = this.resolveJsonPath(input.outputId, input.pathVariables);
+		const path = this.resolveJsonPath(input.outputId, input.pathVariables, false);
 		const envelope = this.createEnvelope(input);
 		const content = `${canonicalJson(envelope)}\n`;
 		await this.enqueue(path, () => this.replaceVerified(path, content, (candidate) => {
@@ -64,7 +64,7 @@ export class AtomicJsonSnapshotStore {
 	}
 
 	async readSnapshot<T>(input: JsonSnapshotReadInput): Promise<JsonSnapshotReadResult<T> | null> {
-		const path = this.resolveJsonPath(input.outputId, input.pathVariables);
+		const path = this.resolveJsonPath(input.outputId, input.pathVariables, true);
 		await this.recoverInterruptedReplace(path);
 		if (!(await this.adapter.exists(path))) {
 			return this.restoreBackupIfPresent<T>(path, input);
@@ -121,9 +121,9 @@ export class AtomicJsonSnapshotStore {
 		return parsed as JsonSnapshotEnvelope<T>;
 	}
 
-	private resolveJsonPath(outputId: string, variables: GeneratedOutputPathVariables = {}): string {
+	private resolveJsonPath(outputId: string, variables: GeneratedOutputPathVariables = {}, allowMigrationSource = false): string {
 		const descriptor = this.registry.require(outputId);
-		if (descriptor.carrier !== 'json' || descriptor.lifecycle === 'migration-source') {
+		if (descriptor.carrier !== 'json' || (descriptor.lifecycle === 'migration-source' && !allowMigrationSource)) {
 			throw new Error(`AtomicJsonSnapshotStore: output "${outputId}" is not an active JSON output.`);
 		}
 		return this.registry.resolvePath(outputId, this.roots, variables);

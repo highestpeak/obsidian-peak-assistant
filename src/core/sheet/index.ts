@@ -5,3 +5,5 @@ export * from './analysis';
 export * from './import';
 export * from './clipboard';
 export * from './PeakSheetDefaults';
+export * from './file';
+export * from './export';

@@ -28,7 +28,6 @@ import {
 	FILE_ATLAS_MANIFEST,
 	HARNESS_WIZARD_MANIFEST,
 	MY_CONTENT_MANIFEST,
-	PEAK_SHEET_MANIFEST,
 	QUICK_SEARCH_MANIFEST,
 	SETTINGS_MODAL_MANIFEST,
 	USAGE_DASHBOARD_MANIFEST,
@@ -63,7 +62,6 @@ export interface PaletteCommandActions {
 	readonly openCommandCenter: () => void | Promise<void>;
 	readonly openAIControlCenter: () => void | Promise<void>;
 	readonly openMyContent: () => void | Promise<void>;
-	readonly openPeakSheet: () => void | Promise<void>;
 	readonly createPeakSheet: () => void | Promise<void>;
 	readonly openSettingsModal: () => void | Promise<void>;
 	readonly openHarnessSetupWizard: () => void | Promise<void>;
@@ -114,14 +112,6 @@ export function composeCommandGatewayBindings(
 			manifest: MY_CONTENT_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
 			execute: surfaceOpenStrategy(actions.openMyContent),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-open-sheet',
-			commandLabel: 'Open Peak Sheet',
-			manifest: PEAK_SHEET_MANIFEST,
-			compiledSkill: SURFACE_OPEN_SKILL,
-			execute: surfaceOpenStrategy(actions.openPeakSheet),
 			trigger: 'manual',
 		},
 		{

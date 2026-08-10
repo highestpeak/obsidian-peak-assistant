@@ -453,11 +453,12 @@ export default class MyPlugin extends Plugin {
 		}
 
 		try {
-			const [{ PeakSheetRuntime }, { AppPeakSheetRepository }] = await Promise.all([
+			const [{ PeakSheetRuntime }, { AppPeakSheetFileRepository }] = await Promise.all([
 				import('@/app/sheet/PeakSheetRuntime'),
-				import('@/app/sheet/AppPeakSheetRepository'),
+				import('@/app/sheet/AppPeakSheetFileRepository'),
 			]);
-			const peakSheetRuntime = new PeakSheetRuntime(new AppPeakSheetRepository(
+			const peakSheetRuntime = new PeakSheetRuntime(new AppPeakSheetFileRepository(
+				this.app,
 				appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 			));
 			await peakSheetRuntime.initialize();
@@ -524,16 +525,18 @@ export default class MyPlugin extends Plugin {
 			},
 			openAIControlCenter: () => this.viewManager.activateAIControlCenterView(),
 			openMyContent: () => this.viewManager.activateMyContentView(),
-			openPeakSheet: () => this.viewManager.activatePeakSheetView(),
 			createPeakSheet: async () => {
 				const runtime = appContext.runtimeRegistry.tryGetPeakSheetRuntime();
 				if (!runtime) {
 					new Notice('Peak Sheet is still loading.', 4000);
 					return;
 				}
-				const created = await runtime.createBlankDataset();
-				runtime.requestDatasetFocus(created.datasetId);
-				await this.viewManager.activatePeakSheetView();
+				const sourcePath = this.app.workspace.getActiveFile()?.path ?? '';
+				const folderPath = this.app.fileManager.getNewFileParent(sourcePath).path;
+				const created = await runtime.createBlankDataset({ folderPath });
+				const filePath = runtime.getFilePath(created.datasetId);
+				if (!filePath) throw new Error('Peak Sheet file was created without a Vault path.');
+				await this.viewManager.openPeakSheetFile(filePath);
 			},
 			openSettingsModal,
 			openHarnessSetupWizard,

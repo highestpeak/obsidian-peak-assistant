@@ -1,12 +1,14 @@
 import type {
 	PeakSheetAnalysisPlan,
 	PeakSheetAnalysisResult,
+	PeakSheetCreateOptions,
 	PeakSheetDatasetDraft,
 	PeakSheetDatasetPatch,
 	PeakSheetDatasetSnapshot,
 	PeakSheetDatasetSummary,
 	PeakSheetPatchOperation,
 	PeakSheetFileRef,
+	PeakSheetLegacyMigrationRequest,
 	PeakSheetWorkbookDraft,
 } from '@/core/sheet';
 
@@ -21,16 +23,22 @@ export interface PeakSheetToolPort {
 	query(input: PeakSheetQueryInput): PeakSheetDatasetSnapshot;
 	analyze(plan: PeakSheetAnalysisPlan): PeakSheetAnalysisResult;
 	applyPatch(patch: PeakSheetDatasetPatch): Promise<PeakSheetDatasetSnapshot>;
-	createDataset(draft: PeakSheetDatasetDraft): Promise<PeakSheetDatasetSnapshot>;
+	createDataset(draft: PeakSheetDatasetDraft, options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot>;
 }
 
 export interface PeakSheetUiPort extends PeakSheetToolPort {
 	initialize(): Promise<void>;
 	ensureStarterDatasets(): Promise<void>;
-	createBlankDataset(): Promise<PeakSheetDatasetSnapshot>;
+	createBlankDataset(options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot>;
 	requestDatasetFocus(datasetId: string): void;
 	takeDatasetFocusRequest(): string | null;
 	getDataset(datasetId: string): PeakSheetDatasetSnapshot;
+	openFile(path: string): Promise<PeakSheetDatasetSnapshot>;
+	getFilePath(datasetId: string): string | null;
+	renameFile(datasetId: string, title: string): Promise<string>;
+	trashFile(datasetId: string): Promise<void>;
+	listLegacyDatasets(): Promise<readonly PeakSheetDatasetSummary[]>;
+	migrateLegacyDatasets(request: PeakSheetLegacyMigrationRequest): Promise<readonly PeakSheetDatasetSnapshot[]>;
 	mutate(
 		datasetId: string,
 		operations: readonly PeakSheetPatchOperation[],
@@ -40,11 +48,14 @@ export interface PeakSheetUiPort extends PeakSheetToolPort {
 	redo(datasetId: string): Promise<PeakSheetDatasetSnapshot>;
 	canUndo(datasetId: string): boolean;
 	canRedo(datasetId: string): boolean;
-	importCsv(text: string, name?: string): Promise<PeakSheetDatasetSnapshot>;
-	importJson(text: string, name?: string): Promise<PeakSheetDatasetSnapshot>;
+	importCsv(text: string, name?: string, options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot>;
+	importJson(text: string, name?: string, options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot>;
 	previewXlsx(buffer: ArrayBuffer, name?: string): Promise<PeakSheetWorkbookDraft>;
-	importWorkbook(workbook: PeakSheetWorkbookDraft, sheetIndexes: readonly number[]): Promise<readonly PeakSheetDatasetSnapshot[]>;
-	importXlsx(buffer: ArrayBuffer, name?: string): Promise<readonly PeakSheetDatasetSnapshot[]>;
+	importWorkbook(workbook: PeakSheetWorkbookDraft, sheetIndexes: readonly number[], options?: PeakSheetCreateOptions): Promise<readonly PeakSheetDatasetSnapshot[]>;
+	importXlsx(buffer: ArrayBuffer, name?: string, options?: PeakSheetCreateOptions): Promise<readonly PeakSheetDatasetSnapshot[]>;
+	exportCsv(datasetId: string): string;
+	exportXlsx(datasetId: string): Promise<ArrayBuffer>;
+	exportNative(datasetId: string): string;
 	subscribe(listener: () => void): () => void;
 }
 

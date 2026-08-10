@@ -6,6 +6,7 @@ import {
 	assertPeakSheetXlsxArchiveBounds,
 	parsePeakSheetXlsx,
 } from '@/service/sheet/import/PeakSheetXlsxImporter';
+import { exportPeakSheetXlsx } from '@/service/sheet/export/PeakSheetXlsxExporter';
 
 async function testXlsxImport(): Promise<void> {
 	const source = new ExcelJS.Workbook();
@@ -24,6 +25,17 @@ async function testXlsxImport(): Promise<void> {
 	assert.deepEqual(imported.sheets[0].draft.fields.map((field) => field.type), ['text', 'number', 'checkbox']);
 	assert.equal(imported.sheets[1].draft.fields[1].type, 'date');
 	assert.match(imported.diagnostics.join(' '), /conditional formatting/);
+	const exported = await exportPeakSheetXlsx({
+		schemaVersion: 1, datasetId: 'sheet-export', name: 'Launch / Tasks', revision: 1,
+		fields: imported.sheets[0].draft.fields, rows: imported.sheets[0].draft.rows,
+		views: [{ id: 'table', name: 'Table', type: 'table' }],
+		createdAt: '2026-08-11T00:00:00.000Z', updatedAt: '2026-08-11T00:00:00.000Z',
+	});
+	const roundTrip = new ExcelJS.Workbook();
+	await roundTrip.xlsx.load(exported as never);
+	assert.equal(roundTrip.worksheets[0].name, 'Launch - Tasks');
+	assert.deepEqual((roundTrip.worksheets[0].getRow(1).values as unknown[]).slice(1), ['Task', 'Score', 'Ready']);
+	assert.equal(roundTrip.worksheets[0].getCell(2, 2).value, 9);
 
 	const oversizedArchive = new JSZip();
 	oversizedArchive.file('expanded.txt', 'x'.repeat(1_024));

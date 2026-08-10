@@ -178,6 +178,7 @@ export interface PeakSheetDatasetSummary {
 	readonly rowCount: number;
 	readonly fieldCount: number;
 	readonly updatedAt: string;
+	readonly filePath?: string;
 }
 
 export type PeakSheetAggregateOperation = 'count' | 'sum' | 'average' | 'min' | 'max';
@@ -248,6 +249,16 @@ export interface PeakSheetDatasetDraft {
 	readonly diagnostics: readonly string[];
 	readonly source: 'manual' | 'ai' | 'csv' | 'json' | 'xlsx';
 	readonly sourceHash?: string;
+}
+
+export interface PeakSheetCreateOptions {
+	readonly folderPath?: string;
+	readonly filePath?: string;
+}
+
+export interface PeakSheetLegacyMigrationRequest {
+	readonly datasetIds: readonly string[];
+	readonly folderPath?: string;
 }
 
 export interface PeakSheetWorkbookSheetDraft {

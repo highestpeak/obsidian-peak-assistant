@@ -80,6 +80,10 @@ export abstract class ReactFileViewHost extends FileView {
 		return this.reactRenderer;
 	}
 
+	protected rerender(): void {
+		this.renderReactTree();
+	}
+
 	private renderReactTree(): void {
 		if (!this.reactRenderer) return;
 		this.lastRenderDoc = this.containerEl.ownerDocument;
