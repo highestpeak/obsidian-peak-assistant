@@ -113,7 +113,8 @@ assert.match(css, /\.lasso-hit-area\{[^}]*fill:transparent[^}]*pointer-events:al
 assert.match(css, /\.lasso-mask\{[^}]*fill-rule:nonzero[^}]*stroke:none[^}]*filter:url\(#lasso-outline-purple\)[^}]*pointer-events:none/, "Completed lasso must render only the filled-region silhouette and its external outline");
 assert.match(css, /\.crop-freehand-mask\{[^}]*filter:url\(#lasso-outline-white\)/, "Freehand crop must use the same silhouette-only completion rule");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
-assert.match(css, /\.crop-studio\{position:absolute[^}]+bottom:calc\(100% \+ 10px\)/, "Crop controls must float above the image dock");
+assert.match(css, /\.crop-studio\{position:absolute[^}]+bottom:calc\(100% \+ 12px\)[^}]+grid-template-areas:"mode spacer commit" "body body body"/, "Crop controls must float above the dock in a non-overlapping two-row hierarchy");
+assert.match(css, /\.crop-rectangle-controls\{grid-area:body[^}]+justify-content:space-between[^}]+border-top:/, "Rectangle crop controls need a separate secondary row");
 assert.doesNotMatch(css, /\.image-context-toolbar:has\(/, "Opening Crop must not resize or move the image dock");
 assert.match(readme, /do not collapse every task into Lasso/i, "README must preserve multiple image selection and crop methods");
 assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text selection must open contextual actions");

@@ -135,9 +135,9 @@
                         <button class="is-active" data-crop-ratio="unlocked">Unlocked</button><button data-crop-ratio="original">Original</button><button data-crop-ratio="square">1:1</button><button data-crop-ratio="classic">4:3</button><button data-crop-ratio="wide">16:9</button>
                       </div>
                       <div class="crop-angle">
-                        <button data-crop-rotate="left" aria-label="Rotate crop left 90 degrees"><svg class="rotate-left"><use href="#i-rotate"/></svg><span>90°</span></button>
+                        <button class="crop-icon-button" data-crop-rotate="left" aria-label="Rotate crop left 90 degrees" title="Rotate left 90°"><svg class="rotate-left"><use href="#i-rotate"/></svg></button>
                         <label><span>Straighten</span><input id="cropAngle" type="range" min="-45" max="45" value="0" step="1"/><output id="cropAngleValue">0°</output></label>
-                        <button data-crop-rotate="right" aria-label="Rotate crop right 90 degrees"><span>90°</span><svg><use href="#i-rotate"/></svg></button>
+                        <button class="crop-icon-button" data-crop-rotate="right" aria-label="Rotate crop right 90 degrees" title="Rotate right 90°"><svg><use href="#i-rotate"/></svg></button>
                       </div>
                     </div>
                     <div class="crop-freehand-controls" id="cropFreehandControls" hidden><span><strong>Freehand crop</strong><small>Draw a closed contour directly on the image.</small></span><button data-crop-action="redraw">Redraw</button></div>
