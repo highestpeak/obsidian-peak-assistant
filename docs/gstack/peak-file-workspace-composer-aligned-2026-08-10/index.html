@@ -66,8 +66,9 @@
           <section class="format-surface image-surface is-active" data-surface="image" aria-label="Image workspace">
             <div class="image-stage">
               <div class="image-frame" id="imageFrame">
-                <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration" />
+                <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration" draggable="false" />
                 <svg class="freehand-layer image-lasso-layer" id="imageLassoLayer" aria-label="Draw a freehand image selection" hidden>
+                  <rect class="lasso-hit-area" width="100%" height="100%" />
                   <path class="lasso-mask" id="imageLassoPath" d="" />
                 </svg>
                 <span class="lasso-hint" id="imageLassoHint" hidden><svg><use href="#i-pen"/></svg>Draw around the subject</span>
@@ -203,6 +204,7 @@
                     <p class="pdf-highlight" id="pdfHighlight" data-pdf-select="passage">The highest-value workflow keeps the source visible, cites the exact page behind each answer, and presents every write as a reviewable candidate.</p>
                     <div class="pdf-callouts" id="pdfCallouts" data-pdf-select="region"><span><strong>01</strong>Source visible</span><span><strong>02</strong>Citations jump back</span><span><strong>03</strong>Writes are reviewable</span></div>
                     <svg class="freehand-layer pdf-lasso-layer" id="pdfLassoLayer" aria-label="Draw a freehand PDF selection" hidden>
+                      <rect class="lasso-hit-area" width="100%" height="100%" />
                       <path class="lasso-mask" id="pdfLassoPath" d="" />
                     </svg>
                     <span class="lasso-hint pdf-lasso-hint" id="pdfLassoHint" hidden><svg><use href="#i-pen"/></svg>Circle any text, table, or figure</span>

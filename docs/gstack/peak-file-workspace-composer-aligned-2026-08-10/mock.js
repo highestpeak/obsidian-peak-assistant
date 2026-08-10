@@ -304,14 +304,15 @@ function renderLassoPath(state, closed = false) {
 }
 
 function beginLasso(event, kind) {
-  if (event.button !== 0) return;
+  if (event.pointerType === "mouse" && event.button !== 0) return;
   const layer = event.currentTarget;
   const container = kind === "image" ? document.querySelector("#imageFrame") : document.querySelector("#pdfPage");
   const path = document.querySelector(kind === "image" ? "#imageLassoPath" : "#pdfLassoPath");
   const rect = container.getBoundingClientRect();
   clearLassoSelection(kind, false);
   layer.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
-  activeLasso = { kind, layer, path, container, points: [pointFromEvent(event, container)] };
+  activeLasso = { kind, layer, path, container, pointerId: event.pointerId, points: [pointFromEvent(event, container)] };
+  layer.setPointerCapture?.(event.pointerId);
   layer.classList.add("is-drawing");
   renderLassoPath(activeLasso);
   event.preventDefault();
@@ -320,6 +321,7 @@ function beginLasso(event, kind) {
 
 function appendLassoPoint(event) {
   if (!activeLasso) return;
+  if (event.pointerId !== activeLasso.pointerId) return;
   const point = pointFromEvent(event, activeLasso.container);
   const previous = activeLasso.points.at(-1);
   if (Math.hypot(point.x - previous.x, point.y - previous.y) < 3) return;
@@ -367,11 +369,14 @@ function normalizedLassoSelection(state) {
   };
 }
 
-function finishLasso() {
+function finishLasso(event) {
   if (!activeLasso) return;
+  if (event.pointerId !== activeLasso.pointerId) return;
   const state = activeLasso;
   activeLasso = null;
+  if (state.layer.hasPointerCapture?.(state.pointerId)) state.layer.releasePointerCapture(state.pointerId);
   state.layer.classList.remove("is-drawing");
+  event.preventDefault();
   if (state.points.length < 4) {
     clearLassoSelection(state.kind);
     showToast("Draw a larger closed region");

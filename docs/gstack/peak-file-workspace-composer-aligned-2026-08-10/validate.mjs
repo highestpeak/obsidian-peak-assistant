@@ -26,6 +26,7 @@ assert.match(html, /Restore/, "candidate Restore action missing");
 assert.match(js, /data-citation-page/, "PDF page citations missing");
 assert.match(html, /id="imageLassoLayer"/, "Image freehand layer missing");
 assert.match(html, /id="imageLassoPath"/, "Image freehand mask path missing");
+assert.equal((html.match(/class="lasso-hit-area"/g) || []).length, 2, "Image and PDF lasso layers both need a full-surface hit target");
 assert.match(html, /data-image-scope="lasso"/, "Image Lasso scope missing");
 assert.match(html, /id="imageSelectionToolbar"[^>]+hidden[\s\S]+data-ai-action="describe-image-region"[\s\S]+data-add-composer="image"[\s\S]+data-image-lasso-action="crop"[\s\S]+data-image-lasso-action="clear"/, "Image lasso must expose Ask, Add, Crop to mask, and Clear together");
 assert.match(html, /data-image-rotate="left"/, "Left rotation missing");
@@ -81,10 +82,14 @@ assert.match(css, /\.intelligence-panel[^}]+height:\s*100%/, "Intelligence must 
 assert.match(html, /current file connected/i, "context connection language missing from prototype");
 assert.match(js, /source surface remains active/i, "source-active AI response missing");
 assert.match(js, /handleImageTool|setImageScope|beginLasso|appendLassoPoint|finishLasso|normalizedLassoSelection|handleImageLassoAction|updateExportEstimate|toggleHtmlSource|positionSelectionLens|setPdfMode|completePdfLasso|selectPdfContent|addToComposer|codeEditor\.addEventListener\("input"\)|positionCanvasSelection|handleExcalStyle/, "direct interaction handlers missing");
+assert.match(js, /setPointerCapture\?\.\(event\.pointerId\)/, "Lasso drag must capture the active pointer");
+assert.match(js, /releasePointerCapture\(state\.pointerId\)/, "Lasso drag must release pointer capture");
 assert.match(js, /normalizedPoints[\s\S]+normalizedBounds/, "Shared normalized lasso envelope missing");
 assert.match(js, /knowledge-work-ai-era\.pdf[\s\S]+p\.\$\{page\}[\s\S]+lasso mask \+ normalized bounds/, "PDF Composer receipt must retain file, page, mask, and bounds");
 assert.match(css, /\.selection-context-bar\.follows-selection/, "shared selection-following capsule styles missing");
 assert.match(css, /\.freehand-layer\{[^}]+touch-action:none/, "Shared freehand pointer layer missing");
+assert.match(css, /\.lasso-hit-area\{[^}]*fill:transparent[^}]*pointer-events:all/, "Lasso needs a painted full-surface SVG hit target");
+assert.match(css, /\.lasso-mask\{[^}]*pointer-events:none/, "Rendered lasso path must not steal the next redraw gesture");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
 assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text selection must open contextual actions");
 
