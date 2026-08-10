@@ -339,16 +339,6 @@ function updateImageZoom(direction) {
   refreshImageLassoForZoom();
 }
 
-function rotateImage(direction) {
-  imageQuarterRotation += direction === "right" ? 90 : -90;
-  updateImageTransform();
-  if (lassoSelections.image) {
-    clearLassoSelection("image");
-    showToast("Image rotated; redraw the mask against the new geometry");
-  }
-  setDirty(`Rotated ${imageQuarterRotation}° · save as a new version`);
-}
-
 function setCropMode(mode, button) {
   cropMode = mode;
   document.querySelectorAll("[data-crop-mode]").forEach((item) => item.classList.toggle("is-active", item === button));
@@ -1149,12 +1139,6 @@ document.addEventListener("click", (event) => {
   const imageZoomButton = event.target.closest("[data-image-zoom]");
   if (imageZoomButton) {
     updateImageZoom(imageZoomButton.dataset.imageZoom);
-    return;
-  }
-
-  const imageRotateButton = event.target.closest("[data-image-rotate]");
-  if (imageRotateButton) {
-    rotateImage(imageRotateButton.dataset.imageRotate);
     return;
   }
 
