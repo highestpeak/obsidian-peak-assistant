@@ -1,0 +1,29 @@
+{
+  "source": "iShot_2026-08-10_16.23.51.mp4",
+  "durationSeconds": 145.133333,
+  "width": 3456,
+  "height": 2168,
+  "sha256": "87441fc768b532d227cb396965510058cae8017dcb26da794faa23f0752e62df",
+  "captureDate": "2026-08-10",
+  "frames": [
+    { "second": 4, "file": "vault-search-list.jpg", "sha256": "e6c5667af9ff8ec3e4c5a574cf9fb300ad6ee92eaed8456886b97ee16f3a34ac" },
+    { "second": 14, "file": "vault-search-tree.jpg", "sha256": "1918b8e725b859e1788f38e3cebe98b8c6da34011d1e68810e7d2ea019ca9c2f" },
+    { "second": 22, "file": "vault-search-graph.jpg", "sha256": "a8b2fed75db41620ffbf905e1c874310629a43c3063334915e65b1369fe945c3" },
+    { "second": 34, "file": "ai-search-report.jpg", "sha256": "f192d4f248389c24a3011aeb3b395eb83921040f3634acbf66d1998850be7009" },
+    { "second": 38, "file": "ai-search-sources.jpg", "sha256": "178e64ab208d325199f29b9eb9baf7306ba815e5846e66883c1ec44ee3190b74" },
+    { "second": 52, "file": "vault-intelligence.jpg", "sha256": "97ffeebab625bee150fc7c3c6183db671495c576b26fed9ad7f618a191bab5ba" },
+    { "second": 58, "file": "file-atlas-tree.jpg", "sha256": "9feac6fba5eb0f98bfa0572b069999029ebd61fc1484c449ed9f6b5848b05e31" },
+    { "second": 62, "file": "file-atlas-graph.jpg", "sha256": "9b82e73ecc5bed4a4c5d6ee5faf40cdedec6d349e9df34bbded25e8fc930aff8" },
+    { "second": 70, "file": "composer-selection.jpg", "sha256": "5a4d4a34fdd9e8026cc8a055bcd525699e279850996ba1bd947aaf8f5f6aaabf" },
+    { "second": 78, "file": "composer-intelligence.jpg", "sha256": "b4eb3635dd091bf9cf226ab35a4581d8e18d860ddf404e707741b9397f936c6d" },
+    { "second": 82, "file": "composer-related-materials.jpg", "sha256": "51be0407a1b69d7c0e8e0e37fb1fa6399d3e3d522a273337e684a7cd48b39811" },
+    { "second": 96, "file": "composer-ai-graph.jpg", "sha256": "94825e80a920827e511fe789878f480362aeebdfaff2dd59900c8cdf1285420c" },
+    { "second": 120, "file": "chat-studio-empty.jpg", "sha256": "84e8acffb529cf9cba430b9f37e9a8aafcc928af57e3a3ca8397188b272d2dc9" },
+    { "second": 124, "file": "chat-studio-gallery.jpg", "sha256": "cf9a8314af455a082b86da4f6ef02f971f7e9de32aa1e3888d369bb5773bdbd7" },
+    { "second": 128, "file": "chat-studio-states.jpg", "sha256": "4c6b04f6bff29bd7828b830ecd290004a54090cc428c28daf31ab0698731fdad" },
+    { "second": 132, "file": "settings-overview.jpg", "sha256": "bdc89c50ac195ca8da6b89afd1c84007af5ba0e7e1ad5b3759e24c1b5cfb3a03" },
+    { "second": 134, "file": "settings-ai-setup.jpg", "sha256": "73cb68c5ba0ab17426b28e08d8bf11b2b988414cbd20ea5838f671bd6cb63767" },
+    { "second": 136, "file": "settings-media-generation.jpg", "sha256": "08ef77b8f0d7ef6815ce7860eec3baa16be5edbda528c9dc0261fac8f26bbf70" },
+    { "second": 142, "file": "usage-provider-model.jpg", "sha256": "9fdd2dee1d3b193f91383f07f8b502a89a903e5455810c52378bcf298e1510ac" }
+  ]
+}
