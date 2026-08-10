@@ -40,6 +40,9 @@
 - [ ] **P0** · [04 · README 与公开文档包](pre-launch/04-public-documentation-package.md)
   - 建立用户文档、数据/SQL 文档和贡献指南。
   - 让 README 只承担定位、安装和导航。
+- [ ] **P1 · 条件式宣传任务** · [11 · Landing Page 类比定位与主张门槛](pre-launch/11-landing-page-comparison-positioning.md)
+  - 评估 `Your local-first Airtable` 与 `Cursor for your documents` 等类比话术。
+  - 只有 Peak Sheet 与 Composer 对应能力完成并通过真实验收后才启用强主张。
 
 ### 真实使用验证
 
