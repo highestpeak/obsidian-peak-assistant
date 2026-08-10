@@ -9,7 +9,7 @@
  *   - over-cap: 150 input docs, cap = 100 → overflowCount = 50, top-by-score
  *   - hub anchor pull-in: hub_doc not in results but 3 result docs are members
  *   - hub anchor cap: > 20 discovered → silently kept top 20 by member count
- *   - semantic-only connection stays isolated
+ *   - semantic-only connection remains part of graph topology
  *   - scope filter drops edges reaching outside {results} ∪ {anchors}
  */
 
@@ -27,7 +27,7 @@ interface FakeState {
     nodes: Map<string, { path: string; title: string; communityId: string | null; folder: string }>;
     hubs: Map<string, { path: string; title: string; constituentCount: number; memberDocIds: Set<string> }>;
     /** structural edges (both endpoints, kind); undirected treated as one row. */
-    edges: Array<{ from: string; to: string; kind: 'reference' | 'semantic' }>;
+	    edges: Array<{ from: string; to: string; kind: 'reference' | 'semantic'; weight?: number }>;
 	communities?: Map<string, Omit<ResultGraphCommunitySummary, 'displayLabel' | 'visibleMemberIds'>>;
 }
 
@@ -288,21 +288,22 @@ async function runTests() {
         assertTrue('h0 dropped (fewest members)', !keptIds.has('h0'));
     }
 
-    // ── Test 7: Semantic-only connection stays isolated (spec §Isolated) ──
-    console.log('\nTest 7: Semantic-only connection does not un-isolate');
+    // ── Test 7: Semantic-only connection remains graph topology ──
+	    console.log('\nTest 7: Semantic-only connection remains graph topology');
     {
         const state: FakeState = {
             nodes: new Map([['d0', docMeta(0)], ['d1', docMeta(1)]]),
             hubs: new Map(),
-            edges: [{ from: 'd0', to: 'd1', kind: 'semantic' }],
+	            edges: [{ from: 'd0', to: 'd1', kind: 'semantic', weight: 0.87 }],
         };
         const out = await buildResultSubgraph(makeDeps(state), {
             resultDocIds: ['d0', 'd1'],
             matchScores: new Map([['d0', 1], ['d1', 1]]),
             nodeCap: 100,
         });
-        assert('semantic edge present', out.edges.filter((e) => e.kind === 'semantic').length, 1);
-        assert('both docs still isolated', out.isolatedDocIds.sort(), ['d0', 'd1']);
+	        assert('semantic edge present', out.edges.filter((e) => e.kind === 'semantic').length, 1);
+	        assert('semantic weight preserved', out.edges.find((e) => e.kind === 'semantic')?.weight, 0.87);
+	        assert('semantic-linked docs are not data-level isolated', out.isolatedDocIds, []);
     }
 
     // ── Test 8: Empty input ──

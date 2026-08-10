@@ -42,6 +42,7 @@ export interface ResultBrowserGraphProps {
 	graphNodeExplanation?: GraphNodeExplanationPort | null;
 	nodeExplanationUi?: ResultGraphCommunityConfig['nodeExplanation']['ui'];
 	communityInteraction?: ResultGraphCommunityConfig['interaction'];
+	graphLayout?: ResultGraphCommunityConfig['graphLayout'];
 }
 
 export const ResultBrowserGraph: React.FC<ResultBrowserGraphProps> = ({
@@ -59,6 +60,7 @@ export const ResultBrowserGraph: React.FC<ResultBrowserGraphProps> = ({
 	graphNodeExplanation,
 	nodeExplanationUi,
 	communityInteraction,
+	graphLayout,
 }) => (
 	<AtlasGraphCanvas
 		subgraph={subgraph}
@@ -75,5 +77,6 @@ export const ResultBrowserGraph: React.FC<ResultBrowserGraphProps> = ({
 		graphNodeExplanation={graphNodeExplanation}
 		nodeExplanationUi={nodeExplanationUi}
 		communityInteraction={communityInteraction}
+		graphLayout={graphLayout}
 	/>
 );

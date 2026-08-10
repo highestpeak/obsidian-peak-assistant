@@ -12351,3 +12351,61 @@
   color: var(--pk-text-tertiary, var(--text-faint));
   font-size: var(--pk-font-size-xs, 11px);
 }
+
+.pk-graph-inline-slot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  overflow: hidden;
+}
+
+.pk-graph-surface-host,
+.pk-graph-surface {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.pk-graph-surface {
+  position: relative;
+  overflow: hidden;
+  background: var(--pk-surface, var(--background-primary));
+}
+
+.pk-graph-surface[data-fullscreen="true"] {
+  min-height: 0;
+}
+
+.pk-graph-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--pk-z-modal, 1000) + 100);
+  box-sizing: border-box;
+  display: flex;
+  padding: 12px;
+  background: color-mix(in srgb, var(--pk-bg, var(--background-primary)) 94%, black 6%);
+  overscroll-behavior: contain;
+}
+
+.pk-graph-fullscreen-slot {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--pk-border, var(--background-modifier-border));
+  border-radius: var(--pk-radius-lg, 10px);
+  background: var(--pk-surface, var(--background-primary));
+  box-shadow: var(--pk-shadow-modal, 0 24px 64px rgb(0 0 0 / 28%));
+}
+
+.pk-graph-zoom-readout {
+  min-width: 42px;
+  color: var(--pk-text-tertiary, var(--text-faint));
+  font-size: var(--pk-font-size-xs, 11px);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}

@@ -171,11 +171,11 @@ export class MobiusEdgeRepo {
 	async getByFromNodesAndTypes(
 		fromNodeIds: string[],
 		types: string[],
-	): Promise<Array<{ to_node_id: string; from_node_id: string; type: string; attributes: string }>> {
+	): Promise<Array<{ to_node_id: string; from_node_id: string; type: string; weight: number; attributes: string }>> {
 		if (!fromNodeIds.length || !types.length) return [];
 		const rows = await this.db
 			.selectFrom('mobius_edge')
-			.select(['to_node_id', 'from_node_id', 'type', 'attributes_json'])
+			.select(['to_node_id', 'from_node_id', 'type', 'weight', 'attributes_json'])
 			.where('from_node_id', 'in', fromNodeIds)
 			.where('type', 'in', types)
 			.execute();
@@ -183,6 +183,7 @@ export class MobiusEdgeRepo {
 			to_node_id: r.to_node_id as string,
 			from_node_id: r.from_node_id as string,
 			type: r.type as string,
+			weight: Number(r.weight ?? 0),
 			attributes: ((r as { attributes_json?: string | null }).attributes_json ?? '{}') as string,
 		}));
 	}
@@ -777,4 +778,3 @@ export class MobiusEdgeRepo {
 	}
 
 }
-

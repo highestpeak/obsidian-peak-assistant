@@ -26,6 +26,27 @@ export interface ResultGraphCommunityConfig {
 		closeDelayMs: number;
 		cardOffsetPx: number;
 	};
+	graphLayout: {
+		semanticWeightExponent: number;
+		semanticIdealLengthMin: number;
+		semanticIdealLengthMax: number;
+		semanticElasticityMin: number;
+		semanticElasticityMax: number;
+		structuralIdealLength: number;
+		structuralElasticity: number;
+		nodeRepulsion: number;
+		gravity: number;
+		componentSeparation: number;
+		flowNodeSeparation: number;
+		flowEdgeSeparation: number;
+		flowRankSeparationTopDown: number;
+		flowRankSeparationLeftRight: number;
+		orbitNodeSeparation: number;
+		detachedHorizontalGap: number;
+		detachedVerticalGap: number;
+		detachedRegionGap: number;
+		detachedMinimumRegionWidth: number;
+	};
 	nodeExplanation: {
 		summaryCharacterLimit: number;
 		signalLimit: number;
@@ -68,6 +89,27 @@ export const DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG: ResultGraphCommunityConfig =
 		openDelayMs: 80,
 		closeDelayMs: 220,
 		cardOffsetPx: 18,
+	}),
+	graphLayout: Object.freeze({
+		semanticWeightExponent: 2,
+		semanticIdealLengthMin: 72,
+		semanticIdealLengthMax: 156,
+		semanticElasticityMin: 0.08,
+		semanticElasticityMax: 0.3,
+		structuralIdealLength: 92,
+		structuralElasticity: 0.34,
+		nodeRepulsion: 9000,
+		gravity: 0.22,
+		componentSeparation: 92,
+		flowNodeSeparation: 48,
+		flowEdgeSeparation: 18,
+		flowRankSeparationTopDown: 84,
+		flowRankSeparationLeftRight: 116,
+		orbitNodeSeparation: 42,
+		detachedHorizontalGap: 34,
+		detachedVerticalGap: 26,
+		detachedRegionGap: 112,
+		detachedMinimumRegionWidth: 720,
 	}),
 	nodeExplanation: Object.freeze({
 		summaryCharacterLimit: 1600,
@@ -115,6 +157,7 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 	const weights = loaded.weights ?? fallback.weights;
 	const bounds = loaded.bounds ?? fallback.bounds;
 	const interaction = loaded.interaction ?? fallback.interaction;
+	const graphLayout = loaded.graphLayout ?? fallback.graphLayout;
 	const nodeExplanation = loaded.nodeExplanation ?? fallback.nodeExplanation;
 	const nodeExplanationUi = nodeExplanation.ui ?? fallback.nodeExplanation.ui;
 	return {
@@ -141,6 +184,27 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 			openDelayMs: Math.floor(positive(interaction.openDelayMs, fallback.interaction.openDelayMs)),
 			closeDelayMs: Math.floor(positive(interaction.closeDelayMs, fallback.interaction.closeDelayMs)),
 			cardOffsetPx: Math.floor(positive(interaction.cardOffsetPx, fallback.interaction.cardOffsetPx)),
+		},
+		graphLayout: {
+			semanticWeightExponent: positive(graphLayout.semanticWeightExponent, fallback.graphLayout.semanticWeightExponent),
+			semanticIdealLengthMin: positive(graphLayout.semanticIdealLengthMin, fallback.graphLayout.semanticIdealLengthMin),
+			semanticIdealLengthMax: positive(graphLayout.semanticIdealLengthMax, fallback.graphLayout.semanticIdealLengthMax),
+			semanticElasticityMin: positive(graphLayout.semanticElasticityMin, fallback.graphLayout.semanticElasticityMin),
+			semanticElasticityMax: positive(graphLayout.semanticElasticityMax, fallback.graphLayout.semanticElasticityMax),
+			structuralIdealLength: positive(graphLayout.structuralIdealLength, fallback.graphLayout.structuralIdealLength),
+			structuralElasticity: positive(graphLayout.structuralElasticity, fallback.graphLayout.structuralElasticity),
+			nodeRepulsion: positive(graphLayout.nodeRepulsion, fallback.graphLayout.nodeRepulsion),
+			gravity: positive(graphLayout.gravity, fallback.graphLayout.gravity),
+			componentSeparation: positive(graphLayout.componentSeparation, fallback.graphLayout.componentSeparation),
+			flowNodeSeparation: positive(graphLayout.flowNodeSeparation, fallback.graphLayout.flowNodeSeparation),
+			flowEdgeSeparation: positive(graphLayout.flowEdgeSeparation, fallback.graphLayout.flowEdgeSeparation),
+			flowRankSeparationTopDown: positive(graphLayout.flowRankSeparationTopDown, fallback.graphLayout.flowRankSeparationTopDown),
+			flowRankSeparationLeftRight: positive(graphLayout.flowRankSeparationLeftRight, fallback.graphLayout.flowRankSeparationLeftRight),
+			orbitNodeSeparation: positive(graphLayout.orbitNodeSeparation, fallback.graphLayout.orbitNodeSeparation),
+			detachedHorizontalGap: positive(graphLayout.detachedHorizontalGap, fallback.graphLayout.detachedHorizontalGap),
+			detachedVerticalGap: positive(graphLayout.detachedVerticalGap, fallback.graphLayout.detachedVerticalGap),
+			detachedRegionGap: positive(graphLayout.detachedRegionGap, fallback.graphLayout.detachedRegionGap),
+			detachedMinimumRegionWidth: positive(graphLayout.detachedMinimumRegionWidth, fallback.graphLayout.detachedMinimumRegionWidth),
 		},
 		nodeExplanation: {
 			summaryCharacterLimit: Math.floor(positive(nodeExplanation.summaryCharacterLimit, fallback.nodeExplanation.summaryCharacterLimit)),

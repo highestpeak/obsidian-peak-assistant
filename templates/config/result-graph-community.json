@@ -24,6 +24,27 @@
     "closeDelayMs": 220,
     "cardOffsetPx": 18
   },
+  "graphLayout": {
+    "semanticWeightExponent": 2.0,
+    "semanticIdealLengthMin": 72,
+    "semanticIdealLengthMax": 156,
+    "semanticElasticityMin": 0.08,
+    "semanticElasticityMax": 0.3,
+    "structuralIdealLength": 92,
+    "structuralElasticity": 0.34,
+    "nodeRepulsion": 9000,
+    "gravity": 0.22,
+    "componentSeparation": 92,
+    "flowNodeSeparation": 48,
+    "flowEdgeSeparation": 18,
+    "flowRankSeparationTopDown": 84,
+    "flowRankSeparationLeftRight": 116,
+    "orbitNodeSeparation": 42,
+    "detachedHorizontalGap": 34,
+    "detachedVerticalGap": 26,
+    "detachedRegionGap": 112,
+    "detachedMinimumRegionWidth": 720
+  },
   "nodeExplanation": {
     "summaryCharacterLimit": 1600,
     "signalLimit": 8,

@@ -60,9 +60,10 @@ const semanticIndex = canvas.indexOf('label="Semantic edges"');
 const nodesIndex = canvas.indexOf('<span>Nodes</span>');
 const mermaidIndex = canvas.indexOf('title="Copy graph as Mermaid"');
 const imageIndex = canvas.indexOf('title="Copy graph as image"');
+const fullscreenIndex = canvas.indexOf("title={fullscreen ? 'Exit graph fullscreen' : 'View graph fullscreen'}");
 assert.ok(
-	semanticIndex >= 0 && semanticIndex < nodesIndex && nodesIndex < mermaidIndex && mermaidIndex < imageIndex,
-	'canvas controls remain ordered: Semantic edges, Nodes, Copy Mermaid, Copy image',
+	semanticIndex >= 0 && semanticIndex < nodesIndex && nodesIndex < mermaidIndex && mermaidIndex < imageIndex && imageIndex < fullscreenIndex,
+	'canvas controls remain ordered: Semantic edges, Nodes, Copy Mermaid, Copy image, Fullscreen',
 );
 
 assert.match(

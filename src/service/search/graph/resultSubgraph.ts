@@ -55,6 +55,7 @@ export interface ResultSubgraphOutput {
         to: string;
         kind: 'reference' | 'semantic' | 'hub_constituent';
         directionality?: GraphEdgeDirectionality;
+		weight?: number;
     }>;
     isolatedDocIds: string[];
     overflowCount: number; // N - nodeCap when trimmed
@@ -115,6 +116,7 @@ export interface ResultSubgraphDeps {
         to: string;
         kind: 'reference' | 'semantic';
         directionality?: GraphEdgeDirectionality;
+		weight?: number;
     }>>;
 
     /**
@@ -226,6 +228,7 @@ export async function buildResultSubgraph(
             to: e.to,
             kind: e.kind,
             directionality: e.directionality,
+			...(typeof e.weight === 'number' && Number.isFinite(e.weight) ? { weight: e.weight } : {}),
         });
     }
     for (const e of hubConstituentEdges) {
@@ -238,13 +241,13 @@ export async function buildResultSubgraph(
         });
     }
 
-    // 6. Isolated partition — a result doc is isolated when it has NO
-    //    'reference' or 'hub_constituent' edge to any other result doc or hub
-    //    anchor. Semantic-only connection still counts as isolated (per spec
-    //    §Isolated Result Nodes + §Content Layers · Semantic overlay).
+    // 6. Data-level isolated partition — a result doc is isolated only when it
+    //    has no relation of any kind to another visible result or Hub anchor.
+    //    The renderer separately derives its active topology, so hiding the
+    //    semantic layer can still place semantic-only docs in the detached
+    //    region without misclassifying the underlying graph data.
     const connectedDocs = new Set<string>();
     for (const e of edges) {
-        if (e.kind === 'semantic') continue;
         if (trimmedDocSet.has(e.from)) connectedDocs.add(e.from);
         if (trimmedDocSet.has(e.to)) connectedDocs.add(e.to);
     }

@@ -18,13 +18,27 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import cytoscape from 'cytoscape';
 import type { Core, EdgeSingular, ElementDefinition, NodeSingular } from 'cytoscape';
 import fcose from 'cytoscape-fcose';
 import cise from 'cytoscape-cise';
 import cola from 'cytoscape-cola';
 import dagre from 'cytoscape-dagre';
-import { Check, Image as ImageIcon, List, Loader2, PanelRightOpen, Sparkles, Workflow } from 'lucide-react';
+import {
+	Check,
+	Image as ImageIcon,
+	List,
+	Loader2,
+	Maximize2,
+	Minimize2,
+	Minus,
+	PanelRightOpen,
+	Plus,
+	Scan,
+	Sparkles,
+	Workflow,
+} from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import { Button } from '@/ui/component/shared-ui/button';
 import { GraphSemanticToggle } from './GraphSemanticToggle';
@@ -57,6 +71,10 @@ import {
 	DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG,
 	type ResultGraphCommunityConfig,
 } from '@/service/search/index/helper/structural/ResultGraphCommunityDefaults';
+import { buildActiveGraphTopology } from './activeGraphTopology';
+import { packDetachedGraphNodes } from './detachedGraphLayout';
+import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
+import { portalHostForDocument } from '@/ui/react/ReactRenderer';
 
 // ─── One-time Cytoscape extension registration ──────────────────────────────
 let extensionsRegistered = false;
@@ -109,10 +127,20 @@ function buildElements(
 	const visibleEdges = allRelationEdges.filter((edge) => (
 		edge.kind !== 'semantic' || opts.showSemantic
 	));
-	const degreeMap = new Map<string, number>();
-	for (const edge of visibleEdges) {
-		degreeMap.set(edge.from, (degreeMap.get(edge.from) ?? 0) + 1);
-		degreeMap.set(edge.to, (degreeMap.get(edge.to) ?? 0) + 1);
+	const graphNodeIds = [
+		...sub.resultNodes.map((node) => node.id),
+		...sub.hubAnchors.map((hub) => hub.id),
+	];
+	const topology = buildActiveGraphTopology(graphNodeIds, allRelationEdges, opts.showSemantic);
+	const degreeMap = topology.activeDegreeById;
+	const semanticWeightByPair = new Map<string, number>();
+	for (const edge of sub.edges) {
+		if (edge.kind !== 'semantic') continue;
+		const key = [edge.from, edge.to].sort().join('\u0000');
+		const weight = typeof edge.weight === 'number' && Number.isFinite(edge.weight)
+			? Math.max(0, Math.min(1, edge.weight))
+			: 1;
+		semanticWeightByPair.set(key, Math.max(semanticWeightByPair.get(key) ?? 0, weight));
 	}
 	const visibleCommunities = opts.community ? (sub.communities ?? []) : [];
 	const communityIndexById = new Map(visibleCommunities.map((community, index) => [community.id, index]));
@@ -172,16 +200,6 @@ function buildElements(
 			if (position) folderTreePositions.set(hub.id, position);
 		}
 	}
-
-	const refEndpoints = new Set<string>();
-	for (const e of visibleEdges) {
-		if (e.kind !== 'reference' && e.kind !== 'hub_constituent') continue;
-		refEndpoints.add(e.from);
-		refEndpoints.add(e.to);
-	}
-	const isolatedIds = new Set<string>(
-		sub.resultNodes.filter((n) => !refEndpoints.has(n.id)).map((n) => n.id),
-	);
 
 	if (folderTree) {
 		for (const folder of folderTree.folders) {
@@ -246,6 +264,8 @@ function buildElements(
 				kind: 'doc',
 				score: normalizedScore,
 				degree,
+				structuralDegree: topology.structuralDegreeById.get(n.id) ?? 0,
+				semanticDegree: topology.semanticDegreeById.get(n.id) ?? 0,
 				degreeNorm: normDegree(n.id),
 				folder: (n.path ? n.path.split('/')[0] : '') || '',
 				nodeWidth: visual?.width,
@@ -260,7 +280,7 @@ function buildElements(
 				nodeBorderColor: palette?.border,
 				nodeTextColor: palette?.text,
 			},
-			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}${isHublike ? ' hublike' : ''}${folderTree ? ' folderTreeDoc' : ''}${palette ? ' communityDoc' : ''}`.trim(),
+			classes: `doc ${topology.isolatedNodeIds.has(n.id) ? 'isolated' : ''}${topology.semanticOnlyNodeIds.has(n.id) ? ' semanticOnly' : ''}${isHublike ? ' hublike' : ''}${folderTree ? ' folderTreeDoc' : ''}${palette ? ' communityDoc' : ''}`.trim(),
 			position: folderTreePositions.get(n.id),
 			locked: Boolean(folderTree),
 		});
@@ -379,6 +399,9 @@ function buildElements(
 				target: e.to,
 				kind: e.kind,
 				directionality: e.directionality,
+				layoutWeight: e.kind === 'semantic'
+					? semanticWeightByPair.get([e.from, e.to].sort().join('\u0000')) ?? 1
+					: 1,
 				controlPointDistances: relationRoute
 					? relationRoute.controlPointDistances.join(' ')
 					: String(curveDistance),
@@ -435,7 +458,8 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.hub', style: { 'background-color': '#a78bfa', 'border-color': '#4c1d95', 'border-width': 4, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '18px', 'padding-right': '18px', 'padding-top': '12px', 'padding-bottom': '12px', label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '360px', 'font-size': 15, 'font-weight': 800, 'text-valign': 'center', 'text-halign': 'center', color: '#2e1065' } as never },
 	{ selector: 'node.doc', style: { 'background-color': 'mapData(score, 0, 1, #f5f3ff, #c4b5fd)', 'border-color': '#a78bfa', 'border-width': 1, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '10px', 'padding-right': '10px', 'padding-top': '5px', 'padding-bottom': '5px', label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '360px', 'font-size': 10, 'text-valign': 'center', 'text-halign': 'center', color: '#1e1b4b', 'min-width': '80px' } as never },
 	{ selector: 'node.doc.hublike', style: { 'background-color': '#c4b5fd', 'border-color': '#6d28d9', 'border-width': 3, 'padding-left': '14px', 'padding-right': '14px', 'padding-top': '9px', 'padding-bottom': '9px', 'font-size': 13, 'font-weight': 700, color: '#4c1d95' } as never },
-	{ selector: 'node.doc.isolated', style: { opacity: 0.55, 'border-style': 'dashed' } as never },
+	{ selector: 'node.doc.isolated', style: { opacity: 1, 'border-style': 'dashed', 'background-color': '#fafafa', 'border-color': '#cbd5e1', color: '#64748b' } as never },
+	{ selector: 'node.doc.semanticOnly', style: { opacity: 1, 'border-style': 'solid', 'border-color': '#8b5cf6', 'border-width': 1.6, 'background-color': '#f5f3ff' } as never },
 	{ selector: 'node.communityHull', style: { 'background-color': 'data(hullColor)', 'background-opacity': 0.3, 'border-color': 'data(borderColor)', 'border-width': 1.2, 'border-style': 'solid', shape: 'round-rectangle', padding: 34, label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '260px', 'font-size': 11, 'font-weight': 700, color: 'data(textColor)', 'text-valign': 'top', 'text-halign': 'left', 'text-margin-y': -16, 'text-margin-x': -12, 'compound-sizing-wrt-labels': 'include', 'z-compound-depth': 'bottom' } as never },
 	{ selector: 'node.doc.communityDoc', style: { 'background-color': 'data(nodeColor)', 'border-color': 'data(nodeBorderColor)', color: 'data(nodeTextColor)', 'border-width': 1.4, opacity: 1 } as never },
 	{ selector: 'node.doc.communityDoc.isolated', style: { opacity: 1, 'border-style': 'solid' } as never },
@@ -446,7 +470,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge[directionality = "undirected"]', style: { 'source-arrow-shape': 'none', 'target-arrow-shape': 'none' } as never },
 	{ selector: 'edge.reference', style: { 'line-color': '#334155', 'source-arrow-color': '#334155', 'target-arrow-color': '#334155', width: 1.4 } as never },
 	{ selector: 'edge.hub_constituent', style: { 'line-color': '#8b5cf6', 'source-arrow-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'line-style': 'dotted', width: 1.8, opacity: 0.85 } as never },
-	{ selector: 'edge.semantic', style: { 'line-color': '#cbd5e1', 'source-arrow-color': '#cbd5e1', 'target-arrow-color': '#cbd5e1', 'line-style': 'dashed', width: 0.8, opacity: 0.7 } as never },
+	{ selector: 'edge.semantic', style: { 'line-color': '#cbd5e1', 'source-arrow-color': '#cbd5e1', 'target-arrow-color': '#cbd5e1', 'line-style': 'dashed', width: 'mapData(layoutWeight, 0, 1, 0.65, 1.65)', opacity: 'mapData(layoutWeight, 0, 1, 0.42, 0.82)' } as never },
 	{ selector: 'edge.communityRelation', style: { 'curve-style': 'straight', 'target-distance-from-node': 5, 'source-distance-from-node': 3, opacity: 0.62 } as never },
 	{ selector: 'edge.communityRelation.reference', style: { 'line-color': '#77727f', 'target-arrow-color': '#77727f', width: 1.35, opacity: 0.72 } as never },
 	{ selector: 'edge.communityRelation.semantic', style: { 'line-color': '#aaa4b2', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'line-style': 'dashed', width: 1, opacity: 0.52 } as never },
@@ -513,24 +537,60 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 ];
 
 // ─── Layout config picker ──────────────────────────────────────────────────
-function layoutConfig(name: PresetBundle['layout']): cytoscape.LayoutOptions {
+type ResultGraphLayoutConfig = ResultGraphCommunityConfig['graphLayout'];
+
+function semanticLayoutStrength(edge: EdgeSingular, config: ResultGraphLayoutConfig): number {
+	if (edge.data('kind') !== 'semantic') return 1;
+	const weight = Number(edge.data('layoutWeight'));
+	const normalized = Number.isFinite(weight) ? Math.max(0, Math.min(1, weight)) : 1;
+	return normalized ** config.semanticWeightExponent;
+}
+
+function layoutConfig(
+	name: PresetBundle['layout'],
+	config: ResultGraphLayoutConfig,
+	randomize: boolean,
+): cytoscape.LayoutOptions {
 	switch (name) {
 		case 'fcose':
-			return { name: 'fcose', animate: true, animationDuration: 500, nodeRepulsion: 8000, idealEdgeLength: 90, edgeElasticity: 0.3, gravity: 0.25, tile: true, randomize: true, packComponents: true, nodeSeparation: 80 } as never;
+			return {
+				name: 'fcose',
+				animate: true,
+				animationDuration: 500,
+				nodeRepulsion: config.nodeRepulsion,
+				idealEdgeLength: (edge: EdgeSingular) => {
+					if (edge.data('kind') !== 'semantic') return config.structuralIdealLength;
+					const strength = semanticLayoutStrength(edge, config);
+					return config.semanticIdealLengthMax
+						- strength * (config.semanticIdealLengthMax - config.semanticIdealLengthMin);
+				},
+				edgeElasticity: (edge: EdgeSingular) => {
+					if (edge.data('kind') !== 'semantic') return config.structuralElasticity;
+					const strength = semanticLayoutStrength(edge, config);
+					return config.semanticElasticityMin
+						+ strength * (config.semanticElasticityMax - config.semanticElasticityMin);
+				},
+				gravity: config.gravity,
+				tile: true,
+				randomize,
+				packComponents: true,
+				nodeSeparation: config.componentSeparation,
+				nodeDimensionsIncludeLabels: true,
+			} as never;
 		case 'cola':
-			return { name: 'cola', animate: true, maxSimulationTime: 3000, nodeSpacing: 20, edgeLength: 90, avoidOverlap: true } as never;
+			return { name: 'cola', animate: true, maxSimulationTime: 3000, nodeSpacing: config.componentSeparation, edgeLength: config.structuralIdealLength, avoidOverlap: true, nodeDimensionsIncludeLabels: true } as never;
 		case 'dagre-tb':
-			return { name: 'dagre', rankDir: 'TB', nodeSep: 20, edgeSep: 12, rankSep: 70, animate: true } as never;
+			return { name: 'dagre', rankDir: 'TB', nodeSep: config.flowNodeSeparation, edgeSep: config.flowEdgeSeparation, rankSep: config.flowRankSeparationTopDown, nodeDimensionsIncludeLabels: true, animate: true } as never;
 		case 'dagre-lr':
-			return { name: 'dagre', rankDir: 'LR', nodeSep: 20, edgeSep: 12, rankSep: 100, animate: true } as never;
+			return { name: 'dagre', rankDir: 'LR', nodeSep: config.flowNodeSeparation, edgeSep: config.flowEdgeSeparation, rankSep: config.flowRankSeparationLeftRight, nodeDimensionsIncludeLabels: true, animate: true } as never;
 		case 'concentric-hub':
-			return { name: 'concentric', animate: true, concentric: (n: NodeSingular) => { if (n.data('kind') === 'hub') return 3; if (n.hasClass('isolated')) return 1; return 2; }, levelWidth: () => 1, minNodeSpacing: 22, spacingFactor: 1.1 } as never;
+			return { name: 'concentric', animate: true, concentric: (n: NodeSingular) => { if (n.data('kind') === 'hub') return 4; if (n.hasClass('isolated')) return 1; if (n.hasClass('semanticOnly')) return 2; return 3 + Math.min(1, Number(n.data('degreeNorm')) || 0); }, levelWidth: () => 1, minNodeSpacing: config.orbitNodeSeparation, spacingFactor: 1.1, avoidOverlap: true, nodeDimensionsIncludeLabels: true } as never;
 		case 'folder-tree':
 			return { name: 'preset', fit: false, animate: true, animationDuration: 320 } as never;
 	}
 }
 
-function layoutIsolatedGrid(cy: Core): void {
+function layoutDetachedNodes(cy: Core, config: ResultGraphLayoutConfig): void {
 	const isolated = cy.nodes('.isolated').sort((a, b) => {
 		const la = (a.data('label') || a.id() || '').toLowerCase();
 		const lb = (b.data('label') || b.id() || '').toLowerCase();
@@ -538,22 +598,43 @@ function layoutIsolatedGrid(cy: Core): void {
 	});
 	if (isolated.length === 0) return;
 	const connected = cy.nodes().not('.isolated').not('.regionLabel');
-	let baseY = 0, centerX = 0, gridWidth = 700;
+	let baseY = 0;
+	let centerX = 0;
+	let regionWidth = Math.max(config.detachedMinimumRegionWidth, cy.width());
 	if (connected.length > 0) {
-		const bbox = connected.boundingBox({});
-		baseY = bbox.y2 + 140;
+		const bbox = connected.boundingBox({ includeLabels: true, includeNodes: true });
+		baseY = bbox.y2 + config.detachedRegionGap;
 		centerX = (bbox.x1 + bbox.x2) / 2;
-		gridWidth = Math.max(bbox.x2 - bbox.x1, 700);
+		regionWidth = Math.max(bbox.x2 - bbox.x1, config.detachedMinimumRegionWidth);
 	}
-	const cellW = 160, cellH = 44;
-	const cols = Math.max(4, Math.min(8, Math.floor(gridWidth / cellW)));
-	const gridStartX = centerX - (cols * cellW) / 2;
-	cy.add({ group: 'nodes', data: { id: '__label:isolated', label: 'Isolated matches', kind: 'regionLabel' }, classes: 'regionLabel', position: { x: centerX, y: baseY - 40 } });
-	isolated.forEach((n, i) => {
-		const col = i % cols;
-		const row = Math.floor(i / cols);
-		n.position({ x: gridStartX + col * cellW, y: baseY + row * cellH });
+	const placements = packDetachedGraphNodes(
+		isolated.map((node) => {
+			const bounds = node.boundingBox({ includeLabels: true, includeNodes: true });
+			return { id: node.id(), width: bounds.w, height: bounds.h };
+		}),
+		{
+			availableWidth: regionWidth,
+			horizontalGap: config.detachedHorizontalGap,
+			verticalGap: config.detachedVerticalGap,
+		},
+	);
+	const startX = centerX - regionWidth / 2;
+	cy.add({ group: 'nodes', data: { id: '__label:isolated', label: 'Isolated matches', kind: 'regionLabel' }, classes: 'regionLabel', position: { x: centerX, y: baseY - config.detachedVerticalGap * 1.5 } });
+	for (const placement of placements) {
+		cy.getElementById(placement.id).position({
+			x: startX + placement.x,
+			y: baseY + placement.y,
+		});
+	}
+}
+
+function captureGraphNodePositions(cy: Core): Map<string, { x: number; y: number }> {
+	const positions = new Map<string, { x: number; y: number }>();
+	cy.nodes().not('.regionLabel').forEach((element) => {
+		const node = element as NodeSingular;
+		positions.set(node.id(), node.position());
 	});
+	return positions;
 }
 
 const FOLDER_TREE_MIN_INITIAL_ZOOM = 1;
@@ -677,17 +758,25 @@ function applyFolderTreeFocus(
 }
 
 /** Turn subgraph → Mermaid flowchart string for copy-to-clipboard. */
-function subgraphToMermaid(sub: ResultSubgraphOutput): string {
+function subgraphToMermaid(sub: ResultSubgraphOutput, showSemantic: boolean): string {
 	const lines: string[] = ['flowchart TD'];
 	const sid = (id: string) => `n${id.slice(0, 10)}`;
 	const escape = (s: string) => s.replace(/["`]/g, '').replace(/\n/g, ' ').slice(0, 60);
 	for (const h of sub.hubAnchors) lines.push(`  ${sid(h.id)}[["${escape(h.title || h.path || h.id)} · hub (${h.constituentCount})"]]:::hub`);
-	const isolatedSet = new Set(sub.isolatedDocIds);
+	const visibleEdges = coalesceGraphEdges(sub.edges).filter((edge) => (
+		edge.kind !== 'semantic' || showSemantic
+	));
+	const topology = buildActiveGraphTopology(
+		[...sub.resultNodes.map((node) => node.id), ...sub.hubAnchors.map((hub) => hub.id)],
+		visibleEdges,
+		showSemantic,
+	);
+	const isolatedSet = topology.isolatedNodeIds;
 	for (const n of sub.resultNodes) {
 		const cls = isolatedSet.has(n.id) ? ':::iso' : '';
 		lines.push(`  ${sid(n.id)}["${escape(n.title || n.path || n.id)}"]${cls}`);
 	}
-	for (const e of coalesceGraphEdges(sub.edges)) {
+	for (const e of visibleEdges) {
 		if (e.from === e.to) continue;
 		if (e.directionality === 'bidirectional') {
 			lines.push(`  ${sid(e.from)} <-->|${e.kind === 'semantic' ? 'sem' : e.kind === 'hub_constituent' ? 'member' : 'ref'}| ${sid(e.to)}`);
@@ -720,6 +809,7 @@ export interface AtlasGraphKeyTipKeys {
 	nodeList: string;
 	copyMermaid: string;
 	copyImage: string;
+	fullscreen: string;
 }
 
 export interface AtlasGraphCanvasProps {
@@ -757,6 +847,13 @@ export interface AtlasGraphCanvasProps {
 	nodeExplanationUi?: ResultGraphCommunityConfig['nodeExplanation']['ui'];
 	/** Result Graph only: template-backed hover timing and placement. */
 	communityInteraction?: ResultGraphCommunityConfig['interaction'];
+	/** Template-backed layout distances, forces, and detached-node packing. */
+	graphLayout?: ResultGraphCommunityConfig['graphLayout'];
+}
+
+interface GraphFullscreenState {
+	ownerDocument: Document;
+	trigger: HTMLButtonElement;
 }
 
 interface GraphHoverAnchor {
@@ -816,6 +913,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	graphNodeExplanation,
 	nodeExplanationUi = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.nodeExplanation.ui,
 	communityInteraction = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.interaction,
+	graphLayout = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout,
 }) => {
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
 	const [hoveredLabel, setHoveredLabel] = useState<GraphHoverAnchor | null>(null);
@@ -824,7 +922,14 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const [keyboardNodeId, setKeyboardNodeId] = useState<string | null>(null);
 	const [keyboardNodeLabel, setKeyboardNodeLabel] = useState('');
 	const [nodeListOpen, setNodeListOpen] = useState(false);
+	const [fullscreen, setFullscreen] = useState<GraphFullscreenState | null>(null);
+	const [surfaceHost, setSurfaceHost] = useState<HTMLDivElement | null>(null);
+	const [zoomPercent, setZoomPercent] = useState(100);
 	const containerRef = useRef<HTMLDivElement | null>(null);
+	const surfaceRootRef = useRef<HTMLDivElement | null>(null);
+	const inlineSlotRef = useRef<HTMLDivElement | null>(null);
+	const fullscreenSlotRef = useRef<HTMLDivElement | null>(null);
+	const fullscreenDialogRef = useRef<HTMLDivElement | null>(null);
 	const nodeListRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const animRef = useRef<number | null>(null);
@@ -832,6 +937,9 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const hoveredElementRef = useRef<string | null>(null);
 	const generationAbortRef = useRef<AbortController | null>(null);
 	const mountedRef = useRef(true);
+	const positionCacheRef = useRef<Map<string, Map<string, { x: number; y: number }>>>(new Map());
+	const lastViewportRef = useRef<AtlasGraphViewport | null>(null);
+	const lastRenderedRef = useRef<{ subgraph: ResultSubgraphOutput; preset: AtlasGraphPreset } | null>(null);
 
 	const cancelCardClose = () => {
 		if (!cardCloseTimerRef.current) return;
@@ -874,6 +982,81 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			if (nodeId) setKeyboardNodeId(nodeId);
 		},
 	});
+	const closeFullscreen = useCallback(() => {
+		if (!fullscreen) return;
+		const { ownerDocument, trigger } = fullscreen;
+		setFullscreen(null);
+		const restoreFocus = (): void => {
+			if (trigger.isConnected) trigger.focus({ preventScroll: true });
+		};
+		const ownerWindow = ownerDocument.defaultView;
+		if (ownerWindow) ownerWindow.setTimeout(restoreFocus, 0);
+		else restoreFocus();
+	}, [fullscreen]);
+	usePeakEscapeLayer(
+		Boolean(fullscreen),
+		fullscreenDialogRef,
+		'graph-fullscreen',
+		closeFullscreen,
+		fullscreen?.trigger ?? null,
+		true,
+	);
+
+	useEffect(() => {
+		const inlineSlot = inlineSlotRef.current;
+		if (!inlineSlot) return;
+		const host = inlineSlot.ownerDocument.createElement('div');
+		host.className = 'pk-graph-surface-host';
+		setSurfaceHost(host);
+		return () => {
+			host.remove();
+		};
+	}, []);
+
+	useEffect(() => {
+		if (!surfaceHost) return;
+		const target = fullscreen ? fullscreenSlotRef.current : inlineSlotRef.current;
+		if (!target) return;
+		const cy = cyRef.current;
+		const viewport = cy ? { zoom: cy.zoom(), pan: cy.pan() } : null;
+		target.appendChild(surfaceHost);
+		const ownerWindow = target.ownerDocument.defaultView;
+		const frame = ownerWindow?.requestAnimationFrame(() => {
+			const currentCy = cyRef.current;
+			if (currentCy) {
+				currentCy.resize();
+				if (viewport) {
+					currentCy.zoom(viewport.zoom);
+					currentCy.pan(viewport.pan);
+				}
+			}
+			if (fullscreen) surfaceRootRef.current?.focus({ preventScroll: true });
+		});
+		return () => {
+			if (frame !== undefined) ownerWindow?.cancelAnimationFrame(frame);
+		};
+	}, [fullscreen, surfaceHost]);
+
+	useEffect(() => {
+		if (!fullscreen) return;
+		const { ownerDocument } = fullscreen;
+		const ownerWindow = ownerDocument.defaultView;
+		const body = ownerDocument.body;
+		const previousOverflow = body.style.overflow;
+		body.style.overflow = 'hidden';
+		const closeTopLayer = (event: KeyboardEvent): void => {
+			if (event.key !== 'Escape') return;
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+			closeFullscreen();
+		};
+		ownerWindow?.addEventListener('keydown', closeTopLayer, true);
+		return () => {
+			body.style.overflow = previousOverflow;
+			ownerWindow?.removeEventListener('keydown', closeTopLayer, true);
+		};
+	}, [closeFullscreen, fullscreen]);
 
 	useEffect(() => {
 		mountedRef.current = true;
@@ -994,8 +1177,15 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 
 	useEffect(() => {
 		const container = containerRef.current;
-		if (!container || !subgraph) return;
+		if (!container || !subgraph || !surfaceHost) return;
 		const bundle = PRESETS[preset];
+		const layoutKey = `${preset}|${showSemantic ? 'semantic' : 'structural'}`;
+		const fallbackLayoutKey = `${preset}|${showSemantic ? 'structural' : 'semantic'}`;
+		const previousRender = lastRenderedRef.current;
+		const preserveViewport = previousRender?.subgraph === subgraph
+			&& previousRender.preset === preset
+			? lastViewportRef.current
+			: null;
 		const folderProjection = bundle.folderTree ? buildVisibleFolderTree(subgraph.resultNodes) : null;
 		const els = buildElements(subgraph, {
 			showSemantic,
@@ -1017,6 +1207,18 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			wheelSensitivity: 0.2,
 		});
 		cyRef.current = cy;
+		const cachedPositions = positionCacheRef.current.get(layoutKey)
+			?? positionCacheRef.current.get(fallbackLayoutKey);
+		let seededNodeCount = 0;
+		if (!bundle.folderTree && cachedPositions) {
+			cy.nodes().forEach((node) => {
+				const position = cachedPositions.get(node.id());
+				if (!position) return;
+				node.position(position);
+				seededNodeCount += 1;
+			});
+		}
+		lastRenderedRef.current = { subgraph, preset };
 
 		const shouldSplitIsolated = !bundle.folderTree && !bundle.community;
 		const connectedEles = shouldSplitIsolated
@@ -1028,20 +1230,29 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			})
 			: cy.elements();
 
-		const layoutObj = connectedEles.layout(layoutConfig(bundle.layout));
+		const layoutObj = connectedEles.layout(layoutConfig(bundle.layout, graphLayout, seededNodeCount === 0));
 		layoutObj.one('layoutstop', () => {
-			if (shouldSplitIsolated) layoutIsolatedGrid(cy);
+			if (shouldSplitIsolated) layoutDetachedNodes(cy, graphLayout);
 			const restored = initialViewportRef.current;
 			if (restored) {
 				cy.zoom(restored.zoom);
 				cy.pan(restored.pan);
-				return;
+			} else if (preserveViewport) {
+				cy.zoom(preserveViewport.zoom);
+				cy.pan(preserveViewport.pan);
+			} else {
+				fitGraphViewport(cy, bundle.folderTree);
 			}
-			fitGraphViewport(cy, bundle.folderTree);
+			lastViewportRef.current = { zoom: cy.zoom(), pan: cy.pan() };
+			setZoomPercent(Math.round(cy.zoom() * 100));
+			positionCacheRef.current.set(layoutKey, captureGraphNodePositions(cy));
 		});
 		layoutObj.run();
 		cy.on('pan zoom', () => {
-			viewportChangeRef.current?.({ zoom: cy.zoom(), pan: cy.pan() });
+			const viewport = { zoom: cy.zoom(), pan: cy.pan() };
+			lastViewportRef.current = viewport;
+			setZoomPercent(Math.round(viewport.zoom * 100));
+			viewportChangeRef.current?.(viewport);
 			const hoveredId = hoveredElementRef.current;
 			if (!hoveredId) return;
 			const hovered = cy.getElementById(hoveredId);
@@ -1173,10 +1384,13 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		return () => {
 			if (hoverTimer) clearTimeout(hoverTimer);
 			stopEdgeAnimation();
+			if (cyRef.current !== cy) return;
+			positionCacheRef.current.set(layoutKey, captureGraphNodePositions(cy));
+			lastViewportRef.current = { zoom: cy.zoom(), pan: cy.pan() };
 			cy.destroy();
-			if (cyRef.current === cy) cyRef.current = null;
+			cyRef.current = null;
 		};
-	}, [communityInteraction.closeDelayMs, communityInteraction.openDelayMs, subgraph, preset, showSemantic]);
+	}, [communityInteraction.closeDelayMs, communityInteraction.openDelayMs, graphLayout, preset, showSemantic, subgraph, surfaceHost]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -1188,7 +1402,6 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				const cy = cyRef.current;
 				if (!cy || container.clientWidth === 0 || container.clientHeight === 0) return;
 				cy.resize();
-				if (!viewportChangeRef.current) fitGraphViewport(cy, PRESETS[preset].folderTree);
 			});
 		});
 		observer.observe(container);
@@ -1196,7 +1409,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			cancelAnimationFrame(frame);
 			observer.disconnect();
 		};
-	}, []);
+	}, [surfaceHost]);
 
 	useEffect(() => {
 		const cy = cyRef.current;
@@ -1301,14 +1514,16 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const handleCopyMermaid = useCallback(() => {
 		if (!subgraph) return;
 		try {
-			void navigator.clipboard.writeText(subgraphToMermaid(subgraph));
+			const ownerWindow = containerRef.current?.ownerDocument.defaultView;
+			void (ownerWindow?.navigator.clipboard ?? navigator.clipboard)
+				.writeText(subgraphToMermaid(subgraph, showSemantic));
 			setCopiedMode('mermaid');
-			window.setTimeout(() => setCopiedMode(null), 1500);
+			(ownerWindow ?? window).setTimeout(() => setCopiedMode(null), 1500);
 		} catch (err) {
 			// eslint-disable-next-line no-console
 			console.warn('[AtlasGraphCanvas] clipboard write failed', err);
 		}
-	}, [subgraph]);
+	}, [showSemantic, subgraph]);
 
 	const handleCopyImage = useCallback(async () => {
 		const cy = cyRef.current;
@@ -1330,6 +1545,49 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			console.warn('[AtlasGraphCanvas] copy-as-image failed', err);
 		}
 	}, []);
+
+	const zoomGraph = useCallback((factor: number) => {
+		const cy = cyRef.current;
+		const container = containerRef.current;
+		if (!cy || !container) return;
+		cy.zoom({
+			level: Math.max(cy.minZoom(), Math.min(cy.maxZoom(), cy.zoom() * factor)),
+			renderedPosition: { x: container.clientWidth / 2, y: container.clientHeight / 2 },
+		});
+	}, []);
+	const fitGraph = useCallback(() => {
+		const cy = cyRef.current;
+		if (!cy) return;
+		fitGraphViewport(cy, PRESETS[preset].folderTree);
+	}, [preset]);
+	const toggleFullscreen = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+		if (fullscreen) {
+			closeFullscreen();
+			return;
+		}
+		setFullscreen({
+			ownerDocument: event.currentTarget.ownerDocument,
+			trigger: event.currentTarget,
+		});
+	}, [closeFullscreen, fullscreen]);
+	const containFullscreenKeyboard = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+		if (event.key === 'Tab') {
+			const focusable = [...(fullscreenDialogRef.current?.querySelectorAll<HTMLElement>(
+				'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+			) ?? [])].filter((element) => element.offsetParent !== null);
+			const first = focusable[0];
+			const last = focusable[focusable.length - 1];
+			const active = fullscreen?.ownerDocument.activeElement;
+			if (first && last && event.shiftKey && active === first) {
+				event.preventDefault();
+				last.focus();
+			} else if (first && last && !event.shiftKey && active === last) {
+				event.preventDefault();
+				first.focus();
+			}
+		}
+		event.stopPropagation();
+	}, [fullscreen]);
 
 	const handleCommunityExplain = async (communityId: string, regenerate: boolean): Promise<void> => {
 		if (!communityExplanation || !subgraph) return;
@@ -1493,13 +1751,15 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		? PEAK_KEYBOARD_A11Y_STRINGS.closeGraphNodeList
 		: PEAK_KEYBOARD_A11Y_STRINGS.openGraphNodeList;
 
-	return (
+	const graphSurface = (
 		<div
-			className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden pktw-min-h-[420px]"
+			ref={surfaceRootRef}
+			className="pk-graph-surface"
 			tabIndex={0}
 			role="application"
 			aria-label={PEAK_KEYBOARD_A11Y_STRINGS.graphInstructions}
 			data-peak-keyboard-entry
+			data-fullscreen={fullscreen ? 'true' : undefined}
 			onFocus={() => {
 				if (!keyboardNodeId) setKeyboardNodeId(graphNodes()[0]?.id() ?? null);
 			}}
@@ -1592,9 +1852,37 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				>
 					{copiedMode === 'image'
 						? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-						: <ImageIcon className="pktw-w-3.5 pktw-h-3.5" />}
-				</IconButton>
-			</div>
+							: <ImageIcon className="pktw-w-3.5 pktw-h-3.5" />}
+					</IconButton>
+					{fullscreen && (
+						<>
+							<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
+							<IconButton label="Zoom out" title="Zoom out" onClick={() => zoomGraph(1 / 1.2)}>
+								<Minus className="pktw-h-3.5 pktw-w-3.5" />
+							</IconButton>
+							<span className="pk-graph-zoom-readout" aria-live="polite">{zoomPercent}%</span>
+							<IconButton label="Zoom in" title="Zoom in" onClick={() => zoomGraph(1.2)}>
+								<Plus className="pktw-h-3.5 pktw-w-3.5" />
+							</IconButton>
+							<IconButton label="Fit graph to view" title="Fit graph to view" onClick={fitGraph}>
+								<Scan className="pktw-h-3.5 pktw-w-3.5" />
+							</IconButton>
+						</>
+					)}
+					<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
+					<IconButton
+						label={fullscreen ? 'Exit graph fullscreen' : 'View graph fullscreen'}
+						title={fullscreen ? 'Exit graph fullscreen' : 'View graph fullscreen'}
+						data-peak-keytip-key={keyTipKeys?.fullscreen}
+						data-peak-keytip-label="View graph fullscreen"
+						onClick={toggleFullscreen}
+						data-active={fullscreen ? 'true' : undefined}
+					>
+						{fullscreen
+							? <Minimize2 className="pktw-h-3.5 pktw-w-3.5" />
+							: <Maximize2 className="pktw-h-3.5 pktw-w-3.5" />}
+					</IconButton>
+				</div>
 			{nodeListOpen && subgraph && (
 				<div
 					ref={nodeListRef}
@@ -1846,5 +2134,29 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				</span>
 			)}
 		</div>
+	);
+
+	return (
+		<>
+			<div ref={inlineSlotRef} className="pk-graph-inline-slot" aria-hidden={fullscreen ? true : undefined} />
+			{surfaceHost && createPortal(graphSurface, surfaceHost)}
+			{fullscreen && createPortal(
+				<div
+					ref={fullscreenDialogRef}
+					className="pk-graph-fullscreen-overlay"
+					role="dialog"
+					aria-modal="true"
+					aria-label="Graph fullscreen viewer"
+					onKeyDown={containFullscreenKeyboard}
+					onPointerDown={(event) => event.stopPropagation()}
+					onClick={(event) => event.stopPropagation()}
+					onContextMenu={(event) => event.stopPropagation()}
+					onWheel={(event) => event.stopPropagation()}
+				>
+					<div ref={fullscreenSlotRef} className="pk-graph-fullscreen-slot" />
+				</div>,
+				portalHostForDocument(fullscreen.ownerDocument),
+			)}
+		</>
 	);
 };

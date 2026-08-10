@@ -173,6 +173,7 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
                 to: string;
                 kind: 'reference' | 'semantic';
                 directionality: 'directed' | 'undirected';
+				weight?: number;
             }> = [];
             for (const r of rows) {
                 if (!scope.has(r.to_node_id)) continue;
@@ -182,6 +183,9 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
                     to: r.to_node_id,
                     kind,
                     directionality: kind === 'semantic' ? 'undirected' : 'directed',
+					...(kind === 'semantic' && Number.isFinite(r.weight)
+						? { weight: Math.max(0, Number(r.weight)) }
+						: {}),
                 });
             }
             return edges;

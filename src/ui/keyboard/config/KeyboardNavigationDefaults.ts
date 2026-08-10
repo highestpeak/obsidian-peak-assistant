@@ -39,7 +39,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 			orbit: 'O',
 		},
 		graphSemantic: 'S',
-		graphCanvas: { nodeList: 'Z', copyMermaid: 'J', copyImage: 'I' },
+		graphCanvas: { nodeList: 'Z', copyMermaid: 'J', copyImage: 'I', fullscreen: '2' },
 		clearPinnedHub: 'U',
 		inspector: {
 			pin: 'P',
@@ -71,7 +71,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 				orbit: '5',
 			},
 			graphSemantic: '6',
-			graphCanvas: { nodeList: '7', copyMermaid: '8', copyImage: '9' },
+			graphCanvas: { nodeList: '7', copyMermaid: '8', copyImage: '9', fullscreen: 'Q' },
 			empty: { twoHop: '1', ai: '2' },
 		},
 		actions: {
@@ -104,7 +104,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 			orbit: 'P',
 		},
 		semantic: 'V',
-		graphCanvas: { nodeList: 'L', copyMermaid: 'W', copyImage: 'B' },
+		graphCanvas: { nodeList: 'L', copyMermaid: 'W', copyImage: 'B', fullscreen: 'X' },
 	},
 	chatStudio: {
 		openLeft: 'C',

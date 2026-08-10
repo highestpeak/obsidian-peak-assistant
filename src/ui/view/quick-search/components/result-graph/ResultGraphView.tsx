@@ -140,6 +140,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			graphNodeExplanation={graphNodeExplanation}
 			nodeExplanationUi={indexService?.env.communityConfig?.nodeExplanation.ui}
 			communityInteraction={indexService?.env.communityConfig?.interaction}
+			graphLayout={indexService?.env.communityConfig?.graphLayout}
 		/>
 	);
 };

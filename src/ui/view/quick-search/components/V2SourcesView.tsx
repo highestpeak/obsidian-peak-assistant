@@ -158,7 +158,7 @@ function VaultRelationshipEmptyState({
 }
 
 export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
-	const { vaultNavigation } = useServiceContext();
+	const { indexService, vaultNavigation } = useServiceContext();
 	const host = useQuickSearchHost();
 	const sources = useSearchSessionStore((state) => state.v2Sources);
 	const query = useSearchSessionStore((state) => state.query);
@@ -474,6 +474,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 									preset={graphPreset}
 									semantic={semantic}
 									keyTipKeys={SOURCE_KEY_TIPS.graphCanvas}
+									graphLayout={indexService?.env.communityConfig?.graphLayout}
 									onNodeTap={(node) => {
 										selectPath(node.path);
 										projectionRef.current?.focus();
