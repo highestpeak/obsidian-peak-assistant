@@ -1,35 +1,39 @@
-# Peak Assistant 配置治理与 Onboarding / Settings 职责边界
+# Peak Assistant 设置清单与 Onboarding / Settings 分工
 
-> - 状态：design-only product contract · configuration inventory · implementation not started
+> - 状态：产品设计说明，尚未开始实现
 > - 日期：2026-08-10
+> - 最后改写：2026-08-11
 > - 面向读者：产品负责人、产品设计师、交互设计师、后续实现与验收人员
-> - 适用范围：Peak Assistant 的首次配置、长期设置、模块内偏好、系统默认、状态与维护操作
-> - 配套文档：[Onboarding 与 Settings 能力、内容和流程 Brief](./2026-08-09-onboarding-settings-capability-content-flow-brief.md)
-> - 文档规模：约 1.2 万中文字符；完整审阅约 35 分钟
+> - 适用范围：Peak Assistant 的首次设置、长期设置、功能内选项、系统默认、运行状态与修复操作
+> - 配套文档：[Onboarding 与 Settings 的能力、内容和流程说明](./2026-08-09-onboarding-settings-capability-content-flow-brief.md)
+> - 文档规模：约 2.3 万中文字符；完整审阅约 55–60 分钟
 
 ## 0. 这份文档解决什么问题
 
-这份文档不讨论 Settings 长什么样，也不规定导航、分栏、控件、颜色或图标。它只回答四件事：
+这份文档不讨论 Settings 的具体视觉形式。它只回答四个问题：
 
-1. Peak Assistant 到底有哪些需要治理的配置；
-2. 哪些允许用户设置，哪些只允许高级设置，哪些必须由系统决定；
-3. 每项配置属于哪个产品模块，权威修改位置在哪里；
-4. Onboarding、Settings、功能模块和系统各自负责什么，为什么必须这样分。
+1. Peak Assistant 到底有哪些设置和可调整能力？
+2. 哪些可以让用户修改，哪些只适合高级用户，哪些应由系统自动处理？
+3. 每项设置应该在哪里修改？
+4. Onboarding、Settings、具体功能页面和系统各自负责什么？
 
-本文是配置层的 source of truth。后续 UI 可以重新设计，但不能因为视觉简化删除这里保留的真实能力，也不能把本文标为系统内部或尚未接通的字段画成普通用户可用设置。
+本文是后续设计和实现共同参考的完整清单。UI 可以重新设计，但不能为了让页面看起来简单，就删掉用户确实需要的能力；也不能把尚未接通的功能画成已经可用。
 
-建议审阅顺序：先看第 0–5 节确认治理原则与模块边界，再看第 6 节完整产品清单、第 7 节当前字段去留，最后集中确认第 10–11 节的现状缺口和 owner decisions。
+阅读时可以分成两部分：
+
+- 产品负责人先看第 0–6 节和第 11 节。
+- 第 7、8、10、13、14 节主要供设计交接、开发和验收时查阅，不需要第一次阅读就全部看懂。
 
 ### 0.1 最终结论
 
-- **不是所有可变参数都是用户设置。** 模板 JSON、算法阈值、运行时限制和状态缓存可以变化，但不因此自动获得 Settings 入口。
-- **不采用全局 Standard / Advanced 模式。** 高级程度属于具体配置项，由影响范围、风险、频率和理解成本决定；它不是一套替代 Settings。
-- **配置有四个权威责任域：Onboarding、Settings、功能模块、系统。** 同一项配置只能有一个写入权威，可以从其他位置深链进入，但不能复制出多份互相冲突的值。
-- **模型配置以产品入口为主导航。** 用户从熟悉的产品入口逐层进入；task family 负责继承，Provider / Connection 只是独立的可用资源池。
-- **普通用户控制意图，系统控制机制。** 用户可以决定“默认用哪个连接”“是否自动更新索引”“AI 能否编辑”；不应默认控制 PageRank 权重、路由打分、轮询间隔或 schema 版本。
-- **任何正式设置都必须有真实 consumer。** 仅有字段、表单或保存成功不算设置；必须能证明启动后可恢复、运行时会消费、修改后能验证实际生效。
-- **状态、操作和设置必须分开。** “索引覆盖率”是状态，“自动更新索引”是设置，“重建索引”是操作；它们不能混成同一种配置项。
-- **Onboarding 的完成不是第一次成功。** Onboarding 只写入完成首次任务所需的最小配置，随后必须进入真实工作入口并观察结果。
+- **不是所有能变化的参数都要放进 Settings。** 例如算法权重和运行限制虽然可以调整，但普通用户不需要管理。
+- **不做一个覆盖全产品的“普通 / 高级”模式开关。** 每项设置自己决定是否属于高级设置，普通设置不会因此被分成两套页面。
+- **同一项设置只能有一个真正的修改位置。** 其他页面可以显示它或跳转过去修改，但不能另外保存一份，避免两个页面互相冲突。
+- **模型设置从用户认识的功能进入。** 用户先找 Chat Studio、Composer、File Atlas 或生成图片，再根据需要逐层查看具体动作；AI 服务商和连接信息单独管理。
+- **用户决定想要什么，系统负责复杂的内部计算。** 用户可以选择默认 AI 连接、是否自动更新索引、AI 能不能修改文件，但不需要判断图算法权重或内部超时参数。
+- **页面上能保存，不等于设置真的有效。** 一项设置只有在产品确实会使用它、重启后仍然保留、并且可以确认已经生效时，才算正式设置。
+- **设置、状态和操作必须分开。** “自动更新索引”是设置，“索引覆盖率”是系统状态，“重新建立索引”是一次操作。
+- **完成 Onboarding 不等于用户已经成功。** 完成必要设置后，还要把用户带到一个真实功能里完成第一件事。
 
 ### 0.2 明确不做
 
@@ -37,112 +41,113 @@
 - 不决定侧栏、标签页、卡片、折叠或搜索控件的视觉形式；
 - 不把旧 Settings 中出现过的每个字段都默认保留为用户设置；
 - 不把“源码里有默认值”误写成“用户应该看到这个默认值”；
-- 不把 Provider、模型、任务、工具、Agent runtime 和媒体 route 混为同一个对象；
+- 不把 AI 服务商、模型、任务、工具、Agent 运行环境和图片 / 视频生成方式混为一类；
 - 不把诊断、迁移、重建和删除动作伪装成普通开关；
-- 不在 Codex / Claude Code runtime adapter 尚未完成前写成已验证可用；
+- 不在 Codex / Claude Code 接入尚未完成前写成已经可用；
 - 不将本文件视为实现完成证明。
 
-## 1. 什么才有资格成为正式设置
+## 1. 什么内容应该成为正式设置
 
-一个项目只有同时满足以下条件，才能作为正式用户设置开放：
+一项内容只有同时满足下面七个条件，才应该出现在正式 Settings 中：
 
-1. **表达用户意图**：用户能够理解自己为什么改变它；
-2. **有真实 consumer**：至少一个 production runtime 会读取并改变可观察行为；
-3. **可持久化恢复**：重启后值不会被归一化、迁移或默认值静默覆盖；
-4. **有安全边界**：输入可校验，依赖与影响范围明确；
-5. **可验证生效**：产品能区分已保存、已生效、等待处理和失败；
-6. **有恢复路径**：可以恢复自动、恢复默认或撤销；
-7. **有唯一 owner**：不会在多个页面保存互相冲突的同一意图。
+1. **用户知道为什么要改。** 名称和说明能让用户理解它会影响什么。
+2. **产品真的会使用这个值。** 修改后，至少有一个真实功能会发生可观察的变化。
+3. **关闭再打开后仍然保留。** 不能表面上保存成功，重启后却悄悄变回旧值。
+4. **不容易设置出错。** 产品知道允许填什么，也能说明它依赖哪些连接或功能。
+5. **用户能看出是否已经生效。** 产品需要区分“已保存”“正在处理”“已生效”和“失败”。
+6. **用户可以反悔。** 能够恢复自动选择、恢复产品默认或撤销修改。
+7. **只有一个主要修改位置。** 不能让同一个设置在多个页面各存一份，最后不知道哪一份算数。
 
-缺少其中任一项时，应归入以下之一：
+如果做不到其中任何一项，就先不要把它当作普通设置。它更可能属于：
 
-- 尚未开放；
-- 只读状态；
-- 系统内部配置；
-- 维护操作；
-- 一次性确认；
-- 迁移兼容字段。
+- 尚未完成、暂时不能开放的功能；
+- 系统自动检测出来的只读状态；
+- 只由系统管理的内部参数；
+- 重新连接、重建或清理等一次操作；
+- 使用高成本或高风险功能前的一次确认；
+- 只为兼容旧版本而暂时保留的数据。
 
 ### 1.1 必须区分的四种“默认”
 
-| 默认类型 | 含义 | 用户恢复默认时的行为 |
+| 类型 | 简单理解 | 用户选择“恢复”时会怎样 |
 | --- | --- | --- |
-| 编译默认 | 产品在没有任何环境信息时的安全 fallback | 不应把当前数值复制成永久 override |
-| 自动默认 | 系统根据可用连接、模型能力、任务和环境动态解析 | 删除用户 override，重新加入自动解析 |
-| 用户默认 | 用户明确选择的长期偏好 | 保留，直到用户修改或恢复自动 |
-| 本次有效值 | 某次运行实际使用的连接、模型、route、权限与参数 | 只写入 receipt，不自动变成长期默认 |
+| 产品内置值 | 系统没有其他信息时使用的安全起始值 | 回到产品当前版本的内置值 |
+| 自动选择 | 系统根据现有连接、模型能力和当前任务自动选择 | 清除用户指定的值，以后继续由系统自动选择 |
+| 用户指定的默认值 | 用户明确选定、希望以后继续使用的长期偏好 | 一直保留，直到用户再次修改或恢复自动选择 |
+| 本次实际使用值 | 这一次任务最终真正使用的连接、模型、权限和参数 | 只记录本次结果，不自动变成长期默认 |
 
-“恢复默认”应优先意味着移除用户 override，而不是把某个当时的编译默认写死。否则产品升级后，旧用户无法得到更可靠的新默认。
+这里最容易出错的是“恢复默认”。对于支持自动选择的设置，它应该表示“取消我的手动指定，重新交给系统选择”，而不是把某个旧版本的数值永久保存下来。这样产品以后更新了更好的默认策略，老用户也能正常得到。
 
-## 2. 配置治理分类
+## 2. 本文怎样区分不同内容
 
-本文对每个项目使用以下治理结论：
+后面的清单会使用下面这些中文分类。分类的目的，是一眼看出用户能不能改、应该在哪里改，而不是增加新的产品术语。
 
-| 标记 | 名称 | 含义 |
-| --- | --- | --- |
-| `AUTO` | 自动可覆盖 | 系统应有可靠自动值；用户可以固定 override，也可以恢复自动 |
-| `USER` | 常用可设 | 用户长期意图，影响清楚，适合在 Settings 中直接管理 |
-| `LOCAL` | 模块内可设 | 只影响当前功能、当前任务或当前视图，权威位置在 owning surface |
-| `POWER` | 高级可设 | 有真实作用，但影响范围大、风险高、频率低或理解成本高 |
-| `CONSENT` | 确认事项 | 许可、成本或数据影响的一次性明确确认；不是长期普通开关 |
-| `ACTION` | 运维动作 | 验证、重建、清理、迁移、删除等命令；执行后产生进度与 receipt |
-| `STATUS` | 只读状态 | 系统检测或计算出的事实；允许刷新和修复，但不允许手工填写 |
-| `SYSTEM` | 系统固定 | 算法、schema、安全硬边界、内部阈值或表现配置，不向普通用户开放 |
-| `BLOCKED` | 暂不开放 | 字段或 UI 可能已存在，但持久化、consumer、能力或验证不完整 |
+| 分类 | 用户怎么理解 |
+| --- | --- |
+| 自动决定 | 系统先给出可靠选择；用户可以手动指定，也可以随时恢复自动选择 |
+| 普通设置 | 用户经常需要的长期偏好，影响容易理解，直接放在 Settings 中 |
+| 功能内设置 | 只影响当前聊天、文档、任务或视图，在对应功能页面修改 |
+| 高级设置 | 确实有用，但影响范围较大、风险较高、很少修改，或需要一定专业知识 |
+| 使用前确认 | 涉及权限、费用或数据影响时的一次确认，不是假装成普通开关 |
+| 操作 | 验证、重建、清理、迁移或删除等需要实际执行的动作，会显示进度和结果 |
+| 只读状态 | 系统检测或计算出的事实，用户可以刷新或修复，但不能手工填写结果 |
+| 系统负责 | 算法、安全限制和内部参数由产品负责，不开放给普通用户 |
+| 暂不可用 | 页面或字段可能已经存在，但保存、实际使用或验证还没有完整接通 |
 
-`POWER` 不是一个全局模式。它只表示某一项应该降低默认视觉干扰，并附带影响说明、校验与恢复方式。
+“高级设置”不是另一套 Settings，也不需要用户先切换整个产品模式。它只表示这一项默认可以收起，但展开后仍要说明影响、检查输入，并提供恢复方式。
 
-## 3. 一项配置应该放在哪里
+## 3. 一项设置应该放在哪里
 
 ```text
-它是否表达用户意图？
-  否 → 状态、系统配置或运行 receipt
-  是 → 当前 production runtime 是否真实消费？
+用户是否需要主动决定？
+  否 → 显示为只读状态，或者完全由系统处理
+  是 → 产品现在是否真的会使用这个设置？
         否 → 暂不开放
-        是 → 是否只影响当前任务、当前文档或当前视图？
-              是 → owning surface
-              否 → 是否是完成所选首次任务的必要阻塞项？
-                    是 → Onboarding 只询问最小值，并写入同一份长期配置
-                    否 → Settings
-              → 如果有安全、成本、迁移或重处理影响，再归为高级、确认或运维动作
+        是 → 它是否只影响当前聊天、文档、任务或视图？
+              是 → 放在对应的功能页面
+              否 → 第一次完成目标时是否一定需要它？
+                    是 → Onboarding 只询问完成任务所需的最少内容
+                    否 → 放在 Settings
+
+如果修改会产生额外费用或风险，就标为高级设置或使用前确认。如果还需要重新处理数据或迁移，则提供一项明确的操作。
 ```
 
 ### 3.1 五条硬规则
 
-1. 同一个值只有一个写入 owner；
-2. 状态入口可以跳转到 owner，但不能自行维护副本；
-3. 模块内选择如果需要成为长期默认，必须明确执行“设为默认”，不能自动污染 Settings；
-4. Onboarding 不发明自己的 Provider、模型、索引或权限数据结构；
-5. 设置保存后必须重新读取 effective state，不能由前端自行假设成功。
+1. 同一个值只能有一个主要修改位置。
+2. 其他页面可以跳到这个位置，但不能另外保存一份。
+3. 功能页面里的临时选择不会自动变成长期默认；用户必须明确点击“设为默认”。
+4. Onboarding 和 Settings 使用同一份连接、模型、索引和权限数据。
+5. 保存后必须从真实功能重新确认是否已经生效，不能只因为按钮提示“保存成功”就算完成。
 
 ## 4. Onboarding、Settings、功能模块和系统的职责
 
 ### 4.1 Onboarding：负责第一次成功
 
-Onboarding 的输入是：
+Onboarding 开始时需要知道：
 
 - 用户第一次想完成的真实任务；
-- 当前环境、连接、Vault、索引、工具和 runtime 的真实 readiness；
+- 当前有哪些连接已经可用，Vault 和知识索引是否准备好，所需工具是否能运行；
 - 已保存且仍有效的用户配置；
 - 上次未完成流程的进度。
 
-Onboarding 只允许写入：
+Onboarding 只会修改完成第一次任务所必需的内容：
 
 - 完成首次任务所需的新连接或认证；
-- 未被用户固定的任务自动默认；
+- 用户尚未明确指定的任务默认值；
 - 完成该任务所需的最低安全许可；
-- 与首次任务直接相关的索引、媒体或 runtime consent；
-- Onboarding 进度、证据时间和首次任务 handoff 状态。
+- 与首次任务直接相关的索引、媒体或 Agent 使用确认；
+- 当前完成到了哪一步，以及之后应该从哪里继续。
 
 Onboarding 不负责：
 
-- 完整 Provider 和模型目录管理；
+- 完整的 AI 服务商和模型列表管理；
 - 逐项讲解 Peak 的所有功能；
-- temperature、chunk size、PageRank、timeout 等高级参数；
-- 全量 MCP、Skills、Command Gateway 管理；
-- 长期数据保留、目录迁移、调试 trace；
-- 替用户重新覆盖已经固定的 task assignment；
-- 把 setup completion 当成 first success。
+- 模型随机程度、文档分块大小、图算法权重和超时等高级参数；
+- 全部外部工具、Skills 和命令安全管理；
+- 长期数据保留、目录迁移和调试记录；
+- 改掉用户已经明确指定的模型或任务默认值；
+- 把“设置完成”误当成“用户已经成功使用”。
 
 为什么这样分：新用户此时没有足够上下文判断大量技术选项。Onboarding 应把“学习产品”替换成“完成一件事”，只在系统无法自动补齐阻塞依赖时提问。
 
@@ -151,56 +156,56 @@ Onboarding 不负责：
 Settings 负责：
 
 - 当前系统是否正常，以及问题影响什么；
-- Connection、任务默认、安全、索引、媒体、数据和工具的长期配置；
+- AI 连接、任务默认、安全权限、索引、媒体、数据和工具的长期配置；
 - 设置的保存、生效、重启、重处理和迁移状态；
 - 恢复自动、恢复默认和依赖影响检查；
 - 定位并进入局部修复流程；
-- 高级设置、诊断和危险操作的治理；
+- 高级设置、系统检查和危险操作；
 - 对所有模块的可搜索入口，但不复制模块内状态。
 
 Settings 不负责：
 
 - 当前聊天的临时模型切换；
-- 当前 Composer 动作的临时 instruction；
+- 当前 Composer 动作的临时指令；
 - 当前 File Atlas 视图的筛选与缩放；
-- 当前媒体任务的 prompt、数量和候选预览；
-- 当前 Agent run 的逐步确认；
+- 当前媒体任务的生成要求、数量和候选预览；
+- 当前 Agent 任务执行过程中的逐步确认；
 - 运行历史本身的完整浏览体验。
 
 为什么这样分：Settings 管理跨任务、跨会话的长期意图。把一次性上下文选择放入 Settings，会让用户无法判断它影响“现在”还是“以后”。
 
-### 4.3 Owning surface：负责当前任务
+### 4.3 具体功能页面：负责这一次任务
 
-Chat Studio、Composer、AI Search、File Atlas、Agent、Media、Command Center 等功能模块负责：
+具体功能页面负责：
 
 - 当前任务输入；
-- 当前任务的临时模型、route 或 preset；
+- 当前任务临时使用的模型、生成方式或预设；
 - 当前上下文范围；
 - 当前视图和工作流偏好；
 - 运行前确认；
-- 当前结果、receipt、重试和恢复；
+- 当前结果、本次运行记录、重试和恢复；
 - 明确的“设为长期默认”动作。
 
 为什么这样分：只有任务现场拥有足够上下文解释选择的实际影响，用户也能立即看到结果。
 
-### 4.4 System：负责机制和事实
+### 4.4 系统：负责自动处理和真实状态
 
 系统负责：
 
-- 自动检测和 readiness；
-- 模型能力、目录来源和新鲜度；
-- 自动路由与 fallback 解析；
-- 索引覆盖、changed / missing、semantic readiness；
-- schema、版本、迁移和安全硬边界；
-- 算法权重、阈值、批大小、内部 timeout 与表现配置；
-- requested configuration 与 effective configuration 的 receipt；
+- 判断连接、索引和工具是否真的可用；
+- 识别模型支持什么，以及模型列表是否来自最新查询；
+- 自动选择模型，并在首选模型不可用时按规则处理；
+- 计算索引覆盖率、发现新增或变化的文件，并判断语义搜索是否可用；
+- 管理数据格式、版本升级和不能绕过的安全限制；
+- 管理算法权重、内部阈值、批处理大小和超时时间；
+- 记录用户原本选择了什么，以及本次任务最终实际用了什么；
 - 发现配置不可用时阻止假成功。
 
 为什么这样分：这些事实不能由用户可靠填写；允许用户手工修改会破坏可信度、安全性或可支持性。
 
-### 4.5 Diagnostics / Maintenance：负责检查和修复
+### 4.5 系统检查与维护：负责发现问题和执行修复
 
-Diagnostics 是只读事实和导出；Maintenance 是有明确影响的动作。两者可以从 Settings 进入，但都不是普通“设置”。
+系统检查展示只读事实，也可以导出诊断信息；维护则会真正执行重连、重建、迁移或清理。两者都可以从 Settings 进入，但都不是普通设置。
 
 每个维护动作必须说明：
 
@@ -209,565 +214,569 @@ Diagnostics 是只读事实和导出；Maintenance 是有明确影响的动作�
 - 是否会重处理或删除；
 - 是否可取消与恢复；
 - 当前进度；
-- 最终 receipt；
-- 完成后重新读取的 readiness。
+- 最终结果记录；
+- 完成后重新检查系统是否恢复正常。
 
-## 5. 模块所有权地图
+## 5. 每个模块分别负责什么
 
-| 模块 | 它拥有的配置意图 | Onboarding 角色 | 不属于它的内容 |
+| 模块 | 这里负责什么 | Onboarding 只做什么 | 不应该放在这里的内容 |
 | --- | --- | --- | --- |
-| Setup & Readiness | 无长期业务偏好；只拥有 setup 进度 | 检测、恢复、串联首次任务 | Provider 字段、索引参数、模型目录 |
-| Connections | 连接实例、认证、endpoint、启停 | 只补首次任务缺失的连接 | 任务路由、工具许可、模型能力事实 |
-| Task Models | 产品能力层级、任务组默认、逐级 override、fallback 意图 | 自动分配最小可用默认 | Provider 凭据、模型目录维护 |
-| Safety & Agent Runtime | 默认写权限、升级策略、预算意图 | 只确认首次任务最低权限 | 单次 tool approval、内部 risk classification |
-| Knowledge Index & Search | 索引范围、更新策略、质量层级、分析输出 | 验证并执行最小必要索引 | 当前 query、索引覆盖率手工输入 |
-| Chat Studio | 对话级临时行为、附件和会话选择 | 首次 Chat handoff | 全局 Provider 管理、长期索引策略 |
-| Composer | 文档默认打开方式、Copilot/Intelligence长期偏好 | 首次 Composer handoff | 当前选区、当前 action instruction |
-| AI Search / Analysis | 分析输出与历史偏好 | 首次 Search handoff | 另建一套模型体系 |
-| File Atlas / Graph | 图谱的稳定默认与模块内视图偏好 | 验证目标文档和图数据可用 | 图算法权重、当前选中节点 |
-| Tools, MCP & Skills | 工具连接、长期 allow/deny、Skills 位置 | 仅在首次任务依赖时处理 | 当前 run approval、系统风险硬限制 |
-| Media & Files | route、每类媒体默认、生成位置、许可 | 首次媒体任务最小配置 | 当前 prompt、预览和生成结果 |
-| Workspace & Ambient | 启动偏好、相关内容载体、Command Center 长期组织 | 首次成功后的推荐入口 | 当前活动文档、最近文件事实 |
-| Data, Usage & Privacy | 数据位置、保留、预览、预算与隐私意图 | 只处理阻塞首次任务的 consent | 原始 usage receipt、内部 DB schema |
-| Appearance & Accessibility | 稳定显示与交互偏好 | 只检测系统能力，不强迫选择 | 产品设计 token、组件级 CSS |
-| Maintenance & Developer | 无普通偏好；高级运行与诊断控制 | 不进入默认首次流程 | 普通状态和高频配置 |
+| 首次设置与可用状态 | 只记录首次设置进度，不保存长期业务偏好 | 检测已有条件、恢复进度、带用户完成第一次任务 | AI 服务商字段、索引参数、完整模型列表 |
+| AI 连接 | 连接账户、登录信息、服务地址和启用状态 | 只补齐第一次任务缺少的连接 | 每种任务用什么模型、工具权限和模型能力判断 |
+| 任务与模型 | 产品功能层级、任务默认模型和逐级特殊指定 | 自动选择能完成第一次任务的最小方案 | API 密钥和完整模型列表的维护 |
+| 权限与 Agent | 长期文件修改权限、升级策略和预算意图 | 只确认第一次任务所需的最低权限 | 当前这一次工具调用的确认、系统内部风险判断 |
+| 知识索引与搜索 | 索引哪些内容、何时更新、质量层级和分析输出 | 检查现状，只执行第一次任务必需的索引处理 | 当前搜索词、让用户手填索引覆盖率 |
+| Chat Studio | 当前对话的临时选择、附件和会话行为 | 打开 Chat Studio 并带用户完成第一次对话 | 管理全部 AI 服务商和长期索引策略 |
+| Composer | 文档默认打开方式、Copilot 和 Intelligence 的长期偏好 | 打开 Composer 并带用户完成第一次文档任务 | 当前选区和某一次动作的临时指令 |
+| AI Search / Analysis | 分析结果的保存方式和历史偏好 | 打开搜索并带用户完成第一次搜索 | 另外建立一套重复的模型设置 |
+| File Atlas / Graph | 图谱长期默认和当前视图偏好 | 确认目标文档和图数据可用 | 图算法权重和当前选中的节点 |
+| 工具、MCP 与 Skills | 外部工具连接、长期允许 / 禁止和 Skills 位置 | 只有第一次任务依赖时才处理 | 当前这一次运行的确认和系统安全硬限制 |
+| 媒体与文件 | 各类媒体的默认生成方式、保存位置和许可 | 只配置第一次媒体任务必需的内容 | 当前生成要求、预览和生成结果 |
+| 工作区与 Ambient | 启动偏好、相关内容出现的位置和 Command Center 的长期组织 | 第一次成功后推荐下一步入口 | 当前活动文档和最近文件等系统事实 |
+| 数据、用量与隐私 | 数据位置、保留方式、预览、预算和隐私偏好 | 只处理第一次任务必须确认的数据影响 | 原始运行记录和内部数据库结构 |
+| 外观与无障碍 | 稳定的显示和操作偏好 | 只检测系统能力，不强迫用户选择 | 产品内部设计变量和单个组件的样式 |
+| 维护与开发者选项 | 高级运行、检查和修复能力，不放普通偏好 | 不进入默认首次流程 | 高频普通设置和日常状态 |
 
-## 6. 完整产品配置清单
+## 6. 所有设置内容
 
 本节是目标产品清单。它规定产品需要覆盖的用户意图，不等于当前全部已经实现。
 
-### 6.1 Setup、Readiness 与首次成功
+### 6.1 首次设置、可用状态与第一次成功
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| 当前整体 readiness | `STATUS` | Setup & Readiness | 必须读取 | 由各能力真实证据聚合，不允许手填 |
-| 各工作入口 readiness | `STATUS` | 各能力 adapter | 按首次目标读取 | Chat、Search、Composer、Atlas、Agent、Media 分开 |
-| 最后验证时间与来源 | `STATUS` | Readiness projection | 必须显示 | 状态必须带 evidence time |
-| setup 进度 | `STATUS` | Onboarding state | 必须恢复 | 进度不等于能力 ready |
-| 第一次任务目标 | `LOCAL` | Onboarding | 必须选择或自动推荐 | 只服务本次首次成功，不是长期产品模式 |
-| 继续 / 重跑 Setup | `ACTION` | Setup & Readiness | 可执行 | 不静默覆盖已有 pinned override |
-| 局部修复某项能力 | `ACTION` | 对应模块 | 可执行 | 修复后重新读取 readiness |
-| first success 结果 | `STATUS` | 首次任务 owner | 必须观察 | 真实任务完成才成立 |
-| upgrade prompt dismiss time | `SYSTEM` | 触发该提示的模块 | 不询问 | 只是 UI 状态，不是用户业务设置 |
+| 当前整体是否可用 | 只读状态 | 首次设置与状态汇总 | 必须读取 | 根据各项功能的真实检测结果汇总，不能让用户手填 |
+| 每个工作入口是否可用 | 只读状态 | 对应功能 | 按第一次任务读取 | Chat、Search、Composer、File Atlas、Agent 和 Media 分开判断 |
+| 最后检查时间与来源 | 只读状态 | 状态汇总 | 必须显示 | 用户需要知道这个结论是什么时候、根据什么得到的 |
+| 首次设置进度 | 只读状态 | Onboarding | 必须恢复 | 流程走到哪一步，不代表功能已经可以使用 |
+| 第一次想完成的任务 | 功能内设置 | Onboarding | 由用户选择或系统推荐 | 只帮助完成第一次成功，不会把产品锁定成一种模式 |
+| 继续或重新运行 Setup | 操作 | 首次设置与状态汇总 | 可以执行 | 不能悄悄改掉用户已经指定的长期设置 |
+| 修复某一项能力 | 操作 | 对应功能 | 可以执行 | 修复完成后必须重新检查是否真的恢复 |
+| 第一次任务结果 | 只读状态 | 执行该任务的功能 | 必须观察 | 只有真实任务完成才算第一次成功 |
+| “稍后再说”的时间记录 | 系统负责 | 触发提示的功能 | 不询问 | 只控制提示何时再次出现，不是业务设置 |
 
-这里没有普通 `USER` 设置，因为 Setup 页面应展示事实和动作，而不是复制所有配置。
+这里没有普通长期设置。Setup 页面主要展示当前情况并帮助用户完成必要操作，不应该把整个 Settings 再复制一遍。
 
-### 6.2 Connections 与 Provider
+### 6.2 AI 连接与服务商
+
+本文把提供 AI 能力的公司或本地服务称为“服务商（Provider）”，把用户已经登录或配置好的一个账户 / 本地服务称为“连接（Connection）”。
 
 #### 上线优先级
 
 | 类型 | 产品结论 | 当前边界 |
 | --- | --- | --- |
-| OpenAI direct API | P0 一等连接 | 当前 Profile 类型已存在 |
-| Anthropic direct API | P0 一等连接 | 当前 Profile 类型已存在 |
-| OpenRouter gateway | P0 一等连接 | 必须动态发现目录并显示缓存新鲜度 |
-| Ollama local service | P0 一等连接 | 必须检测本地服务和动态模型 |
-| Codex Agent runtime | P0 Agent runtime | 当前不能冒充普通 LLM Profile；adapter 尚未完整 |
-| Claude Code Agent runtime | P0 Agent runtime | 当前不能冒充普通 LLM Profile；adapter 尚未完整 |
-| Google / Perplexity | P1 扩展连接 | 当前 Profile 类型已存在 |
-| LiteLLM / LM Studio / vLLM / custom | P2 compatible endpoint | 只在高级配置中开放 |
-| Simulator | 开发 / QA | 不进入普通连接目录 |
+| OpenAI API | 首发重点支持 | 当前已有连接类型 |
+| Anthropic API | 首发重点支持 | 当前已有连接类型 |
+| OpenRouter | 首发重点支持 | 模型很多，必须在线获取最新列表并说明上次更新时间 |
+| Ollama | 首发重点支持 | 必须检测本地服务，并读取这台电脑上真实安装的模型 |
+| Codex | 首发 Agent 能力 | 不能当成普通聊天服务商；专用接入仍未完成 |
+| Claude Code | 首发 Agent 能力 | 不能当成普通聊天服务商；专用接入仍未完成 |
+| Google / Perplexity | 后续扩展 | 当前已有连接类型 |
+| LiteLLM / LM Studio / vLLM / 自定义服务 | 高级扩展 | 只在高级设置中开放 |
+| Simulator | 仅供开发和测试 | 不出现在普通用户的连接列表中 |
 
 #### 用户可控内容
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| 新增连接 | `USER` | Connections | 缺失时才询问 | Onboarding 只展示完成目标所需的少量推荐项 |
-| 连接显示名称 | `USER` | Connections | 使用可靠默认名 | 多账户时才需要用户区分 |
-| API key / auth | `USER` | Connections | 阻塞时输入 | 密文处理；不得在 receipt 或日志回显 |
-| base URL | `POWER` | Connections | Ollama / custom 必需时询问 | 已知 Provider 使用系统默认 endpoint |
-| custom headers / env | `POWER` | Connections / MCP | 不询问 | 密钥字段需单独保护 |
-| 启用 / 停用连接 | `USER` | Connections | 复用已启用且 verified 的连接 | 停用前显示受影响任务 |
-| 测试 / 重新验证 | `ACTION` | Connections | 保存后立即执行 | API key 非空不等于 ready |
-| 删除连接 | `ACTION` | Connections | 不执行 | 必须先列出 task assignments 和 fallback 影响 |
-| 清除本地凭据 | `ACTION` | Connections | 不执行 | 与删除显示记录区分 |
-| 多账户 / 多 endpoint | `POWER` | Connections | 不询问 | 每个实例有独立名称和验证状态 |
-| 模型目录刷新 | `ACTION` | Connections | 必要时执行 | OpenRouter / Ollama 优先动态 discovery |
-| 目录来源、新鲜度、错误 | `STATUS` | Connections | 必须读取 | fallback catalog 必须明确标记 |
-| Provider 能力清单 | `STATUS` | Capability registry | 用于自动筛选 | 用户不能手工声明已知 Provider 的能力 |
-| custom endpoint 模型能力 override | `POWER` | Compatible endpoints | 不询问 | 仅未知 endpoint；需显著提示可能导致错误路由 |
-| connection id、createdAt | `SYSTEM` | Persistence | 不显示为设置 | 只用于稳定引用和迁移 |
+| 新增连接 | 普通设置 | AI 连接 | 缺少时才询问 | 只显示完成当前目标所需的少量推荐项 |
+| 连接显示名称 | 普通设置 | AI 连接 | 先使用清楚的默认名称 | 只有多个账户时，用户才需要额外区分 |
+| API 密钥或登录 | 普通设置 | AI 连接 | 任务被阻塞时输入 | 必须作为机密保存，不能出现在日志和运行记录中 |
+| 服务地址 | 高级设置 | AI 连接 | Ollama 或自定义服务需要时才询问 | 已知服务商使用系统提供的默认地址 |
+| 自定义请求头或环境变量 | 高级设置 | AI 连接 / MCP | 不询问 | 其中的密钥需要单独保护 |
+| 启用或停用连接 | 普通设置 | AI 连接 | 复用已经验证可用的连接 | 停用前列出哪些功能会受到影响 |
+| 测试或重新验证 | 操作 | AI 连接 | 保存后立即执行 | 填了 API 密钥不等于连接真的可用 |
+| 删除连接 | 操作 | AI 连接 | 不执行 | 删除前列出会失去默认模型或备用方案的功能 |
+| 清除本机保存的凭据 | 操作 | AI 连接 | 不执行 | 与删除列表中的连接记录分开说明 |
+| 同一服务商的多个账户或地址 | 高级设置 | AI 连接 | 不询问 | 每个连接有自己的名称和验证状态 |
+| 刷新模型列表 | 操作 | AI 连接 | 必要时执行 | OpenRouter 和 Ollama 优先读取最新真实列表 |
+| 模型列表的来源、更新时间和错误 | 只读状态 | AI 连接 | 必须读取 | 使用内置备用列表时必须明确说明 |
+| 服务商支持哪些能力 | 只读状态 | 模型能力目录 | 用于自动筛选 | 已知服务商的能力不能由用户随意填写 |
+| 自定义服务的模型能力 | 高级设置 | 自定义 AI 服务 | 不询问 | 只用于系统无法识别的服务，并提示填写错误可能导致选错模型 |
+| 连接编号和创建时间 | 系统负责 | 数据存储 | 不显示为设置 | 只用于稳定保存和版本升级 |
 
-连接只回答“Peak 可以调用谁”。它不拥有“Chat 默认用谁”或“Embedding 默认用谁”，这些属于 Task Models。
+AI 连接只回答“Peak 现在可以使用哪些服务”。Chat、Composer、知识索引分别默认用哪个模型，应到“任务与模型”里管理。
 
-### 6.3 Models、任务默认与模型选择
+### 6.3 模型、任务默认与模型选择
 
 模型选择器不是一个独立的 Settings 模块。它是一种被多个任务配置复用的选择能力。真正的产品配置单位是“某类任务默认使用什么”，而不是“全局选一个模型”。
 
 #### 两张不同的地图：可用资源与使用位置
 
-模型配置不能以 Provider 为唯一导航起点。Provider / Connection 回答“Peak 现在能调用谁”，产品能力层级回答“它在什么地方被使用”。二者通过能力解析器关联，但不能合成一棵以 Provider 为根的树。
+模型配置不能只从服务商开始找。AI 连接回答“Peak 现在能使用哪些服务”，产品功能回答“这些服务会用在哪些地方”。两边互相关联，但用户寻找模型设置时，应优先从自己认识的产品功能进入。
 
 ```text
 可用资源池
-├─ OpenAI、Anthropic、OpenRouter 等云端连接
-├─ Ollama 等本地连接
-├─ Codex、Claude Code 等 Agent runtime
-└─ OpenAI native、fal.ai 等媒体连接
+├─ OpenAI、Anthropic、OpenRouter 等云端服务
+├─ Ollama 等本地服务
+├─ Codex、Claude Code 等 Agent 运行环境
+└─ OpenAI、fal.ai 等图片 / 视频生成服务
 
-        按能力、状态、用户 override 和安全策略解析
+        系统根据任务需要、当前可用状态和用户选择自动匹配
 
 产品能力树
 └─ 用户认识的产品入口
-   └─ 能力族
-      └─ 具体 action
-         └─ 必要时才到 execution step / Prompt
+   └─ 一组相近能力
+      └─ 具体动作
+         └─ 必要时才继续查看执行步骤和 Prompt（指令模板）
 ```
 
-Provider 管理应提供反向关系，例如“这个连接当前被哪些产品能力使用”；产品能力叶子则显示正向关系，例如“这项能力当前继承哪个默认，实际解析到了哪个连接和模型”。
+在 AI 连接中，可以查看“这个连接正被哪些功能使用”；在具体功能中，则显示“它沿用了哪一级默认设置，这次实际会使用哪个连接和模型”。
 
 #### 用户从产品入口逐层进入
 
 下面是目标内容层级示例，不是具体 UI，也不是当前注册表已经完整实现的声明：
 
 ```text
-AI defaults
-├─ Conversation & writing
-├─ Research & web
-├─ Knowledge processing
-├─ Understand files
-├─ Agent work
-└─ Create media
+通用任务默认
+├─ 对话与写作
+├─ 研究与网页
+├─ 知识处理
+├─ 理解文件
+├─ Agent 任务
+└─ 生成图片、视频、音乐与语音
 
-Product surfaces
+产品功能
 ├─ Chat Studio
-│  ├─ Conversation
-│  ├─ Improve request / follow-up suggestions
-│  ├─ Plans、projects 与 assistants
-│  └─ Web 与附件任务
+│  ├─ 普通对话
+│  ├─ 改写用户问题与推荐追问
+│  ├─ 计划、项目与助手
+│  └─ 网页和附件任务
 ├─ Composer
 │  ├─ Copilot
-│  │  ├─ Document actions
-│  │  └─ Block actions
-│  │     ├─ Prose、heading、list、task 与 quote
-│  │     ├─ Table、formula 与 chart
-│  │     ├─ Code、Mermaid 与 native object
-│  │     └─ Image 与 frontmatter
-│  └─ Document / Vault review
+│  │  ├─ 整篇文档动作
+│  │  └─ 针对内容块的动作
+│  │     ├─ 正文、标题、列表、任务与引用
+│  │     ├─ 表格、公式与图表
+│  │     ├─ 代码、Mermaid 图与原生对象
+│  │     └─ 图片与文档属性
+│  └─ 文档或整个 Vault 的检查
 ├─ Vault Search
-│  ├─ Core retrieval：不使用文本生成模型
-│  └─ Query refinement：使用模型
+│  ├─ 基础搜索：不使用生成模型
+│  └─ 改写搜索问题：使用模型
 ├─ AI Search
-│  ├─ Plan 与 gather evidence
-│  ├─ Report section 与 summary
-│  ├─ Follow-up 与 synthesis
-│  └─ Save assistance
+│  ├─ 制定搜索计划与收集证据
+│  ├─ 撰写报告段落与摘要
+│  ├─ 追问与综合结论
+│  └─ 保存结果时的辅助
 ├─ File Atlas
-│  ├─ Browse、filter 与 relationship display：确定性能力
-│  └─ Summary / explanation：只有注册 caller 后才允许配置模型
+│  ├─ 浏览、筛选与展示关系：不使用生成模型
+│  └─ 总结与解释：只有真实功能接通后才能配置模型
 ├─ AI Graph
-│  ├─ Relationship map
-│  ├─ Evidence graph
-│  ├─ Thinking map
-│  └─ Node / community explanation
+│  ├─ 关系图
+│  ├─ 证据图
+│  ├─ 思考过程图
+│  └─ 节点和群组解释
 ├─ Ambient
-│  ├─ Retrieval、scoring 与 dedup：确定性能力
-│  ├─ Suggestion explanation
-│  └─ Briefing generation：只有注册 caller 后才允许配置模型
+│  ├─ 查找、排序和去重：不使用生成模型
+│  ├─ 解释推荐原因
+│  └─ 生成简报：只有真实功能接通后才能配置模型
 ├─ Vault Intelligence
-│  ├─ Pattern 与 Hub discovery
-│  ├─ Note / Vault review
-│  └─ Lint repair actions
+│  ├─ 发现模式和重要内容中心
+│  ├─ 检查单篇笔记或整个 Vault
+│  └─ 修复发现的问题
 ├─ Agent / Wizard
-│  ├─ Main run
-│  ├─ Fast helper
-│  └─ Escalation / stronger fallback
-└─ Media
-   ├─ Generate image
-   ├─ Generate video
-   ├─ Generate music
-   └─ Generate speech
+│  ├─ 主要任务
+│  ├─ 快速辅助步骤
+│  └─ 需要更强能力时的升级处理
+└─ 媒体生成
+   ├─ 生成图片
+   ├─ 生成视频
+   ├─ 生成音乐
+   └─ 生成语音
 ```
 
-这个层级允许用户从自己认识的产品名称进入。内部的 task family 继续承担自动默认和继承，但不要求用户先理解它，更不能把 `quick / deep / premium` 等运行时术语放在第一层。
+用户从熟悉的产品名称进入即可。内部仍然可以用“对话与写作”“研究与网页”等任务类型共享默认设置，但不要求普通用户先理解这些分类，更不能先让用户选择 `quick / deep / premium` 之类内部等级。
 
 #### 五个配置层级
 
 | 层级 | 用户问题 | 允许的控制 | 默认行为 |
 | --- | --- | --- | --- |
-| Task family | 这一大类工作通常由谁完成？ | Auto 或长期默认 | 系统自动建立 |
-| Product surface | Composer 或 AI Search 是否需要不同策略？ | 可选 surface override | 继承 task family |
-| Capability family | Composer 的 block actions 是否统一使用另一策略？ | 可选 family override | 继承 surface / task family |
-| Action / execution step | 只有这个动作是否需要特定模型或 Prompt？ | 高级 pinned override | 继承最近的兼容父级 |
-| Current run | 这一次是否临时换模型？ | 临时 override | 不改写长期设置 |
+| 通用任务类型 | 这一大类工作通常用什么？ | 自动选择或长期默认 | 由系统建立，普通用户不必先配置 |
+| 产品功能 | Composer 或 AI Search 是否需要不同选择？ | 可选的功能级指定 | 沿用通用任务类型的设置 |
+| 相近的一组动作 | Composer 的内容块动作是否统一使用另一种选择？ | 可选的动作组指定 | 沿用产品功能或通用任务类型 |
+| 具体动作或执行步骤 | 是否只有这个动作需要特定模型或 Prompt？ | 高级、固定指定 | 沿用距离它最近且能力兼容的上级设置 |
+| 当前这一次任务 | 这一次是否临时换模型？ | 临时选择 | 不改变以后任务的长期设置 |
 
-父级 override 只对能力兼容的后代生效。如果 Composer 同时包含纯文本改写、图片理解和媒体生成，不能强迫一个模型覆盖所有后代；不兼容的节点继续继承自己的 task family，或在对应能力族形成独立 override。
+上一级的指定只会影响它下面“确实能使用这个模型”的动作。例如 Composer 同时包含文字改写、图片理解和媒体生成时，一个文本模型不能被强行应用到全部动作；不兼容的动作继续使用自己所属任务类型的默认选择。
 
 #### 解析优先级
 
 ```text
-当前 run 临时选择
-  → execution step pinned override
-  → action override
-  → capability-family override
-  → product-surface override
-  → task-family default
-  → Peak Auto resolver
+当前这一次的临时选择
+  → 某个执行步骤的固定指定
+  → 某个具体动作的指定
+  → 一组相近动作的指定
+  → 整个产品功能的指定
+  → 通用任务类型的默认值
+  → Peak 自动选择
 ```
 
-无论命中哪一级，required capabilities、安全硬边界和当前连接 readiness 都必须先通过。Pinned override 失效时进入 `action-required`；除非用户明确允许 fallback，否则不能静默换模型。
+无论最终沿用哪一级设置，都要先确认模型能力符合要求、连接当前可用，而且没有违反安全限制。如果用户固定的模型已经失效，产品要明确要求用户处理；除非用户提前允许自动改用备用模型，否则不能悄悄换掉。
 
-#### 每个能力节点需要回答什么
+#### 每项具体能力都要说明什么
 
 | 内容 | 作用 |
 | --- | --- |
 | 它属于哪个产品入口 | 让用户能从熟悉功能找到它 |
-| 它具体完成什么 | 避免只展示内部 capability id |
-| 它是否真的使用 AI 模型 | 确定性 helper 不显示假的模型配置 |
-| 当前配置来源 | Auto、继承、pinned 或本次临时选择 |
-| 当前 effective connection / model | 告诉用户实际使用结果，不只显示默认值 |
-| 为什么兼容 | tools、vision、PDF、context、media 或 runtime 能力 |
-| 修改影响范围 | 当前 step、action、能力族、surface 或整个 task family |
-| 当前 Prompt owner | 只在存在真实 production caller 时逐层进入 |
-| 最近验证与运行证据 | 区分“已配置”和“已真实使用” |
+| 它具体完成什么 | 不只展示只有开发者看得懂的内部编号 |
+| 它是否真的使用 AI 模型 | 搜索、排序等不使用生成模型的动作，不显示假的模型设置 |
+| 当前设置来自哪里 | 是系统自动选择、沿用上级、用户固定，还是只对本次临时选择 |
+| 当前实际使用的连接和模型 | 告诉用户真正会用什么，而不只显示一个默认值 |
+| 为什么可以使用这个模型 | 说明是否需要工具、看图、读取 PDF、长上下文或生成媒体等能力 |
+| 修改会影响哪里 | 只影响当前步骤、整个动作、一组动作、整个功能，还是同类任务 |
+| 相关 Prompt | 只有已经接入真实功能的动作，才能继续查看和修改指令模板 |
+| 最近检查和运行记录 | 区分“已经填过设置”和“已经真实使用” |
 
-#### Prompt 是叶子内容，不是模型导航根
+#### Prompt 是最深一层的指令，不是寻找模型的起点
 
-- 用户先定位产品入口和具体 action，再查看该 action 的执行步骤与 Prompt；
-- system / user companion Prompt 属于同一个 execution step，不产生两个模型配置；
-- shared Prompt 可以被多个 action 引用，编辑时必须说明影响范围；
-- 模型 override 仍属于 action / execution step，不属于 Prompt 文件；
-- 没有 production caller 的 Prompt 不进入正式层级；
-- locked system instruction、schema 和安全边界可以查看，但不能被普通 Prompt 编辑覆盖。
+- 用户先找到产品功能和具体动作，再查看这个动作使用的 Prompt（指令模板）。
+- 同一步骤配套的系统 Prompt 和用户 Prompt 共同完成一件事，不应出现两套模型设置。
+- 同一份 Prompt 可能被多个动作共用，修改前必须说明会影响哪些地方。
+- 模型选择属于具体动作或执行步骤，不属于某一个 Prompt 文件。
+- 没有连接到真实功能的 Prompt，不进入正式配置层级。
+- 系统安全指令和固定的数据格式可以查看，但不能被普通 Prompt 修改覆盖。
 
-这样 Composer 可以继续向下进入 block、table、formula、Mermaid 等具体动作，但普通用户停在 Composer 或 Copilot 层就能理解当前总体策略，不需要浏览所有 Prompt。
+这样 Composer 仍然可以继续进入内容块、表格、公式和 Mermaid 等具体动作。普通用户停在 Composer 或 Copilot 层，就能理解当前整体策略，不需要浏览所有 Prompt。
 
-#### 降低 Provider 与模型选择压力
+#### 怎样减少选择服务商和模型的压力
 
 模型配置的默认路径应遵循以下顺序：
 
-1. 先检测已有且 verified 的 Connection；
-2. 根据当前能力自动过滤 required capabilities；
-3. 默认使用 Peak Auto，不要求用户同时选择 Provider 和 model；
+1. 先检查用户已经配置并验证可用的连接；
+2. 根据当前任务需要，自动排除能力不合适的模型；
+3. 默认使用 Peak 自动选择，不要求用户同时理解服务商和具体模型；
 4. 只给出一个推荐结果和少量已验证替代项；
 5. 用户主动要求时，才进入完整兼容模型目录；
-6. 保存后立即显示 effective connection / model 与影响范围。
+6. 保存后立即显示实际会使用的连接、模型和影响范围。
 
 允许四种明确策略：
 
 | 策略 | 用户承担的决定 | 适用情况 |
 | --- | --- | --- |
-| Peak Auto | 不选 Provider，也不选 model | 默认；跨已验证连接自动解析 |
-| Auto within connection | 只固定 Connection | 用户信任某个 Provider，但不想管理模型变更 |
-| Fixed model | 固定 Connection + model | 高级用户、可重复任务或严格成本控制 |
-| No model | 不使用生成模型 | 搜索、排序、过滤、图计算等确定性能力 |
+| Peak 自动选择 | 不选服务商，也不选具体模型 | 默认；系统在所有已验证连接中自动选择 |
+| 固定服务商，自动选模型 | 只指定一个连接 | 用户信任某个服务商，但不想持续管理模型更新 |
+| 固定模型 | 指定连接和具体模型 | 高级用户、需要重复得到相近结果，或需要严格控制成本 |
+| 不使用生成模型 | 不做模型选择 | 搜索、排序、过滤和图计算等本来就不需要生成模型的功能 |
 
 具体规则：
 
-- 新增 Connection 时，完成认证和真实验证即可，不强迫立刻选完所有模型；
-- 选择 Provider 后，模型默认保持 Auto within connection；
-- 选择 model 时自动确定其 Connection，不再重复询问 Provider；
+- 新增连接时，只需要完成登录和真实验证，不强迫用户立刻选完所有模型；
+- 选择服务商后，默认由系统在这个连接内自动选择模型；
+- 直接选择某个模型时，系统自动找到它所属的连接，不再重复询问服务商；
 - 推荐候选优先来自已连接、已验证且能力匹配的模型；
-- OpenRouter 不默认平铺 55 个 fallback entries；先给任务匹配的 verified shortlist；
-- Ollama 只使用当前真实 discovery 到的本地模型；
-- Codex / Claude Code 只出现在 Agent work 的兼容候选中；
-- Image、video、music、speech 分别使用自己的 media preset / model 目录；
-- 不兼容候选不进入默认 shortlist，但需要提供可理解的排除原因；
-- 任何自动选择都在运行 receipt 中记录 requested policy、effective connection、model 和 fallback 原因。
+- OpenRouter 不默认平铺 55 个内置备用条目，只显示少量适合当前任务且已经验证的模型；
+- Ollama 只显示这台电脑上当前真正检测到的本地模型；
+- Codex 和 Claude Code 只出现在 Agent 任务的可选项中；
+- 图片、视频、音乐和语音各用自己的模型列表，不与文本模型混在一起；
+- 不兼容的模型不进入默认推荐，但用户查看完整列表时能看到被排除的原因；
+- 每次自动选择都记录：用户选择的策略、实际连接、实际模型，以及是否改用了备用方案。
 
-#### 任务组与 assignment
+#### 六类通用任务及其具体用途
 
-| 任务组 | 必须覆盖的 assignment | 默认策略 |
+| 通用任务类型 | 包含的具体用途 | 默认策略 |
 | --- | --- | --- |
-| Conversation & writing | Chat Studio、Composer Copilot、Quick assist | 组级 Auto；单项可固定 |
-| Research & web | Research、AI Search planner、AI Search report writer、Web search、Stronger fallback | 按 tools、web、context 与质量需求自动筛选 |
-| Knowledge processing | Knowledge embeddings、Vault intelligence | embedding 与 generative model 分开 |
-| Understand files | Image/PDF/video understanding、Audio transcription | 按输入 modality 筛选 |
-| Agent work | Agent run、Fast tool helper | Agent runtime 与普通 LLM route 分开 |
-| Create media | Image、Video、Music、Speech | 使用媒体 route / preset，不混入文本模型目录 |
+| 对话与写作 | Chat Studio、Composer Copilot、快速辅助 | 整类任务默认自动选择，单个功能可以固定 |
+| 研究与网页 | 深度研究、AI Search 规划、报告撰写、网页搜索、必要时使用更强模型 | 根据工具、联网、上下文和质量要求自动筛选 |
+| 知识处理 | 知识向量模型、Vault Intelligence | 向量模型和文字生成模型分开管理 |
+| 理解文件 | 理解图片 / PDF / 视频、音频转文字 | 根据输入文件类型自动筛选 |
+| Agent 任务 | 主要 Agent 任务、快速工具辅助 | Agent 运行环境和普通文本模型分开管理 |
+| 生成媒体 | 图片、视频、音乐、语音 | 使用各自的生成方式和预设，不混入文本模型列表 |
 
-这 18 项是产品职责，不是模型数量，也不要求默认展示 18 个选择器。assignment 继承任务组，只有偏离组默认时才形成 pinned override。
+这 18 项表示产品需要负责的具体用途，不代表只有 18 个模型，也不代表页面必须同时展示 18 个选择器。每项具体用途默认沿用所属任务类型，只有用户明确要求不一样时才单独保存。
 
-#### 配置与状态
+#### 模型相关设置与状态
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| 任务组默认 | `AUTO` | Task Models | 自动建立 | 优先满足能力、可用性和用户已有连接 |
-| 单个 assignment override | `POWER` | Task Models | 不询问 | 只有用户明确固定才脱离继承 |
-| 当前会话临时模型 | `LOCAL` | Chat Studio | 首次 handoff 可自动 | 不自动改长期默认 |
-| 当前 action 临时模型 | `LOCAL` | owning action | 不询问 | receipt 记录 requested / effective |
-| 恢复 Auto | `ACTION` | Task Models | 可用于修复 | 删除 override，重新继承 |
-| 自动 fallback | `AUTO` | Task Models | 自动建立 | 必须说明何时会触发 |
-| stronger escalation 是否允许 | `USER` | Safety & Agent | 不询问 | 默认允许，但受预算和权限约束 |
-| 模型候选与兼容性 | `STATUS` | Model catalog | 自动筛选 | 来源、能力、新鲜度和不兼容原因可见 |
-| 实际使用的模型与 route | `STATUS` | Run receipt | 首次任务必须记录 | 不用默认值代替实际值 |
-| raw model id | `STATUS` / `POWER` | Model catalog | 不要求理解 | 普通语义使用 display name；高级可查看 raw id |
-| Provider `primaryModel` / `fastModel` | `BLOCKED` | Migration | 不进入新设计 | 与 task assignments 重叠，应迁移后退役 |
-| 旧 `defaultModel` | `BLOCKED` | Migration | 不进入新设计 | 不能继续作为含义模糊的全局模型 |
-| 旧 quick/deep/premium tier 字段 | `BLOCKED` | Migration | 不暴露术语 | 映射到用户可理解的任务职责后逐步退役 |
+| 通用任务类型的默认模型 | 自动决定 | 任务与模型 | 自动建立 | 优先满足能力要求，并复用用户已经可用的连接 |
+| 某个具体用途单独指定 | 高级设置 | 任务与模型 | 不询问 | 只有用户明确固定后，才不再沿用上级默认 |
+| 当前对话临时换模型 | 功能内设置 | Chat Studio | 第一次进入时可自动选择 | 不自动改变长期默认 |
+| 当前动作临时换模型 | 功能内设置 | 执行该动作的页面 | 不询问 | 本次运行记录用户选择和最终实际模型 |
+| 恢复自动选择 | 操作 | 任务与模型 | 修复时可以使用 | 清除手动指定，重新沿用上级默认 |
+| 首选模型不可用时自动换用备用模型 | 自动决定 | 任务与模型 | 自动建立 | 必须说明什么时候会触发 |
+| 是否允许必要时使用更强模型 | 普通设置 | 权限与 Agent | 不询问 | 默认允许，但仍受预算和权限限制 |
+| 候选模型及兼容性 | 只读状态 | 模型列表 | 自动筛选 | 显示来源、能力、更新时间和不兼容原因 |
+| 本次实际使用的模型和连接 | 只读状态 | 运行记录 | 第一次任务必须记录 | 不能用默认值冒充实际结果 |
+| 模型的原始编号 | 只读状态 / 高级设置 | 模型列表 | 不要求理解 | 普通用户看名称，高级用户可以查看原始编号 |
+| 旧的 `primaryModel` / `fastModel` | 暂不可用 | 旧配置迁移 | 不进入新设计 | 与新的具体用途设置重复，迁移后退役 |
+| 旧的全局 `defaultModel` | 暂不可用 | 旧配置迁移 | 不进入新设计 | 含义太模糊，不能继续作为全产品唯一模型 |
+| 旧的 quick / deep / premium 字段 | 暂不可用 | 旧配置迁移 | 不向用户展示 | 映射到用户能理解的具体用途后逐步退役 |
 
 #### 输出与运行控制
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| reasoning effort | `POWER` | Task Models / action | 只有兼容模型和真实 consumer 才开放 |
-| text verbosity | `POWER` | Task Models / action | 应先提供任务语义默认 |
-| temperature | `POWER` | Task Models / action | 默认由模型或产品 preset 决定 |
-| top-p / top-k | `POWER` | Task Models / action | 不与 temperature 同时强迫普通用户判断 |
-| presence / frequency penalty | `POWER` | Task Models / action | 只为支持该参数的 Provider 开放 |
-| max output tokens | `POWER` | Task Models / action | 必须受模型上限校验 |
-| step / total timeout | `POWER` | Runtime | 只有可证明被执行路径消费时开放 |
-| model-routing scoring / tier preference table | `SYSTEM` | Model router | 属于产品机制，不是用户偏好 |
-| context safety factor / long-context threshold | `SYSTEM` | Model router | 防止超限的安全机制 |
-| chat loop max steps / tool calls | `SYSTEM` | Chat runtime | 产品运行硬边界；将来若开放需单独风险设计 |
+| 推理强度 | 高级设置 | 任务与模型 / 具体动作 | 只有模型支持而且真实功能会使用时才开放 |
+| 回答详细程度 | 高级设置 | 任务与模型 / 具体动作 | 先提供“简洁 / 正常 / 详细”等任务含义明确的默认值 |
+| 随机程度（temperature） | 高级设置 | 任务与模型 / 具体动作 | 默认由模型或产品预设决定 |
+| top-p / top-k | 高级设置 | 任务与模型 / 具体动作 | 不与随机程度一起强迫普通用户判断 |
+| 重复与用词惩罚 | 高级设置 | 任务与模型 / 具体动作 | 只在服务商真实支持时开放 |
+| 最大输出长度 | 高级设置 | 任务与模型 / 具体动作 | 不能超过模型本身的限制 |
+| 单步和总超时时间 | 高级设置 | 运行系统 | 只有真实功能确实会读取时才开放 |
+| 自动选模型的内部评分 | 系统负责 | 模型选择系统 | 属于产品内部机制，不是用户偏好 |
+| 长上下文安全余量 | 系统负责 | 模型选择系统 | 用于避免超过模型限制 |
+| 对话最多执行多少步、调用多少次工具 | 系统负责 | Chat 运行系统 | 属于产品安全边界；将来若开放，需要单独评估风险 |
 
-### 6.4 Safety、Agent runtime、Tools、MCP 与 Skills
+### 6.4 权限、Agent、外部工具与 Skills
 
 #### 安全与 Agent
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| 默认 permission mode | `USER` | Safety & Agent | 首次 Agent 任务确认 | 默认 `acceptEdits`；`bypassPermissions` 必须高风险确认 |
-| 当前 run permission override | `LOCAL` | Agent run | 运行前确认 | 只影响当前 run |
-| 自动 escalation | `USER` | Safety & Agent | 不询问 | 当前默认开启 |
-| 最大 escalation 次数 | `POWER` | Safety & Agent | 不询问 | 当前范围 1–3 |
-| escalation score threshold | `POWER` | Safety & Agent | 不询问 | 不要求普通用户理解自评分 |
-| hooks 是否启用 | `POWER` | Safety & Agent | 不询问 | 默认关闭；需要明确执行边界 |
-| Agent runtime 安装、版本、登录 | `STATUS` | Agent runtime | 目标依赖时检测 | 不允许手填 ready |
-| 工作目录策略 | `USER` / `POWER` | Agent runtime | 目标依赖时确认 | 默认使用明确的当前 Vault / workspace 边界 |
-| session 创建、恢复、停止 | `ACTION` | Agent runtime | 首次任务可执行 | 不是长期设置 |
-| runtime timeout / interrupt | `POWER` / `ACTION` | Agent runtime | 不询问 | timeout 是策略，interrupt 是动作 |
-| destructive / unknown command system block | `SYSTEM` | Safety policy | 自动执行 | 用户不可覆盖硬阻止 |
+| Agent 默认可以做什么 | 普通设置 | 权限与 Agent | 第一次 Agent 任务前确认 | 默认允许正常编辑；绕过所有确认必须单独进行高风险确认 |
+| 当前任务临时权限 | 功能内设置 | 当前 Agent 任务 | 运行前确认 | 只影响这一次任务 |
+| 任务太难时是否自动升级能力 | 普通设置 | 权限与 Agent | 不询问 | 当前默认开启 |
+| 一次任务最多自动升级几次 | 高级设置 | 权限与 Agent | 不询问 | 当前允许 1–3 次 |
+| 何时判断需要升级 | 高级设置 | 权限与 Agent | 不询问 | 普通用户不需要理解内部评分 |
+| 是否允许执行 hooks | 高级设置 | 权限与 Agent | 不询问 | 默认关闭；开启前说明会执行什么 |
+| Agent 是否已安装、版本和登录状态 | 只读状态 | Agent 运行环境 | 当前目标需要时检测 | 不能让用户手填“已就绪” |
+| Agent 可以在哪个目录工作 | 普通设置 / 高级设置 | Agent 运行环境 | 当前目标需要时确认 | 默认限制在明确的 Vault 或工作区内 |
+| 创建、恢复或停止 Agent 任务 | 操作 | Agent 运行环境 | 第一次任务可以执行 | 这是当前操作，不是长期设置 |
+| 超时时间 / 立即中断 | 高级设置 / 操作 | Agent 运行环境 | 不询问 | 超时时间是长期策略，立即中断是当前操作 |
+| 危险或无法判断的命令 | 系统负责 | 安全规则 | 自动阻止 | 用户不能绕过系统的硬性禁止 |
 
-#### MCP、Obsidian commands 与 Skills
+#### MCP、Obsidian 命令与 Skills
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+MCP 是给 Peak 连接外部工具的一种协议。普通用户通常只需要知道“这个工具是否已连接、能做什么”；命令、参数和传输方式属于高级设置。
+
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| 新增 MCP server | `POWER` | Tools | 仅首次任务依赖时 | 默认无外部 server |
-| MCP name / transport | `POWER` | Tools | 必要时配置 | stdio 与 SSE 分开验证 |
-| MCP command / args / URL | `POWER` | Tools | 不默认询问 | 输入校验并显示执行边界 |
-| MCP env / headers | `POWER` | Tools | 不询问 | 密文值保护 |
-| MCP enable / disable | `USER` | Tools | 可复用已连接工具 | 停用前显示受影响 Skills / Agents |
-| MCP connection status / tool count | `STATUS` | Tools runtime | 依赖时读取 | connecting、connected、error 分开 |
-| Web Access assignment | `AUTO` | Task Models / Tools | 任务需要时建立 | 不把 Web 当 Provider |
-| 扫描第三方 Obsidian commands | `ACTION` | Command Gateway | 不进入默认流程 | 扫描后产生可审查 finding |
-| command allow / deny | `USER` | Command Gateway | 目标依赖时确认 | decision 是用户意图 |
-| risk、purpose、source hash、stale | `STATUS` | Command Gateway | 自动读取 | 用户不手工填写风险事实 |
-| destructive / unknown compiled exclusion | `SYSTEM` | Command Gateway | 自动执行 | 不允许 review 解除 |
-| command audit receipt | `STATUS` | Command Gateway | 首次 run 可记录 | 记录实际 observation |
-| Skills folder | `POWER` | Skills | 不询问 | 默认从 AI root 派生 |
-| Skill enable / disable / scope | `USER` / `LOCAL` | Skills owner | 目标依赖时最小处理 | 全局启停与单次选择分开 |
-| Skill instruction / allowed tools | `POWER` | Skill editor | 不询问 | 需要 schema 校验和明确风险 |
-| Gateway batch size、regex、settle delay、rotation | `SYSTEM` | Template config | 不询问 | 内部算法和运行上限 |
+| 新增 MCP 工具服务 | 高级设置 | 外部工具 | 第一次任务依赖时才处理 | 默认不连接额外外部工具 |
+| MCP 名称和连接方式 | 高级设置 | 外部工具 | 必要时配置 | 不同连接方式分别验证 |
+| MCP 命令、参数和地址 | 高级设置 | 外部工具 | 不默认询问 | 检查输入，并说明实际会执行到哪里 |
+| MCP 环境变量和请求头 | 高级设置 | 外部工具 | 不询问 | 其中的密钥必须保护 |
+| 启用或停用 MCP 工具 | 普通设置 | 外部工具 | 复用已经连接的工具 | 停用前显示会影响哪些 Skills 和 Agent |
+| 连接状态和可用工具数量 | 只读状态 | 外部工具运行系统 | 当前任务依赖时读取 | 分清“正在连接”“已连接”和“连接失败” |
+| 哪些任务可以使用网页 | 自动决定 | 任务与模型 / 外部工具 | 任务需要时建立 | 网页访问是一种工具能力，不是 AI 服务商 |
+| 扫描第三方 Obsidian 命令 | 操作 | 命令安全检查 | 不进入默认流程 | 扫描后列出需要用户审阅的问题 |
+| 允许或禁止某条命令 | 普通设置 | 命令安全检查 | 当前目标依赖时确认 | 这是用户的长期选择 |
+| 命令用途、风险和是否已经变化 | 只读状态 | 命令安全检查 | 自动读取 | 风险事实不能让用户自己填写 |
+| 破坏性或无法识别的命令 | 系统负责 | 命令安全检查 | 自动排除 | 用户审阅也不能解除系统硬性阻止 |
+| 命令实际执行记录 | 只读状态 | 命令安全检查 | 第一次运行可以记录 | 记录真实发生了什么 |
+| Skills 文件夹 | 高级设置 | Skills | 不询问 | 默认从 AI 主目录推导 |
+| 启用、停用或本次选择某个 Skill | 普通设置 / 功能内设置 | Skills | 当前目标依赖时最少处理 | 长期启停和只对本次任务使用要分开 |
+| Skill 指令和可使用的工具 | 高级设置 | Skill 编辑器 | 不询问 | 保存前检查格式，并说明工具权限风险 |
+| 扫描批量大小、匹配规则和等待时间 | 系统负责 | 产品内部配置 | 不询问 | 属于内部算法和运行上限 |
 
-### 6.5 Knowledge Index、Search 与 AI Analysis
+### 6.5 知识索引、搜索与 AI 分析
 
 #### 状态和日常策略
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| local store health | `STATUS` | Knowledge Index | 必须检测 | ready / error / unavailable |
-| indexed / eligible / coverage | `STATUS` | Knowledge Index | 必须读取 | 不允许手工填写 |
-| missing / changed files | `STATUS` | Knowledge Index | 必须读取 | 决定最小 update 动作 |
-| last successful build / update | `STATUS` | Knowledge Index | 必须读取 | 带 evidence time |
-| text search readiness | `STATUS` | Knowledge Index | 必须读取 | 与 semantic readiness 分开 |
-| semantic / full enrichment readiness | `STATUS` | Knowledge Index | 目标依赖时读取 | 缺失时可 degraded，不一定 failed |
-| indexing stage / progress / cancelability | `STATUS` | Knowledge Index | 运行时显示 | 不能长期停留在无事实的 Scanning |
-| index level：fast / semantic / full | `USER` | Knowledge Index | 只选满足目标的最低层级 | 变更可能触发重处理 |
-| auto index / incremental update | `USER` | Knowledge Index | 首次索引后说明 | 当前默认 false；上线默认仍需 owner 决策 |
-| refresh interval | `POWER` | Knowledge Index | 不询问 | 当前编译默认 5 秒 |
-| include document types | `USER` | Knowledge Index | 使用可靠推荐集合 | 只开放真实 loader 支持的类型 |
-| include / exclude folders and patterns | `USER` | Knowledge Index | 只处理明显冲突 | 默认排除 `.git`、`node_modules`、`.obsidian`、数据目录等 |
-| embedding task assignment | `AUTO` | Task Models | semantic 目标依赖时建立 | 不在 Index 中另存一套冲突模型 |
-| PPR reranking | `POWER` | Search quality | 不询问 | 当前默认开启；应说明影响搜索排序 |
-| Hub curation scheduler | `USER` | Knowledge intelligence | 不询问 | 当前默认关闭 |
-| Hub curation interval | `POWER` | Knowledge intelligence | 不询问 | 当前默认 7 天 |
+| 本地索引数据是否正常 | 只读状态 | 知识索引 | 必须检测 | 明确显示正常、出错或无法使用 |
+| 已索引数量、可索引数量和覆盖率 | 只读状态 | 知识索引 | 必须读取 | 不能让用户手工填写 |
+| 尚未加入索引或已经变化的文件 | 只读状态 | 知识索引 | 必须读取 | 用来决定只更新哪些必要内容 |
+| 上次成功建立或更新索引的时间 | 只读状态 | 知识索引 | 必须读取 | 显示结论对应的时间 |
+| 普通文字搜索是否可用 | 只读状态 | 知识索引 | 必须读取 | 与语义搜索状态分开 |
+| 语义搜索和完整 AI 分析是否可用 | 只读状态 | 知识索引 | 当前目标依赖时读取 | 高级能力缺失时可以降级使用基础搜索，不一定代表全部失败 |
+| 当前处理阶段、进度和能否取消 | 只读状态 | 知识索引 | 运行时显示 | 只有真实任务正在运行时才能显示“正在扫描” |
+| 索引深度：快速 / 语义 / 完整 | 普通设置 | 知识索引 | 选择能完成目标的最低层级 | 改变后可能需要重新处理文件 |
+| 自动建立索引和增量更新 | 普通设置 | 知识索引 | 第一次建立索引后说明 | 当前默认关闭；正式上线默认值仍需产品负责人确认 |
+| 多久检查一次变化 | 高级设置 | 知识索引 | 不询问 | 当前产品内置值为 5 秒 |
+| 包含哪些文档类型 | 普通设置 | 知识索引 | 使用可靠的推荐集合 | 只展示产品真的能读取的类型 |
+| 包含或排除哪些文件夹和文件规则 | 普通设置 | 知识索引 | 只处理明显冲突 | 默认排除系统目录和 Peak 自己的数据目录 |
+| 知识向量使用哪个模型 | 自动决定 | 任务与模型 | 需要语义搜索时建立 | 只在任务与模型中保存一份，不在索引设置中重复保存 |
+| 搜索结果再次排序 | 高级设置 | 搜索质量 | 不询问 | 当前默认开启，需要说明它会改变结果顺序 |
+| 是否定期整理重要内容中心 | 普通设置 | 知识智能 | 不询问 | 当前默认关闭 |
+| 多久整理一次 | 高级设置 | 知识智能 | 不询问 | 当前默认 7 天 |
 
-#### 内容解析、chunking 与分析输出
+#### 怎样读取和拆分文档，以及分析结果保存在哪里
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| Markdown / PDF / image / Excalidraw 等类型 | `USER` | Knowledge Index | 只有端到端 loader 通过才可选择 |
-| XLSX | `BLOCKED` | Knowledge Index | 当前 loader 明确返回不支持，不得画成可用开关 |
-| chunk size / overlap | `POWER` | Knowledge Index | 当前默认 1000 / 200；变更需 re-index |
-| minimum document size for chunking | `POWER` | Knowledge Index | 当前默认 1500；当前 UI key 需要修复后才可靠 |
-| skip code blocks | `POWER` | Knowledge Index | 当前默认关闭 |
-| code placeholder / max code chars | `POWER` | Knowledge Index | 只有 skip/code strategy 需要时出现 |
-| inspector keyword / tag counts | `LOCAL` / `POWER` | Inspector / File Atlas | 更适合模块内偏好，不是索引核心设置 |
-| inspector folder grouping / depth | `LOCAL` / `POWER` | Inspector / File Atlas | 当前 UI 存在，但启动恢复链路不完整 |
-| AI Analysis auto-save | `USER` | AI Search / Analysis | 首次分析使用默认；当前默认开启 |
-| AI Analysis output folder | `USER` | AI Search / Analysis | 默认从 AI root 派生；修改需说明未来写入与迁移边界 |
-| exclude saved analyses from search | `USER` | AI Search / Analysis | 当前默认开启，防止结果反复污染搜索 |
-| analysis history limit | `USER` | AI Search / Analysis | 当前默认 5 |
-| short / full / session summary limits | `POWER` | AI Search / Analysis | 当前默认 150 / 2000 / 3000 |
-| thought / search agent model fields | `BLOCKED` | Migration | 迁入 Task Models，避免与 planner / writer assignment 重复 |
+| Markdown、PDF、图片和 Excalidraw 等类型 | 普通设置 | 知识索引 | 只有从读取到搜索的完整流程都通过后才允许选择 |
+| XLSX 表格 | 暂不可用 | 知识索引 | 当前明确不支持，不能画成可以开启的选项 |
+| 每段文字大小和相邻段落重复量 | 高级设置 | 知识索引 | 当前默认 1000 / 200；修改后需要重新建立索引 |
+| 多长的文档才需要拆分 | 高级设置 | 知识索引 | 当前默认 1500；现有设置字段有问题，修复前不可靠 |
+| 是否跳过代码块 | 高级设置 | 知识索引 | 当前默认不跳过 |
+| 跳过代码时的替代文字和最大代码长度 | 高级设置 | 知识索引 | 只有选择跳过代码时才显示 |
+| File Atlas 显示多少关键词和标签 | 功能内设置 / 高级设置 | File Atlas | 更适合在查看文件时调整，不是索引核心设置 |
+| File Atlas 文件夹分组和深度 | 功能内设置 / 高级设置 | File Atlas | 现有页面有选项，但重启后恢复尚未完整接通 |
+| AI 分析是否自动保存 | 普通设置 | AI Search / Analysis | 第一次分析使用推荐默认；当前默认开启 |
+| AI 分析保存到哪个文件夹 | 普通设置 | AI Search / Analysis | 默认从 AI 主目录推导；修改时说明以后写到哪里、旧文件是否移动 |
+| 已保存的分析是否从搜索中排除 | 普通设置 | AI Search / Analysis | 当前默认开启，避免分析结果再次污染搜索 |
+| 保留多少条分析历史 | 普通设置 | AI Search / Analysis | 当前默认 5 条 |
+| 摘要长度 | 高级设置 | AI Search / Analysis | 短摘要、完整摘要和会话摘要分别有默认上限 |
+| 旧的思考 / 搜索模型字段 | 暂不可用 | 旧配置迁移 | 迁入任务与模型，避免同一用途出现两套设置 |
 
-当前 `includeDocumentTypes` 的逐类结论：
+各文档类型目前的结论：
 
-| 文档类型 | 当前默认 | 目标治理 | 说明 |
+| 文档类型 | 当前默认 | 应怎样提供 | 说明 |
 | --- | --- | --- | --- |
-| Markdown | 开启 | `USER` | 核心文本来源 |
-| PDF | 开启 | `USER` | 需要 parser 与失败状态 |
-| Image | 开启 | `USER` | 需要真实图像理解 / OCR 依赖 |
-| Excalidraw | 开启 | `USER` | 当前有专属 loader |
-| TXT | 关闭 | `USER` | 文本 loader 可用后允许开启 |
-| CSV | 关闭 | `USER` | 当前 table loader 支持 |
-| JSON | 关闭 | `USER` | 当前有专属 loader |
-| HTML / XML | 关闭 | `USER` | 当前有专属 loader |
-| DOCX | 关闭 | `USER` | 当前有专属 loader |
-| PPTX | 关闭 | `USER` | 当前有专属 loader |
-| Canvas | 关闭 | `USER` | 当前有专属 loader |
-| URL | 关闭 | `POWER` | 与本地 Vault 文件不同，需明确抓取和隐私边界 |
-| XLSX | 关闭 | `BLOCKED` | 类型存在，但当前 loader 明确不解析 |
-| Folder | 关闭 | `SYSTEM` | 结构资源，不应伪装成普通可索引文件类型 |
-| Unknown | 关闭 | `SYSTEM` | 不应允许用户盲目开启 |
+| Markdown | 开启 | 普通设置 | 核心文本来源 |
+| PDF | 开启 | 普通设置 | 需要真实解析，并显示读取失败状态 |
+| 图片 | 开启 | 普通设置 | 需要真实图片理解或文字识别能力 |
+| Excalidraw | 开启 | 普通设置 | 当前有专门读取方式 |
+| TXT | 关闭 | 普通设置 | 当前读取流程可用后允许开启 |
+| CSV | 关闭 | 普通设置 | 当前表格读取流程支持 |
+| JSON | 关闭 | 普通设置 | 当前有专门读取方式 |
+| HTML / XML | 关闭 | 普通设置 | 当前有专门读取方式 |
+| DOCX | 关闭 | 普通设置 | 当前有专门读取方式 |
+| PPTX | 关闭 | 普通设置 | 当前有专门读取方式 |
+| Canvas | 关闭 | 普通设置 | 当前有专门读取方式 |
+| URL | 关闭 | 高级设置 | 与本地 Vault 文件不同，需明确抓取和隐私边界 |
+| XLSX | 关闭 | 暂不可用 | 虽然已有类型定义，但当前读取流程明确不支持 |
+| Folder | 关闭 | 系统负责 | 结构资源，不应伪装成普通可索引文件类型 |
+| Unknown | 关闭 | 系统负责 | 不应允许用户盲目开启 |
 
-#### Operations
+#### 索引维护操作
 
-| 操作 | 治理 | 必须说明 |
+| 操作 | 分类 | 执行前必须说明 |
 | --- | --- | --- |
-| 更新 changed files | `ACTION` | 预计文件数、阶段、取消、receipt |
-| full re-index | `ACTION` | 覆盖范围、耗时、旧索引可用性 |
-| rebuild vectors | `ACTION` | embedding connection、成本、pending 数量 |
-| run LLM enrichment | `ACTION` | 模型、成本、数据范围 |
-| refresh hubs / gap / intuition | `ACTION` | 输出、影响、失败恢复 |
-| compare search results | `ACTION` | 仅诊断/评估，不静默改变生产默认 |
-| delete index data | `ACTION` | 危险操作；准确目标、可恢复性和后续重建 |
+| 更新有变化的文件 | 操作 | 预计文件数量、处理阶段、能否取消和最终结果 |
+| 完整重建索引 | 操作 | 覆盖范围、预计耗时，以及重建期间旧索引是否还能使用 |
+| 重新生成知识向量 | 操作 | 使用哪个连接、预计成本和等待处理的数量 |
+| 运行 AI 补充分析 | 操作 | 使用的模型、预计成本和会读取的数据范围 |
+| 刷新重要内容中心和知识空缺 | 操作 | 会产生什么结果、影响什么，以及失败后怎样恢复 |
+| 比较不同搜索结果 | 操作 | 只用于诊断和评估，不能悄悄改变正式默认值 |
+| 删除索引数据 | 操作 | 这是危险操作；说明准确目标、能否恢复和之后怎样重建 |
 
-#### Vault Intelligence / Lint
+#### Vault Intelligence 检查与修复
 
-| 事项 | 治理 | 权威模块 | 说明 |
+| 事项 | 分类 | 由谁负责 | 说明 |
 | --- | --- | --- | --- |
-| 运行 Vault quality scan | `ACTION` | Vault Intelligence | 生成 finding，不直接修改文件 |
-| findings、severity、evidence | `STATUS` | Vault Intelligence | 系统事实，不是设置 |
-| dismiss / restore a finding | `LOCAL` | Vault Intelligence | 用户审阅状态，不改变算法事实 |
-| 应用某项 fix | `ACTION` | Finding owner | 受 Safety permission 与精确预览约束 |
-| scan scope | `LOCAL` / `POWER` | Vault Intelligence | 当前目录、文件或全 Vault 在运行现场选择 |
-| dimension weights、thresholds、scan bounds | `SYSTEM` | `vault-lint-config` | 产品质量与性能机制，不向普通用户开放 |
-| 自动扫描 schedule | `BLOCKED` | Vault Intelligence | 只有真实后台 consumer、资源边界和通知策略完成后才开放 |
+| 检查 Vault 质量 | 操作 | Vault Intelligence | 只生成问题清单，不直接修改文件 |
+| 发现的问题、严重程度和证据 | 只读状态 | Vault Intelligence | 由系统计算，不是用户设置 |
+| 暂时忽略或重新显示某个问题 | 功能内设置 | Vault Intelligence | 只改变用户审阅状态，不改变系统判断依据 |
+| 应用某项修复 | 操作 | 发现该问题的功能 | 需要文件修改权限，并先精确预览改动 |
+| 本次检查范围 | 功能内设置 / 高级设置 | Vault Intelligence | 在运行时选择当前文件、目录或整个 Vault |
+| 各类问题的权重、门槛和扫描上限 | 系统负责 | Vault Intelligence 内部规则 | 属于产品质量和性能机制，不向普通用户开放 |
+| 定时自动检查 | 暂不可用 | Vault Intelligence | 后台运行、资源限制和通知方式接通后才能开放 |
 
-### 6.6 Chat Studio、Composer、Prompts 与动作配置
+### 6.6 Chat Studio、Composer、Prompt 与具体动作
 
 #### 长期偏好
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| Chat 默认任务模型 | `AUTO` | Task Models | 自动建立 | 不在 Chat 中复制一份全局值 |
-| 当前 conversation 固定模型 | `LOCAL` | Chat Studio | 首次 handoff 可自动 | 只影响该 conversation |
-| attachment handling default | `POWER` | Chat Studio / Files | 不询问 | `direct` 与 `degrade_to_text`；必须说明数据与质量影响 |
-| 当前 conversation attachment override | `LOCAL` | Chat Studio | 不询问 | 不污染长期默认 |
-| Composer 默认文档视图 | `USER` | Composer | 首次 Composer 目标可说明 | 当前默认 Markdown；只影响未来普通打开 |
-| Composer Intelligence 手动开关偏好 | `USER` | Composer | 不询问 | contextual open 不应改写用户长期选择 |
-| code block syntax theme | `USER` | Appearance | 不询问 | 当前有 5 个 curated theme；不等于产品整体主题 |
-| custom prompts folder | `POWER` | Prompts | 不询问 | 默认从 AI root 派生 |
-| 用户自定义 Prompt 内容 | `LOCAL` / `POWER` | Prompt owner | 不询问 | 只有明确 production caller 的 Prompt 才可配置 |
-| per-action model override | `POWER` | Action configuration | 不询问 | 必须绑定 capability step，而非共享 Prompt 文件 |
-| per-action output controls | `POWER` | Action configuration | 不询问 | 仅在实际 caller 消费时开放 |
+| Chat 默认模型 | 自动决定 | 任务与模型 | 自动建立 | 不在 Chat 中复制另一份全局值 |
+| 当前对话固定使用某个模型 | 功能内设置 | Chat Studio | 第一次进入时可自动选择 | 只影响这一段对话 |
+| 附件默认怎样交给模型 | 高级设置 | Chat Studio / Files | 不询问 | 可以直接发送，或先解析成文字；必须说明数据和效果差异 |
+| 当前对话临时更改附件处理方式 | 功能内设置 | Chat Studio | 不询问 | 不改变以后对话的长期默认 |
+| Composer 默认文档视图 | 普通设置 | Composer | 首次 Composer 目标可说明 | 当前默认 Markdown；只影响未来普通打开 |
+| Composer Intelligence 是否手动打开 | 普通设置 | Composer | 不询问 | 因上下文自动打开一次，不能改掉用户长期选择 |
+| 代码块配色主题 | 普通设置 | 外观 | 不询问 | 当前提供 5 个选项；它不是整个产品的主题 |
+| 自定义 Prompt 文件夹 | 高级设置 | Prompt | 不询问 | 默认从 AI 主目录推导 |
+| 用户自定义 Prompt 内容 | 功能内设置 / 高级设置 | 使用该 Prompt 的功能 | 不询问 | 只有已经连接到真实功能的 Prompt 才能配置 |
+| 某个动作单独指定模型 | 高级设置 | 使用该动作的功能 | 不询问 | 必须绑定具体执行步骤，不能绑定一份被多处共用的 Prompt 文件 |
+| 某个动作单独调整输出 | 高级设置 | 使用该动作的功能 | 不询问 | 只有真实功能确实会读取时才开放 |
 
 #### 系统拥有的内容
 
-| 事项 | 治理 | 原因 |
+| 事项 | 分类 | 原因 |
 | --- | --- | --- |
-| Chat max steps、max tool calls、token budget | `SYSTEM` | Agent loop 安全和稳定性边界 |
-| Composer action registry、action order、disabled reasons | `SYSTEM` | 产品能力目录和运行 guard，不是用户偏好 |
-| Composer nearby context char limit | `SYSTEM` | 内部上下文策略；当前模板默认 800 |
-| Prompt schema、变量、版本、production caller | `SYSTEM` | 保证执行合同，不允许普通用户破坏 |
-| 当前选区、当前 block、active document | `STATUS` | 运行上下文，不是设置 |
-| history / run receipt | `STATUS` | 运行事实；用户可以清理或导出，但不能编辑事实 |
+| Chat 最多执行多少步、调用多少次工具和使用多少 token | 系统负责 | 属于 Agent 安全和稳定性边界 |
+| Composer 有哪些动作、动作顺序和禁用原因 | 系统负责 | 属于产品能力目录和运行保护，不是用户偏好 |
+| Composer 自动读取附近多少文字 | 系统负责 | 属于内部上下文策略；当前默认 800 个字符 |
+| Prompt 数据格式、变量、版本和实际使用位置 | 系统负责 | 用来保证 Prompt 能安全运行，普通用户不能破坏 |
+| 当前选区、当前内容块和正在编辑的文档 | 只读状态 | 属于当前任务上下文，不是设置 |
+| 历史和每次运行记录 | 只读状态 | 用户可以清理或导出，但不能编辑已经发生的事实 |
 
-原则：用户可以创建自己的 Prompt 或修改明确允许定制的 instruction，但系统 Prompt、运行 schema 和安全约束必须保持受治理。不能把一个“Prompt Library”做成所有内部 Prompt 的随意编辑器。
+用户可以创建自己的 Prompt，也可以修改产品明确允许自定义的指令；但系统 Prompt、固定数据格式和安全限制必须保持只读。不能因为做了一个 Prompt Library，就让所有内部 Prompt 都可以随意修改。
 
-### 6.7 File Atlas、Graph、Inspector 与结构化智能
+### 6.7 File Atlas、AI Graph 与结构化智能
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| 当前中心文件 / 选中节点 | `STATUS` | File Atlas | 来自当前上下文 |
-| 当前 scope、filter、layout、zoom | `LOCAL` | File Atlas | 属于本次探索，不进入中央 Settings |
-| 是否记住上次视图 | `USER` | File Atlas | 只有用户明确需要跨会话恢复时开放 |
-| 默认 prune depth | `LOCAL` / `POWER` | File Atlas | 当前声明默认 2；应先证明持久化链路 |
-| skeleton backbone only | `LOCAL` / `POWER` | File Atlas | 当前声明默认关闭；更适合模块内控制 |
-| leaf opacity / width scale | `LOCAL` / `POWER` | File Atlas | 表现偏好，不应成为高层 Settings 主项 |
-| inspector link count / folder grouping | `LOCAL` / `POWER` | Inspector / File Atlas | 与当前探索信息密度直接相关 |
-| Hub scheduler | `USER` | Knowledge intelligence | 长期后台行为，归 Settings |
-| Hub、gap、community freshness | `STATUS` | Knowledge intelligence | 系统计算，不允许手工标记 ready |
-| community weights、node bounds、pair limits | `SYSTEM` | Graph algorithm | 算法质量和性能边界 |
-| interaction open / close delay、card offset | `SYSTEM` | Product config | 表现配置，不是用户业务设置 |
-| graph analysis version | `SYSTEM` | Migration / algorithm | 版本合同 |
-| rebuild graph / enrich / recompute gaps | `ACTION` | Maintenance | 运行后记录范围与 receipt |
+| 当前中心文件 / 选中节点 | 只读状态 | File Atlas | 来自当前上下文 |
+| 当前查看范围、筛选、布局和缩放 | 功能内设置 | File Atlas | 属于本次探索，不进入中央 Settings |
+| 是否记住上次视图 | 普通设置 | File Atlas | 只有用户明确需要跨会话恢复时开放 |
+| 默认显示几层关系 | 功能内设置 / 高级设置 | File Atlas | 当前默认 2 层；确认重启后能保留，再作为正式设置开放 |
+| 是否只显示主要关系骨架 | 功能内设置 / 高级设置 | File Atlas | 当前默认关闭；更适合在 File Atlas 内调整 |
+| 次要节点透明度和连线宽度 | 功能内设置 / 高级设置 | File Atlas | 属于显示偏好，不应成为中央 Settings 主项 |
+| 显示多少链接、是否按文件夹分组 | 功能内设置 / 高级设置 | File Atlas | 直接影响当前探索的信息密度 |
+| 是否定期整理重要内容中心 | 普通设置 | 知识智能 | 属于长期后台行为，放在 Settings |
+| 重要内容中心、知识空缺和群组是否最新 | 只读状态 | 知识智能 | 由系统计算，不能让用户手工标记“已就绪” |
+| 群组权重、节点数量和配对上限 | 系统负责 | 图算法 | 属于算法质量和性能边界 |
+| 卡片打开 / 关闭延迟和显示位置 | 系统负责 | 产品内部配置 | 属于界面表现，不是用户业务设置 |
+| 图分析数据版本 | 系统负责 | 版本升级 / 图算法 | 用于兼容升级 |
+| 重建图谱、补充分析和重新计算知识空缺 | 操作 | 系统维护 | 执行后记录处理范围和结果 |
 
 Graph / File Atlas 的“可配置”应优先留在探索现场。中央 Settings 只保留真正跨会话、跨文档的稳定默认和后台行为。
 
-### 6.8 Media Generation、文件理解与输出
+### 6.8 图片、视频、音乐与语音生成
 
 #### 长期配置
 
-| 事项 | 治理 | 权威模块 | Onboarding | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | Onboarding 怎么处理 | 默认与说明 |
 | --- | --- | --- | --- | --- |
-| 默认 media route | `AUTO` | Media | 首次媒体目标自动解析 | `auto` 优先；native / fal 仅作为 override |
-| OpenAI native profile | `AUTO` / `POWER` | Media | 可复用 verified OpenAI | 多个 OpenAI 连接时允许固定 |
-| fal.ai key | `USER` | Media connection | fal route 阻塞时输入 | 作为凭据管理，不与 preset 混合 |
-| generated media folder | `USER` | Media | 使用可靠默认 | 当前默认 `_attachments/media` |
-| image / video / music / TTS 默认 preset | `USER` | Media | 只配置首次任务对应种类 | 每类独立，不能缩成三个笼统模型 |
-| per-kind model override | `POWER` | Media | 不询问 | 必须校验 route 与 preset 能力 |
-| aspect ratio / quantity / duration / voice default | `USER` / `POWER` | Media | 首次任务使用 preset | 高频语义值可设；硬边界由系统控制 |
-| 当前生成 prompt、数量、附件、seed | `LOCAL` | Media task | 在任务现场设置 | 不自动保存为长期默认 |
-| attachment handling | `POWER` | Chat / Files | 不询问 | 与媒体生成 route 分开 |
-| music licensing acceptance | `CONSENT` | Media | 首次音乐任务必须确认 | 按 policy version 记录；版本升级重新确认 |
-| 成本确认 | `CONSENT` | Media task | 预计成本达到阈值时 | 每次高影响任务确认，不等于长期预算 |
+| 默认使用哪种生成服务 | 自动决定 | 媒体生成 | 第一次媒体任务自动选择 | 优先自动选择；只有高级用户才固定具体服务 |
+| 媒体生成使用哪个 OpenAI 连接 | 自动决定 / 高级设置 | 媒体生成 | 复用已经验证的 OpenAI 连接 | 有多个 OpenAI 账户时允许固定 |
+| fal.ai 密钥 | 普通设置 | 媒体连接 | 任务需要 fal.ai 时输入 | 作为机密凭据管理，不与生成预设混在一起 |
+| 生成文件保存到哪里 | 普通设置 | 媒体生成 | 使用可靠默认 | 当前默认 `_attachments/media` |
+| 图片 / 视频 / 音乐 / 语音的默认预设 | 普通设置 | 媒体生成 | 只配置第一次任务对应的种类 | 每一种独立，不能缩成几个含义模糊的“模型” |
+| 某类媒体单独固定模型 | 高级设置 | 媒体生成 | 不询问 | 必须确认服务和预设真的支持 |
+| 画面比例、生成数量、视频时长和默认声音 | 普通设置 / 高级设置 | 媒体生成 | 第一次任务使用推荐预设 | 常用选择可以设置，模型硬限制由系统控制 |
+| 当前生成要求、数量、附件和随机种子 | 功能内设置 | 当前媒体任务 | 在生成页面设置 | 不自动保存为长期默认 |
+| Chat 附件怎样交给模型 | 高级设置 | Chat / 文件 | 不询问 | 与生成媒体使用哪个服务分开 |
+| 音乐许可确认 | 使用前确认 | 媒体生成 | 第一次生成音乐前必须确认 | 记录同意的是哪个版本；规则更新后重新确认 |
+| 成本确认 | 使用前确认 | Media task | 预计成本达到阈值时 | 每次高影响任务确认，不等于长期预算 |
 
 #### 状态与系统配置
 
-| 事项 | 治理 | 原因 |
+| 事项 | 分类 | 原因 |
 | --- | --- | --- |
-| route availability / supported kinds | `STATUS` | 来自真实 probe |
-| last validation time | `STATUS` | 验证结果的一部分，不是用户编辑字段 |
-| adapter endpoint paths、poll interval、timeout | `SYSTEM` | 协议与运行机制 |
-| preset registry、允许范围、MIME 与 reference limits | `SYSTEM` | 能力合同和安全边界 |
-| effective model、route、cost、output path | `STATUS` | 写入生成 receipt |
-| validate media configuration | `ACTION` | 执行真实 probe 后刷新状态 |
+| 当前生成服务和支持的媒体类型 | 只读状态 | 来自真实连接测试 |
+| 上次验证时间 | 只读状态 | 属于验证结果，不是用户编辑字段 |
+| 服务接口地址、检查间隔和超时时间 | 系统负责 | 属于协议和运行机制 |
+| 可用预设、参数范围、文件类型和参考素材限制 | 系统负责 | 属于能力和安全边界 |
+| 本次实际模型、生成服务、成本和输出位置 | 只读状态 | 写入本次生成记录 |
+| 验证媒体生成设置 | 操作 | 运行一次真实检查后刷新状态 |
 
-媒体模型和文本 LLM 不应塞进一个无分类的目录。它们共享 Connection 和 receipt 原则，但任务能力、参数和验证方式不同。
+媒体生成模型和文字模型不能塞进同一个没有分类的列表。它们都需要连接验证和运行记录，但支持的任务、可调参数和验证方法完全不同。
 
 ### 6.9 Workspace、Command Center 与 Ambient
 
 #### Command Center
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| open on startup | `USER` | Command Center | 当前默认关闭 |
-| replace empty tab | `USER` | Command Center | 当前默认关闭 |
-| groups、items、order、home layout | `LOCAL` | Command Center customize | 用户拥有，但应在该模块直接编辑 |
-| pinned targets / quick access | `LOCAL` | Command Center customize | 与当前工作组织紧密相关 |
-| modal density | `SYSTEM` / `LOCAL` | Command Center | 当前类型固定 compact；无真实选择时不要假设可设 |
-| catalog availability、hotkeys、recent targets | `STATUS` | Command Center runtime | 从 Obsidian 与当前 workspace 解析 |
-| compatibility mirror fields | `SYSTEM` | Migration | 不向用户暴露 |
+| 启动时自动打开 | 普通设置 | Command Center | 当前默认关闭 |
+| 用 Command Center 替换空白标签页 | 普通设置 | Command Center | 当前默认关闭 |
+| 分组、项目、顺序和首页布局 | 功能内设置 | Command Center | 由用户管理，但直接在 Command Center 内编辑 |
+| 固定的目标和快捷入口 | 功能内设置 | Command Center | 与用户自己的工作组织紧密相关 |
+| 弹窗内容密度 | 系统负责 / 功能内设置 | Command Center | 当前只有紧凑布局；没有真实可选方案时，不画成设置 |
+| 哪些入口可用、快捷键和最近目标 | 只读状态 | Command Center | 根据 Obsidian 和当前工作区读取 |
+| 为旧版本保留的重复字段 | 系统负责 | 旧配置迁移 | 不向用户暴露 |
 
 #### Ambient / Related Notes
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| Ambient master enabled | `USER` | Ambient | 当前默认开启 |
-| Related Notes / primary carrier | `USER` | Ambient | 应使用低打扰默认 |
-| status bar carrier | `USER` | Ambient | 当前默认关闭 |
-| serendipity gutter | `USER` | Ambient | 当前默认关闭 |
-| morning briefing | `USER` | Ambient | 当前默认关闭 |
-| feedback learning | `USER` | Ambient | 当前默认开启；需解释使用哪些本地反馈 |
-| LLM explanation | `POWER` | Ambient | 当前默认关闭；可能产生额外调用和成本 |
-| max push items | `POWER` | Ambient | 当前默认 5 |
-| trigger / doc-switch / writing-pause cooldown | `POWER` | Ambient | 当前默认 30s / 5s / 5s |
-| min character delta | `POWER` | Ambient | 当前默认 30 |
-| graph expansion hops | `POWER` | Ambient | 当前默认 2 |
-| LLM explanation cooldown | `POWER` | Ambient | 当前默认 120s |
-| 当前 context、signal、score、metadata | `STATUS` | Ambient runtime | 运行事实，不是设置 |
+| 启用 Ambient | 普通设置 | Ambient | 当前默认开启 |
+| 在 Related Notes 中显示推荐 | 普通设置 | Ambient | 作为主要、低打扰的默认出现位置 |
+| 在状态栏显示 | 普通设置 | Ambient | 当前默认关闭 |
+| 在编辑区边缘显示意外发现 | 普通设置 | Ambient | 当前默认关闭 |
+| 生成早间简报 | 普通设置 | Ambient | 当前默认关闭 |
+| 根据用户反馈改善推荐 | 普通设置 | Ambient | 当前默认开启；需要说明会使用哪些本地反馈 |
+| 用文字模型解释推荐原因 | 高级设置 | Ambient | 当前默认关闭；可能增加调用次数和成本 |
+| 一次最多推荐几项 | 高级设置 | Ambient | 当前默认 5 项 |
+| 多久触发一次推荐 | 高级设置 | Ambient | 文档变化、切换文档和暂停写作分别有等待时间 |
+| 至少变化多少文字才重新计算 | 高级设置 | Ambient | 当前默认 30 个字符 |
+| 沿图谱向外查找几层 | 高级设置 | Ambient | 当前默认 2 层 |
+| 多久重新生成一次解释 | 高级设置 | Ambient | 当前默认 120 秒 |
+| 当前上下文、触发信号和推荐分数 | 只读状态 | Ambient | 属于本次运行事实，不是设置 |
 
 Ambient 的高打扰载体默认关闭是产品安全默认；用户可以逐项开启，不需要进入另一套“高级模式”。
 
-### 6.10 Data、Storage、Usage、Budget 与 Privacy
+### 6.10 数据、用量、预算与隐私
 
 #### 目录与存储
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| AI root folder | `POWER` | Data & Storage | 影响多个派生路径；修改需依赖检查 |
-| data storage folder | `POWER` | Data & Storage | 机器数据 canonical 位置；不可静默搬迁或删除 |
-| AI Analysis output folder | `USER` | AI Analysis | 用户可见产出位置 |
-| media attachment folder | `USER` | Media | 用户可见产出位置 |
-| Skills folder | `POWER` | Skills | 用户拥有的 skill packs |
-| Inbox folder | `USER` | Workspace | 快速捕获与建议落点 |
-| custom prompts folder | `POWER` | Prompts | 用户自定义 prompt 来源 |
-| derived folder values | `STATUS` | Folder policy | 默认从 AI root 计算，不应伪装成独立选择 |
-| custom override folder | `POWER` | 对应 owner | 只有确有需要时覆盖派生值 |
-| SQLite backend | `SYSTEM` / `POWER` | Developer | 默认 auto；只有诊断需要时允许固定 |
+| AI 主目录 | 高级设置 | 数据与存储 | 会影响多个子目录；修改前检查所有依赖 |
+| Peak 机器数据目录 | 高级设置 | 数据与存储 | 保存产品内部数据；不能悄悄搬迁或删除 |
+| AI 分析输出目录 | 普通设置 | AI 分析 | 用户能看到的分析结果保存位置 |
+| 媒体附件目录 | 普通设置 | 媒体生成 | 用户能看到的图片、视频等保存位置 |
+| Skills 目录 | 高级设置 | Skills | 用户自己拥有的 Skill 文件 |
+| Inbox 目录 | 普通设置 | 工作区 | 快速收集内容和保存建议的位置 |
+| 自定义 Prompt 目录 | 高级设置 | Prompt | 用户自定义 Prompt 的来源 |
+| 系统自动推导的子目录 | 只读状态 | 目录规则 | 默认从 AI 主目录计算，不假装成多个独立设置 |
+| 单独指定某个子目录 | 高级设置 | 对应功能 | 只有确实需要时才覆盖自动推导结果 |
+| SQLite 数据库实现 | 系统负责 / 高级设置 | 开发者选项 | 默认自动选择；只有诊断问题时才允许固定 |
 
 任何目录变更必须说明：
 
@@ -778,232 +787,236 @@ Ambient 的高打扰载体默认关闭是产品安全默认；用户可以逐项
 - 失败时旧数据是否仍可用；
 - 如何恢复默认派生路径。
 
-#### Usage、receipts 与隐私
+#### 用量记录与隐私
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| usage tracking enabled | `USER` | Usage & Privacy | 当前默认开启；必须先明确是本地记录还是外发 telemetry |
-| detail retention days | `USER` | Usage & Privacy | 当前默认 30 天 |
-| prompt / response preview rendering | `USER` | Usage & Privacy | 当前默认开启；关闭后 UI 隐藏，但底层保留语义需重新审视 |
-| required safety receipts | `SYSTEM` | Runtime audit | 即使关闭可选 tracking，安全和恢复所需最小 receipt 仍保留 |
-| monthly AI spending target | `USER` | Budget | 当前 harness 默认 40 USD；0 表示不显示 pace |
-| budget reset day | `USER` | Budget | 当前默认每月 1 日 |
-| budget threshold alert | `USER` | Budget | 当前默认 40% |
-| context compact alert | `USER` | Budget / Chat | 当前默认 70% context ratio |
-| costly Agent receipt threshold | `POWER` | Budget | 当前默认 0.15 USD 或 50k tokens |
-| low-cost pip silence threshold | `POWER` | Budget | 当前默认关闭 |
-| per-run actual tokens / cost / duration | `STATUS` | Usage receipt | 事实，不可编辑 |
-| export / clear usage history | `ACTION` | Usage & Privacy | 明确范围和可恢复性 |
+| 是否记录用量 | 普通设置 | 用量与隐私 | 当前默认开启；必须先说明是只存本机还是会发送到外部 |
+| 详细记录保留多久 | 普通设置 | 用量与隐私 | 当前默认 30 天 |
+| 是否在历史中显示 Prompt 和回答预览 | 普通设置 | 用量与隐私 | 当前默认显示；关闭后底层数据是否仍保留，需要重新明确 |
+| 安全和故障恢复所必需的最少记录 | 系统负责 | 运行审计 | 即使关闭可选用量记录，仍保留安全和恢复必需的最少信息 |
+| 每月 AI 支出目标 | 普通设置 | 预算 | 当前 Agent 系统默认 40 美元；设为 0 时不显示预算进度 |
+| 每月哪一天重新计算预算 | 普通设置 | 预算 | 当前默认每月 1 日 |
+| 支出达到多少时提醒 | 普通设置 | 预算 | 当前默认达到 40% 时提醒 |
+| 对话上下文过长提醒 | 普通设置 | 预算 / Chat | 当前默认使用到 70% 时提醒 |
+| 什么样的 Agent 任务算高成本 | 高级设置 | 预算 | 当前默认超过 0.15 美元或 5 万 token |
+| 低成本提示何时不再显示 | 高级设置 | 预算 | 当前默认关闭 |
+| 每次任务的实际 token、成本和时长 | 只读状态 | 用量记录 | 已发生的事实不能编辑 |
+| 导出或清除用量历史 | 操作 | 用量与隐私 | 执行前说明范围以及能否恢复 |
 
-媒体 generation config 中的成本策略与 Agent harness 的 40 USD 月度目标不是同一层配置。上线前必须明确：一个是单次媒体 route / cost guard，另一个是全局或 Agent usage budget；不能以两个“Budget”名字并列而不解释范围。
+媒体生成的单次成本确认，和 Agent 的每月 40 美元预算目标不是同一件事。前者决定“这次生成是否需要确认”，后者帮助用户观察一段时间内的总支出；上线前必须明确各自范围，不能只把两项都叫作“预算”。
 
-### 6.11 Appearance、Accessibility 与 Keyboard
+### 6.11 外观、无障碍与键盘操作
 
-| 事项 | 治理 | 权威模块 | 默认与说明 |
+| 事项 | 分类 | 由谁负责 | 默认与说明 |
 | --- | --- | --- | --- |
-| code block syntax theme | `USER` | Appearance | 当前 curated 5 项 |
-| app light / dark / theme integration | `AUTO` | Appearance | 优先跟随 Obsidian；如 Peak 有自主 Theme Boundary，应有可靠 fallback |
-| reduced motion | `AUTO` / `USER` | Accessibility | 默认跟随系统；允许明确覆盖 |
-| text scale / density | `AUTO` / `USER` | Accessibility | 优先继承 Obsidian；只有真实全局 consumer 才开放 |
-| keyboard shortcut assignment | `LOCAL` | Obsidian hotkeys / owning surface | 不复制 Obsidian 自有 hotkey 设置 |
-| Key Tips enablement | `USER` | Keyboard | 仅在共享 runtime 已接通时开放 |
-| focus、roving navigation、Escape behavior | `SYSTEM` | Interaction contract | 可访问性行为，不是用户设置 |
-| icons、colors、spacing、component radius | `SYSTEM` | Design system | 设计 token，不属于产品 Settings |
-| graph appearance defaults | `LOCAL` / `POWER` | File Atlas | 归 owning surface，不塞入全局 Appearance |
+| 代码块配色主题 | 普通设置 | 外观 | 当前提供 5 个选项 |
+| 浅色 / 深色模式和 Obsidian 主题配合 | 自动决定 | 外观 | 优先跟随 Obsidian；如果 Peak 使用独立主题，也要有可靠备用方案 |
+| 减少动画 | 自动决定 / 普通设置 | 无障碍 | 默认跟随系统，允许用户明确覆盖 |
+| 文字大小和内容密度 | 自动决定 / 普通设置 | 无障碍 | 优先沿用 Obsidian；只有整个 Peak 都会响应时才开放 |
+| 分配快捷键 | 功能内设置 | Obsidian 快捷键 / 对应功能 | 不复制 Obsidian 已有的快捷键设置 |
+| 是否启用键盘提示 | 普通设置 | 键盘操作 | 只有所有相关功能已经接通时才开放 |
+| 焦点移动、方向键导航和 Escape 行为 | 系统负责 | 交互规则 | 属于无障碍基本行为，不是偏好设置 |
+| 图标、颜色、间距和圆角 | 系统负责 | 设计系统 | 属于产品设计，不是用户 Settings |
+| 图谱外观默认值 | 功能内设置 / 高级设置 | File Atlas | 在 File Atlas 中设置，不塞进全局外观设置 |
 
-### 6.12 Maintenance、Diagnostics 与 Developer
+### 6.12 维护、系统检查与开发者选项
 
-#### Maintenance
+#### 维护操作
 
-| 事项 | 治理 | 说明 |
+| 事项 | 分类 | 说明 |
 | --- | --- | --- |
-| verify database health | `ACTION` | 只读检查优先，输出具体结论 |
-| cleanup useless data | `ACTION` | 必须预览准确目标和可恢复性 |
-| build / clear user profile | `ACTION` | 构建与删除分开；删除是危险操作 |
-| update / rebuild index | `ACTION` | 使用 Knowledge Index contract |
-| vector / LLM / graph maintenance | `ACTION` | 显示依赖、成本、进度和 receipt |
-| reset individual setting | `ACTION` | 移除 override，恢复 Auto 或编译默认 |
-| reset a module | `ACTION` | 先预览范围，不影响其他模块 |
-| export diagnostics | `ACTION` | 默认 redacted，明确包含哪些数据 |
+| 检查数据库是否正常 | 操作 | 优先只读检查，并给出具体结论 |
+| 清理无用数据 | 操作 | 先预览准确目标，并说明能否恢复 |
+| 建立或删除用户档案 | 操作 | 建立和删除分开；删除属于危险操作 |
+| 更新或重建索引 | 操作 | 遵守知识索引的范围、进度和恢复规则 |
+| 维护知识向量、AI 分析或图谱 | 操作 | 显示依赖、成本、进度和最终结果 |
+| 重置单项设置 | 操作 | 清除用户指定，恢复自动选择或产品内置值 |
+| 重置整个模块 | 操作 | 先预览范围，不能影响其他模块 |
+| 导出诊断信息 | 操作 | 默认隐藏敏感内容，并明确导出包含什么 |
 
-#### Diagnostics / Developer settings
+#### 系统检查与开发者设置
 
-| 事项 | 治理 | 默认与说明 |
+| 事项 | 分类 | 默认与说明 |
 | --- | --- | --- |
-| debug trace mode | `POWER` | 默认 off；redacted 推荐；raw 高风险 |
-| trace retention | `POWER` | 当前 20 / 100 / session |
-| trace copy format | `POWER` | Markdown / JSON / both |
-| include raw content | `POWER` / `CONSENT` | 仅 raw mode；必须警告敏感内容 |
-| clear traces | `ACTION` | 明确目标和不可恢复性 |
-| DevTools graph inspector | `POWER` | 当前默认关闭 |
-| exact output controls | `POWER` | 仅真实 consumer |
-| exact runtime timeout | `POWER` | 仅真实 consumer |
-| raw endpoint / headers | `POWER` | 只对 custom / compatible endpoint |
-| runtime hooks | `POWER` | 默认关闭，说明执行权限 |
-| simulator scenario / speed / strict | `SYSTEM` / Developer | QA 能力，不在普通产品设置中 |
-| internal IDs、hashes、schema、migration state | `STATUS` / `SYSTEM` | 可用于诊断，不可编辑 |
+| 调试记录模式 | 高级设置 | 默认关闭；建议隐藏敏感内容；原始内容模式风险高 |
+| 调试记录保留数量 | 高级设置 | 当前可选保留 20 条、100 条或当前会话 |
+| 调试记录复制格式 | 高级设置 | Markdown、JSON 或两种都复制 |
+| 是否包含原始内容 | 高级设置 / 使用前确认 | 只在原始模式中出现，并明确警告敏感内容风险 |
+| 清除调试记录 | 操作 | 说明清除目标和不可恢复性 |
+| DevTools 图谱检查器 | 高级设置 | 当前默认关闭 |
+| 精确输出参数 | 高级设置 | 只有真实功能确实会读取时才开放 |
+| 精确超时时间 | 高级设置 | 只有真实功能确实会读取时才开放 |
+| 自定义服务地址和请求头 | 高级设置 | 只用于自定义或兼容服务 |
+| 运行时 hooks | 高级设置 | 默认关闭，并说明会获得什么执行权限 |
+| 模拟器场景、速度和严格模式 | 系统负责 / 开发者选项 | 只用于测试，不进入普通 Settings |
+| 内部编号、数据指纹、数据格式和迁移状态 | 只读状态 / 系统负责 | 可以用于排查问题，但不能编辑 |
 
 ### 6.13 系统模板配置不是用户 Settings
 
-项目中的 `templates/config/*` 解决的是产品配置和非工程修改问题，不代表终端用户需要看到这些字段。其治理如下：
+项目中的 `templates/config/*` 文件让产品团队可以维护文案、模型目录、算法参数和内部默认值。文件可以被修改，不代表其中每个字段都应该出现在终端用户的 Settings 里。
 
 | 模板配置族 | 产品用途 | 用户控制结论 |
 | --- | --- | --- |
-| `onboarding.json` / `settings.json` | 文案、步骤标签、surface 内容 | `SYSTEM`；设计与本地化 source |
-| `chat.json` / `chat-studio.json` | Chat 文案、密度、shell 和模块表现 | `SYSTEM`；稳定用户意图另存 persisted setting |
-| `chat-runtime.json` | loop steps、token、tool-call、timeout | `SYSTEM` |
-| `model-routing.json` | Auto 路由 tier、偏好、context guard | `SYSTEM`；用户只控制 task override |
-| `models/*` / `curator-catalog.json` | 模型与环境推荐目录 | `STATUS` / `SYSTEM`；动态来源优先 |
-| `media-generation.json` | route、preset、adapter、poll、limits | 静态表 `SYSTEM`；只允许窄 user overlay |
-| `composer.json` | action registry、上下文、transaction、文案 | `SYSTEM`；明确开放的 action override 另存 |
-| `file-atlas.json` | kind、preset、filter、identity、strings | `SYSTEM`；当前视图偏好在 File Atlas |
-| `result-graph-community.json` / `community-colors.json` | 图算法、bounds、interaction、palette | `SYSTEM` |
-| `keyboard-navigation.json` | zone、key tips、activation、a11y labels | `SYSTEM`；用户 enablement 需独立 persisted consumer |
-| `command-center-defaults.json` | 首次 board seed | `SYSTEM` seed；初始化后 board 归用户 |
-| `plugin-command-gateway.json` | discovery、classification、audit limits | `SYSTEM`；用户只审查 allow / deny |
-| `vault-lint-config.json` | weights、thresholds、scan bounds | `SYSTEM`；用户可触发 scan 和审阅 finding |
-| `rich-output-types.json` | renderer 类型和字段合同 | `SYSTEM` |
-| `artifact-create.json` | artifact 文件名、扩展名、错误与默认材料 | `SYSTEM`；每次创建目标在 owning action |
-| `dashboard.json` | usage dashboard 内容与 carriers | `SYSTEM`；预算和隐私意图另存 |
-| `time-within-normalize.json` | 时间语义归一化 | `SYSTEM` |
-| `ai-search-simulator.json` | QA scenario、speed、endpoint | Developer only |
+| `onboarding.json` / `settings.json` | 文案、步骤名称和页面内容 | 系统负责；由设计和本地化团队维护 |
+| `chat.json` / `chat-studio.json` | Chat 文案、内容密度、页面结构和模块表现 | 系统负责；用户长期偏好单独保存 |
+| `chat-runtime.json` | 最多执行步骤、token、工具调用和超时 | 系统负责 |
+| `model-routing.json` | 自动选择模型的内部等级、偏好和上下文保护 | 系统负责；用户只选择任务偏好 |
+| `models/*` / `curator-catalog.json` | 模型与环境推荐目录 | 只读状态 / 系统负责；动态来源优先 |
+| `media-generation.json` | 生成服务、预设、接入方式、检查间隔和限制 | 系统负责；只开放少量明确的用户设置 |
+| `composer.json` | 动作目录、上下文、编辑事务和文案 | 系统负责；明确允许用户调整的动作设置单独保存 |
+| `file-atlas.json` | 内容类型、预设、筛选、标识和文案 | 系统负责；当前视图偏好在 File Atlas 中设置 |
+| `result-graph-community.json` / `community-colors.json` | 图算法、数量边界、交互和配色 | 系统负责 |
+| `keyboard-navigation.json` | 键盘区域、提示键、激活方式和无障碍名称 | 系统负责；用户开关需要单独保存并被真实功能读取 |
+| `command-center-defaults.json` | 第一次创建 Command Center 时的初始内容 | 系统只负责初始值；创建后由用户管理 |
+| `plugin-command-gateway.json` | 命令发现、分类和检查上限 | 系统负责；用户只决定允许或禁止 |
+| `vault-lint-config.json` | 各类问题权重、门槛和扫描上限 | 系统负责；用户可以开始扫描并审阅结果 |
+| `rich-output-types.json` | 支持哪些富内容及其数据格式 | 系统负责 |
+| `artifact-create.json` | 产物文件名、扩展名、错误提示和默认材料 | 系统负责；每次创建目标在具体功能中选择 |
+| `dashboard.json` | 用量页面内容和展示位置 | 系统负责；预算和隐私偏好单独保存 |
+| `time-within-normalize.json` | 时间语义归一化 | 系统负责 |
+| `ai-search-simulator.json` | 测试场景、速度和服务地址 | 仅供开发测试 |
 
-判断标准不是“非工程人员会不会改这个 JSON”，而是“终端用户是否需要为自己的长期工作意图承担这个决定”。
+判断标准不是“这个 JSON 能不能被修改”，而是“这项选择是否真的属于用户，而且用户能否理解修改后的影响”。
 
-## 7. 当前源码字段去留表
+## 7. 实现参考：现有设置字段应该保留、迁移还是退役
 
-本节逐项处理当前主要持久化字段，避免“重新设计”演变成无依据地删除旧配置。结论是产品治理目标，不表示迁移已经完成。
+本节主要供开发和验收使用。产品负责人只需要关注每一行的“目标结论”；反引号中的英文是当前代码字段名，不要求作为 UI 文案使用。
+
+本节逐项处理当前主要存储字段，避免“重新设计”演变成没有依据地删除旧配置。这里写的是目标结论，不表示迁移已经完成。
 
 ### 7.1 `AIServiceSettings`
 
-| 当前字段 | 目标结论 | 目标 owner | 备注 |
+| 当前字段 | 目标结论 | 目标负责模块 | 备注 |
 | --- | --- | --- | --- |
-| `rootFolder` | 保留为 `POWER` | Data & Storage | 路径影响大，需要迁移合同 |
-| `defaultModel` | 迁移后退役 | Task Models | 含义模糊，与 assignment 重叠 |
-| `llmProviderConfigs` | 仅兼容迁移 | Connections | 新结构使用 connection profiles |
-| `profileEnabled` | 退役 / `SYSTEM` | Migration | 不应作为普通开关 |
-| `defaultOutputControl` | 条件保留为 `POWER` | Task Models | 每个字段需验证真实 consumer |
-| `attachmentHandlingDefault` | 保留为 `POWER` | Chat / Files | 当前 loader 未恢复该字段，需补齐后开放 |
-| `falApiKey` | 保留为 `USER` | Media connection | 作为凭据，而非普通 preset 字段 |
-| `mediaAttachmentFolder` | 保留为 `USER` | Media | 用户可见输出位置 |
-| `mediaDefaults.defaultRoute` | 保留为 `AUTO` | Media | 默认 Auto，允许固定 route |
-| `mediaDefaults.nativeProfileId` | 保留为 `AUTO` / `POWER` | Media | 多 OpenAI connection 时有意义 |
-| `mediaDefaults.defaultPresetIds` | 保留为 `USER` | Media | 每种媒体独立 |
-| `mediaDefaults.presetOverrides` | 保留为 `POWER` | Media | 仅窄 overlay，不复制整张 preset 表 |
-| `mediaDefaults.lastValidatedAt` | 改为 `STATUS` | Media readiness | 不应作为可编辑配置 |
-| `mediaDefaults.musicLicensingAccepted` | 保留为 `CONSENT` | Media | 当前 normalize 未恢复，需要修复 |
+| `rootFolder` | 保留为高级设置 | 数据与存储 | 路径影响大，需要明确迁移规则 |
+| `defaultModel` | 迁移后退役 | 任务与模型 | 含义模糊，与具体用途的模型设置重复 |
+| `llmProviderConfigs` | 只用于兼容迁移 | AI 连接 | 新结构改用统一连接记录 |
+| `profileEnabled` | 退役 / 系统负责 | 旧配置迁移 | 不应作为普通开关 |
+| `defaultOutputControl` | 有真实功能使用时保留为高级设置 | 任务与模型 | 每个字段都需验证真实使用位置 |
+| `attachmentHandlingDefault` | 保留为高级设置 | Chat / 文件 | 当前启动读取时没有恢复，修复后才能开放 |
+| `falApiKey` | 保留为普通设置 | 媒体连接 | 作为凭据管理，不与生成预设混在一起 |
+| `mediaAttachmentFolder` | 保留为普通设置 | Media | 用户可见输出位置 |
+| `mediaDefaults.defaultRoute` | 保留为自动决定 | Media | 默认自动选择，允许固定生成服务 |
+| `mediaDefaults.nativeProfileId` | 保留为自动决定 / 高级设置 | Media | 有多个 OpenAI 连接时才有意义 |
+| `mediaDefaults.defaultPresetIds` | 保留为普通设置 | Media | 每种媒体独立 |
+| `mediaDefaults.presetOverrides` | 保留为高级设置 | Media | 只保存少量用户指定，不复制整张预设表 |
+| `mediaDefaults.lastValidatedAt` | 改为只读状态 | 媒体状态 | 不应作为可编辑配置 |
+| `mediaDefaults.musicLicensingAccepted` | 保留为使用前确认 | Media | 当前启动时没有恢复，需要修复 |
 
 ### 7.2 `SearchSettings`
 
-| 当前字段 | 目标结论 | 目标 owner | 备注 |
+| 当前字段 | 目标结论 | 目标负责模块 | 备注 |
 | --- | --- | --- | --- |
-| `autoIndex` | 保留为 `USER` | Knowledge Index | 上线默认需 owner 决策 |
-| `includeDocumentTypes` | 保留为 `USER` | Knowledge Index | 只展示真实支持类型；XLSX 当前 blocked |
-| `ignorePatterns` | 保留为 `USER` | Knowledge Index | 校验系统目录和循环污染 |
-| `chunking.maxChunkSize` | 保留为 `POWER` | Knowledge Index | 变更需 re-index |
-| `chunking.chunkOverlap` | 保留为 `POWER` | Knowledge Index | 变更需 re-index |
-| `chunking.minDocumentSizeForChunking` | 保留为 `POWER` | Knowledge Index | 当前 UI 使用了错误 key |
-| `chunking.embeddingModel` | 迁移到 assignment | Task Models | Knowledge embeddings 唯一 owner |
-| `chunking.skipCodeBlocksInChunking` | 保留为 `POWER` | Knowledge Index | 与代码 Vault 相关 |
-| `chunking.codeBlockPlaceholder` | 保留为 `POWER` | Knowledge Index | 条件字段 |
-| `chunking.maxCodeChunkChars` | 保留为 `POWER` | Knowledge Index | 条件字段 |
-| `aiAnalysisModel.*` | 迁移到 assignment | Task Models | planner / writer 分开 |
-| `indexRefreshInterval` | 保留为 `POWER` | Knowledge Index | 当前默认 5000ms |
-| `shortSummaryLength` | 保留为 `POWER` | AI Analysis | 需要运行时消费测试 |
-| `fullSummaryLength` | 保留为 `POWER` | AI Analysis | 需要运行时消费测试 |
-| `aiAnalysisSessionSummaryWordCount` | 保留为 `POWER` | AI Analysis | 需要运行时消费测试 |
-| `aiAnalysisAutoSaveEnabled` | 保留为 `USER` | AI Analysis | 当前默认开启 |
-| `aiAnalysisAutoSaveFolder` | 保留为 `USER` | AI Analysis | 与 root folder 依赖 |
-| `aiAnalysisExcludeAutoSaveFolderFromSearch` | 保留为 `USER` | AI Analysis | 当前默认开启 |
-| `aiAnalysisHistoryLimit` | 保留为 `USER` | AI Analysis | 当前默认 5 |
-| `inspectorLinks.*` | 移到 `LOCAL` / `POWER` | Inspector / File Atlas | 当前 loader 未恢复 |
-| `indexLevel` | 保留为 `USER` | Knowledge Index | 变更触发 staged indexing |
-| `searchUpgradePromptDismissedAt` | `SYSTEM` | Search UX state | 不作为用户设置展示 |
-| `enablePPR` | 保留为 `POWER` | Search quality | 当前默认开启 |
-| `hubCurationSchedulerEnabled` | 保留为 `USER` | Knowledge intelligence | 当前 loader 未恢复 |
-| `hubCurationIntervalDays` | 保留为 `POWER` | Knowledge intelligence | 当前 loader 未恢复 |
+| `autoIndex` | 保留为普通设置 | 知识索引 | 上线默认需产品负责人确认 |
+| `includeDocumentTypes` | 保留为普通设置 | 知识索引 | 只展示真实支持类型；XLSX 当前暂不可用 |
+| `ignorePatterns` | 保留为普通设置 | 知识索引 | 校验系统目录和循环污染 |
+| `chunking.maxChunkSize` | 保留为高级设置 | 知识索引 | 修改后需要重建索引 |
+| `chunking.chunkOverlap` | 保留为高级设置 | 知识索引 | 修改后需要重建索引 |
+| `chunking.minDocumentSizeForChunking` | 保留为高级设置 | 知识索引 | 当前 UI 使用了错误字段名 |
+| `chunking.embeddingModel` | 迁移到具体用途设置 | 任务与模型 | 知识向量模型只在这里管理 |
+| `chunking.skipCodeBlocksInChunking` | 保留为高级设置 | 知识索引 | 与代码 Vault 相关 |
+| `chunking.codeBlockPlaceholder` | 保留为高级设置 | 知识索引 | 条件字段 |
+| `chunking.maxCodeChunkChars` | 保留为高级设置 | 知识索引 | 条件字段 |
+| `aiAnalysisModel.*` | 迁移到具体用途设置 | 任务与模型 | 搜索规划和报告撰写分开设置 |
+| `indexRefreshInterval` | 保留为高级设置 | 知识索引 | 当前默认 5000ms |
+| `shortSummaryLength` | 保留为高级设置 | AI 分析 | 需要运行时消费测试 |
+| `fullSummaryLength` | 保留为高级设置 | AI 分析 | 需要运行时消费测试 |
+| `aiAnalysisSessionSummaryWordCount` | 保留为高级设置 | AI 分析 | 需要运行时消费测试 |
+| `aiAnalysisAutoSaveEnabled` | 保留为普通设置 | AI 分析 | 当前默认开启 |
+| `aiAnalysisAutoSaveFolder` | 保留为普通设置 | AI 分析 | 与 root folder 依赖 |
+| `aiAnalysisExcludeAutoSaveFolderFromSearch` | 保留为普通设置 | AI 分析 | 当前默认开启 |
+| `aiAnalysisHistoryLimit` | 保留为普通设置 | AI 分析 | 当前默认 5 |
+| `inspectorLinks.*` | 移到功能内设置 / 高级设置 | File Atlas | 当前启动读取时没有恢复 |
+| `indexLevel` | 保留为普通设置 | 知识索引 | 修改后触发分阶段重建索引 |
+| `searchUpgradePromptDismissedAt` | 系统负责 | Search UX state | 不作为用户设置展示 |
+| `enablePPR` | 保留为高级设置 | 搜索质量 | 当前默认开启 |
+| `hubCurationSchedulerEnabled` | 保留为普通设置 | 知识智能 | 当前启动读取时没有恢复 |
+| `hubCurationIntervalDays` | 保留为高级设置 | 知识智能 | 当前启动读取时没有恢复 |
 
-### 7.3 Connections / Profiles
+### 7.3 AI 连接（代码中称为 Profiles）
 
-| 当前字段 | 目标结论 | 目标 owner | 备注 |
+| 当前字段 | 目标结论 | 目标负责模块 | 备注 |
 | --- | --- | --- | --- |
-| `profiles[].id` / `createdAt` | `SYSTEM` | Persistence | 稳定引用和迁移 |
-| `profiles[].name` | `USER` | Connections | 多实例可辨识 |
-| `profiles[].kind` | 创建时选择；之后受限修改 | Connections | 类型变化通常应新建 connection |
-| `profiles[].enabled` | `USER` | Connections | 停用前依赖检查 |
-| `profiles[].baseUrl` | `POWER` | Connections | 已知 Provider 用默认值 |
-| `profiles[].apiKey` | `USER` | Connections | secret |
-| `profiles[].primaryModel` | 迁移后退役 | Task Models | 旧抽象 |
-| `profiles[].fastModel` | 迁移后退役 | Task Models | 旧抽象 |
-| `profiles[].customHeaders` | `POWER` | Connections | secret-aware |
-| `embeddingEndpoint` / `embeddingApiKey` / `embeddingModel` | 迁移或高级 compatible endpoint | Task Models / Connections | 不与 embedding assignment 重复 |
-| `icon` / `description` | `SYSTEM`；custom 可有限编辑 | Connections metadata | 已知 Provider 使用 registry metadata |
-| `activeAgentConfig` | 迁入 Agent assignment | Task Models | 单一 owner |
-| `activeAgentFastConfig` | 迁入 Fast helper assignment | Task Models | 单一 owner |
-| `activeChatConfig` | 迁入 Chat assignment | Task Models | 单一 owner |
-| `activeCopilotConfig` | 迁入 Copilot assignment | Task Models | 单一 owner |
-| `activeEmbeddingConfig` | 迁入 Embedding assignment | Task Models | 单一 owner |
-| `activeWebSearchConfig` | 迁入 Web assignment | Task Models | 单一 owner |
-| `customEndpoints` | 保留为 `POWER` | Connections | 动态发现模型；能力 override 风险提示 |
-| `simulatorConfig` | Developer only | Simulator | 不进入普通连接目录 |
+| `profiles[].id` / `createdAt` | 系统负责 | 数据存储 | 稳定引用和迁移 |
+| `profiles[].name` | 普通设置 | AI 连接 | 多实例可辨识 |
+| `profiles[].kind` | 创建时选择；之后受限修改 | AI 连接 | 改变连接类型时通常应该新建连接 |
+| `profiles[].enabled` | 普通设置 | AI 连接 | 停用前依赖检查 |
+| `profiles[].baseUrl` | 高级设置 | AI 连接 | 已知服务商使用系统默认地址 |
+| `profiles[].apiKey` | 普通设置 | AI 连接 | 作为密钥保护 |
+| `profiles[].primaryModel` | 迁移后退役 | 任务与模型 | 旧抽象 |
+| `profiles[].fastModel` | 迁移后退役 | 任务与模型 | 旧抽象 |
+| `profiles[].customHeaders` | 高级设置 | AI 连接 | 其中的密钥需要保护 |
+| `embeddingEndpoint` / `embeddingApiKey` / `embeddingModel` | 迁移，或只在高级兼容接口中保留 | 任务与模型 / AI 连接 | 不与知识向量的具体用途设置重复 |
+| `icon` / `description` | 系统负责；自定义服务可有限编辑 | AI 连接信息 | 已知服务商使用内置目录信息 |
+| `activeAgentConfig` | 迁入 Agent 具体用途设置 | 任务与模型 | 由任务与模型统一负责 |
+| `activeAgentFastConfig` | 迁入快速辅助的具体用途设置 | 任务与模型 | 由任务与模型统一负责 |
+| `activeChatConfig` | 迁入 Chat 具体用途设置 | 任务与模型 | 由任务与模型统一负责 |
+| `activeCopilotConfig` | 迁入 Copilot 具体用途设置 | 任务与模型 | 由任务与模型统一负责 |
+| `activeEmbeddingConfig` | 迁入知识向量具体用途设置 | 任务与模型 | 由任务与模型统一负责 |
+| `activeWebSearchConfig` | 迁入网页搜索具体用途设置 | 任务与模型 | 由任务与模型统一负责 |
+| `customEndpoints` | 保留为高级设置 | AI 连接 | 在线获取模型；手动填写能力时提示风险 |
+| `simulatorConfig` | 仅供开发测试 | Simulator | 不进入普通连接目录 |
 
-### 7.4 Harness、Budget 与 Permissions
+### 7.4 Agent、预算与权限
 
-| 当前字段 | 目标结论 | 目标 owner |
+| 当前字段 | 目标结论 | 目标负责模块 |
 | --- | --- | --- |
-| `localFastConfig` | 迁入 Fast helper assignment | Task Models |
-| `localDeepConfig` | 迁入 Research assignment | Task Models |
-| `onlineConfig` | 迁入 Stronger fallback assignment | Task Models |
-| `allowEscalation` | 保留为 `USER` | Safety & Agent |
-| `maxEscalationsPerLoop` | 保留为 `POWER` | Safety & Agent |
-| `autoEscalateScoreBelow` | 保留为 `POWER` | Safety & Agent |
-| `hooksEnabled` | 保留为 `POWER` | Safety & Agent |
-| `defaultPermissionMode` | 保留为 `USER` | Safety & Agent |
-| `budget.monthlyUsd` | 保留为 `USER` | Budget |
-| `budget.resetDayOfMonth` | 保留为 `USER` | Budget |
-| `budget.alertRules` | 保留为 `USER` / `POWER` | Budget |
+| `localFastConfig` | 迁入快速辅助的具体用途设置 | 任务与模型 |
+| `localDeepConfig` | 迁入深度研究的具体用途设置 | 任务与模型 |
+| `onlineConfig` | 迁入“必要时使用更强模型”的具体用途设置 | 任务与模型 |
+| `allowEscalation` | 保留为普通设置 | 权限与 Agent |
+| `maxEscalationsPerLoop` | 保留为高级设置 | 权限与 Agent |
+| `autoEscalateScoreBelow` | 保留为高级设置 | 权限与 Agent |
+| `hooksEnabled` | 保留为高级设置 | 权限与 Agent |
+| `defaultPermissionMode` | 保留为普通设置 | 权限与 Agent |
+| `budget.monthlyUsd` | 保留为普通设置 | 预算 |
+| `budget.resetDayOfMonth` | 保留为普通设置 | 预算 |
+| `budget.alertRules` | 保留为普通设置 / 高级设置 | 预算 |
 
 ### 7.5 Ambient、Composer、Command Center 与 Graph
 
-| 当前字段族 | 目标结论 | 目标 owner | 当前注意事项 |
+| 当前字段族 | 目标结论 | 目标负责模块 | 当前注意事项 |
 | --- | --- | --- | --- |
-| `ambientPush.enabled` | `USER` | Ambient | master enable |
-| Ambient carrier flags | `USER` | Ambient | 高打扰项默认关闭 |
-| Ambient timing / counts / hops | `POWER` | Ambient | 保留真实 consumer |
-| Ambient runtime context / score | `STATUS` | Ambient | 不持久化为偏好 |
-| `composer.defaultDocumentView` | `USER` | Composer | 当前默认 Markdown |
-| `composer.intelligenceManualOpen` | `USER` | Composer | contextual open 不改写 |
-| `commandCenter.home.openOnStartup` | `USER` | Command Center | 当前默认关闭 |
-| `commandCenter.home.replaceEmptyTab` | `USER` | Command Center | 当前默认关闭 |
-| Command Center groups / layout / pins | `LOCAL` | Command Center customize | 用户拥有的模块配置 |
-| Command Center compatibility mirrors | `SYSTEM` | Migration | 不开放 |
-| `graphViz.*` | `LOCAL` / `POWER` | File Atlas | 当前 loader 未恢复，先标 blocked |
+| `ambientPush.enabled` | 普通设置 | Ambient | master enable |
+| Ambient 显示位置开关 | 普通设置 | Ambient | 高打扰位置默认关闭 |
+| Ambient 触发间隔、数量和图谱层数 | 高级设置 | Ambient | 真实运行代码正在使用 |
+| Ambient 当前上下文和推荐分数 | 只读状态 | Ambient | 不保存为长期偏好 |
+| `composer.defaultDocumentView` | 普通设置 | Composer | 当前默认 Markdown |
+| `composer.intelligenceManualOpen` | 普通设置 | Composer | 因上下文自动打开时不改写长期设置 |
+| `commandCenter.home.openOnStartup` | 普通设置 | Command Center | 当前默认关闭 |
+| `commandCenter.home.replaceEmptyTab` | 普通设置 | Command Center | 当前默认关闭 |
+| Command Center 分组、布局和固定入口 | 功能内设置 | Command Center | 用户拥有的模块配置 |
+| Command Center 旧版兼容重复字段 | 系统负责 | 旧配置迁移 | 不开放 |
+| `graphViz.*` | 功能内设置 / 高级设置 | File Atlas | 当前启动读取时没有恢复，暂不可用 |
 
-### 7.6 MCP、Command Gateway、Usage 与 Developer
+### 7.6 MCP、命令安全、用量与开发者选项
 
-| 当前字段族 | 目标结论 | 目标 owner | 当前注意事项 |
+| 当前字段族 | 目标结论 | 目标负责模块 | 当前注意事项 |
 | --- | --- | --- | --- |
-| `mcpServers[].name/enabled/transport` | `POWER` / `USER` | Tools | 当前 loader 未恢复整个列表 |
-| MCP command/args/env/url/headers | `POWER` | Tools | secret-aware |
-| MCP status/toolCount/error | `STATUS` | Tools runtime | 不写入配置 |
-| Command Gateway `reviews.decision` | `USER` | Command Gateway | 用户长期意图 |
-| review risk/purpose/hash/time | `STATUS` | Command Gateway | 系统事实 |
-| Command Gateway `findings` | `STATUS` | Command Gateway | 自动生成、漂移后失效 |
-| Gateway config thresholds / patterns | `SYSTEM` | Template config | 不开放 |
-| `usageTrackingEnabled` | `USER` | Usage & Privacy | 当前 loader 正常恢复 |
-| `usageDetailRetentionDays` | `USER` | Usage & Privacy | 当前 loader 正常恢复 |
-| `usagePreviewEnabled` | `USER` | Usage & Privacy | 需明确底层保留语义 |
-| `sqliteBackend` | `POWER` / Developer | Storage | 默认 auto |
-| `enableDevTools` | `POWER` | Developer | 默认 false |
-| `debugTrace.*` | `POWER` | Diagnostics | 当前 loader 有 sanitize |
-| `codeBlockTheme` | `USER` | Appearance | 当前 loader 有 whitelist normalize |
-| folder paths | `USER` / `POWER` | 各 owner | 当前 loader 有 legacy migration |
+| `mcpServers[].name/enabled/transport` | 高级设置 / 普通设置 | 外部工具 | 当前启动读取时没有恢复整个列表 |
+| MCP 命令、参数、环境变量、地址和请求头 | 高级设置 | 外部工具 | 其中的密钥需要保护 |
+| MCP 状态、工具数量和错误 | 只读状态 | 外部工具运行状态 | 不写入用户配置 |
+| 命令审阅结果 `reviews.decision` | 普通设置 | 命令安全 | 用户长期选择 |
+| 命令风险、用途、指纹和审阅时间 | 只读状态 | 命令安全 | 系统事实 |
+| 命令检查结果 `findings` | 只读状态 | 命令安全 | 自动生成；命令发生变化后旧结论失效 |
+| 命令检查门槛和匹配规则 | 系统负责 | 产品内部配置 | 不开放 |
+| `usageTrackingEnabled` | 普通设置 | 用量与隐私 | 当前启动时可以正常恢复 |
+| `usageDetailRetentionDays` | 普通设置 | 用量与隐私 | 当前启动时可以正常恢复 |
+| `usagePreviewEnabled` | 普通设置 | 用量与隐私 | 需明确底层保留语义 |
+| `sqliteBackend` | 高级设置 / 开发者选项 | 数据存储 | 默认自动选择 |
+| `enableDevTools` | 高级设置 | 开发者选项 | 默认关闭 |
+| `debugTrace.*` | 高级设置 | 系统检查 | 当前启动读取会清理无效值 |
+| `codeBlockTheme` | 普通设置 | 外观 | 当前启动读取会检查允许的选项 |
+| 文件夹路径 | 普通设置 / 高级设置 | 各负责模块 | 当前已有旧版本迁移 |
 
-## 8. Onboarding 与 Settings 的共享数据合同
+## 8. 实现参考：Onboarding 和 Settings 怎样使用同一份数据
 
-### 8.1 产品能力节点
+本节主要供开发使用。核心意思很简单：Onboarding、Settings 和具体功能页面看到的连接、模型、权限和状态，必须来自同一份记录，不能各自保存一套。
 
-产品层级不能只存在于 UI 文案中。每个可运行或确定性的能力节点至少需要：
+### 8.1 每项产品能力需要一份明确记录
+
+产品功能的层级不能只写在 UI 文案里。每项能力都要记录它属于哪个产品功能、是否使用模型、可以在哪一级修改，以及是否真的有代码在使用它：
 
 ```text
 capabilityId
@@ -1019,7 +1032,7 @@ allowedOverrideScopes
 productionCallerEvidence
 ```
 
-`executionKind=deterministic` 的节点明确没有模型配置。只有存在 production caller evidence 的 `model / embedding / agent / media` 节点才允许继续进入 execution step、Prompt 或模型 override。
+当 `executionKind=deterministic` 时，表示它是搜索、排序等不需要生成模型的能力，不显示模型设置。只有已经接入真实运行代码的模型、向量、Agent 或媒体能力，才能继续配置具体执行步骤、Prompt 或单独指定模型。
 
 ### 8.2 单一配置记录
 
@@ -1040,9 +1053,9 @@ effectiveAt
 requires: none | reconnect | restart | reindex | reprocess | migration
 ```
 
-Onboarding、Settings 和 owning surface 不应维护不同的数据结构。它们只是以不同上下文读取和写入同一条记录。
+Onboarding、Settings 和具体功能页面不能维护三套不同的数据。它们只是从不同入口读取和修改同一条设置记录。
 
-### 8.3 Readiness 投影
+### 8.3 每项能力的当前状态
 
 每项能力状态至少需要：
 
@@ -1058,7 +1071,7 @@ recommendedAction
 lastReceiptId
 ```
 
-`configured` 不等于 `ready`；`optional` 是优先级，不是状态；`Scanning` 只有在真实任务正在运行且有进度时才成立。
+“已经填写配置”不等于“现在可以使用”；“可选”表示这项能力不是当前任务必需的，也不是一种运行状态；只有真实扫描任务正在运行并且能读到进度时，才能显示“正在扫描”。
 
 ### 8.4 保存与生效
 
@@ -1066,138 +1079,161 @@ lastReceiptId
 用户修改
   → 校验值和依赖
   → 写入唯一配置记录
-  → 触发真实 consumer 更新
-  → 如需 reconnect / restart / reindex / migration，创建独立 operation
-  → 重新读取 effective state
+  → 通知真实功能更新
+  → 如果需要重连、重启、重建索引或迁移，创建一项独立操作
+  → 重新读取实际生效状态
   → 返回已生效、等待处理或失败
 ```
 
-保存成功但 consumer 未更新时，必须显示“已保存但尚未生效”，不能显示完成。
+数据已经写入，但真实功能还没有使用新值时，必须显示“已保存但尚未生效”，不能直接显示完成。
 
-### 8.5 Inheritance 与 override
+### 8.5 上级默认值和单独指定怎样配合
 
-- 任务组拥有 Auto 默认；
-- product surface、capability family、action 和 execution step 逐级继承；
-- 每个能力节点同时引用一个 task family，以便跨 surface 共享可靠默认；
-- 用户明确固定后成为 pinned override；
-- 恢复 Auto 删除 pinned override；
-- Onboarding 只能填补未配置项，不能覆盖 pinned override；
-- Provider 或模型失效时，只自动迁移未固定项；
-- pinned 项失效后进入 action-required，不允许静默换模型；
-- 当前会话 / action 的临时选择只进入 run receipt，除非用户明确设为长期默认。
+- 每类通用任务都有一个自动默认值。
+- 产品功能、相近动作、具体动作和执行步骤逐级沿用上一级设置。
+- 每项产品能力同时属于一种通用任务，方便不同产品功能共用可靠默认值。
+- 用户明确固定某个模型后，这一项不再跟随上级变化。
+- 选择“恢复自动”会清除手动固定值，重新沿用上级设置。
+- Onboarding 只能补齐尚未配置的内容，不能改掉用户已经固定的设置。
+- 服务商或模型失效时，系统只自动调整没有被用户固定的项目。
+- 用户固定的模型失效后，必须要求用户处理，不能静默换成另一个模型。
+- 当前对话或当前动作的临时选择只记录在这一次任务中，除非用户明确选择“设为长期默认”。
 
-## 9. Onboarding 的写入边界与完整流程
+## 9. Onboarding 完整流程
 
 ```text
-1. 检测环境、已有配置与 readiness
+1. 检查当前环境和已有设置
 2. 确定第一次真实任务
-3. 计算该任务的最小依赖差集
-4. 只补齐缺失 connection、最低 permission 或必要 consent
-5. 为未固定的能力节点应用 Auto 与继承默认
-6. 验证 connection、index、runtime、media 或 tool 依赖
-7. 打开真实 owning surface，并带入安全的预填任务
-8. 观察真实结果：first success 或可恢复失败
+3. 找出完成这个任务还缺少什么
+4. 只补齐缺少的 AI 连接、最低权限或必要确认
+5. 其他未固定的设置继续使用系统自动选择
+6. 真实验证连接、索引、Agent、媒体或工具是否可用
+7. 打开真正执行任务的功能页面，并带入安全的预填任务
+8. 观察真实结果：成功完成，或得到可以继续修复的错误
 ```
 
 ### 9.1 Onboarding 可以问的问题
 
 - 第一次想完成什么；
-- 完成该任务所需的连接凭据；
+- 完成该任务所需的登录或 API 密钥；
 - 无法自动决定时，选择一个可用连接；
 - 首次 Agent 任务需要的最低写权限；
 - 首次媒体任务需要的成本或许可确认；
-- 首次索引需要的明确内容范围或性能 consent；
+- 第一次建立索引时必须明确的内容范围或性能影响；
 - 无目标时是否接受最低摩擦推荐任务。
 
 ### 9.2 Onboarding 不应问的问题
 
-- 全部 Provider 和全部模型；
-- quick / deep / premium 等内部层级；
-- temperature、top-p、top-k、penalties；
-- chunk size、overlap、PPR、图算法权重；
+- 所有服务商和所有模型；
+- quick / deep / premium 等内部等级；
+- 模型随机程度、top-p、top-k 和重复惩罚；
+- 文档分块大小、重叠量、搜索排序算法和图算法权重；
 - 月度预算与所有告警阈值；
-- MCP 全量目录、Skills 编辑、Command Gateway 批量审批；
-- debug trace、SQLite backend、runtime hooks；
+- 全部外部工具、Skills 编辑和批量审批命令；
+- 调试记录、数据库实现和运行 hooks；
 - 每一个模块的显示偏好。
 
 ### 9.3 为什么不能用固定页数定义 Onboarding
 
-已有 verified connection 和可用 index 的用户不需要重复配置；只使用 Ollama 的用户不需要看到云端 key；首次生成图片的用户需要 media route，却不需要 semantic index。流程长度由“目标依赖差集”决定，而不是由产品功能数量决定。
+已经有可用连接和知识索引的用户，不需要重复配置；只使用 Ollama 的用户，不需要看到云端 API 密钥；第一次生成图片的用户需要媒体生成连接，却不需要先建立语义索引。所以流程长短应该由“完成当前目标还缺什么”决定，而不是固定成相同页数。
 
 ## 10. 当前源码事实与上线前缺口
 
-以下是 2026-08-10 对当前源码的静态审计结论。它们用于约束后续实现，不代表已经修复。
+以下是 2026-08-10 从当前源码中确认的情况。它们说明产品已经有哪些基础、还缺什么，不代表问题已经修复。
 
 ### 10.1 已有基础
 
-- 当前 model catalog 合计 113 个 entries：Simulator 1、OpenAI 18、Claude 9、Gemini 9、Perplexity 5、Ollama 16、OpenRouter fallback 55；
-- OpenAI、Anthropic、Google、Perplexity、Ollama、OpenRouter、LiteLLM、custom 和 Simulator 已有 Profile 类型；
-- Chat、Copilot、Embedding、Web Search、Agent 等已有多套 role / tier 字段；
-- Knowledge Index、Media、Ambient、Usage、MCP、Command Gateway、Composer、Command Center 等已有真实配置或 runtime 结构；
-- 当前 `AIControlActionCatalog` 有 60 个静态 source-backed actions，并会追加 Copilot runtime actions；
-- 模板配置已经承载 chat runtime、model routing、media、composer、file-atlas、command gateway、vault lint 等内部产品参数；
-- 当前设置保存入口会调用 `saveData(this.settings)`，但启动时会经过显式 `normalizePluginSettings()`。
+当前内置模型列表共有 113 条：
+
+| 来源 | 条目数 | 说明 |
+| --- | ---: | --- |
+| OpenAI | 18 | 内置目录 |
+| Claude | 9 | 内置目录 |
+| Gemini | 9 | 内置目录 |
+| Perplexity | 5 | 内置目录 |
+| Ollama | 16 | 内置目录；正式使用时仍应读取本机真实模型 |
+| OpenRouter | 55 | 只作为备用目录；正式使用时应在线获取最新列表 |
+| Simulator | 1 | 仅用于开发测试 |
+
+- OpenAI、Anthropic、Google、Perplexity、Ollama、OpenRouter、LiteLLM、自定义服务和 Simulator 已有连接类型。
+- Chat、Copilot、知识向量、网页搜索和 Agent 等用途已经存在多套彼此重叠的旧模型字段。
+- 知识索引、媒体生成、Ambient、用量记录、MCP、命令安全、Composer 和 Command Center 已有部分真实配置与运行结构。
+- 当前 `AIControlActionCatalog` 登记了 60 个静态 AI 动作，运行时还会加入 Copilot 动作。
+- 模板文件已经保存 Chat、模型选择、媒体生成、Composer、File Atlas 和 Vault 检查等内部产品参数。
+- 设置可以写入存储，但应用启动时还会重新整理和迁移这些字段；某些字段目前没有被正确恢复。
 
 ### 10.2 不能当作正式设置的当前缺口
 
 | 缺口 | 证据 | 产品后果 |
 | --- | --- | --- |
-| `attachmentHandlingDefault` 未在 AI normalize 中恢复 | 类型和 UI 有字段，loader 未复制 | 重启后可能回到默认，暂不能宣称可靠设置 |
-| `musicLicensingAccepted` 未在 media override normalize 中恢复 | 类型存在，normalize 未处理 | consent 可能丢失或重复询问 |
-| `inspectorLinks` 未在 Search normalize 中恢复 | Settings 可写，loader 未复制 | 当前 Inspector 数值不是可靠持久偏好 |
-| Hub scheduler enabled / interval 未恢复 | 类型和 runtime 存在，loader 未复制 | 重启后后台行为可能变化 |
-| `mcpServers` 未在 top-level normalize 中恢复 | UI 可写，loader 未复制 | 外部工具配置可能重启丢失 |
-| `graphViz` 未在 top-level normalize 中恢复 | defaults/type 存在，loader 未复制 | Graph 偏好不能视为稳定设置 |
-| chunk minimum size UI key 不一致 | 类型是 `minDocumentSizeForChunking`，UI 使用 `minDocSizeToChunk` | 当前控件可能写入 consumer 不读取的字段 |
-| XLSX 表面属于可选类型但 loader 明确不解析 | `TableDocumentLoader` 对 xlsx 返回 null | 不得将 XLSX 画成可用开关 |
-| Index status 只有 builtAt、indexedDocs、isReady | `getIndexStatus()` 返回三字段 | 无法可靠表达 eligible、changed、missing、coverage、semantic freshness |
-| Codex / Claude Code 不在当前 ProfileKind | Profile 类型未包含 runtime adapter | 不得画成 verified 普通 Provider |
-| 连接、role、harness tier、search models 多处重复 | 多套字段并存 | 用户无法知道哪个是唯一有效模型默认 |
-| AI Control action 只有 5 个粗粒度 `area` | `AIControlProductArea` 没有 parent / child 或独立 File Atlas、Ambient 层级 | 无法从用户认识的 surface 逐层导航 |
-| AI Control port 没有 model policy | summary 只有 id、label、description、area、prompt slots | 当前 Prompt 目录不能冒充已实现的模型配置中心 |
+| 附件默认处理方式没有在启动时恢复 | 类型和 UI 有字段，但启动读取时没有复制 | 重启后可能回到产品默认，目前不能算可靠设置 |
+| 音乐许可确认没有在启动时恢复 | 类型存在，但启动读取时没有处理 | 用户的确认可能丢失，或被重复询问 |
+| File Atlas 链接显示设置没有在启动时恢复 | Settings 可以保存，但启动读取时没有复制 | 当前数值重启后不可靠 |
+| 定期整理重要内容的开关和间隔没有恢复 | 类型和运行代码存在，但启动读取时没有复制 | 重启后后台行为可能变化 |
+| MCP 工具列表没有在启动时恢复 | UI 可以保存，但启动读取时没有复制 | 外部工具配置可能在重启后丢失 |
+| 图谱显示设置没有在启动时恢复 | 已有默认值和类型，但启动读取时没有复制 | Graph 偏好目前不能算稳定设置 |
+| “多长的文档才拆分”使用了两个不同字段名 | 类型是 `minDocumentSizeForChunking`，UI 写入 `minDocSizeToChunk` | 页面可能保存了一个真实功能不会读取的值 |
+| XLSX 表面上属于可选类型，但实际读取流程不支持 | `TableDocumentLoader` 对 xlsx 返回 null | 不得将 XLSX 画成可用开关 |
+| 索引状态目前只有建立时间、已索引数量和是否就绪 | `getIndexStatus()` 只返回三个字段 | 无法说明还有多少文件、哪些发生变化、覆盖率和语义搜索是否最新 |
+| Codex / Claude Code 还没有专用连接类型 | 当前连接类型中没有对应 Agent 接入 | 不能把它们画成已经验证的普通聊天服务商 |
+| 连接、模型角色和不同任务等级存在多套重复字段 | 旧字段同时存在 | 用户无法知道哪个才是真正生效的默认模型 |
+| AI 动作目前只分成 5 个很粗的区域 | `AIControlProductArea` 没有父子层级，也没有单独区分 File Atlas 和 Ambient | 无法让用户从熟悉的产品功能逐层找到具体动作 |
+| AI Control Center 目前没有模型选择规则 | 当前摘要只有编号、名称、说明、区域和 Prompt 位置 | 现有 Prompt 目录不能冒充已经完成的模型配置中心 |
 | 许多模板参数可热更新 | `templates/config/*` | 它们是产品配置，不等于用户设置 |
 
-### 10.3 当前必须做的配置治理收口
+### 10.3 上线前必须补齐的工作
 
-1. 建立层级化 capability registry：surface、能力族、action、execution step 和 caller evidence 可查询；
-2. 建立配置注册表：每项配置有 owner、类型、默认来源、consumer、影响和恢复方式；
-3. 将 role、tier、legacy default model 收敛成 Task Models 的继承与 override；
-4. 补齐 normalize / migration / persistence tests，删除“能保存但重启丢失”的假设置；
-5. 建立 shared readiness projection，补齐 Index、Connection、Media、Agent、Tools 的真实状态；
-6. 将状态、设置、consent 和 operation 分开建模；
-7. 只有验证过 end-to-end consumer 的字段才进入正式 UI；
-8. 为每项 re-index、reconnect、restart、migration 建立 operation 和 receipt；
-9. 对 provider / model 动态目录记录来源、新鲜度和 fallback；
-10. 完成 Codex / Claude Code 专属 runtime adapter 后再开放；
+1. 建立完整的产品能力目录，让每项能力都能从产品功能一路查到具体动作、执行步骤和真实代码入口。
+2. 建立统一设置清单，为每项设置记录负责模块、类型、默认来源、实际使用位置、影响和恢复方式。
+3. 把旧的角色、等级和全局默认模型字段，迁移到新的“任务与模型”继承体系。
+4. 补齐启动恢复、旧版本迁移和重启保持测试，消灭“能保存但重启丢失”的假设置。
+5. 让知识索引、AI 连接、媒体、Agent 和工具都能返回统一而真实的可用状态。
+6. 在数据层明确区分设置、只读状态、使用前确认和一次操作。
+7. 只有真实功能已经接入并完成验证的字段，才能进入正式 UI。
+8. 为重建索引、重新连接、重启和数据迁移建立独立操作，并记录最终结果。
+9. 动态模型列表必须记录来源、更新时间，以及何时使用内置备用列表。
+10. 完成 Codex / Claude Code 专用 Agent 接入后再向用户开放。
 11. 先迁移旧字段再退役，不能直接删除用户已有配置。
 
 ## 11. 产品负责人决策
 
-下列问题不应由 UI 设计师自行决定。D7 已确定，其余仍需产品负责人确认。
+下面是 UI 开始设计前必须由产品负责人确定的问题。D7 已经确定，其余仍待确认。
 
 ### D1. 首次任务默认入口
 
-建议：没有明确目标时，根据当前环境选择最低摩擦任务；有可用 index 时优先 Vault question / Search，有活动文档时优先 Composer，没有文档时优先 Chat，不默认进入空白页。
+建议：用户没有明确目标时，根据当前环境推荐最容易成功的任务。有可用知识索引时优先推荐 Vault 问答或搜索；当前正在编辑文档时优先推荐 Composer；没有文档时优先推荐 Chat。不要把用户带到空白页。
 
 ### D2. `autoIndex` 上线默认
 
-当前编译默认是关闭。建议区分：首次全量索引需要明确触发；首次成功建立索引后，增量更新可以默认开启，并允许关闭。需要确认性能、隐私和大型 Vault 边界。
+当前产品内置值是关闭。建议第一次完整建立索引时由用户明确开始；索引成功建立后，后续的小范围增量更新默认开启，并允许用户关闭。还需要确认大型 Vault 的性能和隐私边界。
 
-### D3. Usage tracking 的准确语义
+### D3. “记录用量”到底记录什么
 
-当前默认开启，但源码字段名不能证明数据是否只在本地。上线前必须明确区分：本地运行 receipt、可选 usage history、外发 telemetry。三者不能共用一个含糊开关。
+当前默认开启，但仅看字段名无法判断数据是否只保存在本机。上线前必须明确区分：
 
-### D4. Budget 范围
+- 安全和故障恢复必需的本地运行记录；
+- 用户可以选择保留的用量历史；
+- 发送到外部的遥测数据。
 
-需要确认 40 USD 是全产品月度目标、仅 Agent harness 目标，还是用户可选 usage pace；Media 单次成本 guard 是否独立。建议形成一个总预算域，按 Chat / Agent / Media 分类汇总，而不是多个无范围的 Budget。
+三者不能共用一个含糊的“记录用量”开关。
 
-### D5. Attachment 默认策略
+### D4. 预算到底覆盖哪些费用
 
-当前默认 `direct`。建议改成 capability-aware Auto：模型和政策允许时 direct，不允许时降级为解析文本，并在 receipt 中说明。保留高级固定 override。
+需要确认三个问题：
 
-### D6. Provider 首发范围
+- 40 美元是整个 Peak 的月度目标，还是只针对 Agent？
+- 它是实际限制，还是仅用于显示消费进度？
+- 媒体生成的单次高成本确认是否独立？
 
-建议 P0 明确为：
+建议只设置一个总预算入口，再按 Chat、Agent 和媒体生成分类查看，而不是出现多个范围不明的“预算”。
+
+### D5. 附件默认怎样交给模型
+
+当前默认直接把附件交给模型。建议改成自动判断：模型和数据政策允许时直接发送；不允许时，先在本地解析成文字再发送，并在运行记录中说明实际采用了哪种方式。高级用户仍可以固定一种策略。
+
+### D6. 首发支持哪些 AI 服务
+
+建议首发重点支持：
 
 - OpenAI；
 - Anthropic；
@@ -1206,7 +1242,7 @@ lastReceiptId
 - Codex；
 - Claude Code。
 
-Google、Perplexity 和 compatible endpoints 保留在扩展 / 高级范围。Codex 与 Claude Code 必须作为 Agent runtime，不伪装成普通聊天 Provider。
+Google、Perplexity 和其他兼容接口保留在扩展或高级范围。Codex 与 Claude Code 必须作为 Agent 运行环境接入，不能伪装成普通聊天服务商。
 
 ### D7. 产品入口优先的模型配置层级（已确定）
 
@@ -1220,13 +1256,19 @@ Google、Perplexity 和 compatible endpoints 保留在扩展 / 高级范围。Co
 - Agent / Wizard；
 - Media。
 
-用户可以继续进入能力族、action、execution step 和 Prompt。
+用户需要时，可以继续进入一组相近能力、具体动作、执行步骤和 Prompt。
 
-六个 task families 继续作为跨 surface 的自动默认与继承层，但不是普通用户必须先理解的一级导航。Provider / Connection 是独立的可用资源池，不作为产品能力树的根。
+六类通用任务继续负责在不同产品功能之间共享自动默认值，但普通用户不需要先理解这六类。AI 服务商和连接是独立的可用资源列表，不作为产品功能导航的起点。
 
 ### D8. 用户自定义 Prompt 边界
 
-需要确认哪些 production capability 允许改 instruction、哪些只允许复制为用户版本、哪些系统 Prompt 永远只读。不能将所有内部 Prompt 一次性开放。
+需要确认三类边界：
+
+- 哪些真实功能允许直接修改指令；
+- 哪些只能复制成用户自己的版本后再修改；
+- 哪些系统 Prompt 永远只读。
+
+不能一次性把所有内部 Prompt 都开放编辑。
 
 ## 12. 给 UI 设计师的内容约束
 
@@ -1235,107 +1277,109 @@ Google、Perplexity 和 compatible endpoints 保留在扩展 / 高级范围。Co
 1. 每个模块的状态结论；
 2. 状态证据与最后验证时间；
 3. 用户可以改变的长期意图；
-4. 自动值、用户 override 与本次 effective value 的区别；
+4. 系统自动选择、用户长期指定和本次实际使用结果之间的区别；
 5. 当前修改的保存和生效状态；
-6. 需要 reconnect / restart / re-index / migration 的影响；
+6. 修改后是否需要重新连接、重启、重建索引或迁移数据；
 7. 原地修复和恢复自动 / 默认；
 8. 高级项的逐模块分层；
-9. consent、operation、danger 与普通设置的语义隔离；
-10. owning surface 与 Settings 的唯一 owner 关系。
+9. 使用前确认、一次操作、危险操作和普通设置之间的区别；
+10. 每项设置只有一个主要修改位置，具体功能页面和 Settings 不会各存一份。
 
 设计师不得：
 
-- 设计全局 Standard / Advanced 双模式；
+- 设计覆盖全产品的“普通 / 高级”双模式；
 - 为了简洁删除本文保留的真实配置；
-- 把 `STATUS` 画成用户可编辑值；
-- 把 `SYSTEM` 机制包装成普通偏好；
-- 把 `BLOCKED` 能力画成已可用；
+- 把 只读状态 画成用户可编辑值；
+- 把 系统负责 机制包装成普通偏好；
+- 把 暂不可用 能力画成已可用；
 - 在多个模块复制同一模型、目录或权限设置；
 - 用“保存成功”代替“已实际生效”；
 - 让用户在 Onboarding 中浏览 113 个模型；
-- 让 OpenRouter fallback 目录看起来像实时目录；
-- 把 Codex / Claude Code、Web、MCP 或 Media 当成同类文本模型；
+- 让 OpenRouter 内置备用列表看起来像刚刚在线获取的实时列表；
+- 把 Codex / Claude Code、网页工具、MCP 或媒体生成当成同一类文本模型；
 - 把 Settings 变成所有内部参数的展示柜。
 
 ## 13. 实现与验收标准
+
+本节主要供开发和测试使用。产品负责人可以直接看 13.3 的产品验收。
 
 ### 13.1 配置注册表
 
 每个正式设置必须登记：
 
-- stable id；
-- 模块 owner；
-- 治理类型；
-- scope；
-- 编译默认与 Auto resolver；
-- persistence key 和 schema version；
-- production consumer；
+- 稳定编号；
+- 负责模块；
+- 内容分类；
+- 影响范围；
+- 产品内置值和自动选择规则；
+- 存储字段和数据版本；
+- 真正会使用这项设置的功能；
 - 校验规则；
-- effective-state readback；
-- reprocess / restart / reconnect / migration 影响；
-- reset 行为；
+- 实际生效状态怎样读回；
+- 是否需要重新处理、重启、重新连接或迁移；
+- 恢复自动或恢复默认时怎样处理；
 - Onboarding 是否允许写入；
-- receipt 与敏感数据规则。
+- 运行记录和敏感数据保护规则。
 
 ### 13.2 自动化验证
 
-- 每个 persisted field 有 normalize / migration / round-trip test；
-- 每个用户可见设置有至少一个 consumer test；
-- 每个 model-using action 只有一个可查询的 surface → family → action → step 路径；
-- 确定性节点不会产生 model policy 或 model picker；
-- system / user Prompt pair 只对应一个 execution step；
-- surface / family / action / step 继承遵守最近兼容 override 优先；
-- Provider usage 反向查询与 capability effective assignment 一致；
-- shortlist 只包含已验证且能力兼容的候选；
-- 改值后能读取 effective state；
-- 恢复 Auto 会删除 override，而不是写死旧默认；
-- pinned assignment 不被 Onboarding 或 Provider refresh 覆盖；
-- Provider 删除前能列出所有依赖；
-- Index level、chunking 和路径变更正确产生 operation；
-- 密钥不会出现在 logs、receipts、debug exports；
-- dangerous actions 有明确确认和结果 receipt；
-- Settings 与 Onboarding 读取同一 readiness；
+- 每个保存字段都有启动整理、旧版本迁移和保存后再读取测试；
+- 每个用户可见设置至少有一个真实功能使用测试；
+- 每个使用模型的动作只有一条可查询的“产品功能 → 相近能力 → 具体动作 → 执行步骤”路径；
+- 不使用生成模型的能力不会出现模型选择器；
+- 同一步骤的系统 Prompt 和用户 Prompt 只对应一套模型设置；
+- 各层默认值始终优先使用距离最近且能力兼容的用户指定；
+- 从 AI 连接查看使用位置，与从具体功能查看实际模型，结果一致；
+- 默认推荐列表只包含已经验证且能力兼容的模型；
+- 改值后可以读回真实生效状态；
+- 恢复自动选择会清除用户指定，而不是写死某个旧默认值；
+- Onboarding 或模型列表刷新不会覆盖用户已经固定的选择；
+- 删除 AI 连接前可以列出所有依赖它的功能；
+- 修改索引深度、文档分块和目录时，会正确创建相应处理操作；
+- 密钥不会出现在日志、运行记录和诊断导出中；
+- 危险操作有明确确认和最终结果记录；
+- Settings 与 Onboarding 读取同一份可用状态；
 - 重启后所有正式设置保持一致；
-- 当前已发现的 normalize 缺口全部有 regression tests。
+- 当前已经发现的启动恢复问题全部有防止再次出现的测试。
 
 ### 13.3 产品验收
 
 - 新用户只完成首次目标所需的最少决定；
-- 已有连接、index 和 pinned defaults 被正确复用；
-- 用户能从任一能力问题到达唯一配置 owner；
-- 用户能从熟悉的 product surface 逐层找到具体 AI action；
-- 普通用户无需先理解 Provider、task family 或 Prompt 即可知道当前 effective model；
-- 确定性能力明确显示不使用模型，不产生假的 model picker；
-- 父级 override 只影响兼容后代，不会错误覆盖其他 modality；
-- 默认候选不平铺完整 Provider catalog，完整兼容目录只在主动查看时出现；
+- 已有连接、知识索引和用户固定的默认值会被正确复用；
+- 用户从任何功能都能找到唯一的长期设置位置；
+- 用户能从熟悉的产品功能逐层找到具体 AI 动作；
+- 普通用户不需要先理解服务商、通用任务类型或 Prompt，也能知道当前实际会使用哪个模型；
+- 不使用生成模型的能力明确写明“无需模型”，不出现假的模型选择器；
+- 上一级的模型指定只影响能力兼容的下级动作，不会错误覆盖图片、音频或媒体生成等其他类型；
+- 默认候选不会平铺服务商的完整模型目录；只有用户主动查看时才显示完整兼容列表；
 - 每项设置都能回答“影响什么、是否保存、是否生效、如何恢复”；
 - 高级能力没有被删除，也不会压过常用任务；
 - 状态、设置、操作、确认和危险行为不会混淆；
 - 不存在重启后丢失但 UI 仍宣称成功的设置；
-- 不存在没有 production consumer 的假开关；
-- 完成 Onboarding 后进入真实工作入口并产生 first-success 结果；
+- 不存在没有真实功能使用的假开关；
+- 完成 Onboarding 后进入真实工作入口并完成第一次成功任务；
 - UI 设计可以改变，但本文规定的模块所有权与配置边界保持不变。
 
-## 14. Source evidence
+## 14. 实现参考：源码依据
 
 本文件的当前事实主要来自：
 
 - `src/core/config/settingsTypes.ts`：主要持久化字段与编译默认；
 - `src/app/settings/PluginSettingsLoader.ts`：启动恢复、normalize 与兼容迁移；
-- `src/core/profiles/types.ts`：Connections、roles 与 compatible endpoints；
+- `src/core/profiles/types.ts`：AI 连接、模型用途和兼容接口；
 - `src/core/types/ambient.ts`：Ambient 设置与默认；
 - `src/core/command-center/types.ts`：Command Center 用户配置与派生状态；
 - `src/core/types/mcp.ts`：MCP 配置与连接状态；
-- `src/core/types/plugin-command-gateway.ts`：用户 review、系统 finding、risk 与 receipt；
+- `src/core/types/plugin-command-gateway.ts`：用户审阅结果、系统发现的问题、风险与运行记录；
 - `src/core/ports/SettingsActionsPort.ts`：Settings 中的 setup / maintenance / index operations；
 - `src/core/ports/AIControlCenterPort.ts`：当前 AI action summary 与 Prompt 配置边界；
-- `src/app/ai-control-center/AIControlActionCatalog.ts`：当前 source-backed AI action 目录；
+- `src/app/ai-control-center/AIControlActionCatalog.ts`：当前静态 AI 动作目录；
 - `src/app/ai-control-center/AIControlCenterRuntime.ts`：静态 action 与 Copilot runtime action 的合并；
 - `src/service/chat/chatRuntimeConfig.ts`：Chat loop 内部 budget / timeout；
-- `src/service/chat/modelRouter.ts`：Auto model 的能力筛选和内部路由配置；
+- `src/service/chat/modelRouter.ts`：自动选择 model 的能力筛选和内部路由配置；
 - `src/service/search/index/indexService.ts` 与 `src/core/types/index-status.ts`：当前 Index status 边界；
 - `src/core/document/loader/TableDocumentLoader.ts`：当前 XLSX 不支持事实；
-- `templates/config/*`：产品模板配置、模型目录、媒体 preset 与内部机制；
-- `docs/conventions/configurability.md`：模板配置、domain fallback 与常量的代码所有权规则。
+- `templates/config/*`：产品模板配置、模型目录、媒体预设与内部机制；
+- `docs/conventions/configurability.md`：模板配置、各领域内置备用值与常量的代码归属规则。
 
-其中 `templates/config/*` 是“产品配置可由非工程人员调整”的 source，不自动等于“终端用户应该在 Settings 中修改”。两种 configurability 必须始终分开。
+其中 `templates/config/*` 表示产品团队可以在不改业务代码的情况下调整内部配置，不代表终端用户应该在 Settings 中修改这些内容。两种“可以修改”必须始终分开。
