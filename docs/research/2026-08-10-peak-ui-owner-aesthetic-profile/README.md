@@ -4,8 +4,8 @@
 
 - 状态：research synthesis · design input · no implementation
 - 语料窗口：2026-04-11 → 2026-08-10
-- 最后更新：2026-08-10
-- 阅读量：约 1.9 万字符 · 约 40 分钟（含证据表与 checklist）
+- 最后更新：2026-08-11
+- 阅读量：约 2.2 万字符 · 约 45 分钟（含证据表与 checklist）
 - 主要读者：Peak owner、Design System 维护者、Theme 设计者、后续 Codex / Claude Code 设计与评审任务
 - 用途：指导 Peak Theme、共享组件、Composer、Search、Graph、File Atlas、Chat / Intelligence、Settings 等界面的设计与验收
 
@@ -492,6 +492,78 @@ Theme 的整体感觉至少要在以下固定试件中同时成立：
 > - Dashboard 不得退化成等权卡片墙。
 > - Peak-owned UI 不继承 Obsidian 视觉值。
 > - Light、Dark 和 reduced motion 在同一组固定 scene 中验收。
+
+## 如何把原则用于实际设计
+
+这份 profile 不是一套新的组件库，也不是要求每次设计都机械勾完 13 条原则。它提供的是一条稳定的判断顺序：先确认产品与任务真实，再判断层级和状态，最后才讨论主题风格、动画或其他感官反馈。
+
+一次完整设计或评审按下面五步进行：
+
+1. **锁定真实场景**：明确当前 surface、用户任务、来源设计和 representative fixture；没有真实来源时先标记为探索稿。
+2. **压缩视觉噪声**：区分内容、长期 chrome、上下文动作和状态反馈；删除没有独立职责的容器、标题与装饰。
+3. **写出交互合同**：为 resting、hover、focus、selected、loading、streaming、error、disabled 和 collapsed 等相关状态定义可见反馈。
+4. **应用 Design System / Theme**：只替换语义角色，不改变内容结构、动作优先级或工作流。
+5. **回到真实产品验收**：Theme Lab 负责暴露整体气质和跨场景问题；UI Inventory 与 real Obsidian 负责确认产品还原和真实交互。
+
+对应的文档链是：
+
+- [Owner 审美原则](./README.md)：判断什么符合 Peak 的长期审美与交互偏好；
+- [Peak Design System](../../design-system.html)：把偏好翻译成 token、组件角色、状态和 Host Boundary；
+- [Theme Lab](../../design-system-playground.html)：在固定结构和固定状态上切换 Theme，观察跨场景效果；
+- [UI Inventory](../../ui-inventory.html)：回看真实录屏帧、设计来源与产品结构；
+- real Obsidian QA：验证 hover、focus、drag、streaming、响应式几何和宿主样式隔离。
+
+### 用于整体 UI 设计
+
+原则的作用是给设计建立优先级，而不是替代每个 surface 的信息架构。
+
+- Composer 先保护文档阅读和原地编辑，再安排 block chrome、AI action 和 sidecar。
+- Search / File Atlas 先保护扫描、长文本和 selection，再安排 toolbar、filter 与 inspector。
+- Graph 先保护路径、方向、标签和选择关系，再决定节点皮肤与画布装饰。
+- Dashboard / Settings 先保护状态真相和下一步动作，再决定 card、metric 或 form 的组合方式。
+
+每次方案评审先问三个问题：
+
+1. 如果移除颜色、阴影和圆角，内容层级是否仍成立？
+2. 如果填入真实长文本、密集关系或错误状态，布局是否仍稳定？
+3. 如果用户只使用键盘或看不到 hover，关键动作是否仍可发现？
+
+### 用于 Theme 设计
+
+Theme 的设计顺序应从语义角色开始，不从一张 mood image 或 accent 色开始。
+
+- 先固定 scene、内容、几何和状态，再替换 neutral ramp、accent、type family、density、radius、elevation 与 motion profile。
+- 同一 Theme 同时查看 Composer、Search、Graph、File Atlas、Dashboard、Settings 和 Chat，不在单张 hero screenshot 上定案。
+- 用“高密度但低噪声”校准 neutral surface、border 对比和强调色面积，避免靠高饱和色制造层级。
+- Theme JSON 可以交给 Codex / LLM 操作固定 scene atlas，但模型不得因此重排产品结构、删除状态或重画工作流。
+
+因此，Theme 生成的输入不应只有 palette。它至少包含：Owner 原则、Theme JSON、固定 scene manifest、允许变化的轴，以及禁止变化的产品结构。
+
+### 用于 Motion 设计
+
+每个动画先写清五件事：触发原因、解释任务、起点与终点、能否中断、reduced-motion 下保留什么。答不出来的动画默认删除。
+
+Peak 的 motion 可以分成四类：
+
+1. **状态反馈**：hover、press、focus、selected 和 validation，快速确认动作已被接收。
+2. **空间连续性**：popover、menu、drawer、sidecar、segmented indicator，说明新表面从哪里出现、属于哪个对象。
+3. **任务进度**：loading、scan、streaming、generation，说明任务仍在进行以及当前阶段。
+4. **关系与布局变化**：Graph path、filter、sort、fold、reorder，帮助用户保留对象身份和位置记忆。
+
+Motion 不负责让产品“显得像 AI”。渐变、弹跳、循环 shimmer 或大幅移动如果不能解释状态，就会违背低噪声原则。具体 duration 与 easing 应由组件合同统一定义，而不是在每个页面重新调一组。
+
+### 用于声音反馈（可选）
+
+如果未来 Peak 引入声音，声音不应被并入视觉 Theme Pack。它更适合作为独立的 feedback profile，因为静音偏好、系统勿扰、辅助功能和工作环境与配色主题并不是同一个维度。
+
+默认保持安静，只在少数离开当前视线后仍有价值的事件中考虑声音：
+
+- 长时间后台任务完成；
+- 需要立即处理的阻断错误；
+- 用户明确开启的关键里程碑通知；
+- 作为视觉 / 文字反馈的可选辅助通道。
+
+不要给 hover、普通点击、每条 streaming token、Graph 节点移动或普通消息到达添加声音，也不要用持续背景音营造“AI 氛围”。任何声音必须可关闭、可调节，并始终有等价的视觉和文字反馈。
 
 ## Owner review checklist
 

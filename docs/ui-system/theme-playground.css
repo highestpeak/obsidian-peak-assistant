@@ -91,6 +91,16 @@
 .lab-controls input[type="color"] { padding: 3px !important; cursor: pointer; }
 .lab-console__actions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--pk-border); }
 
+.lab-principle-bridge { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(0, 1.55fr) auto; gap: 22px; align-items: center; margin: -18px 0 42px; padding: 16px 18px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-lg); background: var(--pk-surface); box-shadow: var(--pk-shadow-sm); }
+.lab-principle-bridge__copy { display: grid; gap: 5px; }
+.lab-principle-bridge__copy > strong { font-size: var(--pk-text-lg); }
+.lab-principle-bridge__copy > p { color: var(--pk-text-secondary); font-size: var(--pk-text-xs); line-height: 1.55; }
+.lab-principle-bridge__steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
+.lab-principle-bridge__steps li { display: grid; gap: 4px; min-width: 0; padding: 2px 12px; border-left: 1px solid var(--pk-border); }
+.lab-principle-bridge__steps b { font-size: var(--pk-text-xs); }
+.lab-principle-bridge__steps span { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); line-height: 1.45; }
+.lab-principle-bridge > .pk-btn { justify-self: end; white-space: nowrap; }
+
 .lab-section { scroll-margin-top: 250px; padding: 50px 0; border-top: 1px solid var(--pk-border); }
 .lab-section__head { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 24px; }
 .lab-section__head > div { display: grid; gap: 8px; }
@@ -524,6 +534,8 @@
 .theme-image-slot figcaption code { color: var(--pk-text-tertiary); font: var(--pk-text-xs)/1.3 var(--pk-font-mono); }
 
 @media (max-width: 1220px) {
+  .lab-principle-bridge { grid-template-columns: minmax(0, 1fr) auto; }
+  .lab-principle-bridge__steps { grid-column: 1 / -1; grid-row: 2; }
   .lab-controls { grid-template-columns: repeat(4, 1fr); }
   .foundation-specimen { grid-template-columns: 1fr 1fr; }
   .specimen-card--colors { grid-column: 1 / -1; }
@@ -559,6 +571,10 @@
 
 @media (max-width: 680px) {
   .lab-main { width: min(100% - 24px, 1480px); padding-top: 24px; }
+  .lab-principle-bridge { grid-template-columns: 1fr; }
+  .lab-principle-bridge__steps { grid-column: 1; grid-row: auto; grid-template-columns: 1fr 1fr; row-gap: 12px; }
+  .lab-principle-bridge__steps li:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .lab-principle-bridge > .pk-btn { justify-self: start; }
   .lab-controls,
   .foundation-specimen { grid-template-columns: 1fr 1fr; }
   .codex-theme-contract,

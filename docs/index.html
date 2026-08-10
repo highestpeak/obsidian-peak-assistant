@@ -355,7 +355,7 @@
                     </div>
                   </div>
                   <ul class="tree-children">
-                    <li><a href="design-system.html"><strong>Peak Design System</strong></a> — 设计规则、Theme Schema 与 Obsidian Theme Boundary；使用 <a href="design-system-playground.html">Theme Lab</a> 的固定试件判断整体换肤效果，使用 <a href="ui-inventory.html">UI Inventory</a> 的真实录屏帧和源码关系查看产品原貌。</li>
+                    <li><a href="design-system.html"><strong>Peak Design System</strong></a> — 从 owner 审美判断到 Theme Schema、Obsidian Theme Boundary、固定试件与真实 UI 来源的完整文档组。<span class="tree-doc-links"><a href="research/2026-08-10-peak-ui-owner-aesthetic-profile/README.md">Owner 审美原则</a><a href="design-system-playground.html">Theme Lab</a><a href="ui-inventory.html">UI Inventory</a></span></li>
                     <li><a href="superpowers/specs/2026-07-28-shared-ai-instruction-composer.md"><strong>Shared AI Instruction Composer</strong></a> — Chat Studio、Composer Copilot、AI Graph 与后续 AI 表面共用的 PromptInput、context、附件、draft 和 submit / stop 能力；各 surface 只提供 adapter。</li>
                     <li><a href="conventions/ui-design.md#65-domain-pickers-are-shared-composites-not-surface-local-dropdowns"><strong>共享模型选择器</strong></a> — Chat Studio 的 <code>ComposerModelSelector</code> 是当前运行时模型选择的标准交互；Composer Copilot 直接复用同一组件、搜索、筛选、Profile 分组、能力标签和选中态，只用 execution-safe Profile scope 限制可执行模型。任何新 AI surface 禁止再写本地模型下拉；后续统一收敛到共享目录下的 <code>ProfileModelPicker</code> 组件族。</li>
                     <li><a href="conventions/ui-design.md#66-segmented-state-switches-share-one-motion-contract"><strong>共享 Segmented 动画切换</strong></a> — 视图、密度、时间范围和工作模式等互斥状态统一使用公共 <code>Segmented</code>；需要连续空间反馈时启用 <code>animated-pill</code>，复用同一滑块、spring 参数和 reduced-motion 行为，禁止各功能复制一套按钮或动画。</li>
