@@ -22,12 +22,19 @@ Design-only successor to the rejected six-surface prototype in
    context and candidates; it does not replace those editors.
 3. Remove global View / Edit / Compare / Changes controls. Editing is a native
    file affordance; review appears only after an AI suggestion exists.
-4. Keep HTML as a live page with one local source-edit action, and keep PDF
-   answers page-addressable.
+4. Keep HTML as a live page with element selection and one local source-edit
+   action. Give PDF whole-document, passage, and bounded-region AI context;
+   every factual answer remains page-addressable.
 5. Keep Code Source always editable with syntax highlight, save feedback,
-   selection AI, and transient suggestion review. No project/symbol UI.
-6. Keep Image canvas-first with a compact contextual toolbar. Semantic edits
-   go through Intelligence and before/after candidate review.
+   selection AI, Add to Composer, and transient suggestion review. No
+   project/symbol UI.
+6. Keep Image canvas-first. Crop is a full direct-manipulation task with free
+   handles, aspect presets, left/right rotation, and arbitrary straighten.
+   View zoom replaces primary Resize; format, dimensions, quality, and live
+   size estimates belong to Export copy rather than an opaque Compress button.
+7. Treat Add to Composer as the shared handoff for an HTML element, PDF
+   passage/region, code selection, Canvas subgraph, or Excalidraw selection.
+   The handoff keeps the native source locator, not just copied text.
 
 Every visible primary control in the mock must either change the file surface,
 change the current selection, or open a concrete Intelligence result. Decorative

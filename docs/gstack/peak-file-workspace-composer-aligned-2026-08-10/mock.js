@@ -6,8 +6,8 @@ const surfaces = {
     state: "Original protected · Save as new version",
     contextTitle: "I can see this image",
     contextDetail: "Pixels · dimensions · visible text",
-    headline: "Direct tools on the canvas. AI actions beside it.",
-    description: "Crop, rotate, resize, and compress directly on the canvas. Semantic edits create a reviewable version.",
+    headline: "Crop by touch. Export with a predictable result.",
+    description: "Free crop and rotation stay on the canvas. Zoom changes only the view; format, dimensions, quality, and estimated size live in Export copy.",
     scope: "Whole image",
     placeholder: "Ask about this image or propose a change…",
     actions: [
@@ -24,8 +24,8 @@ const surfaces = {
     state: "Interactive preview · Scripts isolated",
     contextTitle: "I can read the page and its source",
     contextDetail: "Rendered DOM · HTML/CSS · visible state",
-    headline: "The page stays visible while you work on it.",
-    description: "Select an element or open its source locally. AI changes appear while the live page remains visible.",
+    headline: "Select a live element, then carry its context forward.",
+    description: "The element, DOM path, visible text, and source can move together into Intelligence or Composer while the page stays interactive.",
     scope: "Rendered page + source",
     placeholder: "Ask about the page or change the selected element…",
     actions: [
@@ -42,8 +42,8 @@ const surfaces = {
     state: "Read-only source · Linked notes available",
     contextTitle: "I can read all 18 pages",
     contextDetail: "Text · page geometry · source citations",
-    headline: "Ask, cite, and return to the exact page.",
-    description: "The PDF remains the reading surface. Every factual answer carries a page citation; derived work becomes a linked note.",
+    headline: "Select a passage or region. Ask, cite, and carry it forward.",
+    description: "AI can use the whole PDF, exact text, or a bounded table/image region. Answers jump back to page geometry; selections can enter Composer.",
     scope: "Entire PDF · page 1 visible",
     placeholder: "Ask a question across this PDF…",
     actions: [
@@ -60,8 +60,8 @@ const surfaces = {
     state: "Editable now · Execution requires permission",
     contextTitle: "I can read the current source file",
     contextDetail: "Python · current selection · related Vault files",
-    headline: "Type directly. Ask AI only when it helps.",
-    description: "Read, type, and save in the highlighted source editor. AI suggestions stay attached to the active selection.",
+    headline: "Type directly. Send the useful selection to Composer.",
+    description: "Read, type, and save in the highlighted source editor. Selected code can be explained, changed, or attached as source context in Composer.",
     scope: "index_pipeline.py · current selection",
     placeholder: "Explain or change the selected code…",
     actions: [
@@ -78,8 +78,8 @@ const surfaces = {
     state: "Native Canvas · Autosaved",
     contextTitle: "I can see the native Canvas selection",
     contextDetail: "3 cards · 2 edges · workflow card selected",
-    headline: "Canvas stays native. Intelligence follows selection.",
-    description: "Select cards, create objects, and zoom on the canvas itself. Peak explains or proposes graph changes from the sidecar.",
+    headline: "Canvas stays native. Selection becomes portable context.",
+    description: "Select cards and neighbors on the native canvas, then ask Intelligence or attach that subgraph to a Composer task.",
     scope: "Selected media card + neighbors",
     placeholder: "Ask about this card or propose a connection…",
     actions: [
@@ -96,8 +96,8 @@ const surfaces = {
     state: "Native Excalidraw · Autosaved",
     contextTitle: "I can see the Excalidraw scene",
     contextDetail: "4 elements · Peak diamond selected",
-    headline: "Draw natively. Use AI on the active scene.",
-    description: "Excalidraw owns tools, properties, libraries, and editing. Peak adds explanations and scene suggestions in Intelligence.",
+    headline: "Draw natively. Carry selected elements into Composer.",
+    description: "Excalidraw owns editing. Peak can explain selected elements, propose scene changes, or attach element IDs, labels, and bindings to Composer.",
     scope: "Selected diamond + connected arrows",
     placeholder: "Ask about the diagram or propose a scene change…",
     actions: [
@@ -121,6 +121,8 @@ const aiDescription = document.querySelector("#aiDescription");
 const selectionScope = document.querySelector("#selectionScope");
 const aiActions = document.querySelector("#aiActions");
 const aiAnswer = document.querySelector("#aiAnswer");
+const composerReceipt = document.querySelector("#composerReceipt");
+const composerReceiptDetail = document.querySelector("#composerReceiptDetail");
 const promptFile = document.querySelector("#promptFile");
 const promptInput = document.querySelector("#promptInput");
 const candidateReview = document.querySelector("#candidateReview");
@@ -132,13 +134,17 @@ let currentSurface = "image";
 let pendingCandidateAction = "";
 let htmlSourceOpen = false;
 let htmlPicking = false;
-let imageRotation = 0;
+let imageQuarterRotation = 0;
+let cropStraighten = 0;
 let imageScale = 1;
-let imageResizeIndex = 1;
 let pdfZoom = 112;
+let pdfMode = "text";
+let pdfSelection = null;
+let codeSelectionText = "";
 let canvasZoom = 84;
 let excalZoom = 72;
 let toastTimer;
+let cropDragState = null;
 
 function iconMarkup() {
   return '<svg><use href="#i-sparkles"></use></svg>';
@@ -190,6 +196,7 @@ function selectSurface(surface, updateHash = true) {
   promptInput.placeholder = config.placeholder;
   promptInput.value = "";
   aiAnswer.hidden = true;
+  composerReceipt.hidden = true;
   candidateReview.hidden = true;
   pendingCandidateAction = "";
 
@@ -228,39 +235,143 @@ function showCandidate(action, title, description) {
 
 function updateImageTransform() {
   const image = document.querySelector("#imageFrame img");
-  image.style.transform = `rotate(${imageRotation}deg) scale(${imageScale})`;
+  image.style.transform = `rotate(${imageQuarterRotation + cropStraighten}deg) scale(${imageScale})`;
   document.querySelector("#imageScaleLabel").textContent = `${Math.round(imageScale * 100)}%`;
 }
 
 function handleImageTool(tool, button) {
   const cropOverlay = document.querySelector("#cropOverlay");
+  const cropStudio = document.querySelector("#cropStudio");
+  const exportSheet = document.querySelector("#imageExportSheet");
+  const imageStage = document.querySelector(".image-stage");
   if (tool === "crop") {
-    cropOverlay.hidden = !cropOverlay.hidden;
-    button.classList.toggle("is-active", !cropOverlay.hidden);
-    showToast(cropOverlay.hidden ? "Crop handles closed" : "Drag the crop handles on the image");
+    const opening = cropOverlay.hidden;
+    cropOverlay.hidden = !opening;
+    cropStudio.hidden = !opening;
+    exportSheet.hidden = true;
+    imageStage.classList.toggle("is-cropping", opening);
+    button.classList.toggle("is-active", opening);
+    document.querySelector('[data-image-tool="export"]').classList.remove("is-active");
+    showToast(opening ? "Drag freely, choose an aspect ratio, or straighten the image" : "Crop cancelled");
     return;
   }
-  cropOverlay.hidden = true;
-  document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
+  if (tool !== "export") return;
 
-  if (tool === "rotate") {
-    imageRotation = (imageRotation + 90) % 360;
-    updateImageTransform();
-    setDirty(`Rotated ${imageRotation}° · not saved`);
+  const opening = exportSheet.hidden;
+  exportSheet.hidden = !opening;
+  cropOverlay.hidden = true;
+  cropStudio.hidden = true;
+  imageStage.classList.remove("is-cropping");
+  document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
+  button.classList.toggle("is-active", opening);
+}
+
+function updateImageZoom(direction) {
+  if (direction === "fit") imageScale = 1;
+  if (direction === "in") imageScale = Math.min(1.8, imageScale + 0.1);
+  if (direction === "out") imageScale = Math.max(0.5, imageScale - 0.1);
+  updateImageTransform();
+}
+
+function setCropRatio(ratio, button) {
+  const overlay = document.querySelector("#cropOverlay");
+  overlay.style.inset = "";
+  overlay.dataset.cropRatio = ratio;
+  document.querySelectorAll("[data-crop-ratio]").forEach((item) => item.classList.toggle("is-active", item === button));
+  showToast(`${button.textContent.trim()} crop ratio`);
+}
+
+function startCropDrag(event, handleIndex) {
+  const overlay = document.querySelector("#cropOverlay");
+  const frame = document.querySelector("#imageFrame");
+  const overlayRect = overlay.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  cropDragState = {
+    handleIndex,
+    frame,
+    overlay,
+    frameRect,
+    left: overlayRect.left - frameRect.left,
+    top: overlayRect.top - frameRect.top,
+    right: overlayRect.right - frameRect.left,
+    bottom: overlayRect.bottom - frameRect.top,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+function dragCrop(event) {
+  if (!cropDragState) return;
+  const { handleIndex, overlay, frameRect } = cropDragState;
+  const minSize = 82;
+  const x = Math.max(10, Math.min(frameRect.width - 10, event.clientX - frameRect.left));
+  const y = Math.max(10, Math.min(frameRect.height - 10, event.clientY - frameRect.top));
+  let { left, top, right, bottom } = cropDragState;
+  if (handleIndex === 0 || handleIndex === 2) left = Math.min(x, right - minSize);
+  if (handleIndex === 1 || handleIndex === 3) right = Math.max(x, left + minSize);
+  if (handleIndex === 0 || handleIndex === 1) top = Math.min(y, bottom - minSize);
+  if (handleIndex === 2 || handleIndex === 3) bottom = Math.max(y, top + minSize);
+  Object.assign(cropDragState, { left, top, right, bottom });
+  overlay.style.inset = `${top}px ${frameRect.width - right}px ${frameRect.height - bottom}px ${left}px`;
+  overlay.dataset.cropRatio = "free";
+  const freeButton = document.querySelector('.crop-presets [data-crop-ratio="free"]');
+  document.querySelectorAll(".crop-presets button").forEach((item) => item.classList.toggle("is-active", item === freeButton));
+}
+
+function endCropDrag() {
+  if (!cropDragState) return;
+  cropDragState = null;
+  setDirty("Free crop adjusted · not saved");
+}
+
+function rotateCrop(direction) {
+  imageQuarterRotation += direction === "right" ? 90 : -90;
+  updateImageTransform();
+  setDirty(`Crop rotation ${imageQuarterRotation + cropStraighten}° · not saved`);
+}
+
+function resetCrop() {
+  imageQuarterRotation = 0;
+  cropStraighten = 0;
+  document.querySelector("#cropAngle").value = "0";
+  document.querySelector("#cropAngleValue").textContent = "0°";
+  const freeButton = document.querySelector('.crop-presets [data-crop-ratio="free"]');
+  setCropRatio("free", freeButton);
+  updateImageTransform();
+}
+
+function closeCrop(commit) {
+  document.querySelector("#cropOverlay").hidden = true;
+  document.querySelector("#cropStudio").hidden = true;
+  document.querySelector(".image-stage").classList.remove("is-cropping");
+  document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
+  if (commit) {
+    setDirty("Crop applied to a new image version · not saved");
+    showToast("Crop applied to the working copy");
     return;
   }
-  if (tool === "resize") {
-    const sizes = [0.9, 1, 1.1];
-    imageResizeIndex = (imageResizeIndex + 1) % sizes.length;
-    imageScale = sizes[imageResizeIndex];
-    updateImageTransform();
-    setDirty(`Resize ${Math.round(imageScale * 100)}% · not saved`);
-    return;
-  }
-  if (tool === "compress") {
-    document.querySelector("#imageMetadata").textContent = "2048 × 1365 · PNG · 820 KB estimated";
-    showCandidate("compress-image", "Compressed copy ready", "Estimated 54% smaller · quality 92% · original protected");
-  }
+  resetCrop();
+  showToast("Crop cancelled; original framing restored");
+}
+
+function updateExportEstimate() {
+  const quality = Number(document.querySelector("#exportQuality").value);
+  const format = document.querySelector("[data-export-format].is-active").dataset.exportFormat;
+  const width = Math.max(320, Number(document.querySelector("#exportWidth").value) || 2048);
+  const height = Math.max(240, Number(document.querySelector("#exportHeight").value) || 1365);
+  const factors = { PNG: 1.05, JPEG: 0.58, WebP: 0.43 };
+  const pixelScale = (width * height) / (2048 * 1365);
+  const estimatedKb = Math.round(1800 * factors[format] * (0.3 + quality / 145) * pixelScale);
+  const saving = Math.max(0, Math.round((1 - estimatedKb / 1800) * 100));
+  document.querySelector("#exportQualityLabel").textContent = `${quality >= 85 ? "High" : quality >= 65 ? "Balanced" : "Small"} quality · ${quality}%`;
+  document.querySelector("#exportEstimate").textContent = estimatedKb >= 1000 ? `${(estimatedKb / 1000).toFixed(1)} MB` : `${estimatedKb} KB`;
+  document.querySelector("#exportSaving").textContent = saving ? `${saving}% smaller than original` : "Original-size estimate";
+  document.querySelector("#exportDimensions").textContent = `${width} × ${height} px`;
+}
+
+function closeExport() {
+  document.querySelector("#imageExportSheet").hidden = true;
+  document.querySelector('[data-image-tool="export"]').classList.remove("is-active");
 }
 
 function toggleHtmlSource(button) {
@@ -275,6 +386,69 @@ function toggleHtmlPicker(button) {
   htmlPicking = !htmlPicking;
   button.classList.toggle("is-active", htmlPicking);
   showToast(htmlPicking ? "Click an element in the preview" : "Element selection closed");
+}
+
+function addToComposer(kind) {
+  const contexts = {
+    html: {
+      label: `${surfaces.html.name} · ${document.querySelector("#htmlSelectionLabel").textContent}`,
+      detail: "Rendered element, DOM path, visible text, and local source",
+    },
+    pdf: {
+      label: `${surfaces.pdf.name} · page 1 ${pdfSelection?.kind || "selection"}`,
+      detail: pdfSelection?.text || "Selected PDF passage with page geometry",
+    },
+    code: {
+      label: `${surfaces.code.name} · ${codeSelectionText ? "selected code" : "current file"}`,
+      detail: codeSelectionText ? `${codeSelectionText.slice(0, 72)}${codeSelectionText.length > 72 ? "…" : ""}` : "Current Python source and visible range",
+    },
+    canvas: {
+      label: `${surfaces.canvas.name} · selected card + neighbors`,
+      detail: "Native Canvas node, connected edges, and adjacent card labels",
+    },
+    excalidraw: {
+      label: `${surfaces.excalidraw.name} · selected elements`,
+      detail: "Peak diamond, two bound arrows, element IDs, and scene labels",
+    },
+  };
+  const context = contexts[kind];
+  if (!context) return;
+
+  promptFile.textContent = context.label;
+  composerReceiptDetail.textContent = context.detail;
+  composerReceipt.hidden = false;
+  selectionScope.textContent = context.label.replace(`${surfaces[kind].name} · `, "");
+  showToast("Selection added to Composer context");
+}
+
+function setPdfMode(mode, button) {
+  pdfMode = mode;
+  document.querySelectorAll("[data-pdf-mode]").forEach((item) => item.classList.toggle("is-active", item === button));
+  document.querySelector(".pdf-page").classList.toggle("is-region-mode", mode === "region");
+  showToast(mode === "region" ? "Drag or click a table, image, or page region" : "Select or click a passage");
+}
+
+function selectPdfContent(element) {
+  const kind = element.dataset.pdfSelect;
+  if (pdfMode === "text" && kind !== "passage") {
+    showToast("Switch to Area to select this region");
+    return;
+  }
+  if (pdfMode === "region" && kind !== "region") {
+    showToast("Area mode is for tables, images, and bounded regions");
+    return;
+  }
+
+  document.querySelectorAll("[data-pdf-select]").forEach((item) => item.classList.toggle("is-pdf-selected", item === element));
+  const text = element.textContent.trim().replace(/\s+/g, " ");
+  pdfSelection = { kind, text };
+  document.querySelector("#pdfSelectionKind").textContent = `${kind === "region" ? "Area" : "Passage"} · page 1`;
+  document.querySelector("#pdfSelectionText").textContent = kind === "region" ? "3-part workflow callout" : `“${text.slice(0, 48)}${text.length > 48 ? "…" : ""}”`;
+  document.querySelector("#pdfExtractAction").hidden = kind !== "region";
+  document.querySelector("#pdfSelectionToolbar").hidden = false;
+  selectionScope.textContent = `${kind === "region" ? "Selected area" : "Selected passage"} · page 1`;
+  contextTitle.textContent = "I can see the PDF selection";
+  contextDetail.textContent = kind === "region" ? "Page geometry · OCR · embedded elements" : "Exact text · page 1 · source geometry";
 }
 
 function selectPdfPage(page) {
@@ -320,14 +494,28 @@ function handleExcalStyle(button) {
 function handleAiAction(action) {
   if (action === "ask-pdf" || action === "summarize-pdf") {
     showAnswer("Answer with page citations", [
-      'The report argues that AI should remain inside the user’s source workflow rather than create another detached destination. <button class="citation" data-citation-page="1">1 · p.1</button>',
-      'It treats citations and candidate review as the mechanisms that preserve trust while increasing actionability. <button class="citation" data-citation-page="3">2 · p.3</button>',
+      'The report argues that AI should remain inside the user’s source workflow rather than create another detached destination. <button class="citation" data-citation-page="1" data-citation-target="pdfHighlight">1 · p.1 passage</button>',
+      'It treats citations and candidate review as the mechanisms that preserve trust while increasing actionability. <button class="citation" data-citation-page="1" data-citation-target="pdfCallouts">2 · p.1 area</button>',
+    ]);
+    return;
+  }
+  if (action === "explain-pdf-selection") {
+    showAnswer("Answer grounded in the selected passage", [
+      'The selected passage argues for a reviewable source-to-answer loop: keep the file visible, make evidence navigable, and separate a proposed write from an accepted write. <button class="citation" data-citation-page="1" data-citation-target="pdfHighlight">p.1 · selected passage</button>',
+      "This answer is scoped to the passage, not inferred from the whole report.",
+    ]);
+    return;
+  }
+  if (action === "extract-pdf-region") {
+    showAnswer("Region extracted", [
+      "Detected three labeled items: Source visible, Citations jump back, and Writes are reviewable.",
+      'The extracted structure remains linked to its page geometry. <button class="citation" data-citation-page="1" data-citation-target="pdfCallouts">p.1 · selected area</button>',
     ]);
     return;
   }
   if (action === "translate-pdf") {
     showAnswer("Selection explained", [
-      '“Source-connected” means the answer retains a navigable relationship to the exact page and passage that supports it. <button class="citation" data-citation-page="1">p.1</button>',
+      '“Source-connected” means the answer retains a navigable relationship to the exact page and passage that supports it. <button class="citation" data-citation-page="1" data-citation-target="pdfHighlight">p.1 · selected passage</button>',
       "Translation: 与来源相连——答案始终能够返回支持它的具体页面与段落。",
     ]);
     return;
@@ -407,6 +595,50 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const imageZoomButton = event.target.closest("[data-image-zoom]");
+  if (imageZoomButton) {
+    updateImageZoom(imageZoomButton.dataset.imageZoom);
+    return;
+  }
+
+  const cropRatioButton = event.target.closest(".crop-presets [data-crop-ratio]");
+  if (cropRatioButton) {
+    setCropRatio(cropRatioButton.dataset.cropRatio, cropRatioButton);
+    return;
+  }
+
+  const cropRotateButton = event.target.closest("[data-crop-rotate]");
+  if (cropRotateButton) {
+    rotateCrop(cropRotateButton.dataset.cropRotate);
+    return;
+  }
+
+  const cropAction = event.target.closest("[data-crop-action]");
+  if (cropAction) {
+    if (cropAction.dataset.cropAction === "reset") resetCrop();
+    if (cropAction.dataset.cropAction === "cancel") closeCrop(false);
+    if (cropAction.dataset.cropAction === "done") closeCrop(true);
+    return;
+  }
+
+  const exportFormat = event.target.closest("[data-export-format]");
+  if (exportFormat) {
+    exportFormat.parentElement.querySelectorAll("button").forEach((item) => item.classList.toggle("is-active", item === exportFormat));
+    updateExportEstimate();
+    return;
+  }
+
+  const exportAction = event.target.closest("[data-export-action]");
+  if (exportAction) {
+    if (exportAction.dataset.exportAction === "save") {
+      const format = document.querySelector("[data-export-format].is-active").dataset.exportFormat;
+      showToast(`${format} copy exported; original unchanged`);
+      setClean("Exported a copy · original unchanged");
+    }
+    closeExport();
+    return;
+  }
+
   const htmlAction = event.target.closest("[data-html-action]");
   if (htmlAction) {
     if (htmlAction.dataset.htmlAction === "source") toggleHtmlSource(htmlAction);
@@ -417,10 +649,27 @@ document.addEventListener("click", (event) => {
   const htmlElement = event.target.closest("[data-html-element]");
   if (htmlElement && htmlPicking) {
     document.querySelectorAll("[data-html-element]").forEach((element) => element.classList.toggle("is-picked", element === htmlElement));
-    selectionScope.textContent = `Selected ${htmlElement.dataset.htmlElement} element`;
+    const elementLabel = `section.${htmlElement.classList[0]}`;
+    document.querySelector("#htmlSelectionLabel").textContent = elementLabel;
+    document.querySelector("#htmlSelectionToolbar").hidden = false;
+    selectionScope.textContent = `Selected ${elementLabel}`;
+    contextTitle.textContent = "I can see the selected page element";
+    contextDetail.textContent = `${elementLabel} · rendered state · local source`;
     htmlPicking = false;
     document.querySelector('[data-html-action="select"]').classList.remove("is-active");
     showToast("Element connected to Intelligence");
+    return;
+  }
+
+  const pdfModeButton = event.target.closest("[data-pdf-mode]");
+  if (pdfModeButton) {
+    setPdfMode(pdfModeButton.dataset.pdfMode, pdfModeButton);
+    return;
+  }
+
+  const pdfSelectable = event.target.closest("[data-pdf-select]");
+  if (pdfSelectable) {
+    selectPdfContent(pdfSelectable);
     return;
   }
 
@@ -436,6 +685,12 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const addComposerButton = event.target.closest("[data-add-composer]");
+  if (addComposerButton) {
+    addToComposer(addComposerButton.dataset.addComposer);
+    return;
+  }
+
   const demoAction = event.target.closest("[data-demo-action]");
   if (demoAction) {
     showToast(demoAction.dataset.demoAction);
@@ -445,7 +700,10 @@ document.addEventListener("click", (event) => {
   const citation = event.target.closest("[data-citation-page]");
   if (citation) {
     selectPdfPage(citation.dataset.citationPage);
-    document.querySelector("#pdfHighlight").scrollIntoView({ behavior: "smooth", block: "center" });
+    const target = document.querySelector(`#${citation.dataset.citationTarget || "pdfHighlight"}`);
+    target.classList.add("citation-focus");
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => target.classList.remove("citation-focus"), 1700);
     showToast(`Jumped to cited evidence · page ${citation.dataset.citationPage}`);
     return;
   }
@@ -527,6 +785,30 @@ document.addEventListener("click", (event) => {
 
 });
 
+document.querySelector("#cropAngle").addEventListener("input", (event) => {
+  cropStraighten = Number(event.target.value);
+  document.querySelector("#cropAngleValue").textContent = `${cropStraighten}°`;
+  updateImageTransform();
+  setDirty(`Straightened ${cropStraighten}° · not saved`);
+});
+
+document.querySelector("#exportQuality").addEventListener("input", updateExportEstimate);
+document.querySelector("#exportWidth").addEventListener("input", updateExportEstimate);
+document.querySelector("#exportHeight").addEventListener("input", updateExportEstimate);
+
+document.querySelectorAll("#cropOverlay i").forEach((handle, index) => {
+  handle.addEventListener("pointerdown", (event) => startCropDrag(event, index));
+  handle.addEventListener("pointermove", dragCrop);
+  handle.addEventListener("pointerup", endCropDrag);
+  handle.addEventListener("pointercancel", endCropDrag);
+});
+
+document.querySelector("#imageFrame").addEventListener("wheel", (event) => {
+  if (document.querySelector(".image-stage").classList.contains("is-cropping")) return;
+  event.preventDefault();
+  updateImageZoom(event.deltaY < 0 ? "in" : "out");
+}, { passive: false });
+
 document.querySelector('[data-editable-source="html"]').addEventListener("input", () => {
   setDirty("Unsaved HTML changes · live preview connected");
 });
@@ -536,6 +818,17 @@ codeEditor.addEventListener("input", () => {
   document.querySelector("#codeEditState").textContent = "Unsaved changes · press ⌘S to save";
   document.querySelector(".file-tab").classList.add("is-dirty");
   setDirty("Unsaved source changes · nothing executed");
+});
+codeEditor.addEventListener("mouseup", () => {
+  const selection = window.getSelection();
+  const selectedText = selection?.toString().trim() || "";
+  if (!selectedText || !codeEditor.contains(selection.anchorNode)) return;
+  codeSelectionText = selectedText;
+  const lineCount = selectedText.split("\n").length;
+  selectionScope.textContent = `${lineCount} line${lineCount === 1 ? "" : "s"} selected in index_pipeline.py`;
+  contextTitle.textContent = "I can see the selected code";
+  contextDetail.textContent = `Python · ${lineCount} selected line${lineCount === 1 ? "" : "s"} · related Vault files`;
+  document.querySelector("#codeEditState").textContent = `${lineCount} line${lineCount === 1 ? "" : "s"} selected · edit or add to Composer`;
 });
 codeEditor.addEventListener("keydown", (event) => {
   if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") return;
