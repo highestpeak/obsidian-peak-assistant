@@ -56,6 +56,7 @@ const LAYOUTS: Array<{ id: AtlasGraphPreset; label: string }> = [
 
 const GRAPH_LAYOUT_KEY_TIPS: Readonly<Record<AtlasGraphPreset, string>> = {
 	constellation: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.constellation,
+	community: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.community,
 	'flow-tb': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.flowTb,
 	'flow-lr': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.flowLr,
 	folder: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.folder,

@@ -100,6 +100,7 @@ export const ResultPaneGraphControls: React.FC<ResultPaneHeaderProps> = ({ mode,
 		<ResultBrowserGraphControls
 			preset={preset}
 			onPresetChange={setPreset}
+			communityAvailable
 			leadingSlot={<PinnedHubChip />}
 			className={cn(className)}
 		/>

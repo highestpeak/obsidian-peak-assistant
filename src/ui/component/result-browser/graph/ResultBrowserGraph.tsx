@@ -19,6 +19,8 @@ import {
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import type { ResultBrowserGraphPreset } from '../model/types';
+import type { CommunityExplanationPort } from '@/service/search/community/CommunityExplanationService';
+import type { ResultGraphCommunityConfig } from '@/service/search/index/helper/structural/ResultGraphCommunityDefaults';
 
 /** Node cap the graph projection trims to (root + selection stay pinned). */
 export const RESULT_BROWSER_GRAPH_NODE_CAP = 100;
@@ -35,6 +37,8 @@ export interface ResultBrowserGraphProps {
 	onNodeHover?: (node: { id: string; path: string } | null) => void;
 	keyTipKeys?: AtlasGraphKeyTipKeys;
 	semanticKeyTipKey?: string;
+	communityExplanation?: CommunityExplanationPort | null;
+	communityInteraction?: ResultGraphCommunityConfig['interaction'];
 }
 
 export const ResultBrowserGraph: React.FC<ResultBrowserGraphProps> = ({
@@ -48,6 +52,8 @@ export const ResultBrowserGraph: React.FC<ResultBrowserGraphProps> = ({
 	onNodeHover,
 	keyTipKeys = PEAK_CONTROL_KEY_TIP_KEYS.search.graphCanvas,
 	semanticKeyTipKey = PEAK_CONTROL_KEY_TIP_KEYS.search.graphSemantic,
+	communityExplanation,
+	communityInteraction,
 }) => (
 	<AtlasGraphCanvas
 		subgraph={subgraph}
@@ -60,5 +66,7 @@ export const ResultBrowserGraph: React.FC<ResultBrowserGraphProps> = ({
 		onNodeTap={onNodeTap}
 		onNodeDblTap={onNodeDblTap}
 		onNodeHover={onNodeHover}
+		communityExplanation={communityExplanation}
+		communityInteraction={communityInteraction}
 	/>
 );

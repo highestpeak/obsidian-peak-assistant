@@ -185,6 +185,8 @@ export enum PromptId {
 
 	// Structural analysis
 	GapExplanation = 'gap-explanation',
+	ResultGraphCommunityExplanationSystem = 'result-graph-community-explanation-system',
+	ResultGraphCommunityExplanation = 'result-graph-community-explanation',
 
 	// Prompt enhancement
 	PromptEnhance = 'prompt-enhance',
@@ -297,6 +299,15 @@ export interface PromptVariables {
 		userMessage: string;
 		assistantReply: string;
 		context?: Record<string, string>;
+	};
+	[PromptId.ResultGraphCommunityExplanationSystem]: Record<string, never>;
+	[PromptId.ResultGraphCommunityExplanation]: {
+		communityLabel: string;
+		memberCoverage: string;
+		descriptors: string;
+		internalReferenceCount: number;
+		representativeNotes: string;
+		fingerprint: string;
 	};
 	[PromptId.DocSummaryShort]: {
 		content: string;

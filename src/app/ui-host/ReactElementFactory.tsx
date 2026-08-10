@@ -10,6 +10,7 @@ import { composeQuickSearchHost } from '@/app/search/composeQuickSearchHost';
 import { composeCopilotReviewDeps } from '@/app/copilot/composeCopilotReviewDeps';
 import { composeHeadingModeDeps } from '@/app/search/composeHeadingModeDeps';
 import { composeResultSubgraphDeps } from '@/app/search/composeResultSubgraphDeps';
+import { composeCommunityExplanationPort } from '@/app/search/composeCommunityExplanationPort';
 import { composeContextualGraphPort } from '@/app/search/composeContextualGraphPort';
 import { openQuickSearch } from '@/app/commands/PeakCommandActions';
 import type { QuickSearchLauncherPort } from '@/core/ports/QuickSearchLauncherPort';
@@ -120,6 +121,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			debugTracePort: appContext.runtimeRegistry.tryGetDebugTracePort(),
 			headingMode: composeHeadingModeDeps(appContext),
 			resultSubgraph: composeResultSubgraphDeps(),
+			communityExplanation: composeCommunityExplanationPort(appContext),
 			contextualGraph: composeContextualGraphPort(appContext),
 			quickSearchLauncher: composeQuickSearchLauncher(appContext),
 			pluginCommandGateway: appContext.runtimeRegistry.tryGetPluginCommandGatewayRuntime(),

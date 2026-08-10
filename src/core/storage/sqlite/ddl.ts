@@ -566,8 +566,14 @@ export interface Database {
 		label: string;
 		member_count: number;
 		dominant_topics_json: string;
+		descriptors_json: string;
 		top_nodes_json: string;
 		internal_density: number;
+		internal_reference_count: number;
+		fingerprint: string;
+		analysis_mode: string;
+		analyzed_node_count: number;
+		total_node_count: number;
 		centroid_embedding: Buffer | null;
 		analysis_version: number;
 	};
@@ -1386,8 +1392,14 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		'label',
 		'member_count',
 		'dominant_topics_json',
+		'descriptors_json',
 		'top_nodes_json',
 		'internal_density',
+		'internal_reference_count',
+		'fingerprint',
+		'analysis_mode',
+		'analyzed_node_count',
+		'total_node_count',
 		'centroid_embedding',
 		'analysis_version',
 	]);
@@ -1419,8 +1431,14 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			label TEXT NOT NULL,
 			member_count INTEGER NOT NULL,
 			dominant_topics_json TEXT NOT NULL,
+			descriptors_json TEXT NOT NULL,
 			top_nodes_json TEXT NOT NULL,
 			internal_density REAL NOT NULL,
+			internal_reference_count INTEGER NOT NULL,
+			fingerprint TEXT NOT NULL,
+			analysis_mode TEXT NOT NULL,
+			analyzed_node_count INTEGER NOT NULL,
+			total_node_count INTEGER NOT NULL,
 			centroid_embedding BLOB,
 			analysis_version INTEGER NOT NULL
 		);

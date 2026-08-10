@@ -24,7 +24,7 @@ import fcose from 'cytoscape-fcose';
 import cise from 'cytoscape-cise';
 import cola from 'cytoscape-cola';
 import dagre from 'cytoscape-dagre';
-import { Check, Image as ImageIcon, List, PanelRightOpen, Workflow } from 'lucide-react';
+import { Check, Image as ImageIcon, List, Loader2, PanelRightOpen, Sparkles, Workflow } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import { Button } from '@/ui/component/shared-ui/button';
 import { GraphSemanticToggle } from './GraphSemanticToggle';
@@ -43,6 +43,14 @@ import {
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import type {
+	CommunityExplanationPort,
+	CommunityExplanationRecord,
+} from '@/service/search/community/CommunityExplanationService';
+import {
+	DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG,
+	type ResultGraphCommunityConfig,
+} from '@/service/search/index/helper/structural/ResultGraphCommunityDefaults';
 
 // ─── One-time Cytoscape extension registration ──────────────────────────────
 let extensionsRegistered = false;
@@ -56,19 +64,29 @@ function ensureExtensionsRegistered(): void {
 }
 
 // ─── Presets ────────────────────────────────────────────────────────────────
-export type AtlasGraphPreset = 'constellation' | 'flow-tb' | 'flow-lr' | 'folder' | 'orbit';
+export type AtlasGraphPreset = 'constellation' | 'community' | 'flow-tb' | 'flow-lr' | 'folder' | 'orbit';
 
 interface PresetBundle {
 	layout: 'fcose' | 'cola' | 'dagre-tb' | 'dagre-lr' | 'concentric-hub' | 'folder-tree';
 	folderTree: boolean;
+	community: boolean;
 }
 const PRESETS: Record<AtlasGraphPreset, PresetBundle> = {
-	constellation: { layout: 'fcose',          folderTree: false },
-	'flow-tb':     { layout: 'dagre-tb',       folderTree: false },
-	'flow-lr':     { layout: 'dagre-lr',       folderTree: false },
-	folder:        { layout: 'folder-tree',    folderTree: true },
-	orbit:         { layout: 'concentric-hub', folderTree: false },
+	constellation: { layout: 'fcose',          folderTree: false, community: false },
+	community:     { layout: 'fcose',          folderTree: false, community: true },
+	'flow-tb':     { layout: 'dagre-tb',       folderTree: false, community: false },
+	'flow-lr':     { layout: 'dagre-lr',       folderTree: false, community: false },
+	folder:        { layout: 'folder-tree',    folderTree: true, community: false },
+	orbit:         { layout: 'concentric-hub', folderTree: false, community: false },
 };
+
+const COMMUNITY_PALETTE = [
+	{ border: '#7c3aed', hull: '#ede9fe', high: '#c4b5fd', low: '#f5f3ff', text: '#3b2a63' },
+	{ border: '#0f8f87', hull: '#dff6f3', high: '#9edbd5', low: '#effaf8', text: '#185e5a' },
+	{ border: '#b7791f', hull: '#fdf1dc', high: '#f4cf91', low: '#fff9ef', text: '#704b17' },
+	{ border: '#4f70d9', hull: '#e8edff', high: '#b8c6f5', low: '#f4f6ff', text: '#31477f' },
+	{ border: '#b4537a', hull: '#fae7ef', high: '#e9b5ca', low: '#fff5f9', text: '#74354f' },
+] as const;
 
 /**
  * Turn subgraph → cytoscape elements. Physical reference and Hub membership
@@ -76,7 +94,7 @@ const PRESETS: Record<AtlasGraphPreset, PresetBundle> = {
  */
 function buildElements(
 	sub: ResultSubgraphOutput,
-	opts: { showSemantic: boolean; folderTree: boolean },
+	opts: { showSemantic: boolean; folderTree: boolean; community: boolean },
 ): ElementDefinition[] {
 	const els: ElementDefinition[] = [];
 	const visibleEdges = coalesceGraphEdges(
@@ -89,6 +107,24 @@ function buildElements(
 	for (const edge of visibleEdges) {
 		degreeMap.set(edge.from, (degreeMap.get(edge.from) ?? 0) + 1);
 		degreeMap.set(edge.to, (degreeMap.get(edge.to) ?? 0) + 1);
+	}
+	const visibleCommunities = opts.community ? (sub.communities ?? []) : [];
+	const communityIndexById = new Map(visibleCommunities.map((community, index) => [community.id, index]));
+	for (const [index, community] of visibleCommunities.entries()) {
+		const palette = COMMUNITY_PALETTE[index % COMMUNITY_PALETTE.length]!;
+		els.push({
+			group: 'nodes',
+			data: {
+				id: `__community:${community.id}`,
+				label: `${community.displayLabel}  ${community.visibleMemberIds.length} / ${community.memberCount}\n${community.descriptors.map((item) => item.label).join(' · ')}`,
+				kind: 'community',
+				communityId: community.id,
+				hullColor: palette.hull,
+				borderColor: palette.border,
+				textColor: palette.text,
+			},
+			classes: `communityHull community-${index % COMMUNITY_PALETTE.length}`,
+		});
 	}
 
 	const folderTree = opts.folderTree ? buildVisibleFolderTree(sub.resultNodes) : null;
@@ -169,6 +205,11 @@ function buildElements(
 		const degree = degreeMap.get(n.id) ?? 0;
 		const isHublike = !folderTree && degree >= HUBLIKE_THRESHOLD;
 		const visual = folderTreeLayout?.rowById.get(n.id);
+		const communityIndex = n.communityId ? communityIndexById.get(n.communityId) : undefined;
+		const palette = communityIndex === undefined
+			? null
+			: COMMUNITY_PALETTE[communityIndex % COMMUNITY_PALETTE.length]!;
+		const normalizedScore = n.score / maxScore;
 		els.push({
 			group: 'nodes',
 			data: {
@@ -176,14 +217,23 @@ function buildElements(
 				label: n.title || n.path || n.id,
 				path: n.path ?? '',
 				kind: 'doc',
-				score: n.score / maxScore,
+				score: normalizedScore,
 				degree,
 				degreeNorm: normDegree(n.id),
 				folder: (n.path ? n.path.split('/')[0] : '') || '',
 				nodeWidth: visual?.width,
 				nodeHeight: visual?.height,
+				communityId: n.communityId ?? '',
+				parent: opts.community && n.communityId && communityIndex !== undefined ? `__community:${n.communityId}` : undefined,
+				preview: n.preview ?? '',
+				signals: n.signals ?? [],
+				incomingLinks: n.incomingLinks ?? 0,
+				outgoingLinks: n.outgoingLinks ?? 0,
+				nodeColor: palette ? (normalizedScore >= 0.78 ? palette.high : palette.low) : undefined,
+				nodeBorderColor: palette?.border,
+				nodeTextColor: palette?.text,
 			},
-			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}${isHublike ? ' hublike' : ''}${folderTree ? ' folderTreeDoc' : ''}`.trim(),
+			classes: `doc ${isolatedIds.has(n.id) ? 'isolated' : ''}${isHublike ? ' hublike' : ''}${folderTree ? ' folderTreeDoc' : ''}${palette ? ' communityDoc' : ''}`.trim(),
 			position: folderTreePositions.get(n.id),
 			locked: Boolean(folderTree),
 		});
@@ -274,6 +324,11 @@ function buildElements(
 		}
 	}
 
+	const endpointPairCounts = new Map<string, number>();
+	for (const edge of visibleEdges) {
+		const pair = [edge.from, edge.to].sort().join('\u0000');
+		endpointPairCounts.set(pair, (endpointPairCounts.get(pair) ?? 0) + 1);
+	}
 	const seen = new Set<string>();
 	visibleEdges.forEach((e, index) => {
 		const key = `${e.kind}|${e.directionality}|${e.from}|${e.to}`;
@@ -298,7 +353,7 @@ function buildElements(
 				directionality: e.directionality,
 				curveDistance,
 			},
-			classes: `${e.kind}${folderTree ? ' folderRelation' : ''}`,
+			classes: `${e.kind}${folderTree ? ' folderRelation' : ''}${opts.community ? ' communityRelation' : ''}${(endpointPairCounts.get([e.from, e.to].sort().join('\u0000')) ?? 0) > 1 || e.directionality === 'bidirectional' ? ' parallelEdge' : ''}`,
 		});
 	});
 
@@ -345,6 +400,9 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.doc', style: { 'background-color': 'mapData(score, 0, 1, #f5f3ff, #c4b5fd)', 'border-color': '#a78bfa', 'border-width': 1, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '10px', 'padding-right': '10px', 'padding-top': '5px', 'padding-bottom': '5px', label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '360px', 'font-size': 10, 'text-valign': 'center', 'text-halign': 'center', color: '#1e1b4b', 'min-width': '80px' } as never },
 	{ selector: 'node.doc.hublike', style: { 'background-color': '#c4b5fd', 'border-color': '#6d28d9', 'border-width': 3, 'padding-left': '14px', 'padding-right': '14px', 'padding-top': '9px', 'padding-bottom': '9px', 'font-size': 13, 'font-weight': 700, color: '#4c1d95' } as never },
 	{ selector: 'node.doc.isolated', style: { opacity: 0.55, 'border-style': 'dashed' } as never },
+	{ selector: 'node.communityHull', style: { 'background-color': 'data(hullColor)', 'background-opacity': 0.3, 'border-color': 'data(borderColor)', 'border-width': 1.2, 'border-style': 'solid', shape: 'round-rectangle', padding: 34, label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '260px', 'font-size': 11, 'font-weight': 700, color: 'data(textColor)', 'text-valign': 'top', 'text-halign': 'left', 'text-margin-y': -16, 'text-margin-x': -12, 'compound-sizing-wrt-labels': 'include', 'z-compound-depth': 'bottom' } as never },
+	{ selector: 'node.doc.communityDoc', style: { 'background-color': 'data(nodeColor)', 'border-color': 'data(nodeBorderColor)', color: 'data(nodeTextColor)', 'border-width': 1.4, opacity: 1 } as never },
+	{ selector: 'node.doc.communityDoc.isolated', style: { opacity: 1, 'border-style': 'solid' } as never },
 	{ selector: 'node.folderGroup', style: { 'background-color': '#f7f2fc', 'background-opacity': 1, 'border-width': 0, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '11px', 'padding-right': '11px', 'padding-top': '6px', 'padding-bottom': '6px', label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#51475e', 'text-valign': 'center', 'text-halign': 'center', 'min-width': '120px', 'z-index': 4 } as never },
 	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, 'arrow-scale': 0.7 } as never },
 	{ selector: 'edge[directionality = "directed"]', style: { 'target-arrow-shape': 'triangle' } as never },
@@ -353,6 +411,10 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.reference', style: { 'line-color': '#334155', 'source-arrow-color': '#334155', 'target-arrow-color': '#334155', width: 1.4 } as never },
 	{ selector: 'edge.hub_constituent', style: { 'line-color': '#8b5cf6', 'source-arrow-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'line-style': 'dotted', width: 1.8, opacity: 0.85 } as never },
 	{ selector: 'edge.semantic', style: { 'line-color': '#cbd5e1', 'source-arrow-color': '#cbd5e1', 'target-arrow-color': '#cbd5e1', 'line-style': 'dashed', width: 0.8, opacity: 0.7 } as never },
+	{ selector: 'edge.communityRelation', style: { 'curve-style': 'straight', 'target-distance-from-node': 5, 'source-distance-from-node': 3, opacity: 0.62 } as never },
+	{ selector: 'edge.communityRelation.reference', style: { 'line-color': '#77727f', 'target-arrow-color': '#77727f', width: 1.35, opacity: 0.72 } as never },
+	{ selector: 'edge.communityRelation.semantic', style: { 'line-color': '#aaa4b2', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'line-style': 'dashed', width: 1, opacity: 0.52 } as never },
+	{ selector: 'edge.communityRelation.parallelEdge', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 34, 'control-point-weights': 0.5 } as never },
 	{ selector: 'node', style: { 'transition-property': 'background-color, border-color, border-width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
 	{ selector: 'edge', style: { 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
 	{ selector: '.dimmed', style: { opacity: 0.12 } as never },
@@ -651,6 +713,35 @@ export interface AtlasGraphCanvasProps {
 	onViewportChange?: (viewport: AtlasGraphViewport) => void;
 	/** Surface-owned direct-action keys for the stable graph toolbar. */
 	keyTipKeys?: AtlasGraphKeyTipKeys;
+	/** Result Graph only: app-owned durable/streaming community explanation port. */
+	communityExplanation?: CommunityExplanationPort | null;
+	/** Result Graph only: template-backed hover timing and placement. */
+	communityInteraction?: ResultGraphCommunityConfig['interaction'];
+}
+
+interface GraphHoverAnchor {
+	id: string;
+	kind: 'node' | 'community';
+	label: string;
+	path: string;
+	x: number;
+	y: number;
+}
+
+interface CommunityAiCardState {
+	loadedFingerprint?: string;
+	loading: boolean;
+	generating: boolean;
+	streamed: string;
+	record: CommunityExplanationRecord | null;
+	stale: boolean;
+	error: string | null;
+}
+
+function streamedExplanationBody(raw: string): string {
+	const marker = raw.match(/(?:^|\n)Explanation:\s*/i);
+	if (!marker || marker.index === undefined) return '';
+	return raw.slice(marker.index + marker[0].length).trimStart();
 }
 
 export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
@@ -670,9 +761,12 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	initialViewport,
 	onViewportChange,
 	keyTipKeys,
+	communityExplanation,
+	communityInteraction = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.interaction,
 }) => {
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
-	const [hoveredLabel, setHoveredLabel] = useState<{ label: string; path: string } | null>(null);
+	const [hoveredLabel, setHoveredLabel] = useState<GraphHoverAnchor | null>(null);
+	const [communityAiState, setCommunityAiState] = useState<Record<string, CommunityAiCardState>>({});
 	const [keyboardNodeId, setKeyboardNodeId] = useState<string | null>(null);
 	const [keyboardNodeLabel, setKeyboardNodeLabel] = useState('');
 	const [nodeListOpen, setNodeListOpen] = useState(false);
@@ -680,6 +774,29 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const nodeListRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const animRef = useRef<number | null>(null);
+	const cardCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const hoveredElementRef = useRef<string | null>(null);
+	const generationAbortRef = useRef<AbortController | null>(null);
+
+	const cancelCardClose = () => {
+		if (!cardCloseTimerRef.current) return;
+		clearTimeout(cardCloseTimerRef.current);
+		cardCloseTimerRef.current = null;
+	};
+	const closeCard = () => {
+		cancelCardClose();
+		hoveredElementRef.current = null;
+		setHoveredLabel(null);
+		const cy = cyRef.current;
+		cy?.batch(() => {
+			cy.elements().removeClass('dimmed').removeClass('highlighted');
+			cy.edges().removeStyle('line-dash-offset');
+		});
+	};
+	const scheduleCardClose = () => {
+		cancelCardClose();
+		cardCloseTimerRef.current = setTimeout(closeCard, communityInteraction.closeDelayMs);
+	};
 
 	// Keep the latest callbacks without re-running the (expensive) cytoscape mount.
 	const tapRef = useRef(onNodeTap);
@@ -706,6 +823,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	useEffect(() => {
 		ensureExtensionsRegistered();
 		return () => {
+			cancelCardClose();
+			generationAbortRef.current?.abort();
 			if (animRef.current) cancelAnimationFrame(animRef.current);
 			animRef.current = null;
 			cyRef.current?.destroy();
@@ -714,11 +833,65 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	}, []);
 
 	useEffect(() => {
+		if (!communityExplanation || hoveredLabel?.kind !== 'community' || !subgraph) return;
+		const community = subgraph.communities?.find((item) => item.id === hoveredLabel.id);
+		if (!community) return;
+		const current = communityAiState[community.id];
+		if (current?.loadedFingerprint === community.fingerprint || current?.loading || current?.generating) return;
+		let cancelled = false;
+		setCommunityAiState((state) => ({
+			...state,
+			[community.id]: {
+				loading: true,
+				generating: false,
+				streamed: '',
+				record: null,
+				stale: false,
+				error: null,
+			},
+		}));
+		void communityExplanation.load(community).then((loaded) => {
+			if (cancelled) return;
+			setCommunityAiState((state) => ({
+				...state,
+				[community.id]: {
+					loadedFingerprint: community.fingerprint,
+					loading: false,
+					generating: false,
+					streamed: '',
+					record: loaded.record,
+					stale: loaded.stale,
+					error: null,
+				},
+			}));
+		}).catch((error) => {
+			if (cancelled) return;
+			setCommunityAiState((state) => ({
+				...state,
+				[community.id]: {
+					loadedFingerprint: community.fingerprint,
+					loading: false,
+					generating: false,
+					streamed: '',
+					record: null,
+					stale: false,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			}));
+		});
+		return () => { cancelled = true; };
+	}, [communityExplanation, communityAiState, hoveredLabel, subgraph]);
+
+	useEffect(() => {
 		const container = containerRef.current;
 		if (!container || !subgraph) return;
 		const bundle = PRESETS[preset];
 		const folderProjection = bundle.folderTree ? buildVisibleFolderTree(subgraph.resultNodes) : null;
-		const els = buildElements(subgraph, { showSemantic, folderTree: bundle.folderTree });
+		const els = buildElements(subgraph, {
+			showSemantic,
+			folderTree: bundle.folderTree,
+			community: bundle.community,
+		});
 		if (animRef.current) cancelAnimationFrame(animRef.current);
 		animRef.current = null;
 		cyRef.current?.destroy();
@@ -735,7 +908,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		});
 		cyRef.current = cy;
 
-		const shouldSplitIsolated = !bundle.folderTree;
+		const shouldSplitIsolated = !bundle.folderTree && !bundle.community;
 		const connectedEles = shouldSplitIsolated
 			? cy.elements().filter((el) => {
 				if (el.isNode()) return !el.hasClass('isolated') && !el.hasClass('regionLabel');
@@ -759,6 +932,12 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		layoutObj.run();
 		cy.on('pan zoom', () => {
 			viewportChangeRef.current?.({ zoom: cy.zoom(), pan: cy.pan() });
+			const hoveredId = hoveredElementRef.current;
+			if (!hoveredId) return;
+			const hovered = cy.getElementById(hoveredId);
+			if (!hovered || hovered.empty()) return;
+			const point = hovered.renderedPosition();
+			setHoveredLabel((current) => current ? { ...current, x: point.x, y: point.y } : null);
 		});
 
 		let hoverTimer: ReturnType<typeof setTimeout> | null = null;
@@ -799,13 +978,25 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			const n = resolveFolderTreeOwner(evt.target as NodeSingular);
 			if (!n) return;
 			if (n.hasClass('regionLabel')) return;
+			cancelCardClose();
 			const raw = (n.data('label') as string | undefined) ?? '';
 			const rawPath = (n.data('path') as string | undefined) ?? '';
-			if (raw) setHoveredLabel({ label: raw, path: rawPath });
-			if (!n.hasClass('folderGroup')) hoverRef.current?.({ id: n.id(), path: rawPath });
+			const isCommunity = n.hasClass('communityHull');
+			const anchorId = isCommunity ? String(n.data('communityId') ?? '') : n.id();
+			const point = n.renderedPosition();
+			hoveredElementRef.current = n.id();
+			if (raw) setHoveredLabel({
+				id: anchorId,
+				kind: isCommunity ? 'community' : 'node',
+				label: raw,
+				path: rawPath,
+				x: point.x,
+				y: point.y,
+			});
+			if (!n.hasClass('folderGroup') && !isCommunity) hoverRef.current?.({ id: n.id(), path: rawPath });
 			if (hoverTimer) clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
-				const isCompound = n.hasClass('folderGroup');
+				const isCompound = n.hasClass('folderGroup') || n.hasClass('communityHull');
 				let highlight;
 				if (isCompound && folderProjection) {
 					const scope = folderTreeSelectionScope(folderProjection, n.id());
@@ -836,25 +1027,19 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					n.addClass('highlighted');
 				});
 				startEdgeAnimation();
-			}, 80);
+			}, communityInteraction.openDelayMs);
 		});
 		cy.on('mouseout', 'node', () => {
-			setHoveredLabel(null);
 			hoverRef.current?.(null);
 			if (hoverTimer) clearTimeout(hoverTimer);
-			hoverTimer = setTimeout(() => {
-				if (!bundle.folderTree) stopEdgeAnimation();
-				cy.batch(() => {
-					cy.elements().removeClass('dimmed').removeClass('highlighted');
-					cy.edges().removeStyle('line-dash-offset');
-				});
-			}, 120);
+			if (!bundle.folderTree) stopEdgeAnimation();
+			scheduleCardClose();
 		});
 
 		cy.on('tap', 'node', (evt) => {
 			const n = resolveFolderTreeOwner(evt.target as NodeSingular);
 			if (!n) return;
-			if (n.hasClass('regionLabel')) return;
+			if (n.hasClass('regionLabel') || n.hasClass('communityHull')) return;
 			const originalEvent = (evt as { originalEvent?: MouseEvent }).originalEvent;
 			const modKey = !!(originalEvent && (originalEvent.metaKey || originalEvent.ctrlKey));
 			if (bundle.folderTree && folderProjection && (n.hasClass('folderTreeNode') || n.hasClass('folderTreeDoc'))) {
@@ -871,7 +1056,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		cy.on('dbltap', 'node', (evt) => {
 			const n = resolveFolderTreeOwner(evt.target as NodeSingular);
 			if (!n) return;
-			if (n.hasClass('regionLabel') || n.hasClass('folderGroup') || n.hasClass('hub')) return;
+			if (n.hasClass('regionLabel') || n.hasClass('folderGroup') || n.hasClass('communityHull') || n.hasClass('hub')) return;
 			dblRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '' });
 		});
 		if (bundle.folderTree) startEdgeAnimation();
@@ -881,7 +1066,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			cy.destroy();
 			if (cyRef.current === cy) cyRef.current = null;
 		};
-	}, [subgraph, preset, showSemantic]);
+	}, [communityInteraction.closeDelayMs, communityInteraction.openDelayMs, subgraph, preset, showSemantic]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -923,12 +1108,21 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					!node.hasClass('regionLabel')
 					&& !node.hasClass('folderTreeDecoration')
 					&& !node.hasClass('folderTreeRailNode')
+					&& !node.hasClass('communityHull')
 				))
 				.toArray() as NodeSingular[];
 	}, []);
 
 	const handleGraphKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
 		if (event.target !== event.currentTarget) return;
+		if (event.key === 'Escape' && hoveredLabel) {
+			event.preventDefault();
+			cancelCardClose();
+			hoveredElementRef.current = null;
+			setHoveredLabel(null);
+			cyRef.current?.elements().removeClass('dimmed').removeClass('highlighted');
+			return;
+		}
 		const nodes = graphNodes();
 		if (nodes.length === 0) return;
 		const active = nodes.find((node) => node.id() === keyboardNodeId) ?? nodes[0];
@@ -992,7 +1186,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			direction,
 		);
 		if (nextId) setKeyboardNodeId(nextId);
-	}, [graphNodes, keyboardNodeId, preset]);
+	}, [graphNodes, hoveredLabel, keyboardNodeId, preset]);
 
 	const handleCopyMermaid = useCallback(() => {
 		if (!subgraph) return;
@@ -1026,6 +1220,79 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			console.warn('[AtlasGraphCanvas] copy-as-image failed', err);
 		}
 	}, []);
+
+	const handleCommunityExplain = async (communityId: string, regenerate: boolean): Promise<void> => {
+		if (!communityExplanation || !subgraph) return;
+		const community = subgraph.communities?.find((item) => item.id === communityId);
+		if (!community) return;
+		cancelCardClose();
+		generationAbortRef.current?.abort();
+		const controller = new AbortController();
+		generationAbortRef.current = controller;
+		setCommunityAiState((state) => ({
+			...state,
+			[communityId]: {
+				loadedFingerprint: community.fingerprint,
+				loading: false,
+				generating: true,
+				streamed: '',
+				record: state[communityId]?.record ?? null,
+				stale: state[communityId]?.stale ?? false,
+				error: null,
+			},
+		}));
+		try {
+			const record = await communityExplanation.generate(community, {
+				regenerate,
+				signal: controller.signal,
+				onDelta: (streamed) => {
+					setCommunityAiState((state) => ({
+						...state,
+						[communityId]: {
+							...(state[communityId] ?? {
+								loading: false,
+								generating: true,
+								record: null,
+								stale: false,
+								error: null,
+							}),
+							streamed: streamedExplanationBody(streamed),
+						},
+					}));
+				},
+			});
+			setCommunityAiState((state) => ({
+				...state,
+				[communityId]: {
+					loadedFingerprint: community.fingerprint,
+					loading: false,
+					generating: false,
+					streamed: '',
+					record,
+					stale: false,
+					error: null,
+				},
+			}));
+		} catch (error) {
+			if (controller.signal.aborted) return;
+			setCommunityAiState((state) => ({
+				...state,
+				[communityId]: {
+					...(state[communityId] ?? {
+						loading: false,
+						generating: false,
+						streamed: '',
+						record: null,
+						stale: false,
+					}),
+					generating: false,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			}));
+		} finally {
+			if (generationAbortRef.current === controller) generationAbortRef.current = null;
+		}
+	};
 
 	const overflowCount = subgraph?.overflowCount ?? 0;
 	const emptyMessage = useMemo(() => {
@@ -1179,16 +1446,161 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					))}
 			</div>
 			)}
-			{hoveredLabel && (() => {
-				const [title, ...rest] = hoveredLabel.label.split('\n');
-				const meta = rest.join(' ').trim();
-				const path = hoveredLabel.path;
+			{hoveredLabel && subgraph && (() => {
+				const width = hoveredLabel.kind === 'community' ? 390 : 350;
+				const containerWidth = containerRef.current?.clientWidth ?? 900;
+				const containerHeight = containerRef.current?.clientHeight ?? 600;
+				const left = Math.min(
+					Math.max(12, hoveredLabel.x + communityInteraction.cardOffsetPx),
+					Math.max(12, containerWidth - width - 12),
+				);
+				const estimatedHeight = hoveredLabel.kind === 'community' ? 390 : 280;
+				const belowTop = hoveredLabel.y + communityInteraction.cardOffsetPx;
+				const top = belowTop + estimatedHeight <= containerHeight
+					? belowTop
+					: Math.max(12, hoveredLabel.y - estimatedHeight - 12);
+				const sharedProps = {
+					style: { left, top, width },
+					onMouseEnter: cancelCardClose,
+					onMouseLeave: () => {
+						if (
+							hoveredLabel.kind === 'community'
+							&& communityAiState[hoveredLabel.id]?.generating
+						) return;
+						scheduleCardClose();
+					},
+					onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+						if (event.key !== 'Escape') return;
+						event.preventDefault();
+						closeCard();
+					},
+				};
+				if (hoveredLabel.kind === 'community') {
+					const community = subgraph.communities?.find((item) => item.id === hoveredLabel.id);
+					if (!community) return null;
+					const ai = communityAiState[community.id];
+					const record = ai?.record;
+					return (
+						<div
+							{...sharedProps}
+							className="pktw-absolute pktw-z-30 pktw-max-h-[calc(100%-24px)] pktw-overflow-y-auto pktw-rounded-xl pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised pktw-p-4 pktw-shadow-xl"
+							data-peak-graph-hover-card="community"
+							tabIndex={-1}
+						>
+							<div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-3">
+								<div>
+									<span className="pktw-block pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-[0.14em] pktw-text-pk-text-tertiary">Computed community</span>
+									<span className="pktw-mt-1 pktw-block pktw-text-lg pktw-font-semibold pktw-text-pk-text-primary">{community.displayLabel}</span>
+								</div>
+								<span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-tertiary">{community.visibleMemberIds.length} of {community.memberCount} shown</span>
+							</div>
+							<div className="pktw-mt-3 pktw-flex pktw-flex-wrap pktw-gap-1.5">
+								<span className="pktw-rounded-full pktw-border pktw-border-pk-border pktw-bg-pk-surface-sunken pktw-px-2.5 pktw-py-1 pktw-text-xs pktw-text-pk-text-secondary">
+									{community.internalReferenceCount} internal links
+								</span>
+								{community.descriptors.map((descriptor) => (
+									<span key={descriptor.key} className="pktw-rounded-full pktw-border pktw-border-pk-border pktw-bg-pk-surface-sunken pktw-px-2.5 pktw-py-1 pktw-text-xs pktw-text-pk-text-secondary">
+										{descriptor.label} · {descriptor.support}
+									</span>
+								))}
+							</div>
+							{community.analysisMode === 'bounded' && (
+								<span className="pktw-mt-2 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">
+									Bounded analysis · {community.analyzedNodeCount} of {community.totalNodeCount} vault notes
+								</span>
+							)}
+							{communityExplanation && (
+								<>
+									<div className="pktw-my-3 pktw-h-px pktw-bg-pk-border" />
+									<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3">
+										<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary">AI explanation</span>
+										{ai?.stale && <span className="pktw-text-xs pktw-font-medium pktw-text-amber-600">Evidence changed</span>}
+									</div>
+									{ai?.loading && <span className="pktw-mt-2 pktw-block pktw-text-sm pktw-text-pk-text-tertiary">Loading saved explanation…</span>}
+									{ai?.generating && (
+										<div className="pktw-mt-2 pktw-flex pktw-items-start pktw-gap-2 pktw-text-sm pktw-leading-6 pktw-text-pk-text-secondary" aria-live="polite">
+											<Loader2 className="pktw-mt-1 pktw-h-3.5 pktw-w-3.5 pktw-shrink-0 pktw-animate-spin pktw-text-pk-accent" />
+											<span>{ai.streamed || 'Reading the current evidence…'}</span>
+										</div>
+									)}
+									{!ai?.generating && record && (
+										<div className={ai.stale ? 'pktw-mt-2 pktw-opacity-60' : 'pktw-mt-2'}>
+											<span className="pktw-block pktw-text-sm pktw-leading-6 pktw-text-pk-text-secondary">{record.explanation}</span>
+											{record.suggestedLabel && (
+												<span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">Suggested label: {record.suggestedLabel}</span>
+											)}
+										</div>
+									)}
+									{ai?.error && <span className="pktw-mt-2 pktw-block pktw-text-xs pktw-text-red-600">{ai.error}</span>}
+									{!ai?.generating && (
+										<Button
+											type="button"
+											variant={record ? 'outline' : 'default'}
+											size="sm"
+											className="pktw-mt-3 pktw-gap-1.5"
+											onClick={() => void handleCommunityExplain(community.id, Boolean(record))}
+										>
+											<Sparkles className="pktw-h-3.5 pktw-w-3.5" />
+											{record ? 'Regenerate' : 'Explain with AI'}
+										</Button>
+									)}
+								</>
+							)}
+						</div>
+					);
+				}
+
+				const node = subgraph.resultNodes.find((item) => item.id === hoveredLabel.id);
+				if (!node) {
+					const [title, ...metaParts] = hoveredLabel.label.split('\n');
+					return (
+						<div
+							{...sharedProps}
+							className="pktw-absolute pktw-z-30 pktw-max-h-[calc(100%-24px)] pktw-overflow-y-auto pktw-rounded-xl pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised pktw-p-4 pktw-shadow-xl"
+							data-peak-graph-hover-card="node"
+							tabIndex={-1}
+						>
+							<span className="pktw-block pktw-text-base pktw-font-semibold pktw-text-pk-text-primary pktw-break-words">{title}</span>
+							{hoveredLabel.path && <span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary pktw-break-all">{hoveredLabel.path}</span>}
+							{metaParts.length > 0 && <span className="pktw-mt-2 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">{metaParts.join(' ')}</span>}
+						</div>
+					);
+				}
+				const community = node.communityId
+					? subgraph.communities?.find((item) => item.id === node.communityId)
+					: undefined;
+				const nodeSignals = new Set((node.signals ?? []).map((signal) => signal.toLocaleLowerCase()));
+				const sharedSignals = community?.descriptors.filter((descriptor) => (
+					nodeSignals.has(descriptor.label.toLocaleLowerCase())
+				)) ?? [];
+				const sameCommunityLinks = subgraph.edges.filter((edge) => {
+					if (edge.kind !== 'reference') return false;
+					if (edge.from !== node.id && edge.to !== node.id) return false;
+					const otherId = edge.from === node.id ? edge.to : edge.from;
+					return community?.visibleMemberIds.includes(otherId) ?? false;
+				}).length;
 				return (
-					<div className="pktw-absolute pktw-bottom-10 pktw-left-1/2 pktw--translate-x-1/2 pktw-z-30 pktw-pointer-events-none pktw-max-w-[80%]">
-						<div className="pktw-rounded-lg pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border pktw-shadow-md pktw-px-5 pktw-py-3 pktw-text-center">
-							<span className="pktw-block pktw-text-lg pktw-font-semibold pktw-text-pk-text-primary pktw-break-all">{title}</span>
-							{path && <span className="pktw-block pktw-mt-1 pktw-text-xs pktw-text-pk-text-tertiary pktw-break-all">{path}</span>}
-							{meta && <span className="pktw-block pktw-mt-1 pktw-text-xs pktw-text-pk-text-tertiary">{meta}</span>}
+					<div
+						{...sharedProps}
+						className="pktw-absolute pktw-z-30 pktw-max-h-[calc(100%-24px)] pktw-overflow-y-auto pktw-rounded-xl pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised pktw-p-4 pktw-shadow-xl"
+						data-peak-graph-hover-card="node"
+						tabIndex={-1}
+					>
+						<span className="pktw-block pktw-text-base pktw-font-semibold pktw-text-pk-text-primary pktw-break-words">{node.title || node.path || node.id}</span>
+						{node.path && <span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary pktw-break-all">{node.path}</span>}
+						{node.preview && <span className="pktw-mt-3 pktw-block pktw-text-sm pktw-leading-5 pktw-text-pk-text-secondary">{node.preview}</span>}
+						{community && (
+							<div className="pktw-mt-3">
+								<span className="pktw-block pktw-text-xs pktw-font-semibold pktw-text-pk-text-secondary">{community.displayLabel}</span>
+								<span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">
+									Why here: {sameCommunityLinks} links inside this result group{sharedSignals.length ? ` · ${sharedSignals.map((item) => item.label).join(' · ')}` : ''}
+								</span>
+							</div>
+						)}
+						<div className="pktw-mt-3 pktw-flex pktw-gap-3 pktw-border-t pktw-border-pk-border pktw-pt-2 pktw-text-xs pktw-text-pk-text-tertiary">
+							<span>{node.incomingLinks ?? 0} incoming</span>
+							<span>{node.outgoingLinks ?? 0} outgoing</span>
+							<span>{(node.incomingLinks ?? 0) + (node.outgoingLinks ?? 0)} total</span>
 						</div>
 					</div>
 				);

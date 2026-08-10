@@ -17,6 +17,8 @@
 import { GraphEdgeType } from '@/core/types/graph';
 import type { ResultSubgraphDeps } from '@/service/search/graph/resultSubgraph';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';
+import { communityFingerprint } from '@/service/search/index/helper/structural/communityEvidence';
 
 /** Top-level folder segment ("D-26年找工作/interviews/foo.md" → "D-26年找工作"). */
 function topLevelFolder(path: string): string {
@@ -37,21 +39,25 @@ function fallbackTitle(path: string): string {
 export function composeResultSubgraphDeps(): ResultSubgraphDeps {
     return {
         async getNodeMetadata(docIds) {
-            const out = new Map<string, { path: string; title: string; communityId: string | null; folder: string }>();
+            const out: Awaited<ReturnType<ResultSubgraphDeps['getNodeMetadata']>> = new Map();
             if (!docIds.length) return out;
             if (!sqliteStoreManager.isInitialized()) return out;
             const repo = sqliteStoreManager.getMobiusNodeRepo('vault');
             // First pass: treat inputs as node_id.
-            const rowMap = await repo.getByIds(docIds);
+            const rowMap = await repo.getMobiusRowsByIds(docIds);
             for (const [id, node] of rowMap) {
-                const path = (node as { path?: string | null }).path ?? '';
-                const label = (node as { label?: string | null }).label ?? '';
-                const communityId = (node as { community_id?: string | null }).community_id ?? null;
+				const path = node.path ?? '';
+				const label = node.label ?? '';
+				const communityId = node.community_id ?? null;
                 out.set(id, {
                     path,
                     title: label || fallbackTitle(path),
                     communityId,
                     folder: topLevelFolder(path),
+					preview: node.summary ?? undefined,
+					signals: displaySignals(node.tags_json),
+					incomingLinks: node.doc_incoming_cnt ?? 0,
+					outgoingLinks: node.doc_outgoing_cnt ?? 0,
                 });
             }
             // Second pass: any input not yet resolved likely came in as a path
@@ -60,24 +66,69 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
             // empty when callers pass path-style keys.
             const unresolved = docIds.filter((id) => !out.has(id));
             if (unresolved.length) {
-                const rows = await Promise.all(unresolved.map((p) => repo.getByPath(p).catch(() => null)));
+				const kdb = sqliteStoreManager.getIndexContext('vault');
+				const rows = await Promise.all(unresolved.map((path) => kdb
+					.selectFrom('mobius_node')
+					.selectAll()
+					.where('path', '=', path)
+					.executeTakeFirst()
+					.catch(() => undefined)));
                 for (let i = 0; i < unresolved.length; i++) {
                     const inputId = unresolved[i];
                     const node = rows[i];
                     if (!node) continue;
-                    const path = (node as { path?: string | null }).path ?? inputId;
-                    const label = (node as { label?: string | null }).label ?? '';
-                    const communityId = (node as { community_id?: string | null }).community_id ?? null;
+					const path = node.path ?? inputId;
+					const label = node.label ?? '';
+					const communityId = node.community_id ?? null;
                     out.set(inputId, {
                         path,
                         title: label || fallbackTitle(path),
                         communityId,
                         folder: topLevelFolder(path),
+						preview: node.summary ?? undefined,
+						signals: displaySignals(node.tags_json),
+						incomingLinks: node.doc_incoming_cnt ?? 0,
+						outgoingLinks: node.doc_outgoing_cnt ?? 0,
                     });
                 }
             }
             return out;
         },
+
+		async getCommunityMetadata(communityIds) {
+			const out: Awaited<ReturnType<NonNullable<ResultSubgraphDeps['getCommunityMetadata']>>> = new Map();
+			if (!communityIds.length || !sqliteStoreManager.isInitialized()) return out;
+			const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+			for (const communityId of communityIds) {
+				const info = await repo.getCommunityById(communityId);
+				if (!info) continue;
+				const descriptors = info.descriptors ?? info.dominantTopics.map((label) => ({
+					key: `legacy:${label.toLocaleLowerCase()}`,
+					label,
+					kind: 'tag' as const,
+					support: 0,
+					score: 0,
+				}));
+				const fingerprint = info.fingerprint || communityFingerprint({
+					memberIds: info.topNodes.map((node) => node.path),
+					descriptorKeys: descriptors.map((descriptor) => descriptor.key),
+					analysisVersion: info.analysisVersion ?? 1,
+				});
+				out.set(communityId, {
+					id: communityId,
+					fingerprint,
+					memberCount: info.memberCount,
+					descriptors,
+					internalReferenceCount: info.internalReferenceCount ?? 0,
+					analysisVersion: info.analysisVersion ?? 1,
+					analysisMode: info.analysisMode ?? 'exact',
+					analyzedNodeCount: info.analyzedNodeCount ?? info.memberCount,
+					totalNodeCount: info.totalNodeCount ?? info.memberCount,
+					representativeNotes: info.topNodes.map((node) => ({ path: node.path, label: node.label })),
+				});
+			}
+			return out;
+		},
 
         async getHubsForMemberDoc(docId) {
             if (!sqliteStoreManager.isInitialized()) return [];
@@ -154,4 +205,14 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
             return edges;
         },
     };
+}
+
+function displaySignals(rawTags: string | null): string[] {
+	const tags = decodeIndexedTagsBlob(rawTags);
+	const values = [
+		...tags.topicTags,
+		...(tags.userKeywordTags ?? tags.keywordTags),
+		...(tags.textrankKeywordTerms ?? []),
+	];
+	return [...new Set(values.map((value) => value.trim()).filter(Boolean))].slice(0, 8);
 }

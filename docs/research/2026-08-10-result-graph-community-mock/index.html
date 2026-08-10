@@ -1,0 +1,1197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant · Result Graph Community Mock</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef0f3;
+      --surface: #ffffff;
+      --surface-soft: #f7f7f8;
+      --text: #25222d;
+      --muted: #74717c;
+      --border: #e4e1e8;
+      --accent: #7c3aed;
+      --accent-soft: #f1eafe;
+      --shadow: 0 18px 55px rgba(44, 39, 55, 0.15);
+      --lavender: #7c3aed;
+      --teal: #0f8f87;
+      --amber: #b7791f;
+      --blue: #4f70d9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 1120px;
+      min-height: 100vh;
+      overflow: auto;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    button, input { font: inherit; }
+
+    .page {
+      min-height: 100vh;
+      padding: 28px;
+      display: grid;
+      place-items: center;
+    }
+
+    .app {
+      width: min(1470px, calc(100vw - 56px));
+      min-width: 1060px;
+      height: min(900px, calc(100vh - 56px));
+      min-height: 760px;
+      overflow: hidden;
+      border: 1px solid #d9d7dd;
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .tabs {
+      height: 54px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #f2f2f3;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #4c4952;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .tab.active {
+      color: var(--accent);
+      background: #fff;
+    }
+
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    .search-row {
+      height: 74px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 13px 18px 9px;
+    }
+
+    .search-shell {
+      flex: 1;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      border: 1px solid #eceaef;
+      border-radius: 24px;
+      background: #faf9fb;
+      box-shadow: inset 0 1px 2px rgba(35, 30, 44, 0.04);
+    }
+
+    .search-shell input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #4a4650;
+      font-size: 16px;
+    }
+
+    .refine {
+      height: 38px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--accent);
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .toolbar {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 8px 18px 10px;
+      border-bottom: 1px solid #f0eef2;
+    }
+
+    .segmented {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #f6f5f7;
+    }
+
+    .view-button, .mode-button {
+      height: 34px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #77737e;
+      padding: 0 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 620;
+      transition: 150ms ease;
+    }
+
+    .view-button:hover, .mode-button:hover { color: #4e4956; background: rgba(255,255,255,0.8); }
+    .view-button.active, .mode-button.active {
+      color: #fff;
+      background: var(--accent);
+      box-shadow: 0 3px 10px rgba(124, 58, 237, 0.24);
+    }
+
+    .layout-area {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .layout-modes {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: #f7f6f8;
+      border: 1px solid var(--border);
+    }
+
+    .mode-button { padding: 0 12px; }
+
+    .links-button { padding-right: 8px; }
+
+    .links-divider {
+      width: 1px;
+      height: 15px;
+      background: currentColor;
+      opacity: 0.2;
+    }
+
+    .orientation {
+      width: 20px;
+      height: 24px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .orientation:hover { background: rgba(124, 58, 237, 0.08); }
+
+    .switch-wrap {
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #6f6b76;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch-wrap input { position: absolute; opacity: 0; pointer-events: none; }
+
+    .switch {
+      width: 34px;
+      height: 19px;
+      padding: 2px;
+      border-radius: 999px;
+      background: #d8d6dd;
+      transition: 150ms ease;
+    }
+
+    .switch::after {
+      content: "";
+      display: block;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.16);
+      transition: 150ms ease;
+    }
+
+    .switch-wrap input:checked + .switch { background: var(--accent); }
+    .switch-wrap input:checked + .switch::after { transform: translateX(15px); }
+
+    .canvas {
+      position: relative;
+      height: calc(100% - 186px);
+      min-height: 560px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(124, 58, 237, 0.025), transparent 36%),
+        #fff;
+    }
+
+    .canvas-caption {
+      position: absolute;
+      left: 24px;
+      top: 18px;
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #7b7782;
+      font-size: 13px;
+    }
+
+    .caption-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22a06b;
+      box-shadow: 0 0 0 4px rgba(34,160,107,0.11);
+    }
+
+    .utility-tools {
+      position: absolute;
+      z-index: 15;
+      top: 14px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 4px 15px rgba(52,45,64,0.07);
+    }
+
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      padding: 7px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #7b7782;
+      cursor: pointer;
+    }
+
+    .icon-button:hover { color: var(--accent); background: var(--accent-soft); }
+    .icon-button svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    .graph-stage {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 54px;
+      bottom: 16px;
+      min-height: 500px;
+    }
+
+    .edges {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .edge {
+      fill: none;
+      stroke: #756f7e;
+      stroke-width: 1.6;
+      opacity: 0.78;
+      transition: 180ms ease;
+    }
+
+    .edge.reference { marker-end: url(#referenceArrow); }
+    .edge.semantic { stroke: #aaa4b1; stroke-dasharray: 7 7; opacity: 0.46; animation: dash 18s linear infinite; }
+    .semantic-hidden .edge.semantic { opacity: 0; }
+
+    @keyframes dash { to { stroke-dashoffset: -180; } }
+
+    .hull {
+      position: absolute;
+      z-index: 1;
+      border: 1px solid;
+      border-radius: 44% 56% 50% 50% / 53% 42% 58% 47%;
+      transition: opacity 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .hull-a {
+      left: 5%; top: 5%; width: 40%; height: 40%;
+      color: var(--lavender);
+      border-color: rgba(124,58,237,0.24);
+      background: rgba(124,58,237,0.055);
+    }
+
+    .hull-b {
+      left: 55%; top: 6%; width: 37%; height: 39%;
+      color: var(--teal);
+      border-color: rgba(15,143,135,0.25);
+      background: rgba(15,143,135,0.05);
+      border-radius: 53% 47% 44% 56% / 46% 53% 47% 54%;
+    }
+
+    .hull-c {
+      left: 26%; top: 58%; width: 44%; height: 34%;
+      color: var(--amber);
+      border-color: rgba(183,121,31,0.25);
+      background: rgba(183,121,31,0.055);
+      border-radius: 47% 53% 55% 45% / 54% 45% 55% 46%;
+    }
+
+    .community-label {
+      position: absolute;
+      z-index: 6;
+      top: -20px;
+      left: 28px;
+      display: grid;
+      grid-template-columns: auto auto;
+      align-items: baseline;
+      column-gap: 8px;
+      row-gap: 1px;
+      padding: 6px 10px 5px;
+      border: 1px solid currentColor;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.96);
+      color: inherit;
+      font-size: 11px;
+      font-weight: 750;
+      box-shadow: 0 3px 12px rgba(50,42,64,0.06);
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    .community-label:hover,
+    .community-label:focus-visible,
+    .community-label.anchor-active {
+      outline: none;
+      background: #fff;
+      box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 10%, transparent), 0 6px 16px rgba(50,42,64,0.1);
+    }
+
+    .community-descriptors {
+      grid-column: 1 / -1;
+      opacity: 0.66;
+      font-size: 9px;
+      font-weight: 620;
+      letter-spacing: 0.01em;
+    }
+
+    .community-count { opacity: 0.55; font-size: 9px; font-weight: 620; }
+
+    .node {
+      --node-border: #a78bfa;
+      --node-fill: #ede9fe;
+      position: absolute;
+      z-index: 5;
+      transform: translate(-50%, -50%);
+      min-width: 80px;
+      max-width: 158px;
+      min-height: 26px;
+      padding: 5px 10px;
+      border: 1px solid var(--node-border);
+      border-radius: 6px;
+      background: var(--node-fill);
+      color: #3f3563;
+      box-shadow: 0 1px 3px rgba(62,48,92,0.08);
+      cursor: pointer;
+      text-align: center;
+      line-height: 1.15;
+      font-size: 10px;
+      font-weight: 620;
+      transition: opacity 150ms ease, box-shadow 150ms ease, border-color 150ms ease, border-width 150ms ease;
+    }
+
+    .node:hover, .node:focus-visible, .node.anchor-active {
+      outline: none;
+      border: 3px solid #f59e0b;
+      box-shadow: 0 4px 12px rgba(102,72,18,0.16);
+    }
+
+    .node[data-community="a"] { --node-border: #8b5cf6; --node-fill: #ddd6fe; }
+    .node[data-community="b"] { --node-border: #3d9e97; --node-fill: #d8efec; color: #245f5a; }
+    .node[data-community="c"] { --node-border: #c4892e; --node-fill: #fbe8c5; color: #704f19; }
+    .node.score-high[data-community="a"] { --node-fill: #c4b5fd; }
+    .node.score-low[data-community="a"] { --node-fill: #ede9fe; }
+    .node.score-high[data-community="b"] { --node-fill: #a7ddd7; }
+    .node.score-low[data-community="b"] { --node-fill: #e8f6f4; }
+    .node.score-high[data-community="c"] { --node-fill: #f4cf91; }
+    .node.score-low[data-community="c"] { --node-fill: #fff3dc; }
+
+    .node.bridge-node {
+      --node-border: #6f5c89;
+      --node-fill: #e8e3ee;
+      min-width: 112px;
+      border-width: 2px;
+      color: #4e4260;
+    }
+
+    .graph-stage.has-focus .hull:not(.focused),
+    .graph-stage.has-focus .node:not(.focused):not(.bridge-node) { opacity: 0.24; }
+    .graph-stage.has-focus .hull.focused { transform: scale(1.012); box-shadow: 0 12px 35px color-mix(in srgb, currentColor 8%, transparent); }
+    .graph-stage.has-focus .node.focused { opacity: 1; }
+    .graph-stage.has-focus .edge { opacity: 0.12; }
+    .graph-stage.has-focus .edge.active-edge { opacity: 0.92; stroke-width: 2.4; }
+
+    .node-preview {
+      position: absolute;
+      z-index: 20;
+      left: 0;
+      top: 0;
+      width: 320px;
+      max-height: calc(100% - 20px);
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.98);
+      box-shadow: 0 12px 32px rgba(52,45,64,0.16);
+      pointer-events: auto;
+      user-select: text;
+      overflow-y: auto;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 120ms ease, transform 120ms ease;
+    }
+
+    .node-preview.visible { opacity: 1; transform: translateY(0); }
+    .node-preview:hover { box-shadow: 0 16px 38px rgba(52,45,64,0.2); }
+    .node-preview[hidden] { display: none; }
+
+    .node-preview h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .preview-title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .preview-coverage {
+      color: #8d8792;
+      font-size: 9px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .preview-path {
+      margin-top: 3px;
+      overflow: hidden;
+      color: #8a8490;
+      font-size: 9px;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .preview-snippet {
+      margin-top: 9px;
+      color: #5f5964;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .community-line {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 5px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 680;
+    }
+
+    .community-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .section-label {
+      margin-top: 10px;
+      margin-bottom: 6px;
+      color: #7b7581;
+      font-size: 9px;
+      font-weight: 720;
+    }
+
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      padding: 3px 6px;
+      border: 1px solid #e5e1eb;
+      border-radius: 999px;
+      background: #faf9fb;
+      color: #5e5864;
+      font-size: 9px;
+      font-weight: 620;
+    }
+
+    .preview-meta {
+      display: flex;
+      gap: 10px;
+      margin-top: 9px;
+      padding-top: 8px;
+      border-top: 1px solid #eeeaf1;
+      color: #817a87;
+      font-size: 9px;
+      font-weight: 650;
+    }
+
+    .preview-divider {
+      height: 1px;
+      margin: 11px 0;
+      background: #eeeaf1;
+    }
+
+    .evidence-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 7px;
+    }
+
+    .evidence-pill {
+      padding: 4px 7px;
+      border: 1px solid #e2dde7;
+      border-radius: 7px;
+      background: #faf9fb;
+      color: #625c68;
+      font-size: 9px;
+      font-weight: 670;
+    }
+
+    .ai-section {
+      padding: 0;
+    }
+
+    .ai-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #5c5563;
+      font-size: 10px;
+      font-weight: 760;
+    }
+
+    .ai-status {
+      color: #29906a;
+      font-size: 8px;
+      font-weight: 720;
+    }
+
+    .ai-status.streaming { color: #7c3aed; }
+
+    .ai-copy {
+      margin-top: 8px;
+      color: #4e4853;
+      font-size: 10px;
+      line-height: 1.48;
+    }
+
+    .ai-copy.streaming-copy { min-height: 42px; white-space: pre-wrap; }
+
+    .stream-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      margin-left: 2px;
+      background: #7c3aed;
+      vertical-align: -0.12em;
+      animation: cursor-blink 700ms steps(1) infinite;
+    }
+
+    @keyframes cursor-blink { 50% { opacity: 0; } }
+
+    .ai-caveat {
+      margin-top: 7px;
+      color: #827b88;
+      font-size: 9px;
+      line-height: 1.42;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 9px;
+    }
+
+    .preview-action {
+      min-height: 26px;
+      padding: 5px 9px;
+      border: 1px solid #ddd6e5;
+      border-radius: 7px;
+      background: #fff;
+      color: #675f6f;
+      cursor: pointer;
+      font-size: 9px;
+      font-weight: 720;
+    }
+
+    .preview-action:hover { border-color: #9f7aea; color: #6d28d9; background: #faf7ff; }
+    .preview-action.primary { border-color: #7c3aed; background: #7c3aed; color: #fff; }
+    .preview-action.primary:hover { background: #6d28d9; }
+    .preview-action:disabled { cursor: wait; opacity: 0.7; }
+
+    .evidence-detail {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #ece7f0;
+      color: #6b6470;
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="app" aria-label="Peak Assistant community graph mock">
+      <header class="tabs">
+        <div class="tab active">Vault Search</div>
+        <div class="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.3 4.1L17 8.5l-3.7 1.4L12 14l-1.3-4.1L7 8.5l3.7-1.4L12 3Zm6 9 .8 2.5L21 15.3l-2.2.8L18 18.6l-.8-2.5-2.2-.8 2.2-.8L18 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          AI Search
+        </div>
+      </header>
+
+      <div class="search-row">
+        <label class="search-shell">
+          <input aria-label="Search vault" value="knowledge graph" />
+        </label>
+        <button class="refine" type="button">Refine</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="segmented" aria-label="Result view">
+          <button class="view-button" type="button">List</button>
+          <button class="view-button" type="button">Tree</button>
+          <button class="view-button active" type="button">Graph</button>
+        </div>
+
+        <div class="layout-area">
+          <div class="layout-modes" aria-label="Graph interpretation">
+            <button class="mode-button" type="button" title="Relationship-first force layout">Connections</button>
+            <button class="mode-button active" type="button" title="Group the current results by their vault community">Community</button>
+            <button class="mode-button links-button" type="button" title="Read real reference direction; placement remains heuristic">
+              <span>Links</span><span class="links-divider" aria-hidden="true"></span><span id="orientationGlyph">↓</span>
+            </button>
+            <button class="mode-button" type="button" title="Arrange by vault folder">Folders</button>
+            <button class="mode-button" type="button" title="Place generated hubs at the center">Hubs</button>
+          </div>
+
+          <label class="switch-wrap">
+            <input id="semanticToggle" type="checkbox" checked />
+            <span class="switch" aria-hidden="true"></span>
+            <span>Semantic</span>
+          </label>
+        </div>
+      </div>
+
+      <section class="canvas" id="canvas">
+        <div class="canvas-caption"><span class="caption-dot"></span><span>3 communities · 11 of 126 notes shown</span></div>
+
+        <div class="utility-tools" aria-label="Canvas utilities">
+          <button class="icon-button" type="button" title="Open node list" aria-label="Open node list">
+            <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          </button>
+          <button class="icon-button" type="button" title="Copy graph as Mermaid" aria-label="Copy graph as Mermaid">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v4a2 2 0 0 0 2 2h7M15 6h-3"/></svg>
+          </button>
+          <button class="icon-button" type="button" title="Copy graph as image" aria-label="Copy graph as image">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m5 17 4.5-4 3 2.5 2.5-2 4 3.5"/></svg>
+          </button>
+        </div>
+
+        <div class="graph-stage" id="graphStage">
+          <svg class="edges" id="edgeLayer" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <marker id="referenceArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M0 0 L10 5 L0 10 Z" fill="#5f5968" />
+              </marker>
+            </defs>
+            <path class="edge reference community-a active-a" data-community="a" data-source="react-hooks" data-target="state-sync" />
+            <path class="edge reference community-a active-a" data-community="a" data-source="react-hooks" data-target="server-components" />
+            <path class="edge reference community-a active-a" data-community="a" data-source="state-sync" data-target="rendering-boundaries" />
+            <path class="edge reference community-a active-a" data-community="a" data-source="server-components" data-target="rendering-boundaries" />
+
+            <path class="edge reference community-b active-b" data-community="b" data-source="knowledge-graph" data-target="vault-indexing" />
+            <path class="edge reference community-b active-b" data-community="b" data-source="knowledge-graph" data-target="search-reranking" />
+            <path class="edge reference community-b active-b" data-community="b" data-source="vault-indexing" data-target="semantic-retrieval" />
+            <path class="edge semantic community-b active-b" data-community="b" data-source="search-reranking" data-target="semantic-retrieval" />
+
+            <path class="edge reference community-c active-c" data-community="c" data-source="product-ia" data-target="interaction-design" />
+            <path class="edge reference community-c active-c" data-community="c" data-source="interaction-design" data-target="evidence-review" />
+            <path class="edge semantic community-c active-c" data-community="c" data-source="product-ia" data-target="evidence-review" />
+
+            <path class="edge reference bridge active-a active-b" data-community="bridge" data-source="rendering-boundaries" data-target="context-pipeline" />
+            <path class="edge reference bridge active-a active-b" data-community="bridge" data-source="context-pipeline" data-target="knowledge-graph" />
+            <path class="edge semantic bridge active-b active-c" data-community="bridge" data-source="context-pipeline" data-target="evidence-review" />
+          </svg>
+
+          <div class="hull hull-a" data-community="a">
+            <button class="community-label" type="button" data-community-summary="a">
+              <span>Community 01</span><span class="community-count">4 / 38</span><span class="community-descriptors">react · rendering · state</span>
+            </button>
+          </div>
+          <div class="hull hull-b" data-community="b">
+            <button class="community-label" type="button" data-community-summary="b">
+              <span>Community 02</span><span class="community-count">4 / 51</span><span class="community-descriptors">graph · retrieval · indexing</span>
+            </button>
+          </div>
+          <div class="hull hull-c" data-community="c">
+            <button class="community-label" type="button" data-community-summary="c">
+              <span>Community 03</span><span class="community-count">3 / 37</span><span class="community-descriptors">product · interaction · evidence</span>
+            </button>
+          </div>
+
+          <button class="node score-high" style="left:13.75%;top:19.3%" type="button" data-node="react-hooks" data-community="a" data-title="React Hooks" data-tags="#react|#hooks|state" data-links="5" data-score="0.92">React Hooks</button>
+          <button class="node" style="left:29.15%;top:22%" type="button" data-node="state-sync" data-community="a" data-title="State Synchronization" data-tags="#state-management|rendering|effects" data-links="4" data-score="0.78">State Synchronization</button>
+          <button class="node score-high" style="left:20.8%;top:35.7%" type="button" data-node="server-components" data-community="a" data-title="Server Components" data-tags="#react|hydration|server-action" data-links="3" data-score="0.86">Server Components</button>
+          <button class="node score-low" style="left:30%;top:37.3%" type="button" data-node="rendering-boundaries" data-community="a" data-title="Rendering Boundaries" data-tags="rendering|boundary|component" data-links="4" data-score="0.64">Rendering Boundaries</button>
+
+          <button class="node score-high" style="left:60.4%;top:19.7%" type="button" data-node="knowledge-graph" data-community="b" data-title="Knowledge Graph" data-tags="#knowledge-graph|nodes|relations" data-links="6" data-score="0.94">Knowledge Graph</button>
+          <button class="node" style="left:76.2%;top:20.7%" type="button" data-node="vault-indexing" data-community="b" data-title="Vault Indexing" data-tags="#indexing|sqlite|metadata" data-links="5" data-score="0.81">Vault Indexing</button>
+          <button class="node" style="left:64.2%;top:35.8%" type="button" data-node="search-reranking" data-community="b" data-title="Search Reranking" data-tags="#search|ranking|pagerank" data-links="4" data-score="0.73">Search Reranking</button>
+          <button class="node score-low" style="left:73.8%;top:36.8%" type="button" data-node="semantic-retrieval" data-community="b" data-title="Semantic Retrieval" data-tags="#embeddings|retrieval|similarity" data-links="2" data-score="0.62">Semantic Retrieval</button>
+
+          <button class="node score-high" style="left:35%;top:74.5%" type="button" data-node="product-ia" data-community="c" data-title="Product IA" data-tags="#product|information-architecture|scope" data-links="5" data-score="0.89">Product IA</button>
+          <button class="node" style="left:48.5%;top:71.7%" type="button" data-node="interaction-design" data-community="c" data-title="Interaction Design" data-tags="#ux|interaction|workflow" data-links="4" data-score="0.77">Interaction Design</button>
+          <button class="node score-low" style="left:58.3%;top:81.5%" type="button" data-node="evidence-review" data-community="c" data-title="Evidence Review" data-tags="#evidence|review|acceptance" data-links="3" data-score="0.66">Evidence Review</button>
+
+          <button class="node bridge-node" style="left:45.7%;top:49.7%" type="button" data-node="context-pipeline" data-community="bridge" data-title="Context Pipeline" data-tags="#context|retrieval|product" data-links="7" data-score="0.83">Context Pipeline</button>
+
+          <aside class="node-preview" id="nodePreview" role="region" aria-label="Graph item details" aria-live="polite" hidden>
+            <div id="previewContent"></div>
+          </aside>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const communityMeta = {
+      a: {
+        label: 'Community 01', descriptors: 'react · rendering · state', color: '#7c3aed', shown: 4, total: 38,
+        fingerprint: 'community-a-evidence-v1',
+        evidence: ['14 internal links', '#react in 12 notes', 'rendering in 9 notes'],
+        representatives: ['React Hooks', 'State Synchronization'],
+        aiSummary: 'This community centers on React state and rendering boundaries. React Hooks and State Synchronization are its most representative notes, connected through direct references and repeated React terminology.',
+        aiCaveat: 'Server Components sits near the edge of the group and may bridge client-side state with server rendering concerns.',
+      },
+      b: {
+        label: 'Community 02', descriptors: 'graph · retrieval · indexing', color: '#0f8f87', shown: 4, total: 51,
+        fingerprint: 'community-b-evidence-v1',
+        evidence: ['18 internal links', 'retrieval in 14 notes', 'indexing in 10 notes'],
+        representatives: ['Knowledge Graph', 'Vault Indexing'],
+        aiSummary: 'This community describes the retrieval pipeline from vault indexing to graph-assisted search. Knowledge Graph and Vault Indexing provide the structural center, while reranking and semantic retrieval form the query-time layer.',
+        aiCaveat: 'Semantic Retrieval has fewer physical links, so part of its membership depends on shared retrieval terminology.',
+      },
+      c: {
+        label: 'Community 03', descriptors: 'product · interaction · evidence', color: '#b7791f', shown: 3, total: 37,
+        fingerprint: 'community-c-evidence-v1',
+        evidence: ['9 internal links', 'product in 11 notes', 'evidence in 8 notes'],
+        representatives: ['Product IA', 'Interaction Design'],
+        aiSummary: 'This community groups product-structure and interaction decisions with their review evidence. Product IA frames the information model, while Interaction Design and Evidence Review connect decisions to validation.',
+        aiCaveat: 'The group is structurally looser than the other two communities and may split as more review notes are added.',
+      },
+      bridge: { label: 'Bridge note', descriptors: 'touches 3 communities', color: '#6f5c89' },
+    };
+
+    const nodeDetails = {
+      'react-hooks': { path: 'engineering/react/react-hooks.md', snippet: 'Reusable stateful logic, hook composition, and the boundaries between local and shared state.', internal: 2, outgoing: 3, incoming: 2, rank: 1 },
+      'state-sync': { path: 'engineering/react/state-synchronization.md', snippet: 'Notes on effects, external stores, rendering cycles, and keeping state synchronized without feedback loops.', internal: 3, outgoing: 2, incoming: 2, rank: 2 },
+      'server-components': { path: 'engineering/react/server-components.md', snippet: 'Server and client component boundaries, hydration behavior, and data-flow constraints.', internal: 2, outgoing: 2, incoming: 1, rank: 3 },
+      'rendering-boundaries': { path: 'engineering/react/rendering-boundaries.md', snippet: 'A map of rendering ownership, component boundaries, and failure isolation.', internal: 3, outgoing: 1, incoming: 3, rank: 4 },
+      'knowledge-graph': { path: 'knowledge-systems/knowledge-graph.md', snippet: 'Graph entities, reference relations, community structure, and knowledge navigation.', internal: 4, outgoing: 4, incoming: 2, rank: 1 },
+      'vault-indexing': { path: 'peak-assistant/search/vault-indexing.md', snippet: 'How vault documents, metadata, links, and derived search records enter the local index.', internal: 3, outgoing: 3, incoming: 2, rank: 2 },
+      'search-reranking': { path: 'peak-assistant/search/search-reranking.md', snippet: 'Candidate scoring, reranking signals, and result-quality checks for vault search.', internal: 2, outgoing: 2, incoming: 2, rank: 3 },
+      'semantic-retrieval': { path: 'peak-assistant/search/semantic-retrieval.md', snippet: 'Embedding-based candidate discovery and similarity boundaries for related notes.', internal: 1, outgoing: 1, incoming: 1, rank: 4 },
+      'product-ia': { path: 'product/product-ia.md', snippet: 'Information architecture decisions, surface ownership, and product-scope boundaries.', internal: 2, outgoing: 3, incoming: 2, rank: 1 },
+      'interaction-design': { path: 'product/interaction-design.md', snippet: 'Interaction flows, state transitions, and the reasoning behind user-visible controls.', internal: 2, outgoing: 2, incoming: 2, rank: 2 },
+      'evidence-review': { path: 'product/evidence-review.md', snippet: 'Acceptance evidence, review criteria, and the boundary between a proposal and verified behavior.', internal: 1, outgoing: 1, incoming: 2, rank: 3 },
+      'context-pipeline': { path: 'peak-assistant/context-pipeline.md', snippet: 'A bridge between retrieval evidence, product decisions, and the context handed to AI workflows.', internal: 3, outgoing: 4, incoming: 3, rank: 5 },
+    };
+
+    const stage = document.getElementById('graphStage');
+    const canvas = document.getElementById('canvas');
+    const nodes = [...document.querySelectorAll('.node')];
+    const communityLabels = [...document.querySelectorAll('.community-label')];
+    const hulls = [...document.querySelectorAll('.hull')];
+    const edges = [...document.querySelectorAll('.edge')];
+    const edgeLayer = document.getElementById('edgeLayer');
+    const preview = document.getElementById('nodePreview');
+    const previewContent = document.getElementById('previewContent');
+    const explanationStorageKey = 'peak-community-explanations-v1';
+    let activeAnchor = null;
+    let activeCommunity = null;
+    let explanationLoading = null;
+    let streamedExplanation = '';
+    let evidenceOpen = false;
+    let closeTimer = null;
+    let interactionUnlockTimer = null;
+    let previewInteractionLocked = false;
+
+    function cancelScheduledClose() {
+      if (closeTimer === null) return;
+      window.clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+
+    function lockPreviewInteraction(duration = 500) {
+      cancelScheduledClose();
+      previewInteractionLocked = true;
+      if (interactionUnlockTimer !== null) window.clearTimeout(interactionUnlockTimer);
+      interactionUnlockTimer = window.setTimeout(() => {
+        interactionUnlockTimer = null;
+        previewInteractionLocked = false;
+        const anchorHovered = activeAnchor?.matches(':hover') ?? false;
+        if (!preview.matches(':hover') && !anchorHovered) scheduleClearFocus();
+      }, duration);
+    }
+
+    function setActiveAnchor(anchor) {
+      if (activeAnchor && activeAnchor !== anchor) activeAnchor.classList.remove('anchor-active');
+      activeAnchor = anchor;
+      activeAnchor.classList.add('anchor-active');
+    }
+
+    function getNodeBox(nodeId) {
+      const node = stage.querySelector(`[data-node="${nodeId}"]`);
+      const stageRect = stage.getBoundingClientRect();
+      const rect = node.getBoundingClientRect();
+      return {
+        centerX: rect.left - stageRect.left + rect.width / 2,
+        centerY: rect.top - stageRect.top + rect.height / 2,
+        halfWidth: rect.width / 2,
+        halfHeight: rect.height / 2,
+      };
+    }
+
+    function boundaryPoint(box, toward, gap) {
+      const deltaX = toward.centerX - box.centerX;
+      const deltaY = toward.centerY - box.centerY;
+      const horizontalScale = deltaX === 0 ? Infinity : (box.halfWidth + gap) / Math.abs(deltaX);
+      const verticalScale = deltaY === 0 ? Infinity : (box.halfHeight + gap) / Math.abs(deltaY);
+      const scale = Math.min(horizontalScale, verticalScale);
+      return {
+        x: box.centerX + deltaX * scale,
+        y: box.centerY + deltaY * scale,
+      };
+    }
+
+    function updateEdges() {
+      edgeLayer.setAttribute('viewBox', `0 0 ${stage.clientWidth} ${stage.clientHeight}`);
+      edges.forEach((edge) => {
+        const source = getNodeBox(edge.dataset.source);
+        const target = getNodeBox(edge.dataset.target);
+        const start = boundaryPoint(source, target, 2);
+        const endGap = edge.classList.contains('reference') ? 7 : 2;
+        const end = boundaryPoint(target, source, endGap);
+        edge.setAttribute('d', `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} L ${end.x.toFixed(1)} ${end.y.toFixed(1)}`);
+      });
+    }
+
+    function positionPreview(anchor) {
+      preview.hidden = false;
+      const stageRect = stage.getBoundingClientRect();
+      const anchorRect = anchor.getBoundingClientRect();
+      const gap = 12;
+      const margin = 10;
+      let left = anchorRect.right - stageRect.left + gap;
+      if (left + preview.offsetWidth > stage.clientWidth - margin) {
+        left = anchorRect.left - stageRect.left - preview.offsetWidth - gap;
+      }
+      const centeredTop = anchorRect.top - stageRect.top + (anchorRect.height - preview.offsetHeight) / 2;
+      const maxTop = stage.clientHeight - preview.offsetHeight - margin;
+      const top = Math.max(margin, Math.min(maxTop, centeredTop));
+      preview.style.left = `${Math.max(margin, left)}px`;
+      preview.style.top = `${top}px`;
+    }
+
+    function readExplanationStore() {
+      try {
+        return JSON.parse(localStorage.getItem(explanationStorageKey) || '{}');
+      } catch {
+        return {};
+      }
+    }
+
+    function getSavedExplanation(community) {
+      const saved = readExplanationStore()[community];
+      if (!saved) return null;
+      if (saved.fingerprint !== communityMeta[community].fingerprint) return null;
+      return saved;
+    }
+
+    function saveExplanation(community) {
+      const meta = communityMeta[community];
+      const store = readExplanationStore();
+      store[community] = {
+        fingerprint: meta.fingerprint,
+        summary: meta.aiSummary,
+        caveat: meta.aiCaveat,
+        generatedAt: Date.now(),
+      };
+      localStorage.setItem(explanationStorageKey, JSON.stringify(store));
+    }
+
+    function savedLabel(timestamp) {
+      const elapsedMinutes = Math.floor((Date.now() - timestamp) / 60000);
+      if (elapsedMinutes < 1) return 'Saved just now · Current';
+      if (elapsedMinutes < 60) return `Saved ${elapsedMinutes}m ago · Current`;
+      return 'Saved earlier · Current';
+    }
+
+    function renderNodeCard(node) {
+      const community = node.dataset.community;
+      const meta = communityMeta[community];
+      const detail = nodeDetails[node.dataset.node];
+      const tags = node.dataset.tags.split('|');
+      previewContent.innerHTML = `
+        <h2>${node.dataset.title}</h2>
+        <div class="preview-path">${detail.path}</div>
+        <div class="preview-snippet">${detail.snippet}</div>
+        <div class="community-line" style="color:${meta.color}"><span class="community-dot"></span><span>${meta.label} · ${meta.descriptors}</span></div>
+        <div class="section-label">Why it belongs here</div>
+        <div class="evidence-row">
+          <span class="evidence-pill">${detail.internal} links to members</span>
+          ${tags.slice(0, 2).map((tag) => `<span class="evidence-pill">shares ${tag}</span>`).join('')}
+        </div>
+        <div class="preview-meta"><span>${detail.outgoing} outgoing · ${detail.incoming} incoming</span><span>${node.dataset.links} vault links total</span></div>
+      `;
+    }
+
+    function renderCommunityCard(community) {
+      const meta = communityMeta[community];
+      const saved = getSavedExplanation(community);
+      const loading = explanationLoading === community;
+      const aiSection = loading
+        ? `
+          <div class="ai-section">
+            <div class="ai-header"><span>AI explanation</span><span class="ai-status streaming">Explaining…</span></div>
+            <div class="ai-copy streaming-copy">${streamedExplanation}<span class="stream-cursor" aria-hidden="true"></span></div>
+          </div>
+        `
+        : saved
+          ? `
+            <div class="ai-section">
+              <div class="ai-header"><span>AI explanation</span><span class="ai-status">${savedLabel(saved.generatedAt)}</span></div>
+              <div class="ai-copy">${saved.summary}</div>
+              <div class="ai-caveat">${saved.caveat}</div>
+              ${evidenceOpen ? `<div class="evidence-detail"><strong>Evidence used:</strong> ${meta.evidence.join(' · ')}<br><strong>Representative notes:</strong> ${meta.representatives.join(' · ')}</div>` : ''}
+              <div class="preview-actions">
+                <button class="preview-action" type="button" data-action="toggle-evidence" data-community="${community}">${evidenceOpen ? 'Hide evidence' : 'View evidence'}</button>
+                <button class="preview-action" type="button" data-action="regenerate" data-community="${community}">Regenerate</button>
+              </div>
+            </div>
+          `
+          : `
+            <div class="preview-actions">
+              <button class="preview-action primary" type="button" data-action="explain" data-community="${community}">Explain with AI</button>
+            </div>
+          `;
+
+      previewContent.innerHTML = `
+        <div class="preview-title-row"><h2>${meta.label}</h2><span class="preview-coverage">${meta.shown} of ${meta.total} shown</span></div>
+        <div class="community-line" style="color:${meta.color}"><span class="community-dot"></span><span>${meta.descriptors}</span></div>
+        <div class="evidence-row">${meta.evidence.map((item) => `<span class="evidence-pill">${item}</span>`).join('')}</div>
+        <div class="preview-divider"></div>
+        ${aiSection}
+      `;
+    }
+
+    function showPreview(node) {
+      cancelScheduledClose();
+      activeCommunity = null;
+      renderNodeCard(node);
+      setActiveAnchor(node);
+      positionPreview(node);
+      requestAnimationFrame(() => preview.classList.add('visible'));
+    }
+
+    function showCommunityPreview(label) {
+      cancelScheduledClose();
+      const community = label.dataset.communitySummary;
+      if (activeCommunity !== community) evidenceOpen = false;
+      activeCommunity = community;
+      renderCommunityCard(community);
+      setActiveAnchor(label);
+      positionPreview(label);
+      requestAnimationFrame(() => preview.classList.add('visible'));
+    }
+
+    async function generateExplanation(community) {
+      if (explanationLoading) return;
+      lockPreviewInteraction(10000);
+      const stableHeight = preview.offsetHeight;
+      preview.style.minHeight = `${stableHeight}px`;
+      explanationLoading = community;
+      streamedExplanation = '';
+      evidenceOpen = false;
+      if (activeCommunity === community) {
+        renderCommunityCard(community);
+      }
+      const meta = communityMeta[community];
+      const chunks = `${meta.aiSummary}\n\n${meta.aiCaveat}`.match(/\S+\s*/g) ?? [];
+      for (const chunk of chunks) {
+        await new Promise((resolve) => window.setTimeout(resolve, 34));
+        streamedExplanation += chunk;
+        if (activeCommunity === community && activeAnchor) renderCommunityCard(community);
+      }
+      saveExplanation(community);
+      explanationLoading = null;
+      streamedExplanation = '';
+      if (activeCommunity !== community || !activeAnchor) {
+        preview.style.minHeight = '';
+        lockPreviewInteraction(300);
+        return;
+      }
+      renderCommunityCard(community);
+      requestAnimationFrame(() => {
+        preview.style.minHeight = '';
+        lockPreviewInteraction(600);
+      });
+    }
+
+    function focusCommunity(community) {
+      stage.classList.add('has-focus');
+      hulls.forEach((hull) => hull.classList.toggle('focused', hull.dataset.community === community));
+      nodes.forEach((node) => node.classList.toggle('focused', node.dataset.community === community || node.dataset.community === 'bridge'));
+      edges.forEach((edge) => {
+        const active = edge.classList.contains(`active-${community}`);
+        edge.classList.toggle('active-edge', active);
+      });
+    }
+
+    function clearFocus() {
+      cancelScheduledClose();
+      if (interactionUnlockTimer !== null) window.clearTimeout(interactionUnlockTimer);
+      interactionUnlockTimer = null;
+      previewInteractionLocked = false;
+      preview.style.minHeight = '';
+      if (activeAnchor) activeAnchor.classList.remove('anchor-active');
+      activeAnchor = null;
+      activeCommunity = null;
+      evidenceOpen = false;
+      stage.classList.remove('has-focus');
+      hulls.forEach((hull) => hull.classList.remove('focused'));
+      nodes.forEach((node) => node.classList.remove('focused'));
+      edges.forEach((edge) => edge.classList.remove('active-edge'));
+      preview.classList.remove('visible');
+      preview.hidden = true;
+    }
+
+    function scheduleClearFocus() {
+      if (previewInteractionLocked) return;
+      cancelScheduledClose();
+      closeTimer = window.setTimeout(clearFocus, 180);
+    }
+
+    nodes.forEach((node) => {
+      node.addEventListener('mouseenter', () => {
+        showPreview(node);
+        focusCommunity(node.dataset.community === 'bridge' ? 'b' : node.dataset.community);
+      });
+      node.addEventListener('focus', () => {
+        showPreview(node);
+        focusCommunity(node.dataset.community === 'bridge' ? 'b' : node.dataset.community);
+      });
+      node.addEventListener('mouseleave', scheduleClearFocus);
+      node.addEventListener('blur', scheduleClearFocus);
+    });
+
+    communityLabels.forEach((label) => {
+      const show = () => {
+        showCommunityPreview(label);
+        focusCommunity(label.dataset.communitySummary);
+      };
+      label.addEventListener('mouseenter', show);
+      label.addEventListener('focus', show);
+      label.addEventListener('mouseleave', scheduleClearFocus);
+      label.addEventListener('blur', scheduleClearFocus);
+    });
+
+    preview.addEventListener('mouseenter', cancelScheduledClose);
+    preview.addEventListener('mouseleave', scheduleClearFocus);
+    preview.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-action]');
+      if (!action) return;
+      cancelScheduledClose();
+      const community = action.dataset.community;
+      if (action.dataset.action === 'toggle-evidence') {
+        lockPreviewInteraction(500);
+        evidenceOpen = !evidenceOpen;
+        renderCommunityCard(community);
+        return;
+      }
+      if (action.dataset.action === 'explain' || action.dataset.action === 'regenerate') {
+        void generateExplanation(community);
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') clearFocus();
+    });
+
+    window.addEventListener('resize', () => {
+      if (activeAnchor) positionPreview(activeAnchor);
+      updateEdges();
+    });
+
+    new ResizeObserver(updateEdges).observe(stage);
+    updateEdges();
+
+    document.getElementById('semanticToggle').addEventListener('change', (event) => {
+      canvas.classList.toggle('semantic-hidden', !event.target.checked);
+    });
+
+    document.querySelector('.links-button').addEventListener('click', () => {
+      const glyph = document.getElementById('orientationGlyph');
+      glyph.textContent = glyph.textContent === '↓' ? '→' : '↓';
+    });
+  </script>
+</body>
+</html>

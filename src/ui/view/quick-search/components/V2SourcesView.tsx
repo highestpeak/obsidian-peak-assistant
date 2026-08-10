@@ -38,6 +38,7 @@ type GraphMode = 'one-hop' | 'two-hop' | 'ai';
 const SOURCE_KEY_TIPS = PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources;
 const SOURCE_GRAPH_PRESET_KEY_TIPS: Readonly<Record<ResultBrowserGraphPreset, string>> = {
 	constellation: SOURCE_KEY_TIPS.graphPreset.constellation,
+	community: SOURCE_KEY_TIPS.graphPreset.community,
 	'flow-tb': SOURCE_KEY_TIPS.graphPreset.flowTb,
 	'flow-lr': SOURCE_KEY_TIPS.graphPreset.flowLr,
 	folder: SOURCE_KEY_TIPS.graphPreset.folder,

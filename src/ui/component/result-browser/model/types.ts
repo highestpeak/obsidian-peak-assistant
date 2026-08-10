@@ -29,6 +29,7 @@ export type ResultBrowserDensity = 'compact' | 'detailed';
  */
 export type ResultBrowserGraphPreset =
 	| 'constellation'
+	| 'community'
 	| 'flow-tb'
 	| 'flow-lr'
 	| 'folder'

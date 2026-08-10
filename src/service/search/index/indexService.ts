@@ -39,6 +39,7 @@ import {
 	LOUVAIN_RESOLUTION,
 } from '@/core/constant';
 import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
+import type { ResultGraphCommunityConfig } from '@/service/search/index/helper/structural/ResultGraphCommunityDefaults';
 import {
 	accumulateSemanticOutgoingWeightSums,
 	computeSemanticPageRankStreaming,
@@ -119,6 +120,7 @@ export type StorageType = 'sqlite' | 'graph';
 export interface IndexServiceEnv {
 	rootFolder: string;
 	app: AppHandle;
+	communityConfig?: ResultGraphCommunityConfig;
 }
 
 
@@ -1716,7 +1718,10 @@ export class IndexService
 
 		if (tenants.includes('vault')) {
 			sw.start('structural_analysis');
-			await runStructuralAnalysis({ louvainResolution: LOUVAIN_RESOLUTION });
+			await runStructuralAnalysis({
+				louvainResolution: LOUVAIN_RESOLUTION,
+				communityConfig: this.env.communityConfig,
+			});
 			sw.stop();
 		}
 

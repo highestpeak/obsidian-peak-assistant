@@ -32,6 +32,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 		density: { compact: 'C', detailed: 'D' },
 		graphPreset: {
 			constellation: 'C',
+			community: 'F',
 			flowTb: 'D',
 			flowLr: 'F',
 			folder: 'K',
@@ -63,6 +64,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 			copyLinks: '0',
 			graphPreset: {
 				constellation: '1',
+				community: '0',
 				flowTb: '2',
 				flowLr: '3',
 				folder: '4',
@@ -95,6 +97,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 		graphScope: { oneHop: 'N', twoHop: 'H', ai: 'A' },
 		graphLayout: {
 			constellation: 'C',
+			community: 'M',
 			flowTb: 'D',
 			flowLr: 'R',
 			folder: 'K',

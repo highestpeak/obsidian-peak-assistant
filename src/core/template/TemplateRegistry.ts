@@ -158,6 +158,7 @@ export const ConfigTemplateId = {
 	// frontmatter, error copy. Producer service consumes via loadJson.
 	ArtifactCreate: 'config-artifact-create' as const,
 	PluginCommandGateway: 'config-plugin-command-gateway' as const,
+	ResultGraphCommunity: 'config-result-graph-community' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -494,9 +495,12 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.MediaGeneration]: meta('config', 'media-generation', { expectsJson: true }),
 	[ConfigTemplateId.ArtifactCreate]: meta('config', 'artifact-create', { expectsJson: true }),
 	[ConfigTemplateId.PluginCommandGateway]: meta('config', 'plugin-command-gateway', { expectsJson: true }),
+	[ConfigTemplateId.ResultGraphCommunity]: meta('config', 'result-graph-community', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),
+	'result-graph-community-explanation-system': meta('prompts', 'result-graph-community-explanation-system', { label: 'Result Graph Community Explanation System', description: 'Evidence-bound instructions for explaining a computed Result Graph community.', group: 'indexing' }),
+	'result-graph-community-explanation': meta('prompts', 'result-graph-community-explanation', { systemPromptId: 'result-graph-community-explanation-system' as PromptId, label: 'Result Graph Community Explanation', description: 'Explains why the current computed notes cluster together and may suggest a label.', group: 'indexing' }),
 
 	// --- Ambient explanation (T11Y inline-prompt migration) ---
 	'ambient-explanation-system': meta('prompts', 'ambient-explanation-system', { label: 'Ambient Explanation (System)', description: 'System instructions for the ambient micro-explanation LLM call.', group: 'ambientContext' }),

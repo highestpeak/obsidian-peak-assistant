@@ -37,7 +37,12 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	const preset = useVaultSearchStore((s) => s.graphPreset) as ResultBrowserGraphPreset;
 	const showSemantic = useVaultSearchStore((s) => s.graphShowSemantic);
 	const setShowSemantic = useVaultSearchStore((s) => s.setGraphShowSemantic);
-	const { vaultNavigation, resultSubgraph: resultSubgraphDeps } = useServiceContext();
+	const {
+		vaultNavigation,
+		resultSubgraph: resultSubgraphDeps,
+		communityExplanation,
+		indexService,
+	} = useServiceContext();
 
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
 	const recorderHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -63,7 +68,15 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				}
 				scoreById.set(id, scoreOf(r));
 				baselineIds.push(id);
-				baselineNodes.push({ id, path: r.path ?? '', title: r.title || r.path || id, score: scoreOf(r), communityId: null, folder: r.path ? (r.path.split('/')[0] ?? '') : '' });
+				baselineNodes.push({
+					id,
+					path: r.path ?? '',
+					title: r.title || r.path || id,
+					score: scoreOf(r),
+					communityId: null,
+					folder: r.path ? (r.path.split('/')[0] ?? '') : '',
+					preview: r.highlight?.text ?? r.content?.slice(0, 260),
+				});
 			}
 			const baseline: ResultSubgraphOutput = { resultNodes: baselineNodes, hubAnchors: [], edges: [], isolatedDocIds: baselineIds, overflowCount: 0 };
 			if (!cancelled) setSubgraph(baseline);
@@ -122,6 +135,8 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 					behaviorRecorder.push('focusedFile', { path: node.path, durationMs: 800 });
 				}, 800);
 			}}
+			communityExplanation={communityExplanation}
+			communityInteraction={indexService?.env.communityConfig?.interaction}
 		/>
 	);
 };

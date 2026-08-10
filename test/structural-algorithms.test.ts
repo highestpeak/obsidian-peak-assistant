@@ -32,7 +32,16 @@ function buildGraph(
 		adjacency.get(b)!.set(a, weight);
 	}
 
-	return { nodes, adjacency, nodeCount: nodeIds.length, edgeCount: edges.length };
+	return {
+		nodes,
+		adjacency,
+		nodeCount: nodeIds.length,
+		edgeCount: edges.length,
+		totalNodeCount: nodeIds.length,
+		analysisMode: 'exact',
+		signalsByNode: new Map(),
+		referenceEdges: edges.map(([from, to]) => ({ from, to })),
+	};
 }
 
 console.log('structural-algorithms tests:');

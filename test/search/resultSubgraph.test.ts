@@ -18,6 +18,7 @@ import {
     type ResultSubgraphDeps,
     type ResultSubgraphInput,
     type ResultSubgraphOutput,
+	type ResultGraphCommunitySummary,
 } from '@/service/search/graph/resultSubgraph';
 
 // ─── In-memory fake deps ─────────────────────────────────────────────────────
@@ -27,10 +28,19 @@ interface FakeState {
     hubs: Map<string, { path: string; title: string; constituentCount: number; memberDocIds: Set<string> }>;
     /** structural edges (both endpoints, kind); undirected treated as one row. */
     edges: Array<{ from: string; to: string; kind: 'reference' | 'semantic' }>;
+	communities?: Map<string, Omit<ResultGraphCommunitySummary, 'displayLabel' | 'visibleMemberIds'>>;
 }
 
 function makeDeps(state: FakeState): ResultSubgraphDeps {
     return {
+		async getCommunityMetadata(communityIds) {
+			const out = new Map<string, Omit<ResultGraphCommunitySummary, 'displayLabel' | 'visibleMemberIds'>>();
+			for (const communityId of communityIds) {
+				const community = state.communities?.get(communityId);
+				if (community) out.set(communityId, community);
+			}
+			return out;
+		},
         async getNodeMetadata(docIds) {
             const out = new Map<string, { path: string; title: string; communityId: string | null; folder: string }>();
             for (const id of docIds) {
@@ -322,7 +332,7 @@ async function runTests() {
             { resultDocIds: ['d0'], matchScores: new Map([['d0', 5]]), nodeCap: 100 },
         );
         const keys = Object.keys(out).sort();
-        assert('output keys', keys, ['edges', 'hubAnchors', 'isolatedDocIds', 'overflowCount', 'resultNodes']);
+        assert('output keys', keys, ['communities', 'edges', 'hubAnchors', 'isolatedDocIds', 'overflowCount', 'resultNodes']);
         const rn = out.resultNodes[0]!;
         const rnKeys = Object.keys(rn).sort();
         assert(
@@ -331,6 +341,41 @@ async function runTests() {
             ['communityId', 'folder', 'id', 'path', 'score', 'title'],
         );
     }
+
+	// ── Test 10: Community evidence joins current results and gets a view-local label ──
+	console.log('\nTest 10: Community evidence projection');
+	{
+		const communityId = 'c_7';
+		const state: FakeState = {
+			nodes: new Map([
+				['d0', docMeta(0, { community: communityId })],
+				['d1', docMeta(1, { community: communityId })],
+			]),
+			hubs: new Map(),
+			edges: [{ from: 'd0', to: 'd1', kind: 'reference' }],
+			communities: new Map([[communityId, {
+				id: communityId,
+				fingerprint: 'community-fingerprint',
+				memberCount: 9,
+				descriptors: [{ key: 'tag:graph', label: 'graph', kind: 'tag', support: 6, score: 2.1 }],
+				internalReferenceCount: 12,
+				analysisVersion: 2,
+				analysisMode: 'exact',
+				analyzedNodeCount: 30,
+				totalNodeCount: 30,
+				representativeNotes: [{ path: 'notes/doc-0.md', label: 'Doc 0' }],
+			}]]),
+		};
+		const out = await buildResultSubgraph(makeDeps(state), {
+			resultDocIds: ['d0', 'd1'],
+			matchScores: new Map([['d0', 2], ['d1', 1]]),
+			nodeCap: 100,
+		});
+		assert('one computed community', out.communities?.length, 1);
+		assert('community gets a local display label', out.communities?.[0]?.displayLabel, 'Community 01');
+		assert('visible membership is current-result scoped', out.communities?.[0]?.visibleMemberIds, ['d0', 'd1']);
+		assert('full-vault member count stays available', out.communities?.[0]?.memberCount, 9);
+	}
 
     console.log(`\n─── Result Subgraph tests ─── pass=${PASS} fail=${FAIL}`);
     if (FAIL > 0) process.exit(1);

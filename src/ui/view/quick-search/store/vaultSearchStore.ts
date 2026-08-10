@@ -42,7 +42,7 @@ export type ResultDensity = 'compact' | 'detailed';
  *  - `folder`        — cola + full-depth folder tree compound
  *  - `orbit`         — concentric with hubs at center + semantic on
  */
-export type GraphPreset = 'constellation' | 'flow-tb' | 'flow-lr' | 'folder' | 'orbit';
+export type GraphPreset = 'constellation' | 'community' | 'flow-tb' | 'flow-lr' | 'folder' | 'orbit';
 
 interface VaultSearchStore {
 	// State

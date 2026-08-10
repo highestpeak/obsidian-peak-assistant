@@ -1100,6 +1100,10 @@ export default class MyPlugin extends Plugin {
 	 */
 	private async initializeSearchService(): Promise<void> {
 		if (this.unloading) return;
+		const { loadResultGraphCommunityConfig } = await import(
+			'@/service/search/index/helper/structural/ResultGraphCommunityDefaults'
+		);
+		const communityConfig = await loadResultGraphCommunityConfig(this.templateManager);
 		// T13: IndexService constructed with AIServiceManager + env (chat root
 		// + live `App`) injected via constructor. Bound on the app-owned
 		// `AppRuntimeRegistry`; consumers reach it through
@@ -1109,6 +1113,7 @@ export default class MyPlugin extends Plugin {
 			{
 				app: this.app,
 				rootFolder: this.settings.ai.rootFolder,
+				communityConfig,
 			},
 		);
 		AppContext.setIndexService(indexService);

@@ -9,10 +9,25 @@ export interface AnalysisNode {
 	path: string;
 }
 
+export interface CommunitySignal {
+	key: string;
+	label: string;
+	kind: 'tag' | 'term';
+	idf: number;
+}
+
+export interface CommunityDescriptor {
+	key: string;
+	label: string;
+	kind: 'tag' | 'term';
+	support: number;
+	score: number;
+}
+
 export interface AnalysisEdge {
 	from: string;
 	to: string;
-	weight: number;   // references=1.0, references_resource=1.0, semantic_related=max(0.1, 1-w)
+	weight: number;   // physical references dominate; semantic_related uses weak direct similarity
 }
 
 export interface AnalysisGraph {
@@ -21,6 +36,13 @@ export interface AnalysisGraph {
 	adjacency: Map<string, Map<string, number>>;
 	nodeCount: number;
 	edgeCount: number;
+	/** Total eligible vault nodes before the configured analysis budget. */
+	totalNodeCount: number;
+	analysisMode: 'exact' | 'bounded';
+	/** Eligible deterministic tag/term signals after DF suppression. */
+	signalsByNode: Map<string, CommunitySignal[]>;
+	/** Directed physical-reference rows retained in the analyzed scope. */
+	referenceEdges: Array<{ from: string; to: string }>;
 }
 
 export interface CommunityInfo {
@@ -30,6 +52,14 @@ export interface CommunityInfo {
 	internalDensity: number;
 	topNodes: Array<{ path: string; label: string; betweenness: number }>;
 	dominantTopics: string[];
+	/** Evidence-rich fields added in analysis v2; optional for legacy fixtures/readers. */
+	descriptors?: CommunityDescriptor[];
+	fingerprint?: string;
+	internalReferenceCount?: number;
+	analysisVersion?: number;
+	analysisMode?: 'exact' | 'bounded';
+	analyzedNodeCount?: number;
+	totalNodeCount?: number;
 }
 
 export interface BridgeNode {

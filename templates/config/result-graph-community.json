@@ -1,0 +1,27 @@
+{
+  "_doc": "Result Graph community analysis and UI tuning. Mirrored by ResultGraphCommunityDefaults.ts so startup and tests have a typed fallback.",
+  "analysisVersion": 2,
+  "weights": {
+    "reference": 1.0,
+    "explicitTagIdf": 0.42,
+    "textRankTermIdf": 0.18,
+    "semanticSimilarity": 0.16,
+    "maxPairWeight": 3.0
+  },
+  "bounds": {
+    "exactCentralityNodeLimit": 4000,
+    "communityNodeLimit": 12000,
+    "maxNeighborsPerNode": 36,
+    "maxSignalsPerDocument": 20,
+    "maxDocumentsPerSignal": 80,
+    "maxPairsPerSignal": 1200,
+    "minimumSignalSupport": 2,
+    "maximumSignalDocumentRatio": 0.22,
+    "descriptorLimit": 3
+  },
+  "interaction": {
+    "openDelayMs": 80,
+    "closeDelayMs": 220,
+    "cardOffsetPx": 18
+  }
+}

@@ -36,6 +36,20 @@ export class StructuralAnalysisRepo {
 		}
 	}
 
+	/** Community/centrality columns are rebuildable projections. */
+	async clearStructuralMetrics(): Promise<void> {
+		await this.kdb
+			.updateTable('mobius_node')
+			.set({
+				betweenness_centrality: null,
+				structural_constraint: null,
+				community_id: null,
+				structural_analysis_version: null,
+			})
+			.where('type', 'in', ['document', 'hub_doc'])
+			.execute();
+	}
+
 	async markNodesDirty(nodeIds: string[]): Promise<void> {
 		if (nodeIds.length === 0) return;
 		await this.kdb
@@ -67,6 +81,9 @@ export class StructuralAnalysisRepo {
 	// ─── community_metadata ────────────────────────────────────────────
 
 	async upsertCommunities(communities: CommunityInfo[], version: number): Promise<void> {
+		// This is a rebuildable current projection, not history. Remove rows from
+		// communities that disappeared or were renumbered in the new run.
+		await this.kdb.deleteFrom('community_metadata').execute();
 		for (const com of communities) {
 			await this.kdb
 				.insertInto('community_metadata')
@@ -75,8 +92,14 @@ export class StructuralAnalysisRepo {
 					label: com.label,
 					member_count: com.memberCount,
 					dominant_topics_json: JSON.stringify(com.dominantTopics),
+					descriptors_json: JSON.stringify(com.descriptors ?? []),
 					top_nodes_json: JSON.stringify(com.topNodes),
 					internal_density: com.internalDensity,
+					internal_reference_count: com.internalReferenceCount ?? 0,
+					fingerprint: com.fingerprint ?? '',
+					analysis_mode: com.analysisMode ?? 'exact',
+					analyzed_node_count: com.analyzedNodeCount ?? com.memberCount,
+					total_node_count: com.totalNodeCount ?? com.memberCount,
 					centroid_embedding: null,
 					analysis_version: version,
 				})
@@ -85,8 +108,14 @@ export class StructuralAnalysisRepo {
 						label: com.label,
 						member_count: com.memberCount,
 						dominant_topics_json: JSON.stringify(com.dominantTopics),
+						descriptors_json: JSON.stringify(com.descriptors ?? []),
 						top_nodes_json: JSON.stringify(com.topNodes),
 						internal_density: com.internalDensity,
+						internal_reference_count: com.internalReferenceCount ?? 0,
+						fingerprint: com.fingerprint ?? '',
+						analysis_mode: com.analysisMode ?? 'exact',
+						analyzed_node_count: com.analyzedNodeCount ?? com.memberCount,
+						total_node_count: com.totalNodeCount ?? com.memberCount,
 						analysis_version: version,
 					}),
 				)
@@ -107,6 +136,13 @@ export class StructuralAnalysisRepo {
 			internalDensity: row.internal_density,
 			topNodes: JSON.parse(row.top_nodes_json),
 			dominantTopics: JSON.parse(row.dominant_topics_json),
+			descriptors: JSON.parse(row.descriptors_json),
+			fingerprint: row.fingerprint,
+			internalReferenceCount: row.internal_reference_count,
+			analysisVersion: row.analysis_version,
+			analysisMode: row.analysis_mode as CommunityInfo['analysisMode'],
+			analyzedNodeCount: row.analyzed_node_count,
+			totalNodeCount: row.total_node_count,
 		}));
 	}
 
@@ -125,6 +161,13 @@ export class StructuralAnalysisRepo {
 			internalDensity: row.internal_density,
 			topNodes: JSON.parse(row.top_nodes_json),
 			dominantTopics: JSON.parse(row.dominant_topics_json),
+			descriptors: JSON.parse(row.descriptors_json),
+			fingerprint: row.fingerprint,
+			internalReferenceCount: row.internal_reference_count,
+			analysisVersion: row.analysis_version,
+			analysisMode: row.analysis_mode as CommunityInfo['analysisMode'],
+			analyzedNodeCount: row.analyzed_node_count,
+			totalNodeCount: row.total_node_count,
 		};
 	}
 

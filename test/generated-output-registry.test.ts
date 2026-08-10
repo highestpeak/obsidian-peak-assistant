@@ -18,8 +18,8 @@ function testCatalogMatchesCanonicalDocumentation(): void {
 	const registry = createDefaultGeneratedOutputRegistry();
 	const expected = [
 		...documentationIds('UA', 15),
-		...documentationIds('DR', 20),
-		...documentationIds('LP', 10),
+		...documentationIds('DR', 22),
+		...documentationIds('LP', 11),
 		...documentationIds('LG', 8),
 	].sort();
 	const actual = registry.list().map((entry) => entry.documentationId).sort();
@@ -41,9 +41,12 @@ function testPolicyPartitions(): void {
 
 	assert.ok(required.some((entry) => entry.id === 'chat.conversation-events'));
 	assert.ok(required.some((entry) => entry.id === 'ai-graph.artifact'));
+	assert.ok(required.some((entry) => entry.id === 'graph.community-explanation'));
+	assert.ok(required.some((entry) => entry.id === 'graph.community-explanation-events'));
 	assert.ok(localOnly.some((entry) => entry.id === 'projection.vault'));
 	assert.ok(localOnly.some((entry) => entry.id === 'index.embedding'));
 	assert.ok(localOnly.some((entry) => entry.id === 'telemetry.composer'));
+	assert.ok(localOnly.some((entry) => entry.id === 'projection.graph-community'));
 
 	for (const entry of localOnly) {
 		assert.equal(entry.peakIndexPolicy, 'exclude', `${entry.id} local-only output must stay out of Peak index`);

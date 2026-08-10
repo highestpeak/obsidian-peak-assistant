@@ -13,6 +13,11 @@ assert.doesNotMatch(
 	/semantic=\{|onSemanticChange=\{/,
 	'Vault Search outer graph header must not own the semantic-edge switch',
 );
+assert.match(
+	header,
+	/communityAvailable/,
+	'Vault Search explicitly opts into the Community projection',
+);
 
 assert.match(
 	resultGraph,
@@ -32,6 +37,12 @@ assert.match(
 );
 assert.match(canvas, /title="Copy graph as Mermaid"/, 'Mermaid remains a direct, titled export action');
 assert.match(canvas, /title="Copy graph as image"/, 'image remains a direct, titled export action');
+assert.match(canvas, /onMouseEnter: cancelCardClose/, 'anchored graph cards keep a pointer corridor from node to card');
+assert.match(
+	canvas,
+	/communityAiState\[hoveredLabel\.id\]\?\.generating/,
+	'a streaming community explanation keeps its card open after the action button reflows',
+);
 
 const semanticIndex = canvas.indexOf('label="Semantic edges"');
 const nodesIndex = canvas.indexOf('<span>Nodes</span>');
@@ -46,6 +57,19 @@ assert.match(
 	toolbar,
 	/typeof semantic === 'boolean' && onSemanticChange/,
 	'other Result Browser hosts retain the optional outer semantic control',
+);
+for (const label of ['Connections', 'Community', 'Links ${', 'Folders', 'Hubs']) {
+	assert.ok(toolbar.includes(label), `graph toolbar must include the consolidated ${label} control`);
+}
+assert.match(
+	toolbar,
+	/communityAvailable \? communityControls : standardControls/,
+	'shared graph hosts without community evidence retain their standard layout controls',
+);
+assert.doesNotMatch(
+	toolbar,
+	/\['flow-tb',[\s\S]*\['flow-lr'/,
+	'Links directions must not consume two visible preset buttons',
 );
 
 console.log('result-graph-canvas-toolbar: passed');

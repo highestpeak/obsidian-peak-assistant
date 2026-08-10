@@ -11,6 +11,22 @@
  *   §T2a.
  */
 import type { GraphEdgeDirectionality } from '@/core/types/graph-edge';
+import type { CommunityDescriptor } from '@/core/search/structuralTypes';
+
+export interface ResultGraphCommunitySummary {
+	id: string;
+	displayLabel: string;
+	fingerprint: string;
+	memberCount: number;
+	visibleMemberIds: string[];
+	descriptors: CommunityDescriptor[];
+	internalReferenceCount: number;
+	analysisVersion: number;
+	analysisMode: 'exact' | 'bounded';
+	analyzedNodeCount: number;
+	totalNodeCount: number;
+	representativeNotes: Array<{ path: string; label: string }>;
+}
 
 // ─── LOCKED type contract (integration surface with T4 / T6) ─────────────────
 
@@ -28,6 +44,10 @@ export interface ResultSubgraphOutput {
         score: number;
         communityId: string | null;
         folder: string;
+		preview?: string;
+		signals?: string[];
+		incomingLinks?: number;
+		outgoingLinks?: number;
     }>;
     hubAnchors: Array<{ id: string; path: string; title: string; constituentCount: number }>;
     edges: Array<{
@@ -38,6 +58,7 @@ export interface ResultSubgraphOutput {
     }>;
     isolatedDocIds: string[];
     overflowCount: number; // N - nodeCap when trimmed
+	communities?: ResultGraphCommunitySummary[];
 }
 
 // ─── Narrow port shape (no direct DB / no AppContext.getInstance) ────────────
@@ -57,7 +78,21 @@ export interface ResultSubgraphDeps {
      */
     getNodeMetadata(
         docIds: string[],
-    ): Promise<Map<string, { path: string; title: string; communityId: string | null; folder: string }>>;
+    ): Promise<Map<string, {
+		path: string;
+		title: string;
+		communityId: string | null;
+		folder: string;
+		preview?: string;
+		signals?: string[];
+		incomingLinks?: number;
+		outgoingLinks?: number;
+	}>>;
+
+	/** Evidence-rich computed metadata for the requested ephemeral community ids. */
+	getCommunityMetadata?(
+		communityIds: string[],
+	): Promise<Map<string, Omit<ResultGraphCommunitySummary, 'displayLabel' | 'visibleMemberIds'>>>;
 
     /** Hub node ids for which the given doc is a constituent. */
     getHubsForMemberDoc(docId: string): Promise<string[]>;
@@ -153,6 +188,10 @@ export async function buildResultSubgraph(
             score: scoreOf(matchScores, id),
             communityId: m?.communityId ?? null,
             folder: m?.folder ?? '',
+			...(m?.preview ? { preview: m.preview } : {}),
+			...(m?.signals?.length ? { signals: m.signals } : {}),
+			...(typeof m?.incomingLinks === 'number' ? { incomingLinks: m.incomingLinks } : {}),
+			...(typeof m?.outgoingLinks === 'number' ? { outgoingLinks: m.outgoingLinks } : {}),
         };
     });
 
@@ -212,7 +251,26 @@ export async function buildResultSubgraph(
 
     const isolatedDocIds = trimmedDocIds.filter((id) => !connectedDocs.has(id));
 
-    return { resultNodes, hubAnchors, edges, isolatedDocIds, overflowCount };
+	const communityIds = [...new Set(resultNodes.flatMap((node) => node.communityId ? [node.communityId] : []))];
+	const communityMetadata = deps.getCommunityMetadata && communityIds.length
+		? await deps.getCommunityMetadata(communityIds)
+		: new Map<string, Omit<ResultGraphCommunitySummary, 'displayLabel' | 'visibleMemberIds'>>();
+	const communities: ResultGraphCommunitySummary[] = [];
+	for (const communityId of communityIds) {
+		const meta = communityMetadata.get(communityId);
+		if (!meta) continue;
+		const visibleMemberIds = resultNodes
+			.filter((node) => node.communityId === communityId)
+			.map((node) => node.id);
+		communities.push({
+			...meta,
+			id: communityId,
+			displayLabel: `Community ${String(communities.length + 1).padStart(2, '0')}`,
+			visibleMemberIds,
+		});
+	}
+
+    return { resultNodes, hubAnchors, edges, isolatedDocIds, overflowCount, communities };
 }
 
 function scoreOf(scores: Map<string, number>, id: string): number {

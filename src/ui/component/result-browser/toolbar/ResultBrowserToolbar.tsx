@@ -25,16 +25,9 @@ import type {
 	ResultBrowserView,
 } from '../model/types';
 
-const PRESET_LABELS: Array<[ResultBrowserGraphPreset, string, string]> = [
-	['constellation', 'Constellation', 'Force-directed cluster — how do these results cluster together?'],
-	['flow-tb',       'Flow ↓',        'Top-down hierarchical flow — what references what?'],
-	['flow-lr',       'Flow →',        'Left-right hierarchical flow — same as ↓ but sideways'],
-	['folder',        'Folder tree',   'Full-depth folder tree — where in my vault do they live?'],
-	['orbit',         'Orbit',         'Hubs at center, docs orbit — are hubs the center of gravity?'],
-];
-
 const GRAPH_PRESET_KEY_TIPS: Readonly<Record<ResultBrowserGraphPreset, string>> = {
 	constellation: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.constellation,
+	community: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.community,
 	'flow-tb': PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowTb,
 	'flow-lr': PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowLr,
 	folder: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.folder,
@@ -248,6 +241,8 @@ export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({
 export interface GraphControlsProps {
 	preset: ResultBrowserGraphPreset;
 	onPresetChange: (preset: ResultBrowserGraphPreset) => void;
+	/** Expose the Result Graph-only Community projection and compact control set. */
+	communityAvailable?: boolean;
 	semantic?: boolean;
 	onSemanticChange?: (on: boolean) => void;
 	/** Optional host-owned chip (e.g. Quick Search's pinned-hub chip). */
@@ -259,12 +254,36 @@ export interface GraphControlsProps {
 	};
 }
 
-const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPresetChange' | 'keyTipKeys'>> = ({
+const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPresetChange' | 'keyTipKeys' | 'communityAvailable'>> = ({
 	preset,
 	onPresetChange,
 	keyTipKeys,
+	communityAvailable = false,
 }) => {
 	const rootRef = useRef<HTMLDivElement>(null);
+	const keyTips = keyTipKeys?.preset ?? GRAPH_PRESET_KEY_TIPS;
+	const standardControls: Array<{
+		id: ResultBrowserGraphPreset;
+		label: string;
+		title: string;
+		active: boolean;
+		preset: ResultBrowserGraphPreset;
+		keyTip: string;
+	}> = [
+		{ id: 'constellation', label: 'Constellation', title: 'Force-directed cluster — how do these results cluster together?', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
+		{ id: 'flow-tb', label: 'Flow ↓', title: 'Top-down hierarchical flow — what references what?', active: preset === 'flow-tb', preset: 'flow-tb', keyTip: keyTips['flow-tb'] },
+		{ id: 'flow-lr', label: 'Flow →', title: 'Left-right hierarchical flow — same as ↓ but sideways', active: preset === 'flow-lr', preset: 'flow-lr', keyTip: keyTips['flow-lr'] },
+		{ id: 'folder', label: 'Folder tree', title: 'Full-depth folder tree — where in my vault do they live?', active: preset === 'folder', preset: 'folder', keyTip: keyTips.folder },
+		{ id: 'orbit', label: 'Orbit', title: 'Hubs at center, docs orbit — are hubs the center of gravity?', active: preset === 'orbit', preset: 'orbit', keyTip: keyTips.orbit },
+	];
+	const communityControls: typeof standardControls = [
+		{ id: 'constellation', label: 'Connections', title: 'Relationship-first force layout', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
+		{ id: 'community', label: 'Community', title: 'Group current results by computed vault community', active: preset === 'community', preset: 'community', keyTip: keyTips.community },
+		{ id: 'flow-tb', label: `Links ${preset === 'flow-lr' ? '→' : '↓'}`, title: 'Read real reference direction; click again to switch orientation', active: preset === 'flow-tb' || preset === 'flow-lr', preset: preset === 'flow-tb' ? 'flow-lr' : 'flow-tb', keyTip: keyTips['flow-tb'] },
+		{ id: 'folder', label: 'Folders', title: 'Arrange current results by vault folder', active: preset === 'folder', preset: 'folder', keyTip: keyTips.folder },
+		{ id: 'orbit', label: 'Hubs', title: 'Place generated hubs at the center', active: preset === 'orbit', preset: 'orbit', keyTip: keyTips.orbit },
+	];
+	const controls = communityAvailable ? communityControls : standardControls;
 	useRovingComposite(rootRef, {
 		itemSelector: '[role="tab"]',
 		orientation: 'horizontal',
@@ -277,8 +296,8 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 			aria-label="Graph view preset"
 			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
 		>
-			{PRESET_LABELS.map(([id, label, title]) => {
-				const active = preset === id;
+			{controls.map((control) => {
+				const { id, label, title, active } = control;
 				return (
 					<Button
 						key={id}
@@ -288,11 +307,11 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 						role="tab"
 						aria-selected={active}
 						tabIndex={active ? 0 : -1}
-						data-graph-preset={id}
-						data-peak-keytip-key={(keyTipKeys?.preset ?? GRAPH_PRESET_KEY_TIPS)[id]}
+						data-graph-preset={control.preset}
+						data-peak-keytip-key={control.keyTip}
 						data-peak-keytip-label={`${label} graph layout`}
 						title={title}
-						onClick={() => onPresetChange(id)}
+						onClick={() => onPresetChange(control.preset)}
 						className={cn(
 							TOOLBAR_OPT_BASE,
 							active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
@@ -314,11 +333,16 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 };
 
 export const ResultBrowserGraphControls: React.FC<GraphControlsProps> = ({
-	preset, onPresetChange, semantic, onSemanticChange, leadingSlot, className, keyTipKeys,
+	preset, onPresetChange, communityAvailable, semantic, onSemanticChange, leadingSlot, className, keyTipKeys,
 }) => (
 	<div className={cn('pktw-flex pktw-items-center pktw-gap-2.5', className)}>
 		{leadingSlot}
-		<GraphPresetSegmented preset={preset} onPresetChange={onPresetChange} keyTipKeys={keyTipKeys} />
+		<GraphPresetSegmented
+			preset={preset}
+			onPresetChange={onPresetChange}
+			keyTipKeys={keyTipKeys}
+			communityAvailable={communityAvailable}
+		/>
 		{typeof semantic === 'boolean' && onSemanticChange && (
 			<GraphSemanticToggle
 				checked={semantic}

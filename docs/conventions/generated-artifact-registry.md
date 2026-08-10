@@ -140,6 +140,8 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | DR-18 | Chat Assistant definition | `chat.sqlite.chat_assistant` | `records/chat/assistants/<assistant-id>.json`；SQLite 仅作列表投影 | 已实现 |
 | DR-19 | Project Plan state | `chat.sqlite.chat_project_plan` | `records/chat/project-plans/<plan-id>.json`；删除用 tombstone，SQLite 可重建 | 已实现 |
 | DR-20 | Plugin Command Gateway audit receipt | 人工授权后的第三方 command 执行结果、RunEnvelope 事件与副作用观测 | `records/command-gateway/runs.jsonl`，有界轮转；由 typed catalog 解析 canonical 路径 | 已实现 |
+| DR-21 | Result Graph community explanation | 用户显式触发、绑定 evidence fingerprint 的当前 AI 解释 snapshot | `records/graph-communities/<community-id>/explanation.json` | 已实现 |
+| DR-22 | Result Graph community explanation history | explain / regenerate 的追加 run receipt；失败与取消也保留 | `records/graph-communities/<community-id>/events.jsonl` | 已实现 |
 
 主要 writer 证据：
 
@@ -170,6 +172,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | LP-08 | Debug trace / dev snapshots | debug store 或开发输出目录 | 本地、默认有界 | 丢失只影响诊断；不得包含未脱敏隐私 |
 | LP-09 | Native module metadata / extracted binary | 插件运行目录 | 本机安装基础设施 | 由插件包重建；不属于知识库同步 |
 | LP-10 | SQLite backups | `*.sqlite.backup*` | 本地、有限保留 | 仅灾难恢复便利，不是 canonical truth |
+| LP-11 | Result Graph community projection | `vault.sqlite.community_metadata` + `mobius_node.community_id` | 本地、可重建 | AI 解释不写入 SQLite；仅保存算法投影与 evidence metadata |
 
 > Embedding 是一个有意的例外：它可能有计算或 API 成本，但仍属于模型版本、设备架构和索引实现高度相关的 projection。若用户需要节省重建成本，应设计独立、可选的 index backup，而不是把它提升成知识事实源。
 

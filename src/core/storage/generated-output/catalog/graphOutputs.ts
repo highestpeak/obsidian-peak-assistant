@@ -36,10 +36,28 @@ export const GRAPH_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 		path: outputPath('data-store', 'artifacts/ai-graphs'),
 		writerEvidence: ['src/app/ai-graph/ObsidianAIGraphArtifactStorage.ts'], lifecycle: 'active',
 	}),
+	durableRecord({
+		documentationId: 'DR-21', id: 'graph.community-explanation', owner: 'result-graph', carrier: 'json',
+		path: outputPath('data-store', 'records/graph-communities/{communityId}/explanation.json'),
+		writerEvidence: ['src/service/search/community/CommunityExplanationService.ts'], lifecycle: 'active',
+	}),
+	durableRecord({
+		documentationId: 'DR-22', id: 'graph.community-explanation-events', owner: 'result-graph', carrier: 'jsonl',
+		path: outputPath('data-store', 'records/graph-communities/{communityId}/events.jsonl'),
+		writerEvidence: ['src/service/search/community/CommunityExplanationService.ts'], lifecycle: 'active',
+	}),
 	localOutput({
 		documentationId: 'LP-05', id: 'projection.hub-graph', owner: 'hub', outputClass: 'projection',
 		carrier: 'sqlite', path: outputPath('data-store', 'vault.sqlite'),
 		writerEvidence: ['src/core/storage/sqlite/repositories/HubConstituentRepo.ts'],
+	}),
+	localOutput({
+		documentationId: 'LP-11', id: 'projection.graph-community', owner: 'result-graph', outputClass: 'projection',
+		carrier: 'sqlite', path: outputPath('data-store', 'vault.sqlite'),
+		writerEvidence: [
+			'src/core/storage/sqlite/repositories/StructuralAnalysisRepo.ts',
+			'src/service/search/index/helper/structural/orchestrator.ts',
+		],
 	}),
 	legacyOutput({
 		documentationId: 'LG-04', id: 'legacy.hub-auto-markdown', owner: 'hub',

@@ -21,24 +21,14 @@ import { computeConstraint } from './burtConstraint';
 import { detectStructuralHoles } from './gapDetection';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { LOUVAIN_RESOLUTION } from '@/core/constant';
+import {
+	DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG,
+	type ResultGraphCommunityConfig,
+} from './ResultGraphCommunityDefaults';
+import { communityFingerprint } from './communityEvidence';
 
 /** Module-level debounce timer for incremental dirty recompute. */
 let dirtyRecomputeTimer: ReturnType<typeof setTimeout> | null = null;
-
-/**
- * Hard node-budget guard for structural analysis.
- *
- * `buildAnalysisGraph()` loads the ENTIRE mobius graph into memory and
- * `runStructuralAnalysis` then runs Brandes betweenness centrality, which is
- * O(V·E) in time and allocates large per-source structures. On a big vault this
- * balloons the Electron renderer's heap to multiple GB (measured ~3.7GB) and
- * OOM-aborts it — the white-screen crash loop during plugin startup. Above this
- * node count we skip the analysis entirely (all triggers: startup maintenance,
- * the >20%-dirty debounce, and manual/forced recompute). Search and the File
- * Atlas neighborhood graph do not depend on it; hub curation / vault review
- * degrade gracefully to no community/hole data.
- */
-const MAX_STRUCTURAL_ANALYSIS_NODES = 4000;
 
 /** An empty analysis result (graph absent / skipped / too large). */
 function emptyStructuralAnalysisResult(): StructuralAnalysisResult {
@@ -57,32 +47,19 @@ function emptyStructuralAnalysisResult(): StructuralAnalysisResult {
 export interface RunStructuralAnalysisOptions {
 	forceFullRecompute?: boolean;
 	louvainResolution?: number;
+	communityConfig?: ResultGraphCommunityConfig;
 }
 
 export async function runStructuralAnalysis(
 	options?: RunStructuralAnalysisOptions,
 ): Promise<StructuralAnalysisResult> {
 	const resolution = options?.louvainResolution ?? LOUVAIN_RESOLUTION;
-	const force = options?.forceFullRecompute ?? false;
+	const requestedForce = options?.forceFullRecompute ?? false;
+	const communityConfig = options?.communityConfig ?? DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG;
 
 	const repo = sqliteStoreManager.getStructuralAnalysisRepo();
-
-	// Renderer-safety guard (applies even to forceFullRecompute): skip the whole
-	// in-memory graph load + Brandes betweenness when the graph is too large to
-	// process without OOM-aborting the renderer. See MAX_STRUCTURAL_ANALYSIS_NODES.
-	const guardCount = await sqliteStoreManager
-		.getIndexContext('vault')
-		.selectFrom('mobius_node')
-		.select(({ fn }) => fn.countAll<number>().as('cnt'))
-		.executeTakeFirst();
-	const guardNodeTotal = Number(guardCount?.cnt ?? 0);
-	if (guardNodeTotal > MAX_STRUCTURAL_ANALYSIS_NODES) {
-		console.warn(
-			`[structural-analysis] Skipped — graph too large (${guardNodeTotal} nodes > ${MAX_STRUCTURAL_ANALYSIS_NODES}). ` +
-				`Betweenness centrality would OOM the renderer; search + File Atlas are unaffected.`,
-		);
-		return emptyStructuralAnalysisResult();
-	}
+	const storedConfigVersion = Number(await repo.getState('community_analysis_config_version') ?? '0');
+	const force = requestedForce || storedConfigVersion !== communityConfig.analysisVersion;
 
 	// Check freshness — skip if recent and unchanged by < 10%
 	if (!force) {
@@ -126,8 +103,8 @@ export async function runStructuralAnalysis(
 	const startTime = Date.now();
 
 	// Step 1: Build graph
-	const graph = await buildAnalysisGraph();
-	console.log(`[structural-analysis] Graph: ${graph.nodeCount} nodes, ${graph.edgeCount} edges`);
+	const graph = await buildAnalysisGraph(communityConfig);
+	console.log(`[structural-analysis] Graph: ${graph.nodeCount}/${graph.totalNodeCount} nodes, ${graph.edgeCount} edges (${graph.analysisMode})`);
 
 	if (graph.nodeCount === 0) {
 		return {
@@ -142,14 +119,17 @@ export async function runStructuralAnalysis(
 		};
 	}
 
-	// Step 2: Brandes betweenness
-	const betweenness = brandes(graph);
+	// Step 2: exact centrality is the expensive O(V·E) stage. Large vaults still
+	// receive bounded community assignments; only centrality/hole analysis
+	// degrades. This replaces the old >4000 blanket skip.
+	const exactMetrics = graph.analysisMode === 'exact';
+	const betweenness = exactMetrics ? brandes(graph) : zeroMetric(graph.nodes.map((node) => node.id), 0);
 
 	// Step 3: Louvain community detection
 	const { communities, modularityQ } = louvain(graph, resolution);
 
 	// Step 4: Burt constraint
-	const constraintMap = computeConstraint(graph);
+	const constraintMap = exactMetrics ? computeConstraint(graph) : zeroMetric(graph.nodes.map((node) => node.id), 1);
 
 	// Step 5: Build CommunityInfo array
 	const communityMembers = new Map<string, string[]>();
@@ -194,30 +174,47 @@ export async function runStructuralAnalysis(
 			.sort((a, b) => b.betweenness - a.betweenness)
 			.slice(0, 5);
 
+		const descriptors = describeCommunity(graph, members, communityConfig.bounds.descriptorLimit);
+		const internalReferenceCount = graph.referenceEdges.filter((edge) => (
+			memberSet.has(edge.from) && memberSet.has(edge.to)
+		)).length;
+		const fingerprint = communityFingerprint({
+			memberIds: members,
+			descriptorKeys: descriptors.map((descriptor) => descriptor.key),
+			analysisVersion: communityConfig.analysisVersion,
+		});
 		communityInfos.push({
 			id: comId,
 			label: `Community ${comId.replace('c_', '')}`,
 			memberCount: members.length,
 			internalDensity,
 			topNodes,
-			dominantTopics: [], // Would require tagged_topic edge analysis
+			dominantTopics: descriptors.map((descriptor) => descriptor.label),
+			descriptors,
+			fingerprint,
+			internalReferenceCount,
+			analysisVersion: communityConfig.analysisVersion,
+			analysisMode: graph.analysisMode,
+			analyzedNodeCount: graph.nodeCount,
+			totalNodeCount: graph.totalNodeCount,
 		});
 	}
 
 	// Step 6: Gap detection
-	const structuralHoles = detectStructuralHoles({
+	const structuralHoles = exactMetrics ? detectStructuralHoles({
 		graph,
 		betweenness,
 		communities,
 		constraint: constraintMap,
 		communityInfos,
 		nodeLabels,
-	});
+	}) : [];
 
 	// Step 7: Persist results
 	const currentVersion = Number(await repo.getState('analysis_version') ?? '0') + 1;
 
 	// Batch update mobius_node structural metrics
+	await repo.clearStructuralMetrics();
 	const batchRows = graph.nodes.map(node => ({
 		nodeId: node.id,
 		betweenness: betweenness.get(node.id) ?? 0,
@@ -237,6 +234,7 @@ export async function runStructuralAnalysis(
 	await repo.setState('last_computed_at', String(Date.now()));
 	await repo.setState('node_count_at_computation', String(graph.nodeCount));
 	await repo.setState('analysis_version', String(currentVersion));
+	await repo.setState('community_analysis_config_version', String(communityConfig.analysisVersion));
 
 	const elapsed = Date.now() - startTime;
 	console.log(`[structural-analysis] Complete in ${elapsed}ms: ${communityInfos.length} communities, ${structuralHoles.length} holes, Q=${modularityQ.toFixed(3)}`);
@@ -252,6 +250,46 @@ export async function runStructuralAnalysis(
 		computedAt: Date.now(),
 	};
 }
+
+function zeroMetric(nodeIds: string[], value: number): Map<string, number> {
+	return new Map(nodeIds.map((nodeId) => [nodeId, value]));
+}
+
+function describeCommunity(
+	graph: Awaited<ReturnType<typeof buildAnalysisGraph>>,
+	members: string[],
+	limit: number,
+) {
+	const byKey = new Map<string, {
+		key: string;
+		label: string;
+		kind: 'tag' | 'term';
+		support: number;
+		score: number;
+	}>();
+	for (const memberId of members) {
+		for (const signal of graph.signalsByNode.get(memberId) ?? []) {
+			const current = byKey.get(signal.key);
+			if (current) {
+				current.support += 1;
+				current.score += signal.idf;
+				continue;
+			}
+			byKey.set(signal.key, {
+				key: signal.key,
+				label: signal.label,
+				kind: signal.kind,
+				support: 1,
+				score: signal.idf,
+			});
+		}
+	}
+	return [...byKey.values()]
+		.sort((a, b) => b.score - a.score || b.support - a.support || a.key.localeCompare(b.key))
+		.slice(0, limit)
+		.map((descriptor) => ({ ...descriptor, score: Number(descriptor.score.toFixed(6)) }));
+}
+
 
 /**
  * Mark a node and its 1-hop neighbors as structurally dirty.
