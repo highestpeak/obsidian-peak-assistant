@@ -11,7 +11,7 @@
  */
 import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { List, ListTree, Network } from 'lucide-react';
+import { List, ListTree, Network, RefreshCw } from 'lucide-react';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { KeyboardShortcut } from '@/ui/component/mine/KeyboardShortcut';
 import { GraphSemanticToggle } from '@/ui/component/graph/GraphSemanticToggle';
@@ -262,6 +262,8 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 }) => {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const keyTips = keyTipKeys?.preset ?? GRAPH_PRESET_KEY_TIPS;
+	const linksActive = preset === 'flow-tb' || preset === 'flow-lr';
+	const linksHorizontal = preset === 'flow-lr';
 	const standardControls: Array<{
 		id: ResultBrowserGraphPreset;
 		label: string;
@@ -269,6 +271,8 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 		active: boolean;
 		preset: ResultBrowserGraphPreset;
 		keyTip: string;
+		ariaLabel?: string;
+		directionSwitch?: boolean;
 	}> = [
 		{ id: 'constellation', label: 'Constellation', title: 'Force-directed cluster — how do these results cluster together?', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
 		{ id: 'flow-tb', label: 'Flow ↓', title: 'Top-down hierarchical flow — what references what?', active: preset === 'flow-tb', preset: 'flow-tb', keyTip: keyTips['flow-tb'] },
@@ -277,11 +281,28 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 		{ id: 'orbit', label: 'Orbit', title: 'Hubs at center, docs orbit — are hubs the center of gravity?', active: preset === 'orbit', preset: 'orbit', keyTip: keyTips.orbit },
 	];
 	const communityControls: typeof standardControls = [
-		{ id: 'constellation', label: 'Connections', title: 'Relationship-first force layout', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
+		{ id: 'constellation', label: 'Constellation', title: 'Force-directed cluster — how do these results cluster together?', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
 		{ id: 'community', label: 'Community', title: 'Group current results by computed vault community', active: preset === 'community', preset: 'community', keyTip: keyTips.community },
-		{ id: 'flow-tb', label: `Links ${preset === 'flow-lr' ? '→' : '↓'}`, title: 'Read real reference direction; click again to switch orientation', active: preset === 'flow-tb' || preset === 'flow-lr', preset: preset === 'flow-tb' ? 'flow-lr' : 'flow-tb', keyTip: keyTips['flow-tb'] },
+		{
+			id: 'flow-tb',
+			label: `Links ${linksHorizontal ? '→' : '↓'}`,
+			title: !linksActive
+				? 'Open Links vertical (↓). Once selected, click again to switch to horizontal (→).'
+				: linksHorizontal
+					? 'Links horizontal (→). Click again to switch to vertical (↓).'
+					: 'Links vertical (↓). Click again to switch to horizontal (→).',
+			ariaLabel: !linksActive
+				? 'Open Links vertical. Once selected, click again to switch to horizontal.'
+				: linksHorizontal
+					? 'Links horizontal. Click again to switch to vertical.'
+					: 'Links vertical. Click again to switch to horizontal.',
+			directionSwitch: true,
+			active: linksActive,
+			preset: preset === 'flow-tb' ? 'flow-lr' : 'flow-tb',
+			keyTip: keyTips['flow-tb'],
+		},
 		{ id: 'folder', label: 'Folders', title: 'Arrange current results by vault folder', active: preset === 'folder', preset: 'folder', keyTip: keyTips.folder },
-		{ id: 'orbit', label: 'Hubs', title: 'Place generated hubs at the center', active: preset === 'orbit', preset: 'orbit', keyTip: keyTips.orbit },
+		{ id: 'orbit', label: 'Orbit', title: 'Hubs at center, docs orbit — are hubs the center of gravity?', active: preset === 'orbit', preset: 'orbit', keyTip: keyTips.orbit },
 	];
 	const controls = communityAvailable ? communityControls : standardControls;
 	useRovingComposite(rootRef, {
@@ -297,7 +318,7 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 			className="pktw-inline-flex pktw-items-center pktw-p-0.5 pktw-gap-0.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-border pktw-border-pk-border"
 		>
 			{controls.map((control) => {
-				const { id, label, title, active } = control;
+				const { id, label, title, active, ariaLabel, directionSwitch } = control;
 				return (
 					<Button
 						key={id}
@@ -306,10 +327,11 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 						size="sm"
 						role="tab"
 						aria-selected={active}
+						aria-label={ariaLabel}
 						tabIndex={active ? 0 : -1}
 						data-graph-preset={control.preset}
 						data-peak-keytip-key={control.keyTip}
-						data-peak-keytip-label={`${label} graph layout`}
+						data-peak-keytip-label={ariaLabel ?? `${label} graph layout`}
 						title={title}
 						onClick={() => onPresetChange(control.preset)}
 						className={cn(
@@ -324,7 +346,15 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 								transition={{ type: 'spring', stiffness: 500, damping: 34 }}
 							/>
 						)}
-						<span className="pktw-relative pktw-z-10">{label}</span>
+						<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
+							{label}
+							{directionSwitch && (
+								<RefreshCw
+									aria-hidden="true"
+									className="pktw-h-3 pktw-w-3 pktw-opacity-70"
+								/>
+							)}
+						</span>
 					</Button>
 				);
 			})}

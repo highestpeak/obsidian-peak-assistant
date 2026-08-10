@@ -58,9 +58,11 @@ assert.match(
 	/typeof semantic === 'boolean' && onSemanticChange/,
 	'other Result Browser hosts retain the optional outer semantic control',
 );
-for (const label of ['Connections', 'Community', 'Links ${', 'Folders', 'Hubs']) {
+for (const label of ['Constellation', 'Community', 'Links ${', 'Folders', 'Orbit']) {
 	assert.ok(toolbar.includes(label), `graph toolbar must include the consolidated ${label} control`);
 }
+assert.match(toolbar, /directionSwitch: true/, 'the consolidated Links control must visibly advertise direction switching');
+assert.match(toolbar, /Click again to switch to horizontal/, 'Links direction switching must be explained without guesswork');
 assert.match(
 	toolbar,
 	/communityAvailable \? communityControls : standardControls/,
