@@ -68,7 +68,7 @@
         <h2>外部产品调研依据</h2>
         <p>只使用官方产品与官方文档做能力边界参考；不照搬其完整产品复杂度。</p>
         <div class="sources">
-          <article class="source"><strong>Goodnotes Lasso</strong><span>Freehand 的核心手势是围绕内容画 loop；完成后立即高亮选中对象并在选区上方出现 Object Menu。Peak 因此在绘制中只显示用户已经经过的虚线轨迹，不提前从当前位置连回起点；松开后才闭合、填充并出现 Ask / Add / AI edit。</span><a href="https://support.goodnotes.com/hc/en-us/articles/10779390143247-Select-content-with-the-Lasso-Tool">Lasso Tool</a></article>
+          <article class="source"><strong>Goodnotes Lasso</strong><span>Freehand 的核心手势是围绕内容画 loop；完成后立即高亮选中对象并在选区上方出现 Object Menu。Peak 因此在绘制中只显示用户已经经过的虚线轨迹，不提前从当前位置连回起点；松开后再闭合为一个区域，并从区域轮廓生成最终外边界，内部交叉或重叠的输入线不继续显示。</span><a href="https://support.goodnotes.com/hc/en-us/articles/10779390143247-Select-content-with-the-Lasso-Tool">Lasso Tool</a></article>
           <article class="source"><strong>Goodnotes Image Crop</strong><span>官方把 Rectangle 手柄裁剪与 Freehand contour 明确分开，并以 Done 作为提交边界；这支持 Peak 复用同一指针采样机制，同时维持选择和裁剪两套独立状态。</span><a href="https://support.goodnotes.com/hc/en-us/articles/7353727617295-Insert-images-into-Goodnotes">Image Crop</a></article>
           <article class="source"><strong>Google Photos</strong><span>裁剪直接使用画布手柄；比例预设、校正角度与旋转都围绕同一个 Crop 任务呈现。</span><a href="https://support.google.com/photos/answer/6128850?co=GENIE.Platform%3DDesktop&amp;hl=en">Crop & rotate</a></article>
           <article class="source"><strong>Apple Preview / iPad</strong><span>尺寸调整与导出是明确的独立任务；导出可选择格式并通过滑杆调整文件大小，适合替代黑盒 Compress。</span><a href="https://support.apple.com/en-md/guide/ipad/ipad78347fa8/ipados">Export / file size</a></article>
