@@ -187,6 +187,8 @@ export enum PromptId {
 	GapExplanation = 'gap-explanation',
 	ResultGraphCommunityExplanationSystem = 'result-graph-community-explanation-system',
 	ResultGraphCommunityExplanation = 'result-graph-community-explanation',
+	GraphNodeExplanationSystem = 'graph-node-explanation-system',
+	GraphNodeExplanation = 'graph-node-explanation',
 
 	// Prompt enhancement
 	PromptEnhance = 'prompt-enhance',
@@ -307,6 +309,16 @@ export interface PromptVariables {
 		descriptors: string;
 		internalReferenceCount: number;
 		representativeNotes: string;
+		fingerprint: string;
+	};
+	[PromptId.GraphNodeExplanationSystem]: Record<string, never>;
+	[PromptId.GraphNodeExplanation]: {
+		title: string;
+		path: string;
+		summary: string;
+		signals: string;
+		linkCounts: string;
+		representativeLinks: string;
 		fingerprint: string;
 	};
 	[PromptId.DocSummaryShort]: {

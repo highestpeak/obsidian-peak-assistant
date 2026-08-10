@@ -41,6 +41,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 		vaultNavigation,
 		resultSubgraph: resultSubgraphDeps,
 		communityExplanation,
+		graphNodeExplanation,
 		indexService,
 	} = useServiceContext();
 
@@ -136,6 +137,8 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				}, 800);
 			}}
 			communityExplanation={communityExplanation}
+			graphNodeExplanation={graphNodeExplanation}
+			nodeExplanationUi={indexService?.env.communityConfig?.nodeExplanation.ui}
 			communityInteraction={indexService?.env.communityConfig?.interaction}
 		/>
 	);

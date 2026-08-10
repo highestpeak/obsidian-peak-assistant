@@ -23,5 +23,20 @@
     "openDelayMs": 80,
     "closeDelayMs": 220,
     "cardOffsetPx": 18
+  },
+  "nodeExplanation": {
+    "summaryCharacterLimit": 1600,
+    "signalLimit": 8,
+    "representativeLinkLimit": 8,
+    "ui": {
+      "title": "AI graph explanation",
+      "evidenceChanged": "Evidence changed",
+      "loadingSaved": "Loading saved explanation…",
+      "readingEvidence": "Reading the current node evidence…",
+      "previousSavedPrefix": "Previous saved explanation:",
+      "evidenceUnavailable": "Indexed graph evidence is unavailable for this note.",
+      "explain": "Explain with AI",
+      "regenerate": "Regenerate"
+    }
   }
 }

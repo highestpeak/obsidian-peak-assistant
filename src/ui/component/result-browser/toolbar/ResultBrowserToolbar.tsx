@@ -273,9 +273,9 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 		iconOnly?: boolean;
 	}> = [
 		{ id: 'constellation', label: 'Constellation', title: 'Force-directed cluster — how do these results cluster together?', active: preset === 'constellation', preset: 'constellation', keyTip: keyTips.constellation },
-		{ id: 'flow-tb', label: 'Flow ↓', title: 'Top-down hierarchical flow — what references what?', active: preset === 'flow-tb', preset: 'flow-tb', keyTip: keyTips['flow-tb'] },
-		{ id: 'flow-lr', label: 'Flow →', title: 'Left-right hierarchical flow — same as ↓ but sideways', active: preset === 'flow-lr', preset: 'flow-lr', keyTip: keyTips['flow-lr'] },
-		{ id: 'folder', label: 'Folder tree', title: 'Full-depth folder tree — where in my vault do they live?', active: preset === 'folder', preset: 'folder', keyTip: keyTips.folder },
+		{ id: 'flow-lr', label: 'Links →', title: 'Links horizontal — left-to-right reference flow', active: preset === 'flow-lr', preset: 'flow-lr', keyTip: keyTips['flow-lr'] },
+		{ id: 'flow-tb', label: 'Links ↓', title: 'Links vertical — top-to-bottom reference flow', ariaLabel: 'Links vertical, top to bottom', iconOnly: true, active: preset === 'flow-tb', preset: 'flow-tb', keyTip: keyTips['flow-tb'] },
+		{ id: 'folder', label: 'Folders', title: 'Arrange current results by vault folder', active: preset === 'folder', preset: 'folder', keyTip: keyTips.folder },
 		{ id: 'orbit', label: 'Orbit', title: 'Hubs at center, docs orbit — are hubs the center of gravity?', active: preset === 'orbit', preset: 'orbit', keyTip: keyTips.orbit },
 	];
 	const communityControls: typeof standardControls = [

@@ -614,6 +614,8 @@
       line-height: 1.48;
     }
 
+    .ai-copy.stale-copy { opacity: 0.58; }
+
     .ai-copy.streaming-copy { min-height: 42px; white-space: pre-wrap; }
 
     .stream-cursor {
@@ -852,10 +854,13 @@
     const preview = document.getElementById('nodePreview');
     const previewContent = document.getElementById('previewContent');
     const explanationStorageKey = 'peak-community-explanations-v1';
+    const nodeExplanationStorageKey = 'peak-node-explanations-v1';
     let activeAnchor = null;
     let activeCommunity = null;
     let explanationLoading = null;
     let streamedExplanation = '';
+    let nodeExplanationLoading = null;
+    let streamedNodeExplanation = '';
     let evidenceOpen = false;
     let closeTimer = null;
     let interactionUnlockTimer = null;
@@ -965,6 +970,36 @@
       localStorage.setItem(explanationStorageKey, JSON.stringify(store));
     }
 
+    function nodeEvidenceFingerprint(node) {
+      const detail = nodeDetails[node.dataset.node];
+      return [detail.path, detail.snippet, node.dataset.tags, detail.incoming, detail.outgoing].join('|');
+    }
+
+    function readNodeExplanationStore() {
+      try {
+        return JSON.parse(localStorage.getItem(nodeExplanationStorageKey) || '{}');
+      } catch {
+        return {};
+      }
+    }
+
+    function getSavedNodeExplanation(node) {
+      const saved = readNodeExplanationStore()[node.dataset.node];
+      if (!saved) return null;
+      if (saved.fingerprint !== nodeEvidenceFingerprint(node)) return { ...saved, stale: true };
+      return { ...saved, stale: false };
+    }
+
+    function saveNodeExplanation(node, explanation) {
+      const store = readNodeExplanationStore();
+      store[node.dataset.node] = {
+        fingerprint: nodeEvidenceFingerprint(node),
+        explanation,
+        generatedAt: Date.now(),
+      };
+      localStorage.setItem(nodeExplanationStorageKey, JSON.stringify(store));
+    }
+
     function savedLabel(timestamp) {
       const elapsedMinutes = Math.floor((Date.now() - timestamp) / 60000);
       if (elapsedMinutes < 1) return 'Saved just now · Current';
@@ -977,6 +1012,31 @@
       const meta = communityMeta[community];
       const detail = nodeDetails[node.dataset.node];
       const tags = node.dataset.tags.split('|');
+      const saved = getSavedNodeExplanation(node);
+      const loading = nodeExplanationLoading === node.dataset.node;
+      const aiSection = loading
+        ? `
+          <div class="ai-section">
+            <div class="ai-header"><span>AI graph explanation</span><span class="ai-status streaming">Explaining…</span></div>
+            <div class="ai-copy streaming-copy">${streamedNodeExplanation}<span class="stream-cursor" aria-hidden="true"></span></div>
+            ${saved ? `<div class="ai-caveat">Previous saved explanation: ${saved.explanation}</div>` : ''}
+          </div>
+        `
+        : saved
+          ? `
+            <div class="ai-section">
+              <div class="ai-header"><span>AI graph explanation</span><span class="ai-status">${saved.stale ? 'Evidence changed' : savedLabel(saved.generatedAt)}</span></div>
+              <div class="ai-copy${saved.stale ? ' stale-copy' : ''}">${saved.explanation}</div>
+              <div class="preview-actions">
+                <button class="preview-action" type="button" data-action="regenerate-node" data-node-id="${node.dataset.node}">Regenerate</button>
+              </div>
+            </div>
+          `
+          : `
+            <div class="preview-actions">
+              <button class="preview-action primary" type="button" data-action="explain-node" data-node-id="${node.dataset.node}">Explain with AI</button>
+            </div>
+          `;
       previewContent.innerHTML = `
         <h2>${node.dataset.title}</h2>
         <div class="preview-path">${detail.path}</div>
@@ -988,6 +1048,8 @@
           ${tags.slice(0, 2).map((tag) => `<span class="evidence-pill">shares ${tag}</span>`).join('')}
         </div>
         <div class="preview-meta"><span>${detail.outgoing} outgoing · ${detail.incoming} incoming</span><span>${node.dataset.links} vault links total</span></div>
+        <div class="preview-divider"></div>
+        ${aiSection}
       `;
     }
 
@@ -1051,7 +1113,7 @@
     }
 
     async function generateExplanation(community) {
-      if (explanationLoading) return;
+      if (explanationLoading || nodeExplanationLoading) return;
       lockPreviewInteraction(10000);
       const stableHeight = preview.offsetHeight;
       preview.style.minHeight = `${stableHeight}px`;
@@ -1079,6 +1141,42 @@
       renderCommunityCard(community);
       requestAnimationFrame(() => {
         preview.style.minHeight = '';
+        lockPreviewInteraction(600);
+      });
+    }
+
+    async function generateNodeExplanation(nodeId) {
+      if (nodeExplanationLoading || explanationLoading) return;
+      const node = stage.querySelector(`[data-node="${nodeId}"]`);
+      if (!node) return;
+      lockPreviewInteraction(10000);
+      const stableHeight = preview.offsetHeight;
+      preview.style.minHeight = `${stableHeight}px`;
+      nodeExplanationLoading = nodeId;
+      streamedNodeExplanation = '';
+      if (activeAnchor === node && activeCommunity === null) renderNodeCard(node);
+      const detail = nodeDetails[nodeId];
+      const meta = communityMeta[node.dataset.community];
+      const tags = node.dataset.tags.split('|').slice(0, 2).join(' and ');
+      const explanation = `${node.dataset.title} acts as a ${detail.rank <= 2 ? 'central' : 'supporting'} note in ${meta.label}. Its ${detail.incoming + detail.outgoing} physical links and repeated signals (${tags}) connect the indexed summary to the surrounding ${meta.descriptors} notes.`;
+      const chunks = explanation.match(/\S+\s*/g) ?? [];
+      for (const chunk of chunks) {
+        await new Promise((resolve) => window.setTimeout(resolve, 34));
+        streamedNodeExplanation += chunk;
+        if (activeAnchor === node && activeCommunity === null) renderNodeCard(node);
+      }
+      saveNodeExplanation(node, explanation);
+      nodeExplanationLoading = null;
+      streamedNodeExplanation = '';
+      if (activeAnchor !== node || activeCommunity !== null) {
+        preview.style.minHeight = '';
+        lockPreviewInteraction(300);
+        return;
+      }
+      renderNodeCard(node);
+      requestAnimationFrame(() => {
+        preview.style.minHeight = '';
+        positionPreview(node);
         lockPreviewInteraction(600);
       });
     }
@@ -1147,6 +1245,10 @@
       const action = event.target.closest('[data-action]');
       if (!action) return;
       cancelScheduledClose();
+      if (action.dataset.action === 'explain-node' || action.dataset.action === 'regenerate-node') {
+        void generateNodeExplanation(action.dataset.nodeId);
+        return;
+      }
       const community = action.dataset.community;
       if (action.dataset.action === 'toggle-evidence') {
         lockPreviewInteraction(500);

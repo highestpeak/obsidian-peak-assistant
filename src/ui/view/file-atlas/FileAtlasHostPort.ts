@@ -38,6 +38,11 @@ export interface AtlasGraphNode {
 	/** Vault path when the node maps to a real note. */
 	path?: string;
 	sub?: string;
+	/** Shared Graph hover-card evidence from the canonical node projection. */
+	summary?: string;
+	signals?: string[];
+	incomingLinks?: number;
+	outgoingLinks?: number;
 }
 
 /** An edge in the neighborhood graph. */

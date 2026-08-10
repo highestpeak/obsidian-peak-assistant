@@ -1998,6 +1998,17 @@
 
 .peak-file-atlas-modal.pkfa-root .pkfa-graph-scope-tab:hover { color: var(--pk-text-primary); }
 .peak-file-atlas-modal.pkfa-root .pkfa-graph-scope-tab.is-active { color: var(--pk-accent-fg) !important; background: var(--pk-accent) !important; box-shadow: var(--pk-shadow-sm) !important; }
+.peak-file-atlas-modal.pkfa-root .pkfa-graph-scope-tab.is-icon-only {
+	width: 24px !important;
+	min-width: 24px !important;
+	max-width: 24px !important;
+	padding: 0 !important;
+	justify-content: center;
+}
+.peak-file-atlas-modal.pkfa-root .pkfa-graph-scope-tab.is-icon-only svg {
+	width: 14px;
+	height: 14px;
+}
 
 .peak-file-atlas-modal.pkfa-root .pkfa-semantic-toggle {
 	height: 28px !important;

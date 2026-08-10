@@ -43,6 +43,18 @@ assert.match(
 	/communityAiState\[hoveredLabel\.id\]\?\.generating/,
 	'a streaming community explanation keeps its card open after the action button reflows',
 );
+assert.match(
+	canvas,
+	/nodeAiState\[hoveredLabel\.path\]\?\.generating/,
+	'a streaming ordinary-node explanation keeps its anchored card open',
+);
+assert.match(canvas, /handleNodeExplain/, 'ordinary graph nodes expose an explicit AI explanation action');
+assert.match(canvas, /nodeExplanationUi\.title/, 'ordinary graph nodes retain template-backed AI output beside their existing summary');
+assert.doesNotMatch(
+	canvas,
+	/if \(cancelled\) return;/,
+	'hovering away must not permanently cancel the cached community or node explanation load',
+);
 
 const semanticIndex = canvas.indexOf('label="Semantic edges"');
 const nodesIndex = canvas.indexOf('<span>Nodes</span>');

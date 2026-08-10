@@ -46,6 +46,16 @@ export const GRAPH_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 		path: outputPath('data-store', 'records/graph-communities/{communityId}/events.jsonl'),
 		writerEvidence: ['src/service/search/community/CommunityExplanationService.ts'], lifecycle: 'active',
 	}),
+	durableRecord({
+		documentationId: 'DR-23', id: 'graph.node-explanation', owner: 'graph-node', carrier: 'json',
+		path: outputPath('data-store', 'records/graph-nodes/{nodeKey}/explanation.json'),
+		writerEvidence: ['src/service/search/community/GraphNodeExplanationService.ts'], lifecycle: 'active',
+	}),
+	durableRecord({
+		documentationId: 'DR-24', id: 'graph.node-explanation-events', owner: 'graph-node', carrier: 'jsonl',
+		path: outputPath('data-store', 'records/graph-nodes/{nodeKey}/events.jsonl'),
+		writerEvidence: ['src/service/search/community/GraphNodeExplanationService.ts'], lifecycle: 'active',
+	}),
 	localOutput({
 		documentationId: 'LP-05', id: 'projection.hub-graph', owner: 'hub', outputClass: 'projection',
 		carrier: 'sqlite', path: outputPath('data-store', 'vault.sqlite'),

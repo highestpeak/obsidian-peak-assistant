@@ -142,6 +142,8 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | DR-20 | Plugin Command Gateway audit receipt | 人工授权后的第三方 command 执行结果、RunEnvelope 事件与副作用观测 | `records/command-gateway/runs.jsonl`，有界轮转；由 typed catalog 解析 canonical 路径 | 已实现 |
 | DR-21 | Result Graph community explanation | 用户显式触发、绑定 evidence fingerprint 的当前 AI 解释 snapshot | `records/graph-communities/<community-id>/explanation.json` | 已实现 |
 | DR-22 | Result Graph community explanation history | explain / regenerate 的追加 run receipt；失败与取消也保留 | `records/graph-communities/<community-id>/events.jsonl` | 已实现 |
+| DR-23 | Shared Graph node explanation | 用户从 Vault Search 或 File Atlas 显式触发、绑定稳定节点证据 fingerprint 的当前 AI 解释 snapshot | `records/graph-nodes/<node-key>/explanation.json` | 已实现 |
+| DR-24 | Shared Graph node explanation history | 节点 explain / regenerate 的追加 run receipt；失败与取消也保留 | `records/graph-nodes/<node-key>/events.jsonl` | 已实现 |
 
 主要 writer 证据：
 

@@ -33,6 +33,8 @@ import type { ComposerCapabilityId } from '@/core/composer';
 import { assembleComposerContextSnapshot } from '@/service/composer/capabilities/contextAssembler';
 import { NativeMarkdownIntelligenceModal } from '@/app/composer/NativeMarkdownIntelligenceModal';
 import { virtualHubPath } from '@/service/hub/HubRecordStore';
+import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';
+import { getIndexTenantForPath } from '@/service/search/index/indexService';
 import {
 	composerBlockForAtlasLocation,
 	projectFileAtlasQuickActions,
@@ -628,6 +630,34 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 				getDiscoveredConnections,
 			});
 			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
+			const evidenceRows = await Promise.all(neighborhood.nodes.map(async (node) => {
+				if (!node.path) return [node.id, null] as const;
+				const tenant = getIndexTenantForPath(node.path);
+				const row = await sqliteStoreManager.getMobiusNodeRepo(tenant).getByPath(node.path).catch(() => null);
+				return [node.id, row] as const;
+			}));
+			const evidenceById = new Map(evidenceRows);
+			const enrichedNeighborhood = {
+				...neighborhood,
+				nodes: neighborhood.nodes.map((node) => {
+					const row = evidenceById.get(node.id);
+					if (!row) return node;
+					const tags = decodeIndexedTagsBlob(row.tags_json);
+					const signals = [...new Set([
+						...tags.topicTags,
+						...(tags.userKeywordTags ?? tags.keywordTags),
+						...(tags.textrankKeywordTerms ?? []),
+					].map((item) => item.trim()).filter(Boolean))];
+					return {
+						...node,
+						summary: row.summary ?? undefined,
+						signals,
+						incomingLinks: row.doc_incoming_cnt ?? 0,
+						outgoingLinks: row.doc_outgoing_cnt ?? 0,
+					};
+				}),
+			};
+			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
 			const hubs = await getHubsForDoc(path).catch(() => []);
 			const hubRuntime = appContext.runtimeRegistry.tryGetHubGenerationRuntime();
 			const resolvedHubs = await Promise.all(hubs.map(async (hub) => {
@@ -641,10 +671,10 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			}));
 			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
 			return {
-				...neighborhood,
+				...enrichedNeighborhood,
 				hubAnchors: resolvedHubs,
 				edges: [
-					...neighborhood.edges,
+					...enrichedNeighborhood.edges,
 					...resolvedHubs.map((hub) => ({
 						from: hub.id,
 						to: path,

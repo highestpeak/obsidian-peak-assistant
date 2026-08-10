@@ -18,7 +18,7 @@ function testCatalogMatchesCanonicalDocumentation(): void {
 	const registry = createDefaultGeneratedOutputRegistry();
 	const expected = [
 		...documentationIds('UA', 15),
-		...documentationIds('DR', 22),
+		...documentationIds('DR', 24),
 		...documentationIds('LP', 11),
 		...documentationIds('LG', 8),
 	].sort();
@@ -43,6 +43,8 @@ function testPolicyPartitions(): void {
 	assert.ok(required.some((entry) => entry.id === 'ai-graph.artifact'));
 	assert.ok(required.some((entry) => entry.id === 'graph.community-explanation'));
 	assert.ok(required.some((entry) => entry.id === 'graph.community-explanation-events'));
+	assert.ok(required.some((entry) => entry.id === 'graph.node-explanation'));
+	assert.ok(required.some((entry) => entry.id === 'graph.node-explanation-events'));
 	assert.ok(localOnly.some((entry) => entry.id === 'projection.vault'));
 	assert.ok(localOnly.some((entry) => entry.id === 'index.embedding'));
 	assert.ok(localOnly.some((entry) => entry.id === 'telemetry.composer'));

@@ -48,6 +48,11 @@ import type {
 	CommunityExplanationPort,
 	CommunityExplanationRecord,
 } from '@/service/search/community/CommunityExplanationService';
+import type {
+	GraphNodeExplanationPort,
+	GraphNodeExplanationRecord,
+} from '@/service/search/community/GraphNodeExplanationService';
+import { GRAPH_NODE_EVIDENCE_UNAVAILABLE_ERROR } from '@/service/search/community/GraphNodeExplanationService';
 import {
 	DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG,
 	type ResultGraphCommunityConfig,
@@ -746,6 +751,10 @@ export interface AtlasGraphCanvasProps {
 	keyTipKeys?: AtlasGraphKeyTipKeys;
 	/** Result Graph only: app-owned durable/streaming community explanation port. */
 	communityExplanation?: CommunityExplanationPort | null;
+	/** Shared Vault Search / File Atlas durable, streaming node explanation port. */
+	graphNodeExplanation?: GraphNodeExplanationPort | null;
+	/** Template-backed copy for the shared ordinary-node AI section. */
+	nodeExplanationUi?: ResultGraphCommunityConfig['nodeExplanation']['ui'];
 	/** Result Graph only: template-backed hover timing and placement. */
 	communityInteraction?: ResultGraphCommunityConfig['interaction'];
 }
@@ -766,6 +775,17 @@ interface CommunityAiCardState {
 	streamed: string;
 	record: CommunityExplanationRecord | null;
 	stale: boolean;
+	error: string | null;
+}
+
+interface NodeAiCardState {
+	resolved: boolean;
+	loading: boolean;
+	generating: boolean;
+	streamed: string;
+	record: GraphNodeExplanationRecord | null;
+	stale: boolean;
+	evidenceAvailable: boolean;
 	error: string | null;
 }
 
@@ -793,11 +813,14 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	onViewportChange,
 	keyTipKeys,
 	communityExplanation,
+	graphNodeExplanation,
+	nodeExplanationUi = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.nodeExplanation.ui,
 	communityInteraction = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.interaction,
 }) => {
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
 	const [hoveredLabel, setHoveredLabel] = useState<GraphHoverAnchor | null>(null);
 	const [communityAiState, setCommunityAiState] = useState<Record<string, CommunityAiCardState>>({});
+	const [nodeAiState, setNodeAiState] = useState<Record<string, NodeAiCardState>>({});
 	const [keyboardNodeId, setKeyboardNodeId] = useState<string | null>(null);
 	const [keyboardNodeLabel, setKeyboardNodeLabel] = useState('');
 	const [nodeListOpen, setNodeListOpen] = useState(false);
@@ -808,6 +831,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const cardCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const hoveredElementRef = useRef<string | null>(null);
 	const generationAbortRef = useRef<AbortController | null>(null);
+	const mountedRef = useRef(true);
 
 	const cancelCardClose = () => {
 		if (!cardCloseTimerRef.current) return;
@@ -852,8 +876,10 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	});
 
 	useEffect(() => {
+		mountedRef.current = true;
 		ensureExtensionsRegistered();
 		return () => {
+			mountedRef.current = false;
 			cancelCardClose();
 			generationAbortRef.current?.abort();
 			if (animRef.current) cancelAnimationFrame(animRef.current);
@@ -869,7 +895,6 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		if (!community) return;
 		const current = communityAiState[community.id];
 		if (current?.loadedFingerprint === community.fingerprint || current?.loading || current?.generating) return;
-		let cancelled = false;
 		setCommunityAiState((state) => ({
 			...state,
 			[community.id]: {
@@ -882,7 +907,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			},
 		}));
 		void communityExplanation.load(community).then((loaded) => {
-			if (cancelled) return;
+			if (!mountedRef.current) return;
 			setCommunityAiState((state) => ({
 				...state,
 				[community.id]: {
@@ -896,7 +921,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				},
 			}));
 		}).catch((error) => {
-			if (cancelled) return;
+			if (!mountedRef.current) return;
 			setCommunityAiState((state) => ({
 				...state,
 				[community.id]: {
@@ -910,8 +935,62 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				},
 			}));
 		});
-		return () => { cancelled = true; };
 	}, [communityExplanation, communityAiState, hoveredLabel, subgraph]);
+
+	useEffect(() => {
+		if (!graphNodeExplanation || hoveredLabel?.kind !== 'node' || !hoveredLabel.path) return;
+		const path = hoveredLabel.path;
+		const current = nodeAiState[path];
+		if (current?.resolved || current?.loading || current?.generating) return;
+		setNodeAiState((state) => ({
+			...state,
+			[path]: {
+				resolved: false,
+				loading: true,
+				generating: false,
+				streamed: '',
+				record: null,
+				stale: false,
+				evidenceAvailable: false,
+				error: null,
+			},
+		}));
+		void graphNodeExplanation.load(path).then((loaded) => {
+			if (!mountedRef.current) return;
+			setNodeAiState((state) => ({
+				...state,
+				[path]: {
+					resolved: true,
+					loading: false,
+					generating: false,
+					streamed: '',
+					record: loaded.record,
+					stale: loaded.stale,
+					evidenceAvailable: Boolean(loaded.evidence),
+					error: null,
+				},
+			}));
+		}).catch((error) => {
+			if (!mountedRef.current) return;
+			setNodeAiState((state) => ({
+				...state,
+				[path]: {
+					resolved: true,
+					loading: false,
+					generating: false,
+					streamed: '',
+					record: null,
+					stale: false,
+					evidenceAvailable: false,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			}));
+		});
+	}, [graphNodeExplanation, hoveredLabel, nodeAiState]);
+
+	useEffect(() => {
+		setNodeAiState({});
+	}, [subgraph]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -1325,6 +1404,85 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		}
 	};
 
+	const handleNodeExplain = async (path: string, regenerate: boolean): Promise<void> => {
+		if (!graphNodeExplanation || !path) return;
+		cancelCardClose();
+		generationAbortRef.current?.abort();
+		const controller = new AbortController();
+		generationAbortRef.current = controller;
+		setNodeAiState((state) => ({
+			...state,
+			[path]: {
+				resolved: true,
+				loading: false,
+				generating: true,
+				streamed: '',
+				record: state[path]?.record ?? null,
+				stale: state[path]?.stale ?? false,
+				evidenceAvailable: true,
+				error: null,
+			},
+		}));
+		try {
+			const record = await graphNodeExplanation.generate(path, {
+				regenerate,
+				signal: controller.signal,
+				onDelta: (streamed) => {
+					setNodeAiState((state) => ({
+						...state,
+						[path]: {
+							...(state[path] ?? {
+								resolved: true,
+								loading: false,
+								generating: true,
+								record: null,
+								stale: false,
+								evidenceAvailable: true,
+								error: null,
+							}),
+							streamed: streamedExplanationBody(streamed),
+						},
+					}));
+				},
+			});
+			setNodeAiState((state) => ({
+				...state,
+				[path]: {
+					resolved: true,
+					loading: false,
+					generating: false,
+					streamed: '',
+					record,
+					stale: false,
+					evidenceAvailable: true,
+					error: null,
+				},
+			}));
+		} catch (error) {
+			if (controller.signal.aborted) return;
+			const errorMessage = error instanceof Error && error.message === GRAPH_NODE_EVIDENCE_UNAVAILABLE_ERROR
+				? nodeExplanationUi.evidenceUnavailable
+				: error instanceof Error ? error.message : String(error);
+			setNodeAiState((state) => ({
+				...state,
+				[path]: {
+					...(state[path] ?? {
+						resolved: true,
+						loading: false,
+						streamed: '',
+						record: null,
+						stale: false,
+						evidenceAvailable: true,
+					}),
+					generating: false,
+					error: errorMessage,
+				},
+			}));
+		} finally {
+			if (generationAbortRef.current === controller) generationAbortRef.current = null;
+		}
+	};
+
 	const overflowCount = subgraph?.overflowCount ?? 0;
 	const emptyMessage = useMemo(() => {
 		if (!subgraph) return buildingLabel;
@@ -1485,7 +1643,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					Math.max(12, hoveredLabel.x + communityInteraction.cardOffsetPx),
 					Math.max(12, containerWidth - width - 12),
 				);
-				const estimatedHeight = hoveredLabel.kind === 'community' ? 390 : 280;
+				const estimatedHeight = hoveredLabel.kind === 'community' ? 390 : 420;
 				const belowTop = hoveredLabel.y + communityInteraction.cardOffsetPx;
 				const top = belowTop + estimatedHeight <= containerHeight
 					? belowTop
@@ -1494,10 +1652,10 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					style: { left, top, width },
 					onMouseEnter: cancelCardClose,
 					onMouseLeave: () => {
-						if (
-							hoveredLabel.kind === 'community'
-							&& communityAiState[hoveredLabel.id]?.generating
-						) return;
+						const explanationGenerating = hoveredLabel.kind === 'community'
+							? communityAiState[hoveredLabel.id]?.generating
+							: nodeAiState[hoveredLabel.path]?.generating;
+						if (explanationGenerating) return;
 						scheduleCardClose();
 					},
 					onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1610,6 +1768,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					const otherId = edge.from === node.id ? edge.to : edge.from;
 					return community?.visibleMemberIds.includes(otherId) ?? false;
 				}).length;
+				const nodeAi = nodeAiState[node.path];
+				const nodeRecord = nodeAi?.record;
 				return (
 					<div
 						{...sharedProps}
@@ -1633,6 +1793,50 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 							<span>{node.outgoingLinks ?? 0} outgoing</span>
 							<span>{(node.incomingLinks ?? 0) + (node.outgoingLinks ?? 0)} total</span>
 						</div>
+						{graphNodeExplanation && node.path && (
+							<>
+								<div className="pktw-my-3 pktw-h-px pktw-bg-pk-border" />
+								<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3">
+									<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary">{nodeExplanationUi.title}</span>
+									{nodeAi?.stale && <span className="pktw-text-xs pktw-font-medium pktw-text-amber-600">{nodeExplanationUi.evidenceChanged}</span>}
+								</div>
+								{(!nodeAi || nodeAi.loading) && <span className="pktw-mt-2 pktw-block pktw-text-sm pktw-text-pk-text-tertiary">{nodeExplanationUi.loadingSaved}</span>}
+								{nodeAi?.generating && (
+									<>
+										<div className="pktw-mt-2 pktw-flex pktw-items-start pktw-gap-2 pktw-text-sm pktw-leading-6 pktw-text-pk-text-secondary" aria-live="polite">
+											<Loader2 className="pktw-mt-1 pktw-h-3.5 pktw-w-3.5 pktw-shrink-0 pktw-animate-spin pktw-text-pk-accent" />
+											<span>{nodeAi.streamed || nodeExplanationUi.readingEvidence}</span>
+										</div>
+										{nodeRecord && (
+											<span className="pktw-mt-2 pktw-block pktw-text-xs pktw-leading-5 pktw-text-pk-text-tertiary pktw-opacity-70">
+												{nodeExplanationUi.previousSavedPrefix} {nodeRecord.explanation}
+											</span>
+										)}
+									</>
+								)}
+								{!nodeAi?.generating && nodeRecord && (
+									<span className={`pktw-mt-2 pktw-block pktw-text-sm pktw-leading-6 pktw-text-pk-text-secondary${nodeAi.stale ? ' pktw-opacity-60' : ''}`}>
+										{nodeRecord.explanation}
+									</span>
+								)}
+								{nodeAi?.error && <span className="pktw-mt-2 pktw-block pktw-text-xs pktw-text-red-600">{nodeAi.error}</span>}
+								{nodeAi?.resolved && !nodeAi.evidenceAvailable && !nodeAi.error && (
+									<span className="pktw-mt-2 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">{nodeExplanationUi.evidenceUnavailable}</span>
+								)}
+								{nodeAi?.resolved && nodeAi.evidenceAvailable && !nodeAi.generating && (
+									<Button
+										type="button"
+										variant={nodeRecord ? 'outline' : 'default'}
+										size="sm"
+										className="pktw-mt-3 pktw-gap-1.5"
+										onClick={() => void handleNodeExplain(node.path, Boolean(nodeRecord))}
+									>
+										<Sparkles className="pktw-h-3.5 pktw-w-3.5" />
+										{nodeRecord ? nodeExplanationUi.regenerate : nodeExplanationUi.explain}
+									</Button>
+								)}
+							</>
+						)}
 					</div>
 				);
 			})()}

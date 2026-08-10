@@ -501,6 +501,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),
 	'result-graph-community-explanation-system': meta('prompts', 'result-graph-community-explanation-system', { label: 'Result Graph Community Explanation System', description: 'Evidence-bound instructions for explaining a computed Result Graph community.', group: 'indexing' }),
 	'result-graph-community-explanation': meta('prompts', 'result-graph-community-explanation', { systemPromptId: 'result-graph-community-explanation-system' as PromptId, label: 'Result Graph Community Explanation', description: 'Explains why the current computed notes cluster together and may suggest a label.', group: 'indexing' }),
+	'graph-node-explanation-system': meta('prompts', 'graph-node-explanation-system', { label: 'Graph Node Explanation System', description: 'Evidence-bound instructions for explaining one indexed note across shared Graph surfaces.', group: 'indexing' }),
+	'graph-node-explanation': meta('prompts', 'graph-node-explanation', { systemPromptId: 'graph-node-explanation-system' as PromptId, label: 'Graph Node Explanation', description: 'Explains what an indexed note contributes to the vault graph using its stable node evidence.', group: 'indexing' }),
 
 	// --- Ambient explanation (T11Y inline-prompt migration) ---
 	'ambient-explanation-system': meta('prompts', 'ambient-explanation-system', { label: 'Ambient Explanation (System)', description: 'System instructions for the ambient micro-explanation LLM call.', group: 'ambientContext' }),

@@ -103,6 +103,23 @@ assert.match(displayModel, /companionTitle[\s\S]*githubIdentity[\s\S]*decodedSlu
 
 assert.match(graph, /data\.edges\.filter\(\(edge\) => semantic \|\| edge\.kind !== 'semantic'\)/);
 assert.match(graph, /summary=\{meta\}/);
+assert.match(graph, /preview: n\.summary/);
+assert.match(graph, /incomingLinks: n\.incomingLinks/);
+assert.match(graph, /outgoingLinks: n\.outgoingLinks/);
+assert.match(graph, /graphNodeExplanation=\{graphNodeExplanation\}/);
+assert.match(graph, /label: 'Links →'/);
+assert.match(graph, /iconOnly: true/);
+assert.match(graph, /<ArrowDown aria-hidden="true" \/>/);
+assert.match(graph, /label: 'Folders'/);
+assert.match(
+	css,
+	/\.pkfa-graph-scope-tab\.is-icon-only\s*\{[\s\S]*?width:\s*24px !important;[\s\S]*?min-width:\s*24px !important;[\s\S]*?max-width:\s*24px !important;[\s\S]*?padding:\s*0 !important;/,
+	'File Atlas compact vertical Links control must retain fixed geometry under the Obsidian reset',
+);
+assert.match(hostAdapter, /getMobiusNodeRepo/);
+assert.match(hostAdapter, /summary: row\.summary/);
+assert.match(hostAdapter, /incomingLinks: row\.doc_incoming_cnt/);
+assert.match(hostAdapter, /outgoingLinks: row\.doc_outgoing_cnt/);
 assert.doesNotMatch(graph, /pkfa-graph-chip/);
 assert.match(canvas, /summary\?: string/);
 assert.match(canvas, /Copy graph as Mermaid/);

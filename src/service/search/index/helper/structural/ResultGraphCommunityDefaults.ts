@@ -26,6 +26,21 @@ export interface ResultGraphCommunityConfig {
 		closeDelayMs: number;
 		cardOffsetPx: number;
 	};
+	nodeExplanation: {
+		summaryCharacterLimit: number;
+		signalLimit: number;
+		representativeLinkLimit: number;
+		ui: {
+			title: string;
+			evidenceChanged: string;
+			loadingSaved: string;
+			readingEvidence: string;
+			previousSavedPrefix: string;
+			evidenceUnavailable: string;
+			explain: string;
+			regenerate: string;
+		};
+	};
 }
 
 /** Compiled fallback mirrors templates/config/result-graph-community.json. */
@@ -53,6 +68,21 @@ export const DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG: ResultGraphCommunityConfig =
 		openDelayMs: 80,
 		closeDelayMs: 220,
 		cardOffsetPx: 18,
+	}),
+	nodeExplanation: Object.freeze({
+		summaryCharacterLimit: 1600,
+		signalLimit: 8,
+		representativeLinkLimit: 8,
+		ui: Object.freeze({
+			title: 'AI graph explanation',
+			evidenceChanged: 'Evidence changed',
+			loadingSaved: 'Loading saved explanation…',
+			readingEvidence: 'Reading the current node evidence…',
+			previousSavedPrefix: 'Previous saved explanation:',
+			evidenceUnavailable: 'Indexed graph evidence is unavailable for this note.',
+			explain: 'Explain with AI',
+			regenerate: 'Regenerate',
+		}),
 	}),
 });
 
@@ -85,6 +115,8 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 	const weights = loaded.weights ?? fallback.weights;
 	const bounds = loaded.bounds ?? fallback.bounds;
 	const interaction = loaded.interaction ?? fallback.interaction;
+	const nodeExplanation = loaded.nodeExplanation ?? fallback.nodeExplanation;
+	const nodeExplanationUi = nodeExplanation.ui ?? fallback.nodeExplanation.ui;
 	return {
 		analysisVersion: Math.floor(positive(loaded.analysisVersion, fallback.analysisVersion)),
 		weights: {
@@ -109,6 +141,15 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 			openDelayMs: Math.floor(positive(interaction.openDelayMs, fallback.interaction.openDelayMs)),
 			closeDelayMs: Math.floor(positive(interaction.closeDelayMs, fallback.interaction.closeDelayMs)),
 			cardOffsetPx: Math.floor(positive(interaction.cardOffsetPx, fallback.interaction.cardOffsetPx)),
+		},
+		nodeExplanation: {
+			summaryCharacterLimit: Math.floor(positive(nodeExplanation.summaryCharacterLimit, fallback.nodeExplanation.summaryCharacterLimit)),
+			signalLimit: Math.floor(positive(nodeExplanation.signalLimit, fallback.nodeExplanation.signalLimit)),
+			representativeLinkLimit: Math.floor(positive(nodeExplanation.representativeLinkLimit, fallback.nodeExplanation.representativeLinkLimit)),
+			ui: {
+				...fallback.nodeExplanation.ui,
+				...nodeExplanationUi,
+			},
 		},
 	};
 }
