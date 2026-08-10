@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Peak Design System Playground：用一套动态主题参数检验共享组件与真实产品场景。">
+  <title>Peak Design System Playground</title>
+
+  <!-- Production visual contracts. This playground never imports Obsidian theme variables. -->
+  <link rel="stylesheet" href="../styles.tailwind.css">
+  <link rel="stylesheet" href="../src/styles/peak-tokens.css">
+  <link rel="stylesheet" href="../src/styles/peak-components.css">
+
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      color-scheme: light;
+      --lab-canvas: #f4f5f7;
+      --lab-paper: #ffffff;
+      --lab-ink: #20242a;
+      --lab-muted: #69717c;
+      --lab-faint: #969da6;
+      --lab-line: #dfe3e8;
+      --lab-line-strong: #cbd1d8;
+      --lab-accent: #6d4aff;
+      --lab-accent-soft: rgba(109, 74, 255, .09);
+      --lab-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+      --lab-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+      --lab-page-width: 1220px;
+      --lab-control-height: 32px;
+      --lab-row-pad: 14px;
+      --lab-scene-pad: 24px;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--lab-canvas);
+      color: var(--lab-ink);
+      font-family: var(--lab-font);
+      font-size: 14px;
+      line-height: 1.55;
+      transition: background 150ms ease, color 150ms ease;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+    code { font-family: var(--lab-mono); }
+    svg { display: block; }
+
+    .lab-root {
+      min-height: 100vh;
+      color: var(--pk-text-primary);
+      background: var(--pk-bg-secondary);
+      font-size: var(--pk-text-md);
+    }
+
+    .lab-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid color-mix(in srgb, var(--pk-border) 80%, transparent);
+      background: color-mix(in srgb, var(--pk-bg-secondary) 92%, transparent);
+      backdrop-filter: blur(18px);
+    }
+    .lab-topbar__inner {
+      display: flex;
+      align-items: center;
+      width: min(var(--lab-page-width), calc(100% - 40px));
+      min-height: 56px;
+      margin: 0 auto;
+      gap: 18px;
+    }
+    .lab-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .lab-brand__mark {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--pk-radius-md);
+      background: var(--pk-accent);
+      color: var(--pk-accent-fg);
+      font-weight: 800;
+      box-shadow: var(--pk-shadow-sm);
+    }
+    .lab-brand__copy { min-width: 0; }
+    .lab-brand__copy b { display: block; font-size: var(--pk-text-lg); line-height: 1.2; }
+    .lab-brand__copy span { color: var(--pk-text-tertiary); font: 9px/1.3 var(--lab-mono); }
+    .lab-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-left: auto;
+      color: var(--pk-text-secondary);
+      font-size: var(--pk-text-sm);
+    }
+    .lab-live::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: var(--pk-radius-full);
+      background: var(--pk-success);
+      box-shadow: 0 0 0 3px var(--pk-success-bg);
+    }
+
+    .lab-layout {
+      display: grid;
+      grid-template-columns: 168px minmax(0, 1fr);
+      gap: 44px;
+      width: min(var(--lab-page-width), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 48px 0 100px;
+    }
+    .lab-nav {
+      position: sticky;
+      top: 88px;
+      align-self: start;
+      display: grid;
+      gap: 3px;
+    }
+    .lab-nav__label {
+      margin: 0 0 10px 9px;
+      color: var(--pk-text-faint);
+      font: 9px/1 var(--lab-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .lab-nav a {
+      padding: 7px 9px;
+      border-radius: var(--pk-radius-sm);
+      color: var(--pk-text-secondary);
+      text-decoration: none;
+      font-size: var(--pk-text-sm);
+      font-weight: 600;
+    }
+    .lab-nav a:hover,
+    .lab-nav a[aria-current="true"] {
+      background: var(--pk-accent-tint);
+      color: var(--pk-accent-text);
+    }
+    .lab-nav__meta {
+      margin-top: 18px;
+      padding: 12px 9px 0;
+      border-top: 1px solid var(--pk-border);
+      color: var(--pk-text-faint);
+      font: 9px/1.6 var(--lab-mono);
+    }
+
+    .lab-main { min-width: 0; }
+    .lab-hero {
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 30px 0 62px;
+      border-bottom: 1px solid var(--pk-border-strong);
+    }
+    .lab-kicker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--pk-accent-text);
+      font-size: var(--pk-text-sm);
+      font-weight: 700;
+    }
+    .lab-kicker::before { content: ""; width: 30px; height: 1px; background: var(--pk-accent); }
+    .lab-hero h1 {
+      max-width: 850px;
+      margin: 28px 0 22px;
+      color: var(--pk-text-primary);
+      font-size: clamp(48px, 7vw, 84px);
+      line-height: .98;
+      letter-spacing: -.065em;
+    }
+    .lab-hero p {
+      max-width: 760px;
+      margin: 0;
+      color: var(--pk-text-secondary);
+      font-size: clamp(16px, 2vw, 20px);
+      line-height: 1.7;
+    }
+    .lab-hero__contract {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      margin-top: 42px;
+      color: var(--pk-text-tertiary);
+      font-size: var(--pk-text-sm);
+    }
+    .lab-hero__contract b { color: var(--pk-text-primary); }
+
+    .lab-section { padding-top: 76px; scroll-margin-top: 76px; }
+    .lab-section__head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      padding-top: 18px;
+      margin-bottom: 26px;
+      border-top: 1px solid var(--pk-border-strong);
+    }
+    .lab-section__head h2 {
+      margin: 0;
+      color: var(--pk-text-primary);
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.08;
+      letter-spacing: -.045em;
+    }
+    .lab-section__head p { max-width: 720px; margin: 9px 0 0; color: var(--pk-text-secondary); }
+    .lab-section__index { color: var(--pk-text-faint); font: 9px/1 var(--lab-mono); }
+
+    .lab-rule-list { border-top: 1px solid var(--pk-border); }
+    .lab-rule {
+      display: grid;
+      grid-template-columns: 176px minmax(0, 1fr);
+      gap: 28px;
+      padding: 25px 0;
+      border-bottom: 1px solid var(--pk-border);
+    }
+    .lab-rule__copy b { display: block; margin-bottom: 4px; font-size: var(--pk-text-lg); }
+    .lab-rule__copy span { color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
+    .lab-rule__demo { min-width: 0; }
+    .lab-swatch-line { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); min-height: 82px; }
+    .lab-swatch { position: relative; background: var(--swatch); }
+    .lab-swatch:first-child { border-radius: var(--pk-radius-md) 0 0 var(--pk-radius-md); }
+    .lab-swatch:last-child { border-radius: 0 var(--pk-radius-md) var(--pk-radius-md) 0; }
+    .lab-swatch span {
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      bottom: 7px;
+      padding: 3px 4px;
+      border-radius: var(--pk-radius-sm);
+      background: color-mix(in srgb, var(--pk-surface) 82%, transparent);
+      color: var(--pk-text-primary);
+      font: 8px/1.2 var(--lab-mono);
+      text-align: center;
+    }
+    .lab-type-line { display: grid; grid-template-columns: 80px 1fr auto; align-items: baseline; gap: 18px; padding: 8px 0; border-bottom: 1px solid var(--pk-border-soft); }
+    .lab-type-line:last-child { border-bottom: 0; }
+    .lab-type-line code, .lab-type-line small { color: var(--pk-text-faint); font-size: var(--pk-text-xs); }
+    .lab-shape-line, .lab-elevation-line, .lab-motion-line { display: flex; flex-wrap: wrap; gap: 12px; }
+    .lab-shape {
+      display: grid;
+      place-items: center;
+      width: 126px;
+      height: 70px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--shape-radius);
+      background: var(--pk-surface);
+      color: var(--pk-text-secondary);
+      font-size: var(--pk-text-sm);
+      box-shadow: var(--shape-shadow, none);
+    }
+    .lab-motion-sample {
+      position: relative;
+      overflow: hidden;
+      width: 150px;
+      min-height: 58px;
+      padding: 12px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-md);
+      background: var(--pk-surface);
+    }
+    .lab-motion-sample b { display: block; font-size: var(--pk-text-sm); }
+    .lab-motion-sample span { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-motion-sample::after {
+      content: "";
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      width: 24px;
+      height: 4px;
+      border-radius: var(--pk-radius-pill);
+      background: var(--pk-accent);
+      animation: lab-pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes lab-pulse { 0%, 100% { transform: translateX(-18px); opacity: .45; } 50% { transform: translateX(0); opacity: 1; } }
+
+    .lab-controller-wrap {
+      position: sticky;
+      top: 66px;
+      z-index: 70;
+      margin: 0 -12px;
+      padding: 12px;
+      background: color-mix(in srgb, var(--pk-bg-secondary) 90%, transparent);
+      backdrop-filter: blur(16px);
+    }
+    .lab-controller {
+      overflow: hidden;
+      border: 1px solid var(--pk-border-strong);
+      border-radius: var(--pk-radius-lg);
+      background: var(--pk-surface);
+      box-shadow: var(--pk-shadow-popover);
+    }
+    .lab-controller__head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--pk-border);
+    }
+    .lab-controller__head b { font-size: var(--pk-text-md); }
+    .lab-controller__head span { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-controller__head .pk-btn { margin-left: auto; }
+    .lab-controller__grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 0;
+    }
+    .lab-control {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      padding: 10px 12px;
+      border-right: 1px solid var(--pk-border);
+      border-bottom: 1px solid var(--pk-border);
+    }
+    .lab-control:nth-child(5n) { border-right: 0; }
+    .lab-control:nth-last-child(-n+5) { border-bottom: 0; }
+    .lab-control label { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); font-weight: 600; }
+    .lab-control select,
+    .lab-control input[type="color"] {
+      width: 100%;
+      height: 30px;
+      min-width: 0;
+      padding: 0 8px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-sm);
+      background: var(--pk-surface-raised);
+      color: var(--pk-text-primary);
+      outline: none;
+    }
+    .lab-control select:focus { border-color: var(--pk-accent); box-shadow: 0 0 0 2px var(--pk-accent-tint); }
+    .lab-control input[type="color"] { padding: 3px; }
+    .lab-token-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 14px;
+      border-top: 1px solid var(--pk-border);
+      background: var(--pk-surface-sunken);
+      color: var(--pk-text-secondary);
+      font: 9px/1.4 var(--lab-mono);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .lab-token-strip i { width: 11px; height: 11px; border-radius: var(--pk-radius-full); background: var(--pk-accent); }
+
+    .lab-workbench { border-top: 1px solid var(--pk-border); }
+    .lab-component-row {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+      padding: 25px 0;
+      border-bottom: 1px solid var(--pk-border);
+    }
+    .lab-component-copy b { display: block; font-size: var(--pk-text-lg); }
+    .lab-component-copy span { display: block; margin: 5px 0 10px; color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
+    .lab-source {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--pk-accent-text);
+      text-decoration: none;
+      font: 9px/1.4 var(--lab-mono);
+    }
+    .lab-source:hover { text-decoration: underline; }
+    .lab-component-demo { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; min-width: 0; }
+    .lab-component-demo--block { display: block; }
+    .lab-local-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--pk-border-soft);
+    }
+    .lab-local-controls label { display: flex; align-items: center; gap: 5px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-local-controls select { height: 28px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-sm); background: var(--pk-surface); color: var(--pk-text-primary); }
+    .lab-force-focus { outline: 2px solid var(--pk-accent) !important; outline-offset: 2px !important; }
+    .lab-force-hover { background: var(--pk-accent-hover) !important; }
+    .lab-spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: var(--pk-radius-full); animation: lab-spin .8s linear infinite; }
+    @keyframes lab-spin { to { transform: rotate(360deg); } }
+    .lab-input { width: min(260px, 100%); height: var(--lab-control-height); padding: 0 10px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface); color: var(--pk-text-primary); outline: none; }
+    .lab-input:focus { border-color: var(--pk-accent); box-shadow: 0 0 0 2px var(--pk-accent-tint); }
+    .lab-static-popover { width: 220px; padding: 7px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface-overlay); box-shadow: var(--pk-shadow-popover); }
+    .lab-static-popover button { display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px; border: 0; border-radius: var(--pk-radius-sm); background: transparent; color: var(--pk-text-primary); text-align: left; }
+    .lab-static-popover button:hover { background: var(--pk-state-hover); }
+    .lab-overlay-demo { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 16px; width: 100%; align-items: start; }
+    .lab-mini-dialog { padding: 17px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-lg); background: var(--pk-surface-overlay); box-shadow: var(--pk-shadow-modal); }
+    .lab-mini-dialog b { display: block; margin-bottom: 5px; font-size: var(--pk-text-lg); }
+    .lab-mini-dialog p { margin: 0 0 16px; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-mini-dialog__actions { display: flex; justify-content: flex-end; gap: 7px; }
+
+    .lab-scene-list { display: flex; flex-direction: column; gap: 58px; }
+    .lab-scene { scroll-margin-top: 132px; }
+    .lab-scene__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: end; margin-bottom: 13px; }
+    .lab-scene__head h3 { margin: 0; font-size: 22px; letter-spacing: -.025em; }
+    .lab-scene__head p { margin: 4px 0 0; color: var(--pk-text-secondary); }
+    .lab-scene__sources { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .lab-scene__frame {
+      overflow: hidden;
+      border: 1px solid var(--pk-border-strong);
+      border-radius: var(--pk-radius-lg);
+      background: var(--pk-bg);
+      box-shadow: var(--pk-shadow-card);
+    }
+    .lab-scene__chrome { display: flex; align-items: center; min-height: 44px; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--pk-border); background: var(--pk-surface-raised); }
+    .lab-scene__chrome b { font-size: var(--pk-text-md); }
+    .lab-scene__chrome span { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-scene__body { padding: var(--lab-scene-pad); }
+    .lab-icon { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .lab-icon--sm { width: 13px; height: 13px; }
+
+    /* Search scene */
+    .lab-searchbar { display: flex; align-items: center; gap: 9px; min-height: calc(var(--lab-control-height) + 6px); padding: 0 12px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-pill); background: var(--pk-surface); box-shadow: var(--pk-shadow-sm); }
+    .lab-searchbar svg { color: var(--pk-text-tertiary); }
+    .lab-searchbar input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--pk-text-primary); outline: 0; }
+    .lab-search-tools { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 14px 0; }
+    .lab-search-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; min-height: 360px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); overflow: hidden; }
+    .lab-results { background: var(--pk-surface); }
+    .lab-result-row { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 11px; align-items: start; padding: var(--lab-row-pad); border-bottom: 1px solid var(--pk-border-soft); color: var(--pk-text-primary); }
+    .lab-result-row:last-child { border-bottom: 0; }
+    .lab-result-row[data-selected="true"] { background: var(--pk-accent-tint); }
+    .lab-result-row[data-selected="true"]::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--pk-accent); }
+    .lab-file-icon { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface-raised); color: var(--pk-text-secondary); }
+    .lab-result-copy b { display: block; margin: 1px 0 3px; font-size: var(--pk-text-lg); }
+    .lab-result-copy p { margin: 0; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-result-copy small { display: block; margin-top: 4px; color: var(--pk-text-faint); font-size: var(--pk-text-xs); }
+    .lab-score { padding: 3px 7px; border-radius: var(--pk-radius-pill); background: var(--pk-accent-tint); color: var(--pk-accent-text); font: 10px/1.3 var(--lab-mono); }
+    .lab-inspector { padding: 17px; border-left: 1px solid var(--pk-border); background: var(--pk-surface-raised); }
+    .lab-inspector__eyebrow { color: var(--pk-accent-text); font: 9px/1 var(--lab-mono); text-transform: uppercase; }
+    .lab-inspector h4 { margin: 8px 0 6px; font-size: var(--pk-text-xl); }
+    .lab-inspector p { margin: 0 0 15px; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-inspector dl { display: grid; grid-template-columns: 62px 1fr; gap: 7px; margin: 0; font-size: var(--pk-text-sm); }
+    .lab-inspector dt { color: var(--pk-text-tertiary); }
+    .lab-inspector dd { margin: 0; color: var(--pk-text-primary); }
+    .lab-mode-panel[hidden] { display: none !important; }
+    .lab-tree { padding: 10px 0; }
+    .lab-tree-row { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 14px 0 calc(14px + var(--depth, 0) * 20px); border-bottom: 1px solid var(--pk-border-soft); }
+    .lab-tree-row svg { color: var(--pk-text-tertiary); }
+    .lab-tree-row[data-selected="true"] { background: var(--pk-accent-tint); color: var(--pk-accent-text); }
+    .lab-mini-graph { position: relative; min-height: 330px; background: radial-gradient(circle at 45% 45%, var(--pk-accent-tint), transparent 34%), var(--pk-surface); }
+
+    /* Composer scene */
+    .lab-composer-frame { background: var(--pk-bg-secondary); }
+    .lab-doc { max-width: 760px; margin: 0 auto; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-lg); background: var(--pk-surface); box-shadow: var(--pk-shadow-card); }
+    .lab-doc__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--pk-border); }
+    .lab-doc__body { padding: 24px 30px 34px; }
+    .lab-doc__body h4 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.03em; }
+    .lab-doc__meta { display: grid; grid-template-columns: 90px 1fr; gap: 7px 14px; padding: 13px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface-raised); }
+    .lab-doc__meta span:nth-child(odd) { color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); font-weight: 600; }
+    .lab-doc__meta span:nth-child(even) { color: var(--pk-text-primary); }
+    .lab-doc__paragraph { margin: 22px 0; color: var(--pk-text-secondary); line-height: 1.8; }
+    .lab-ai-suggestion { overflow: hidden; border: 1px solid var(--pk-border-accent); border-radius: var(--pk-radius-lg); background: var(--pk-surface); }
+    .lab-ai-suggestion__head { display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-bottom: 1px solid var(--pk-border); background: var(--pk-accent-tint); }
+    .lab-ai-suggestion__head b { font-size: var(--pk-text-md); }
+    .lab-ai-suggestion__head span { margin-left: auto; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-ai-suggestion__body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 15px; }
+    .lab-ai-suggestion__body b { display: block; margin-bottom: 4px; }
+    .lab-ai-suggestion__body p { margin: 0; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-ai-suggestion__actions { display: flex; gap: 7px; }
+
+    /* Chat scene */
+    .lab-chat { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 520px; }
+    .lab-chat__rail { padding: 12px; border-right: 1px solid var(--pk-border); background: var(--pk-surface-sunken); }
+    .lab-chat__rail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .lab-chat__thread { padding: 9px 10px; border-radius: var(--pk-radius-md); color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-chat__thread[data-active="true"] { background: var(--pk-surface); color: var(--pk-text-primary); box-shadow: var(--pk-shadow-sm); }
+    .lab-chat__main { display: flex; flex-direction: column; min-width: 0; background: var(--pk-bg); }
+    .lab-chat__head { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 15px; border-bottom: 1px solid var(--pk-border); }
+    .lab-chat__head b { font-size: var(--pk-text-md); }
+    .lab-chat__messages { flex: 1; display: flex; flex-direction: column; gap: 19px; padding: 24px min(6vw, 48px); }
+    .lab-msg { max-width: 700px; }
+    .lab-msg__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-msg__body { color: var(--pk-text-primary); font-size: var(--pk-text-lg-plus); line-height: 1.7; }
+    .lab-msg--user { align-self: flex-end; max-width: 72%; padding: 10px 13px; border-radius: var(--pk-radius-lg) var(--pk-radius-lg) var(--pk-radius-sm) var(--pk-radius-lg); background: var(--pk-accent-tint); }
+    .lab-msg--user .lab-msg__body { font-size: var(--pk-text-lg); }
+    .lab-agent-run { margin-top: 10px; padding: 10px 12px; border-left: 2px solid var(--pk-accent); background: var(--pk-surface-raised); color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-chat__composer { padding: 0 min(6vw, 48px) 22px; }
+
+    /* Settings scene */
+    .lab-settings { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 500px; }
+    .lab-settings__nav { padding: 16px 12px; border-right: 1px solid var(--pk-border); background: var(--pk-surface-sunken); }
+    .lab-settings__nav b { display: block; padding: 0 9px 10px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-settings__nav button { display: block; width: 100%; padding: 8px 9px; border: 0; border-radius: var(--pk-radius-sm); background: transparent; color: var(--pk-text-secondary); text-align: left; font-size: var(--pk-text-sm); }
+    .lab-settings__nav button[data-active="true"] { background: var(--pk-accent-tint); color: var(--pk-accent-text); font-weight: 700; }
+    .lab-settings__content { padding: 25px; background: var(--pk-bg-secondary); }
+    .lab-settings__content h4 { margin: 0; font-size: 22px; }
+    .lab-settings__content > p { margin: 4px 0 18px; color: var(--pk-text-secondary); }
+    .lab-settings__rows { display: grid; gap: 8px; }
+
+    /* Graph scene */
+    .lab-graph { display: grid; grid-template-columns: minmax(0, 1fr) 270px; min-height: 520px; }
+    .lab-graph__canvas { position: relative; overflow: hidden; min-height: 520px; background: radial-gradient(circle at 48% 48%, var(--pk-accent-tint), transparent 31%), var(--pk-bg); }
+    .lab-graph__toolbar { position: absolute; z-index: 4; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 12px; }
+    .lab-graph__toolbar-group { display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: color-mix(in srgb, var(--pk-surface) 90%, transparent); box-shadow: var(--pk-shadow-popover); backdrop-filter: blur(10px); }
+    .lab-graph__svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .lab-graph__edge { stroke: var(--pk-border-strong); stroke-width: 1.5; }
+    .lab-graph__edge--semantic { stroke: var(--pk-accent); stroke-dasharray: 5 5; opacity: .7; }
+    .lab-node { position: absolute; z-index: 2; display: grid; place-items: center; min-width: 118px; min-height: 48px; padding: 8px 12px; border: 1px solid var(--pk-border-strong); border-radius: var(--pk-radius-md); background: var(--pk-surface); color: var(--pk-text-primary); box-shadow: var(--pk-shadow-sm); text-align: center; font-size: var(--pk-text-sm); font-weight: 650; transform: translate(-50%, -50%); }
+    .lab-node small { display: block; margin-top: 2px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); font-weight: 500; }
+    .lab-node[data-selected="true"] { border-color: var(--pk-accent); background: var(--pk-accent-tint); color: var(--pk-accent-text); box-shadow: 0 0 0 3px var(--pk-accent-tint), var(--pk-shadow-md); }
+    .lab-node[data-kind="hub"] { border-radius: var(--pk-radius-lg); }
+    .lab-graph__aside { padding: 17px; border-left: 1px solid var(--pk-border); background: var(--pk-surface-raised); }
+    .lab-graph__aside h4 { margin: 8px 0 5px; font-size: var(--pk-text-xl); }
+    .lab-graph__aside p { margin: 0 0 14px; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-graph__legend { display: grid; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--pk-border); }
+    .lab-graph__legend span { display: flex; align-items: center; gap: 8px; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+    .lab-graph__legend i { width: 24px; height: 1px; background: var(--pk-border-strong); }
+    .lab-graph__legend i[data-semantic="true"] { height: 0; border-top: 1px dashed var(--pk-accent); background: transparent; }
+
+    .lab-scene-note { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: -1px; border: 1px solid var(--pk-border); border-radius: 0 0 var(--pk-radius-lg) var(--pk-radius-lg); background: var(--pk-surface-raised); }
+    .lab-scene-note div { padding: 12px 14px; border-right: 1px solid var(--pk-border); }
+    .lab-scene-note div:last-child { border-right: 0; }
+    .lab-scene-note b { display: block; margin-bottom: 3px; font-size: var(--pk-text-sm); }
+    .lab-scene-note span { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+
+    .lab-source-map { border-top: 1px solid var(--pk-border); }
+    .lab-source-row { display: grid; grid-template-columns: 160px 1fr auto; gap: 20px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--pk-border); }
+    .lab-source-row b { font-size: var(--pk-text-sm); }
+    .lab-source-row span { color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-source-row code { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-footer { margin-top: 76px; padding-top: 20px; border-top: 1px solid var(--pk-border-strong); color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); }
+
+    /* Dynamic theme axes */
+    .lab-root[data-density="compact"] { --lab-row-pad: 9px; --lab-scene-pad: 16px; }
+    .lab-root[data-density="compact"] .pk-row { padding-top: 9px !important; padding-bottom: 9px !important; }
+    .lab-root[data-density="compact"] .lab-component-row,
+    .lab-root[data-density="compact"] .lab-rule { padding-top: 18px; padding-bottom: 18px; }
+    .lab-root[data-control-size="small"] { --lab-control-height: 28px; }
+    .lab-root[data-control-size="medium"] { --lab-control-height: 32px; }
+    .lab-root[data-control-size="large"] { --lab-control-height: 38px; }
+    .lab-root[data-control-size="small"] .pk-btn { min-height: 28px !important; padding-top: 4px !important; padding-bottom: 4px !important; }
+    .lab-root[data-control-size="medium"] .pk-btn { min-height: 32px !important; }
+    .lab-root[data-control-size="large"] .pk-btn { min-height: 38px !important; padding-top: 8px !important; padding-bottom: 8px !important; }
+    .lab-root[data-control-size="large"] .pk-icon-btn { width: 38px !important; height: 38px !important; min-width: 38px !important; min-height: 38px !important; max-width: 38px !important; max-height: 38px !important; }
+    .lab-root[data-motion="reduced"] *,
+    .lab-root[data-motion="reduced"] *::before,
+    .lab-root[data-motion="reduced"] *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+
+    @media (max-width: 1040px) {
+      .lab-controller__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .lab-control, .lab-control:nth-child(5n) { border-right: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); }
+      .lab-control:nth-child(2n) { border-right: 0; }
+      .lab-control:nth-last-child(-n+2) { border-bottom: 0; }
+      .lab-search-layout, .lab-graph { grid-template-columns: minmax(0, 1fr) 240px; }
+      .lab-chat { grid-template-columns: 150px minmax(0, 1fr); }
+    }
+    @media (max-width: 820px) {
+      .lab-layout { grid-template-columns: 1fr; gap: 0; }
+      .lab-nav { display: none; }
+      .lab-controller-wrap { top: 57px; }
+      .lab-rule, .lab-component-row { grid-template-columns: 1fr; gap: 16px; }
+      .lab-search-layout, .lab-settings, .lab-graph, .lab-chat { grid-template-columns: 1fr; }
+      .lab-inspector, .lab-graph__aside { border-left: 0; border-top: 1px solid var(--pk-border); }
+      .lab-chat__rail, .lab-settings__nav { display: none; }
+      .lab-scene-note { grid-template-columns: 1fr; }
+      .lab-scene-note div { border-right: 0; border-bottom: 1px solid var(--pk-border); }
+      .lab-scene-note div:last-child { border-bottom: 0; }
+      .lab-overlay-demo { grid-template-columns: 1fr; }
+      .lab-source-row { grid-template-columns: 1fr; gap: 3px; }
+    }
+    @media (max-width: 560px) {
+      .lab-topbar__inner, .lab-layout { width: min(100% - 24px, var(--lab-page-width)); }
+      .lab-layout { padding-top: 28px; }
+      .lab-hero { min-height: 360px; }
+      .lab-hero h1 { font-size: 48px; }
+      .lab-controller__grid { grid-template-columns: 1fr; }
+      .lab-control, .lab-control:nth-child(2n), .lab-control:nth-child(5n), .lab-control:nth-last-child(-n+2) { border-right: 0; border-bottom: 1px solid var(--pk-border); }
+      .lab-control:last-child { border-bottom: 0; }
+      .lab-controller__head span { display: none; }
+      .lab-swatch-line { grid-template-columns: repeat(3, 1fr); }
+      .lab-swatch:first-child, .lab-swatch:last-child { border-radius: 0; }
+      .lab-search-tools, .lab-doc__toolbar, .lab-scene__head { align-items: flex-start; flex-direction: column; display: flex; }
+      .lab-scene__sources { justify-content: flex-start; }
+      .lab-ai-suggestion__body { grid-template-columns: 1fr; }
+      .lab-ai-suggestion__actions { justify-content: flex-start; }
+      .lab-msg--user { max-width: 88%; }
+      .lab-graph__toolbar { right: auto; flex-direction: column; }
+      .lab-node { min-width: 96px; font-size: var(--pk-text-xs); }
+    }
+  </style>
+</head>
+
+<body class="theme-light">
+  <main class="lab-root peak-design-root pktw-root" id="playgroundRoot" data-density="comfortable" data-control-size="medium" data-motion="standard">
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.2 3.8L7 8l3.8 1.2L12 13l1.2-3.8L17 8l-3.8-1.2Z"></path><path d="m19 14-.7 2.3L16 17l2.3.7L19 20l.7-2.3L22 17l-2.3-.7Z"></path></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m4 4 16 8-16 8 3-8Z"></path><path d="M7 12h13"></path></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></symbol>
+      <symbol id="i-network" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"></circle><circle cx="5" cy="19" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="m10.5 7.5-4 8M13.5 7.5l4 8M8 19h8"></path></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
+    </svg>
+
+    <header class="lab-topbar">
+      <div class="lab-topbar__inner">
+        <div class="lab-brand">
+          <span class="lab-brand__mark">P</span>
+          <span class="lab-brand__copy"><b>Peak Design System</b><span>live playground · docs only</span></span>
+        </div>
+        <span class="lab-live" id="liveStatus">All scenes share one resolved theme</span>
+      </div>
+    </header>
+
+    <div class="lab-layout">
+      <nav class="lab-nav" aria-label="Playground sections">
+        <span class="lab-nav__label">Explore</span>
+        <a href="#principles">Principles</a>
+        <a href="#theme">Theme controller</a>
+        <a href="#components">Components</a>
+        <a href="#scenes">Product scenes</a>
+        <a href="#sources">Source map</a>
+        <div class="lab-nav__meta">one DOM<br>one token contract<br>zero iframe<br>zero Obsidian vars</div>
+      </nav>
+
+      <div class="lab-main">
+        <section class="lab-hero" id="top">
+          <span class="lab-kicker">Design decisions you can test</span>
+          <h1>Rules first.<br>Scenes immediately.</h1>
+          <p>这不是组件清单，也不是完整页面画廊。它把设计原则、共享组件和典型产品场景放进同一个主题作用域，让每一次颜色、密度、圆角、尺寸和动效变化都能立即看到系统级结果。</p>
+          <div class="lab-hero__contract">
+            <span><b>Global axes</b> change every scene</span>
+            <span><b>Component variants</b> preserve semantic intent</span>
+            <span><b>Complex runtimes</b> expose only themeable contracts</span>
+          </div>
+        </section>
+
+        <section class="lab-section" id="principles">
+          <div class="lab-section__head">
+            <div><h2>Design principles</h2><p>先定义系统允许改变什么、禁止随意改变什么。所有视觉值使用 semantic role；组件按意图选型，而不是按外形凑一个相似控件。</p></div>
+            <span class="lab-section__index">01 · Contract</span>
+          </div>
+          <div class="lab-rule-list">
+            <article class="lab-rule">
+              <div class="lab-rule__copy"><b>Color roles</b><span>大面积保持中性；accent 只表达主要动作、选择与 focus。</span></div>
+              <div class="lab-rule__demo lab-swatch-line">
+                <div class="lab-swatch" style="--swatch:var(--pk-bg-secondary)"><span>canvas</span></div>
+                <div class="lab-swatch" style="--swatch:var(--pk-surface)"><span>surface</span></div>
+                <div class="lab-swatch" style="--swatch:var(--pk-text-primary)"><span>text</span></div>
+                <div class="lab-swatch" style="--swatch:var(--pk-border)"><span>border</span></div>
+                <div class="lab-swatch" style="--swatch:var(--pk-accent)"><span>accent</span></div>
+                <div class="lab-swatch" style="--swatch:var(--pk-success)"><span>success</span></div>
+              </div>
+            </article>
+            <article class="lab-rule">
+              <div class="lab-rule__copy"><b>Typography</b><span>固定 role ladder；Density 改间距，不偷偷缩小文字。</span></div>
+              <div class="lab-rule__demo">
+                <div class="lab-type-line"><code>xs · 10</code><span style="font-size:var(--pk-text-xs)">Key tip 与微型 metadata</span><small>metadata</small></div>
+                <div class="lab-type-line"><code>sm · 11</code><span style="font-size:var(--pk-text-sm)">按钮、chip、辅助信息</span><small>control</small></div>
+                <div class="lab-type-line"><code>md · 13</code><span style="font-size:var(--pk-text-md)">默认界面正文与 row title</span><small>interface</small></div>
+                <div class="lab-type-line"><code>lg+ · 14.5</code><span style="font-size:var(--pk-text-lg-plus)">Chat 与长文本阅读</span><small>reading</small></div>
+                <div class="lab-type-line"><code>2xl · 20</code><span style="font-size:var(--pk-text-2xl)">场景级标题</span><small>heading</small></div>
+              </div>
+            </article>
+            <article class="lab-rule">
+              <div class="lab-rule__copy"><b>Shape & spacing</b><span>Radius profile 改性格；组件仍遵守 detail/control/panel 层级。</span></div>
+              <div class="lab-rule__demo lab-shape-line">
+                <div class="lab-shape" style="--shape-radius:var(--pk-radius-sm)">detail · sm</div>
+                <div class="lab-shape" style="--shape-radius:var(--pk-radius-md)">control · md</div>
+                <div class="lab-shape" style="--shape-radius:var(--pk-radius-lg)">panel · lg</div>
+                <div class="lab-shape" style="--shape-radius:var(--pk-radius-pill)">filter · pill</div>
+              </div>
+            </article>
+            <article class="lab-rule">
+              <div class="lab-rule__copy"><b>Elevation</b><span>连续内容使用 border；只有 raised、popover、modal 获得阴影。</span></div>
+              <div class="lab-rule__demo lab-elevation-line">
+                <div class="lab-shape" style="--shape-radius:var(--pk-radius-md)">base · border</div>
+                <div class="lab-shape" style="--shape-radius:var(--pk-radius-md);--shape-shadow:var(--pk-shadow-card)">raised · card</div>
+                <div class="lab-shape" style="--shape-radius:var(--pk-radius-md);--shape-shadow:var(--pk-shadow-popover)">floating · popover</div>
+              </div>
+            </article>
+            <article class="lab-rule">
+              <div class="lab-rule__copy"><b>Motion & focus</b><span>动画解释状态变化；Reduced Motion 保留 focus 与状态，不保留 spring 位移。</span></div>
+              <div class="lab-rule__demo lab-motion-line">
+                <div class="lab-motion-sample"><b>Fast · 100ms</b><span>hover / pressed</span></div>
+                <div class="lab-motion-sample"><b>Base · 150ms</b><span>popover / row</span></div>
+                <button class="pk-btn pk-btn--secondary lab-force-focus">Keyboard focus</button>
+              </div>
+            </article>
+            <article class="lab-rule">
+              <div class="lab-rule__copy"><b>Theme boundary</b><span>Obsidian 只提供 window、DPR 与 accessibility signals。</span></div>
+              <div class="lab-rule__demo">
+                <div class="pk-row">
+                  <span class="pk-row__icon"><svg class="lab-icon"><use href="#i-settings"></use></svg></span>
+                  <span class="pk-row__body"><span class="pk-row__title">Peak visual ownership</span><span class="pk-row__desc">No Obsidian colors, fonts, radii, shadows or raw button geometry.</span></span>
+                  <span class="pk-row__right"><span class="pk-chip pk-chip--success">Isolated</span></span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="lab-section" id="theme">
+          <div class="lab-section__head">
+            <div><h2>Live theme controller</h2><p>这里控制系统轴。修改任何参数都会直接重算 semantic tokens，并同步更新本页的原则示例、共享组件和全部产品场景。</p></div>
+            <span class="lab-section__index">02 · Resolver</span>
+          </div>
+          <div class="lab-controller-wrap">
+            <div class="lab-controller">
+              <div class="lab-controller__head"><b>Resolved theme</b><span>instant preview · no Apply step</span><button class="pk-btn pk-btn--secondary pk-btn--sm" id="resetTheme">Reset</button></div>
+              <div class="lab-controller__grid">
+                <div class="lab-control"><label for="themePack">Theme pack</label><select id="themePack"><option value="violet">Peak Violet</option><option value="ink">Quiet Ink</option><option value="moss">Calm Moss</option></select></div>
+                <div class="lab-control"><label for="appearance">Appearance</label><select id="appearance"><option value="light">Light</option><option value="dark">Dark</option></select></div>
+                <div class="lab-control"><label for="accentColor">Accent override</label><input id="accentColor" type="color" value="#6d4aff"></div>
+                <div class="lab-control"><label for="density">Density</label><select id="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></div>
+                <div class="lab-control"><label for="radiusProfile">Radius</label><select id="radiusProfile"><option value="balanced">Balanced</option><option value="crisp">Crisp</option><option value="soft">Soft</option></select></div>
+                <div class="lab-control"><label for="controlSize">Control size</label><select id="controlSize"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></div>
+                <div class="lab-control"><label for="elevation">Elevation</label><select id="elevation"><option value="flat">Flat</option><option value="quiet" selected>Quiet</option><option value="floating">Floating</option></select></div>
+                <div class="lab-control"><label for="borderContrast">Border contrast</label><select id="borderContrast"><option value="soft">Soft</option><option value="standard" selected>Standard</option><option value="strong">Strong</option></select></div>
+                <div class="lab-control"><label for="motion">Motion</label><select id="motion"><option value="standard">Standard</option><option value="reduced">Reduced</option></select></div>
+                <div class="lab-control"><label for="textScale">Text scale</label><select id="textScale"><option value="1">100%</option><option value="1.1">110%</option></select></div>
+              </div>
+              <div class="lab-token-strip"><i></i><span id="resolvedSummary">Peak Violet · Light · Comfortable · Balanced · 32px · Quiet · 100%</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="lab-section" id="components">
+          <div class="lab-section__head">
+            <div><h2>Component workbench</h2><p>全局轴改变全部组件；variant 与 state 只改变被检查的 specimen。这样主题选择不会破坏 Primary、Danger、Selected 等语义。</p></div>
+            <span class="lab-section__index">03 · Primitives</span>
+          </div>
+          <div class="lab-workbench">
+            <article class="lab-component-row">
+              <div class="lab-component-copy"><b>Button & IconButton</b><span>动作角色和状态属于组件 variant；圆角、尺寸与颜色来自全局主题。</span><a class="lab-source" href="../src/ui/components/primitives/Button.tsx">Button.tsx ↗</a></div>
+              <div class="lab-component-demo lab-component-demo--block">
+                <div class="lab-local-controls">
+                  <label>Variant <select id="buttonVariant"><option value="primary">Primary</option><option value="secondary">Secondary</option><option value="ghost">Ghost</option><option value="danger">Danger</option></select></label>
+                  <label>Size <select id="buttonSize"><option value="default">Default</option><option value="sm">Small</option></select></label>
+                  <label>State <select id="buttonState"><option value="default">Default</option><option value="hover">Hover</option><option value="focus">Focus</option><option value="disabled">Disabled</option><option value="loading">Loading</option></select></label>
+                </div>
+                <div class="lab-component-demo"><button class="pk-btn pk-btn--primary" id="buttonSpecimen"><svg class="lab-icon lab-icon--sm"><use href="#i-check"></use></svg><span>Apply changes</span></button><button class="pk-icon-btn" aria-label="Add"><svg class="lab-icon"><use href="#i-plus"></use></svg></button></div>
+              </div>
+            </article>
+            <article class="lab-component-row">
+              <div class="lab-component-copy"><b>Input & Segmented</b><span>输入框、view switcher 与 mode switcher 使用一致 focus 和 selected 语法。</span><a class="lab-source" href="../src/ui/components/primitives/Segmented.tsx">Segmented.tsx ↗</a></div>
+              <div class="lab-component-demo"><input class="lab-input" value="design system" aria-label="Example input"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="component-view"><button class="pk-segmented__opt" data-value="list" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">List</span></button><button class="pk-segmented__opt" data-value="tree"><span class="pk-segmented__label">Tree</span></button><button class="pk-segmented__opt" data-value="graph"><span class="pk-segmented__label">Graph</span></button></div></div>
+            </article>
+            <article class="lab-component-row">
+              <div class="lab-component-copy"><b>Chip, Pill & Toggle</b><span>Chip 是状态；Pill 是 filter；Toggle 是二元设置，三者不能互相替代。</span><a class="lab-source" href="../src/ui/components/primitives/Chip.tsx">Chip.tsx ↗</a></div>
+              <div class="lab-component-demo"><span class="pk-chip pk-chip--accent">AI suggestion</span><span class="pk-chip pk-chip--success">Ready</span><span class="pk-chip pk-chip--warning">Needs review</span><span class="pk-chip pk-chip--danger">Failed</span><button class="pk-pill" data-selected="true">Markdown</button><button class="pk-pill">PDF</button><button class="pk-toggle" role="switch" aria-checked="true" data-on="true" aria-label="Semantic links"><span class="pk-toggle__thumb"></span></button></div>
+            </article>
+            <article class="lab-component-row">
+              <div class="lab-component-copy"><b>Row & FormRow</b><span>Settings/Onboarding 使用同一 anatomy；Compact 只收紧 padding，不改变信息层级。</span><a class="lab-source" href="../src/ui/components/primitives/Row.tsx">Row.tsx ↗</a></div>
+              <div class="lab-component-demo lab-component-demo--block"><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-settings"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Peak theme</span><span class="pk-row__desc">Independent from Obsidian appearance</span><span class="pk-row__meta">Preview changes immediately</span></span><span class="pk-row__right"><span class="pk-chip pk-chip--accent">Default</span><button class="pk-toggle" role="switch" aria-checked="true" data-on="true" aria-label="Use theme"><span class="pk-toggle__thumb"></span></button></span></div></div>
+            </article>
+            <article class="lab-component-row">
+              <div class="lab-component-copy"><b>Overlay hierarchy</b><span>Popover 和 Dialog 使用不同 elevation；连续内容不套相同重量的卡片阴影。</span><a class="lab-source" href="../src/ui/components/primitives/Popover.tsx">Popover.tsx ↗</a></div>
+              <div class="lab-overlay-demo"><div class="lab-static-popover"><button><svg class="lab-icon"><use href="#i-file"></use></svg>Vault document</button><button><svg class="lab-icon"><use href="#i-network"></use></svg>Open in File Atlas</button><button><svg class="lab-icon"><use href="#i-sparkles"></use></svg>Ask Peak</button></div><div class="lab-mini-dialog"><b>Apply suggested property?</b><p>This changes the current document only. You can undo it from Composer History.</p><div class="lab-mini-dialog__actions"><button class="pk-btn pk-btn--ghost">Cancel</button><button class="pk-btn pk-btn--primary">Apply</button></div></div></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="lab-section" id="scenes">
+          <div class="lab-section__head">
+            <div><h2>Product scenes</h2><p>每个 scene 只保留能够检验设计系统的结构，不复制完整产品。它们共享同一个根节点与 resolved theme。</p></div>
+            <span class="lab-section__index">04 · Coverage</span>
+          </div>
+          <div class="lab-scene-list">
+            <article class="lab-scene" id="scene-search">
+              <div class="lab-scene__head"><div><h3>Search & Result Browser</h3><p>检验输入、view switcher、结果行、选择态、score 与 inspector 的共同语法。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/component/result-browser/toolbar/ResultBrowserToolbar.tsx">Toolbar ↗</a><a class="lab-source" href="../src/ui/component/result-browser/list/ResultBrowserListRow.tsx">ListRow ↗</a></div></div>
+              <div class="lab-scene__frame">
+                <div class="lab-scene__chrome"><svg class="lab-icon"><use href="#i-search"></use></svg><b>Vault Search</b><span>12 results · current vault</span></div>
+                <div class="lab-scene__body">
+                  <div class="lab-searchbar"><svg class="lab-icon"><use href="#i-search"></use></svg><input value="design system host isolation" aria-label="Search query"><span class="pk-chip pk-chip--neutral">12 results</span></div>
+                  <div class="lab-search-tools"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="search-view"><button class="pk-segmented__opt" data-value="list" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">List</span></button><button class="pk-segmented__opt" data-value="tree"><span class="pk-segmented__label">Tree</span></button><button class="pk-segmented__opt" data-value="graph"><span class="pk-segmented__label">Graph</span></button></div><span class="pk-chip pk-chip--accent">Detailed</span></div>
+                  <div class="lab-search-layout">
+                    <div class="lab-results lab-mode-panel" data-mode-panel="search-view" data-value="list">
+                      <div class="lab-result-row" data-selected="true"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span class="lab-result-copy"><b>Peak Design System Migration</b><p>统一 semantic tokens、公共 primitives 与 Obsidian Theme Boundary。</p><small>docs/superpowers/specs · edited 2h ago</small></span><span class="lab-score">92%</span></div>
+                      <div class="lab-result-row"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span class="lab-result-copy"><b>Composer Component Consistency</b><p>共享 action、sidecar 与 review surface。</p><small>docs/conventions · yesterday</small></span><span class="lab-score">86%</span></div>
+                      <div class="lab-result-row"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span class="lab-result-copy"><b>Obsidian UI Defense</b><p>Host selector、Portal 与 computed geometry 验证。</p><small>docs/conventions · 3 days ago</small></span><span class="lab-score">79%</span></div>
+                    </div>
+                    <div class="lab-results lab-mode-panel" data-mode-panel="search-view" data-value="tree" hidden><div class="lab-tree"><div class="lab-tree-row" style="--depth:0"><svg class="lab-icon"><use href="#i-folder"></use></svg><b>docs</b></div><div class="lab-tree-row" style="--depth:1"><svg class="lab-icon"><use href="#i-folder"></use></svg>conventions</div><div class="lab-tree-row" style="--depth:2" data-selected="true"><svg class="lab-icon"><use href="#i-file"></use></svg>ui-design.md</div><div class="lab-tree-row" style="--depth:1"><svg class="lab-icon"><use href="#i-folder"></use></svg>superpowers</div><div class="lab-tree-row" style="--depth:2"><svg class="lab-icon"><use href="#i-file"></use></svg>design-system-migration.md</div></div></div>
+                    <div class="lab-results lab-mode-panel" data-mode-panel="search-view" data-value="graph" hidden><div class="lab-mini-graph"><svg class="lab-graph__svg" viewBox="0 0 600 330" preserveAspectRatio="none"><line class="lab-graph__edge" x1="300" y1="155" x2="140" y2="80"></line><line class="lab-graph__edge--semantic" x1="300" y1="155" x2="475" y2="92"></line><line class="lab-graph__edge" x1="300" y1="155" x2="205" y2="260"></line></svg><div class="lab-node" data-selected="true" style="left:50%;top:47%">Design System</div><div class="lab-node" style="left:23%;top:25%">UI Defense</div><div class="lab-node" style="left:78%;top:28%">Theme Pack</div><div class="lab-node" style="left:34%;top:79%">Composer</div></div></div>
+                    <aside class="lab-inspector"><span class="lab-inspector__eyebrow">Selected result</span><h4>Peak Design System Migration</h4><p>Defines the autonomous Peak visual boundary and shared component migration.</p><dl><dt>Type</dt><dd>Specification</dd><dt>Path</dt><dd>docs/superpowers</dd><dt>Links</dt><dd>14 connected</dd><dt>Updated</dt><dd>2 hours ago</dd></dl><button class="pk-btn pk-btn--secondary" style="margin-top:18px">Open document</button></aside>
+                  </div>
+                </div>
+              </div>
+              <div class="lab-scene-note"><div><b>Default</b><span>List 用于寻找、比较和打开。</span></div><div><b>Projection</b><span>List / Tree / Graph 共用 snapshot。</span></div><div><b>Density</b><span>Compact 隐藏冗余，不缩小字号。</span></div></div>
+            </article>
+
+            <article class="lab-scene" id="scene-composer">
+              <div class="lab-scene__head"><div><h3>Composer & AI Suggestion</h3><p>检验文档 surface、properties、AI candidate 和确认动作能否属于同一层级。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/composer/ComposerRoot.tsx">ComposerRoot ↗</a><a class="lab-source" href="../src/ui/view/composer/candidates/ComposerCandidateHost.tsx">CandidateHost ↗</a></div></div>
+              <div class="lab-scene__frame lab-composer-frame">
+                <div class="lab-scene__chrome"><svg class="lab-icon"><use href="#i-file"></use></svg><b>B-软件</b><span>Document Composer</span></div>
+                <div class="lab-scene__body"><div class="lab-doc"><div class="lab-doc__toolbar"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="composer-mode"><button class="pk-segmented__opt" data-value="edit" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">编辑视图</span></button><button class="pk-segmented__opt" data-value="read"><span class="pk-segmented__label">纯净阅读</span></button></div><span class="pk-chip pk-chip--accent"><svg class="lab-icon lab-icon--sm"><use href="#i-sparkles"></use></svg> AI 属性建议 · 1</span></div><div class="lab-doc__body"><h4>B-软件</h4><div class="lab-doc__meta"><span>created</span><span>2023-04-30 11:42:31</span><span>updated</span><span>2023-05-05 19:47:49</span><span>aliases</span><span><span class="pk-chip pk-chip--neutral">人工</span></span></div><p class="lab-doc__paragraph">这份文档整理个人软件工具、服务和相关知识。AI 发现当前文档缺少统一 category，可以在保留原文的前提下补充结构化属性。</p><div class="lab-ai-suggestion"><div class="lab-ai-suggestion__head"><svg class="lab-icon"><use href="#i-sparkles"></use></svg><b>AI 属性建议</b><span>基于当前文档与 Vault 规范</span></div><div class="lab-ai-suggestion__body"><div><b>category</b><p>建议值：软件工具 · 新增候选，不会自动写入。</p></div><div class="lab-ai-suggestion__actions"><button class="pk-btn pk-btn--ghost">拒绝</button><button class="pk-btn pk-btn--primary">添加</button></div></div></div></div></div></div>
+              </div>
+              <div class="lab-scene-note"><div><b>Surface</b><span>文档是主体，不套第二层大 Modal。</span></div><div><b>Candidate</b><span>建议、理由、影响和动作同屏。</span></div><div><b>Motion</b><span>150ms 淡入；Reduced 瞬时出现。</span></div></div>
+            </article>
+
+            <article class="lab-scene" id="scene-chat">
+              <div class="lab-scene__head"><div><h3>Chat & Instruction Composer</h3><p>检验长文本阅读、来源状态、Agent Run 与共享输入器，而不是把所有消息做成大气泡。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/chat-view/ChatViewComponent.tsx">ChatView ↗</a><a class="lab-source" href="../src/ui/component/instruction-composer/AIInstructionComposer.tsx">AIInstructionComposer ↗</a></div></div>
+              <div class="lab-scene__frame"><div class="lab-chat"><aside class="lab-chat__rail"><div class="lab-chat__rail-head"><b>Chats</b><button class="pk-icon-btn" aria-label="New chat"><svg class="lab-icon"><use href="#i-plus"></use></svg></button></div><div class="lab-chat__thread" data-active="true">Design system audit</div><div class="lab-chat__thread">Graph evidence review</div><div class="lab-chat__thread">Composer migration</div></aside><div class="lab-chat__main"><div class="lab-chat__head"><svg class="lab-icon"><use href="#i-sparkles"></use></svg><b>Research profile</b><span class="pk-chip pk-chip--success">Vault connected</span></div><div class="lab-chat__messages"><div class="lab-msg lab-msg--user"><div class="lab-msg__body">检查当前设计系统迁移还有哪些界面没有统一。</div></div><div class="lab-msg"><div class="lab-msg__meta"><span class="pk-chip pk-chip--accent">Peak</span><span>4 sources</span></div><div class="lab-msg__body">我找到了 4 个仍在使用局部视觉契约的区域。主要问题不是颜色本身，而是 Row、Segmented 和 Overlay 的职责在不同 surface 中发生了漂移。</div><div class="lab-agent-run"><b>Agent Run · completed</b><br>Scanned shared primitives → compared Search, Composer, Settings → preserved Graph engine exceptions.</div></div></div><div class="lab-chat__composer"><div class="pkchat-composer"><div class="pkchat-composer__editor" style="color:var(--pk-text-tertiary);font-size:var(--pk-text-md)">Ask Peak or add context…</div><div class="pkchat-composer__foot"><div class="pkchat-composer__foot-left"><button class="pk-icon-btn" aria-label="Add context"><svg class="lab-icon"><use href="#i-plus"></use></svg></button></div><div class="pkchat-composer__foot-right"><span class="pk-chip pk-chip--neutral">2 contexts</span><button class="pkchat-send" aria-label="Send"><svg class="lab-icon"><use href="#i-send"></use></svg></button></div></div></div></div></div></div></div>
+              <div class="lab-scene-note"><div><b>Reading</b><span>Assistant 使用连续文档宽度。</span></div><div><b>State</b><span>Agent Run 与 sources 有独立层级。</span></div><div><b>Composer</b><span>输入、context 和 send 共用 shell。</span></div></div>
+            </article>
+
+            <article class="lab-scene" id="scene-settings">
+              <div class="lab-scene__head"><div><h3>Settings & Onboarding</h3><p>检验 Row、FormRow、Toggle、状态和危险操作是否保持扫描效率。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/settings/components/SettingsRow.tsx">SettingsRow ↗</a><a class="lab-source" href="../src/ui/view/onboarding/HarnessOnboardingWizard.tsx">Onboarding ↗</a></div></div>
+              <div class="lab-scene__frame"><div class="lab-settings"><aside class="lab-settings__nav"><b>Peak Settings</b><button data-active="true">Appearance</button><button>AI Setup</button><button>Search & Index</button><button>Commands</button><button>Advanced</button></aside><div class="lab-settings__content"><h4>Appearance</h4><p>Peak visual settings are independent from the Obsidian theme.</p><div class="lab-settings__rows"><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-settings"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Peak theme</span><span class="pk-row__desc">Validated Theme Pack with atomic fallback</span></span><span class="pk-row__right"><span class="pk-chip pk-chip--accent">Default</span></span></div><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-sparkles"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Appearance</span><span class="pk-row__desc">Light, Dark, or explicit Follow preference</span></span><span class="pk-row__right"><div class="pk-segmented" data-mode-group="settings-appearance" data-bind-control="appearance"><button class="pk-segmented__opt" data-value="light" data-selected="true"><span class="pk-segmented__label">Light</span></button><button class="pk-segmented__opt" data-value="dark"><span class="pk-segmented__label">Dark</span></button></div></span></div><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-settings"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Reduced motion</span><span class="pk-row__desc">Remove springs and large movement; preserve focus</span></span><span class="pk-row__right"><button class="pk-toggle" role="switch" aria-checked="false" aria-label="Reduced motion" data-bind-control="motion"><span class="pk-toggle__thumb"></span></button></span></div><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-network"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Reset theme overrides</span><span class="pk-row__desc">Returns only Peak settings to their defaults</span></span><span class="pk-row__right"><button class="pk-btn pk-btn--danger">Reset</button></span></div></div></div></div></div>
+              <div class="lab-scene-note"><div><b>Row</b><span>一个扫描单元承载 label、hint 和 control。</span></div><div><b>Density</b><span>只改变 row padding 和 section gap。</span></div><div><b>Danger</b><span>红色只用于不可逆或高风险动作。</span></div></div>
+            </article>
+
+            <article class="lab-scene" id="scene-graph">
+              <div class="lab-scene__head"><div><h3>Graph Workspace</h3><p>检验 canvas chrome、节点层级、edge semantics、selected state 与 inspector；布局引擎保持领域专用。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/component/graph/AtlasGraphCanvas.tsx">AtlasGraphCanvas ↗</a><a class="lab-source" href="../src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx">ResultGraphView ↗</a></div></div>
+              <div class="lab-scene__frame"><div class="lab-graph"><div class="lab-graph__canvas"><div class="lab-graph__toolbar"><div class="lab-graph__toolbar-group"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="graph-layout"><button class="pk-segmented__opt" data-value="constellation" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">Constellation</span></button><button class="pk-segmented__opt" data-value="flow"><span class="pk-segmented__label">Flow</span></button><button class="pk-segmented__opt" data-value="folder"><span class="pk-segmented__label">Folder</span></button></div></div><div class="lab-graph__toolbar-group"><span class="pk-chip pk-chip--accent">Semantic on</span><button class="pk-icon-btn" aria-label="Graph settings"><svg class="lab-icon"><use href="#i-settings"></use></svg></button></div></div><svg class="lab-graph__svg" viewBox="0 0 760 520" preserveAspectRatio="none"><line class="lab-graph__edge" x1="380" y1="250" x2="165" y2="150"></line><line class="lab-graph__edge" x1="380" y1="250" x2="610" y2="145"></line><line class="lab-graph__edge--semantic" x1="380" y1="250" x2="190" y2="395"></line><line class="lab-graph__edge" x1="380" y1="250" x2="585" y2="390"></line><line class="lab-graph__edge--semantic" x1="165" y1="150" x2="610" y2="145"></line></svg><button class="lab-node" data-selected="true" data-kind="hub" style="left:50%;top:48%">Peak System<small>selected hub</small></button><button class="lab-node" style="left:22%;top:29%">UI Design<small>document</small></button><button class="lab-node" style="left:80%;top:28%">Search<small>surface</small></button><button class="lab-node" style="left:25%;top:76%">Theme Pack<small>contract</small></button><button class="lab-node" style="left:77%;top:75%">Composer<small>surface</small></button></div><aside class="lab-graph__aside"><span class="lab-inspector__eyebrow">Selected node</span><h4>Peak System</h4><p>Shared theme, component and interaction contract across Peak-managed surfaces.</p><span class="pk-chip pk-chip--accent">Hub · 14 links</span><div class="lab-graph__legend"><span><i></i>Reference edge</span><span><i data-semantic="true"></i>Semantic edge</span></div><button class="pk-btn pk-btn--secondary" style="margin-top:18px">Open inspector</button></aside></div></div>
+              <div class="lab-scene-note"><div><b>Layout</b><span>领域引擎决定位置，不制造新组件语法。</span></div><div><b>Semantic</b><span>颜色之外还需线型、legend 和名称。</span></div><div><b>Selected</b><span>accent border + tint + inspector 联动。</span></div></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="lab-section" id="sources">
+          <div class="lab-section__head"><div><h2>Source map</h2><p>Playground 的真实性来自可追溯的生产契约，不来自复制完整页面。复杂运行时只保留可被主题检验的 anatomy。</p></div><span class="lab-section__index">05 · Traceability</span></div>
+          <div class="lab-source-map">
+            <div class="lab-source-row"><b>Direct visual contract</b><span>Tokens and primitive CSS loaded by this page</span><code>peak-tokens.css · peak-components.css</code></div>
+            <div class="lab-source-row"><b>Primitive specimen</b><span>Button, Segmented, Toggle, Row, Chip, Overlay</span><code>src/ui/components/primitives</code></div>
+            <div class="lab-source-row"><b>Controlled composite</b><span>Result Browser toolbar, list row and inspector anatomy</span><code>src/ui/component/result-browser</code></div>
+            <div class="lab-source-row"><b>Scene composition</b><span>Search, Composer, Chat, Settings and Graph representative states</span><code>docs-only factories / static fixtures</code></div>
+            <div class="lab-source-row"><b>Deliberate simulation</b><span>Graph layout, editor body, streaming and host integration</span><code>no service · store · Obsidian runtime</code></div>
+          </div>
+        </section>
+
+        <footer class="lab-footer">Peak Design System Playground · one resolved theme · no iframe · no production runtime mutation · no Obsidian visual inheritance</footer>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var root = document.getElementById("playgroundRoot");
+      var controls = {
+        pack: document.getElementById("themePack"),
+        appearance: document.getElementById("appearance"),
+        accent: document.getElementById("accentColor"),
+        density: document.getElementById("density"),
+        radius: document.getElementById("radiusProfile"),
+        controlSize: document.getElementById("controlSize"),
+        elevation: document.getElementById("elevation"),
+        border: document.getElementById("borderContrast"),
+        motion: document.getElementById("motion"),
+        textScale: document.getElementById("textScale")
+      };
+
+      var packs = {
+        violet: {
+          label: "Peak Violet",
+          light: { bg: "#f4f5f7", bg2: "#eef0f4", bg3: "#e7eaf0", surface: "#ffffff", raised: "#fafbfc", text: "#20242a", text2: "#69717c", text3: "#9299a3", faint: "#b4bac2", border: "#dde1e7", borderStrong: "#c9cfd7", accent: "#6d4aff", accentHover: "#5b36eb" },
+          dark: { bg: "#15151b", bg2: "#111117", bg3: "#0c0c11", surface: "#1d1d25", raised: "#24242e", text: "#e8e8f0", text2: "#b3b3c2", text3: "#858596", faint: "#626271", border: "#33333f", borderStrong: "#484858", accent: "#a895ff", accentHover: "#c0b3ff" }
+        },
+        ink: {
+          label: "Quiet Ink",
+          light: { bg: "#f3f5f7", bg2: "#edf0f3", bg3: "#e5e9ed", surface: "#ffffff", raised: "#fafbfc", text: "#1f2933", text2: "#687582", text3: "#8b97a2", faint: "#adb6bf", border: "#d9e0e6", borderStrong: "#c4ced7", accent: "#52647f", accentHover: "#3f506a" },
+          dark: { bg: "#12171c", bg2: "#0e1317", bg3: "#0a0e11", surface: "#192128", raised: "#202a33", text: "#e4eaf0", text2: "#abb7c2", text3: "#7d8b98", faint: "#5c6873", border: "#2c3741", borderStrong: "#424f5b", accent: "#9cafca", accentHover: "#bdcbe0" }
+        },
+        moss: {
+          label: "Calm Moss",
+          light: { bg: "#f2f5f2", bg2: "#ebf0ec", bg3: "#e3e9e4", surface: "#ffffff", raised: "#fafcf9", text: "#1d2822", text2: "#657169", text3: "#8a958d", faint: "#adb6af", border: "#d9e1da", borderStrong: "#c3cec5", accent: "#2d6555", accentHover: "#1f4f42" },
+          dark: { bg: "#111713", bg2: "#0d120f", bg3: "#090d0b", surface: "#19221d", raised: "#202b25", text: "#e3ebe6", text2: "#aab6ae", text3: "#7c8981", faint: "#5b685f", border: "#2d3932", borderStrong: "#435248", accent: "#7bb9a4", accentHover: "#a7d4c4" }
+        }
+      };
+      var radiusProfiles = {
+        crisp: { sm: 3, md: 5, lg: 8, xl: 11 },
+        balanced: { sm: 4, md: 8, lg: 12, xl: 16 },
+        soft: { sm: 7, md: 11, lg: 17, xl: 23 }
+      };
+      var textLadder = { xs: 10, sm: 11, base: 12, md: 13, mdPlus: 13.5, lg: 14, lgPlus: 14.5, xl: 16, x2: 20, x3: 28 };
+
+      function rgba(hex, alpha) {
+        var value = hex.replace("#", "");
+        var r = parseInt(value.slice(0, 2), 16);
+        var g = parseInt(value.slice(2, 4), 16);
+        var b = parseInt(value.slice(4, 6), 16);
+        return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+      }
+      function mix(hex1, hex2, amount) {
+        var a = hex1.replace("#", "");
+        var b = hex2.replace("#", "");
+        var parts = [0, 2, 4].map(function (offset) {
+          var value = Math.round(parseInt(a.slice(offset, offset + 2), 16) * (1 - amount) + parseInt(b.slice(offset, offset + 2), 16) * amount);
+          return value.toString(16).padStart(2, "0");
+        });
+        return "#" + parts.join("");
+      }
+      function setVariables(target, variables) {
+        Object.keys(variables).forEach(function (name) { target.style.setProperty(name, variables[name]); });
+      }
+      function resolveTheme() {
+        var appearance = controls.appearance.value;
+        var source = packs[controls.pack.value][appearance];
+        var accent = controls.accent.value;
+        var shape = radiusProfiles[controls.radius.value];
+        var scale = Number(controls.textScale.value);
+        var isDark = appearance === "dark";
+        var borderAmount = controls.border.value === "soft" ? .45 : controls.border.value === "strong" ? -.18 : 0;
+        var border = borderAmount >= 0 ? mix(source.border, source.surface, borderAmount) : mix(source.border, source.text, Math.abs(borderAmount));
+        var borderStrong = borderAmount >= 0 ? mix(source.borderStrong, source.surface, borderAmount * .7) : mix(source.borderStrong, source.text, Math.abs(borderAmount));
+        var shadowAlpha = controls.elevation.value === "flat" ? 0 : controls.elevation.value === "floating" ? (isDark ? .62 : .18) : (isDark ? .42 : .09);
+        var variables = {
+          "--lab-canvas": source.bg,
+          "--lab-paper": source.surface,
+          "--lab-ink": source.text,
+          "--lab-muted": source.text2,
+          "--lab-faint": source.text3,
+          "--lab-line": border,
+          "--lab-line-strong": borderStrong,
+          "--lab-accent": accent,
+          "--lab-accent-soft": rgba(accent, isDark ? .16 : .09),
+          "--pk-bg": source.bg,
+          "--pk-bg-secondary": source.bg2,
+          "--pk-bg-tertiary": source.bg3,
+          "--pk-surface": source.surface,
+          "--pk-surface-raised": source.raised,
+          "--pk-surface-sunken": source.bg2,
+          "--pk-surface-overlay": source.raised,
+          "--pk-border": border,
+          "--pk-border-soft": mix(border, source.surface, .25),
+          "--pk-border-strong": borderStrong,
+          "--pk-border-accent": rgba(accent, isDark ? .38 : .28),
+          "--pk-text-primary": source.text,
+          "--pk-text-secondary": source.text2,
+          "--pk-text-tertiary": source.text3,
+          "--pk-text-faint": source.faint,
+          "--pk-text-inverted": isDark ? source.bg : "#ffffff",
+          "--pk-accent": accent,
+          "--pk-accent-hover": mix(accent, isDark ? "#ffffff" : "#000000", .16),
+          "--pk-accent-tint": rgba(accent, isDark ? .16 : .09),
+          "--pk-accent-soft": rgba(accent, isDark ? .30 : .22),
+          "--pk-accent-text": mix(accent, isDark ? "#ffffff" : "#000000", isDark ? .20 : .12),
+          "--pk-accent-fg": isDark ? source.bg : "#ffffff",
+          "--pk-state-hover": isDark ? "rgba(255,255,255,.06)" : "rgba(20,28,24,.045)",
+          "--pk-state-active": isDark ? "rgba(255,255,255,.10)" : "rgba(20,28,24,.075)",
+          "--pk-state-selected": rgba(accent, isDark ? .18 : .10),
+          "--pk-skeleton": border,
+          "--pk-radius-sm": shape.sm + "px",
+          "--pk-radius-md": shape.md + "px",
+          "--pk-radius-lg": shape.lg + "px",
+          "--pk-radius-xl": shape.xl + "px",
+          "--pk-radius-full": "9999px",
+          "--pk-radius-pill": "9999px",
+          "--pk-shadow-sm": shadowAlpha === 0 ? "none" : "0 1px 2px rgba(0,0,0," + (shadowAlpha * .55) + ")",
+          "--pk-shadow-md": shadowAlpha === 0 ? "none" : "0 5px 16px rgba(0,0,0," + shadowAlpha + ")",
+          "--pk-shadow-card": shadowAlpha === 0 ? "none" : "0 0 0 1px rgba(0,0,0," + (isDark ? .24 : .035) + "), 0 2px 5px rgba(0,0,0," + (shadowAlpha * .55) + ")",
+          "--pk-shadow-popover": shadowAlpha === 0 ? "none" : "0 10px 28px rgba(0,0,0," + shadowAlpha + ")",
+          "--pk-shadow-modal": shadowAlpha === 0 ? "none" : "0 22px 58px rgba(0,0,0," + Math.min(.72, shadowAlpha * 1.5) + ")",
+          "--pk-transition-fast": controls.motion.value === "reduced" ? ".001ms linear" : "100ms ease",
+          "--pk-transition-base": controls.motion.value === "reduced" ? ".001ms linear" : "150ms ease",
+          "--pk-transition-slow": controls.motion.value === "reduced" ? ".001ms linear" : "300ms ease"
+        };
+        Object.keys(textLadder).forEach(function (key) {
+          var token = { xs: "xs", sm: "sm", base: "base", md: "md", mdPlus: "md-plus", lg: "lg", lgPlus: "lg-plus", xl: "xl", x2: "2xl", x3: "3xl" }[key];
+          variables["--pk-text-" + token] = (textLadder[key] * scale) + "px";
+        });
+        return { variables: variables, appearance: appearance, pack: packs[controls.pack.value].label };
+      }
+      function updateTheme() {
+        var theme = resolveTheme();
+        setVariables(document.documentElement, theme.variables);
+        setVariables(root, theme.variables);
+        document.documentElement.style.colorScheme = theme.appearance;
+        document.body.classList.toggle("theme-dark", theme.appearance === "dark");
+        document.body.classList.toggle("theme-light", theme.appearance !== "dark");
+        root.dataset.density = controls.density.value;
+        root.dataset.controlSize = controls.controlSize.value;
+        root.dataset.motion = controls.motion.value;
+        root.dataset.radius = controls.radius.value;
+        root.dataset.elevation = controls.elevation.value;
+        document.querySelectorAll('[data-bind-control="appearance"] .pk-segmented__opt').forEach(function (option) { option.dataset.selected = String(option.dataset.value === controls.appearance.value); });
+        document.querySelectorAll('.pk-toggle[data-bind-control="motion"]').forEach(function (toggle) { var reduced = controls.motion.value === "reduced"; toggle.dataset.on = String(reduced); toggle.setAttribute("aria-checked", String(reduced)); });
+        document.getElementById("resolvedSummary").textContent = [theme.pack, theme.appearance === "dark" ? "Dark" : "Light", controls.density.options[controls.density.selectedIndex].text, controls.radius.options[controls.radius.selectedIndex].text, controls.controlSize.options[controls.controlSize.selectedIndex].text + " controls", controls.elevation.options[controls.elevation.selectedIndex].text, controls.textScale.options[controls.textScale.selectedIndex].text].join(" · ");
+      }
+      function syncAccentFromPack() {
+        controls.accent.value = packs[controls.pack.value][controls.appearance.value].accent;
+        updateTheme();
+      }
+      Object.keys(controls).forEach(function (key) {
+        var control = controls[key];
+        control.addEventListener("input", updateTheme);
+        control.addEventListener("change", function () {
+          if (key === "pack" || key === "appearance") syncAccentFromPack();
+          else updateTheme();
+        });
+      });
+      document.getElementById("resetTheme").addEventListener("click", function () {
+        controls.pack.value = "violet";
+        controls.appearance.value = "light";
+        controls.density.value = "comfortable";
+        controls.radius.value = "balanced";
+        controls.controlSize.value = "medium";
+        controls.elevation.value = "quiet";
+        controls.border.value = "standard";
+        controls.motion.value = "standard";
+        controls.textScale.value = "1";
+        syncAccentFromPack();
+      });
+
+      function updateButtonSpecimen() {
+        var button = document.getElementById("buttonSpecimen");
+        var variant = document.getElementById("buttonVariant").value;
+        var size = document.getElementById("buttonSize").value;
+        var state = document.getElementById("buttonState").value;
+        button.className = "pk-btn pk-btn--" + variant + (size === "sm" ? " pk-btn--sm" : "");
+        button.classList.toggle("lab-force-hover", state === "hover");
+        button.classList.toggle("lab-force-focus", state === "focus");
+        button.disabled = state === "disabled" || state === "loading";
+        button.innerHTML = state === "loading" ? '<span class="lab-spinner"></span><span>Applying…</span>' : '<svg class="lab-icon lab-icon--sm"><use href="#i-check"></use></svg><span>Apply changes</span>';
+      }
+      ["buttonVariant", "buttonSize", "buttonState"].forEach(function (id) { document.getElementById(id).addEventListener("change", updateButtonSpecimen); });
+
+      document.querySelectorAll("[data-mode-group]").forEach(function (group) {
+        group.addEventListener("click", function (event) {
+          var option = event.target.closest(".pk-segmented__opt");
+          if (!option || !group.contains(option)) return;
+          group.querySelectorAll(".pk-segmented__opt").forEach(function (item) {
+            item.dataset.selected = String(item === option);
+            var oldThumb = item.querySelector(".pk-segmented__thumb");
+            if (oldThumb) oldThumb.remove();
+          });
+          if (group.dataset.variant === "animated-pill") {
+            var thumb = document.createElement("span");
+            thumb.className = "pk-segmented__thumb";
+            option.insertBefore(thumb, option.firstChild);
+          }
+          document.querySelectorAll('[data-mode-panel="' + group.dataset.modeGroup + '"]').forEach(function (panel) { panel.hidden = panel.dataset.value !== option.dataset.value; });
+          if (group.dataset.bindControl === "appearance") {
+            controls.appearance.value = option.dataset.value;
+            syncAccentFromPack();
+          }
+        });
+      });
+      document.querySelectorAll(".pk-toggle").forEach(function (toggle) {
+        toggle.addEventListener("click", function () {
+          var on = toggle.dataset.on === "true";
+          toggle.dataset.on = String(!on);
+          toggle.setAttribute("aria-checked", String(!on));
+          if (toggle.dataset.bindControl === "motion") {
+            controls.motion.value = on ? "standard" : "reduced";
+            updateTheme();
+          }
+        });
+      });
+      document.querySelectorAll(".pk-pill").forEach(function (pill) {
+        pill.addEventListener("click", function () { pill.dataset.selected = String(pill.dataset.selected !== "true"); });
+      });
+
+      var navLinks = Array.from(document.querySelectorAll(".lab-nav a"));
+      var navSections = navLinks.map(function (link) { return document.querySelector(link.getAttribute("href")); }).filter(Boolean);
+      function updateNav() {
+        var active = navSections[0];
+        navSections.forEach(function (section) { if (section.getBoundingClientRect().top <= 120) active = section; });
+        navLinks.forEach(function (link) { if (active && link.getAttribute("href") === "#" + active.id) link.setAttribute("aria-current", "true"); else link.removeAttribute("aria-current"); });
+      }
+      document.addEventListener("scroll", updateNav, { passive: true });
+      syncAccentFromPack();
+      updateButtonSpecimen();
+      updateNav();
+    }());
+  </script>
+</body>
+</html>
