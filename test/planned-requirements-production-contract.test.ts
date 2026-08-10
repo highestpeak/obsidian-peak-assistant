@@ -38,6 +38,7 @@ const graphContextArtifacts = source('src/ui/component/ai-graph/AIGraphContextAr
 const contextualAIGraph = source('src/ui/component/ai-graph/ContextualAIGraphView.tsx');
 const folderModel = source('src/ui/component/graph/folderTreeModel.ts');
 const folderLayoutModel = source('src/ui/component/graph/folderTreeLayoutModel.ts');
+const folderRelationRoutingModel = source('src/ui/component/graph/folderTreeRelationRoutingModel.ts');
 const timelineLayout = source('src/ui/component/mine/multi-lens-graph/layouts/timeline-layout.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
@@ -139,5 +140,8 @@ assert.match(folderModel, /toggleFolderTreeSelection/);
 assert.match(folderLayoutModel, /levelIndent: 58/);
 assert.match(folderLayoutModel, /rowStep: 28/);
 assert.match(folderLayoutModel, /railSegments/);
+assert.match(folderRelationRoutingModel, /obstacleRightForSpan/);
+assert.match(folderRelationRoutingModel, /controlPointWeights/);
+assert.match(folderRelationRoutingModel, /maxLanes: 6/);
 
 console.log('PASS: all planned requirements have production composition contracts');

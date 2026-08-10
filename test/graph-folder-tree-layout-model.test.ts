@@ -40,6 +40,8 @@ assert.equal(
 	'new vault roots receive only one compact section gap',
 );
 assert.equal(two.width, FOLDER_TREE_LAYOUT_DEFAULTS.fileMaxWidth);
+assert.equal(two.right, two.left + two.width);
+assert.equal(two.bottom, two.top + two.height);
 assert.ok(two.badgeWidth > layout.rowById.get('one')!.badgeWidth);
 
 const workRail = layout.railPoints.filter((point) => point.parentId === work.id);

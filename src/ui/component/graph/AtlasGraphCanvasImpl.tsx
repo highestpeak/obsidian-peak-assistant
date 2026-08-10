@@ -40,6 +40,7 @@ import {
 	buildFolderTreeLayout,
 	FOLDER_TREE_LAYOUT_DEFAULTS,
 } from './folderTreeLayoutModel';
+import { buildFolderTreeRelationRoutes } from './folderTreeRelationRoutingModel';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -97,12 +98,12 @@ function buildElements(
 	opts: { showSemantic: boolean; folderTree: boolean; community: boolean },
 ): ElementDefinition[] {
 	const els: ElementDefinition[] = [];
-	const visibleEdges = coalesceGraphEdges(
-		sub.edges.filter((edge) => (
-			(edge.kind !== 'semantic' || opts.showSemantic)
-			&& edge.from !== edge.to
-		)),
+	const allRelationEdges = coalesceGraphEdges(
+		sub.edges.filter((edge) => edge.from !== edge.to),
 	);
+	const visibleEdges = allRelationEdges.filter((edge) => (
+		edge.kind !== 'semantic' || opts.showSemantic
+	));
 	const degreeMap = new Map<string, number>();
 	for (const edge of visibleEdges) {
 		degreeMap.set(edge.from, (degreeMap.get(edge.from) ?? 0) + 1);
@@ -137,6 +138,16 @@ function buildElements(
 			linkCountByDocumentId: degreeMap,
 		})
 		: null;
+	const folderTreeRelationRoutes = folderTreeLayout
+		? buildFolderTreeRelationRoutes(
+			folderTreeLayout,
+			allRelationEdges.map((edge) => ({
+				id: `${edge.kind}|${edge.directionality}|${edge.from}|${edge.to}`,
+				sourceId: edge.from,
+				targetId: edge.to,
+			})),
+		)
+		: new Map();
 	const folderTreePositions = new Map<string, { x: number; y: number }>();
 	if (folderTreeLayout) {
 		for (const row of folderTreeLayout.rows) {
@@ -343,6 +354,7 @@ function buildElements(
 		const curveDistance = sourcePosition && targetPosition && targetPosition.y >= sourcePosition.y
 			? -arcDepth
 			: arcDepth;
+		const relationRoute = folderTreeRelationRoutes.get(key);
 		els.push({
 			group: 'edges',
 			data: {
@@ -351,7 +363,15 @@ function buildElements(
 				target: e.to,
 				kind: e.kind,
 				directionality: e.directionality,
-				curveDistance,
+				controlPointDistances: relationRoute
+					? relationRoute.controlPointDistances.join(' ')
+					: String(curveDistance),
+				controlPointWeights: relationRoute
+					? relationRoute.controlPointWeights.join(' ')
+					: '0.5',
+				edgeDistances: relationRoute ? 'node-position' : 'intersection',
+				routeX: relationRoute?.routeX,
+				routeLane: relationRoute?.laneIndex,
 			},
 			classes: `${e.kind}${folderTree ? ' folderRelation' : ''}${opts.community ? ' communityRelation' : ''}${(endpointPairCounts.get([e.from, e.to].sort().join('\u0000')) ?? 0) > 1 || e.directionality === 'bidirectional' ? ' parallelEdge' : ''}`,
 		});
@@ -440,7 +460,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.folderTreeCountBadge', style: { width: 'data(badgeWidth)', height: 17, padding: 0, shape: 'round-rectangle', 'background-color': '#f1e9fb', label: 'data(label)', color: '#8450c4', 'font-size': 9.5, 'font-weight': 740, 'text-valign': 'center', 'text-halign': 'center' } as never },
 	{ selector: 'node.folderTreeRootBadge', style: { 'background-color': '#7c3aed', color: '#ffffff' } as never },
 	{ selector: 'node.folderTreeLinkBadge', style: { width: 'data(badgeWidth)', height: 17, padding: 0, shape: 'round-rectangle', 'background-color': '#f7f6f8', 'background-image': LINK_ICON_NEUTRAL, 'background-fit': 'none', 'background-width': '9px', 'background-height': '9px', 'background-repeat': 'no-repeat', 'background-position-x': '5px', 'background-position-y': '50%', label: 'data(label)', color: '#88818e', 'font-size': 9, 'font-weight': 700, 'text-margin-x': 5, 'text-valign': 'center', 'text-halign': 'center' } as never },
-	{ selector: 'edge.folderRelation', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(curveDistance)', 'control-point-weights': 0.5, 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65, opacity: 0.82, 'arrow-scale': 0.9, 'z-index': 3 } as never },
+	{ selector: 'edge.folderRelation', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(controlPointDistances)', 'control-point-weights': 'data(controlPointWeights)', 'edge-distances': 'data(edgeDistances)', 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65, opacity: 0.82, 'arrow-scale': 0.9, 'z-index': 3 } as never },
 	{ selector: 'edge.folderRelation.reference', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65 } as never },
 	{ selector: 'edge.folderRelation.hub_constituent', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', 'line-style': 'dotted', width: 1.7, opacity: 0.82 } as never },
 	{ selector: 'edge.folderRelation.semantic', style: { 'line-color': '#0f9d83', 'source-arrow-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'line-style': 'dashed', 'line-dash-pattern': [8, 7], width: 1.7, opacity: 0.88 } as never },

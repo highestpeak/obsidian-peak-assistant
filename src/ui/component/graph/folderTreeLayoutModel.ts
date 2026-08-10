@@ -26,6 +26,8 @@ export interface FolderTreeVisualRow extends FolderTreeRow {
 	top: number;
 	width: number;
 	height: number;
+	right: number;
+	bottom: number;
 	centerX: number;
 	centerY: number;
 	badgeWidth: number;
@@ -148,6 +150,8 @@ export function buildFolderTreeLayout(
 			top,
 			width,
 			height,
+			right: left + width,
+			bottom: top + height,
 			centerX: left + width / 2,
 			centerY: top + height / 2,
 			badgeWidth: countWidth,
