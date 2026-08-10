@@ -174,6 +174,19 @@ export const PEAK_SHEET_MANIFEST: CapabilityManifest = {
 	surfaceBinding: ['chat', 'copilot'],
 };
 
+export const CREATE_PEAK_SHEET_MANIFEST: CapabilityManifest = {
+	id: 'ui.create.peak-sheet',
+	title: 'Create Peak Sheet',
+	description: 'Create a blank local Peak Sheet and open it immediately.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'acceptEdits',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.peak-sheet-create.v1',
+	surfaceBinding: ['chat', 'copilot'],
+};
+
 /**
  * All palette-command manifests keyed by their Obsidian command id.
  * Used by `composeCommandGatewayBindings` to build a GatewayBinding
@@ -185,6 +198,7 @@ export const PALETTE_COMMAND_MANIFESTS: Readonly<Record<string, CapabilityManife
 	'peak-open-ai-control-center': AI_CONTROL_CENTER_MANIFEST,
 	'peak-open-my-content': MY_CONTENT_MANIFEST,
 	'peak-open-sheet': PEAK_SHEET_MANIFEST,
+	'peak-create-sheet': CREATE_PEAK_SHEET_MANIFEST,
 	'peak-open-settings': SETTINGS_MODAL_MANIFEST,
 	'peak-harness-setup-wizard': HARNESS_WIZARD_MANIFEST,
 	'peak-quick-search': QUICK_SEARCH_MANIFEST,

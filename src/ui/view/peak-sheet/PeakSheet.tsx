@@ -52,6 +52,12 @@ export function PeakSheet({ runtime, attachmentPort }: {
 		if (datasetId && datasets.some((dataset) => dataset.datasetId === datasetId)) return;
 		setDatasetId(datasets[0]?.datasetId ?? null);
 	}, [datasetId, datasets.map((dataset) => dataset.datasetId).join('|')]);
+	useEffect(() => {
+		const requestedDatasetId = runtime.takeDatasetFocusRequest();
+		if (!requestedDatasetId) return;
+		setDatasetId(requestedDatasetId);
+		setViewId(null);
+	});
 	const snapshot = useMemo(() => datasetId ? safeDataset(runtime, datasetId) : null, [runtime, datasetId, datasets.map((dataset) => `${dataset.datasetId}:${dataset.revision}`).join('|')]);
 	const activeView = snapshot?.views.find((view) => view.id === viewId) ?? snapshot?.views[0] ?? null;
 	useEffect(() => {
@@ -237,9 +243,7 @@ function copyRow(row: PeakSheetRow): PeakSheetRow {
 
 async function createBlankSheet(runtime: PeakSheetUiPort, select: (id: string) => void, setMessage: (message: string | null) => void): Promise<void> {
 	await run(async () => {
-		const created = await runtime.createDataset({
-			name: 'Untitled sheet', fields: [{ id: `field-${crypto.randomUUID()}`, name: 'Name', type: 'text', width: 240 }], rows: [], diagnostics: [], source: 'manual',
-		});
+		const created = await runtime.createBlankDataset();
 		select(created.datasetId);
 	}, setMessage);
 }

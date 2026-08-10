@@ -23,6 +23,7 @@ import {
 	AI_CONTROL_CENTER_MANIFEST,
 	CHAT_STUDIO_MANIFEST,
 	COMMAND_CENTER_MANIFEST,
+	CREATE_PEAK_SHEET_MANIFEST,
 	DOCUMENT_COMPOSER_MANIFEST,
 	FILE_ATLAS_MANIFEST,
 	HARNESS_WIZARD_MANIFEST,
@@ -46,6 +47,13 @@ const SURFACE_OPEN_SKILL: CompiledSkill = {
 	allowedTools: [],
 };
 
+const PEAK_SHEET_CREATE_SKILL: CompiledSkill = {
+	skillId: 'ui.peak-sheet-create.v1',
+	systemPrompt: '',
+	quarantine: 'permissive',
+	allowedTools: [],
+};
+
 /**
  * Callbacks the palette commands need to run. Passed in from `main.ts`
  * (or the composition site) so this factory stays free of Obsidian /
@@ -56,6 +64,7 @@ export interface PaletteCommandActions {
 	readonly openAIControlCenter: () => void | Promise<void>;
 	readonly openMyContent: () => void | Promise<void>;
 	readonly openPeakSheet: () => void | Promise<void>;
+	readonly createPeakSheet: () => void | Promise<void>;
 	readonly openSettingsModal: () => void | Promise<void>;
 	readonly openHarnessSetupWizard: () => void | Promise<void>;
 	readonly openQuickSearch: () => void | Promise<void>;
@@ -113,6 +122,14 @@ export function composeCommandGatewayBindings(
 			manifest: PEAK_SHEET_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
 			execute: surfaceOpenStrategy(actions.openPeakSheet),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-create-sheet',
+			commandLabel: 'Create Peak Sheet',
+			manifest: CREATE_PEAK_SHEET_MANIFEST,
+			compiledSkill: PEAK_SHEET_CREATE_SKILL,
+			execute: surfaceOpenStrategy(actions.createPeakSheet),
 			trigger: 'manual',
 		},
 		{

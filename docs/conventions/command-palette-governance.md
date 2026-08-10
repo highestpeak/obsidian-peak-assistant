@@ -19,19 +19,21 @@ Obsidian Command Palette 是稳定的产品级全局导航，不是功能开发�
 
 ## Approved Production Surface
 
-当前 owner-approved Command Palette 只有以下十一项，顺序也属于产品清单：
+当前 owner-approved Command Palette 只有以下十三项，顺序也属于产品清单：
 
 1. `Open Peak Command Center`
 2. `Open AI Control Center`
 3. `Open My Content`
-4. `Settings`
-5. `Setup Wizard`
-6. `Quick Search`
-7. `Open File Atlas`
-8. `Usage Dashboard`
-9. `Open Chat Studio`
-10. `Open document in Peak Composer`
-11. `Show keyboard map`
+4. `Open Peak Sheet`
+5. `Create Peak Sheet`
+6. `Settings`
+7. `Setup Wizard`
+8. `Quick Search`
+9. `Open File Atlas`
+10. `Usage Dashboard`
+11. `Open Chat Studio`
+12. `Open document in Peak Composer`
+13. `Show keyboard map`
 
 `Show keyboard map` 是唯一批准的键盘帮助入口。`Focus Vault Search`、
 `Focus AI Search`、`Focus File Atlas`、`Focus Chat Studio`、`Focus next zone`、

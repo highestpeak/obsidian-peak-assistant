@@ -27,6 +27,9 @@ export interface PeakSheetToolPort {
 export interface PeakSheetUiPort extends PeakSheetToolPort {
 	initialize(): Promise<void>;
 	ensureStarterDatasets(): Promise<void>;
+	createBlankDataset(): Promise<PeakSheetDatasetSnapshot>;
+	requestDatasetFocus(datasetId: string): void;
+	takeDatasetFocusRequest(): string | null;
 	getDataset(datasetId: string): PeakSheetDatasetSnapshot;
 	mutate(
 		datasetId: string,

@@ -525,6 +525,16 @@ export default class MyPlugin extends Plugin {
 			openAIControlCenter: () => this.viewManager.activateAIControlCenterView(),
 			openMyContent: () => this.viewManager.activateMyContentView(),
 			openPeakSheet: () => this.viewManager.activatePeakSheetView(),
+			createPeakSheet: async () => {
+				const runtime = appContext.runtimeRegistry.tryGetPeakSheetRuntime();
+				if (!runtime) {
+					new Notice('Peak Sheet is still loading.', 4000);
+					return;
+				}
+				const created = await runtime.createBlankDataset();
+				runtime.requestDatasetFocus(created.datasetId);
+				await this.viewManager.activatePeakSheetView();
+			},
 			openSettingsModal,
 			openHarnessSetupWizard,
 			openQuickSearch,

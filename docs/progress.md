@@ -10,7 +10,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## 2026-08-10 · Peak Sheet production implementation
 
-- [x] **一个 Dataset 真值、四个视图**：新增 app-owned `PeakSheetRuntime`，Table、Chart、Board、Calendar 共用 stable ID、revision、typed patch 与进程内 subscription；三张发布管理 starter dataset 可直接使用。
+- [x] **一个 Dataset 真值、四个视图**：新增 app-owned `PeakSheetRuntime`，Table、Chart、Board、Calendar 共用 stable ID、revision、typed patch 与进程内 subscription；三张发布管理 starter dataset 可直接使用；`Create Peak Sheet` 全局命令一步创建、打开并定位空表。
 - [x] **本地表格工作面**：完成七种基础字段、表/行/列 CRUD、direct edit、选区与统计、TSV copy/paste、sort/filter/group、hidden fields、saved views、Undo / Redo、JSON 导出和 CSV / flat JSON / bounded multi-sheet XLSX preview-select-accept 导入。
 - [x] **公式与文件**：HyperFormula 提供 `[Field name]` 计算列；File cell 保存 Vault ref、复用 hover preview，并支持显式复制外部文件到 Peak media attachment 目录。仓库 GPL-3.0 与 HyperFormula `gpl-v3` 模式一致，第三方 notice 和 release obligation 已登记。
 - [x] **AI 查询、分析和修改**：Chat / harness 注册 list、query、analyze、patch、create 五个工具；analysis 只执行有行数/分组/输出上限的白名单 plan，不开放 arbitrary JavaScript / Python；edit 继续走现有 permission gate 和 revision conflict。

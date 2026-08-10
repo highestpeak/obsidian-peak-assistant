@@ -16,7 +16,7 @@ Peak Sheet 已从 research / mock 进入生产源码，形成一个本地、单�
 
 ### Dataset、字段和 Table
 
-- 表格创建、重命名、软删除和 JSON 导出；
+- 全局 `Create Peak Sheet` 命令可一步创建空表、打开工作台并定位新表；表格也可在侧栏创建、重命名、软删除和 JSON 导出；
 - 行新增、删除、复制和批量删除；
 - 字段新增、删除、重命名、隐藏和宽度调整；
 - Text、Number、Date、Single Select、Checkbox、Link、File 七种字段；

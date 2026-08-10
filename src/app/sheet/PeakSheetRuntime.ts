@@ -32,6 +32,7 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	private readonly redoStacks = new Map<string, PeakSheetPatchPair[]>();
 	private readonly listeners = new Set<PeakSheetListener>();
 	private readonly queues = new Map<string, Promise<unknown>>();
+	private requestedDatasetId: string | null = null;
 	private disposed = false;
 
 	constructor(
@@ -54,6 +55,28 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	async ensureStarterDatasets(): Promise<void> {
 		if ([...this.datasets.values()].some((dataset) => !dataset.deletedAt)) return;
 		for (const draft of createPeakSheetStarterDrafts(this.now())) await this.createDataset(draft);
+	}
+
+	createBlankDataset(): Promise<PeakSheetDatasetSnapshot> {
+		return this.createDataset({
+			name: 'Untitled sheet',
+			fields: [{ id: `field-${this.idFactory()}`, name: 'Name', type: 'text', width: 240 }],
+			rows: [],
+			diagnostics: [],
+			source: 'manual',
+		});
+	}
+
+	requestDatasetFocus(datasetId: string): void {
+		this.requireCanonicalDataset(datasetId);
+		this.requestedDatasetId = datasetId;
+		this.emit();
+	}
+
+	takeDatasetFocusRequest(): string | null {
+		const datasetId = this.requestedDatasetId;
+		this.requestedDatasetId = null;
+		return datasetId;
 	}
 
 	listDatasets(): readonly PeakSheetDatasetSummary[] {
@@ -223,6 +246,7 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 		this.listeners.clear();
 		this.datasets.clear();
 		this.queues.clear();
+		this.requestedDatasetId = null;
 	}
 
 	private async commitPatch(

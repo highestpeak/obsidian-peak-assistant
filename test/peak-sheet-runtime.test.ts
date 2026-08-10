@@ -66,6 +66,12 @@ async function testRuntimeHistoryAndReload(): Promise<void> {
 	const accepted = await reloaded.importWorkbook(workbook, [1]);
 	assert.equal(accepted.length, 1);
 	assert.equal(accepted[0].name, 'Keep');
+	const blank = await reloaded.createBlankDataset();
+	assert.equal(blank.name, 'Untitled sheet');
+	assert.equal(blank.fields[0].name, 'Name');
+	reloaded.requestDatasetFocus(blank.datasetId);
+	assert.equal(reloaded.takeDatasetFocusRequest(), blank.datasetId);
+	assert.equal(reloaded.takeDatasetFocusRequest(), null, 'focus requests are consumed exactly once');
 	console.log('PASS: Peak Sheet starter datasets, undo/redo, reload and stale revision defense');
 }
 

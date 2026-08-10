@@ -16,6 +16,9 @@ function testProductionSurfaceContract(): void {
 	assert.match(manager, /activatePeakSheetView/);
 	assert.match(main, /setPeakSheetRuntime/);
 	assert.match(main, /setPeakSheetRuntime\(peakSheetRuntime\)/);
+	assert.match(main, /createPeakSheet: async/);
+	assert.match(main, /runtime\.createBlankDataset\(\)/);
+	assert.match(source('src/app/commands/gateway/manifests.ts'), /'peak-create-sheet'/);
 	assert.match(cssEntry, /peak-sheet\.css/);
 	console.log('PASS: Peak Sheet is registered as an app-owned standalone production view');
 }
