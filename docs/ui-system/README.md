@@ -30,7 +30,7 @@ Theme Lab 除了 Foundations、共享 primitives 和代表性场景，还维护 
 
 新增视觉角色或高频 UI 组合时，必须先判断属于现有覆盖板还是需要新增 coverage contract，并同步扩展 `validate.mjs`。真实组件结构、数据和像素仍以 UI Inventory 与 Obsidian 实机为准。
 
-Theme State 控制台默认锁定吸顶，可以折叠成单行，也可以解除锁定后随页面滚动。折叠后 7 个枚举 Theme 轴仍以图标按钮循环切换，Accent 保留直接可点的颜色块；图标必须通过 title / aria-label 说明当前值与下一个值。折叠与锁定属于 Theme Lab 自身的查看偏好，使用独立 localStorage key，不进入 Theme JSON，也不跨页面广播。页面开头的 SVG symbol sprite 必须保持零尺寸并脱离文档流，禁止重新引入首屏空白。
+Theme State 控制台默认锁定吸顶，可以折叠成单行，也可以解除锁定后随页面滚动。折叠后标题、7 个枚举 Theme 轴、Accent 色块、锁定与展开必须保持在同一行；空间不足时只允许图标区内部横向滚动，不能把整组控件拆到第二行。图标按钮循环切换枚举值，并通过 title / aria-label 说明当前值与下一个值。折叠与锁定属于 Theme Lab 自身的查看偏好，使用独立 localStorage key，不进入 Theme JSON，也不跨页面广播。页面开头的 SVG symbol sprite 必须保持零尺寸并脱离文档流，禁止重新引入首屏空白。
 
 ## Codex 固定图片换肤
 
