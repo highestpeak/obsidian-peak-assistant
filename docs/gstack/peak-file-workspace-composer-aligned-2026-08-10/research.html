@@ -41,9 +41,9 @@
         <p>下面的“不要做”与核心能力同样重要，它们阻止每个文件工作区膨胀成第二套专业软件。</p>
         <div class="format-grid">
           <article class="format"><header><h3>Image</h3><span>Canvas-first</span></header><dl><dt>Core</dt><dd>Crop、Rotate、Resize、Compress / Convert；工具贴近画布与选择。</dd><dt>AI</dt><dd>Describe / OCR、去背景、选区移除或替换、扩图、候选对比。</dd><dt>Reuse</dt><dd>复用 Composer 的图片渲染、选择语义、上下文与候选审阅。</dd><dt>不要做</dt><dd class="exclude">完整图层系统、滤镜市场、Photoshop 级参数面板。</dd></dl></article>
-          <article class="format"><header><h3>HTML</h3><span>Preview-first</span></header><dl><dt>Core</dt><dd>Preview / Edit / Split，实时预览，源码高亮，小范围修改。</dd><dt>AI</dt><dd>解释页面、改选中区域、检查交互/脚本/数据持久化风险。</dd><dt>Boundary</dt><dd>本地预览明确隔离脚本；外部操作与持久化需要单独授权。</dd><dt>不要做</dt><dd class="exclude">默认进入源码、把危险脚本伪装成普通文档交互。</dd></dl></article>
+          <article class="format"><header><h3>HTML</h3><span>Live page</span></header><dl><dt>Core</dt><dd>页面始终可见；通过局部 Source 操作展开可编辑源码，修改状态即时反馈。</dd><dt>AI</dt><dd>解释页面、选择元素、修改内容、修复布局、检查交互/脚本/数据持久化风险。</dd><dt>Boundary</dt><dd>本地预览明确隔离脚本；外部操作与持久化需要单独授权。</dd><dt>不要做</dt><dd class="exclude">把 Preview / Edit / Split 做成所有文件共用的模式条。</dd></dl></article>
           <article class="format"><header><h3>PDF</h3><span>Read + cite</span></header><dl><dt>Core</dt><dd>可靠阅读、缩放、页缩略图、搜索与标注。</dd><dt>AI</dt><dd>摘要、问答、建议问题；每个事实答案携带页码引用并回跳。</dd><dt>Write</dt><dd>原 PDF 默认只读；高亮和回答可 materialize 成带源链接的 Markdown。</dd><dt>不要做</dt><dd class="exclude">把聊天结果和 PDF 页面割裂，或假装拥有完整 PDF 编辑能力。</dd></dl></article>
-          <article class="format"><header><h3>Code Source</h3><span>Focused edit</span></header><dl><dt>Core</dt><dd>预览、语法高亮、行号、轻量编辑、Changes diff。</dd><dt>AI</dt><dd>解释选区、提出小补丁、审查当前文件；引用其他 Vault 源文件。</dd><dt>Boundary</dt><dd>运行、测试、构建是独立的授权与环境，不混进文件编辑器。</dd><dt>不要做</dt><dd class="exclude">Symbols 导航、项目树、调试器或简陋版 IDE。</dd></dl></article>
+          <article class="format"><header><h3>Code Source</h3><span>Always editable</span></header><dl><dt>Core</dt><dd>语法高亮、行号、直接输入、保存反馈；不需要先切换编辑状态。</dd><dt>AI</dt><dd>解释选区、提出小范围建议、修复问题、审查当前文件；相关文件只作为 context。</dd><dt>Boundary</dt><dd>运行、测试、构建是独立的授权与环境，不混进文件编辑器。</dd><dt>不要做</dt><dd class="exclude">Preview / Edit / Changes、Symbols 导航、项目树、调试器或简陋版 IDE。</dd></dl></article>
           <article class="format"><header><h3>Obsidian Canvas</h3><span>Native Canvas</span></header><dl><dt>Core</dt><dd>保留原生卡片、文件/media 嵌入、group、edge、selection toolbar、zoom 和 create toolbar。</dd><dt>AI</dt><dd>解释选区邻域、建议缺失连接、从 group 生成 brief。</dd><dt>Write</dt><dd>新节点或新边先以候选状态预览，再写回开放的 Canvas 文件。</dd><dt>不要做</dt><dd class="exclude">重画一套“类似 Canvas”的节点图产品。</dd></dl></article>
           <article class="format"><header><h3>Excalidraw</h3><span>Native editor</span></header><dl><dt>Core</dt><dd>原生选择、shape 工具、属性、library、zoom/pan、arrow binding 和导出。</dd><dt>AI</dt><dd>解释图、从 prompt 生成、改写 label、整理布局。</dd><dt>Integration</dt><dd>Peak Intelligence 是宿主侧栏；场景编辑仍由 Excalidraw 完成。</dd><dt>不要做</dt><dd class="exclude">用 Peak 自己的画布和属性面板替换 Excalidraw。</dd></dl></article>
         </div>
@@ -69,7 +69,7 @@
       <section class="section">
         <h2>Composer 复用合同</h2>
         <div class="contract">
-          <article><h3>六种格式都必须复用</h3><ol><li>统一标题栏与 source 状态。</li><li>始终可见的 Intelligence 侧栏。</li><li>明确的 current file / selection context。</li><li>同一套 prompt、模型选择和历史入口。</li><li>写操作统一进入 Accept / Restore / Retry。</li></ol></article>
+          <article><h3>六种格式都必须复用</h3><ol><li>简洁的文件标题与 source 状态。</li><li>与文件列严格同高的 Intelligence 侧栏。</li><li>明确的 current file / selection context。</li><li>格式专属预设操作和同一套 prompt。</li><li>只有产生修改建议后，才出现 Accept / Restore / Retry。</li></ol></article>
           <article><h3>格式自己拥有</h3><ol><li>主内容 renderer / editor。</li><li>格式原生导航与 selection controls。</li><li>查看、编辑和写回能力边界。</li><li>AI 可以引用的 context granularity。</li><li>candidate 如何在源表面预览。</li></ol></article>
         </div>
         <div class="note"><strong>状态边界：</strong>本页与交互原型是 design reference，不代表 Image / HTML / PDF / Code / Canvas / Excalidraw 已经在生产插件中完整交付。</div>

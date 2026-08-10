@@ -26,17 +26,25 @@ assert.match(html, /Restore/, "candidate Restore action missing");
 assert.match(js, /data-citation-page/, "PDF page citations missing");
 assert.match(html, /data-image-tool="crop"/, "Image canvas tools missing");
 assert.match(js, /remove-background/, "Image background removal action missing");
-assert.match(html, /data-editable-source="code"/, "Code lightweight editor hook missing");
+assert.match(html, /data-editable-source="code" contenteditable="plaintext-only"/, "Code must be directly editable");
+assert.match(html, /data-html-action="source"/, "HTML local source action missing");
+assert.match(html, /data-pdf-zoom="in"/, "PDF zoom action missing");
 assert.match(html, /class="canvas-selection-tools"/, "native-like Canvas selection controls missing");
 assert.match(html, /class="canvas-create-toolbar"/, "native-like Canvas create toolbar missing");
 assert.match(html, /class="excalidraw-tools"/, "Excalidraw tool palette missing");
 assert.match(html, /class="excalidraw-properties"/, "Excalidraw properties missing");
 assert.doesNotMatch(html, />Symbols?</i, "Code UI must not expose Symbols navigation");
 assert.doesNotMatch(html, /project explorer/i, "Code UI must not expose a project explorer");
+assert.doesNotMatch(html, /data-view-mode|class="view-modes"|class="code-diff"/, "global file modes must not return");
+assert.doesNotMatch(html, /class="intelligence-tabs"/, "Intelligence tab strip must not return");
+assert.doesNotMatch(js, /\bmodes:|defaultMode|setMode\(/, "runtime mode system must not return");
 
-assert.match(css, /grid-template-columns:\s*minmax\(720px,\s*1fr\) 390px/, "Composer-aligned main/Intelligence split missing");
+assert.match(css, /grid-template-columns:\s*minmax\(700px,\s*1fr\) 390px/, "equal-height file/Intelligence split missing");
+assert.match(css, /\.file-column[^}]+grid-template-rows:\s*58px minmax\(0,\s*1fr\)/, "file column layout missing");
+assert.match(css, /\.intelligence-panel[^}]+height:\s*100%/, "Intelligence must span the whole workspace height");
 assert.match(html, /current file connected/i, "context connection language missing from prototype");
-assert.match(js, /source remains visible/i, "source-visible AI response missing");
+assert.match(js, /source surface remains active/i, "source-active AI response missing");
+assert.match(js, /handleImageTool|toggleHtmlSource|updatePdfZoom|codeEditor\.addEventListener\("input"\)|updateCanvasZoom|handleExcalStyle/, "direct interaction handlers missing");
 
 const officialSources = [
   "helpx.adobe.com/photoshop",
