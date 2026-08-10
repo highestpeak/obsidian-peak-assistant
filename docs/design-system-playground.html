@@ -401,6 +401,31 @@
     .lab-scene__head h3 { margin: 0; font-size: 22px; letter-spacing: -.025em; }
     .lab-scene__head p { margin: 4px 0 0; color: var(--pk-text-secondary); }
     .lab-scene__sources { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .lab-reference-contract {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px 12px;
+      margin: 0 0 12px;
+      padding: 9px 11px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-md);
+      background: var(--pk-surface-raised);
+      color: var(--pk-text-secondary);
+      font-size: var(--pk-text-xs);
+    }
+    .lab-reference-contract b {
+      padding: 3px 6px;
+      border-radius: var(--pk-radius-pill);
+      background: var(--pk-success-bg);
+      color: var(--pk-success);
+      font: 8px/1.2 var(--lab-mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .lab-reference-contract[data-reference-state="candidate"] b { background: var(--pk-warning-bg); color: var(--pk-warning); }
+    .lab-reference-contract code { color: var(--pk-text-tertiary); font-size: 9px; }
+    .lab-reference-contract .lab-source { margin-left: auto; }
     .lab-scene__frame {
       overflow: hidden;
       border: 1px solid var(--pk-border-strong);
@@ -420,7 +445,7 @@
     .lab-searchbar svg { color: var(--pk-text-tertiary); }
     .lab-searchbar input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--pk-text-primary); outline: 0; }
     .lab-search-tools { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 14px 0; }
-    .lab-search-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; min-height: 360px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); overflow: hidden; }
+    .lab-search-layout { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 360px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); overflow: hidden; }
     .lab-results { background: var(--pk-surface); }
     .lab-result-row { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 11px; align-items: start; padding: var(--lab-row-pad); border-bottom: 1px solid var(--pk-border-soft); color: var(--pk-text-primary); }
     .lab-result-row:last-child { border-bottom: 0; }
@@ -445,27 +470,95 @@
     .lab-tree-row[data-selected="true"] { background: var(--pk-accent-tint); color: var(--pk-accent-text); }
     .lab-mini-graph { position: relative; min-height: 330px; background: radial-gradient(circle at 45% 45%, var(--pk-accent-tint), transparent 34%), var(--pk-surface); }
 
-    /* Composer scene */
-    .lab-composer-frame { background: var(--pk-bg-secondary); }
-    .lab-doc { max-width: 760px; margin: 0 auto; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-lg); background: var(--pk-surface); box-shadow: var(--pk-shadow-card); }
-    .lab-doc__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--pk-border); }
-    .lab-doc__body { padding: 24px 30px 34px; }
-    .lab-doc__body h4 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.03em; }
-    .lab-doc__meta { display: grid; grid-template-columns: 90px 1fr; gap: 7px 14px; padding: 13px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface-raised); }
-    .lab-doc__meta span:nth-child(odd) { color: var(--pk-text-tertiary); font-size: var(--pk-text-sm); font-weight: 600; }
-    .lab-doc__meta span:nth-child(even) { color: var(--pk-text-primary); }
-    .lab-doc__paragraph { margin: 22px 0; color: var(--pk-text-secondary); line-height: 1.8; }
-    .lab-ai-suggestion { overflow: hidden; border: 1px solid var(--pk-border-accent); border-radius: var(--pk-radius-lg); background: var(--pk-surface); }
-    .lab-ai-suggestion__head { display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-bottom: 1px solid var(--pk-border); background: var(--pk-accent-tint); }
-    .lab-ai-suggestion__head b { font-size: var(--pk-text-md); }
-    .lab-ai-suggestion__head span { margin-left: auto; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
-    .lab-ai-suggestion__body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 15px; }
-    .lab-ai-suggestion__body b { display: block; margin-bottom: 4px; }
-    .lab-ai-suggestion__body p { margin: 0; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
-    .lab-ai-suggestion__actions { display: flex; gap: 7px; }
+    /* Composer scene — calibrated to real BlockRail + FrontmatterBlockView geometry. */
+    .lab-composer-frame { padding: 16px; background: var(--pk-bg-secondary); }
+    .lab-composer-shell { max-width: 900px; margin: 0 auto; }
+    .lab-composer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 48px;
+      margin-bottom: 12px;
+      padding: 7px 11px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-lg);
+      background: var(--pk-surface);
+      box-shadow: var(--pk-shadow-sm);
+    }
+    .lab-composer-toolbar__actions { display: flex; align-items: center; gap: 4px; }
+    .lab-composer-page {
+      min-height: 610px;
+      padding: 38px 54px 58px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-lg);
+      background: var(--pk-surface);
+      box-shadow: var(--pk-shadow-card);
+    }
+    .lab-composer-block { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 9px; }
+    .lab-block-rail { display: grid; align-content: start; justify-items: center; gap: 4px; padding-top: 17px; }
+    .lab-rail-control {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-md);
+      background: var(--pk-surface-raised);
+      color: var(--pk-text-tertiary);
+      box-shadow: var(--pk-shadow-sm);
+    }
+    .lab-frontmatter-selection {
+      position: relative;
+      padding: 25px 18px 14px;
+      border: 2px solid var(--pk-border-accent);
+      border-radius: var(--pk-radius-lg);
+      background: var(--pk-surface);
+    }
+    .lab-frontmatter-trigger {
+      position: absolute;
+      top: -14px;
+      left: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 27px;
+      padding: 0 10px;
+      border: 1px solid var(--pk-border-accent);
+      border-radius: var(--pk-radius-pill);
+      background: var(--pk-surface);
+      color: var(--pk-accent-text);
+      font-size: var(--pk-text-sm);
+      font-weight: 700;
+      box-shadow: var(--pk-shadow-sm);
+    }
+    .lab-frontmatter-grid {
+      display: grid;
+      grid-template-columns: 152px minmax(0, 1fr);
+      gap: 12px 18px;
+      padding: 16px 18px;
+      border: 1px solid var(--pk-border);
+      border-radius: var(--pk-radius-md);
+      background: var(--pk-surface-raised);
+    }
+    .lab-frontmatter-key { display: flex; align-items: center; gap: 7px; color: var(--pk-text-tertiary); font-weight: 680; }
+    .lab-frontmatter-value { color: var(--pk-text-primary); font-weight: 650; }
+    .lab-origin-chip { padding: 2px 6px; border-radius: var(--pk-radius-sm); background: var(--pk-bg-tertiary); color: var(--pk-text-secondary); font-size: 9px; font-weight: 650; }
+    .lab-origin-chip[data-origin="program"] { background: var(--pk-success-bg); color: var(--pk-success); }
+    .lab-frontmatter-add { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0 8px; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-frontmatter-candidate { margin-top: 11px; overflow: hidden; border: 1px solid var(--pk-border-accent); border-radius: var(--pk-radius-md); background: var(--pk-surface); }
+    .lab-frontmatter-candidate__head { display: flex; align-items: center; gap: 7px; padding: 10px 12px; border-bottom: 1px solid var(--pk-border); }
+    .lab-frontmatter-candidate__head span { margin-left: auto; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-frontmatter-candidate__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 11px 12px; }
+    .lab-frontmatter-candidate__row p { margin: 2px 0 0; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
+    .lab-frontmatter-candidate__actions { display: flex; gap: 6px; }
+    .lab-composer-copy { max-width: 720px; margin: 36px 0 0 45px; }
+    .lab-composer-copy h4 { margin: 0 0 10px; font-size: 28px; line-height: 1.2; letter-spacing: -.035em; }
+    .lab-composer-copy p { margin: 0; color: var(--pk-text-secondary); font-size: var(--pk-text-lg-plus); line-height: 1.8; }
 
-    /* Chat scene */
-    .lab-chat { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 520px; }
+    /* Chat scene — calibrated to the three-pane Chat Studio composition. */
+    .lab-chat { display: grid; grid-template-columns: 190px minmax(0, 1fr) 220px; min-height: 570px; }
     .lab-chat__rail { padding: 12px; border-right: 1px solid var(--pk-border); background: var(--pk-surface-sunken); }
     .lab-chat__rail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .lab-chat__thread { padding: 9px 10px; border-radius: var(--pk-radius-md); color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
@@ -481,6 +574,12 @@
     .lab-msg--user .lab-msg__body { font-size: var(--pk-text-lg); }
     .lab-agent-run { margin-top: 10px; padding: 10px 12px; border-left: 2px solid var(--pk-accent); background: var(--pk-surface-raised); color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
     .lab-chat__composer { padding: 0 min(6vw, 48px) 22px; }
+    .lab-chat__resources { padding: 12px; border-left: 1px solid var(--pk-border); background: var(--pk-surface-sunken); }
+    .lab-chat__resource-tabs { display: flex; gap: 15px; padding: 0 2px 9px; border-bottom: 1px solid var(--pk-border); color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-chat__resource-tabs b { color: var(--pk-text-primary); }
+    .lab-chat__resource-group { margin-top: 14px; }
+    .lab-chat__resource-group > b { display: block; margin-bottom: 7px; font-size: var(--pk-text-sm); }
+    .lab-chat__resource { display: flex; gap: 7px; padding: 7px 2px; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
 
     /* Settings scene */
     .lab-settings { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 500px; }
@@ -492,26 +591,85 @@
     .lab-settings__content h4 { margin: 0; font-size: 22px; }
     .lab-settings__content > p { margin: 4px 0 18px; color: var(--pk-text-secondary); }
     .lab-settings__rows { display: grid; gap: 8px; }
+    .lab-settings__status { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; margin: 18px 0; padding: 13px 15px; border: 1px solid color-mix(in srgb, var(--pk-warning) 36%, var(--pk-border)); border-radius: var(--pk-radius-md); background: var(--pk-warning-bg); }
+    .lab-settings__status b { display: block; color: var(--pk-warning); }
+    .lab-settings__status span { color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+    .lab-settings__overview { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .lab-settings-card { min-height: 132px; padding: 14px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: var(--pk-surface); box-shadow: var(--pk-shadow-sm); }
+    .lab-settings-card__head { display: flex; align-items: center; gap: 7px; }
+    .lab-settings-card__head .pk-chip { margin-left: auto; }
+    .lab-settings-card strong { display: block; margin: 17px 0 4px; font-size: var(--pk-text-xl); }
+    .lab-settings-card p { margin: 0; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+    .lab-settings-card a { display: inline-block; margin-top: 10px; color: var(--pk-accent-text); font-size: var(--pk-text-xs); font-weight: 700; text-decoration: none; }
+    .lab-settings__quick { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--pk-border); }
+    .lab-settings__quick > b { display: block; margin-bottom: 3px; }
+    .lab-settings__quick > span { color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+    .lab-settings__quick-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 
-    /* Graph scene */
-    .lab-graph { display: grid; grid-template-columns: minmax(0, 1fr) 270px; min-height: 520px; }
-    .lab-graph__canvas { position: relative; overflow: hidden; min-height: 520px; background: radial-gradient(circle at 48% 48%, var(--pk-accent-tint), transparent 31%), var(--pk-bg); }
-    .lab-graph__toolbar { position: absolute; z-index: 4; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 12px; }
-    .lab-graph__toolbar-group { display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: color-mix(in srgb, var(--pk-surface) 90%, transparent); box-shadow: var(--pk-shadow-popover); backdrop-filter: blur(10px); }
-    .lab-graph__svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-    .lab-graph__edge { stroke: var(--pk-border-strong); stroke-width: 1.5; }
-    .lab-graph__edge--semantic { stroke: var(--pk-accent); stroke-dasharray: 5 5; opacity: .7; }
-    .lab-node { position: absolute; z-index: 2; display: grid; place-items: center; min-width: 118px; min-height: 48px; padding: 8px 12px; border: 1px solid var(--pk-border-strong); border-radius: var(--pk-radius-md); background: var(--pk-surface); color: var(--pk-text-primary); box-shadow: var(--pk-shadow-sm); text-align: center; font-size: var(--pk-text-sm); font-weight: 650; transform: translate(-50%, -50%); }
-    .lab-node small { display: block; margin-top: 2px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); font-weight: 500; }
-    .lab-node[data-selected="true"] { border-color: var(--pk-accent); background: var(--pk-accent-tint); color: var(--pk-accent-text); box-shadow: 0 0 0 3px var(--pk-accent-tint), var(--pk-shadow-md); }
-    .lab-node[data-kind="hub"] { border-radius: var(--pk-radius-lg); }
-    .lab-graph__aside { padding: 17px; border-left: 1px solid var(--pk-border); background: var(--pk-surface-raised); }
-    .lab-graph__aside h4 { margin: 8px 0 5px; font-size: var(--pk-text-xl); }
-    .lab-graph__aside p { margin: 0 0 14px; color: var(--pk-text-secondary); font-size: var(--pk-text-sm); }
-    .lab-graph__legend { display: grid; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--pk-border); }
-    .lab-graph__legend span { display: flex; align-items: center; gap: 8px; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
-    .lab-graph__legend i { width: 24px; height: 1px; background: var(--pk-border-strong); }
-    .lab-graph__legend i[data-semantic="true"] { height: 0; border-top: 1px dashed var(--pk-accent); background: transparent; }
+    /* Result Graph · Community — design anatomy stays independent from File Atlas. */
+    .lab-result-graph { background: var(--pk-surface); }
+    .lab-result-graph__tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--pk-border); background: var(--pk-surface-sunken); }
+    .lab-result-graph__tabs button { min-height: 43px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--pk-text-secondary); font-weight: 700; }
+    .lab-result-graph__tabs button[data-active="true"] { border-bottom-color: var(--pk-accent); color: var(--pk-accent-text); background: var(--pk-surface); }
+    .lab-result-graph__query { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 13px 16px; }
+    .lab-result-graph__bar { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 13px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-pill); background: var(--pk-surface-raised); color: var(--pk-text-primary); }
+    .lab-result-graph__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px 13px; border-bottom: 1px solid var(--pk-border); }
+    .lab-result-graph__modes { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-pill); background: var(--pk-surface-sunken); }
+    .lab-result-graph__modes button { min-height: 27px; padding: 0 9px; border: 0; border-radius: var(--pk-radius-pill); background: transparent; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); font-weight: 680; }
+    .lab-result-graph__modes button[data-active="true"] { background: var(--pk-surface); color: var(--pk-text-primary); box-shadow: var(--pk-shadow-sm); }
+    .lab-community-canvas { position: relative; overflow: hidden; min-height: 590px; background: radial-gradient(circle at 50% 45%, var(--pk-accent-tint), transparent 36%), var(--pk-surface); }
+    .lab-community-caption { position: absolute; z-index: 8; top: 15px; left: 20px; display: flex; align-items: center; gap: 8px; color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-community-caption i { width: 7px; height: 7px; border-radius: var(--pk-radius-full); background: var(--pk-success); box-shadow: 0 0 0 4px var(--pk-success-bg); }
+    .lab-community-tools { position: absolute; z-index: 10; top: 11px; right: 14px; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: color-mix(in srgb, var(--pk-surface) 94%, transparent); box-shadow: var(--pk-shadow-popover); }
+    .lab-community-stage { position: absolute; inset: 55px 18px 18px; }
+    .lab-community-edges { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .lab-community-edges path { fill: none; stroke: var(--pk-text-tertiary); stroke-width: 1.4; opacity: .72; }
+    .lab-community-edges path[data-semantic="true"] { stroke: var(--pk-accent); stroke-dasharray: 7 7; opacity: .42; }
+    .lab-community-hull { position: absolute; z-index: 1; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 7%, transparent); opacity: .8; }
+    .lab-community-hull[data-community="a"] { left: 4%; top: 6%; width: 40%; height: 39%; color: var(--pk-accent); border-radius: 44% 56% 50% 50% / 53% 42% 58% 47%; }
+    .lab-community-hull[data-community="b"] { left: 55%; top: 7%; width: 38%; height: 38%; color: var(--pk-success); border-radius: 53% 47% 44% 56% / 46% 53% 47% 54%; }
+    .lab-community-hull[data-community="c"] { left: 26%; top: 59%; width: 44%; height: 34%; color: var(--pk-warning); border-radius: 47% 53% 55% 45% / 54% 45% 55% 46%; }
+    .lab-community-label { position: absolute; z-index: 6; top: -19px; left: 25px; display: grid; grid-template-columns: auto auto; gap: 1px 7px; padding: 6px 9px; border: 1px solid currentColor; border-radius: var(--pk-radius-md); background: var(--pk-surface); color: inherit; box-shadow: var(--pk-shadow-sm); font-size: 10px; font-weight: 750; text-align: left; }
+    .lab-community-label small { grid-column: 1/-1; opacity: .67; font-size: 8px; font-weight: 620; }
+    .lab-community-node { position: absolute; z-index: 5; transform: translate(-50%, -50%); min-width: 78px; max-width: 145px; min-height: 26px; padding: 5px 9px; border: 1px solid var(--node-color); border-radius: var(--pk-radius-sm); background: color-mix(in srgb, var(--node-color) 18%, var(--pk-surface)); color: var(--pk-text-primary); box-shadow: var(--pk-shadow-sm); font-size: 9px; font-weight: 650; text-align: center; }
+    .lab-community-node[data-community="a"] { --node-color: var(--pk-accent); }
+    .lab-community-node[data-community="b"] { --node-color: var(--pk-success); }
+    .lab-community-node[data-community="c"] { --node-color: var(--pk-warning); }
+    .lab-community-node[data-community="bridge"] { --node-color: var(--pk-text-secondary); min-width: 110px; border-width: 2px; }
+    .lab-community-popover { position: absolute; z-index: 15; top: 28%; left: 51%; width: 286px; padding: 13px; border: 1px solid var(--pk-border-strong); border-radius: var(--pk-radius-md); background: color-mix(in srgb, var(--pk-surface) 97%, transparent); box-shadow: var(--pk-shadow-popover); }
+    .lab-community-popover h4 { margin: 0; font-size: var(--pk-text-lg); }
+    .lab-community-popover p { margin: 7px 0; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+    .lab-community-popover__meta { display: flex; flex-wrap: wrap; gap: 5px; }
+    .lab-community-popover__ai { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--pk-border); color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+
+    /* File Atlas · Local Graph — calibrated to the real two-column local projection. */
+    .lab-atlas { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 590px; background: var(--pk-surface); }
+    .lab-atlas__rail { padding: 13px 10px; border-right: 1px solid var(--pk-border); background: var(--pk-surface-sunken); }
+    .lab-atlas__rail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; font-size: var(--pk-text-sm); }
+    .lab-atlas__file { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 44px; padding: 6px 8px; border: 1px solid transparent; border-radius: var(--pk-radius-md); color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+    .lab-atlas__file[data-active="true"] { border-color: var(--pk-border-accent); background: var(--pk-accent-tint); color: var(--pk-text-primary); }
+    .lab-atlas__file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lab-atlas__main { min-width: 0; }
+    .lab-atlas__context { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 0 14px; border-bottom: 1px solid var(--pk-border); color: var(--pk-text-secondary); font-size: var(--pk-text-xs); }
+    .lab-atlas__context b { color: var(--pk-text-primary); font-size: var(--pk-text-md); }
+    .lab-atlas__tabs { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 14px; border-bottom: 1px solid var(--pk-border); }
+    .lab-atlas__tabs .pk-segmented { margin-right: auto; }
+    .lab-atlas__controls { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--pk-border); }
+    .lab-atlas__workspace { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; padding: 12px 14px 14px; }
+    .lab-atlas__scopes { display: grid; align-content: start; gap: 6px; }
+    .lab-atlas__scope { display: grid; gap: 2px; padding: 9px; border: 1px solid var(--pk-border-soft); border-radius: var(--pk-radius-md); background: var(--pk-surface-raised); color: var(--pk-text-secondary); text-align: left; }
+    .lab-atlas__scope[data-active="true"] { border-color: var(--pk-border-accent); background: var(--pk-accent-tint); color: var(--pk-text-primary); }
+    .lab-atlas__scope b { font-size: var(--pk-text-sm); }
+    .lab-atlas__scope span { font-size: var(--pk-text-xs); }
+    .lab-atlas__note { padding: 9px; border: 1px dashed var(--pk-border-strong); border-radius: var(--pk-radius-md); color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+    .lab-atlas__graph { min-width: 0; }
+    .lab-atlas__graph-head { display: flex; align-items: center; justify-content: space-between; min-height: 30px; margin-bottom: 8px; font-size: var(--pk-text-sm); }
+    .lab-atlas__canvas { position: relative; overflow: hidden; min-height: 390px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-md); background: radial-gradient(circle at 46% 46%, var(--pk-accent-tint), transparent 34%), var(--pk-surface); }
+    .lab-atlas__edges { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .lab-atlas__edges line { stroke: var(--pk-text-secondary); stroke-width: 1.2; opacity: .68; }
+    .lab-atlas__edges line[data-semantic="true"] { stroke: var(--pk-border-strong); stroke-dasharray: 6 5; opacity: .55; }
+    .lab-atlas-node { position: absolute; z-index: 2; transform: translate(-50%, -50%); min-width: 84px; max-width: 155px; padding: 5px 9px; border: 1px solid var(--pk-accent); border-radius: var(--pk-radius-sm); background: color-mix(in srgb, var(--pk-accent) 13%, var(--pk-surface)); color: var(--pk-text-primary); box-shadow: var(--pk-shadow-sm); font-size: 9px; font-weight: 650; text-align: center; }
+    .lab-atlas-node[data-current="true"] { min-width: 128px; padding: 9px 12px; border-width: 3px; border-radius: var(--pk-radius-md); background: color-mix(in srgb, var(--pk-accent) 30%, var(--pk-surface)); color: var(--pk-accent-text); font-size: 11px; font-weight: 800; }
 
     .lab-scene-note { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: -1px; border: 1px solid var(--pk-border); border-radius: 0 0 var(--pk-radius-lg) var(--pk-radius-lg); background: var(--pk-surface-raised); }
     .lab-scene-note div { padding: 12px 14px; border-right: 1px solid var(--pk-border); }
@@ -547,17 +705,21 @@
       .lab-control, .lab-control:nth-child(5n) { border-right: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); }
       .lab-control:nth-child(2n) { border-right: 0; }
       .lab-control:nth-last-child(-n+2) { border-bottom: 0; }
-      .lab-search-layout, .lab-graph { grid-template-columns: minmax(0, 1fr) 240px; }
       .lab-chat { grid-template-columns: 150px minmax(0, 1fr); }
+      .lab-chat__resources { display: none; }
+      .lab-community-popover { left: 48%; width: 250px; }
     }
     @media (max-width: 820px) {
       .lab-layout { grid-template-columns: 1fr; gap: 0; }
       .lab-nav { display: none; }
       .lab-controller-wrap { top: 57px; }
       .lab-rule, .lab-component-row { grid-template-columns: 1fr; gap: 16px; }
-      .lab-search-layout, .lab-settings, .lab-graph, .lab-chat { grid-template-columns: 1fr; }
-      .lab-inspector, .lab-graph__aside { border-left: 0; border-top: 1px solid var(--pk-border); }
+      .lab-search-layout, .lab-settings, .lab-chat, .lab-atlas { grid-template-columns: 1fr; }
+      .lab-inspector { border-left: 0; border-top: 1px solid var(--pk-border); }
       .lab-chat__rail, .lab-settings__nav { display: none; }
+      .lab-atlas__rail { display: none; }
+      .lab-atlas__workspace { grid-template-columns: 150px minmax(0, 1fr); }
+      .lab-result-graph__toolbar { align-items: flex-start; flex-direction: column; }
       .lab-scene-note { grid-template-columns: 1fr; }
       .lab-scene-note div { border-right: 0; border-bottom: 1px solid var(--pk-border); }
       .lab-scene-note div:last-child { border-bottom: 0; }
@@ -575,13 +737,23 @@
       .lab-controller__head span { display: none; }
       .lab-swatch-line { grid-template-columns: repeat(3, 1fr); }
       .lab-swatch:first-child, .lab-swatch:last-child { border-radius: 0; }
-      .lab-search-tools, .lab-doc__toolbar, .lab-scene__head { align-items: flex-start; flex-direction: column; display: flex; }
+      .lab-search-tools, .lab-composer-toolbar, .lab-scene__head { align-items: flex-start; flex-direction: column; display: flex; }
       .lab-scene__sources { justify-content: flex-start; }
-      .lab-ai-suggestion__body { grid-template-columns: 1fr; }
-      .lab-ai-suggestion__actions { justify-content: flex-start; }
+      .lab-reference-contract .lab-source { margin-left: 0; }
+      .lab-composer-frame { padding: 10px; }
+      .lab-composer-page { padding: 32px 13px 42px; }
+      .lab-composer-block { grid-template-columns: 30px minmax(0, 1fr); gap: 5px; }
+      .lab-frontmatter-grid { grid-template-columns: 1fr; gap: 4px; }
+      .lab-frontmatter-key:not(:first-child) { margin-top: 8px; }
+      .lab-frontmatter-candidate__row { grid-template-columns: 1fr; }
+      .lab-composer-copy { margin-left: 35px; }
       .lab-msg--user { max-width: 88%; }
-      .lab-graph__toolbar { right: auto; flex-direction: column; }
-      .lab-node { min-width: 96px; font-size: var(--pk-text-xs); }
+      .lab-result-graph__query { grid-template-columns: 1fr; }
+      .lab-result-graph__modes { max-width: 100%; overflow-x: auto; }
+      .lab-community-popover { left: 34%; width: 230px; }
+      .lab-atlas__workspace { grid-template-columns: 1fr; }
+      .lab-atlas__scopes { grid-template-columns: 1fr 1fr; }
+      .lab-atlas__note { display: none; }
     }
   </style>
 </head>
@@ -597,6 +769,13 @@
       <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></symbol>
       <symbol id="i-network" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"></circle><circle cx="5" cy="19" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="m10.5 7.5-4 8M13.5 7.5l4 8M8 19h8"></path></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+      <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"></path></symbol>
+      <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"></circle><circle cx="15" cy="6" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="9" cy="18" r="1"></circle><circle cx="15" cy="18" r="1"></circle></symbol>
+      <symbol id="i-comment" viewBox="0 0 24 24"><path d="M5 5h14v11H8l-3 3Z"></path><path d="M9 9h6M9 12h4"></path></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="m9 14-4-4 4-4"></path><path d="M5 10h11a4 4 0 0 1 0 8h-1"></path></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 4-4-4-4"></path><path d="M19 10H8a4 4 0 0 0 0 8h1"></path></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"></path></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
     </svg>
@@ -710,7 +889,12 @@
               <div class="lab-controller__grid">
                 <div class="lab-control"><label for="themePack">Theme pack</label><select id="themePack"><option value="violet">Peak Violet</option><option value="ink">Quiet Ink</option><option value="moss">Calm Moss</option></select></div>
                 <div class="lab-control"><label for="appearance">Appearance</label><select id="appearance"><option value="light">Light</option><option value="dark">Dark</option></select></div>
-                <div class="lab-control"><label for="accentColor">Accent override</label><input id="accentColor" type="color" value="#6d4aff"></div>
+                <div class="lab-control"><label for="accentColor">Accent role</label><input id="accentColor" type="color" value="#6d4aff"></div>
+                <div class="lab-control"><label for="canvasColor">Canvas role</label><input id="canvasColor" type="color" value="#f4f5f7"></div>
+                <div class="lab-control"><label for="surfaceColor">Surface role</label><input id="surfaceColor" type="color" value="#ffffff"></div>
+                <div class="lab-control"><label for="textColor">Text role</label><input id="textColor" type="color" value="#20242a"></div>
+                <div class="lab-control"><label for="borderColor">Border role</label><input id="borderColor" type="color" value="#dde1e7"></div>
+                <div class="lab-control"><label for="statusPalette">Status palette</label><select id="statusPalette"><option value="standard">Standard</option><option value="calm">Calm</option><option value="vivid">Vivid</option></select></div>
                 <div class="lab-control"><label for="density">Density</label><select id="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></div>
                 <div class="lab-control"><label for="radiusProfile">Radius</label><select id="radiusProfile"><option value="balanced">Balanced</option><option value="crisp">Crisp</option><option value="soft">Soft</option></select></div>
                 <div class="lab-control"><label for="controlSize">Control size</label><select id="controlSize"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></div>
@@ -766,13 +950,14 @@
             <span class="lab-section__index">04 · Coverage</span>
           </div>
           <div class="lab-scene-list">
-            <article class="lab-scene" id="scene-search">
+            <article class="lab-scene" id="scene-search" data-reference-id="result-browser-production">
               <div class="lab-scene__head"><div><h3>Search & Result Browser</h3><p>检验输入、view switcher、结果行、选择态、score 与 inspector 的共同语法。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/component/result-browser/toolbar/ResultBrowserToolbar.tsx">Toolbar ↗</a><a class="lab-source" href="../src/ui/component/result-browser/list/ResultBrowserListRow.tsx">ListRow ↗</a></div></div>
+              <div class="lab-reference-contract"><b>source calibrated</b><span>结果行 anatomy 直接对应生产 Result Browser；Graph 投影在下方独立验收。</span><code>toolbar + row + snapshot projection</code><a class="lab-source" href="gstack/vault-search-folder-links-2026-08-10/preview.png">Design screenshot ↗</a></div>
               <div class="lab-scene__frame">
                 <div class="lab-scene__chrome"><svg class="lab-icon"><use href="#i-search"></use></svg><b>Vault Search</b><span>12 results · current vault</span></div>
                 <div class="lab-scene__body">
                   <div class="lab-searchbar"><svg class="lab-icon"><use href="#i-search"></use></svg><input value="design system host isolation" aria-label="Search query"><span class="pk-chip pk-chip--neutral">12 results</span></div>
-                  <div class="lab-search-tools"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="search-view"><button class="pk-segmented__opt" data-value="list" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">List</span></button><button class="pk-segmented__opt" data-value="tree"><span class="pk-segmented__label">Tree</span></button><button class="pk-segmented__opt" data-value="graph"><span class="pk-segmented__label">Graph</span></button></div><span class="pk-chip pk-chip--accent">Detailed</span></div>
+                  <div class="lab-search-tools"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="search-view"><button class="pk-segmented__opt" data-value="list" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">List</span></button><button class="pk-segmented__opt" data-value="tree"><span class="pk-segmented__label">Tree</span></button><button class="pk-segmented__opt" data-value="graph"><span class="pk-segmented__label">Graph</span></button></div><div class="pk-segmented" data-variant="animated-pill" data-mode-group="search-density"><button class="pk-segmented__opt" data-value="compact"><span class="pk-segmented__label">Compact</span></button><button class="pk-segmented__opt" data-value="detailed" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">Detailed</span></button></div></div>
                   <div class="lab-search-layout">
                     <div class="lab-results lab-mode-panel" data-mode-panel="search-view" data-value="list">
                       <div class="lab-result-row" data-selected="true"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span class="lab-result-copy"><b>Peak Design System Migration</b><p>统一 semantic tokens、公共 primitives 与 Obsidian Theme Boundary。</p><small>docs/superpowers/specs · edited 2h ago</small></span><span class="lab-score">92%</span></div>
@@ -780,39 +965,102 @@
                       <div class="lab-result-row"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span class="lab-result-copy"><b>Obsidian UI Defense</b><p>Host selector、Portal 与 computed geometry 验证。</p><small>docs/conventions · 3 days ago</small></span><span class="lab-score">79%</span></div>
                     </div>
                     <div class="lab-results lab-mode-panel" data-mode-panel="search-view" data-value="tree" hidden><div class="lab-tree"><div class="lab-tree-row" style="--depth:0"><svg class="lab-icon"><use href="#i-folder"></use></svg><b>docs</b></div><div class="lab-tree-row" style="--depth:1"><svg class="lab-icon"><use href="#i-folder"></use></svg>conventions</div><div class="lab-tree-row" style="--depth:2" data-selected="true"><svg class="lab-icon"><use href="#i-file"></use></svg>ui-design.md</div><div class="lab-tree-row" style="--depth:1"><svg class="lab-icon"><use href="#i-folder"></use></svg>superpowers</div><div class="lab-tree-row" style="--depth:2"><svg class="lab-icon"><use href="#i-file"></use></svg>design-system-migration.md</div></div></div>
-                    <div class="lab-results lab-mode-panel" data-mode-panel="search-view" data-value="graph" hidden><div class="lab-mini-graph"><svg class="lab-graph__svg" viewBox="0 0 600 330" preserveAspectRatio="none"><line class="lab-graph__edge" x1="300" y1="155" x2="140" y2="80"></line><line class="lab-graph__edge--semantic" x1="300" y1="155" x2="475" y2="92"></line><line class="lab-graph__edge" x1="300" y1="155" x2="205" y2="260"></line></svg><div class="lab-node" data-selected="true" style="left:50%;top:47%">Design System</div><div class="lab-node" style="left:23%;top:25%">UI Defense</div><div class="lab-node" style="left:78%;top:28%">Theme Pack</div><div class="lab-node" style="left:34%;top:79%">Composer</div></div></div>
-                    <aside class="lab-inspector"><span class="lab-inspector__eyebrow">Selected result</span><h4>Peak Design System Migration</h4><p>Defines the autonomous Peak visual boundary and shared component migration.</p><dl><dt>Type</dt><dd>Specification</dd><dt>Path</dt><dd>docs/superpowers</dd><dt>Links</dt><dd>14 connected</dd><dt>Updated</dt><dd>2 hours ago</dd></dl><button class="pk-btn pk-btn--secondary" style="margin-top:18px">Open document</button></aside>
+                    <div class="lab-results lab-mode-panel" data-mode-panel="search-view" data-value="graph" hidden><div class="lab-mini-graph" style="display:grid;place-items:center;padding:30px;text-align:center"><div><span class="pk-chip pk-chip--accent">Same result snapshot</span><h4 style="margin:12px 0 5px">Graph projection is validated below</h4><p style="max-width:360px;margin:0;color:var(--pk-text-secondary)">Result Graph 的真实 Community / Connections / Links 结构单独呈现，避免在 List specimen 中再画一套假的 Graph。</p></div></div></div>
                   </div>
                 </div>
               </div>
               <div class="lab-scene-note"><div><b>Default</b><span>List 用于寻找、比较和打开。</span></div><div><b>Projection</b><span>List / Tree / Graph 共用 snapshot。</span></div><div><b>Density</b><span>Compact 隐藏冗余，不缩小字号。</span></div></div>
             </article>
 
-            <article class="lab-scene" id="scene-composer">
-              <div class="lab-scene__head"><div><h3>Composer & AI Suggestion</h3><p>检验文档 surface、properties、AI candidate 和确认动作能否属于同一层级。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/composer/ComposerRoot.tsx">ComposerRoot ↗</a><a class="lab-source" href="../src/ui/view/composer/candidates/ComposerCandidateHost.tsx">CandidateHost ↗</a></div></div>
+            <article class="lab-scene" id="scene-composer" data-reference-id="composer-frontmatter-real-ui">
+              <div class="lab-scene__head"><div><h3>Composer · Frontmatter Intelligence</h3><p>真实 Composer 不是“文档卡片 + 建议卡片”，而是文档画布中的 BlockRail、选中边界、属性网格和原位候选。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/composer/chrome/BlockRail.tsx">BlockRail ↗</a><a class="lab-source" href="../src/ui/view/composer/blocks/frontmatter/FrontmatterBlockView.tsx">FrontmatterBlockView ↗</a><a class="lab-source" href="../src/ui/view/composer/chrome/DisplayStateSwitch.tsx">DisplayStateSwitch ↗</a></div></div>
+              <div class="lab-reference-contract"><b>real ui locked</b><span>骨架、层级和相对几何以 Obsidian 实机截图为准；Theme 只能换 token，不能改成 modal/card 结构。</span><code>BlockRail → selection → grid → candidate</code><a class="lab-source" href="../.dev/harness/shots/composer-frontmatter-action-row-light.png">Real screenshot ↗</a></div>
               <div class="lab-scene__frame lab-composer-frame">
-                <div class="lab-scene__chrome"><svg class="lab-icon"><use href="#i-file"></use></svg><b>B-软件</b><span>Document Composer</span></div>
-                <div class="lab-scene__body"><div class="lab-doc"><div class="lab-doc__toolbar"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="composer-mode"><button class="pk-segmented__opt" data-value="edit" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">编辑视图</span></button><button class="pk-segmented__opt" data-value="read"><span class="pk-segmented__label">纯净阅读</span></button></div><span class="pk-chip pk-chip--accent"><svg class="lab-icon lab-icon--sm"><use href="#i-sparkles"></use></svg> AI 属性建议 · 1</span></div><div class="lab-doc__body"><h4>B-软件</h4><div class="lab-doc__meta"><span>created</span><span>2023-04-30 11:42:31</span><span>updated</span><span>2023-05-05 19:47:49</span><span>aliases</span><span><span class="pk-chip pk-chip--neutral">人工</span></span></div><p class="lab-doc__paragraph">这份文档整理个人软件工具、服务和相关知识。AI 发现当前文档缺少统一 category，可以在保留原文的前提下补充结构化属性。</p><div class="lab-ai-suggestion"><div class="lab-ai-suggestion__head"><svg class="lab-icon"><use href="#i-sparkles"></use></svg><b>AI 属性建议</b><span>基于当前文档与 Vault 规范</span></div><div class="lab-ai-suggestion__body"><div><b>category</b><p>建议值：软件工具 · 新增候选，不会自动写入。</p></div><div class="lab-ai-suggestion__actions"><button class="pk-btn pk-btn--ghost">拒绝</button><button class="pk-btn pk-btn--primary">添加</button></div></div></div></div></div></div>
+                <div class="lab-composer-shell">
+                  <div class="lab-composer-toolbar">
+                    <div class="pk-segmented" data-variant="animated-pill" data-mode-group="composer-mode"><button class="pk-segmented__opt" data-value="edit" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">编辑视图</span></button><button class="pk-segmented__opt" data-value="read"><span class="pk-segmented__label">纯净阅读</span></button><button class="pk-segmented__opt" data-value="markdown"><span class="pk-segmented__label">原生 Markdown</span></button></div>
+                    <div class="lab-composer-toolbar__actions"><span class="pk-chip pk-chip--neutral"><svg class="lab-icon lab-icon--sm"><use href="#i-comment"></use></svg> 评论 0</span><button class="pk-icon-btn" aria-label="Undo"><svg class="lab-icon"><use href="#i-undo"></use></svg></button><button class="pk-icon-btn" aria-label="Redo"><svg class="lab-icon"><use href="#i-redo"></use></svg></button></div>
+                  </div>
+                  <div class="lab-composer-page">
+                    <div class="lab-composer-block">
+                      <div class="lab-block-rail"><button class="lab-rail-control" aria-label="Collapse block"><svg class="lab-icon"><use href="#i-chevron-up"></use></svg></button><button class="lab-rail-control" aria-label="Move block"><svg class="lab-icon"><use href="#i-grip"></use></svg></button></div>
+                      <div class="lab-frontmatter-selection">
+                        <button class="lab-frontmatter-trigger"><svg class="lab-icon lab-icon--sm"><use href="#i-sparkles"></use></svg> AI 属性建议 · 1</button>
+                        <div class="lab-frontmatter-grid">
+                          <span class="lab-frontmatter-key">created <i class="lab-origin-chip" data-origin="program">程序</i></span><span class="lab-frontmatter-value">2023-04-30 11:42:31</span>
+                          <span class="lab-frontmatter-key">updated <i class="lab-origin-chip" data-origin="program">程序</i></span><span class="lab-frontmatter-value">2023-05-05 19:47:49</span>
+                          <span class="lab-frontmatter-key">tags <i class="lab-origin-chip">人工</i></span><span class="lab-frontmatter-value"><span class="pk-chip pk-chip--accent">software</span> <span class="pk-chip pk-chip--neutral">tools</span></span>
+                          <span class="lab-frontmatter-key">aliases <i class="lab-origin-chip">人工</i></span><span class="lab-frontmatter-value">B-软件</span>
+                        </div>
+                        <button class="lab-frontmatter-add"><svg class="lab-icon lab-icon--sm"><use href="#i-plus"></use></svg> 添加属性</button>
+                        <div class="lab-frontmatter-candidate">
+                          <div class="lab-frontmatter-candidate__head"><svg class="lab-icon lab-icon--sm"><use href="#i-sparkles"></use></svg><b>AI 属性建议 · 1</b><span>基于正文与 Vault 属性规范</span></div>
+                          <div class="lab-frontmatter-candidate__row"><div><b>category</b><p>软件工具 · 新增候选，不会自动写入 Frontmatter。</p></div><div class="lab-frontmatter-candidate__actions"><button class="pk-btn pk-btn--ghost pk-btn--sm">拒绝</button><button class="pk-btn pk-btn--primary pk-btn--sm">添加</button></div></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="lab-composer-copy"><h4>B-软件</h4><p>这份文档整理个人软件工具、服务和相关知识。属性、正文和 Intelligence 都属于同一份 Markdown 的编辑上下文。</p></div>
+                  </div>
+                </div>
               </div>
               <div class="lab-scene-note"><div><b>Surface</b><span>文档是主体，不套第二层大 Modal。</span></div><div><b>Candidate</b><span>建议、理由、影响和动作同屏。</span></div><div><b>Motion</b><span>150ms 淡入；Reduced 瞬时出现。</span></div></div>
             </article>
 
-            <article class="lab-scene" id="scene-chat">
+            <article class="lab-scene" id="scene-chat" data-reference-id="chat-studio-approved-design">
               <div class="lab-scene__head"><div><h3>Chat & Instruction Composer</h3><p>检验长文本阅读、来源状态、Agent Run 与共享输入器，而不是把所有消息做成大气泡。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/chat-view/ChatViewComponent.tsx">ChatView ↗</a><a class="lab-source" href="../src/ui/component/instruction-composer/AIInstructionComposer.tsx">AIInstructionComposer ↗</a></div></div>
-              <div class="lab-scene__frame"><div class="lab-chat"><aside class="lab-chat__rail"><div class="lab-chat__rail-head"><b>Chats</b><button class="pk-icon-btn" aria-label="New chat"><svg class="lab-icon"><use href="#i-plus"></use></svg></button></div><div class="lab-chat__thread" data-active="true">Design system audit</div><div class="lab-chat__thread">Graph evidence review</div><div class="lab-chat__thread">Composer migration</div></aside><div class="lab-chat__main"><div class="lab-chat__head"><svg class="lab-icon"><use href="#i-sparkles"></use></svg><b>Research profile</b><span class="pk-chip pk-chip--success">Vault connected</span></div><div class="lab-chat__messages"><div class="lab-msg lab-msg--user"><div class="lab-msg__body">检查当前设计系统迁移还有哪些界面没有统一。</div></div><div class="lab-msg"><div class="lab-msg__meta"><span class="pk-chip pk-chip--accent">Peak</span><span>4 sources</span></div><div class="lab-msg__body">我找到了 4 个仍在使用局部视觉契约的区域。主要问题不是颜色本身，而是 Row、Segmented 和 Overlay 的职责在不同 surface 中发生了漂移。</div><div class="lab-agent-run"><b>Agent Run · completed</b><br>Scanned shared primitives → compared Search, Composer, Settings → preserved Graph engine exceptions.</div></div></div><div class="lab-chat__composer"><div class="pkchat-composer"><div class="pkchat-composer__editor" style="color:var(--pk-text-tertiary);font-size:var(--pk-text-md)">Ask Peak or add context…</div><div class="pkchat-composer__foot"><div class="pkchat-composer__foot-left"><button class="pk-icon-btn" aria-label="Add context"><svg class="lab-icon"><use href="#i-plus"></use></svg></button></div><div class="pkchat-composer__foot-right"><span class="pk-chip pk-chip--neutral">2 contexts</span><button class="pkchat-send" aria-label="Send"><svg class="lab-icon"><use href="#i-send"></use></svg></button></div></div></div></div></div></div></div>
+              <div class="lab-reference-contract"><b>design calibrated</b><span>三栏结构、连续 assistant 文本、用户气泡与底部输入器来自 Chat Studio 正式设计。</span><code>conversation rail → reading column → resources</code><a class="lab-source" href="gstack/chat-studio-interactive-2026-07-13/preview-light.png">Design screenshot ↗</a></div>
+              <div class="lab-scene__frame">
+                <div class="lab-chat">
+                  <aside class="lab-chat__rail"><div class="lab-chat__rail-head"><b>新对话</b><button class="pk-icon-btn" aria-label="New chat"><svg class="lab-icon"><use href="#i-plus"></use></svg></button></div><div class="lab-chat__thread">搜索知识库与对话</div><div class="lab-chat__thread" data-active="true">Design system audit</div><div class="lab-chat__thread">Graph evidence review</div><div class="lab-chat__thread">Composer migration</div></aside>
+                  <div class="lab-chat__main"><div class="lab-chat__head"><svg class="lab-icon"><use href="#i-sparkles"></use></svg><b>Design system audit</b><span class="pk-chip pk-chip--success">Vault connected</span></div><div class="lab-chat__messages"><div class="lab-msg lab-msg--user"><div class="lab-msg__body">检查当前设计系统迁移还有哪些界面没有统一。</div></div><div class="lab-msg"><div class="lab-msg__meta"><span class="pk-chip pk-chip--accent">Peak</span><span>4 sources</span></div><div class="lab-msg__body">我找到了 4 个仍在使用局部视觉契约的区域。主要问题不是颜色本身，而是 Row、Segmented 和 Overlay 的职责在不同 surface 中发生了漂移。</div><div class="lab-agent-run"><b>Agent Run · completed</b><br>Compared Search, Composer and Graph against their current source artifacts.</div></div></div><div class="lab-chat__composer"><div class="pkchat-composer"><div class="pkchat-composer__editor" style="color:var(--pk-text-tertiary);font-size:var(--pk-text-md)">输入消息… 使用 [[ 文档、@ 上下文、/ 命令</div><div class="pkchat-composer__foot"><div class="pkchat-composer__foot-left"><button class="pk-icon-btn" aria-label="Add context"><svg class="lab-icon"><use href="#i-plus"></use></svg></button></div><div class="pkchat-composer__foot-right"><span class="pk-chip pk-chip--neutral">2 contexts</span><button class="pkchat-send" aria-label="Send"><svg class="lab-icon"><use href="#i-send"></use></svg></button></div></div></div></div></div>
+                  <aside class="lab-chat__resources"><div class="lab-chat__resource-tabs"><b>概览</b><span>产物</span></div><div class="lab-chat__resource-group"><b>证据与故事选择</b><div class="lab-chat__resource">□ Composer frontmatter anatomy</div><div class="lab-chat__resource">□ Result Graph community layout</div><div class="lab-chat__resource">□ Theme Boundary constraints</div></div><div class="lab-chat__resource-group"><b>下一轮整理</b><div class="lab-chat__resource">□ Real Obsidian visual QA</div></div></aside>
+                </div>
+              </div>
               <div class="lab-scene-note"><div><b>Reading</b><span>Assistant 使用连续文档宽度。</span></div><div><b>State</b><span>Agent Run 与 sources 有独立层级。</span></div><div><b>Composer</b><span>输入、context 和 send 共用 shell。</span></div></div>
             </article>
 
-            <article class="lab-scene" id="scene-settings">
-              <div class="lab-scene__head"><div><h3>Settings & Onboarding</h3><p>检验 Row、FormRow、Toggle、状态和危险操作是否保持扫描效率。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/settings/components/SettingsRow.tsx">SettingsRow ↗</a><a class="lab-source" href="../src/ui/view/onboarding/HarnessOnboardingWizard.tsx">Onboarding ↗</a></div></div>
-              <div class="lab-scene__frame"><div class="lab-settings"><aside class="lab-settings__nav"><b>Peak Settings</b><button data-active="true">Appearance</button><button>AI Setup</button><button>Search & Index</button><button>Commands</button><button>Advanced</button></aside><div class="lab-settings__content"><h4>Appearance</h4><p>Peak visual settings are independent from the Obsidian theme.</p><div class="lab-settings__rows"><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-settings"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Peak theme</span><span class="pk-row__desc">Validated Theme Pack with atomic fallback</span></span><span class="pk-row__right"><span class="pk-chip pk-chip--accent">Default</span></span></div><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-sparkles"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Appearance</span><span class="pk-row__desc">Light, Dark, or explicit Follow preference</span></span><span class="pk-row__right"><div class="pk-segmented" data-mode-group="settings-appearance" data-bind-control="appearance"><button class="pk-segmented__opt" data-value="light" data-selected="true"><span class="pk-segmented__label">Light</span></button><button class="pk-segmented__opt" data-value="dark"><span class="pk-segmented__label">Dark</span></button></div></span></div><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-settings"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Reduced motion</span><span class="pk-row__desc">Remove springs and large movement; preserve focus</span></span><span class="pk-row__right"><button class="pk-toggle" role="switch" aria-checked="false" aria-label="Reduced motion" data-bind-control="motion"><span class="pk-toggle__thumb"></span></button></span></div><div class="pk-row"><span class="pk-row__icon"><svg class="lab-icon"><use href="#i-network"></use></svg></span><span class="pk-row__body"><span class="pk-row__title">Reset theme overrides</span><span class="pk-row__desc">Returns only Peak settings to their defaults</span></span><span class="pk-row__right"><button class="pk-btn pk-btn--danger">Reset</button></span></div></div></div></div></div>
+            <article class="lab-scene" id="scene-settings" data-reference-id="settings-overview-approved-design">
+              <div class="lab-scene__head"><div><h3>Settings · System Overview</h3><p>真实 Settings 首屏先回答“现在能做什么、哪里需要修”，再进入具体设置；不是把所有选项堆成 row 列表。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/settings/components/SettingsRow.tsx">SettingsRow ↗</a><a class="lab-source" href="../src/ui/view/onboarding/HarnessOnboardingWizard.tsx">Onboarding ↗</a></div></div>
+              <div class="lab-reference-contract" data-reference-state="candidate"><b>approved design</b><span>信息架构、状态横幅与 capability cards 按 Settings overview 设计稿校准。</span><code>readiness → capability → recovery</code><a class="lab-source" href="gstack/onboarding-settings-redesign-2026-08-06/screens/settings-overview.png">Design screenshot ↗</a></div>
+              <div class="lab-scene__frame"><div class="lab-settings"><aside class="lab-settings__nav"><b>✦ Peak Settings</b><button data-active="true">Overview</button><button>Providers & runtimes</button><button>Models by task</button><button>Vault & search</button><button>Media & tools</button><button>Preferences & data</button></aside><div class="lab-settings__content"><div style="display:flex;align-items:center;gap:10px"><div><h4>System overview</h4><p style="margin:4px 0 0;color:var(--pk-text-secondary)">Confirm what works now, what is optional, and where to fix the next issue.</p></div><span class="pk-chip pk-chip--success" style="margin-left:auto">All changes saved</span><div class="pk-segmented"><button class="pk-segmented__opt" data-selected="true"><span class="pk-segmented__label">Standard</span></button><button class="pk-segmented__opt"><span class="pk-segmented__label">Advanced</span></button></div></div><div class="lab-settings__status"><div><b>Everyday work is ready</b><span>Chat, Composer, AI Search, File Atlas, embeddings, and image creation are available.</span></div><button class="pk-btn pk-btn--secondary pk-btn--sm">Review optional setup</button></div><div class="lab-settings__overview"><div class="lab-settings-card"><div class="lab-settings-card__head"><svg class="lab-icon"><use href="#i-network"></use></svg><b>Providers & runtimes</b><span class="pk-chip pk-chip--success">Ready</span></div><strong>1 service verified</strong><p>Chat, tools, embeddings, file understanding and images.</p><a href="#">Manage providers →</a></div><div class="lab-settings-card"><div class="lab-settings-card__head"><svg class="lab-icon"><use href="#i-settings"></use></svg><b>Models by task</b><span class="pk-chip pk-chip--success">Ready</span></div><strong>14 ready · 4 optional</strong><p>Task groups inherit reliable defaults; media and agent roles activate when connections exist.</p><a href="#">Review task models →</a></div><div class="lab-settings-card"><div class="lab-settings-card__head"><svg class="lab-icon"><use href="#i-search"></use></svg><b>Vault & search</b><span class="pk-chip pk-chip--success">Search ready</span></div><strong>94% current</strong><p>1,246 files indexed; 17 changed notes can refresh in the background.</p><a href="#">Update changed notes →</a></div><div class="lab-settings-card"><div class="lab-settings-card__head"><svg class="lab-icon"><use href="#i-sparkles"></use></svg><b>Media & tools</b><span class="pk-chip pk-chip--warning">Partial</span></div><strong>Images + 5 tools ready</strong><p>Optional capabilities stay visible without blocking core setup.</p><a href="#">Review capabilities →</a></div></div><div class="lab-settings__quick"><b>Quick actions</b><span>Common recovery and maintenance actions.</span><div class="lab-settings__quick-actions"><button class="pk-btn pk-btn--secondary pk-btn--sm">Re-run setup</button><button class="pk-btn pk-btn--secondary pk-btn--sm">Test providers</button><button class="pk-btn pk-btn--secondary pk-btn--sm">Export diagnostics</button><button class="pk-btn pk-btn--secondary pk-btn--sm">Restore safe defaults</button></div></div></div></div></div>
               <div class="lab-scene-note"><div><b>Row</b><span>一个扫描单元承载 label、hint 和 control。</span></div><div><b>Density</b><span>只改变 row padding 和 section gap。</span></div><div><b>Danger</b><span>红色只用于不可逆或高风险动作。</span></div></div>
             </article>
 
-            <article class="lab-scene" id="scene-graph">
-              <div class="lab-scene__head"><div><h3>Graph Workspace</h3><p>检验 canvas chrome、节点层级、edge semantics、selected state 与 inspector；布局引擎保持领域专用。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/component/graph/AtlasGraphCanvas.tsx">AtlasGraphCanvas ↗</a><a class="lab-source" href="../src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx">ResultGraphView ↗</a></div></div>
-              <div class="lab-scene__frame"><div class="lab-graph"><div class="lab-graph__canvas"><div class="lab-graph__toolbar"><div class="lab-graph__toolbar-group"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="graph-layout"><button class="pk-segmented__opt" data-value="constellation" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">Constellation</span></button><button class="pk-segmented__opt" data-value="flow"><span class="pk-segmented__label">Flow</span></button><button class="pk-segmented__opt" data-value="folder"><span class="pk-segmented__label">Folder</span></button></div></div><div class="lab-graph__toolbar-group"><span class="pk-chip pk-chip--accent">Semantic on</span><button class="pk-icon-btn" aria-label="Graph settings"><svg class="lab-icon"><use href="#i-settings"></use></svg></button></div></div><svg class="lab-graph__svg" viewBox="0 0 760 520" preserveAspectRatio="none"><line class="lab-graph__edge" x1="380" y1="250" x2="165" y2="150"></line><line class="lab-graph__edge" x1="380" y1="250" x2="610" y2="145"></line><line class="lab-graph__edge--semantic" x1="380" y1="250" x2="190" y2="395"></line><line class="lab-graph__edge" x1="380" y1="250" x2="585" y2="390"></line><line class="lab-graph__edge--semantic" x1="165" y1="150" x2="610" y2="145"></line></svg><button class="lab-node" data-selected="true" data-kind="hub" style="left:50%;top:48%">Peak System<small>selected hub</small></button><button class="lab-node" style="left:22%;top:29%">UI Design<small>document</small></button><button class="lab-node" style="left:80%;top:28%">Search<small>surface</small></button><button class="lab-node" style="left:25%;top:76%">Theme Pack<small>contract</small></button><button class="lab-node" style="left:77%;top:75%">Composer<small>surface</small></button></div><aside class="lab-graph__aside"><span class="lab-inspector__eyebrow">Selected node</span><h4>Peak System</h4><p>Shared theme, component and interaction contract across Peak-managed surfaces.</p><span class="pk-chip pk-chip--accent">Hub · 14 links</span><div class="lab-graph__legend"><span><i></i>Reference edge</span><span><i data-semantic="true"></i>Semantic edge</span></div><button class="pk-btn pk-btn--secondary" style="margin-top:18px">Open inspector</button></aside></div></div>
-              <div class="lab-scene-note"><div><b>Layout</b><span>领域引擎决定位置，不制造新组件语法。</span></div><div><b>Semantic</b><span>颜色之外还需线型、legend 和名称。</span></div><div><b>Selected</b><span>accent border + tint + inspector 联动。</span></div></div>
+            <article class="lab-scene" id="scene-result-graph" data-reference-id="result-graph-community-current-design">
+              <div class="lab-scene__head"><div><h3>Result Graph · Community</h3><p>Search 结果图按当前 snapshot 展示社区结构、桥接节点与可解释证据；它不是 File Atlas 的本地图。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx">ResultGraphView ↗</a><a class="lab-source" href="research/2026-08-10-result-graph-community-mock/index.html">Interactive design ↗</a></div></div>
+              <div class="lab-reference-contract" data-reference-state="candidate"><b>current design</b><span>社区 hull、节点色阶、桥接关系、投影工具栏和浮动解释卡全部来自当前 Result Graph Community 设计。</span><code>snapshot → projection → community evidence</code><a class="lab-source" href="research/2026-08-10-result-graph-community-mock/preview.png">Reference screenshot ↗</a></div>
+              <div class="lab-scene__frame lab-result-graph">
+                <div class="lab-result-graph__tabs"><button data-active="true">Vault Search</button><button><svg class="lab-icon lab-icon--sm" style="display:inline-block;vertical-align:-2px"><use href="#i-sparkles"></use></svg> AI Search</button></div>
+                <div class="lab-result-graph__query"><div class="lab-result-graph__bar"><svg class="lab-icon"><use href="#i-search"></use></svg><span>knowledge graph</span></div><button class="pk-btn pk-btn--secondary">Refine</button></div>
+                <div class="lab-result-graph__toolbar"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="result-view"><button class="pk-segmented__opt" data-value="list"><span class="pk-segmented__label">List</span></button><button class="pk-segmented__opt" data-value="tree"><span class="pk-segmented__label">Tree</span></button><button class="pk-segmented__opt" data-value="graph" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">Graph</span></button></div><div style="display:flex;align-items:center;gap:9px;min-width:0"><div class="lab-result-graph__modes"><button>Connections</button><button data-active="true">Community</button><button>Links ↓</button><button>Folders</button><button>Hubs</button></div><button class="pk-toggle" role="switch" aria-checked="true" data-on="true" aria-label="Semantic"><span class="pk-toggle__thumb"></span></button><span style="color:var(--pk-text-secondary);font-size:var(--pk-text-xs)">Semantic</span></div></div>
+                <div class="lab-community-canvas">
+                  <div class="lab-community-caption"><i></i><span>3 communities · 11 of 126 notes shown</span></div>
+                  <div class="lab-community-tools"><button class="pk-icon-btn" aria-label="Node list"><svg class="lab-icon"><use href="#i-list"></use></svg></button><button class="pk-icon-btn" aria-label="Copy graph"><svg class="lab-icon"><use href="#i-copy"></use></svg></button></div>
+                  <div class="lab-community-stage">
+                    <svg class="lab-community-edges" viewBox="0 0 1000 500" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="lab-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="currentColor"></path></marker></defs><path d="M140 96 L290 110" marker-end="url(#lab-arrow)"></path><path d="M140 96 L210 178" marker-end="url(#lab-arrow)"></path><path d="M290 110 L300 188" marker-end="url(#lab-arrow)"></path><path d="M210 178 L300 188" marker-end="url(#lab-arrow)"></path><path d="M605 98 L760 104" marker-end="url(#lab-arrow)"></path><path d="M605 98 L642 178" marker-end="url(#lab-arrow)"></path><path d="M760 104 L738 184" marker-end="url(#lab-arrow)"></path><path data-semantic="true" d="M642 178 L738 184"></path><path d="M350 372 L485 356" marker-end="url(#lab-arrow)"></path><path d="M485 356 L583 406" marker-end="url(#lab-arrow)"></path><path data-semantic="true" d="M350 372 L583 406"></path><path d="M300 188 C350 220 410 235 457 248" marker-end="url(#lab-arrow)"></path><path d="M457 248 C510 215 560 150 605 98" marker-end="url(#lab-arrow)"></path><path data-semantic="true" d="M457 248 C500 285 540 355 583 406"></path></svg>
+                    <div class="lab-community-hull" data-community="a"><button class="lab-community-label"><span>Community 01</span><span>4 / 38</span><small>react · rendering · state</small></button></div><div class="lab-community-hull" data-community="b"><button class="lab-community-label"><span>Community 02</span><span>4 / 51</span><small>graph · retrieval · indexing</small></button></div><div class="lab-community-hull" data-community="c"><button class="lab-community-label"><span>Community 03</span><span>3 / 37</span><small>product · interaction · evidence</small></button></div>
+                    <button class="lab-community-node" data-community="a" style="left:14%;top:19%">React Hooks</button><button class="lab-community-node" data-community="a" style="left:29%;top:22%">State Synchronization</button><button class="lab-community-node" data-community="a" style="left:21%;top:36%">Server Components</button><button class="lab-community-node" data-community="a" style="left:30%;top:38%">Rendering Boundaries</button>
+                    <button class="lab-community-node" data-community="b" style="left:60.5%;top:19.5%">Knowledge Graph</button><button class="lab-community-node" data-community="b" style="left:76%;top:21%">Vault Indexing</button><button class="lab-community-node" data-community="b" style="left:64%;top:36%">Search Reranking</button><button class="lab-community-node" data-community="b" style="left:74%;top:37%">Semantic Retrieval</button>
+                    <button class="lab-community-node" data-community="c" style="left:35%;top:74.5%">Product IA</button><button class="lab-community-node" data-community="c" style="left:48.5%;top:71.5%">Interaction Design</button><button class="lab-community-node" data-community="c" style="left:58%;top:81.5%">Evidence Review</button><button class="lab-community-node" data-community="bridge" style="left:45.7%;top:49.7%">Context Pipeline</button>
+                    <aside class="lab-community-popover"><div style="display:flex;align-items:center;gap:8px"><h4>Community 02</h4><span class="pk-chip pk-chip--success">4 / 51</span></div><p>graph · retrieval · indexing</p><div class="lab-community-popover__meta"><span class="pk-chip pk-chip--neutral">4 internal links</span><span class="pk-chip pk-chip--neutral">6 retrieval hits</span><span class="pk-chip pk-chip--accent">bridge: Context Pipeline</span></div><div class="lab-community-popover__ai"><b>AI explanation</b><br>Vault indexing and Knowledge Graph form the structural center; reranking and semantic retrieval are the query-time layer.</div></aside>
+                  </div>
+                </div>
+              </div>
+              <div class="lab-scene-note"><div><b>Projection</b><span>Connections / Community / Links / Folders / Hubs 改读法，不重新查询。</span></div><div><b>Communities</b><span>颜色只是分组通道；hull、label、count 同时表达。</span></div><div><b>Evidence</b><span>AI 解释附着社区证据，不取代真实链接。</span></div></div>
+            </article>
+
+            <article class="lab-scene" id="scene-file-atlas-graph" data-reference-id="file-atlas-local-graph-real-ui">
+              <div class="lab-scene__head"><div><h3>File Atlas · Local Graph</h3><p>围绕当前文档查看一跳/两跳邻域、真实链接方向和布局投影；它保留文件 rail 与文档上下文。</p></div><div class="lab-scene__sources"><a class="lab-source" href="../src/ui/component/graph/AtlasGraphCanvas.tsx">AtlasGraphCanvas ↗</a><a class="lab-source" href="../src/ui/view/file-atlas/components/FileAtlasGraph.tsx">FileAtlasGraph ↗</a></div></div>
+              <div class="lab-reference-contract"><b>real ui locked</b><span>文件 rail、文档 context、Tree/Graph 切换、scope 列表与 local canvas 按实机截图重建。</span><code>active document → local projection → node action</code><a class="lab-source" href="../.dev/harness/shots/atlas-graph-light.png">Real screenshot ↗</a></div>
+              <div class="lab-scene__frame">
+                <div class="lab-atlas">
+                  <aside class="lab-atlas__rail"><div class="lab-atlas__rail-head"><b>Files</b><span class="pk-chip pk-chip--neutral">Recent</span></div><div class="lab-atlas__file"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span>AI Search Architecture.md</span></div><div class="lab-atlas__file" data-active="true"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span>Peak Assistant System.md</span></div><div class="lab-atlas__file"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span>Composer Interaction.md</span></div><div class="lab-atlas__file"><span class="lab-file-icon"><svg class="lab-icon"><use href="#i-file"></use></svg></span><span>Theme Boundary.md</span></div></aside>
+                  <div class="lab-atlas__main"><div class="lab-atlas__context"><b>Peak Assistant System</b><span>knowledge-systems / architecture</span><span class="pk-chip pk-chip--neutral">14 blocks</span><span class="pk-chip pk-chip--neutral">9 links</span></div><div class="lab-atlas__tabs"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="atlas-view"><button class="pk-segmented__opt" data-value="tree"><span class="pk-segmented__label">Tree</span></button><button class="pk-segmented__opt" data-value="graph" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">Graph</span></button></div><span style="color:var(--pk-text-tertiary);font-size:var(--pk-text-xs)">Open local graph · 7 nodes</span><button class="pk-btn pk-btn--ghost pk-btn--sm">Reveal in editor</button></div><div class="lab-atlas__controls"><div class="pk-segmented" data-variant="animated-pill" data-mode-group="atlas-layout"><button class="pk-segmented__opt" data-value="constellation" data-selected="true"><span class="pk-segmented__thumb"></span><span class="pk-segmented__label">Constellation</span></button><button class="pk-segmented__opt" data-value="flow-down"><span class="pk-segmented__label">Flow ↓</span></button><button class="pk-segmented__opt" data-value="flow-right"><span class="pk-segmented__label">Flow →</span></button><button class="pk-segmented__opt" data-value="folder"><span class="pk-segmented__label">Folder tree</span></button><button class="pk-segmented__opt" data-value="orbit"><span class="pk-segmented__label">Orbit</span></button></div><button class="pk-toggle" role="switch" aria-checked="false" aria-label="Semantic"><span class="pk-toggle__thumb"></span></button><span style="color:var(--pk-text-secondary);font-size:var(--pk-text-xs)">Semantic</span><span class="pk-chip pk-chip--neutral" style="margin-left:auto">7 notes · 9 links</span></div>
+                    <div class="lab-atlas__workspace"><aside class="lab-atlas__scopes"><button class="lab-atlas__scope" data-active="true"><b>Local neighborhood</b><span>1-hop · 7 notes</span></button><button class="lab-atlas__scope"><b>Two-hop expansion</b><span>12 notes · bridges highlighted</span></button><div class="lab-atlas__note"><b>Read-only projection.</b><br>Edges come from vault links around the active note.</div></aside><div class="lab-atlas__graph"><div class="lab-atlas__graph-head"><b>⌘ Local neighborhood</b><button class="pk-btn pk-btn--ghost pk-btn--sm"><svg class="lab-icon lab-icon--sm"><use href="#i-plus"></use></svg> Add graph to tray</button></div><div class="lab-atlas__canvas"><svg class="lab-atlas__edges" viewBox="0 0 800 390" preserveAspectRatio="none"><line x1="400" y1="190" x2="155" y2="90"></line><line x1="400" y1="190" x2="635" y2="85"></line><line x1="400" y1="190" x2="160" y2="300"></line><line x1="400" y1="190" x2="640" y2="300"></line><line data-semantic="true" x1="155" y1="90" x2="635" y2="85"></line><line x1="160" y1="300" x2="305" y2="335"></line></svg><button class="lab-atlas-node" data-current="true" style="left:50%;top:49%">Peak Assistant System</button><button class="lab-atlas-node" style="left:19%;top:23%">UI Design</button><button class="lab-atlas-node" style="left:79%;top:22%">Vault Search</button><button class="lab-atlas-node" style="left:20%;top:77%">Theme Boundary</button><button class="lab-atlas-node" style="left:80%;top:77%">Composer</button><button class="lab-atlas-node" style="left:38%;top:86%">File Atlas</button></div></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="lab-scene-note"><div><b>Context</b><span>Graph 永远围绕当前文档，不脱离 Files rail。</span></div><div><b>Scope</b><span>一跳用于阅读；两跳用于发现 bridge。</span></div><div><b>Layout</b><span>Constellation / Flow / Folder / Orbit 只改变位置。</span></div></div>
             </article>
           </div>
         </section>
@@ -823,8 +1071,11 @@
             <div class="lab-source-row"><b>Direct visual contract</b><span>Tokens and primitive CSS loaded by this page</span><code>peak-tokens.css · peak-components.css</code></div>
             <div class="lab-source-row"><b>Primitive specimen</b><span>Button, Segmented, Toggle, Row, Chip, Overlay</span><code>src/ui/components/primitives</code></div>
             <div class="lab-source-row"><b>Controlled composite</b><span>Result Browser toolbar, list row and inspector anatomy</span><code>src/ui/component/result-browser</code></div>
-            <div class="lab-source-row"><b>Scene composition</b><span>Search, Composer, Chat, Settings and Graph representative states</span><code>docs-only factories / static fixtures</code></div>
-            <div class="lab-source-row"><b>Deliberate simulation</b><span>Graph layout, editor body, streaming and host integration</span><code>no service · store · Obsidian runtime</code></div>
+            <div class="lab-source-row"><b>Composer lock</b><span>Real Obsidian screenshot + BlockRail + FrontmatterBlockView + DisplayStateSwitch</span><code>composer-frontmatter-real-ui</code></div>
+            <div class="lab-source-row"><b>Result Graph lock</b><span>Current Community design candidate + production ResultGraphView ownership</span><code>result-graph-community-current-design</code></div>
+            <div class="lab-source-row"><b>File Atlas lock</b><span>Real graph screenshot + production AtlasGraphCanvas ownership</span><code>file-atlas-local-graph-real-ui</code></div>
+            <div class="lab-source-row"><b>Chat / Settings lock</b><span>Approved design screenshots determine pane and information architecture</span><code>chat-studio · settings-overview</code></div>
+            <div class="lab-source-row"><b>Deliberate simulation</b><span>Data, layout engine, streaming and host integration remain static; anatomy and theme roles do not.</span><code>no service · store · Obsidian runtime</code></div>
           </div>
         </section>
 
@@ -842,6 +1093,11 @@
         pack: document.getElementById("themePack"),
         appearance: document.getElementById("appearance"),
         accent: document.getElementById("accentColor"),
+        canvas: document.getElementById("canvasColor"),
+        surface: document.getElementById("surfaceColor"),
+        text: document.getElementById("textColor"),
+        borderColor: document.getElementById("borderColor"),
+        status: document.getElementById("statusPalette"),
         density: document.getElementById("density"),
         radius: document.getElementById("radiusProfile"),
         controlSize: document.getElementById("controlSize"),
@@ -873,7 +1129,29 @@
         balanced: { sm: 4, md: 8, lg: 12, xl: 16 },
         soft: { sm: 7, md: 11, lg: 17, xl: 23 }
       };
+      var statusPalettes = {
+        light: {
+          calm: { success: "#39745f", warning: "#8a672e", danger: "#a95757" },
+          standard: { success: "#16805c", warning: "#a26212", danger: "#c54848" },
+          vivid: { success: "#008f62", warning: "#c16b00", danger: "#df3030" }
+        },
+        dark: {
+          calm: { success: "#7cae9b", warning: "#c5a46d", danger: "#cf8a8a" },
+          standard: { success: "#58c39a", warning: "#e4ad54", danger: "#ef7777" },
+          vivid: { success: "#31d59b", warning: "#ffc05c", danger: "#ff6b6b" }
+        }
+      };
       var textLadder = { xs: 10, sm: 11, base: 12, md: 13, mdPlus: 13.5, lg: 14, lgPlus: 14.5, xl: 16, x2: 20, x3: 28 };
+
+      var referenceLedger = Object.freeze({
+        "result-browser-production": { evidence: "source", anatomy: ["ResultBrowserToolbar", "ResultBrowserListRow", "shared snapshot"] },
+        "composer-frontmatter-real-ui": { evidence: "../.dev/harness/shots/composer-frontmatter-action-row-light.png", anatomy: ["DisplayStateSwitch", "BlockRail", "FrontmatterBlockView"] },
+        "chat-studio-approved-design": { evidence: "gstack/chat-studio-interactive-2026-07-13/preview-light.png", anatomy: ["conversation rail", "reading column", "resources", "instruction composer"] },
+        "settings-overview-approved-design": { evidence: "gstack/onboarding-settings-redesign-2026-08-06/screens/settings-overview.png", anatomy: ["readiness", "capability cards", "recovery actions"] },
+        "result-graph-community-current-design": { evidence: "research/2026-08-10-result-graph-community-mock/preview.png", anatomy: ["projection toolbar", "community hull", "bridge node", "evidence popover"] },
+        "file-atlas-local-graph-real-ui": { evidence: "../.dev/harness/shots/atlas-graph-light.png", anatomy: ["file rail", "document context", "scope", "local canvas"] }
+      });
+      window.peakDesignReferenceLedger = referenceLedger;
 
       function rgba(hex, alpha) {
         var value = hex.replace("#", "");
@@ -896,11 +1174,31 @@
       }
       function resolveTheme() {
         var appearance = controls.appearance.value;
-        var source = packs[controls.pack.value][appearance];
+        var preset = packs[controls.pack.value][appearance];
+        var isDark = appearance === "dark";
+        var canvas = controls.canvas.value;
+        var surface = controls.surface.value;
+        var text = controls.text.value;
+        var rawBorder = controls.borderColor.value;
+        var source = {
+          bg: canvas,
+          bg2: mix(canvas, text, isDark ? .055 : .025),
+          bg3: mix(canvas, text, isDark ? .10 : .055),
+          surface: surface,
+          raised: mix(surface, text, isDark ? .045 : .018),
+          text: text,
+          text2: mix(text, canvas, .38),
+          text3: mix(text, canvas, .57),
+          faint: mix(text, canvas, .72),
+          border: rawBorder,
+          borderStrong: mix(rawBorder, text, isDark ? .22 : .16),
+          accent: preset.accent,
+          accentHover: preset.accentHover
+        };
         var accent = controls.accent.value;
         var shape = radiusProfiles[controls.radius.value];
         var scale = Number(controls.textScale.value);
-        var isDark = appearance === "dark";
+        var status = statusPalettes[appearance][controls.status.value];
         var borderAmount = controls.border.value === "soft" ? .45 : controls.border.value === "strong" ? -.18 : 0;
         var border = borderAmount >= 0 ? mix(source.border, source.surface, borderAmount) : mix(source.border, source.text, Math.abs(borderAmount));
         var borderStrong = borderAmount >= 0 ? mix(source.borderStrong, source.surface, borderAmount * .7) : mix(source.borderStrong, source.text, Math.abs(borderAmount));
@@ -937,6 +1235,12 @@
           "--pk-accent-soft": rgba(accent, isDark ? .30 : .22),
           "--pk-accent-text": mix(accent, isDark ? "#ffffff" : "#000000", isDark ? .20 : .12),
           "--pk-accent-fg": isDark ? source.bg : "#ffffff",
+          "--pk-success": status.success,
+          "--pk-success-bg": rgba(status.success, isDark ? .17 : .10),
+          "--pk-warning": status.warning,
+          "--pk-warning-bg": rgba(status.warning, isDark ? .17 : .11),
+          "--pk-danger": status.danger,
+          "--pk-danger-bg": rgba(status.danger, isDark ? .17 : .10),
           "--pk-state-hover": isDark ? "rgba(255,255,255,.06)" : "rgba(20,28,24,.045)",
           "--pk-state-active": isDark ? "rgba(255,255,255,.10)" : "rgba(20,28,24,.075)",
           "--pk-state-selected": rgba(accent, isDark ? .18 : .10),
@@ -978,21 +1282,27 @@
         document.querySelectorAll('.pk-toggle[data-bind-control="motion"]').forEach(function (toggle) { var reduced = controls.motion.value === "reduced"; toggle.dataset.on = String(reduced); toggle.setAttribute("aria-checked", String(reduced)); });
         document.getElementById("resolvedSummary").textContent = [theme.pack, theme.appearance === "dark" ? "Dark" : "Light", controls.density.options[controls.density.selectedIndex].text, controls.radius.options[controls.radius.selectedIndex].text, controls.controlSize.options[controls.controlSize.selectedIndex].text + " controls", controls.elevation.options[controls.elevation.selectedIndex].text, controls.textScale.options[controls.textScale.selectedIndex].text].join(" · ");
       }
-      function syncAccentFromPack() {
-        controls.accent.value = packs[controls.pack.value][controls.appearance.value].accent;
+      function syncPaletteFromPack() {
+        var preset = packs[controls.pack.value][controls.appearance.value];
+        controls.accent.value = preset.accent;
+        controls.canvas.value = preset.bg;
+        controls.surface.value = preset.surface;
+        controls.text.value = preset.text;
+        controls.borderColor.value = preset.border;
         updateTheme();
       }
       Object.keys(controls).forEach(function (key) {
         var control = controls[key];
         control.addEventListener("input", updateTheme);
         control.addEventListener("change", function () {
-          if (key === "pack" || key === "appearance") syncAccentFromPack();
+          if (key === "pack" || key === "appearance") syncPaletteFromPack();
           else updateTheme();
         });
       });
       document.getElementById("resetTheme").addEventListener("click", function () {
         controls.pack.value = "violet";
         controls.appearance.value = "light";
+        controls.status.value = "standard";
         controls.density.value = "comfortable";
         controls.radius.value = "balanced";
         controls.controlSize.value = "medium";
@@ -1000,7 +1310,7 @@
         controls.border.value = "standard";
         controls.motion.value = "standard";
         controls.textScale.value = "1";
-        syncAccentFromPack();
+        syncPaletteFromPack();
       });
 
       function updateButtonSpecimen() {
@@ -1033,7 +1343,7 @@
           document.querySelectorAll('[data-mode-panel="' + group.dataset.modeGroup + '"]').forEach(function (panel) { panel.hidden = panel.dataset.value !== option.dataset.value; });
           if (group.dataset.bindControl === "appearance") {
             controls.appearance.value = option.dataset.value;
-            syncAccentFromPack();
+            syncPaletteFromPack();
           }
         });
       });
@@ -1060,7 +1370,7 @@
         navLinks.forEach(function (link) { if (active && link.getAttribute("href") === "#" + active.id) link.setAttribute("aria-current", "true"); else link.removeAttribute("aria-current"); });
       }
       document.addEventListener("scroll", updateNav, { passive: true });
-      syncAccentFromPack();
+      syncPaletteFromPack();
       updateButtonSpecimen();
       updateNav();
     }());
