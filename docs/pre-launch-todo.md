@@ -65,6 +65,18 @@
   - 验证最终 artifact、版本、License、内容和回滚。
   - P0 清零后才能创建最终 tag/release。
 
+### 宣传发布与反馈运营
+
+- [ ] **P1 · 社区基础设施** · [13 · Discord 社区搭建](pre-launch/13-discord-community-setup.md)
+  - 建立公告、入门、支持、反馈和作品分享的长期社区入口。
+  - 首期保持精简并由 Owner 人工管理，不提前引入复杂机器人和自动化。
+- [ ] **P1 · 多渠道宣传任务** · [14 · 社区与平台发布计划](pre-launch/14-community-launch-distribution.md)
+  - 为 Dev.to、Obsidian 社区、Product Hunt、小红书、Reddit 等渠道分别准备原生内容。
+  - 记录渠道规则、发布节奏、素材、CTA 和最终帖子链接，避免无差别复制粘贴。
+- [ ] **P1 · 持续运营任务** · [15 · 人工反馈监控与回流](pre-launch/15-manual-feedback-monitoring.md)
+  - 暂时由 Owner 手动巡检各平台、Discord、GitHub 和网站反馈。
+  - 将问题分类后回流到产品、代码、网站、文档或宣传修正任务。
+
 ### 可选任务
 
 - [ ] **P2 · 待决定是否执行** · [09 · GitHub Pages 自定义域名](pre-launch/09-github-pages-custom-domain.md)
