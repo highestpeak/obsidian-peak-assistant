@@ -256,7 +256,7 @@ function setImageScope(scope, button) {
   const selectingLasso = scope === "lasso";
   const layer = document.querySelector("#imageLassoLayer");
   const hint = document.querySelector("#imageLassoHint");
-  layer.hidden = !selectingLasso;
+  layer.toggleAttribute("hidden", !selectingLasso);
   hint.hidden = !selectingLasso || Boolean(lassoSelections.image);
   if (!selectingLasso) clearLassoSelection("image", false);
   document.querySelector("#imageExportSheet").hidden = true;
@@ -590,7 +590,7 @@ function setPdfMode(mode, button) {
   clearLassoSelection("pdf", false);
   page.classList.toggle("is-lasso-mode", mode === "lasso");
   page.classList.toggle("is-page-selected", mode === "page");
-  lassoLayer.hidden = mode !== "lasso";
+  lassoLayer.toggleAttribute("hidden", mode !== "lasso");
   lassoHint.hidden = mode !== "lasso";
   toolbar.hidden = true;
   pdfSelection = mode === "page" ? { kind: "page", text: `Page ${visiblePage}`, composerDetail: `${surfaces.pdf.name} · page ${visiblePage} · full page geometry · source revision` } : null;

@@ -84,6 +84,9 @@ assert.match(js, /source surface remains active/i, "source-active AI response mi
 assert.match(js, /handleImageTool|setImageScope|beginLasso|appendLassoPoint|finishLasso|normalizedLassoSelection|handleImageLassoAction|updateExportEstimate|toggleHtmlSource|positionSelectionLens|setPdfMode|completePdfLasso|selectPdfContent|addToComposer|codeEditor\.addEventListener\("input"\)|positionCanvasSelection|handleExcalStyle/, "direct interaction handlers missing");
 assert.match(js, /setPointerCapture\?\.\(event\.pointerId\)/, "Lasso drag must capture the active pointer");
 assert.match(js, /releasePointerCapture\(state\.pointerId\)/, "Lasso drag must release pointer capture");
+assert.match(js, /layer\.toggleAttribute\("hidden", !selectingLasso\)/, "Image SVG lasso visibility must remove the hidden attribute");
+assert.match(js, /lassoLayer\.toggleAttribute\("hidden", mode !== "lasso"\)/, "PDF SVG lasso visibility must remove the hidden attribute");
+assert.doesNotMatch(js, /(?:layer|lassoLayer)\.hidden\s*=/, "SVG lasso layers cannot use HTMLElement.hidden assignment");
 assert.match(js, /normalizedPoints[\s\S]+normalizedBounds/, "Shared normalized lasso envelope missing");
 assert.match(js, /knowledge-work-ai-era\.pdf[\s\S]+p\.\$\{page\}[\s\S]+lasso mask \+ normalized bounds/, "PDF Composer receipt must retain file, page, mask, and bounds");
 assert.match(css, /\.selection-context-bar\.follows-selection/, "shared selection-following capsule styles missing");
