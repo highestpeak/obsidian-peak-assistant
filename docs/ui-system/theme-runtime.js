@@ -174,7 +174,11 @@
     var variables = resolve(state);
     document.documentElement.dataset.peakAppearance = state.appearance;
     document.documentElement.style.colorScheme = state.appearance;
-    document.body && (document.body.dataset.peakAppearance = state.appearance);
+    if (document.body) {
+      document.body.dataset.peakAppearance = state.appearance;
+      document.body.classList.toggle("theme-light", state.appearance === "light");
+      document.body.classList.toggle("theme-dark", state.appearance === "dark");
+    }
     document.querySelectorAll(".peak-design-root, .pktw-root").forEach(function (root) {
       root.dataset.themePack = state.pack;
       root.dataset.appearance = state.appearance;

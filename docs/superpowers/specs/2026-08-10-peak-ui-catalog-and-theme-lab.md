@@ -18,7 +18,7 @@
 
 - `docs/design-system.html`：定义允许变化的主题轴、语义 token、组件状态和 Obsidian 宿主边界；
 - `docs/design-system-playground.html`：展示真实产品界面的结构镜像、交互状态和录屏参照；
-- `docs/ui-system/`：共享主题、Catalog 清单、场景样式、运行时与校验器。
+- `docs/ui-system/`：共享主题、Catalog 清单、最小适配样式、运行时与校验器；产品外观直接消费根目录生产 `styles.css`。
 
 ## 2. 第一原则约束
 
@@ -28,7 +28,7 @@
 - `real UI -> recording frame -> production source -> tracked design artifact` 的可追溯关系；
 - 两个页面共享同一 Theme State，并可通过 BroadcastChannel、opener postMessage 和 localStorage 同步；
 - 所有交互都在同一 DOM 中运行，不用 iframe，也不复制旧 HTML runtime；
-- 所有产品颜色只读取 `--pk-*` 语义变量，场景不能拥有自己的主题色。
+- 所有产品颜色只读取 `--pk-*` 语义变量，场景不能拥有自己的主题色；仍读取 Obsidian 名称的旧生产 selector 只能通过单独的 `host-compat.css` 反向绑定到 Peak token。
 
 ### 2.2 明确删除
 
@@ -40,7 +40,9 @@
 
 ### 2.3 重要取舍
 
-生产 React runtime 不直接装入文档页。Catalog 使用“结构镜像”：DOM anatomy、状态名称、交互路径和主题契约与生产实现对齐，但数据使用静态 fixture。这样可以直接 `file://` 打开、稳定复现状态，也不会启动索引、模型、数据库或 Obsidian API。
+生产 React runtime 不直接装入文档页。Catalog 使用“源码锁定的结构镜像”：直接加载当前生产 `styles.css`，DOM anatomy 和 class contract 从生产 TSX 提取，只有数据使用静态 fixture。Catalog 不得再用文档专属 class 重新设计 Search、Composer、Chat、File Atlas 或 Settings。这样可以直接 `file://` 打开、稳定复现状态，也不会启动索引、模型、数据库或 Obsidian API。
+
+Graph 是例外：当前 Result Browser / File Atlas Graph 由 Cytoscape canvas 绘制，没有可复制的节点 DOM。文档页使用 SVG adapter 复现 `AtlasGraphCanvasImpl.tsx` 的 node/edge style contract；adapter 必须通过 `data-production-style-source` 声明精确源码位置，并且仍只消费 Peak 语义 token。
 
 结构镜像不能冒充真实运行验收。它用于主题与结构回归；真实 Obsidian 的焦点、键盘、拖拽、流式输出和几何仍按 `docs/conventions/obsidian-real-ui-qa.md` 验证。
 
@@ -65,10 +67,11 @@ docs/ui-system/
   -> theme-packs.js        theme schema and built-in packs
   -> theme-runtime.js      resolve/apply/sync/import/export
   -> theme.css             autonomous root and shared primitives
+  -> host-compat.css       legacy Obsidian token names -> Peak semantic tokens
   -> design-system.css     Theme Lab presentation
   -> catalog-manifest.js   screen/state/source/reference inventory
   -> catalog-runtime.js    scene state machines and reference viewer
-  -> ui-catalog.css        product scene anatomy
+  -> ui-catalog.css        docs viewport, fixture and canvas adapters only
   -> validate.mjs          static contract checks
   -> evidence/             normalized recording keyframes
 ```
@@ -109,11 +112,12 @@ Theme Pack 只提供基础角色：canvas、surface、raised、sunken、text、m
 
 ## 6. Obsidian 宿主拒绝策略
 
-Peak 视觉完全自治，Obsidian 只提供挂载位置和可选的外观意图。边界分三层：
+Peak 视觉完全自治，Obsidian 只提供挂载位置和可选的外观意图。边界分四层：
 
 1. 每个完全自治的 surface 根必须带 `pktw-root peak-design-root`；
 2. Portal 只能挂到带相同 scope 的 ownerDocument portal host；
 3. button/input/select/textarea 和标题/链接等裸标签在 root 内先 reset，再由 Peak primitive 显式声明 geometry、状态和焦点。
+4. 尚未迁移的 production selector 若读取 `--background-*` / `--text-*` 等宿主名称，自治 root 内必须由 compatibility boundary 把这些名称重新绑定到 `--pk-*`；组件和 scene 不得直接消费该层。
 
 禁止从 Obsidian 继承颜色、字体、圆角、阴影、控件高度和 hover transform。若产品选择“跟随宿主 Light/Dark”，只读取稳定的 appearance intent，不读取宿主主题变量。
 
@@ -121,16 +125,18 @@ Peak 视觉完全自治，Obsidian 只提供挂载位置和可选的外观意图
 
 `node docs/ui-system/validate.mjs` 必须检查：
 
-- 两个入口同时加载共享 production tokens、Theme runtime 和 Theme Pack；
+- 两个入口同时加载生产 `styles.css`、共享 production tokens、Theme runtime、Theme Pack 和 host compatibility boundary；
 - Catalog 的 scene id、state id、production/design/reference 路径全部存在；
 - 每个清单状态在 HTML 中有对应可点击 control 或 panel；
 - 不存在 iframe、Obsidian theme variable、scene-local theme hex；
 - 所有录屏证据文件存在，SHA 和时间码有登记；
 - Theme controls 与 `PeakThemeState` 字段一一对应；
 - 页面 anchor 和 cross-page links 存在。
+- Search、Result row、AI Sources、File Atlas、Composer、Sidecar、Chat Studio、Message、Composer input、Conversation Index 与 Settings row 的生产 class contract 均存在；
+- `search-shell`、`composer-page`、`chat-message__bubble`、`graph-node` 等已知平行实现不能再次进入 Catalog；canvas adapter 必须声明生产样式来源。
 
 ## 8. 更新方式
 
-新增或修改产品 UI 时，先改 `catalog-manifest.js`：登记 scene、状态、生产源、设计稿和录屏/截图。随后修改结构镜像并运行校验。若只改 Theme Pack，不应修改任何 scene HTML；若 scene 需要额外颜色，先增加语义 token，再由 Theme Pack 解析。
+新增或修改产品 UI 时，先改 `catalog-manifest.js`：登记 scene、状态、生产源、设计稿和录屏/截图。随后从生产 TSX 同步 DOM/class contract 并运行校验；禁止为了文档方便创建第二套组件外观。若只改 Theme Pack，不应修改任何 scene HTML；若 scene 需要额外颜色，先增加语义 token，再由 Theme Pack 解析。
 
 视觉核对至少包含：录屏/真实截图、Catalog 当前状态、相同 Theme State。没有真实 Obsidian 环境时只能结论为文档镜像已验证，不能升级为产品交互验收。

@@ -10,9 +10,10 @@
 维护顺序：
 
 1. 在 `catalog-manifest.js` 登记新的 scene/state/source/reference；
-2. 在 Catalog HTML 增加相同 `data-scene-id`、`data-scene-state` 与 `data-scene-panel`；
-3. 只通过 `--pk-*` 语义变量实现视觉；
-4. 运行 `node docs/ui-system/validate.mjs`；
-5. 真实产品行为仍按 Obsidian real UI QA 单独验收。
+2. 从 production TSX 复制组件的 DOM anatomy 与 class contract；不要另起 Catalog 专用组件名；
+3. Catalog 直接消费根目录 `styles.css`，`ui-catalog.css` 只允许做文档 viewport、fixture 和 canvas adapter；
+4. 产品视觉只通过 `--pk-*` 语义变量变化；旧 production selector 需要 Obsidian 名称时，只能在 `host-compat.css` 里反向绑定到 Peak token；
+5. 运行 `node docs/ui-system/validate.mjs`；
+6. 真实产品行为仍按 Obsidian real UI QA 单独验收。
 
-不要把旧设计稿 iframe 到 Catalog，也不要在 scene CSS 中添加 Obsidian 主题变量或主题专属 hex。
+不要把旧设计稿 iframe 到 Catalog，也不要添加 `search-shell`、`composer-page`、`chat-message__bubble`、`graph-node` 一类平行实现。Cytoscape/canvas 没有可复制 DOM 时，适配层必须声明生产源码行来源。

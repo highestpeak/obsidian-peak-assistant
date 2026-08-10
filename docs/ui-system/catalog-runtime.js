@@ -15,6 +15,13 @@
       var active = button.dataset.sceneState === state;
       button.dataset.selected = String(active);
       button.setAttribute("aria-pressed", String(active));
+      button.setAttribute("aria-selected", String(active));
+      if (button.classList.contains("pkfa-atlas-tab") || button.classList.contains("pkfa-graph-scope-tab")) {
+        button.classList.toggle("is-active", active);
+      }
+      if (button.classList.contains("pk-sidecar-tab")) {
+        button.classList.toggle("pk-sidecar-tab--active", active);
+      }
     });
     sceneRoot.querySelectorAll("[data-scene-panel]").forEach(function (panel) {
       panel.hidden = panel.dataset.scenePanel !== state;

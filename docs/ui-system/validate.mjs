@@ -12,8 +12,10 @@ const files = {
   themeHtml: path.join(docs, "design-system.html"),
   catalogHtml: path.join(docs, "design-system-playground.html"),
   themeCss: path.join(here, "theme.css"),
+  hostCompatCss: path.join(here, "host-compat.css"),
   designCss: path.join(here, "design-system.css"),
   catalogCss: path.join(here, "ui-catalog.css"),
+  productionCss: path.join(root, "styles.css"),
   themePacks: path.join(here, "theme-packs.js"),
   manifest: path.join(here, "catalog-manifest.js"),
   runtime: path.join(here, "theme-runtime.js"),
@@ -38,8 +40,11 @@ if (errors.length) finish();
 const themeHtml = read(files.themeHtml);
 const catalogHtml = read(files.catalogHtml);
 const sharedCss = [read(files.themeCss), read(files.designCss), read(files.catalogCss)].join("\n");
+const hostCompatCss = read(files.hostCompatCss);
+const productionCss = read(files.productionCss);
 const catalogCss = read(files.catalogCss);
 const designCss = read(files.designCss);
+const catalogRuntime = read(files.catalogRuntime);
 
 function loadGlobal(file, key) {
   const sandbox = { window: {} };
@@ -104,7 +109,7 @@ function validateLocalLinks(result, file, label) {
 validateLocalLinks(themeDoc, files.themeHtml, "Theme Lab");
 validateLocalLinks(catalogDoc, files.catalogHtml, "UI Catalog");
 
-const requiredShared = ["../src/styles/peak-tokens.css", "../src/styles/peak-components.css", "ui-system/theme.css", "ui-system/theme-packs.js", "ui-system/theme-runtime.js"];
+const requiredShared = ["../src/styles/peak-tokens.css", "../src/styles/peak-components.css", "../styles.css", "ui-system/theme.css", "ui-system/host-compat.css", "ui-system/theme-packs.js", "ui-system/theme-runtime.js"];
 requiredShared.forEach((reference) => {
   assert(themeHtml.includes(reference), `Theme Lab loads ${reference}`);
   assert(catalogHtml.includes(reference), `UI Catalog loads ${reference}`);
@@ -115,10 +120,14 @@ assert(!catalogHtml.includes("design-system-preview-bridge"), "UI Catalog does n
 assert(catalog.scenes.length === 8, "Catalog declares 8 product domains");
 catalog.scenes.forEach((item) => {
   assert(catalogDoc.sceneIds.filter((id) => id === item.id).length === 1, `Scene ${item.id}: one HTML root`);
+  const start = catalogHtml.indexOf(`data-scene-id="${item.id}"`);
+  const laterStarts = catalog.scenes
+    .map((candidate) => catalogHtml.indexOf(`data-scene-id="${candidate.id}"`, start + 1))
+    .filter((index) => index > start);
+  const end = laterStarts.length ? Math.min(...laterStarts) : catalogHtml.length;
+  const sceneMarkup = catalogHtml.slice(start, end);
   item.states.forEach((state) => {
-    assert(catalogHtml.includes(`data-scene-id="${item.id}"`), `Scene ${item.id}: registered`);
-    const scenePattern = new RegExp(`data-scene-id="${item.id}"[\\s\\S]*?data-scene-state="${state.id}"[\\s\\S]*?data-scene-panel="${state.id}"`);
-    assert(scenePattern.test(catalogHtml), `Scene ${item.id}: state ${state.id} has control and panel`);
+    assert(sceneMarkup.includes(`data-scene-state="${state.id}"`) && sceneMarkup.includes(`data-scene-panel="${state.id}"`), `Scene ${item.id}: state ${state.id} has control and panel`);
   });
   [...item.production, ...item.designs, ...item.references.map((reference) => reference.image)].forEach((reference) => {
     const target = path.resolve(docs, reference);
@@ -137,9 +146,88 @@ axes.forEach((axis) => {
 
 const forbiddenHostVars = /var\(\s*--(?:background-(?:primary|secondary|modifier)|text-(?:normal|muted|accent)|interactive-(?:normal|hover|accent)|input-|font-interface)/;
 assert(!forbiddenHostVars.test(sharedCss), "Shared UI System CSS contains no Obsidian theme variables");
+[
+  "--background-primary: var(--pk-bg)",
+  "--background-secondary: var(--pk-bg-secondary)",
+  "--text-normal: var(--pk-text-primary)",
+  "--text-muted: var(--pk-text-secondary)",
+  "--interactive-accent: var(--pk-accent)",
+  "--font-interface: var(--pk-font-sans)"
+].forEach((binding) => assert(hostCompatCss.includes(binding), `Host compatibility boundary owns ${binding}`));
 assert(!/#[0-9a-f]{3,8}\b/i.test(catalogCss), "UI Catalog scene CSS contains no theme hex");
 assert(!/#[0-9a-f]{3,8}\b/i.test(designCss), "Theme Lab presentation CSS contains no theme hex");
 assert(!/<iframe\b/i.test(themeHtml + catalogHtml), "Entry pages contain no iframe markup");
+
+const productionAnatomy = [
+  ["Vault Search", "pk-result-browser-toolbar__option"],
+  ["Result row", "data-result-browser-row"],
+  ["AI Sources", "pk-ai-sources-toolbar"],
+  ["AI workspace selector", "pk-ai-workspace-selector"],
+  ["Vault Intelligence", "pk-vault-intelligence-workspace"],
+  ["Vault Intelligence metric", "pk-vault-metric-card"],
+  ["File Atlas", "peak-file-atlas-modal pkfa-root"],
+  ["Composer root", "peak-composer-root"],
+  ["Composer paper", "pk-composer-workspace"],
+  ["Composer block", "pk-composer-block"],
+  ["Composer sidecar", "pk-sidecar-shell"],
+  ["Composer brief", "pk-brief"],
+  ["Composer history", "pk-history"],
+  ["Composer related materials", "pk-material-list-shell"],
+  ["Chat Studio left", "pkchat-studio__left"],
+  ["Chat Studio navigation", "pkstudio-nav-row"],
+  ["Chat Studio command", "pkstudio-sidebar-command"],
+  ["Chat shell", "pkchat-shell"],
+  ["Chat message", "pkchat-msg"],
+  ["Chat assistant identity", "pkchat-msg__identity"],
+  ["Chat composer", "pkchat-composer"],
+  ["Chat index", "pkchat-idx"],
+  ["Settings panel", "pkset-panel"],
+  ["Settings row", "pk-row"]
+];
+productionAnatomy.forEach(([label, contract]) => assert(catalogHtml.includes(contract), `${label}: production anatomy ${contract}`));
+[
+  ".pk-result-browser-toolbar__option",
+  ".pk-ai-sources-toolbar",
+  ".pk-ai-workspace-selector",
+  ".pk-vault-intelligence-workspace",
+  ".pk-vault-metric-card",
+  ".peak-file-atlas-modal.pkfa-root",
+  ".peak-composer-root .pk-composer-workspace",
+  ".pk-sidecar-shell",
+  ".pk-brief",
+  ".pk-history",
+  ".pk-material-list-shell",
+  ".pkstudio-nav-row",
+  ".pkstudio-sidebar-command",
+  ".pkchat-shell",
+  ".pkchat-msg",
+  ".pkchat-msg__identity",
+  ".pkchat-composer",
+  ".pkchat-idx",
+  ".pk-row"
+].forEach((selector) => assert(productionCss.includes(selector), `Production bundle owns ${selector}`));
+[
+  ["search-shell", /class="[^"]*\bsearch-shell\b/],
+  ["composer-page", /class="[^"]*\bcomposer-page\b/],
+  ["chat-shell", /class="[^"]*(?:^|\s)chat-shell(?:\s|$)/],
+  ["chat-message__bubble", /\bchat-message__bubble\b/],
+  ["graph-node", /class="[^"]*\bgraph-node\b/],
+  ["pkset-row", /class="[^"]*(?:^|\s)pkset-row(?:\s|$)/],
+  ["pk-search-top-tab", /class="[^"]*\bpk-search-top-tab\b/],
+  ["pk-vault-intelligence", /class="[^"]*(?:^|\s)pk-vault-intelligence(?:\s|$)/],
+  ["pk-vault-statline", /class="[^"]*\bpk-vault-statline\b/],
+  ["pk-vault-finding", /class="[^"]*\bpk-vault-finding\b/],
+  ["pkchat-project-list", /class="[^"]*\bpkchat-project-list\b/],
+  ["pkchat-outline-group", /class="[^"]*\bpkchat-outline-group\b/],
+  ["pk-intel-feed", /class="[^"]*\bpk-intel-feed\b/],
+  ["pk-intel-task", /class="[^"]*\bpk-intel-task\b/],
+  ["pk-intel-source", /class="[^"]*\bpk-intel-source\b/],
+  ["stale pkchat-msg__head", /class="[^"]*\bpkchat-msg__head\b/],
+  ["stale pkchat-msg__avatar", /class="[^"]*\bpkchat-msg__avatar\b/]
+].forEach(([legacy, pattern]) => assert(!pattern.test(catalogHtml), `Catalog removes invented ${legacy}`));
+assert(catalogHtml.includes("data-production-style-source=\"AtlasGraphCanvasImpl.tsx:430\""), "Canvas graph adapter declares its production style source");
+assert(catalogRuntime.includes('classList.toggle("pk-sidecar-tab--active", active)'), "Catalog runtime mirrors production sidecar active class");
+assert(catalogRuntime.includes('classList.toggle("is-active", active)'), "Catalog runtime mirrors production File Atlas active class");
 
 assert(evidenceManifest.sha256 === catalog.recording.sha256, "Recording SHA matches evidence manifest");
 catalog.scenes.flatMap((item) => item.references).forEach((reference) => {

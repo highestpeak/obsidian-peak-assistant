@@ -1,0 +1,38 @@
+/*
+ * Peak documentation host-compatibility boundary.
+ *
+ * The production bundle still contains a finite set of legacy Obsidian token
+ * names.  Inside the autonomous Peak root those names are rebound to Peak
+ * semantic tokens, so the host can neither select the palette nor leak theme
+ * values into the catalog.  Product scenes must not consume these aliases
+ * directly; they exist only while production selectors are migrated.
+ */
+.peak-design-root {
+  --background-primary: var(--pk-bg);
+  --background-primary-alt: var(--pk-surface);
+  --background-secondary: var(--pk-bg-secondary);
+  --background-secondary-alt: var(--pk-bg-tertiary);
+  --background-modifier-hover: var(--pk-state-hover);
+  --background-modifier-active-hover: var(--pk-state-active);
+  --background-modifier-border: var(--pk-border);
+  --background-modifier-border-hover: var(--pk-border-strong);
+  --background-modifier-form-field: var(--pk-surface);
+  --background-modifier-form-field-highlighted: var(--pk-surface-raised);
+  --background-modifier-error: var(--pk-error-bg);
+  --background-modifier-success: var(--pk-success-bg);
+  --text-normal: var(--pk-text-primary);
+  --text-muted: var(--pk-text-secondary);
+  --text-faint: var(--pk-text-tertiary);
+  --text-accent: var(--pk-accent-text);
+  --text-accent-hover: var(--pk-accent-hover);
+  --text-on-accent: var(--pk-accent-fg);
+  --text-error: var(--pk-error-text);
+  --interactive-normal: var(--pk-surface);
+  --interactive-hover: var(--pk-state-hover);
+  --interactive-accent: var(--pk-accent);
+  --interactive-accent-hover: var(--pk-accent-hover);
+  --input-shadow: var(--pk-shadow-sm);
+  --input-shadow-hover: var(--pk-shadow-md);
+  --font-interface: var(--pk-font-sans);
+  --font-text: var(--pk-font-sans);
+}
