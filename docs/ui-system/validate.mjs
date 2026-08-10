@@ -164,9 +164,11 @@ assert(sources.labHtml.includes("data-lab-console-pin") && sources.labHtml.inclu
 assert(sources.labCss.includes(".lab-console[data-pinned=\"false\"]") && sources.labCss.includes(".lab-console[data-collapsed=\"true\"]"), "Theme Lab: Theme State console styles pinned and collapsed states");
 assert(sources.labRuntime.includes("peak-theme-lab-console-v1") && sources.labRuntime.includes("toggleConsolePin") && sources.labRuntime.includes("toggleConsoleCollapse"), "Theme Lab: console preferences persist independently from Theme JSON");
 assert(sources.labRuntime.includes("body.inert = consoleState.collapsed"), "Theme Lab: collapsed console controls leave the focus order");
-assert((sources.labHtml.match(/data-lab-theme-cycle=/g) || []).length === 7, "Theme Lab: collapsed console keeps all 7 enumerable theme axes clickable");
+assert((sources.labHtml.match(/data-lab-theme-menu-trigger=/g) || []).length === 7, "Theme Lab: collapsed console keeps all 7 enumerable theme axes clickable");
 assert(sources.labHtml.includes("lab-console__accent") && sources.labHtml.includes("data-theme-control=\"accent\""), "Theme Lab: collapsed console keeps Accent directly editable");
-assert(sources.labRuntime.includes("cycleThemeAxis") && sources.labRuntime.includes("renderCompactThemeControls"), "Theme Lab: collapsed axis icons cycle values and expose current-state labels");
+assert(sources.labHtml.includes("data-lab-theme-axis-menu") && sources.labCss.includes(".lab-console__axis-menu"), "Theme Lab: collapsed axes share a visible option popover");
+assert(sources.labRuntime.includes("toggleThemeAxisMenu") && sources.labRuntime.includes("selectThemeAxis") && sources.labRuntime.includes("closeThemeAxisMenu"), "Theme Lab: compact popover opens, selects an explicit value, and closes");
+assert(sources.labRuntime.includes("menuitemradio") && sources.labRuntime.includes("event.key !== \"Escape\""), "Theme Lab: compact popover exposes selection semantics and Escape dismissal");
 assert(sources.labCss.includes(".lab-console[data-collapsed=\"true\"] .lab-console__head { flex-wrap: nowrap; }") && sources.labCss.includes("overflow-x: auto; scrollbar-width: none;"), "Theme Lab: collapsed controls remain on one row and scroll within their own strip");
 assert(sources.labHtml.includes("不复刻完整 Search、Composer 或 Graph"), "Theme Lab: explicitly rejects product parity claim");
 assert(!sources.labHtml.includes("type=\"file\"") && !sources.labHtml.includes("data-copy-image-prompt"), "Theme Lab: has no upload or Prompt-transfer UI");

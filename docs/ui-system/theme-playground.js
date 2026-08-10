@@ -3,6 +3,7 @@
 
   var consoleStateKey = "peak-theme-lab-console-v1";
   var consoleState = readConsoleState();
+  var activeThemeMenuTrigger = null;
 
   function readConsoleState() {
     var fallback = { pinned: true, collapsed: false };
@@ -57,6 +58,7 @@
 
   function toggleConsoleCollapse() {
     consoleState.collapsed = !consoleState.collapsed;
+    if (!consoleState.collapsed) closeThemeAxisMenu(false);
     persistConsoleState();
     renderConsoleState();
   }
@@ -71,34 +73,117 @@
     var system = window.PeakThemeSystem;
     if (!runtime || !system) return;
     var state = runtime.getState();
-    document.querySelectorAll("[data-lab-theme-cycle]").forEach(function (button) {
-      var key = button.dataset.labThemeCycle;
+    document.querySelectorAll("[data-lab-theme-menu-trigger]").forEach(function (button) {
+      var key = button.dataset.labThemeMenuTrigger;
       var values = system.axes[key];
       if (!values || !values.length) return;
-      var currentIndex = Math.max(0, values.indexOf(state[key]));
-      var nextValue = values[(currentIndex + 1) % values.length];
       var name = button.dataset.axisName || key;
-      var label = name + ": " + displayThemeValue(system, key, state[key]) + " · 点击切换到 " + displayThemeValue(system, key, nextValue);
+      var label = name + ": " + displayThemeValue(system, key, state[key]) + " · 点击查看选项";
       button.title = label;
       button.setAttribute("aria-label", label);
       button.dataset.value = state[key];
     });
     var accent = document.querySelector(".lab-console__accent");
     if (accent) accent.title = "Accent: " + state.accent + " · 点击选择颜色";
+    if (activeThemeMenuTrigger) renderThemeAxisMenu(activeThemeMenuTrigger, false);
   }
 
-  function cycleThemeAxis(button) {
+  function createCheckIcon() {
+    var icon = document.createElement("span");
+    icon.className = "lab-console__axis-check";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "✓";
+    return icon;
+  }
+
+  function renderThemeAxisMenu(trigger, focusSelected) {
     var runtime = window.PeakThemeRuntime;
     var system = window.PeakThemeSystem;
     if (!runtime || !system) return;
-    var key = button.dataset.labThemeCycle;
+    var menu = document.querySelector("[data-lab-theme-axis-menu], .lab-console__axis-menu");
+    var panel = document.querySelector("[data-lab-console]");
+    if (!menu || !panel) return;
+    var key = trigger.dataset.labThemeMenuTrigger;
     var values = system.axes[key];
     if (!values || !values.length) return;
+    var state = runtime.getState();
+    var name = trigger.dataset.axisName || key;
+    var title = menu.querySelector("[data-lab-theme-menu-title]");
+    var current = menu.querySelector("[data-lab-theme-menu-current]");
+    var options = menu.querySelector("[data-lab-theme-menu-options]");
+    if (!title || !current || !options) return;
+    title.textContent = name;
+    current.textContent = "当前：" + displayThemeValue(system, key, state[key]);
+    options.replaceChildren();
+    var selectedButton = null;
+
+    values.forEach(function (value) {
+      var option = document.createElement("button");
+      var selected = state[key] === value;
+      option.type = "button";
+      option.dataset.labThemeSelect = key;
+      option.dataset.value = value;
+      option.dataset.selected = String(selected);
+      option.setAttribute("role", "menuitemradio");
+      option.setAttribute("aria-checked", String(selected));
+
+      var marker = document.createElement("span");
+      marker.className = "lab-console__axis-option-marker";
+      marker.setAttribute("aria-hidden", "true");
+      if (key === "pack" && system.packs[value]) marker.style.setProperty("--axis-marker", system.packs[value].accent);
+      else marker.textContent = String(value).charAt(0).toUpperCase();
+
+      var label = document.createElement("span");
+      label.textContent = displayThemeValue(system, key, value);
+      option.append(marker, label, createCheckIcon());
+      options.appendChild(option);
+      if (selected) selectedButton = option;
+    });
+
+    menu.hidden = false;
+    menu.setAttribute("aria-label", name + " options");
+    document.querySelectorAll("[data-lab-theme-menu-trigger]").forEach(function (button) {
+      button.setAttribute("aria-expanded", String(button === trigger));
+    });
+    activeThemeMenuTrigger = trigger;
+
+    var panelRect = panel.getBoundingClientRect();
+    var triggerRect = trigger.getBoundingClientRect();
+    var menuWidth = menu.offsetWidth || 238;
+    var left = Math.max(10, Math.min(triggerRect.left - panelRect.left, panelRect.width - menuWidth - 10));
+    menu.style.left = left + "px";
+    if (focusSelected !== false && selectedButton) window.requestAnimationFrame(function () { selectedButton.focus(); });
+  }
+
+  function closeThemeAxisMenu(restoreFocus) {
+    var menu = document.querySelector(".lab-console__axis-menu");
+    if (!menu || menu.hidden) return;
+    var trigger = activeThemeMenuTrigger;
+    menu.hidden = true;
+    document.querySelectorAll("[data-lab-theme-menu-trigger]").forEach(function (button) { button.setAttribute("aria-expanded", "false"); });
+    activeThemeMenuTrigger = null;
+    if (restoreFocus && trigger) trigger.focus();
+  }
+
+  function toggleThemeAxisMenu(trigger) {
+    var menu = document.querySelector(".lab-console__axis-menu");
+    if (activeThemeMenuTrigger === trigger && menu && !menu.hidden) { closeThemeAxisMenu(true); return; }
+    closeThemeAxisMenu(false);
+    renderThemeAxisMenu(trigger, true);
+  }
+
+  function selectThemeAxis(option) {
+    var runtime = window.PeakThemeRuntime;
+    var system = window.PeakThemeSystem;
+    if (!runtime || !system) return;
+    var key = option.dataset.labThemeSelect;
+    var value = option.dataset.value;
+    if (!system.axes[key] || system.axes[key].indexOf(value) === -1) return;
     var next = runtime.getState();
-    var currentIndex = Math.max(0, values.indexOf(next[key]));
-    next[key] = values[(currentIndex + 1) % values.length];
-    if (key === "pack") next.accent = system.packs[next.pack].accent;
+    next[key] = value;
+    if (key === "pack") next.accent = system.packs[value].accent;
     runtime.apply(next);
+    closeThemeAxisMenu(true);
   }
 
   function selectOption(button) {
@@ -128,18 +213,28 @@
   }
 
   document.addEventListener("click", function (event) {
+    var themeSelection = event.target.closest && event.target.closest("[data-lab-theme-select]");
+    if (themeSelection) { selectThemeAxis(themeSelection); return; }
+    var themeMenuTrigger = event.target.closest && event.target.closest("[data-lab-theme-menu-trigger]");
+    if (themeMenuTrigger) { toggleThemeAxisMenu(themeMenuTrigger); return; }
+    var insideThemeMenu = event.target.closest && event.target.closest(".lab-console__axis-menu");
+    if (activeThemeMenuTrigger && !insideThemeMenu) closeThemeAxisMenu(false);
     var pin = event.target.closest && event.target.closest("[data-lab-console-pin]");
     if (pin) { toggleConsolePin(); return; }
     var collapse = event.target.closest && event.target.closest("[data-lab-console-collapse]");
     if (collapse) { toggleConsoleCollapse(); return; }
-    var themeCycle = event.target.closest && event.target.closest("[data-lab-theme-cycle]");
-    if (themeCycle) { cycleThemeAxis(themeCycle); return; }
     var option = event.target.closest && event.target.closest("[data-lab-option]");
     if (option) { selectOption(option); return; }
     var toggle = event.target.closest && event.target.closest("[data-lab-toggle]");
     if (toggle) { toggleSwitch(toggle); return; }
     var row = event.target.closest && event.target.closest("[data-lab-row]");
     if (row) selectRow(row);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape" || !activeThemeMenuTrigger) return;
+    event.preventDefault();
+    closeThemeAxisMenu(true);
   });
 
   document.addEventListener("peak-theme-change", renderCompactThemeControls);

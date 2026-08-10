@@ -67,6 +67,7 @@
 
 .lab-console { position: sticky; z-index: 15; top: 80px; margin-bottom: 42px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-xl); background: var(--pk-surface); box-shadow: var(--pk-shadow-popover); overflow: hidden; }
 .lab-console[data-pinned="false"] { position: relative; top: auto; box-shadow: var(--pk-shadow-card); }
+.lab-console[data-collapsed="true"] { overflow: visible; }
 .lab-console__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 9px 14px; border-bottom: 1px solid var(--pk-border); }
 .lab-console__title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .lab-console__head b { font-size: var(--pk-text-lg); }
@@ -85,6 +86,19 @@
 .lab-console__collapsed-controls > button:hover,
 .lab-console__accent:hover { border-color: var(--pk-border-accent) !important; background: var(--pk-state-hover) !important; color: var(--pk-accent-text) !important; }
 .lab-console__accent input { width: 30px !important; min-width: 30px !important; max-width: 30px !important; height: 30px !important; min-height: 30px !important; max-height: 30px !important; padding: 3px !important; border: 0 !important; border-radius: var(--pk-radius-md) !important; background: transparent !important; cursor: pointer; }
+.lab-console__axis-menu { position: absolute; z-index: 30; top: calc(100% + 8px); left: 12px; width: 238px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-lg); background: var(--pk-surface-overlay); box-shadow: var(--pk-shadow-popover); overflow: hidden; }
+.lab-console__axis-menu[hidden] { display: none !important; }
+.lab-console__axis-menu > header { display: grid; gap: 2px; padding: 10px 12px; border-bottom: 1px solid var(--pk-border); }
+.lab-console__axis-menu > header b { font-size: var(--pk-text-sm); }
+.lab-console__axis-menu > header span { color: var(--pk-text-tertiary); font-size: var(--pk-text-xs); }
+.lab-console__axis-menu > div { display: grid; gap: 3px; padding: 5px; }
+.lab-console__axis-menu > div > button { display: grid !important; grid-template-columns: 18px minmax(0, 1fr) 16px; gap: 8px; align-items: center; width: 100% !important; min-height: 34px !important; padding: 0 8px !important; border-radius: var(--pk-radius-md) !important; color: var(--pk-text-secondary) !important; text-align: left; }
+.lab-console__axis-menu > div > button:hover { background: var(--pk-state-hover) !important; color: var(--pk-text-primary) !important; }
+.lab-console__axis-menu > div > button[data-selected="true"] { background: var(--pk-state-selected) !important; color: var(--pk-accent-text) !important; }
+.lab-console__axis-option-marker { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--pk-border); border-radius: var(--pk-radius-sm); background: var(--axis-marker, var(--pk-surface-sunken)); color: var(--pk-text-tertiary); font: 700 9px/1 var(--pk-font-mono); }
+.lab-console__axis-menu > div > button[data-selected="true"] .lab-console__axis-option-marker { border-color: var(--pk-border-accent); }
+.lab-console__axis-check { color: var(--pk-accent-text); opacity: 0; }
+.lab-console__axis-menu > div > button[data-selected="true"] .lab-console__axis-check { opacity: 1; }
 .lab-console__control { display: flex !important; align-items: center; gap: 5px; min-height: 30px !important; padding: 0 9px !important; border: 1px solid var(--pk-border) !important; border-radius: var(--pk-radius-md) !important; background: var(--pk-surface-raised) !important; color: var(--pk-text-secondary) !important; white-space: nowrap; }
 .lab-console__control:hover { border-color: var(--pk-border-strong) !important; background: var(--pk-state-hover) !important; color: var(--pk-text-primary) !important; }
 .lab-console__control[aria-pressed="true"] { border-color: var(--pk-border-accent) !important; background: var(--pk-state-selected) !important; color: var(--pk-accent-text) !important; }
