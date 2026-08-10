@@ -43,6 +43,9 @@
 - [ ] **P1 · 条件式宣传任务** · [11 · Landing Page 类比定位与主张门槛](pre-launch/11-landing-page-comparison-positioning.md)
   - 评估 `Your local-first Airtable` 与 `Cursor for your documents` 等类比话术。
   - 只有 Peak Sheet 与 Composer 对应能力完成并通过真实验收后才启用强主张。
+- [ ] **P1 · 条件式宣传任务** · [12 · AI 生成 HTML 与图片产物管理定位](pre-launch/12-ai-generated-html-image-workspace-positioning.md)
+  - 把 Codex、Claude Code 等工具生成的大量 HTML、mock、截图和图片，包装为可整理、关联和继续工作的本地项目材料。
+  - 只有 HTML/Image File Workspace 真正交付并通过真实验收后才启用强主张。
 
 ### 真实使用验证
 
