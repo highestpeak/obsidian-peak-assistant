@@ -676,14 +676,35 @@ function resetDerivedTableWhenColumnsDiffer(
 	db: SqliteDatabaseLike,
 	tableName: string,
 	requiredColumns: string[],
-): void {
+): boolean {
 	try {
 		const columns = tableColumns(db, tableName);
-		if (!columns) return;
-		if (requiredColumns.every(column => columns.has(column))) return;
+		if (!columns) return false;
+		if (requiredColumns.every(column => columns.has(column))) return false;
 		db.exec(`DROP TABLE IF EXISTS ${tableName}`);
+		return true;
 	} catch {
 		/* table does not exist yet or PRAGMA is unavailable */
+		return false;
+	}
+}
+
+function hasOrphanCommunityAssignments(db: SqliteDatabaseLike): boolean {
+	try {
+		const rows = db.prepare?.(`
+			SELECT 1
+			  FROM mobius_node AS node
+			 WHERE node.community_id IS NOT NULL
+			   AND NOT EXISTS (
+				SELECT 1
+				  FROM community_metadata AS community
+				 WHERE community.community_id = node.community_id
+			   )
+			 LIMIT 1
+		`)?.all();
+		return Boolean(rows?.length);
+	} catch {
+		return false;
 	}
 }
 
@@ -1387,7 +1408,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	try { db.exec('ALTER TABLE mobius_node ADD COLUMN structural_analysis_version INTEGER'); } catch { /* column already exists */ }
 	db.exec('CREATE INDEX IF NOT EXISTS idx_mobius_node_community_id ON mobius_node(community_id)');
 
-	resetDerivedTableWhenColumnsDiffer(db, 'community_metadata', [
+	const communityMetadataReset = resetDerivedTableWhenColumnsDiffer(db, 'community_metadata', [
 		'community_id',
 		'label',
 		'member_count',
@@ -1461,6 +1482,21 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_structural_holes_score ON structural_holes(gap_score DESC);
 		CREATE INDEX IF NOT EXISTS idx_structural_holes_version ON structural_holes(analysis_version);
 	`);
+	const communityProjectionStale = communityMetadataReset || hasOrphanCommunityAssignments(db);
+	if (communityProjectionStale) {
+		// `community_metadata` and the structural columns on `mobius_node` are
+		// one rebuildable projection. Keeping orphan node assignments/freshness
+		// state makes Community mode look available with no evidence to render.
+		db.exec(`
+			UPDATE mobius_node
+			   SET betweenness_centrality = NULL,
+			       structural_constraint = NULL,
+			       community_id = NULL,
+			       structural_analysis_version = NULL
+			 WHERE type IN ('document', 'hub_doc');
+			DELETE FROM structural_analysis_state;
+		`);
+	}
 
 	// ── One-time migration: drop redundant content in doc_chunk ──
 	// Rationale (spec: 2026-07-07-search-highlight-vault-first):

@@ -13,12 +13,13 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, Network } from 'lucide-react';
+import { Network } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { AtlasGraphCanvas, type AtlasGraphPreset } from '@/ui/component/graph/AtlasGraphCanvas';
+import { ResultBrowserGraphControls } from '@/ui/component/result-browser/toolbar/ResultBrowserToolbar';
 import type { AtlasGraphData, FileAtlasHostPort } from '../FileAtlasHostPort';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
@@ -44,23 +45,6 @@ interface FileAtlasGraphProps {
 
 type Scope = FileAtlasGraphScope;
 
-// Full preset parity with the Vault Search Result Graph — both feed the same
-// shared canvas, and the neighborhood subgraph carries real note paths (so folder
-// grouping is meaningful here too). Labels/order match ResultPaneHeader exactly.
-const LAYOUTS: Array<{
-	id: AtlasGraphPreset;
-	label: string;
-	title: string;
-	ariaLabel?: string;
-	iconOnly?: boolean;
-}> = [
-	{ id: 'constellation', label: 'Constellation', title: 'Force-directed cluster' },
-	{ id: 'flow-lr', label: 'Links →', title: 'Links horizontal — left-to-right reference flow' },
-	{ id: 'flow-tb', label: 'Links ↓', title: 'Links vertical — top-to-bottom reference flow', ariaLabel: 'Links vertical, top to bottom', iconOnly: true },
-	{ id: 'folder', label: 'Folders', title: 'Arrange notes by vault folder' },
-	{ id: 'orbit', label: 'Orbit', title: 'Hubs at center with notes in orbit' },
-];
-
 const GRAPH_LAYOUT_KEY_TIPS: Readonly<Record<AtlasGraphPreset, string>> = {
 	constellation: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.constellation,
 	community: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.community,
@@ -81,7 +65,7 @@ function toSubgraph(data: AtlasGraphData): ResultSubgraphOutput {
 			path: n.path ?? n.id,
 			title: n.label,
 			score: scoreForHop(n.hop),
-			communityId: null,
+			communityId: n.communityId ?? null,
 			folder: n.path ? n.path.split('/')[0] ?? '' : '',
 			...(n.summary ? { preview: n.summary } : {}),
 			...(n.signals?.length ? { signals: n.signals } : {}),
@@ -102,6 +86,7 @@ function toSubgraph(data: AtlasGraphData): ResultSubgraphOutput {
 		})),
 		isolatedDocIds: [],
 		overflowCount: 0,
+		communities: data.communities ?? [],
 	};
 }
 
@@ -133,7 +118,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 	initialState,
 	onStateChange,
 }) => {
-	const { graphNodeExplanation, indexService } = useServiceContext();
+	const { communityExplanation, graphNodeExplanation, indexService } = useServiceContext();
 	const s = config.strings;
 	const [scope, setScope] = useState<Scope>(initialState.scope);
 	const [semantic, setSemantic] = useState(initialState.semantic);
@@ -143,7 +128,6 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(false);
 	const scopeRef = useRef<HTMLDivElement>(null);
-	const layoutRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		onStateChange({ scope, semantic, layout, viewport });
 	}, [layout, onStateChange, scope, semantic, viewport]);
@@ -163,15 +147,6 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 			if (nextScope) selectScope(nextScope);
 		},
 	});
-	useRovingComposite(layoutRef, {
-		itemSelector: '[role="tab"]',
-		orientation: 'horizontal',
-		onActiveItem: (item) => {
-			const nextLayout = item.dataset.graphLayout as AtlasGraphPreset | undefined;
-			if (nextLayout) selectLayout(nextLayout);
-		},
-	});
-
 	// Fetch both reference + semantic edges up front; the semantic toggle is a
 	// render-only concern the canvas handles, so scope is the only refetch key.
 	useEffect(() => {
@@ -264,41 +239,17 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 					</Button>
 				</div>
 
-				{scope !== 'ai' && <div ref={layoutRef} className="pkfa-graph-scope" role="tablist" aria-label="Graph layout">
-					{LAYOUTS.map((l) => (
-						<Button
-							key={l.id}
-							variant="unstyled"
-							type="button"
-							role="tab"
-							aria-selected={layout === l.id}
-							tabIndex={layout === l.id ? 0 : -1}
-							data-graph-layout={l.id}
-							data-peak-focus-id={`file-atlas-layout-${l.id}`}
-							data-peak-keytip-key={GRAPH_LAYOUT_KEY_TIPS[l.id]}
-							data-peak-keytip-label={l.ariaLabel ?? `${l.label} graph layout`}
-							title={l.title}
-							aria-label={l.ariaLabel}
-							className={`pkfa-graph-scope-tab${l.iconOnly ? ' is-icon-only' : ''}${layout === l.id ? ' is-active' : ''}`}
-							onClick={() => selectLayout(l.id)}
-						>
-							{l.iconOnly ? <ArrowDown aria-hidden="true" /> : l.label}
-						</Button>
-					))}
-				</div>}
-
-				{scope !== 'ai' && <Button
-					variant="unstyled"
-					type="button"
-					aria-pressed={semantic}
-					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.semantic}
-					data-peak-keytip-label={s.graphSemanticLabel}
-					className={`pkfa-semantic-toggle${semantic ? ' is-on' : ''}`}
-					onClick={() => setSemantic((v) => !v)}
-				>
-					<span className="pkfa-semantic-switch" aria-hidden="true" />
-					{s.graphSemanticLabel}
-				</Button>}
+				{scope !== 'ai' && (
+					<ResultBrowserGraphControls
+						preset={layout}
+						onPresetChange={selectLayout}
+						communityAvailable
+						keyTipKeys={{
+							preset: GRAPH_LAYOUT_KEY_TIPS,
+							semantic: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.semantic,
+						}}
+					/>
+				)}
 			</div>
 
 			<div className="pkfa-graph-canvas">
@@ -326,16 +277,21 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
 						subgraph={loading ? null : subgraph}
 						preset={layout}
 						showSemantic={semantic}
+						onShowSemanticChange={setSemantic}
+						semanticKeyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.semantic}
 						keyTipKeys={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphCanvas}
+						communityExplanation={communityExplanation}
 						graphNodeExplanation={graphNodeExplanation}
-							nodeExplanationUi={indexService?.env.communityConfig?.nodeExplanation.ui}
-							graphLayout={indexService?.env.communityConfig?.graphLayout}
+						nodeExplanationUi={indexService?.env.communityConfig?.nodeExplanation.ui}
+						communityInteraction={indexService?.env.communityConfig?.interaction}
+						graphLayout={indexService?.env.communityConfig?.graphLayout}
 						initialViewport={viewport}
 						onViewportChange={setViewport}
 						summary={meta}
 						buildingLabel="Loading neighborhood…"
 						emptyLabel="No linked notes around this document yet."
-						onNodeTap={({ id, path: nodePath, isHub }) => {
+						onNodeTap={({ id, path: nodePath, isHub, modKey }) => {
+							if (modKey) return;
 							if (isHub || !nodePath || nodePath === path) return;
 							onAddToTray(trayBlockForNode(id, labelById.get(id) ?? nodePath, nodePath));
 							host.notify('Note added to tray');

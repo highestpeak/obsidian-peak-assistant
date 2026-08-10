@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const read = (path: string): string => readFileSync(path, 'utf8');
+const atlasGraph = read('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
+const atlasHost = read('src/app/file-atlas/composeFileAtlasHost.ts');
+const resultGraph = read('src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx');
+const canvas = read('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
+
+assert.match(atlasGraph, /ResultBrowserGraphControls/, 'File Atlas reuses the shared graph preset controls');
+assert.doesNotMatch(atlasGraph, /const LAYOUTS/, 'File Atlas does not keep a second graph preset list');
+assert.match(atlasGraph, /communityAvailable/, 'File Atlas exposes the shared Community projection');
+assert.match(atlasGraph, /onShowSemanticChange=\{setSemantic\}/, 'Semantic edges live in the shared canvas toolbar');
+assert.match(atlasHost, /communityId:\s*row\.community_id/, 'File Atlas projects canonical node community ids');
+assert.match(atlasHost, /communities:/, 'File Atlas projects evidence-rich community summaries');
+assert.match(resultGraph, /setSubgraph\(null\)/, 'Result Graph clears the previous projection while enrichment runs');
+assert.doesNotMatch(
+	resultGraph,
+	/setSubgraph\(baseline\);\s*if \(!resultSubgraphDeps\)/,
+	'Result Graph does not paint the baseline before deciding whether enrichment is available',
+);
+assert.match(canvas, /communityUnavailable/, 'Community mode presents an honest unavailable state');
+assert.match(canvas, /data-graph-inspect-mode/, 'the shared canvas exposes press-to-inspect state');
+assert.match(canvas, /multiSelected/, 'the shared canvas exposes persistent multi-selection styling');
+
+console.log('graph-shared-surface-contract: passed');

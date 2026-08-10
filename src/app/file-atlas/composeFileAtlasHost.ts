@@ -44,6 +44,8 @@ import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
 import { DEFAULT_FILE_ATLAS_CONFIG } from '@/ui/view/file-atlas/config/fileAtlasConfig';
+import { communityFingerprint } from '@/service/search/index/helper/structural/communityEvidence';
+import type { ResultGraphCommunitySummary } from '@/service/search/graph/resultSubgraph';
 
 const VAULT_PREVIEW_CONTENT_KINDS = new Set<DocumentBlock['kind']>([
 	RawBlockKind.Paragraph,
@@ -637,6 +639,14 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 				return [node.id, row] as const;
 			}));
 			const evidenceById = new Map(evidenceRows);
+			const communityIds = [...new Set(evidenceRows.flatMap(([, row]) => (
+				row?.community_id ? [row.community_id] : []
+			)))];
+			const structuralRepo = sqliteStoreManager.getStructuralAnalysisRepo();
+			const communityRows = await Promise.all(communityIds.map(async (communityId) => (
+				[communityId, await structuralRepo.getCommunityById(communityId).catch(() => null)] as const
+			)));
+			const communityById = new Map(communityRows.filter((entry) => entry[1] !== null));
 			const enrichedNeighborhood = {
 				...neighborhood,
 				nodes: neighborhood.nodes.map((node) => {
@@ -654,9 +664,45 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 						signals,
 						incomingLinks: row.doc_incoming_cnt ?? 0,
 						outgoingLinks: row.doc_outgoing_cnt ?? 0,
+						communityId: row.community_id && communityById.has(row.community_id)
+							? row.community_id
+							: null,
 					};
 				}),
 			};
+			const communities: ResultGraphCommunitySummary[] = [];
+			for (const [communityId, info] of communityById) {
+				if (!info) continue;
+				const visibleMemberIds = enrichedNeighborhood.nodes
+					.filter((node) => node.communityId === communityId)
+					.map((node) => node.id);
+				if (!visibleMemberIds.length) continue;
+				const descriptors = info.descriptors ?? info.dominantTopics.map((label) => ({
+					key: `legacy:${label.toLocaleLowerCase()}`,
+					label,
+					kind: 'tag' as const,
+					support: 0,
+					score: 0,
+				}));
+				communities.push({
+					id: communityId,
+					displayLabel: `Community ${String(communities.length + 1).padStart(2, '0')}`,
+					fingerprint: info.fingerprint || communityFingerprint({
+						memberIds: info.topNodes.map((node) => node.path),
+						descriptorKeys: descriptors.map((descriptor) => descriptor.key),
+						analysisVersion: info.analysisVersion ?? 1,
+					}),
+					memberCount: info.memberCount,
+					visibleMemberIds,
+					descriptors,
+					internalReferenceCount: info.internalReferenceCount ?? 0,
+					analysisVersion: info.analysisVersion ?? 1,
+					analysisMode: info.analysisMode ?? 'exact',
+					analyzedNodeCount: info.analyzedNodeCount ?? info.memberCount,
+					totalNodeCount: info.totalNodeCount ?? info.memberCount,
+					representativeNotes: info.topNodes.map((node) => ({ path: node.path, label: node.label })),
+				});
+			}
 			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
 			const hubs = await getHubsForDoc(path).catch(() => []);
 			const hubRuntime = appContext.runtimeRegistry.tryGetHubGenerationRuntime();
@@ -672,6 +718,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			if (signal?.aborted) return { nodes: [], hubAnchors: [], edges: [] };
 			return {
 				...enrichedNeighborhood,
+				communities,
 				hubAnchors: resolvedHubs,
 				edges: [
 					...enrichedNeighborhood.edges,

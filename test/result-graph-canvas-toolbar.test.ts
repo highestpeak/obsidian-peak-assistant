@@ -38,6 +38,7 @@ assert.match(
 assert.match(canvas, /title="Copy graph as Mermaid"/, 'Mermaid remains a direct, titled export action');
 assert.match(canvas, /title="Copy graph as image"/, 'image remains a direct, titled export action');
 assert.match(canvas, /onMouseEnter: cancelCardClose/, 'anchored graph cards keep a pointer corridor from node to card');
+assert.match(canvas, /onPointerDown:[\s\S]*?inspectPinnedRef/, 'interactive detail cards pin only after deliberate pointer input');
 assert.match(
 	canvas,
 	/communityAiState\[hoveredLabel\.id\]\?\.generating/,

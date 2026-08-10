@@ -25,6 +25,13 @@ export interface ResultGraphCommunityConfig {
 		openDelayMs: number;
 		closeDelayMs: number;
 		cardOffsetPx: number;
+		inspectKey: string;
+		ui: {
+			communityUnavailable: string;
+			fitAll: string;
+			inspectHint: string;
+			readableView: string;
+		};
 	};
 	graphLayout: {
 		semanticWeightExponent: number;
@@ -89,6 +96,13 @@ export const DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG: ResultGraphCommunityConfig =
 		openDelayMs: 80,
 		closeDelayMs: 220,
 		cardOffsetPx: 18,
+		inspectKey: 'Shift',
+		ui: Object.freeze({
+			communityUnavailable: 'Community analysis is unavailable. Run graph maintenance to rebuild the current community evidence.',
+			fitAll: 'Fit entire graph',
+			inspectHint: 'Hold Shift to inspect · I to pin',
+			readableView: 'Readable view',
+		}),
 	}),
 	graphLayout: Object.freeze({
 		semanticWeightExponent: 2,
@@ -157,6 +171,7 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 	const weights = loaded.weights ?? fallback.weights;
 	const bounds = loaded.bounds ?? fallback.bounds;
 	const interaction = loaded.interaction ?? fallback.interaction;
+	const interactionUi = interaction.ui ?? fallback.interaction.ui;
 	const graphLayout = loaded.graphLayout ?? fallback.graphLayout;
 	const nodeExplanation = loaded.nodeExplanation ?? fallback.nodeExplanation;
 	const nodeExplanationUi = nodeExplanation.ui ?? fallback.nodeExplanation.ui;
@@ -184,6 +199,13 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 			openDelayMs: Math.floor(positive(interaction.openDelayMs, fallback.interaction.openDelayMs)),
 			closeDelayMs: Math.floor(positive(interaction.closeDelayMs, fallback.interaction.closeDelayMs)),
 			cardOffsetPx: Math.floor(positive(interaction.cardOffsetPx, fallback.interaction.cardOffsetPx)),
+			inspectKey: typeof interaction.inspectKey === 'string' && interaction.inspectKey.trim()
+				? interaction.inspectKey.trim()
+				: fallback.interaction.inspectKey,
+			ui: {
+				...fallback.interaction.ui,
+				...interactionUi,
+			},
 		},
 		graphLayout: {
 			semanticWeightExponent: positive(graphLayout.semanticWeightExponent, fallback.graphLayout.semanticWeightExponent),

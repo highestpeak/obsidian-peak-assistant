@@ -13,7 +13,8 @@ assert.match(canvas, /trigger\.focus\(\{ preventScroll: true \}\)/, 'closing ful
 assert.match(canvas, /body\.style\.overflow = 'hidden'/, 'the owner document is scroll-locked while fullscreen is open');
 assert.match(canvas, /label="Zoom out"/, 'fullscreen exposes explicit zoom-out');
 assert.match(canvas, /label="Zoom in"/, 'fullscreen exposes explicit zoom-in');
-assert.match(canvas, /label="Fit graph to view"/, 'fullscreen exposes fit-to-view');
+assert.match(canvas, /communityInteraction\.ui\.fitAll/, 'fullscreen exposes a true fit-entire-graph action');
+assert.match(canvas, /communityInteraction\.ui\.readableView/, 'fullscreen separately exposes the readable viewport action');
 assert.match(canvas, /View graph fullscreen/, 'the direct graph toolbar exposes fullscreen beside image export');
 assert.match(css, /\.pk-graph-fullscreen-overlay\s*\{[\s\S]*position: fixed;/, 'fullscreen visually covers the owner window');
 assert.match(css, /overscroll-behavior: contain;/, 'fullscreen wheel and pan stay contained');

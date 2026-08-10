@@ -12,6 +12,7 @@ import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContext
 import { useSharedStore } from '@/ui/view/quick-search/store';
 import type { QuickSearchOpenOptions } from '@/core/ports/QuickSearchLauncherPort';
 import { useAIGraphStore } from '@/ui/view/quick-search/store/aiGraphStore';
+import { graphFullscreenOpen } from './graphFullscreenGuard';
 
 /**
  * Obsidian modal wrapper for quick search React UI.
@@ -82,13 +83,13 @@ export class QuickSearchModal extends Modal {
 			createReactElementWithServices(
 				QuickSearchModalContent,
 				{
-					onClose: () => this.close(),
+					onClose: () => this.closeFromContent(),
 					onVaultAuto: (mode: 'fast' | 'complete') => {
-						this.close();
+						this.closeFromContent();
 						new VaultAutoRunModal(app, { mode }).open();
 					},
 					onOpenVaultRecord: (record: VaultReviewHistoryRecord) => {
-						this.close();
+						this.closeFromContent();
 						openVaultReviewHistoryRecord(app, record);
 					},
 					onOpenSuggest: () => {
@@ -108,6 +109,15 @@ export class QuickSearchModal extends Modal {
 				this.appContext
 			)
 		);
+	}
+
+	private closeFromContent(): void {
+		super.close();
+	}
+
+	override close(): void {
+		if (graphFullscreenOpen(this.contentEl.ownerDocument)) return;
+		super.close();
 	}
 
 	onClose(): void {

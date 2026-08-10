@@ -22,7 +22,14 @@
   "interaction": {
     "openDelayMs": 80,
     "closeDelayMs": 220,
-    "cardOffsetPx": 18
+    "cardOffsetPx": 18,
+    "inspectKey": "Shift",
+    "ui": {
+      "communityUnavailable": "Community analysis is unavailable. Run graph maintenance to rebuild the current community evidence.",
+      "fitAll": "Fit entire graph",
+      "inspectHint": "Hold Shift to inspect · I to pin",
+      "readableView": "Readable view"
+    }
   },
   "graphLayout": {
     "semanticWeightExponent": 2.0,

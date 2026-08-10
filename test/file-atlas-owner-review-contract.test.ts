@@ -25,7 +25,8 @@ assert.ok(
 	(tree.match(/onDoubleClick=\{\(e\) => e\.stopPropagation\(\)\}/g) ?? []).length >= 2,
 	'fold and tray controls must not bubble a row double-click',
 );
-assert.match(modal, /this\.close\(\)/);
+assert.match(modal, /this\.closeFromContent\(\)/);
+assert.match(modal, /graphFullscreenOpen/, 'Escape-owned close is guarded while graph fullscreen is open');
 assert.match(modal, /host\.revealLocation\(path, location\)/);
 assert.match(hostAdapter, /openVaultPathAtLocation/);
 assert.match(hostAdapter, /getActiveDocumentPath/);
@@ -107,10 +108,10 @@ assert.match(graph, /preview: n\.summary/);
 assert.match(graph, /incomingLinks: n\.incomingLinks/);
 assert.match(graph, /outgoingLinks: n\.outgoingLinks/);
 assert.match(graph, /graphNodeExplanation=\{graphNodeExplanation\}/);
-assert.match(graph, /label: 'Links →'/);
-assert.match(graph, /iconOnly: true/);
-assert.match(graph, /<ArrowDown aria-hidden="true" \/>/);
-assert.match(graph, /label: 'Folders'/);
+assert.match(graph, /ResultBrowserGraphControls/);
+assert.match(graph, /communityAvailable/);
+assert.match(graph, /onShowSemanticChange=\{setSemantic\}/);
+assert.doesNotMatch(graph, /const LAYOUTS/);
 assert.match(
 	css,
 	/\.pkfa-graph-scope-tab\.is-icon-only\s*\{[\s\S]*?width:\s*24px !important;[\s\S]*?min-width:\s*24px !important;[\s\S]*?max-width:\s*24px !important;[\s\S]*?padding:\s*0 !important;/,

@@ -48,8 +48,9 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
 	const recorderHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	// Rebuild subgraph when results change. Baseline synth (from raw results)
-	// runs first so the graph is never blank; enrichment refines it.
+	// Build one complete visible graph. The raw-result baseline is retained only
+	// as an error/degraded fallback; painting it before enrichment caused a
+	// second Cytoscape mount and a visible layout jump on every query.
 	useEffect(() => {
 		let cancelled = false;
 		(async () => {
@@ -57,6 +58,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				setSubgraph({ resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 });
 				return;
 			}
+			if (!cancelled) setSubgraph(null);
 			const scoreById = new Map<string, number>();
 			const baselineNodes: ResultSubgraphOutput['resultNodes'] = [];
 			const baselineIds: string[] = [];
@@ -80,8 +82,10 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				});
 			}
 			const baseline: ResultSubgraphOutput = { resultNodes: baselineNodes, hubAnchors: [], edges: [], isolatedDocIds: baselineIds, overflowCount: 0 };
-			if (!cancelled) setSubgraph(baseline);
-			if (!resultSubgraphDeps) return;
+			if (!resultSubgraphDeps) {
+				if (!cancelled) setSubgraph(baseline);
+				return;
+			}
 			try {
 				const sub = await buildResultSubgraph(resultSubgraphDeps, { resultDocIds: baselineIds, matchScores: scoreById, nodeCap: NODE_CAP });
 				const byId = new Map(baselineNodes.map((n) => [n.id, n]));
@@ -95,7 +99,8 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				if (!cancelled) setSubgraph(enriched);
 			} catch (err) {
 				// eslint-disable-next-line no-console
-				console.warn('[ResultGraphView] buildResultSubgraph failed, keeping baseline', err);
+				console.warn('[ResultGraphView] buildResultSubgraph failed, using baseline', err);
+				if (!cancelled) setSubgraph(baseline);
 			}
 		})();
 		return () => { cancelled = true; };
@@ -111,7 +116,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 			onSemanticChange={setShowSemantic}
 			nodeCap={NODE_CAP}
 			onNodeTap={({ id, path, isHub, modKey }) => {
-				if (modKey && isHub) { onOpenHubGraphSubview?.(id); return; }
+				if (modKey) return;
 				if (isHub) {
 					const hub = subgraph?.hubAnchors.find((h) => h.id === id);
 					const target = hub?.path || path;
@@ -124,6 +129,10 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				}
 			}}
 			onNodeDblTap={({ id, path }) => {
+				if (subgraph?.hubAnchors.some((hub) => hub.id === id)) {
+					onOpenHubGraphSubview?.(id);
+					return;
+				}
 				const found = results.find((r) => (r.docId ?? r.path ?? r.id) === id) ?? results.find((r) => r.path === path);
 				if (!found) return;
 				behaviorRecorder.push('openedFile', { path: found.path });

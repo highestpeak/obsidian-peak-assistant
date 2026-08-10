@@ -7,6 +7,7 @@
  * at the app layer (see FileAtlasModal). Keeps runtime ownership out of the UI.
  */
 import type { GraphEdgeDirectionality } from '@/core/types/graph-edge';
+import type { ResultGraphCommunitySummary } from '@/service/search/graph/resultSubgraph';
 
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import type { ComposerCapabilityId } from '@/core/composer';
@@ -43,6 +44,8 @@ export interface AtlasGraphNode {
 	signals?: string[];
 	incomingLinks?: number;
 	outgoingLinks?: number;
+	/** Canonical structural-analysis community assignment, when current. */
+	communityId?: string | null;
 }
 
 /** An edge in the neighborhood graph. */
@@ -64,6 +67,8 @@ export interface AtlasGraphData {
 		constituentCount: number;
 	}>;
 	edges: AtlasGraphEdge[];
+	/** Evidence-rich summaries for communities visible in this neighborhood. */
+	communities?: ResultGraphCommunitySummary[];
 }
 
 /** Resolved image resource for the Inspector preview. */

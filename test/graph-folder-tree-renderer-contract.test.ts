@@ -8,7 +8,7 @@ const renderer = fs.readFileSync(
 );
 
 assert.match(renderer, /folder:\s*\{ layout: 'folder-tree',\s*folderTree: true,\s*community: false \}/);
-assert.match(renderer, /layout: bundle\.folderTree \? \{ name: 'preset' \} : undefined/);
+assert.match(renderer, /layout: \{ name: 'preset' \}/);
 assert.match(renderer, /buildFolderTreeLayout/);
 assert.match(renderer, /buildFolderTreeRelationRoutes/);
 assert.match(renderer, /buildFolderTreeHubLayout/);
@@ -22,7 +22,8 @@ assert.match(renderer, /folderTreeLinkBadge/);
 assert.match(renderer, /node\.hub\.folderTreeHub/);
 assert.match(renderer, /folderHierarchy\$\{segment\.kind === 'rail' \? 'Rail' : 'Branch'\}/);
 assert.match(renderer, /classes: `\$\{e\.kind\}\$\{folderTree \? ' folderRelation' : ''\}\$\{opts\.community \? ' communityRelation' : ''\}/);
-assert.match(renderer, /toggleFolderTreeSelection\(focusedFolderTreeNodeId, n\.id\(\)\)/);
+assert.match(renderer, /selectGraphNode\(n\.id\(\), modKey\)/);
+assert.match(renderer, /multiSelectedEdge/);
 assert.match(renderer, /folderTreeSelectionScope\(projection, selectedNodeId\)/);
 assert.match(renderer, /edge\.folderRelation\.folderFocusIncoming/);
 assert.match(renderer, /'target-arrow-shape': 'vee'/);

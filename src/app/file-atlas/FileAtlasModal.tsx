@@ -19,6 +19,7 @@ import { FileAtlasHost } from '@/ui/view/file-atlas/FileAtlasHost';
 import { composeFileAtlasHost } from './composeFileAtlasHost';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import type { ComposerCapabilityId } from '@/core/composer';
+import { graphFullscreenOpen } from '@/app/ui-host/modals/graphFullscreenGuard';
 
 export class FileAtlasModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
@@ -55,7 +56,7 @@ export class FileAtlasModal extends Modal {
 
 		const ownerWindow = this.contentEl.ownerDocument.defaultView;
 		const openBlock = (path: string, location: DocumentSourceLocation): void => {
-			this.close();
+			this.closeFromContent();
 			(ownerWindow ?? window).setTimeout(() => {
 				void host.revealLocation(path, location);
 			}, 0);
@@ -65,7 +66,7 @@ export class FileAtlasModal extends Modal {
 			location: DocumentSourceLocation,
 			capabilityId: ComposerCapabilityId,
 		): void => {
-			this.close();
+			this.closeFromContent();
 			(ownerWindow ?? window).setTimeout(() => {
 				void host.runQuickAction?.(path, location, capabilityId).then((invoked) => {
 					if (!invoked) host.notify('This Composer action is no longer available.');
@@ -88,6 +89,15 @@ export class FileAtlasModal extends Modal {
 				this.appContext,
 			),
 		);
+	}
+
+	private closeFromContent(): void {
+		super.close();
+	}
+
+	override close(): void {
+		if (graphFullscreenOpen(this.contentEl.ownerDocument)) return;
+		super.close();
 	}
 
 	onClose(): void {
