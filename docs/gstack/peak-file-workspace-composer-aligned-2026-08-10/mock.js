@@ -6,8 +6,8 @@ const surfaces = {
     state: "Original protected · Save as new version",
     contextTitle: "I can see this image",
     contextDetail: "Pixels · dimensions · visible text",
-    headline: "Crop by touch. Export with a predictable result.",
-    description: "Free crop and rotation stay on the canvas. Zoom changes only the view; format, dimensions, quality, and estimated size live in Export copy.",
+    headline: "One local dock. Every image action stays within reach.",
+    description: "Use the whole image or drag a region. Crop expands in the same dock; Export stays anchored to it instead of jumping across the workspace.",
     scope: "Whole image",
     placeholder: "Ask about this image or propose a change…",
     actions: [
@@ -24,8 +24,8 @@ const surfaces = {
     state: "Interactive preview · Scripts isolated",
     contextTitle: "I can read the page and its source",
     contextDetail: "Rendered DOM · HTML/CSS · visible state",
-    headline: "Select a live element, then carry its context forward.",
-    description: "The element, DOM path, visible text, and source can move together into Intelligence or Composer while the page stays interactive.",
+    headline: "Use the whole page, or annotate one live element.",
+    description: "Pick elements repeatedly and the action capsule follows. Whole-page and element-level context can both move into Intelligence or Composer.",
     scope: "Rendered page + source",
     placeholder: "Ask about the page or change the selected element…",
     actions: [
@@ -42,8 +42,8 @@ const surfaces = {
     state: "Read-only source · Linked notes available",
     contextTitle: "I can read all 18 pages",
     contextDetail: "Text · page geometry · source citations",
-    headline: "Select a passage or region. Ask, cite, and carry it forward.",
-    description: "AI can use the whole PDF, exact text, or a bounded table/image region. Answers jump back to page geometry; selections can enter Composer.",
+    headline: "Choose the exact PDF scope before asking.",
+    description: "All pages, one page, text, and screenshot-like areas are explicit scopes. Local actions follow the selection; citations still return to page geometry.",
     scope: "Entire PDF · page 1 visible",
     placeholder: "Ask a question across this PDF…",
     actions: [
@@ -60,8 +60,8 @@ const surfaces = {
     state: "Editable now · Execution requires permission",
     contextTitle: "I can read the current source file",
     contextDetail: "Python · current selection · related Vault files",
-    headline: "Type directly. Send the useful selection to Composer.",
-    description: "Read, type, and save in the highlighted source editor. Selected code can be explained, changed, or attached as source context in Composer.",
+    headline: "Select code; actions appear beside that selection.",
+    description: "The editor stays directly editable. Every fresh text selection gets a nearby Ask / Change / Add capsule, while the whole file remains available from the tab bar.",
     scope: "index_pipeline.py · current selection",
     placeholder: "Explain or change the selected code…",
     actions: [
@@ -78,8 +78,8 @@ const surfaces = {
     state: "Native Canvas · Autosaved",
     contextTitle: "I can see the native Canvas selection",
     contextDetail: "3 cards · 2 edges · workflow card selected",
-    headline: "Canvas stays native. Selection becomes portable context.",
-    description: "Select cards and neighbors on the native canvas, then ask Intelligence or attach that subgraph to a Composer task.",
+    headline: "Canvas stays native. Peak follows the selected card.",
+    description: "Native node controls remain separate. A small Peak capsule moves with the selected card; the whole canvas is also available as context.",
     scope: "Selected media card + neighbors",
     placeholder: "Ask about this card or propose a connection…",
     actions: [
@@ -96,8 +96,8 @@ const surfaces = {
     state: "Native Excalidraw · Autosaved",
     contextTitle: "I can see the Excalidraw scene",
     contextDetail: "4 elements · Peak diamond selected",
-    headline: "Draw natively. Carry selected elements into Composer.",
-    description: "Excalidraw owns editing. Peak can explain selected elements, propose scene changes, or attach element IDs, labels, and bindings to Composer.",
+    headline: "Excalidraw owns selection. Peak stays attached to it.",
+    description: "Click another scene element and the Peak capsule follows. Use selected elements or the whole scene without replacing Excalidraw's native editor language.",
     scope: "Selected diamond + connected arrows",
     placeholder: "Ask about the diagram or propose a scene change…",
     actions: [
@@ -138,13 +138,13 @@ let imageQuarterRotation = 0;
 let cropStraighten = 0;
 let imageScale = 1;
 let pdfZoom = 112;
-let pdfMode = "text";
+let pdfMode = "document";
 let pdfSelection = null;
 let codeSelectionText = "";
 let canvasZoom = 84;
 let excalZoom = 72;
 let toastTimer;
-let cropDragState = null;
+let surfaceDragState = null;
 
 function iconMarkup() {
   return '<svg><use href="#i-sparkles"></use></svg>';
@@ -210,6 +210,12 @@ function selectSurface(surface, updateHash = true) {
   });
 
   renderActions(config);
+  window.requestAnimationFrame(() => {
+    if (surface === "canvas") positionCanvasSelection(document.querySelector(".canvas-card.is-selected"));
+    if (surface === "excalidraw") {
+      positionSelectionLens(document.querySelector(".excalidraw-selection-bar"), document.querySelector("[data-excal-element].is-scene-selected"), document.querySelector(".excalidraw-board"), "below");
+    }
+  });
   if (updateHash) setHash(surface);
 }
 
@@ -246,24 +252,48 @@ function handleImageTool(tool, button) {
   const imageStage = document.querySelector(".image-stage");
   if (tool === "crop") {
     const opening = cropOverlay.hidden;
+    if (!opening) {
+      closeCrop(false);
+      return;
+    }
     cropOverlay.hidden = !opening;
     cropStudio.hidden = !opening;
     exportSheet.hidden = true;
+    document.querySelector("#imageRegionSelection").hidden = true;
+    document.querySelectorAll("[data-image-scope]").forEach((item) => item.classList.toggle("is-active", item.dataset.imageScope === "all"));
     imageStage.classList.toggle("is-cropping", opening);
     button.classList.toggle("is-active", opening);
     document.querySelector('[data-image-tool="export"]').classList.remove("is-active");
-    showToast(opening ? "Drag freely, choose an aspect ratio, or straighten the image" : "Crop cancelled");
+    showToast("Crop expanded here · drag any edge, corner, or the frame itself");
     return;
   }
   if (tool !== "export") return;
 
   const opening = exportSheet.hidden;
+  if (!cropOverlay.hidden) closeCrop(false);
   exportSheet.hidden = !opening;
   cropOverlay.hidden = true;
   cropStudio.hidden = true;
   imageStage.classList.remove("is-cropping");
   document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
   button.classList.toggle("is-active", opening);
+}
+
+function setImageScope(scope, button) {
+  document.querySelectorAll("[data-image-scope]").forEach((item) => item.classList.toggle("is-active", item === button));
+  const region = document.querySelector("#imageRegionSelection");
+  const selectingRegion = scope === "region";
+  if (!document.querySelector("#cropOverlay").hidden) resetCrop();
+  region.hidden = !selectingRegion;
+  document.querySelector("#cropOverlay").hidden = true;
+  document.querySelector("#cropStudio").hidden = true;
+  document.querySelector("#imageExportSheet").hidden = true;
+  document.querySelector(".image-stage").classList.remove("is-cropping");
+  document.querySelectorAll("[data-image-tool]").forEach((item) => item.classList.remove("is-active"));
+  contextTitle.textContent = selectingRegion ? "I can see the selected image area" : "I can see the whole image";
+  contextDetail.textContent = selectingRegion ? "Pixels · position · visible text inside selection" : "All pixels · dimensions · visible text";
+  selectionScope.textContent = selectingRegion ? "Selected image area" : "Whole image";
+  showToast(selectingRegion ? "Drag the area or its corners; actions stay attached" : "Whole image is the active context");
 }
 
 function updateImageZoom(direction) {
@@ -275,53 +305,99 @@ function updateImageZoom(direction) {
 
 function setCropRatio(ratio, button) {
   const overlay = document.querySelector("#cropOverlay");
-  overlay.style.inset = "";
+  overlay.removeAttribute("style");
   overlay.dataset.cropRatio = ratio;
+  document.querySelector(".crop-drag-label").textContent = ratio === "free" ? "Drag edges freely" : button.textContent.trim();
   document.querySelectorAll("[data-crop-ratio]").forEach((item) => item.classList.toggle("is-active", item === button));
   showToast(`${button.textContent.trim()} crop ratio`);
 }
 
-function startCropDrag(event, handleIndex) {
-  const overlay = document.querySelector("#cropOverlay");
-  const frame = document.querySelector("#imageFrame");
-  const overlayRect = overlay.getBoundingClientRect();
-  const frameRect = frame.getBoundingClientRect();
-  cropDragState = {
-    handleIndex,
-    frame,
-    overlay,
-    frameRect,
-    left: overlayRect.left - frameRect.left,
-    top: overlayRect.top - frameRect.top,
-    right: overlayRect.right - frameRect.left,
-    bottom: overlayRect.bottom - frameRect.top,
+function startRectDrag(event, element, container, handle, onMove, onEnd) {
+  const elementRect = element.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  surfaceDragState = {
+    element,
+    container,
+    handle,
+    onMove,
+    onEnd,
+    startX: event.clientX,
+    startY: event.clientY,
+    containerWidth: containerRect.width,
+    containerHeight: containerRect.height,
+    left: elementRect.left - containerRect.left,
+    top: elementRect.top - containerRect.top,
+    width: elementRect.width,
+    height: elementRect.height,
   };
-  event.currentTarget.setPointerCapture(event.pointerId);
   event.preventDefault();
+  event.stopPropagation();
 }
 
-function dragCrop(event) {
-  if (!cropDragState) return;
-  const { handleIndex, overlay, frameRect } = cropDragState;
-  const minSize = 82;
-  const x = Math.max(10, Math.min(frameRect.width - 10, event.clientX - frameRect.left));
-  const y = Math.max(10, Math.min(frameRect.height - 10, event.clientY - frameRect.top));
-  let { left, top, right, bottom } = cropDragState;
-  if (handleIndex === 0 || handleIndex === 2) left = Math.min(x, right - minSize);
-  if (handleIndex === 1 || handleIndex === 3) right = Math.max(x, left + minSize);
-  if (handleIndex === 0 || handleIndex === 1) top = Math.min(y, bottom - minSize);
-  if (handleIndex === 2 || handleIndex === 3) bottom = Math.max(y, top + minSize);
-  Object.assign(cropDragState, { left, top, right, bottom });
-  overlay.style.inset = `${top}px ${frameRect.width - right}px ${frameRect.height - bottom}px ${left}px`;
+function dragSurfaceRect(event) {
+  if (!surfaceDragState) return;
+  event.preventDefault();
+  const state = surfaceDragState;
+  const minSize = 70;
+  const dx = event.clientX - state.startX;
+  const dy = event.clientY - state.startY;
+  let { left, top, width, height } = state;
+
+  if (state.handle === "move") {
+    left = Math.max(6, Math.min(state.containerWidth - width - 6, left + dx));
+    top = Math.max(6, Math.min(state.containerHeight - height - 6, top + dy));
+  } else {
+    if (state.handle.includes("w")) {
+      const nextLeft = Math.max(6, Math.min(left + width - minSize, left + dx));
+      width += left - nextLeft;
+      left = nextLeft;
+    }
+    if (state.handle.includes("e")) width = Math.max(minSize, Math.min(state.containerWidth - left - 6, width + dx));
+    if (state.handle.includes("n")) {
+      const nextTop = Math.max(6, Math.min(top + height - minSize, top + dy));
+      height += top - nextTop;
+      top = nextTop;
+    }
+    if (state.handle.includes("s")) height = Math.max(minSize, Math.min(state.containerHeight - top - 6, height + dy));
+  }
+
+  state.element.style.inset = "auto";
+  state.element.style.left = `${left}px`;
+  state.element.style.top = `${top}px`;
+  state.element.style.width = `${width}px`;
+  state.element.style.height = `${height}px`;
+  state.onMove?.(state.element);
+}
+
+function endSurfaceRectDrag() {
+  if (!surfaceDragState) return;
+  const onEnd = surfaceDragState.onEnd;
+  const element = surfaceDragState.element;
+  surfaceDragState = null;
+  onEnd?.(element);
+}
+
+function markFreeCrop() {
+  const overlay = document.querySelector("#cropOverlay");
   overlay.dataset.cropRatio = "free";
   const freeButton = document.querySelector('.crop-presets [data-crop-ratio="free"]');
   document.querySelectorAll(".crop-presets button").forEach((item) => item.classList.toggle("is-active", item === freeButton));
 }
 
-function endCropDrag() {
-  if (!cropDragState) return;
-  cropDragState = null;
-  setDirty("Free crop adjusted · not saved");
+function updateFreeCropLabel(overlay) {
+  markFreeCrop();
+  const frameRect = document.querySelector("#imageFrame").getBoundingClientRect();
+  const overlayRect = overlay.getBoundingClientRect();
+  const width = Math.round(2048 * overlayRect.width / frameRect.width);
+  const height = Math.round(1365 * overlayRect.height / frameRect.height);
+  document.querySelector(".crop-drag-label").textContent = `Free · ${width} × ${height}`;
+}
+
+function updateImageRegionLabel(region) {
+  const frameRect = document.querySelector("#imageFrame").getBoundingClientRect();
+  const regionRect = region.getBoundingClientRect();
+  const percent = Math.round(regionRect.width * regionRect.height / (frameRect.width * frameRect.height) * 100);
+  document.querySelector(".image-selection-bar strong").textContent = `Selected area · ${percent}% of image`;
 }
 
 function rotateCrop(direction) {
@@ -383,32 +459,73 @@ function toggleHtmlSource(button) {
 }
 
 function toggleHtmlPicker(button) {
-  htmlPicking = !htmlPicking;
-  button.classList.toggle("is-active", htmlPicking);
-  showToast(htmlPicking ? "Click an element in the preview" : "Element selection closed");
+  htmlPicking = true;
+  document.querySelector(".dashboard-page").dataset.picking = "true";
+  document.querySelector('[data-html-scope="all"]').classList.remove("is-active");
+  button.classList.add("is-active");
+  showToast("Pick an element; keep picking to move the action capsule");
 }
 
-function addToComposer(kind) {
+function useWholeHtmlPage() {
+  htmlPicking = false;
+  delete document.querySelector(".dashboard-page").dataset.picking;
+  document.querySelector('[data-html-scope="all"]').classList.add("is-active");
+  document.querySelector('[data-html-action="select"]').classList.remove("is-active");
+  document.querySelectorAll("[data-html-element]").forEach((element) => element.classList.remove("is-picked"));
+  document.querySelector("#htmlSelectionToolbar").hidden = true;
+  contextTitle.textContent = "I can see the whole rendered page";
+  contextDetail.textContent = "Rendered DOM · HTML/CSS · visible state";
+  selectionScope.textContent = "Whole rendered page + source";
+}
+
+function positionSelectionLens(bar, target, container, preferredPlacement = "above") {
+  const targetRect = typeof target.getBoundingClientRect === "function" ? target.getBoundingClientRect() : target;
+  const containerRect = container.getBoundingClientRect();
+  bar.hidden = false;
+  const barRect = bar.getBoundingClientRect();
+  const scrollLeft = container.scrollLeft || 0;
+  const scrollTop = container.scrollTop || 0;
+  const centeredLeft = targetRect.left - containerRect.left + scrollLeft + (targetRect.width - barRect.width) / 2;
+  const aboveTop = targetRect.top - containerRect.top + scrollTop - barRect.height - 10;
+  const belowTop = targetRect.bottom - containerRect.top + scrollTop + 10;
+  const placeBelow = preferredPlacement === "below" || aboveTop < scrollTop + 6;
+  const maxLeft = Math.max(6, container.scrollWidth - barRect.width - 6);
+  bar.style.left = `${Math.max(6, Math.min(maxLeft, centeredLeft))}px`;
+  bar.style.top = `${placeBelow ? belowTop : aboveTop}px`;
+  bar.dataset.placement = placeBelow ? "below" : "above";
+}
+
+function addToComposer(kind, scope = "selection") {
+  const selectedCanvasNode = document.querySelector(".canvas-card.is-selected")?.dataset.canvasNode || "workflow";
+  const excalSelection = document.querySelector("#excalSelectionLabel")?.textContent || "selected elements";
+  const isAll = scope === "all" || scope === "document" || (kind === "pdf" && scope === "current" && pdfMode === "document");
   const contexts = {
+    image: isAll ? {
+      label: `${surfaces.image.name} · whole image`,
+      detail: "Full-resolution image, dimensions, OCR, and source path",
+    } : {
+      label: `${surfaces.image.name} · selected area`,
+      detail: "Selected pixel region, position, OCR, and source path",
+    },
     html: {
-      label: `${surfaces.html.name} · ${document.querySelector("#htmlSelectionLabel").textContent}`,
-      detail: "Rendered element, DOM path, visible text, and local source",
+      label: `${surfaces.html.name} · ${isAll ? "whole rendered page" : document.querySelector("#htmlSelectionLabel").textContent}`,
+      detail: isAll ? "Rendered viewport, full DOM, source, and visible runtime state" : "Rendered element, DOM path, visible text, and local source",
     },
     pdf: {
-      label: `${surfaces.pdf.name} · page 1 ${pdfSelection?.kind || "selection"}`,
-      detail: pdfSelection?.text || "Selected PDF passage with page geometry",
+      label: `${surfaces.pdf.name} · ${pdfMode === "document" ? "all 18 pages" : pdfMode === "page" ? "page 1" : `page 1 ${pdfSelection?.kind || pdfMode}`}`,
+      detail: pdfMode === "document" ? "Full document text, layout, images, and source citations" : pdfSelection?.text || "Selected PDF context with page geometry",
     },
     code: {
-      label: `${surfaces.code.name} · ${codeSelectionText ? "selected code" : "current file"}`,
-      detail: codeSelectionText ? `${codeSelectionText.slice(0, 72)}${codeSelectionText.length > 72 ? "…" : ""}` : "Current Python source and visible range",
+      label: `${surfaces.code.name} · ${isAll ? "whole file" : "selected code"}`,
+      detail: !isAll && codeSelectionText ? `${codeSelectionText.slice(0, 72)}${codeSelectionText.length > 72 ? "…" : ""}` : "Current Python source, file path, and related Vault references",
     },
     canvas: {
-      label: `${surfaces.canvas.name} · selected card + neighbors`,
-      detail: "Native Canvas node, connected edges, and adjacent card labels",
+      label: `${surfaces.canvas.name} · ${isAll ? "whole canvas" : `${selectedCanvasNode} card + neighbors`}`,
+      detail: isAll ? "All native Canvas nodes, groups, edges, and file references" : "Native Canvas node, connected edges, and adjacent card labels",
     },
     excalidraw: {
-      label: `${surfaces.excalidraw.name} · selected elements`,
-      detail: "Peak diamond, two bound arrows, element IDs, and scene labels",
+      label: `${surfaces.excalidraw.name} · ${isAll ? "whole scene" : excalSelection}`,
+      detail: isAll ? "All scene elements, labels, bindings, and element IDs" : "Selected element IDs, labels, bounds, and bound arrows",
     },
   };
   const context = contexts[kind];
@@ -418,18 +535,69 @@ function addToComposer(kind) {
   composerReceiptDetail.textContent = context.detail;
   composerReceipt.hidden = false;
   selectionScope.textContent = context.label.replace(`${surfaces[kind].name} · `, "");
-  showToast("Selection added to Composer context");
+  showToast(`${isAll ? "Whole file" : "Selection"} added to Composer context`);
 }
 
 function setPdfMode(mode, button) {
   pdfMode = mode;
   document.querySelectorAll("[data-pdf-mode]").forEach((item) => item.classList.toggle("is-active", item === button));
-  document.querySelector(".pdf-page").classList.toggle("is-region-mode", mode === "region");
-  showToast(mode === "region" ? "Drag or click a table, image, or page region" : "Select or click a passage");
+  const page = document.querySelector("#pdfPage");
+  const area = document.querySelector("#pdfAreaSelection");
+  const toolbar = document.querySelector("#pdfSelectionToolbar");
+  const askButton = document.querySelector("#pdfAskButton");
+  const addButton = document.querySelector(".pdf-add-button");
+  document.querySelectorAll("[data-pdf-select]").forEach((item) => item.classList.remove("is-pdf-selected"));
+  page.classList.toggle("is-region-mode", mode === "region");
+  page.classList.toggle("is-page-selected", mode === "page");
+  area.hidden = mode !== "region";
+  toolbar.hidden = mode === "document" || mode === "page" || mode === "text";
+  pdfSelection = mode === "document" ? null : { kind: mode, text: mode === "page" ? "Page 1" : "Selected PDF area with page geometry" };
+  askButton.disabled = mode === "text";
+  addButton.disabled = mode === "text";
+
+  if (mode === "document") {
+    askButton.innerHTML = `${iconMarkup()}Ask document`;
+    contextTitle.textContent = "I can read all 18 pages";
+    contextDetail.textContent = "Text · layout · images · source citations";
+    selectionScope.textContent = "Entire PDF · 18 pages";
+    showToast("The complete PDF is the active context");
+    return;
+  }
+  if (mode === "page") {
+    askButton.innerHTML = `${iconMarkup()}Ask page 1`;
+    document.querySelector("#pdfSelectionKind").textContent = "Page selection";
+    document.querySelector("#pdfSelectionText").textContent = "Page 1 · visible page";
+    document.querySelector("#pdfExtractAction").hidden = true;
+    contextTitle.textContent = "I can see page 1";
+    contextDetail.textContent = "Full page text · layout · embedded regions";
+    selectionScope.textContent = "Page 1";
+    showToast("Page 1 is selected; choose another page from the rail");
+    return;
+  }
+  if (mode === "text") {
+    askButton.innerHTML = `${iconMarkup()}Select text first`;
+    contextTitle.textContent = "Select a passage on the page";
+    contextDetail.textContent = "The action capsule will appear beside the text";
+    selectionScope.textContent = "Waiting for text selection";
+    showToast("Click a passage; actions will appear beside it");
+    return;
+  }
+
+  askButton.innerHTML = `${iconMarkup()}Ask area`;
+  document.querySelector("#pdfSelectionKind").textContent = "Area · page 1";
+  document.querySelector("#pdfSelectionText").textContent = "Screenshot-like page region";
+  document.querySelector("#pdfExtractAction").hidden = false;
+  positionSelectionLens(toolbar, area, document.querySelector("#pdfCanvas"));
+  contextTitle.textContent = "I can see the selected PDF area";
+  contextDetail.textContent = "Page geometry · OCR · tables · images";
+  selectionScope.textContent = "Selected area · page 1";
+  showToast("Drag the area or its corners like a screenshot selection");
 }
 
 function selectPdfContent(element) {
   const kind = element.dataset.pdfSelect;
+  if (pdfMode !== "text" && pdfMode !== "region") return;
+  if (pdfMode === "text" && window.getSelection()?.toString().trim()) return;
   if (pdfMode === "text" && kind !== "passage") {
     showToast("Switch to Area to select this region");
     return;
@@ -445,7 +613,12 @@ function selectPdfContent(element) {
   document.querySelector("#pdfSelectionKind").textContent = `${kind === "region" ? "Area" : "Passage"} · page 1`;
   document.querySelector("#pdfSelectionText").textContent = kind === "region" ? "3-part workflow callout" : `“${text.slice(0, 48)}${text.length > 48 ? "…" : ""}”`;
   document.querySelector("#pdfExtractAction").hidden = kind !== "region";
-  document.querySelector("#pdfSelectionToolbar").hidden = false;
+  if (kind === "region") document.querySelector("#pdfAreaSelection").hidden = true;
+  const toolbar = document.querySelector("#pdfSelectionToolbar");
+  positionSelectionLens(toolbar, element, document.querySelector("#pdfCanvas"));
+  document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}${kind === "region" ? "Ask area" : "Ask text"}`;
+  document.querySelector("#pdfAskButton").disabled = false;
+  document.querySelector(".pdf-add-button").disabled = false;
   selectionScope.textContent = `${kind === "region" ? "Selected area" : "Selected passage"} · page 1`;
   contextTitle.textContent = "I can see the PDF selection";
   contextDetail.textContent = kind === "region" ? "Page geometry · OCR · embedded elements" : "Exact text · page 1 · source geometry";
@@ -457,6 +630,12 @@ function selectPdfPage(page) {
   });
   document.querySelector("#pdfPageNumber").textContent = page;
   document.querySelector("#pdfToolbarPage").textContent = page;
+  if (pdfMode === "page") {
+    pdfSelection = { kind: "page", text: `Page ${page}` };
+    document.querySelector("#pdfSelectionText").textContent = `Page ${page} · visible page`;
+    document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}Ask page ${page}`;
+    selectionScope.textContent = `Page ${page}`;
+  }
 }
 
 function updatePdfZoom(direction) {
@@ -469,6 +648,16 @@ function updateCanvasZoom(direction) {
   canvasZoom = Math.max(60, Math.min(120, direction === "fit" ? 84 : canvasZoom + (direction === "in" ? 8 : -8)));
   document.querySelector("#canvasZoomLabel").textContent = `${canvasZoom}%`;
   document.querySelector(".canvas-board").style.backgroundSize = `${Math.round(18 * canvasZoom / 84)}px ${Math.round(18 * canvasZoom / 84)}px`;
+}
+
+function positionCanvasSelection(node) {
+  const board = document.querySelector(".canvas-board");
+  positionSelectionLens(document.querySelector("#canvasSelectionToolbar"), node, board, "below");
+  const menu = document.querySelector("#canvasNativeNodeMenu");
+  const nodeRect = node.getBoundingClientRect();
+  const boardRect = board.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, nodeRect.right - boardRect.left - menu.offsetWidth)}px`;
+  menu.style.top = `${Math.max(8, nodeRect.top - boardRect.top - menu.offsetHeight - 6)}px`;
 }
 
 function updateExcalZoom(direction) {
@@ -493,7 +682,8 @@ function handleExcalStyle(button) {
 
 function handleAiAction(action) {
   if (action === "ask-pdf" || action === "summarize-pdf") {
-    showAnswer("Answer with page citations", [
+    const scopeLabel = pdfMode === "document" ? "all 18 pages" : pdfMode === "page" ? `page ${document.querySelector("#pdfToolbarPage").textContent}` : pdfMode === "text" ? "selected text" : "selected area";
+    showAnswer(`Answer from ${scopeLabel}`, [
       'The report argues that AI should remain inside the user’s source workflow rather than create another detached destination. <button class="citation" data-citation-page="1" data-citation-target="pdfHighlight">1 · p.1 passage</button>',
       'It treats citations and candidate review as the mechanisms that preserve trust while increasing actionability. <button class="citation" data-citation-page="1" data-citation-target="pdfCallouts">2 · p.1 area</button>',
     ]);
@@ -524,6 +714,13 @@ function handleAiAction(action) {
     showAnswer("Image understanding", [
       "The image presents a left-to-right knowledge workflow: multiple sources converge into a Peak reasoning layer, then produce a reviewable output.",
       "Visible text is legible and can be copied into a note. No source pixels changed.",
+    ]);
+    return;
+  }
+  if (action === "describe-image-region") {
+    showAnswer("Selected image area", [
+      "The selected area contains the central Peak reasoning stage and its incoming source connections.",
+      "Only pixels and visible text inside the movable selection were used for this answer.",
     ]);
     return;
   }
@@ -572,9 +769,6 @@ function handleAiAction(action) {
 
 function completeCandidate(action) {
   const accepted = action === "accept";
-  if (pendingCandidateAction === "compress-image" && !accepted) {
-    document.querySelector("#imageMetadata").textContent = "2048 × 1365 · PNG · 1.8 MB";
-  }
   document.querySelector(".code-preview").classList.remove("has-ai-suggestion");
   candidateReview.hidden = true;
   if (accepted) setClean("Suggestion accepted · saved in prototype state");
@@ -592,6 +786,12 @@ document.addEventListener("click", (event) => {
   const imageTool = event.target.closest("[data-image-tool]");
   if (imageTool) {
     handleImageTool(imageTool.dataset.imageTool, imageTool);
+    return;
+  }
+
+  const imageScopeButton = event.target.closest("[data-image-scope]");
+  if (imageScopeButton) {
+    setImageScope(imageScopeButton.dataset.imageScope, imageScopeButton);
     return;
   }
 
@@ -646,18 +846,23 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const htmlWholePage = event.target.closest('[data-html-scope="all"]');
+  if (htmlWholePage) {
+    useWholeHtmlPage();
+    showToast("Whole rendered page is the active context");
+    return;
+  }
+
   const htmlElement = event.target.closest("[data-html-element]");
   if (htmlElement && htmlPicking) {
     document.querySelectorAll("[data-html-element]").forEach((element) => element.classList.toggle("is-picked", element === htmlElement));
     const elementLabel = `section.${htmlElement.classList[0]}`;
     document.querySelector("#htmlSelectionLabel").textContent = elementLabel;
-    document.querySelector("#htmlSelectionToolbar").hidden = false;
+    positionSelectionLens(document.querySelector("#htmlSelectionToolbar"), htmlElement, document.querySelector(".browser-preview"));
     selectionScope.textContent = `Selected ${elementLabel}`;
     contextTitle.textContent = "I can see the selected page element";
     contextDetail.textContent = `${elementLabel} · rendered state · local source`;
-    htmlPicking = false;
-    document.querySelector('[data-html-action="select"]').classList.remove("is-active");
-    showToast("Element connected to Intelligence");
+    showToast("Element selected; pick another element anytime");
     return;
   }
 
@@ -687,7 +892,7 @@ document.addEventListener("click", (event) => {
 
   const addComposerButton = event.target.closest("[data-add-composer]");
   if (addComposerButton) {
-    addToComposer(addComposerButton.dataset.addComposer);
+    addToComposer(addComposerButton.dataset.addComposer, addComposerButton.dataset.contextScope || "selection");
     return;
   }
 
@@ -749,7 +954,24 @@ document.addEventListener("click", (event) => {
   if (canvasNode) {
     document.querySelectorAll("[data-canvas-node]").forEach((node) => node.classList.toggle("is-selected", node === canvasNode));
     selectionScope.textContent = `Selected ${canvasNode.dataset.canvasNode} card + neighbors`;
-    showToast("Native Canvas selection connected to Intelligence");
+    document.querySelector("#canvasSelectionLabel").textContent = `${canvasNode.dataset.canvasNode} card + neighbors`;
+    positionCanvasSelection(canvasNode);
+    contextTitle.textContent = "I can see the selected Canvas card";
+    contextDetail.textContent = `${canvasNode.dataset.canvasNode} · connected edges · neighboring cards`;
+    showToast("Canvas actions moved to the newly selected card");
+    return;
+  }
+
+  const excalElement = event.target.closest("[data-excal-element]");
+  if (excalElement) {
+    document.querySelectorAll("[data-excal-element]").forEach((element) => element.classList.toggle("is-scene-selected", element === excalElement));
+    const label = excalElement.dataset.excalElement;
+    document.querySelector("#excalSelectionLabel").textContent = label;
+    positionSelectionLens(document.querySelector(".excalidraw-selection-bar"), excalElement, document.querySelector(".excalidraw-board"), "below");
+    selectionScope.textContent = `Selected ${label}`;
+    contextTitle.textContent = "I can see the selected Excalidraw elements";
+    contextDetail.textContent = `${label} · bounds · labels · bindings`;
+    showToast("Excalidraw actions moved to the new selection");
     return;
   }
 
@@ -796,12 +1018,63 @@ document.querySelector("#exportQuality").addEventListener("input", updateExportE
 document.querySelector("#exportWidth").addEventListener("input", updateExportEstimate);
 document.querySelector("#exportHeight").addEventListener("input", updateExportEstimate);
 
-document.querySelectorAll("#cropOverlay i").forEach((handle, index) => {
-  handle.addEventListener("pointerdown", (event) => startCropDrag(event, index));
-  handle.addEventListener("pointermove", dragCrop);
-  handle.addEventListener("pointerup", endCropDrag);
-  handle.addEventListener("pointercancel", endCropDrag);
+const cropOverlay = document.querySelector("#cropOverlay");
+cropOverlay.querySelectorAll("[data-crop-handle]").forEach((handle) => {
+  handle.addEventListener("pointerdown", (event) => startRectDrag(
+    event,
+    cropOverlay,
+    document.querySelector("#imageFrame"),
+    handle.dataset.cropHandle,
+    updateFreeCropLabel,
+    () => setDirty("Free crop adjusted · not saved"),
+  ));
 });
+cropOverlay.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("[data-crop-handle]")) return;
+  startRectDrag(event, cropOverlay, document.querySelector("#imageFrame"), "move", updateFreeCropLabel, () => setDirty("Free crop moved · not saved"));
+});
+
+const imageRegion = document.querySelector("#imageRegionSelection");
+imageRegion.querySelectorAll("[data-region-handle]").forEach((handle) => {
+  handle.addEventListener("pointerdown", (event) => startRectDrag(event, imageRegion, document.querySelector("#imageFrame"), handle.dataset.regionHandle, updateImageRegionLabel, updateImageRegionLabel));
+});
+imageRegion.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("[data-region-handle], .selection-context-bar")) return;
+  startRectDrag(event, imageRegion, document.querySelector("#imageFrame"), "move", updateImageRegionLabel, updateImageRegionLabel);
+});
+
+const pdfArea = document.querySelector("#pdfAreaSelection");
+const refreshPdfAreaLens = () => positionSelectionLens(document.querySelector("#pdfSelectionToolbar"), pdfArea, document.querySelector("#pdfCanvas"));
+pdfArea.querySelectorAll("[data-pdf-area-handle]").forEach((handle) => {
+  handle.addEventListener("pointerdown", (event) => startRectDrag(event, pdfArea, document.querySelector("#pdfPage"), handle.dataset.pdfAreaHandle, refreshPdfAreaLens, refreshPdfAreaLens));
+});
+pdfArea.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("[data-pdf-area-handle]")) return;
+  startRectDrag(event, pdfArea, document.querySelector("#pdfPage"), "move", refreshPdfAreaLens, refreshPdfAreaLens);
+});
+
+document.querySelector("#pdfPage").addEventListener("mouseup", () => {
+  if (pdfMode !== "text") return;
+  const selection = window.getSelection();
+  const selectedText = selection?.toString().trim() || "";
+  if (!selectedText || !document.querySelector("#pdfPage").contains(selection.anchorNode)) return;
+  const selectionRect = selection.getRangeAt(0).getBoundingClientRect();
+  pdfSelection = { kind: "text", text: selectedText };
+  document.querySelector("#pdfSelectionKind").textContent = "Text · page 1";
+  document.querySelector("#pdfSelectionText").textContent = `“${selectedText.slice(0, 48)}${selectedText.length > 48 ? "…" : ""}”`;
+  document.querySelector("#pdfExtractAction").hidden = true;
+  positionSelectionLens(document.querySelector("#pdfSelectionToolbar"), selectionRect, document.querySelector("#pdfCanvas"));
+  document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}Ask text`;
+  document.querySelector("#pdfAskButton").disabled = false;
+  document.querySelector(".pdf-add-button").disabled = false;
+  contextTitle.textContent = "I can see the selected PDF text";
+  contextDetail.textContent = "Exact text · page 1 · source geometry";
+  selectionScope.textContent = "Selected text · page 1";
+});
+
+document.addEventListener("pointermove", dragSurfaceRect);
+document.addEventListener("pointerup", endSurfaceRectDrag);
+document.addEventListener("pointercancel", endSurfaceRectDrag);
 
 document.querySelector("#imageFrame").addEventListener("wheel", (event) => {
   if (document.querySelector(".image-stage").classList.contains("is-cropping")) return;
@@ -822,13 +1095,24 @@ codeEditor.addEventListener("input", () => {
 codeEditor.addEventListener("mouseup", () => {
   const selection = window.getSelection();
   const selectedText = selection?.toString().trim() || "";
-  if (!selectedText || !codeEditor.contains(selection.anchorNode)) return;
+  const selectionToolbar = document.querySelector("#codeSelectionToolbar");
+  if (!selectedText || !codeEditor.contains(selection.anchorNode)) {
+    selectionToolbar.hidden = true;
+    return;
+  }
   codeSelectionText = selectedText;
   const lineCount = selectedText.split("\n").length;
+  const selectionRect = selection.getRangeAt(0).getBoundingClientRect();
+  document.querySelector("#codeSelectionLabel").textContent = `${lineCount} line${lineCount === 1 ? "" : "s"} selected`;
+  positionSelectionLens(selectionToolbar, selectionRect, document.querySelector(".code-editor"));
   selectionScope.textContent = `${lineCount} line${lineCount === 1 ? "" : "s"} selected in index_pipeline.py`;
   contextTitle.textContent = "I can see the selected code";
   contextDetail.textContent = `Python · ${lineCount} selected line${lineCount === 1 ? "" : "s"} · related Vault files`;
   document.querySelector("#codeEditState").textContent = `${lineCount} line${lineCount === 1 ? "" : "s"} selected · edit or add to Composer`;
+});
+codeEditor.addEventListener("keyup", () => {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) document.querySelector("#codeSelectionToolbar").hidden = true;
 });
 codeEditor.addEventListener("keydown", (event) => {
   if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") return;

@@ -68,13 +68,47 @@
               <div class="image-frame" id="imageFrame">
                 <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration" />
                 <div class="crop-overlay" id="cropOverlay" data-crop-ratio="free" hidden>
-                  <span class="crop-grid"></span><i></i><i></i><i></i><i></i>
+                  <span class="crop-grid"></span><span class="crop-drag-label">Drag freely</span>
+                  <i data-crop-handle="nw"></i><i data-crop-handle="n"></i><i data-crop-handle="ne"></i><i data-crop-handle="e"></i>
+                  <i data-crop-handle="se"></i><i data-crop-handle="s"></i><i data-crop-handle="sw"></i><i data-crop-handle="w"></i>
                 </div>
-                <div class="image-context-toolbar" aria-label="图片核心工具">
-                  <button data-image-tool="crop"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
-                  <span class="toolbar-divider"></span>
-                  <button data-image-tool="export"><svg><use href="#i-download"/></svg><span>Export copy</span></button>
-                  <button class="ai-inline" data-ai-action="remove-object"><svg><use href="#i-sparkles"/></svg><span>Ask AI</span></button>
+                <div class="image-region-selection" id="imageRegionSelection" hidden>
+                  <i data-region-handle="nw"></i><i data-region-handle="ne"></i><i data-region-handle="se"></i><i data-region-handle="sw"></i>
+                  <div class="selection-context-bar image-selection-bar">
+                    <span><small>Image selection</small><strong>Selected area · 38% of image</strong></span>
+                    <button data-ai-action="describe-image-region"><svg><use href="#i-sparkles"/></svg>Ask</button>
+                    <button class="add-composer" data-add-composer="image" data-context-scope="selection">Add to Composer</button>
+                  </div>
+                </div>
+                <div class="image-context-toolbar" id="imageContextDock" aria-label="图片核心工具">
+                  <div class="image-dock-primary">
+                    <div class="scope-switch" aria-label="图片上下文范围"><button class="is-active" data-image-scope="all">Whole image</button><button data-image-scope="region">Select area</button></div>
+                    <span class="toolbar-divider"></span>
+                    <button data-image-tool="crop"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
+                    <button data-image-tool="export"><svg><use href="#i-download"/></svg><span>Export</span></button>
+                    <span class="toolbar-divider"></span>
+                    <button class="ai-inline" data-ai-action="describe-image"><svg><use href="#i-sparkles"/></svg><span>Ask</span></button>
+                    <button class="add-composer" data-add-composer="image" data-context-scope="all">Add to Composer</button>
+                  </div>
+                  <div class="crop-studio" id="cropStudio" hidden>
+                    <div class="crop-presets" aria-label="裁剪比例">
+                      <button class="is-active" data-crop-ratio="free">Free</button><button data-crop-ratio="original">Original</button><button data-crop-ratio="square">Square</button><button data-crop-ratio="wide">16:9</button>
+                    </div>
+                    <div class="crop-angle">
+                      <button data-crop-rotate="left" aria-label="Rotate left 90 degrees"><svg><use href="#i-rotate"/></svg><span>90°</span></button>
+                      <label><span>Straighten</span><input id="cropAngle" type="range" min="-45" max="45" value="0" step="1"/><output id="cropAngleValue">0°</output></label>
+                      <button data-crop-rotate="right" aria-label="Rotate right 90 degrees"><span>90°</span><svg><use href="#i-rotate"/></svg></button>
+                    </div>
+                    <div class="crop-commit"><button data-crop-action="reset">Reset</button><button data-crop-action="cancel">Cancel</button><button class="primary" data-crop-action="done">Done</button></div>
+                  </div>
+                  <div class="image-export-sheet" id="imageExportSheet" hidden>
+                    <header><span><strong>Export a copy</strong><small>Original remains unchanged</small></span><button data-export-action="close" aria-label="Close">×</button></header>
+                    <div class="export-row"><span><strong>Format</strong><small>Transparency or smaller size</small></span><div class="format-options"><button class="is-active" data-export-format="PNG">PNG</button><button data-export-format="JPEG">JPEG</button><button data-export-format="WebP">WebP</button></div></div>
+                    <label class="export-quality"><span><strong>File size</strong><small id="exportQualityLabel">High quality · 92%</small></span><input id="exportQuality" type="range" min="35" max="100" value="92"/></label>
+                    <details><summary>Dimensions <span id="exportDimensions">2048 × 1365 px</span></summary><div class="dimension-fields"><label>Width <input id="exportWidth" type="number" min="320" value="2048"/></label><span>×</span><label>Height <input id="exportHeight" type="number" min="240" value="1365"/></label></div></details>
+                    <div class="export-result"><span><small>Estimated copy</small><strong id="exportEstimate">1.8 MB</strong></span><span class="export-saving" id="exportSaving">2% smaller than original</span></div>
+                    <footer><button data-export-action="close">Cancel</button><button class="primary" data-export-action="save">Save copy</button></footer>
+                  </div>
                 </div>
                 <div class="image-zoom" aria-label="图片查看缩放">
                   <button data-image-zoom="out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
@@ -82,25 +116,6 @@
                   <button data-image-zoom="in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
                   <button data-image-zoom="fit" aria-label="Fit image"><svg><use href="#i-maximize"/></svg></button>
                 </div>
-              </div>
-              <div class="crop-studio" id="cropStudio" hidden>
-                <div class="crop-presets" aria-label="裁剪比例">
-                  <button class="is-active" data-crop-ratio="free">Free</button><button data-crop-ratio="original">Original</button><button data-crop-ratio="square">Square</button><button data-crop-ratio="wide">16:9</button>
-                </div>
-                <div class="crop-angle">
-                  <button data-crop-rotate="left" aria-label="Rotate left 90 degrees"><svg><use href="#i-rotate"/></svg><span>90°</span></button>
-                  <label><span>Straighten</span><input id="cropAngle" type="range" min="-45" max="45" value="0" step="1"/><output id="cropAngleValue">0°</output></label>
-                  <button data-crop-rotate="right" aria-label="Rotate right 90 degrees"><span>90°</span><svg><use href="#i-rotate"/></svg></button>
-                </div>
-                <div class="crop-commit"><button data-crop-action="reset">Reset</button><button data-crop-action="cancel">Cancel</button><button class="primary" data-crop-action="done">Done</button></div>
-              </div>
-              <div class="image-export-sheet" id="imageExportSheet" hidden>
-                <header><span><strong>Export a copy</strong><small>Original remains unchanged</small></span><button data-export-action="close" aria-label="Close">×</button></header>
-                <div class="export-row"><span><strong>Format</strong><small>Choose transparency or smaller size</small></span><div class="format-options"><button class="is-active" data-export-format="PNG">PNG</button><button data-export-format="JPEG">JPEG</button><button data-export-format="WebP">WebP</button></div></div>
-                <label class="export-quality"><span><strong>File size</strong><small id="exportQualityLabel">High quality · 92%</small></span><input id="exportQuality" type="range" min="35" max="100" value="92"/></label>
-                <details><summary>Dimensions <span id="exportDimensions">2048 × 1365 px</span></summary><div class="dimension-fields"><label>Width <input id="exportWidth" type="number" min="320" value="2048"/></label><span>×</span><label>Height <input id="exportHeight" type="number" min="240" value="1365"/></label></div></details>
-                <div class="export-result"><span><small>Estimated copy</small><strong id="exportEstimate">1.8 MB</strong></span><span class="export-saving" id="exportSaving">2% smaller than original</span></div>
-                <footer><button data-export-action="close">Cancel</button><button class="primary" data-export-action="save">Save copy</button></footer>
               </div>
               <div class="stage-caption">
                 <span id="imageMetadata">2048 × 1365 · PNG · 1.8 MB</span>
@@ -117,7 +132,9 @@
                   <span class="preview-address">local-preview://release-health-dashboard</span>
                   <div class="html-local-actions">
                     <span class="safe-runtime"><span></span> Scripts isolated</span>
-                    <button data-html-action="select"><svg><use href="#i-edit"/></svg>Select element</button>
+                    <div class="scope-switch html-scope-switch"><button class="is-active" data-html-scope="all">Whole page</button><button data-html-action="select"><svg><use href="#i-edit"/></svg>Pick element</button></div>
+                    <button data-ai-action="explain-html"><svg><use href="#i-sparkles"/></svg>Ask</button>
+                    <button class="add-composer" data-add-composer="html" data-context-scope="all">Add page</button>
                     <button data-html-action="source"><svg><use href="#i-code"/></svg><span>Edit source</span></button>
                   </div>
                 </div>
@@ -150,11 +167,11 @@
                     </article>
                   </div>
                 </div>
-                <div class="selection-context-bar html-selection-toolbar" id="htmlSelectionToolbar" hidden>
+                <div class="selection-context-bar html-selection-toolbar follows-selection" id="htmlSelectionToolbar" hidden>
                   <span><small>Selected element</small><strong id="htmlSelectionLabel">section.service-card</strong></span>
-                  <button data-ai-action="explain-html"><svg><use href="#i-sparkles"/></svg>Ask AI</button>
+                  <button data-ai-action="explain-html"><svg><use href="#i-sparkles"/></svg>Ask</button>
                   <button data-ai-action="change-html">Change</button>
-                  <button class="add-composer" data-add-composer="html">Add to Composer</button>
+                  <button class="add-composer" data-add-composer="html" data-context-scope="selection">Add to Composer</button>
                 </div>
               </div>
               <div class="source-editor html-source-editor" aria-label="HTML source editor">
@@ -175,9 +192,9 @@
           <section class="format-surface pdf-surface" data-surface="pdf" aria-label="PDF workspace">
               <div class="pdf-viewer">
                 <div class="pdf-toolbar">
-                <div class="pdf-select-modes"><button class="is-active" data-pdf-mode="text">Text</button><button data-pdf-mode="region">Area</button><span>Page <b id="pdfToolbarPage">1</b> of 18</span></div>
+                <div class="pdf-select-modes scope-switch"><button class="is-active" data-pdf-mode="document">All 18 pages</button><button data-pdf-mode="page">This page</button><button data-pdf-mode="text">Text</button><button data-pdf-mode="region">Area</button></div>
                 <div><button class="icon-button" data-pdf-zoom="out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button><span id="pdfZoomLabel">112%</span><button class="icon-button" data-pdf-zoom="in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button></div>
-                <div><button class="pdf-ask-button" data-ai-action="ask-pdf"><svg><use href="#i-sparkles"/></svg>Ask this PDF</button></div>
+                <div><span class="pdf-page-state">Page <b id="pdfToolbarPage">1</b> / 18</span><button class="pdf-ask-button" id="pdfAskButton" data-ai-action="ask-pdf"><svg><use href="#i-sparkles"/></svg>Ask document</button><button class="pdf-add-button add-composer" data-add-composer="pdf" data-context-scope="current">Add</button></div>
               </div>
               <div class="pdf-body">
                 <aside class="pdf-thumbnails" aria-label="PDF pages">
@@ -187,7 +204,7 @@
                   <button data-pdf-page="4"><span class="mini-page"><i></i><i></i><i></i></span><small>4</small></button>
                 </aside>
                 <div class="pdf-canvas" id="pdfCanvas">
-                  <article class="pdf-page">
+                  <article class="pdf-page" id="pdfPage">
                     <div class="pdf-brand">PEAK RESEARCH · 2026</div>
                     <h1>Knowledge work in the AI era</h1>
                     <p class="pdf-deck">From isolated answers to source-connected, reviewable workflows.</p>
@@ -196,14 +213,15 @@
                     <p data-pdf-select="passage">Teams do not need another destination for generated text. They need AI actions that remain connected to the files, evidence, and decisions already inside their working system.</p>
                     <p class="pdf-highlight" id="pdfHighlight" data-pdf-select="passage">The highest-value workflow keeps the source visible, cites the exact page behind each answer, and presents every write as a reviewable candidate.</p>
                     <div class="pdf-callouts" id="pdfCallouts" data-pdf-select="region"><span><strong>01</strong>Source visible</span><span><strong>02</strong>Citations jump back</span><span><strong>03</strong>Writes are reviewable</span></div>
+                    <div class="pdf-area-selection" id="pdfAreaSelection" hidden><span>Area selection</span><i data-pdf-area-handle="nw"></i><i data-pdf-area-handle="ne"></i><i data-pdf-area-handle="se"></i><i data-pdf-area-handle="sw"></i></div>
                     <footer><span>Peak Assistant</span><span id="pdfPageNumber">1</span></footer>
                   </article>
-                  <div class="selection-context-bar pdf-selection-toolbar" id="pdfSelectionToolbar" hidden>
+                  <div class="selection-context-bar pdf-selection-toolbar follows-selection" id="pdfSelectionToolbar" hidden>
                     <span><small id="pdfSelectionKind">Passage · page 1</small><strong id="pdfSelectionText">“The highest-value workflow…”</strong></span>
                     <button data-ai-action="explain-pdf-selection"><svg><use href="#i-sparkles"/></svg>Ask AI</button>
                     <button data-ai-action="translate-pdf">Translate</button>
                     <button data-ai-action="extract-pdf-region" id="pdfExtractAction" hidden>Extract</button>
-                    <button class="add-composer" data-add-composer="pdf">Add to Composer</button>
+                    <button class="add-composer" data-add-composer="pdf" data-context-scope="selection">Add to Composer</button>
                   </div>
                 </div>
               </div>
@@ -214,7 +232,7 @@
             <div class="code-editor">
               <div class="editor-tabbar">
                 <span class="file-tab"><i class="python-mark">PY</i>index_pipeline.py <b></b></span>
-                <span class="editor-hint">Syntax highlight · lightweight edit</span>
+                <div class="editor-file-actions"><span class="editor-hint">Syntax highlight · lightweight edit</span><button data-ai-action="review-code"><svg><use href="#i-sparkles"/></svg>Ask file</button><button class="add-composer" data-add-composer="code" data-context-scope="all">Add file</button></div>
               </div>
               <div class="code-body">
                 <div class="line-numbers" aria-hidden="true">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15</div>
@@ -234,9 +252,13 @@
 
     <span class="tok-keyword">return</span> <span class="tok-function">len</span>(changed)</code></pre>
               </div>
+              <div class="selection-context-bar code-selection-toolbar follows-selection" id="codeSelectionToolbar" hidden>
+                <span><small>Code selection</small><strong id="codeSelectionLabel">1 line selected</strong></span>
+                <button data-ai-action="explain-selection"><svg><use href="#i-sparkles"/></svg>Ask</button><button data-ai-action="change-code">Change</button><button class="add-composer" data-add-composer="code" data-context-scope="selection">Add to Composer</button>
+              </div>
               <div class="selection-actions">
                 <span><i class="edit-ready-dot"></i><b id="codeEditState">Editable · click anywhere to type</b></span>
-                <div><button data-ai-action="explain-selection"><svg><use href="#i-sparkles"/></svg> Ask AI</button><button class="add-composer" data-add-composer="code">Add to Composer</button></div>
+                <span>Select code to reveal actions beside it</span>
               </div>
             </div>
           </section>
@@ -254,13 +276,13 @@
                 <span class="card-type">Research</span><strong>Source-connected AI</strong><p>Answers stay attached to evidence, page citations, and reviewable changes.</p><span class="wikilink">[[Capability audit]]</span>
               </article>
               <article class="canvas-card media-card is-selected" data-canvas-node="workflow">
-                <div class="canvas-selection-tools">
-                  <button aria-label="Change color" data-canvas-action="color"><i class="color-dot"></i></button><button aria-label="More" data-demo-action="Canvas card actions opened"><svg><use href="#i-more"/></svg></button><button class="canvas-ask" data-ai-action="connect-canvas"><svg><use href="#i-sparkles"/></svg>Ask AI</button><button class="add-composer" data-add-composer="canvas">Add to Composer</button>
-                </div>
                 <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="Workflow media card"/>
                 <span>ai-knowledge-workflow.png</span>
               </article>
               <article class="canvas-card text-card" data-canvas-node="launch"><span class="card-type">Outcome</span><strong>Launch brief</strong><ul><li>Evidence-backed claims</li><li>Focused workflows</li><li>Owner review</li></ul></article>
+              <div class="canvas-native-node-menu" id="canvasNativeNodeMenu"><button aria-label="Change color" data-canvas-action="color"><i class="color-dot"></i></button><button aria-label="More" data-demo-action="Canvas card actions opened"><svg><use href="#i-more"/></svg></button></div>
+              <div class="selection-context-bar canvas-selection-tools follows-selection" id="canvasSelectionToolbar"><span><small>Canvas selection</small><strong id="canvasSelectionLabel">Workflow card + 2 neighbors</strong></span><button class="canvas-ask" data-ai-action="explain-canvas"><svg><use href="#i-sparkles"/></svg>Ask</button><button class="add-composer" data-add-composer="canvas" data-context-scope="selection">Add to Composer</button></div>
+              <div class="surface-scope-chip canvas-scope-chip"><span>Whole canvas</span><button data-ai-action="explain-canvas">Ask</button><button class="add-composer" data-add-composer="canvas" data-context-scope="all">Add</button></div>
               <div class="canvas-zoom"><button data-canvas-zoom="out"><svg><use href="#i-minus"/></svg></button><span id="canvasZoomLabel">84%</span><button data-canvas-zoom="in"><svg><use href="#i-plus"/></svg></button><button data-canvas-action="fit"><svg><use href="#i-maximize"/></svg></button></div>
               <div class="canvas-create-toolbar"><button class="is-active" aria-label="Select" data-canvas-tool="Select"><svg><use href="#i-edit"/></svg></button><button aria-label="Add card" data-canvas-tool="Card"><svg><use href="#i-file"/></svg></button><button aria-label="Add media" data-canvas-tool="Media"><svg><use href="#i-image"/></svg></button><button aria-label="Add group" data-canvas-tool="Group"><svg><use href="#i-layout"/></svg></button></div>
             </div>
@@ -278,14 +300,15 @@
                 <span>Stroke width</span><div class="width-options"><button data-excal-style="width" data-value="1">—</button><button class="is-active" data-excal-style="width" data-value="2.2">━━</button><button data-excal-style="width" data-value="4">━</button></div>
               </div>
               <svg class="excalidraw-scene" viewBox="0 0 1100 690" role="img" aria-label="Hand-drawn workflow diagram">
-                <g class="rough-box"><path d="M130 222Q128 175 139 132Q244 125 348 133Q354 181 349 230Q241 237 132 228Z"/><path d="M135 218Q132 178 141 137Q244 130 344 136Q348 180 344 225Q241 230 135 224Z"/><text x="241" y="172">Sources</text><text class="scene-note" x="241" y="199">Notes · PDF · HTML</text></g>
+                <g class="rough-box" data-excal-element="Sources block"><path d="M130 222Q128 175 139 132Q244 125 348 133Q354 181 349 230Q241 237 132 228Z"/><path d="M135 218Q132 178 141 137Q244 130 344 136Q348 180 344 225Q241 230 135 224Z"/><text x="241" y="172">Sources</text><text class="scene-note" x="241" y="199">Notes · PDF · HTML</text></g>
                 <g class="rough-arrow"><path d="M358 181Q432 175 493 233"/><path d="m477 228 20 8-7-21"/></g>
-                <g class="rough-diamond selected-shape"><path d="M594 163Q658 207 720 252Q658 302 592 344Q531 298 469 252Q532 207 594 163Z"/><path d="M595 168Q655 209 714 252Q655 296 593 338Q535 296 476 252Q535 211 595 168Z"/><text x="594" y="247">Peak</text><text class="scene-note" x="594" y="275">context + review</text><rect class="selection-bound" x="459" y="153" width="272" height="201"/><circle class="selection-handle" cx="459" cy="153" r="5"/><circle class="selection-handle" cx="731" cy="153" r="5"/><circle class="selection-handle" cx="459" cy="354" r="5"/><circle class="selection-handle" cx="731" cy="354" r="5"/></g>
+                <g class="rough-diamond selected-shape is-scene-selected" data-excal-element="Peak diamond"><path d="M594 163Q658 207 720 252Q658 302 592 344Q531 298 469 252Q532 207 594 163Z"/><path d="M595 168Q655 209 714 252Q655 296 593 338Q535 296 476 252Q535 211 595 168Z"/><text x="594" y="247">Peak</text><text class="scene-note" x="594" y="275">context + review</text><rect class="selection-bound" x="459" y="153" width="272" height="201"/><circle class="selection-handle" cx="459" cy="153" r="5"/><circle class="selection-handle" cx="731" cy="153" r="5"/><circle class="selection-handle" cx="459" cy="354" r="5"/><circle class="selection-handle" cx="731" cy="354" r="5"/></g>
                 <g class="rough-arrow"><path d="M724 254Q802 247 839 193"/><path d="m826 200 17-12-1 21"/></g>
-                <g class="rough-box"><path d="M848 130Q944 125 1031 135Q1038 182 1029 228Q935 235 847 224Q842 178 848 130Z"/><path d="M852 135Q943 130 1027 139Q1032 180 1025 223Q938 228 852 220Q848 178 852 135Z"/><text x="939" y="174">Candidate</text><text class="scene-note" x="939" y="201">accept · restore</text></g>
+                <g class="rough-box" data-excal-element="Candidate block"><path d="M848 130Q944 125 1031 135Q1038 182 1029 228Q935 235 847 224Q842 178 848 130Z"/><path d="M852 135Q943 130 1027 139Q1032 180 1025 223Q938 228 852 220Q848 178 852 135Z"/><text x="939" y="174">Candidate</text><text class="scene-note" x="939" y="201">accept · restore</text></g>
                 <text class="hand-note" x="501" y="407">keep every change reviewable ↑</text>
               </svg>
-              <div class="selection-context-bar excalidraw-selection-bar"><span><small>Selected elements</small><strong>Peak diamond + 2 bound arrows</strong></span><button data-ai-action="tidy-diagram"><svg><use href="#i-sparkles"/></svg>Ask AI</button><button class="add-composer" data-add-composer="excalidraw">Add to Composer</button></div>
+              <div class="selection-context-bar excalidraw-selection-bar follows-selection"><span><small>Excalidraw selection</small><strong id="excalSelectionLabel">Peak diamond + 2 bound arrows</strong></span><button data-ai-action="tidy-diagram"><svg><use href="#i-sparkles"/></svg>Ask</button><button class="add-composer" data-add-composer="excalidraw" data-context-scope="selection">Add to Composer</button></div>
+              <div class="surface-scope-chip excalidraw-scope-chip"><span>Whole scene</span><button data-ai-action="explain-diagram">Ask</button><button class="add-composer" data-add-composer="excalidraw" data-context-scope="all">Add</button></div>
               <div class="excalidraw-bottom"><button data-excal-zoom="out"><svg><use href="#i-minus"/></svg></button><span id="excalZoomLabel">72%</span><button data-excal-zoom="in"><svg><use href="#i-plus"/></svg></button><button data-demo-action="Last Excalidraw action undone"><svg><use href="#i-undo"/></svg></button></div>
             </div>
           </section>
