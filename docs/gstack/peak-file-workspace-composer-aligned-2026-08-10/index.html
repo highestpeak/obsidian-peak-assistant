@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peak File Workspace · Composer-aligned redesign</title>
+    <link rel="stylesheet" href="mock.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.2 3.8L7 8l3.8 1.2L12 13l1.2-3.8L17 8l-3.8-1.2L12 3Z"/><path d="m19 13-.8 2.2L16 16l2.2.8L19 19l.8-2.2L22 16l-2.2-.8L19 13Z"/><path d="m5 13-.7 1.8-1.8.7 1.8.7L5 18l.7-1.8 1.8-.7-1.8-.7L5 13Z"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.6-4.6a2 2 0 0 1 2.8 0L16 17l1.1-1.1a2 2 0 0 1 2.9.1"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 5l-4 14"/></symbol>
+      <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M9 9h12"/></symbol>
+      <symbol id="i-pen" viewBox="0 0 24 24"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m14 7 3 3"/></symbol>
+      <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v16a2 2 0 0 0 2 2h14M2 6h16a2 2 0 0 1 2 2v14"/></symbol>
+      <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M18.5 15a7 7 0 1 1 .8-7.7L20 12"/></symbol>
+      <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M5 21h14"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="m9 7-5 5 5 5"/><path d="M4 12h9a6 6 0 0 1 6 6"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z"/></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    </svg>
+
+    <nav class="prototype-nav" aria-label="原型格式切换">
+      <div class="prototype-id">
+        <span class="current-dot"></span>
+        <strong>File Workspace</strong>
+        <span>Composer-aligned reset</span>
+      </div>
+      <div class="surface-switcher" role="tablist">
+        <button class="is-active" data-surface-tab="image" role="tab">Image</button>
+        <button data-surface-tab="html" role="tab">HTML</button>
+        <button data-surface-tab="pdf" role="tab">PDF</button>
+        <button data-surface-tab="code" role="tab">Code</button>
+        <button data-surface-tab="canvas" role="tab">Canvas</button>
+        <button data-surface-tab="excalidraw" role="tab">Excalidraw</button>
+      </div>
+      <a class="research-link" href="research.html">Research decisions <svg><use href="#i-chevron"/></svg></a>
+    </nav>
+
+    <div class="app-shell" data-current-surface="image">
+      <header class="product-header">
+        <div class="document-title">
+          <span class="document-icon"><svg><use id="documentIconUse" href="#i-image"/></svg></span>
+          <span class="document-copy">
+            <strong id="documentName">ai-knowledge-workflow.png</strong>
+            <small id="documentPath">Assets / Research / ai-knowledge-workflow.png</small>
+          </span>
+        </div>
+        <div class="view-modes" id="viewModes" aria-label="视图模式"></div>
+        <div class="document-state">
+          <span class="state-dot"></span>
+          <span id="documentState">Original protected · Save as new version</span>
+          <button class="icon-button" aria-label="更多操作"><svg><use href="#i-more"/></svg></button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <main class="workbench" id="workbench">
+          <section class="format-surface image-surface is-active" data-surface="image" aria-label="Image workspace">
+            <div class="image-stage">
+              <div class="image-frame" id="imageFrame">
+                <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration" />
+                <div class="crop-overlay" id="cropOverlay" hidden><i></i><i></i><i></i><i></i></div>
+                <div class="image-context-toolbar" aria-label="图片核心工具">
+                  <button data-image-tool="crop"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
+                  <button data-image-tool="rotate"><svg><use href="#i-rotate"/></svg><span>Rotate</span></button>
+                  <button data-image-tool="resize"><svg><use href="#i-maximize"/></svg><span>Resize</span></button>
+                  <span class="toolbar-divider"></span>
+                  <button data-image-tool="compress"><svg><use href="#i-download"/></svg><span>Compress</span></button>
+                  <button class="ai-inline" data-ai-action="remove-object"><svg><use href="#i-sparkles"/></svg><span>Ask AI</span></button>
+                </div>
+              </div>
+              <div class="stage-caption">
+                <span>2048 × 1365 · PNG · 1.8 MB</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="format-surface html-surface" data-surface="html" aria-label="HTML workspace">
+            <div class="html-workspace">
+              <div class="browser-preview">
+                <div class="browser-bar">
+                  <span class="browser-dots"><i></i><i></i><i></i></span>
+                  <span class="preview-address">local-preview://release-health-dashboard</span>
+                  <span class="safe-runtime"><span></span> Scripts isolated</span>
+                </div>
+                <div class="dashboard-page">
+                  <header class="dashboard-head">
+                    <div><small>RELEASE OPERATIONS</small><strong>Platform health</strong></div>
+                    <span>Last sync · 2 min ago</span>
+                  </header>
+                  <div class="metric-row">
+                    <article><span>Deploy success</span><strong>98.4%</strong><small class="positive">+1.2% this week</small></article>
+                    <article><span>Open incidents</span><strong>03</strong><small>2 investigating</small></article>
+                    <article><span>P95 latency</span><strong>184 ms</strong><small class="positive">−23 ms</small></article>
+                  </div>
+                  <div class="dashboard-grid">
+                    <article class="chart-card">
+                      <div class="card-head"><strong>Request volume</strong><span>7 days</span></div>
+                      <svg viewBox="0 0 600 210" preserveAspectRatio="none" aria-label="request volume chart">
+                        <defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7162d8" stop-opacity=".26"/><stop offset="1" stop-color="#7162d8" stop-opacity="0"/></linearGradient></defs>
+                        <path class="chart-gridline" d="M0 50h600M0 105h600M0 160h600"/>
+                        <path class="chart-area" d="M0 168C55 150 73 158 118 130s70-4 112-35 64 12 103-14 72-46 111-28 86-22 156-6v163H0Z"/>
+                        <path class="chart-line" d="M0 168C55 150 73 158 118 130s70-4 112-35 64 12 103-14 72-46 111-28 86-22 156-6"/>
+                      </svg>
+                    </article>
+                    <article class="service-card">
+                      <div class="card-head"><strong>Services</strong><span>12 total</span></div>
+                      <div><span><i class="service-ok"></i>API Gateway</span><strong>Healthy</strong></div>
+                      <div><span><i class="service-ok"></i>Search index</span><strong>Healthy</strong></div>
+                      <div><span><i class="service-warn"></i>Webhooks</span><strong>Degraded</strong></div>
+                      <button>Open incident detail <svg><use href="#i-chevron"/></svg></button>
+                    </article>
+                  </div>
+                </div>
+              </div>
+              <div class="source-editor html-source-editor" aria-label="HTML source editor">
+                <div class="editor-tab"><span>release-health.html</span><small>Live preview connected</small></div>
+                <pre data-editable-source="html"><code><span class="token-tag">&lt;section</span> <span class="token-attr">class</span>=<span class="token-string">"metric-row"</span><span class="token-tag">&gt;</span>
+  <span class="token-tag">&lt;article&gt;</span>
+    <span class="token-tag">&lt;span&gt;</span>Deploy success<span class="token-tag">&lt;/span&gt;</span>
+    <span class="token-tag">&lt;strong&gt;</span>98.4%<span class="token-tag">&lt;/strong&gt;</span>
+    <span class="token-tag">&lt;small</span> <span class="token-attr">class</span>=<span class="token-string">"positive"</span><span class="token-tag">&gt;</span>
+      +1.2% this week
+    <span class="token-tag">&lt;/small&gt;</span>
+  <span class="token-tag">&lt;/article&gt;</span>
+<span class="token-tag">&lt;/section&gt;</span></code></pre>
+              </div>
+            </div>
+          </section>
+
+          <section class="format-surface pdf-surface" data-surface="pdf" aria-label="PDF workspace">
+            <div class="pdf-viewer">
+              <div class="pdf-toolbar">
+                <div><button class="icon-button"><svg><use href="#i-search"/></svg></button><span>1 / 18</span></div>
+                <div><button class="icon-button"><svg><use href="#i-minus"/></svg></button><span>112%</span><button class="icon-button"><svg><use href="#i-plus"/></svg></button></div>
+                <div><button class="icon-button"><svg><use href="#i-download"/></svg></button><button class="icon-button"><svg><use href="#i-more"/></svg></button></div>
+              </div>
+              <div class="pdf-body">
+                <aside class="pdf-thumbnails" aria-label="PDF pages">
+                  <button class="is-active" data-pdf-page="1"><span class="mini-page"><i></i><i></i><i></i></span><small>1</small></button>
+                  <button data-pdf-page="2"><span class="mini-page"><i></i><i></i><i></i><i></i></span><small>2</small></button>
+                  <button data-pdf-page="3"><span class="mini-page chart-mini"><i></i></span><small>3</small></button>
+                  <button data-pdf-page="4"><span class="mini-page"><i></i><i></i><i></i></span><small>4</small></button>
+                </aside>
+                <div class="pdf-canvas" id="pdfCanvas">
+                  <article class="pdf-page">
+                    <div class="pdf-brand">PEAK RESEARCH · 2026</div>
+                    <h1>Knowledge work in the AI era</h1>
+                    <p class="pdf-deck">From isolated answers to source-connected, reviewable workflows.</p>
+                    <div class="pdf-rule"></div>
+                    <h2>Executive summary</h2>
+                    <p>Teams do not need another destination for generated text. They need AI actions that remain connected to the files, evidence, and decisions already inside their working system.</p>
+                    <p class="pdf-highlight" id="pdfHighlight">The highest-value workflow keeps the source visible, cites the exact page behind each answer, and presents every write as a reviewable candidate.</p>
+                    <div class="pdf-callouts"><span><strong>01</strong>Source visible</span><span><strong>02</strong>Citations jump back</span><span><strong>03</strong>Writes are reviewable</span></div>
+                    <footer><span>Peak Assistant</span><span id="pdfPageNumber">1</span></footer>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="format-surface code-surface" data-surface="code" aria-label="Code Source workspace">
+            <div class="code-editor">
+              <div class="editor-tabbar">
+                <span class="file-tab"><i class="python-mark">PY</i>index_pipeline.py <b></b></span>
+                <span class="editor-hint">Syntax highlight · lightweight edit</span>
+              </div>
+              <div class="code-body">
+                <div class="line-numbers" aria-hidden="true">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15</div>
+                <pre class="code-preview" data-editable-source="code"><code><span class="tok-keyword">from</span> pathlib <span class="tok-keyword">import</span> Path
+<span class="tok-keyword">from</span> peak.index <span class="tok-keyword">import</span> DocumentIndex
+
+<span class="tok-keyword">async def</span> <span class="tok-function">refresh_sources</span>(vault: Path) -&gt; <span class="tok-type">int</span>:
+    <span class="tok-string">"""Refresh changed sources and return the indexed count."""</span>
+    index = DocumentIndex(vault)
+    changed = <span class="tok-keyword">await</span> index.<span class="tok-function">find_changed</span>()
+
+    <span class="tok-keyword">if not</span> changed:
+        <span class="tok-keyword">return</span> <span class="tok-number">0</span>
+
+    <span class="tok-keyword">for</span> source <span class="tok-keyword">in</span> changed:
+        <span class="tok-keyword">await</span> index.<span class="tok-function">upsert</span>(source)
+
+    <span class="tok-keyword">return</span> <span class="tok-function">len</span>(changed)</code></pre>
+                <pre class="code-diff" hidden><code><span class="diff-context">@@ refresh_sources(vault) @@</span>
+<span class="diff-old">-    for source in changed:</span>
+<span class="diff-old">-        await index.upsert(source)</span>
+<span class="diff-new">+    results = await asyncio.gather(*(index.upsert(source) for source in changed))</span>
+<span class="diff-new">+    failures = [result for result in results if result.is_error]</span>
+<span class="diff-new">+    if failures:</span>
+<span class="diff-new">+        raise IndexRefreshError(failures)</span></code></pre>
+              </div>
+              <div class="selection-actions">
+                <span>Lines 12–13 selected</span>
+                <button data-ai-action="explain-selection"><svg><use href="#i-sparkles"/></svg> Ask AI</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="format-surface canvas-surface" data-surface="canvas" aria-label="Obsidian Canvas workspace">
+            <div class="canvas-board">
+              <svg class="canvas-edges" viewBox="0 0 1200 760" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M345 230 C410 230 420 335 495 335"/><path d="M735 335 C800 335 810 220 875 220"/>
+                <circle cx="345" cy="230" r="5"/><circle cx="495" cy="335" r="5"/><circle cx="735" cy="335" r="5"/><circle cx="875" cy="220" r="5"/>
+                <rect x="404" y="261" width="68" height="22" rx="11"/><text x="438" y="276">informs</text>
+                <rect x="782" y="259" width="58" height="22" rx="11"/><text x="811" y="274">ships</text>
+              </svg>
+              <div class="canvas-group"><span>Peak launch system</span></div>
+              <article class="canvas-card note-card" data-canvas-node="research">
+                <span class="card-type">Research</span><strong>Source-connected AI</strong><p>Answers stay attached to evidence, page citations, and reviewable changes.</p><span class="wikilink">[[Capability audit]]</span>
+              </article>
+              <article class="canvas-card media-card is-selected" data-canvas-node="workflow">
+                <div class="canvas-selection-tools">
+                  <button aria-label="Change color"><i class="color-dot"></i></button><button aria-label="More"><svg><use href="#i-more"/></svg></button><button class="canvas-ask" data-ai-action="connect-canvas"><svg><use href="#i-sparkles"/></svg>Ask AI</button>
+                </div>
+                <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="Workflow media card"/>
+                <span>ai-knowledge-workflow.png</span>
+              </article>
+              <article class="canvas-card text-card" data-canvas-node="launch"><span class="card-type">Outcome</span><strong>Launch brief</strong><ul><li>Evidence-backed claims</li><li>Focused workflows</li><li>Owner review</li></ul></article>
+              <div class="canvas-zoom"><button><svg><use href="#i-minus"/></svg></button><span>84%</span><button><svg><use href="#i-plus"/></svg></button><button><svg><use href="#i-maximize"/></svg></button></div>
+              <div class="canvas-create-toolbar"><button class="is-active" aria-label="Select"><svg><use href="#i-edit"/></svg></button><button aria-label="Add card"><svg><use href="#i-file"/></svg></button><button aria-label="Add media"><svg><use href="#i-image"/></svg></button><button aria-label="Add group"><svg><use href="#i-layout"/></svg></button></div>
+            </div>
+          </section>
+
+          <section class="format-surface excalidraw-surface" data-surface="excalidraw" aria-label="Excalidraw workspace">
+            <div class="excalidraw-board">
+              <div class="excalidraw-menu"><button aria-label="Menu">☰</button><button aria-label="Library"><svg><use href="#i-layout"/></svg></button></div>
+              <div class="excalidraw-tools" aria-label="Excalidraw tools">
+                <button class="is-active" title="Selection">↖</button><button title="Rectangle">▭</button><button title="Diamond">◇</button><button title="Ellipse">○</button><button title="Arrow">→</button><button title="Draw"><svg><use href="#i-pen"/></svg></button><button title="Text">T</button><button title="Image"><svg><use href="#i-image"/></svg></button>
+              </div>
+              <div class="excalidraw-properties">
+                <span>Stroke</span><div><button class="stroke-black is-active"></button><button class="stroke-purple"></button><button class="stroke-blue"></button><button class="stroke-red"></button></div>
+                <span>Fill</span><div><button class="fill-none is-active"></button><button class="fill-purple"></button><button class="fill-blue"></button></div>
+                <span>Stroke width</span><div class="width-options"><button>—</button><button class="is-active">━━</button><button>━</button></div>
+              </div>
+              <svg class="excalidraw-scene" viewBox="0 0 1100 690" role="img" aria-label="Hand-drawn workflow diagram">
+                <g class="rough-box"><path d="M130 222Q128 175 139 132Q244 125 348 133Q354 181 349 230Q241 237 132 228Z"/><path d="M135 218Q132 178 141 137Q244 130 344 136Q348 180 344 225Q241 230 135 224Z"/><text x="241" y="172">Sources</text><text class="scene-note" x="241" y="199">Notes · PDF · HTML</text></g>
+                <g class="rough-arrow"><path d="M358 181Q432 175 493 233"/><path d="m477 228 20 8-7-21"/></g>
+                <g class="rough-diamond selected-shape"><path d="M594 163Q658 207 720 252Q658 302 592 344Q531 298 469 252Q532 207 594 163Z"/><path d="M595 168Q655 209 714 252Q655 296 593 338Q535 296 476 252Q535 211 595 168Z"/><text x="594" y="247">Peak</text><text class="scene-note" x="594" y="275">context + review</text><rect class="selection-bound" x="459" y="153" width="272" height="201"/><circle class="selection-handle" cx="459" cy="153" r="5"/><circle class="selection-handle" cx="731" cy="153" r="5"/><circle class="selection-handle" cx="459" cy="354" r="5"/><circle class="selection-handle" cx="731" cy="354" r="5"/></g>
+                <g class="rough-arrow"><path d="M724 254Q802 247 839 193"/><path d="m826 200 17-12-1 21"/></g>
+                <g class="rough-box"><path d="M848 130Q944 125 1031 135Q1038 182 1029 228Q935 235 847 224Q842 178 848 130Z"/><path d="M852 135Q943 130 1027 139Q1032 180 1025 223Q938 228 852 220Q848 178 852 135Z"/><text x="939" y="174">Candidate</text><text class="scene-note" x="939" y="201">accept · restore</text></g>
+                <text class="hand-note" x="501" y="407">keep every change reviewable ↑</text>
+              </svg>
+              <button class="excalidraw-ai" data-ai-action="tidy-diagram"><svg><use href="#i-sparkles"/></svg>Ask AI about selection</button>
+              <div class="excalidraw-bottom"><button><svg><use href="#i-minus"/></svg></button><span>72%</span><button><svg><use href="#i-plus"/></svg></button><button><svg><use href="#i-undo"/></svg></button></div>
+            </div>
+          </section>
+
+          <div class="candidate-review" id="candidateReview" hidden>
+            <div class="candidate-icon"><svg><use href="#i-sparkles"/></svg></div>
+            <div><strong id="candidateTitle">AI candidate ready</strong><span id="candidateDescription">Review the preview before it touches the source.</span></div>
+            <div class="candidate-actions"><button data-candidate="restore">Restore</button><button data-candidate="retry">Retry</button><button class="accept" data-candidate="accept"><svg><use href="#i-check"/></svg>Accept</button></div>
+          </div>
+          <div class="workbench-toast" id="workbenchToast" hidden></div>
+        </main>
+
+        <aside class="intelligence-panel" aria-label="Peak Intelligence">
+          <header class="intelligence-header">
+            <div><span class="intelligence-mark"><svg><use href="#i-sparkles"/></svg></span><span><strong>Intelligence</strong><small><i></i>Ready · current file connected</small></span></div>
+            <button class="icon-button" aria-label="Intelligence more"><svg><use href="#i-more"/></svg></button>
+          </header>
+          <div class="intelligence-tabs" role="tablist"><button class="is-active">Copilot</button><button>Ambient</button><button>History</button></div>
+          <div class="context-banner">
+            <svg><use href="#i-eye"/></svg>
+            <span><strong id="contextTitle">I can see this image</strong><small id="contextDetail">Pixels · dimensions · visible text</small></span>
+            <span class="context-status">Connected</span>
+          </div>
+          <div class="intelligence-scroll">
+            <section class="ai-brief">
+              <span class="eyebrow">CURRENT FILE</span>
+              <h2 id="aiHeadline">Work with the image, not around it.</h2>
+              <p id="aiDescription">Use lightweight transforms on the canvas. Bring AI in only for semantic changes or understanding.</p>
+            </section>
+            <section class="suggested-actions">
+              <div class="section-label"><span>Suggested</span><small id="selectionScope">Whole image</small></div>
+              <div id="aiActions"></div>
+            </section>
+            <section class="ai-answer" id="aiAnswer" hidden></section>
+          </div>
+          <footer class="prompt-area">
+            <div class="prompt-context"><span><svg><use href="#i-file"/></svg><b id="promptFile">ai-knowledge-workflow.png</b></span><button aria-label="Remove context">×</button></div>
+            <textarea id="promptInput" rows="2" placeholder="Ask about this image or propose a change…"></textarea>
+            <div class="prompt-footer"><button class="model-button">Auto <span>⌄</span></button><span>Source stays unchanged until accepted</span><button class="send-button" id="sendPrompt" aria-label="Send"><svg><use href="#i-send"/></svg></button></div>
+          </footer>
+        </aside>
+      </div>
+    </div>
+    <script src="mock.js"></script>
+  </body>
+</html>

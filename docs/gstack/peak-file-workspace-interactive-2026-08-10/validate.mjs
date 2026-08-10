@@ -45,6 +45,7 @@ for (const hook of [
 }
 
 assert.match(html, /Interactive design mock · not implemented/);
+assert.match(html, /Rejected V1 · historical only/);
 assert.match(html, /Run disabled · separate permission/);
 assert.match(html, /Atomic multi-file candidate/);
 assert.match(html, /Native PDF companion/);
@@ -71,9 +72,10 @@ for (const file of ['index.html', 'mock.css', 'mock.js', 'README.md']) {
 }
 
 for (const surface of surfaces) {
-  assert.match(capabilityAudit, new RegExp(`peak-file-workspace-interactive-2026-08-10/index\\.html#${surface}`), `capability audit does not link ${surface}`);
+  assert.match(capabilityAudit, new RegExp(`peak-file-workspace-composer-aligned-2026-08-10/index\\.html#${surface}`), `capability audit does not link current ${surface}`);
 }
+assert.match(docsIndex, /peak-file-workspace-composer-aligned-2026-08-10\/index\.html/);
 assert.match(docsIndex, /peak-file-workspace-interactive-2026-08-10\/index\.html/);
 assert.match(legacyReport, /peak-file-workspace-interactive-2026-08-10\/index\.html/);
 
-console.log(`Validated ${surfaces.length} interactive File Workspace surfaces, ${localLinks.length} local links, and 3 inbound entry points.`);
+console.log(`Validated ${surfaces.length} rejected V1 surfaces, ${localLinks.length} local links, and current-successor routing.`);

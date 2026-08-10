@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peak File Workspace · 设计重置与调研依据</title>
+    <style>
+      :root{--bg:#f2f3f6;--paper:#fff;--text:#282c34;--muted:#6d7280;--line:#e1e3e8;--accent:#6d5bd0;--weak:#f0edff;--red:#b64a42;--redweak:#fff1ef;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--text)}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-size:14px;line-height:1.65}a{color:var(--accent)}.top{position:sticky;top:0;z-index:10;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.95);border-bottom:1px solid var(--line);backdrop-filter:blur(14px)}.top strong{font-size:13px}.top nav{display:flex;gap:8px}.top a{padding:7px 10px;text-decoration:none;border-radius:6px;font-size:11px;font-weight:700}.top a:first-child{color:#fff;background:var(--accent)}.page{width:min(1120px,calc(100% - 40px));margin:0 auto;padding:58px 0 90px}.hero{padding:50px 56px;background:#282b34;color:#fff;border-radius:16px;box-shadow:0 22px 55px rgba(35,38,47,.14)}.kicker{color:#b9acef;font-size:10px;font-weight:800;letter-spacing:.13em}.hero h1{max-width:820px;margin:13px 0 18px;font-size:42px;line-height:1.12;letter-spacing:-.04em}.hero p{max-width:760px;margin:0;color:#c2c5ce;font-size:16px}.status{display:inline-flex;align-items:center;gap:7px;margin-top:28px;padding:7px 10px;color:#dddcff;background:rgba(123,105,216,.16);border:1px solid rgba(181,169,241,.25);border-radius:999px;font-size:10px;font-weight:750}.status i{width:6px;height:6px;background:#aa96ff;border-radius:50%}.section{margin-top:52px}.section>h2{margin:0 0 7px;font-size:24px;letter-spacing:-.025em}.section>p{max-width:800px;margin:0 0 21px;color:var(--muted)}.failure{display:grid;grid-template-columns:1.05fr 1.95fr;gap:16px}.failure article{padding:22px;background:var(--paper);border:1px solid var(--line);border-radius:11px}.failure .rejected{background:var(--redweak);border-color:#f0c8c3}.failure h3{margin:0 0 10px;font-size:14px}.failure ul{margin:0;padding-left:18px;color:var(--muted)}.failure li+li{margin-top:7px}.principle{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.principle article{padding:20px;background:var(--paper);border:1px solid var(--line);border-radius:10px}.principle span{display:grid;place-items:center;width:30px;height:30px;margin-bottom:14px;color:var(--accent);background:var(--weak);border-radius:8px;font-size:11px;font-weight:800}.principle h3{margin:0 0 6px;font-size:13px}.principle p{margin:0;color:var(--muted);font-size:12px}.format-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.format{padding:22px;background:var(--paper);border:1px solid var(--line);border-radius:11px}.format header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.format h3{margin:0;font-size:16px}.format header span{padding:4px 7px;color:var(--accent);background:var(--weak);border-radius:999px;font-size:9px;font-weight:750}.format dl{display:grid;grid-template-columns:82px 1fr;gap:8px 12px;margin:0}.format dt{color:#8b8f99;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.05em}.format dd{margin:0;font-size:12px}.format .exclude{color:#9b4d47}.sources{display:grid;gap:9px}.source{display:grid;grid-template-columns:190px minmax(0,1fr) auto;align-items:center;gap:18px;padding:14px 16px;background:var(--paper);border:1px solid var(--line);border-radius:9px}.source strong{font-size:12px}.source span{color:var(--muted);font-size:11px}.source a{text-decoration:none;font-size:10px;font-weight:750;white-space:nowrap}.contract{display:grid;grid-template-columns:1fr 1fr;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:12px}.contract article{padding:25px}.contract article+article{border-left:1px solid var(--line)}.contract h3{margin:0 0 13px;font-size:14px}.contract ol{margin:0;padding-left:18px}.contract li+li{margin-top:8px}.decision{padding:28px 30px;background:#292c35;color:#fff;border-radius:12px}.decision h2{margin:0 0 10px;font-size:22px}.decision p{margin:0;color:#c5c8d0}.decision .buttons{display:flex;gap:8px;margin-top:20px}.decision a{padding:9px 12px;color:#292c35;background:#fff;border-radius:7px;text-decoration:none;font-size:11px;font-weight:750}.decision a:last-child{color:#d3caff;background:transparent;border:1px solid #615b75}.note{margin-top:20px;padding:14px 16px;color:#6a5a2a;background:#fff7dc;border:1px solid #eddfa7;border-radius:8px;font-size:11px}@media(max-width:800px){.page{width:min(100% - 24px,1120px);padding-top:24px}.hero{padding:32px}.hero h1{font-size:31px}.failure,.principle,.format-grid,.contract{grid-template-columns:1fr}.contract article+article{border-left:0;border-top:1px solid var(--line)}.source{grid-template-columns:1fr}.top{padding:0 14px}.top nav a:last-child{display:none}}
+    </style>
+  </head>
+  <body>
+    <header class="top"><strong>Peak File Workspace · Design reset</strong><nav><a href="index.html#image">Open prototype</a><a href="../peak-file-workspace-interactive-2026-08-10/index.html">Rejected V1</a></nav></header>
+    <main class="page">
+      <section class="hero">
+        <span class="kicker">RESEARCH → BOUNDARY → COMPOSER-ALIGNED PROTOTYPE</span>
+        <h1>不是给每种文件堆一套工具栏，而是让原生文件表面进入 Peak 的 AI 工作流。</h1>
+        <p>本轮设计重置先承认 V1 失败：它把能力矩阵直接铺成界面，AI 入口不够明显，Image 缺乏画布中心感，Canvas 与 Excalidraw 又错误地被重新发明。新方案统一使用 Composer 的主内容区、Intelligence 侧栏和候选变更审阅。</p>
+        <span class="status"><i></i>Current design direction · production implementation pending</span>
+      </section>
+
+      <section class="section">
+        <h2>为什么上一版必须推翻</h2>
+        <p>这不是圆角、颜色或间距问题，而是产品结构不成立。</p>
+        <div class="failure">
+          <article class="rejected"><h3>Rejected V1</h3><ul><li>把“我们支持什么”当成了“用户应该一直看到什么”。</li><li>每种格式长出自己的长工具区，AI 被埋在次要位置。</li><li>Canvas / Excalidraw 用仿制表面替代用户已熟悉的原生体验。</li><li>Code 被扩成简陋 IDE，超出了轻量读改的真实需求。</li></ul></article>
+          <article><h3>重置后的判断</h3><ul><li><strong>文件本身永远是主角。</strong>图片、PDF、网页、代码或画布占据最大的视觉空间。</li><li><strong>AI 永远可见。</strong>所有格式共享 Composer Intelligence，明确展示当前 context、建议动作、回答和候选审阅。</li><li><strong>原生编辑器拥有自己的语言。</strong>Obsidian Canvas 和 Excalidraw 的卡片、工具、属性、连线与快捷操作不被 Peak 重做。</li><li><strong>只支持高频核心动作。</strong>Peak 不需要成为 Photoshop、Acrobat 或 VS Code 的复制品。</li></ul></article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>统一设计原则</h2>
+        <div class="principle">
+          <article><span>01</span><h3>Composer 是共享骨架</h3><p>沿用文档标题、中央工作区、右侧 Intelligence、底部 prompt 和 Accept / Restore / Retry 候选审阅。</p></article>
+          <article><span>02</span><h3>Native surface first</h3><p>能由原生查看器或编辑器可靠完成的事情，不另造一层 Peak UI。</p></article>
+          <article><span>03</span><h3>Context before tools</h3><p>每个工作区先声明 AI 实际看到什么；回答回到文件，写操作先生成 candidate。</p></article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>六种文件的产品边界</h2>
+        <p>下面的“不要做”与核心能力同样重要，它们阻止每个文件工作区膨胀成第二套专业软件。</p>
+        <div class="format-grid">
+          <article class="format"><header><h3>Image</h3><span>Canvas-first</span></header><dl><dt>Core</dt><dd>Crop、Rotate、Resize、Compress / Convert；工具贴近画布与选择。</dd><dt>AI</dt><dd>Describe / OCR、去背景、选区移除或替换、扩图、候选对比。</dd><dt>Reuse</dt><dd>复用 Composer 的图片渲染、选择语义、上下文与候选审阅。</dd><dt>不要做</dt><dd class="exclude">完整图层系统、滤镜市场、Photoshop 级参数面板。</dd></dl></article>
+          <article class="format"><header><h3>HTML</h3><span>Preview-first</span></header><dl><dt>Core</dt><dd>Preview / Edit / Split，实时预览，源码高亮，小范围修改。</dd><dt>AI</dt><dd>解释页面、改选中区域、检查交互/脚本/数据持久化风险。</dd><dt>Boundary</dt><dd>本地预览明确隔离脚本；外部操作与持久化需要单独授权。</dd><dt>不要做</dt><dd class="exclude">默认进入源码、把危险脚本伪装成普通文档交互。</dd></dl></article>
+          <article class="format"><header><h3>PDF</h3><span>Read + cite</span></header><dl><dt>Core</dt><dd>可靠阅读、缩放、页缩略图、搜索与标注。</dd><dt>AI</dt><dd>摘要、问答、建议问题；每个事实答案携带页码引用并回跳。</dd><dt>Write</dt><dd>原 PDF 默认只读；高亮和回答可 materialize 成带源链接的 Markdown。</dd><dt>不要做</dt><dd class="exclude">把聊天结果和 PDF 页面割裂，或假装拥有完整 PDF 编辑能力。</dd></dl></article>
+          <article class="format"><header><h3>Code Source</h3><span>Focused edit</span></header><dl><dt>Core</dt><dd>预览、语法高亮、行号、轻量编辑、Changes diff。</dd><dt>AI</dt><dd>解释选区、提出小补丁、审查当前文件；引用其他 Vault 源文件。</dd><dt>Boundary</dt><dd>运行、测试、构建是独立的授权与环境，不混进文件编辑器。</dd><dt>不要做</dt><dd class="exclude">Symbols 导航、项目树、调试器或简陋版 IDE。</dd></dl></article>
+          <article class="format"><header><h3>Obsidian Canvas</h3><span>Native Canvas</span></header><dl><dt>Core</dt><dd>保留原生卡片、文件/media 嵌入、group、edge、selection toolbar、zoom 和 create toolbar。</dd><dt>AI</dt><dd>解释选区邻域、建议缺失连接、从 group 生成 brief。</dd><dt>Write</dt><dd>新节点或新边先以候选状态预览，再写回开放的 Canvas 文件。</dd><dt>不要做</dt><dd class="exclude">重画一套“类似 Canvas”的节点图产品。</dd></dl></article>
+          <article class="format"><header><h3>Excalidraw</h3><span>Native editor</span></header><dl><dt>Core</dt><dd>原生选择、shape 工具、属性、library、zoom/pan、arrow binding 和导出。</dd><dt>AI</dt><dd>解释图、从 prompt 生成、改写 label、整理布局。</dd><dt>Integration</dt><dd>Peak Intelligence 是宿主侧栏；场景编辑仍由 Excalidraw 完成。</dd><dt>不要做</dt><dd class="exclude">用 Peak 自己的画布和属性面板替换 Excalidraw。</dd></dl></article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>外部产品调研依据</h2>
+        <p>只使用官方产品与官方文档做能力边界参考；不照搬其完整产品复杂度。</p>
+        <div class="sources">
+          <article class="source"><strong>Adobe Photoshop Web</strong><span>Crop 画布手柄、对象选择后的 contextual actions、Generative Expand 的 prompt → variations 工作流。</span><a href="https://helpx.adobe.com/photoshop/web/edit-images/transform-and-crop/crop-images.html">Crop</a></article>
+          <article class="source"><strong>Adobe Photoshop Web</strong><span>对象选择后直接进入 Generative Fill、Remove 与 Adjust，证明 AI 应贴近选择而不是塞进长设置栏。</span><a href="https://helpx.adobe.com/photoshop/web/edit-images/make-selections/select-objects-with-a-single-click.html">Object selection</a></article>
+          <article class="source"><strong>Adobe Generative Expand</strong><span>扩图使用画布边界、contextual task bar、prompt 和多候选 variations。</span><a href="https://helpx.adobe.com/uk/photoshop/web/edit-images/retouch/expand-images-with-generative-ai.html">Generative Expand</a></article>
+          <article class="source"><strong>Canva AI Photo Editor</strong><span>点选/涂抹对象后用 prompt 编辑；Magic Eraser、背景与 upscale 是面向普通用户的高频集合。</span><a href="https://www.canva.com/features/ai-photo-editing/">AI photo editing</a></article>
+          <article class="source"><strong>Adobe Acrobat AI Assistant</strong><span>建议问题、文档问答、带 source number 的回答，以及点击引用回到页/段落。</span><a href="https://helpx.adobe.com/acrobat/desktop/use-acrobat-ai/generative-ai-features/ai-get-answers.html">AI Assistant</a></article>
+          <article class="source"><strong>VS Code HTML</strong><span>编辑器标题栏提供 integrated browser preview；源码变化可实时反映到预览。</span><a href="https://code.visualstudio.com/docs/languages/html">HTML support</a></article>
+          <article class="source"><strong>VS Code for the Web</strong><span>浏览器环境适合语法高亮和轻量编辑；运行、构建、调试需要更完整的执行环境。</span><a href="https://code.visualstudio.com/docs/remote/vscode-web">VS Code for the Web</a></article>
+          <article class="source"><strong>Obsidian Canvas</strong><span>原生无限画布支持 notes、attachments、web pages、groups 与 edges，并使用开放 JSON Canvas 格式。</span><a href="https://obsidian.md/help/Plugins/Canvas">Official Canvas help</a></article>
+          <article class="source"><strong>Excalidraw</strong><span>原生编辑器已经拥有无限画布、手绘风格、arrow binding、library、export、zoom/pan 和开放格式。</span><a href="https://github.com/excalidraw/excalidraw/blob/master/README.md">Official README</a></article>
+          <article class="source"><strong>Excalidraw Sidebar API</strong><span>官方右侧 sidebar 可承载 library 或自定义内容，Peak 应以宿主集成方式加入，而不是取代编辑器。</span><a href="https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/children-components/sidebar">Sidebar API</a></article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Composer 复用合同</h2>
+        <div class="contract">
+          <article><h3>六种格式都必须复用</h3><ol><li>统一标题栏与 source 状态。</li><li>始终可见的 Intelligence 侧栏。</li><li>明确的 current file / selection context。</li><li>同一套 prompt、模型选择和历史入口。</li><li>写操作统一进入 Accept / Restore / Retry。</li></ol></article>
+          <article><h3>格式自己拥有</h3><ol><li>主内容 renderer / editor。</li><li>格式原生导航与 selection controls。</li><li>查看、编辑和写回能力边界。</li><li>AI 可以引用的 context granularity。</li><li>candidate 如何在源表面预览。</li></ol></article>
+        </div>
+        <div class="note"><strong>状态边界：</strong>本页与交互原型是 design reference，不代表 Image / HTML / PDF / Code / Canvas / Excalidraw 已经在生产插件中完整交付。</div>
+      </section>
+
+      <section class="section decision">
+        <h2>本轮可审阅产物</h2>
+        <p>优先看六个工作区之间是否像同一个 Peak 产品，同时检查每个原生编辑器是否仍然一眼可识别。</p>
+        <div class="buttons"><a href="index.html#image">Open current prototype</a><a href="../peak-file-workspace-interactive-2026-08-10/index.html">Compare rejected V1</a></div>
+      </section>
+    </main>
+  </body>
+</html>

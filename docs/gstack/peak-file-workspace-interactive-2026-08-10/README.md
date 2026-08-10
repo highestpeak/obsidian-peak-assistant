@@ -1,7 +1,11 @@
 # Peak File Workspace · 六种文件交互原型
 
 日期：2026-08-10
-状态：**Design mock only / implementation pending**
+状态：**Rejected by owner / historical design artifact**
+
+> 这版因 Image、HTML、PDF、Code、Canvas 与 Excalidraw 的界面结构和原生感不足，
+> 已在 2026-08-10 被否决。当前方向见
+> [Composer-aligned redesign](../peak-file-workspace-composer-aligned-2026-08-10/index.html)。
 
 这是当前文件能力调研的聚焦交互入口。它解决旧稿的两个问题：
 
