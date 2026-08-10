@@ -14,7 +14,7 @@
       <section class="hero">
         <span class="kicker">RESEARCH → BOUNDARY → COMPOSER-ALIGNED PROTOTYPE</span>
         <h1>不是给每种文件堆一套工具栏，而是让原生文件表面进入 Peak 的 AI 工作流。</h1>
-        <p>本轮设计重置先承认 V1 失败：它把能力矩阵直接铺成界面，AI 入口不够明确，Image 缺乏直接操控感，Canvas 与 Excalidraw 又错误地被重新发明。新方案进一步统一为 Selection Lens：whole file 与 local selection 并存，局部操作贴着选区，Intelligence 负责延续工作而不是充当唯一操作入口。</p>
+        <p>本轮设计重置先承认 V1 失败：它把能力矩阵直接铺成界面，AI 入口不够明确，Image 缺乏直接操控感，Canvas 与 Excalidraw 又错误地被重新发明。新方案进一步统一为 Selection Lens：whole file 与 local selection 并存；Image 与 PDF 共用真正的手绘套索语义，选区同时服务 Ask、Add to Composer 与格式自己的后续动作。</p>
         <span class="status"><i></i>Current design direction · production implementation pending</span>
       </section>
 
@@ -32,7 +32,7 @@
         <div class="principle">
           <article><span>01</span><h3>Composer 是共享骨架</h3><p>沿用文档标题、中央工作区、右侧 Intelligence、底部 prompt 和 Accept / Restore / Retry 候选审阅。</p></article>
           <article><span>02</span><h3>Native surface first</h3><p>能由原生查看器或编辑器可靠完成的事情，不另造一层 Peak UI。</p></article>
-          <article><span>03</span><h3>Selection Lens</h3><p>工具从原入口展开，Ask / Change / Add 跟随选区；whole file 与 local selection 都能带来源坐标进入 Composer。</p></article>
+          <article><span>03</span><h3>Selection Lens</h3><p>Ask / Add 跟随选区；格式自己的写操作只在有意义时出现。whole file 与 local selection 都能带来源坐标进入 Composer。</p></article>
         </div>
       </section>
 
@@ -40,12 +40,27 @@
         <h2>六种文件的产品边界</h2>
         <p>下面的“不要做”与核心能力同样重要，它们阻止每个文件工作区膨胀成第二套专业软件。</p>
         <div class="format-grid">
-          <article class="format"><header><h3>Image</h3><span>Local dock</span></header><dl><dt>Crop</dt><dd>原工具坞内展开；八个边/角手柄、整体拖动、透明遮罩、三分网格、比例、90° 与任意角度。</dd><dt>Export</dt><dd>紧贴原工具坞弹出；格式、质量/文件大小、可选像素尺寸与实时输出估算。</dd><dt>Context</dt><dd>Whole image 与可移动区域都能 Ask / Add to Composer。</dd><dt>不要做</dt><dd class="exclude">参数跳到远端、主工具栏 Resize、黑盒 Compress 或 Photoshop 级面板。</dd></dl></article>
+          <article class="format"><header><h3>Image</h3><span>Shared lasso</span></header><dl><dt>Selection</dt><dd>用笔自由圈出不规则区域；同一张 normalized mask 同时服务 Ask、Add to Composer 与 Crop to mask。</dd><dt>Crop</dt><dd>输出画布取套索 bounding box；PNG/WebP 的 mask 外像素透明，JPEG 必须显式选择背景色。</dd><dt>Dock</dt><dd>Whole image / Lasso、左右旋转、Export、Ask、Add 与缩放都留在同一主工具坞。</dd><dt>不要做</dt><dd class="exclude">第二个裁剪方框、主工具栏 Resize、黑盒 Compress 或 Photoshop 级面板。</dd></dl></article>
           <article class="format"><header><h3>HTML</h3><span>Live annotation</span></header><dl><dt>Core</dt><dd>页面始终可见；局部展开可编辑源码，修改状态即时反馈。</dd><dt>Selection</dt><dd>Whole page 或连续 Pick element；胶囊随 DOM 选区移动，并携带 selector、可见文本与源码位置。</dd><dt>AI</dt><dd>解释、修改、修复布局，并把页面或元素上下文加入 Composer。</dd><dt>不要做</dt><dd class="exclude">把 Preview / Edit / Split 做成所有文件共用的模式条。</dd></dl></article>
-          <article class="format"><header><h3>PDF</h3><span>Explicit scope</span></header><dl><dt>Scope</dt><dd>All pages、This page、Text、Area 四种显式范围；Area 使用截图式可移动框。</dd><dt>AI</dt><dd>摘要、问答、解释、翻译、OCR/结构提取；局部动作贴选区，引用精确回跳。</dd><dt>Composer</dt><dd>选区连同页码、geometry、OCR 与文件引用一起进入 Composer。</dd><dt>不要做</dt><dd class="exclude">Ask this PDF 却不说明范围，或让回答与 PDF 页面割裂。</dd></dl></article>
-          <article class="format"><header><h3>Code Source</h3><span>Native selection</span></header><dl><dt>Core</dt><dd>语法高亮、行号、直接输入、保存反馈；不需要先切换编辑状态。</dd><dt>Selection</dt><dd>每次文本选中后，Ask / Change / Add 胶囊立即出现在选区旁；Whole file 保留在 tab bar。</dd><dt>Boundary</dt><dd>运行、测试、构建是独立授权与环境，不混进文件编辑器。</dd><dt>不要做</dt><dd class="exclude">把选区动作固定在底栏，或加入 Symbols、项目树、调试器。</dd></dl></article>
+          <article class="format"><header><h3>PDF</h3><span>Explicit scope</span></header><dl><dt>Scope</dt><dd>All pages、This page、Text、Lasso 四种显式范围；Lasso 可以自由圈选文字、表格或图片。</dd><dt>AI</dt><dd>摘要、问答、解释、翻译、OCR/结构提取；局部动作贴选区，引用精确回跳。</dd><dt>Composer</dt><dd>必须写清 PDF 文件、页码、normalized point mask、bounds、选中文本/OCR 与 source revision。</dd><dt>不要做</dt><dd class="exclude">用矩形冒充 Free，Ask this PDF 却不说明范围，或让回答与 PDF 页面割裂。</dd></dl></article>
+          <article class="format"><header><h3>Code Source</h3><span>Native selection</span></header><dl><dt>Core</dt><dd>语法高亮、行号、直接输入、保存反馈；不需要先切换编辑状态。</dd><dt>Selection</dt><dd>每次文本选中后，Ask / Add to Composer 胶囊立即出现在选区旁；Whole file 保留在 tab bar。</dd><dt>Boundary</dt><dd>运行、测试、构建是独立授权与环境，不混进文件编辑器。</dd><dt>不要做</dt><dd class="exclude">Code Suggest Change、选区动作固定底栏、Symbols、项目树或调试器。</dd></dl></article>
           <article class="format"><header><h3>Obsidian Canvas</h3><span>Native + attached</span></header><dl><dt>Core</dt><dd>保留原生卡片、media、group、edge、node controls、zoom 和 create toolbar。</dd><dt>AI</dt><dd>Peak 胶囊跟随当前卡片；选区邻域或 Whole canvas 都可以进入 Composer。</dd><dt>Write</dt><dd>新节点或边先以候选状态预览，再写回开放的 Canvas 文件。</dd><dt>不要做</dt><dd class="exclude">把 Peak 动作混进伪造的 Canvas 原生工具，或重画节点图产品。</dd></dl></article>
           <article class="format"><header><h3>Excalidraw</h3><span>Native + attached</span></header><dl><dt>Core</dt><dd>原生选择、shape、属性、library、zoom/pan、arrow binding 和导出。</dd><dt>AI</dt><dd>Peak 胶囊跟随被点选的 scene element；selected elements 与 Whole scene 都可进入 Composer。</dd><dt>Integration</dt><dd>Peak Intelligence 是宿主侧栏；场景编辑仍由 Excalidraw 完成。</dd><dt>不要做</dt><dd class="exclude">把 Peak 自己的画布/属性面板当成 Excalidraw，或把 AI 菜单固定在远端。</dd></dl></article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>开源实现调研：复用坐标与绘制，不外包产品语义</h2>
+        <p>没有一个现成组件会同时理解 Peak 的文件上下文、AI、Composer 和裁剪语义。最小可靠组合是一层共享 SelectionEnvelope 加 renderer adapter，而不是再引入一套图片或 PDF 编辑器。</p>
+        <div class="contract">
+          <article><h3>共享 SelectionEnvelope</h3><ol><li>source path / stable id / revision hash。</li><li>surface kind 与 PDF page（若适用）。</li><li>normalized point list + normalized bounding box。</li><li>selected text / OCR / preview snapshot。</li><li>同一 envelope 投递给 Ask、Add to Composer、Crop to mask 或 PDF Extract。</li></ol></article>
+          <article><h3>Renderer adapter</h3><ol><li>Image adapter 把 normalized points 映射到原图像素。</li><li>PDF adapter 通过 page viewport 在 CSS、canvas 与 PDF 坐标间转换。</li><li>平滑算法只改变路径显示，不改变原始选择证据。</li><li>文件缩放、旋转或视口变化后可由 normalized geometry 重建。</li><li>不新增第二个 AI runtime、媒体 resolver 或持久化事实源。</li></ol></article>
+        </div>
+        <div class="sources">
+          <article class="source"><strong>perfect-freehand</strong><span>把输入点转换成平滑、可渲染的自由笔迹轮廓；适合改善笔迹观感，但不负责闭合选区、mask、PDF 锚点或 Composer envelope。</span><a href="https://github.com/steveruizok/perfect-freehand">Official GitHub</a></article>
+          <article class="source"><strong>PDF.js</strong><span>官方 viewport 提供 scale、rotation 与 PDF/CSS 坐标变换，是页渲染和 selection geometry 的基础。</span><a href="https://mozilla.github.io/pdf.js/examples/index.html">Official examples</a></article>
+          <article class="source"><strong>react-pdf-highlighter-extended</strong><span>可借鉴 text / rectangular highlight、viewportToScaled、screenshot 与 selection tip 定位；它不提供 freehand lasso，因此只能作为 PDF adapter 的 spike/reference。</span><a href="https://github.com/DanielArnould/react-pdf-highlighter-extended">Official GitHub</a></article>
+          <article class="source"><strong>Konva free drawing</strong><span>官方示例说明 pointer point list 可以保存为向量状态。当前原型不需要为一个套索引入完整 Konva runtime；只有现有 renderer 已采用 Konva 时才复用。</span><a href="https://new.konvajs.org/docs/sandbox/Free_Drawing.html">Official docs</a></article>
         </div>
       </section>
 

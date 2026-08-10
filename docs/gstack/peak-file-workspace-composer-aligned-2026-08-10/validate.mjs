@@ -24,33 +24,34 @@ assert.match(html, /id="candidateReview"/, "candidate review missing");
 assert.match(html, /Accept/, "candidate Accept action missing");
 assert.match(html, /Restore/, "candidate Restore action missing");
 assert.match(js, /data-citation-page/, "PDF page citations missing");
-assert.match(html, /data-image-tool="crop"/, "Image canvas tools missing");
-assert.match(html, /class="crop-studio"/, "Image crop studio missing");
-assert.match(html, /id="imageContextDock"[\s\S]+id="cropStudio"[\s\S]+id="imageExportSheet"[\s\S]+class="image-zoom"/, "Image Crop and Export must remain inside the originating dock");
-assert.match(html, /data-crop-ratio="free"/, "Free crop ratio missing");
-for (const handle of ["nw", "n", "ne", "e", "se", "s", "sw", "w"]) {
-  assert.match(html, new RegExp(`data-crop-handle="${handle}"`), `Free crop ${handle} handle missing`);
-}
-assert.match(html, /data-crop-rotate="left"/, "Left rotation missing");
-assert.match(html, /data-crop-rotate="right"/, "Right rotation missing");
-assert.match(html, /id="cropAngle"[^>]+min="-45"[^>]+max="45"/, "Arbitrary straighten angle missing");
+assert.match(html, /id="imageLassoLayer"/, "Image freehand layer missing");
+assert.match(html, /id="imageLassoPath"/, "Image freehand mask path missing");
+assert.match(html, /data-image-scope="lasso"/, "Image Lasso scope missing");
+assert.match(html, /id="imageSelectionToolbar"[^>]+hidden[\s\S]+data-ai-action="describe-image-region"[\s\S]+data-add-composer="image"[\s\S]+data-image-lasso-action="crop"[\s\S]+data-image-lasso-action="clear"/, "Image lasso must expose Ask, Add, Crop to mask, and Clear together");
+assert.match(html, /data-image-rotate="left"/, "Left rotation missing");
+assert.match(html, /data-image-rotate="right"/, "Right rotation missing");
 assert.match(html, /class="image-export-sheet"/, "Image export sheet missing");
 assert.match(html, /id="exportQuality"/, "Export quality control missing");
 assert.match(html, /id="exportEstimate"/, "Live export estimate missing");
 assert.match(html, /id="exportWidth"/, "Optional export dimensions missing");
 assert.match(html, /data-image-scope="all"/, "Whole-image context missing");
-assert.match(html, /data-image-scope="region"/, "Image region selection missing");
+assert.match(html, /id="imageContextDock"[\s\S]+class="dock-zoom"[\s\S]+id="imageExportSheet"/, "Image zoom and Export must remain inside the originating dock");
+assert.doesNotMatch(html, /cropOverlay|cropStudio|data-crop-handle|imageRegionSelection|class="image-zoom"/, "Conflicting rectangle crop/selection controls must not return");
 assert.doesNotMatch(html, /data-image-tool="resize"/, "Resize must not return as a primary image tool");
 assert.doesNotMatch(html, /data-image-tool="compress"/, "Opaque one-click Compress must not return");
 assert.match(js, /remove-background/, "Image background removal action missing");
 assert.match(html, /data-editable-source="code" contenteditable="plaintext-only"/, "Code must be directly editable");
 assert.match(html, /data-html-action="source"/, "HTML local source action missing");
+for (const metric of ["metric-deploy", "metric-incidents", "metric-latency"]) {
+  assert.match(html, new RegExp(`data-html-element="${metric}"[^>]+data-html-label=`), `HTML selectable metric missing: ${metric}`);
+}
 assert.match(html, /data-pdf-zoom="in"/, "PDF zoom action missing");
 assert.match(html, /data-pdf-mode="text"/, "PDF text selection mode missing");
-assert.match(html, /data-pdf-mode="region"/, "PDF region selection mode missing");
+assert.match(html, /data-pdf-mode="lasso"/, "PDF freehand lasso mode missing");
 assert.match(html, /data-pdf-mode="document"/, "Whole-PDF selection mode missing");
 assert.match(html, /data-pdf-mode="page"/, "PDF page selection mode missing");
-assert.match(html, /id="pdfAreaSelection"/, "Screenshot-like PDF area selection missing");
+assert.match(html, /id="pdfLassoLayer"[\s\S]+id="pdfLassoPath"/, "PDF freehand mask layer missing");
+assert.doesNotMatch(html, /pdfAreaSelection|data-pdf-area-handle|data-pdf-mode="region"/, "PDF rectangle area selection must not return");
 assert.match(html, /data-pdf-select="passage"/, "PDF passage target missing");
 assert.match(html, /data-pdf-select="region"/, "PDF region target missing");
 assert.match(js, /data-citation-target/, "PDF citations must return to exact page geometry");
@@ -65,6 +66,8 @@ for (const format of ["image", "html", "code", "canvas", "excalidraw"]) {
   assert.match(html, new RegExp(`data-add-composer="${format}"[^>]+data-context-scope="all"`), `${format} whole-file Composer handoff missing`);
 }
 assert.match(html, /id="codeSelectionToolbar"[^>]+hidden/, "Code selection-local toolbar missing");
+assert.doesNotMatch(html, /data-ai-action="change-code"/, "Code selection must not expose Change");
+assert.doesNotMatch(js, /"change-code"|"fix-code"/, "Code suggestion actions must not return");
 assert.match(html, /data-excal-element="Peak diamond"/, "Excalidraw selectable element missing");
 assert.doesNotMatch(html, />Symbols?</i, "Code UI must not expose Symbols navigation");
 assert.doesNotMatch(html, /project explorer/i, "Code UI must not expose a project explorer");
@@ -77,9 +80,11 @@ assert.match(css, /\.file-column[^}]+grid-template-rows:\s*58px minmax\(0,\s*1fr
 assert.match(css, /\.intelligence-panel[^}]+height:\s*100%/, "Intelligence must span the whole workspace height");
 assert.match(html, /current file connected/i, "context connection language missing from prototype");
 assert.match(js, /source surface remains active/i, "source-active AI response missing");
-assert.match(js, /handleImageTool|setImageScope|setCropRatio|startRectDrag|dragSurfaceRect|rotateCrop|updateExportEstimate|toggleHtmlSource|positionSelectionLens|setPdfMode|selectPdfContent|addToComposer|codeEditor\.addEventListener\("input"\)|positionCanvasSelection|handleExcalStyle/, "direct interaction handlers missing");
+assert.match(js, /handleImageTool|setImageScope|beginLasso|appendLassoPoint|finishLasso|normalizedLassoSelection|handleImageLassoAction|updateExportEstimate|toggleHtmlSource|positionSelectionLens|setPdfMode|completePdfLasso|selectPdfContent|addToComposer|codeEditor\.addEventListener\("input"\)|positionCanvasSelection|handleExcalStyle/, "direct interaction handlers missing");
+assert.match(js, /normalizedPoints[\s\S]+normalizedBounds/, "Shared normalized lasso envelope missing");
+assert.match(js, /knowledge-work-ai-era\.pdf[\s\S]+p\.\$\{page\}[\s\S]+lasso mask \+ normalized bounds/, "PDF Composer receipt must retain file, page, mask, and bounds");
 assert.match(css, /\.selection-context-bar\.follows-selection/, "shared selection-following capsule styles missing");
-assert.match(css, /\.image-context-toolbar \.crop-studio\{position:relative/, "Crop controls must expand from the image dock");
+assert.match(css, /\.freehand-layer\{[^}]+touch-action:none/, "Shared freehand pointer layer missing");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
 assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text selection must open contextual actions");
 
@@ -93,6 +98,10 @@ const officialSources = [
   "obsidian.md/help/Plugins/Canvas",
   "github.com/excalidraw/excalidraw",
   "docs.excalidraw.com",
+  "github.com/steveruizok/perfect-freehand",
+  "mozilla.github.io/pdf.js/examples",
+  "github.com/DanielArnould/react-pdf-highlighter-extended",
+  "konvajs.org/docs/sandbox/Free_Drawing",
 ];
 for (const source of officialSources) {
   assert.match(research, new RegExp(source.replaceAll(".", "\\.")), `research source missing: ${source}`);

@@ -6,8 +6,8 @@ const surfaces = {
     state: "Original protected · Save as new version",
     contextTitle: "I can see this image",
     contextDetail: "Pixels · dimensions · visible text",
-    headline: "One local dock. Every image action stays within reach.",
-    description: "Use the whole image or drag a region. Crop expands in the same dock; Export stays anchored to it instead of jumping across the workspace.",
+    headline: "One freehand mask powers Ask, Composer, and crop.",
+    description: "Circle any irregular subject with the pen. That same normalized mask becomes AI context, a Composer attachment, or a transparent crop candidate; zoom stays inside the main dock.",
     scope: "Whole image",
     placeholder: "Ask about this image or propose a change…",
     actions: [
@@ -42,8 +42,8 @@ const surfaces = {
     state: "Read-only source · Linked notes available",
     contextTitle: "I can read all 18 pages",
     contextDetail: "Text · page geometry · source citations",
-    headline: "Choose the exact PDF scope before asking.",
-    description: "All pages, one page, text, and screenshot-like areas are explicit scopes. Local actions follow the selection; citations still return to page geometry.",
+    headline: "Ask with an exact PDF page, passage, or freehand region.",
+    description: "All pages, one page, native text, and lasso are explicit scopes. Every local selection keeps the PDF identity, page, normalized geometry, and extracted text or OCR.",
     scope: "Entire PDF · page 1 visible",
     placeholder: "Ask a question across this PDF…",
     actions: [
@@ -60,14 +60,12 @@ const surfaces = {
     state: "Editable now · Execution requires permission",
     contextTitle: "I can read the current source file",
     contextDetail: "Python · current selection · related Vault files",
-    headline: "Select code; actions appear beside that selection.",
-    description: "The editor stays directly editable. Every fresh text selection gets a nearby Ask / Change / Add capsule, while the whole file remains available from the tab bar.",
+    headline: "Select code, then ask or add it to Composer.",
+    description: "The editor stays directly editable. Every fresh text selection gets a nearby Ask / Add capsule, while the whole file remains available from the tab bar.",
     scope: "index_pipeline.py · current selection",
-    placeholder: "Explain or change the selected code…",
+    placeholder: "Ask about the selected code…",
     actions: [
       ["Explain the selection", "Describe behavior, assumptions, and failure paths", "explain-selection"],
-      ["Change the selection", "Prepare one focused suggestion beside the source", "change-code"],
-      ["Fix a problem", "Propose a small correction without running code", "fix-code"],
       ["Review this file", "Find correctness and maintainability risks", "review-code"],
     ],
   },
@@ -135,7 +133,6 @@ let pendingCandidateAction = "";
 let htmlSourceOpen = false;
 let htmlPicking = false;
 let imageQuarterRotation = 0;
-let cropStraighten = 0;
 let imageScale = 1;
 let pdfZoom = 112;
 let pdfMode = "document";
@@ -144,7 +141,8 @@ let codeSelectionText = "";
 let canvasZoom = 84;
 let excalZoom = 72;
 let toastTimer;
-let surfaceDragState = null;
+let activeLasso = null;
+const lassoSelections = { image: null, pdf: null };
 
 function iconMarkup() {
   return '<svg><use href="#i-sparkles"></use></svg>';
@@ -241,59 +239,32 @@ function showCandidate(action, title, description) {
 
 function updateImageTransform() {
   const image = document.querySelector("#imageFrame img");
-  image.style.transform = `rotate(${imageQuarterRotation + cropStraighten}deg) scale(${imageScale})`;
+  image.style.transform = `rotate(${imageQuarterRotation}deg) scale(${imageScale})`;
   document.querySelector("#imageScaleLabel").textContent = `${Math.round(imageScale * 100)}%`;
 }
 
 function handleImageTool(tool, button) {
-  const cropOverlay = document.querySelector("#cropOverlay");
-  const cropStudio = document.querySelector("#cropStudio");
-  const exportSheet = document.querySelector("#imageExportSheet");
-  const imageStage = document.querySelector(".image-stage");
-  if (tool === "crop") {
-    const opening = cropOverlay.hidden;
-    if (!opening) {
-      closeCrop(false);
-      return;
-    }
-    cropOverlay.hidden = !opening;
-    cropStudio.hidden = !opening;
-    exportSheet.hidden = true;
-    document.querySelector("#imageRegionSelection").hidden = true;
-    document.querySelectorAll("[data-image-scope]").forEach((item) => item.classList.toggle("is-active", item.dataset.imageScope === "all"));
-    imageStage.classList.toggle("is-cropping", opening);
-    button.classList.toggle("is-active", opening);
-    document.querySelector('[data-image-tool="export"]').classList.remove("is-active");
-    showToast("Crop expanded here · drag any edge, corner, or the frame itself");
-    return;
-  }
   if (tool !== "export") return;
-
+  const exportSheet = document.querySelector("#imageExportSheet");
   const opening = exportSheet.hidden;
-  if (!cropOverlay.hidden) closeCrop(false);
   exportSheet.hidden = !opening;
-  cropOverlay.hidden = true;
-  cropStudio.hidden = true;
-  imageStage.classList.remove("is-cropping");
-  document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
   button.classList.toggle("is-active", opening);
 }
 
 function setImageScope(scope, button) {
   document.querySelectorAll("[data-image-scope]").forEach((item) => item.classList.toggle("is-active", item === button));
-  const region = document.querySelector("#imageRegionSelection");
-  const selectingRegion = scope === "region";
-  if (!document.querySelector("#cropOverlay").hidden) resetCrop();
-  region.hidden = !selectingRegion;
-  document.querySelector("#cropOverlay").hidden = true;
-  document.querySelector("#cropStudio").hidden = true;
+  const selectingLasso = scope === "lasso";
+  const layer = document.querySelector("#imageLassoLayer");
+  const hint = document.querySelector("#imageLassoHint");
+  layer.hidden = !selectingLasso;
+  hint.hidden = !selectingLasso || Boolean(lassoSelections.image);
+  if (!selectingLasso) clearLassoSelection("image", false);
   document.querySelector("#imageExportSheet").hidden = true;
-  document.querySelector(".image-stage").classList.remove("is-cropping");
   document.querySelectorAll("[data-image-tool]").forEach((item) => item.classList.remove("is-active"));
-  contextTitle.textContent = selectingRegion ? "I can see the selected image area" : "I can see the whole image";
-  contextDetail.textContent = selectingRegion ? "Pixels · position · visible text inside selection" : "All pixels · dimensions · visible text";
-  selectionScope.textContent = selectingRegion ? "Selected image area" : "Whole image";
-  showToast(selectingRegion ? "Drag the area or its corners; actions stay attached" : "Whole image is the active context");
+  contextTitle.textContent = selectingLasso ? "Draw a freehand image region" : "I can see the whole image";
+  contextDetail.textContent = selectingLasso ? "One mask will power Ask, Composer, and crop" : "All pixels · dimensions · visible text";
+  selectionScope.textContent = selectingLasso ? "Waiting for freehand mask" : "Whole image";
+  showToast(selectingLasso ? "Draw around any irregular subject with the pen" : "Whole image is the active context");
 }
 
 function updateImageZoom(direction) {
@@ -301,133 +272,195 @@ function updateImageZoom(direction) {
   if (direction === "in") imageScale = Math.min(1.8, imageScale + 0.1);
   if (direction === "out") imageScale = Math.max(0.5, imageScale - 0.1);
   updateImageTransform();
+  refreshImageLassoForZoom();
 }
 
-function setCropRatio(ratio, button) {
-  const overlay = document.querySelector("#cropOverlay");
-  overlay.removeAttribute("style");
-  overlay.dataset.cropRatio = ratio;
-  document.querySelector(".crop-drag-label").textContent = ratio === "free" ? "Drag edges freely" : button.textContent.trim();
-  document.querySelectorAll("[data-crop-ratio]").forEach((item) => item.classList.toggle("is-active", item === button));
-  showToast(`${button.textContent.trim()} crop ratio`);
+function rotateImage(direction) {
+  imageQuarterRotation += direction === "right" ? 90 : -90;
+  updateImageTransform();
+  if (lassoSelections.image) {
+    clearLassoSelection("image");
+    showToast("Image rotated; redraw the mask against the new geometry");
+  }
+  setDirty(`Rotated ${imageQuarterRotation}° · save as a new version`);
 }
 
-function startRectDrag(event, element, container, handle, onMove, onEnd) {
-  const elementRect = element.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-  surfaceDragState = {
-    element,
-    container,
-    handle,
-    onMove,
-    onEnd,
-    startX: event.clientX,
-    startY: event.clientY,
-    containerWidth: containerRect.width,
-    containerHeight: containerRect.height,
-    left: elementRect.left - containerRect.left,
-    top: elementRect.top - containerRect.top,
-    width: elementRect.width,
-    height: elementRect.height,
+function pointFromEvent(event, container) {
+  const rect = container.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+    y: Math.max(0, Math.min(rect.height, event.clientY - rect.top)),
   };
+}
+
+function renderLassoPath(state, closed = false) {
+  if (!state.points.length) {
+    state.path.setAttribute("d", "");
+    return;
+  }
+  const [first, ...rest] = state.points;
+  const segments = rest.map((point) => `L ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  state.path.setAttribute("d", `M ${first.x.toFixed(1)} ${first.y.toFixed(1)} ${segments}${closed ? " Z" : ""}`);
+}
+
+function beginLasso(event, kind) {
+  if (event.button !== 0) return;
+  const layer = event.currentTarget;
+  const container = kind === "image" ? document.querySelector("#imageFrame") : document.querySelector("#pdfPage");
+  const path = document.querySelector(kind === "image" ? "#imageLassoPath" : "#pdfLassoPath");
+  const rect = container.getBoundingClientRect();
+  clearLassoSelection(kind, false);
+  layer.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+  activeLasso = { kind, layer, path, container, points: [pointFromEvent(event, container)] };
+  layer.classList.add("is-drawing");
+  renderLassoPath(activeLasso);
   event.preventDefault();
   event.stopPropagation();
 }
 
-function dragSurfaceRect(event) {
-  if (!surfaceDragState) return;
+function appendLassoPoint(event) {
+  if (!activeLasso) return;
+  const point = pointFromEvent(event, activeLasso.container);
+  const previous = activeLasso.points.at(-1);
+  if (Math.hypot(point.x - previous.x, point.y - previous.y) < 3) return;
+  activeLasso.points.push(point);
+  renderLassoPath(activeLasso);
   event.preventDefault();
-  const state = surfaceDragState;
-  const minSize = 70;
-  const dx = event.clientX - state.startX;
-  const dy = event.clientY - state.startY;
-  let { left, top, width, height } = state;
-
-  if (state.handle === "move") {
-    left = Math.max(6, Math.min(state.containerWidth - width - 6, left + dx));
-    top = Math.max(6, Math.min(state.containerHeight - height - 6, top + dy));
-  } else {
-    if (state.handle.includes("w")) {
-      const nextLeft = Math.max(6, Math.min(left + width - minSize, left + dx));
-      width += left - nextLeft;
-      left = nextLeft;
-    }
-    if (state.handle.includes("e")) width = Math.max(minSize, Math.min(state.containerWidth - left - 6, width + dx));
-    if (state.handle.includes("n")) {
-      const nextTop = Math.max(6, Math.min(top + height - minSize, top + dy));
-      height += top - nextTop;
-      top = nextTop;
-    }
-    if (state.handle.includes("s")) height = Math.max(minSize, Math.min(state.containerHeight - top - 6, height + dy));
-  }
-
-  state.element.style.inset = "auto";
-  state.element.style.left = `${left}px`;
-  state.element.style.top = `${top}px`;
-  state.element.style.width = `${width}px`;
-  state.element.style.height = `${height}px`;
-  state.onMove?.(state.element);
 }
 
-function endSurfaceRectDrag() {
-  if (!surfaceDragState) return;
-  const onEnd = surfaceDragState.onEnd;
-  const element = surfaceDragState.element;
-  surfaceDragState = null;
-  onEnd?.(element);
+function normalizedLassoSelection(state) {
+  const rect = state.container.getBoundingClientRect();
+  const xs = state.points.map((point) => point.x);
+  const ys = state.points.map((point) => point.y);
+  const left = Math.min(...xs);
+  const right = Math.max(...xs);
+  const top = Math.min(...ys);
+  const bottom = Math.max(...ys);
+  const round = (value) => Number(value.toFixed(4));
+  const viewportPoints = state.points.map((point) => [point.x / rect.width, point.y / rect.height]);
+  const normalizedPoints = state.kind === "image"
+    ? viewportPoints.map(([x, y]) => [round(0.5 + (x - 0.5) / imageScale), round(0.5 + (y - 0.5) / imageScale)])
+    : viewportPoints.map(([x, y]) => [round(x), round(y)]);
+  const normalizedXs = normalizedPoints.map(([x]) => x);
+  const normalizedYs = normalizedPoints.map(([, y]) => y);
+  const normalizedLeft = Math.min(...normalizedXs);
+  const normalizedRight = Math.max(...normalizedXs);
+  const normalizedTop = Math.min(...normalizedYs);
+  const normalizedBottom = Math.max(...normalizedYs);
+  return {
+    normalizedPoints,
+    normalizedBounds: {
+      x: round(normalizedLeft),
+      y: round(normalizedTop),
+      width: round(normalizedRight - normalizedLeft),
+      height: round(normalizedBottom - normalizedTop),
+    },
+    viewportBounds: {
+      left: rect.left + left,
+      top: rect.top + top,
+      right: rect.left + right,
+      bottom: rect.top + bottom,
+      width: right - left,
+      height: bottom - top,
+    },
+    viewTransform: state.kind === "image" ? { scale: imageScale, quarterRotation: imageQuarterRotation } : null,
+  };
 }
 
-function markFreeCrop() {
-  const overlay = document.querySelector("#cropOverlay");
-  overlay.dataset.cropRatio = "free";
-  const freeButton = document.querySelector('.crop-presets [data-crop-ratio="free"]');
-  document.querySelectorAll(".crop-presets button").forEach((item) => item.classList.toggle("is-active", item === freeButton));
-}
-
-function updateFreeCropLabel(overlay) {
-  markFreeCrop();
-  const frameRect = document.querySelector("#imageFrame").getBoundingClientRect();
-  const overlayRect = overlay.getBoundingClientRect();
-  const width = Math.round(2048 * overlayRect.width / frameRect.width);
-  const height = Math.round(1365 * overlayRect.height / frameRect.height);
-  document.querySelector(".crop-drag-label").textContent = `Free · ${width} × ${height}`;
-}
-
-function updateImageRegionLabel(region) {
-  const frameRect = document.querySelector("#imageFrame").getBoundingClientRect();
-  const regionRect = region.getBoundingClientRect();
-  const percent = Math.round(regionRect.width * regionRect.height / (frameRect.width * frameRect.height) * 100);
-  document.querySelector(".image-selection-bar strong").textContent = `Selected area · ${percent}% of image`;
-}
-
-function rotateCrop(direction) {
-  imageQuarterRotation += direction === "right" ? 90 : -90;
-  updateImageTransform();
-  setDirty(`Crop rotation ${imageQuarterRotation + cropStraighten}° · not saved`);
-}
-
-function resetCrop() {
-  imageQuarterRotation = 0;
-  cropStraighten = 0;
-  document.querySelector("#cropAngle").value = "0";
-  document.querySelector("#cropAngleValue").textContent = "0°";
-  const freeButton = document.querySelector('.crop-presets [data-crop-ratio="free"]');
-  setCropRatio("free", freeButton);
-  updateImageTransform();
-}
-
-function closeCrop(commit) {
-  document.querySelector("#cropOverlay").hidden = true;
-  document.querySelector("#cropStudio").hidden = true;
-  document.querySelector(".image-stage").classList.remove("is-cropping");
-  document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
-  if (commit) {
-    setDirty("Crop applied to a new image version · not saved");
-    showToast("Crop applied to the working copy");
+function finishLasso() {
+  if (!activeLasso) return;
+  const state = activeLasso;
+  activeLasso = null;
+  state.layer.classList.remove("is-drawing");
+  if (state.points.length < 4) {
+    clearLassoSelection(state.kind);
+    showToast("Draw a larger closed region");
     return;
   }
-  resetCrop();
-  showToast("Crop cancelled; original framing restored");
+  renderLassoPath(state, true);
+  const selection = normalizedLassoSelection(state);
+  lassoSelections[state.kind] = selection;
+  if (state.kind === "image") completeImageLasso(selection);
+  if (state.kind === "pdf") completePdfLasso(selection);
+}
+
+function clearLassoSelection(kind, resetContext = true) {
+  lassoSelections[kind] = null;
+  const isImage = kind === "image";
+  const path = document.querySelector(isImage ? "#imageLassoPath" : "#pdfLassoPath");
+  const toolbar = document.querySelector(isImage ? "#imageSelectionToolbar" : "#pdfSelectionToolbar");
+  const hint = document.querySelector(isImage ? "#imageLassoHint" : "#pdfLassoHint");
+  path?.setAttribute("d", "");
+  if (toolbar) toolbar.hidden = true;
+  if (hint) hint.hidden = isImage ? !document.querySelector('[data-image-scope="lasso"]').classList.contains("is-active") : pdfMode !== "lasso";
+  if (!resetContext) return;
+  if (isImage) {
+    contextTitle.textContent = "Draw a freehand image region";
+    contextDetail.textContent = "One mask will power Ask, Composer, and crop";
+    selectionScope.textContent = "Waiting for freehand mask";
+    return;
+  }
+  pdfSelection = null;
+  const page = document.querySelector("#pdfToolbarPage").textContent;
+  contextTitle.textContent = "Circle a PDF region";
+  contextDetail.textContent = `${surfaces.pdf.name} · p.${page} · awaiting mask, bounds, and OCR`;
+  selectionScope.textContent = `Waiting for PDF lasso · page ${page}`;
+}
+
+function completeImageLasso(selection) {
+  document.querySelector("#imageLassoHint").hidden = true;
+  const percent = Math.round(selection.normalizedBounds.width * selection.normalizedBounds.height * 100);
+  document.querySelector("#imageSelectionLabel").textContent = `1 closed mask · ${percent}% bounding area`;
+  positionSelectionLens(document.querySelector("#imageSelectionToolbar"), selection.viewportBounds, document.querySelector("#imageFrame"));
+  contextTitle.textContent = "I can see the freehand image selection";
+  contextDetail.textContent = "Normalized mask · source pixels · OCR · original path";
+  selectionScope.textContent = "Freehand image mask · 1 region";
+  showToast("Mask ready for Ask, Add to Composer, or Crop to mask");
+}
+
+function refreshImageLassoForZoom() {
+  const selection = lassoSelections.image;
+  if (!selection) return;
+  const frame = document.querySelector("#imageFrame");
+  const rect = frame.getBoundingClientRect();
+  const points = selection.normalizedPoints.map(([x, y]) => ({
+    x: rect.width * (0.5 + (x - 0.5) * imageScale),
+    y: rect.height * (0.5 + (y - 0.5) * imageScale),
+  }));
+  const path = document.querySelector("#imageLassoPath");
+  document.querySelector("#imageLassoLayer").setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+  renderLassoPath({ points, path }, true);
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const viewportBounds = {
+    left: rect.left + Math.min(...xs),
+    top: rect.top + Math.min(...ys),
+    right: rect.left + Math.max(...xs),
+    bottom: rect.top + Math.max(...ys),
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys),
+  };
+  selection.viewportBounds = viewportBounds;
+  selection.viewTransform = { scale: imageScale, quarterRotation: imageQuarterRotation };
+  positionSelectionLens(document.querySelector("#imageSelectionToolbar"), viewportBounds, frame);
+}
+
+function handleImageLassoAction(action) {
+  if (action === "clear") {
+    clearLassoSelection("image");
+    showToast("Image mask cleared");
+    return;
+  }
+  if (action !== "crop" || !lassoSelections.image) return;
+  showCandidate(
+    "crop-image-mask",
+    "Freehand crop ready",
+    "Output bounds fit the lasso. Pixels outside the mask stay transparent in PNG/WebP; JPEG asks for a background color.",
+  );
+  showAnswer("Crop uses the same AI selection", [
+    "No second crop rectangle was created. The freehand mask and its normalized bounds are the source of truth.",
+    "Review the candidate before saving a new image version; the original remains protected.",
+  ]);
 }
 
 function updateExportEstimate() {
@@ -504,16 +537,16 @@ function addToComposer(kind, scope = "selection") {
       label: `${surfaces.image.name} · whole image`,
       detail: "Full-resolution image, dimensions, OCR, and source path",
     } : {
-      label: `${surfaces.image.name} · selected area`,
-      detail: "Selected pixel region, position, OCR, and source path",
+      label: `${surfaces.image.name} · freehand mask`,
+      detail: lassoSelections.image ? `Normalized point mask + bounds ${JSON.stringify(lassoSelections.image.normalizedBounds)} · view transform ${JSON.stringify(lassoSelections.image.viewTransform)} · pixels · OCR · source path + revision` : "No image mask selected",
     },
     html: {
       label: `${surfaces.html.name} · ${isAll ? "whole rendered page" : document.querySelector("#htmlSelectionLabel").textContent}`,
       detail: isAll ? "Rendered viewport, full DOM, source, and visible runtime state" : "Rendered element, DOM path, visible text, and local source",
     },
     pdf: {
-      label: `${surfaces.pdf.name} · ${pdfMode === "document" ? "all 18 pages" : pdfMode === "page" ? "page 1" : `page 1 ${pdfSelection?.kind || pdfMode}`}`,
-      detail: pdfMode === "document" ? "Full document text, layout, images, and source citations" : pdfSelection?.text || "Selected PDF context with page geometry",
+      label: `${surfaces.pdf.name} · ${pdfMode === "document" ? "all 18 pages" : pdfMode === "page" ? `page ${document.querySelector("#pdfToolbarPage").textContent}` : `page ${document.querySelector("#pdfToolbarPage").textContent} ${pdfSelection?.kind || pdfMode}`}`,
+      detail: pdfMode === "document" ? "Full document text, layout, images, and source citations" : pdfSelection?.composerDetail || pdfSelection?.text || "Selected PDF context with page geometry",
     },
     code: {
       label: `${surfaces.code.name} · ${isAll ? "whole file" : "selected code"}`,
@@ -542,18 +575,22 @@ function setPdfMode(mode, button) {
   pdfMode = mode;
   document.querySelectorAll("[data-pdf-mode]").forEach((item) => item.classList.toggle("is-active", item === button));
   const page = document.querySelector("#pdfPage");
-  const area = document.querySelector("#pdfAreaSelection");
+  const lassoLayer = document.querySelector("#pdfLassoLayer");
+  const lassoHint = document.querySelector("#pdfLassoHint");
   const toolbar = document.querySelector("#pdfSelectionToolbar");
   const askButton = document.querySelector("#pdfAskButton");
   const addButton = document.querySelector(".pdf-add-button");
+  const visiblePage = document.querySelector("#pdfToolbarPage").textContent;
   document.querySelectorAll("[data-pdf-select]").forEach((item) => item.classList.remove("is-pdf-selected"));
-  page.classList.toggle("is-region-mode", mode === "region");
+  clearLassoSelection("pdf", false);
+  page.classList.toggle("is-lasso-mode", mode === "lasso");
   page.classList.toggle("is-page-selected", mode === "page");
-  area.hidden = mode !== "region";
-  toolbar.hidden = mode === "document" || mode === "page" || mode === "text";
-  pdfSelection = mode === "document" ? null : { kind: mode, text: mode === "page" ? "Page 1" : "Selected PDF area with page geometry" };
-  askButton.disabled = mode === "text";
-  addButton.disabled = mode === "text";
+  lassoLayer.hidden = mode !== "lasso";
+  lassoHint.hidden = mode !== "lasso";
+  toolbar.hidden = true;
+  pdfSelection = mode === "page" ? { kind: "page", text: `Page ${visiblePage}`, composerDetail: `${surfaces.pdf.name} · page ${visiblePage} · full page geometry · source revision` } : null;
+  askButton.disabled = mode === "text" || mode === "lasso";
+  addButton.disabled = mode === "text" || mode === "lasso";
 
   if (mode === "document") {
     askButton.innerHTML = `${iconMarkup()}Ask document`;
@@ -564,14 +601,14 @@ function setPdfMode(mode, button) {
     return;
   }
   if (mode === "page") {
-    askButton.innerHTML = `${iconMarkup()}Ask page 1`;
+    askButton.innerHTML = `${iconMarkup()}Ask page ${visiblePage}`;
     document.querySelector("#pdfSelectionKind").textContent = "Page selection";
-    document.querySelector("#pdfSelectionText").textContent = "Page 1 · visible page";
+    document.querySelector("#pdfSelectionText").textContent = `Page ${visiblePage} · visible page`;
     document.querySelector("#pdfExtractAction").hidden = true;
-    contextTitle.textContent = "I can see page 1";
+    contextTitle.textContent = `I can see page ${visiblePage}`;
     contextDetail.textContent = "Full page text · layout · embedded regions";
-    selectionScope.textContent = "Page 1";
-    showToast("Page 1 is selected; choose another page from the rail");
+    selectionScope.textContent = `Page ${visiblePage}`;
+    showToast(`Page ${visiblePage} is selected; choose another page from the rail`);
     return;
   }
   if (mode === "text") {
@@ -583,45 +620,66 @@ function setPdfMode(mode, button) {
     return;
   }
 
-  askButton.innerHTML = `${iconMarkup()}Ask area`;
-  document.querySelector("#pdfSelectionKind").textContent = "Area · page 1";
-  document.querySelector("#pdfSelectionText").textContent = "Screenshot-like page region";
-  document.querySelector("#pdfExtractAction").hidden = false;
-  positionSelectionLens(toolbar, area, document.querySelector("#pdfCanvas"));
-  contextTitle.textContent = "I can see the selected PDF area";
-  contextDetail.textContent = "Page geometry · OCR · tables · images";
-  selectionScope.textContent = "Selected area · page 1";
-  showToast("Drag the area or its corners like a screenshot selection");
+  const currentPage = document.querySelector("#pdfToolbarPage").textContent;
+  askButton.innerHTML = `${iconMarkup()}Draw lasso first`;
+  document.querySelector("#pdfExtractAction").hidden = true;
+  document.querySelector("#pdfClearAction").hidden = true;
+  contextTitle.textContent = "Circle a PDF region";
+  contextDetail.textContent = `${surfaces.pdf.name} · p.${currentPage} · mask, bounds, and OCR will be retained`;
+  selectionScope.textContent = `Waiting for PDF lasso · page ${currentPage}`;
+  showToast("Use the pen to circle any text, table, or figure");
 }
 
 function selectPdfContent(element) {
   const kind = element.dataset.pdfSelect;
-  if (pdfMode !== "text" && pdfMode !== "region") return;
+  if (pdfMode !== "text") return;
   if (pdfMode === "text" && window.getSelection()?.toString().trim()) return;
   if (pdfMode === "text" && kind !== "passage") {
-    showToast("Switch to Area to select this region");
-    return;
-  }
-  if (pdfMode === "region" && kind !== "region") {
-    showToast("Area mode is for tables, images, and bounded regions");
+    showToast("Switch to Lasso to circle this visual region");
     return;
   }
 
   document.querySelectorAll("[data-pdf-select]").forEach((item) => item.classList.toggle("is-pdf-selected", item === element));
   const text = element.textContent.trim().replace(/\s+/g, " ");
+  const page = document.querySelector("#pdfToolbarPage").textContent;
   pdfSelection = { kind, text };
-  document.querySelector("#pdfSelectionKind").textContent = `${kind === "region" ? "Area" : "Passage"} · page 1`;
-  document.querySelector("#pdfSelectionText").textContent = kind === "region" ? "3-part workflow callout" : `“${text.slice(0, 48)}${text.length > 48 ? "…" : ""}”`;
-  document.querySelector("#pdfExtractAction").hidden = kind !== "region";
-  if (kind === "region") document.querySelector("#pdfAreaSelection").hidden = true;
+  pdfSelection.composerDetail = `${surfaces.pdf.name} · page ${page} · exact text · source geometry + revision · ${text.slice(0, 80)}`;
+  document.querySelector("#pdfSelectionKind").textContent = `Passage · page ${page}`;
+  document.querySelector("#pdfSelectionText").textContent = `“${text.slice(0, 48)}${text.length > 48 ? "…" : ""}”`;
+  document.querySelector("#pdfExtractAction").hidden = true;
+  document.querySelector("#pdfClearAction").hidden = true;
   const toolbar = document.querySelector("#pdfSelectionToolbar");
   positionSelectionLens(toolbar, element, document.querySelector("#pdfCanvas"));
-  document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}${kind === "region" ? "Ask area" : "Ask text"}`;
+  document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}Ask text`;
   document.querySelector("#pdfAskButton").disabled = false;
   document.querySelector(".pdf-add-button").disabled = false;
-  selectionScope.textContent = `${kind === "region" ? "Selected area" : "Selected passage"} · page 1`;
+  selectionScope.textContent = `Selected passage · page ${page}`;
   contextTitle.textContent = "I can see the PDF selection";
-  contextDetail.textContent = kind === "region" ? "Page geometry · OCR · embedded elements" : "Exact text · page 1 · source geometry";
+  contextDetail.textContent = `Exact text · page ${page} · source geometry`;
+}
+
+function completePdfLasso(selection) {
+  const page = document.querySelector("#pdfToolbarPage").textContent;
+  document.querySelector("#pdfLassoHint").hidden = true;
+  pdfSelection = {
+    kind: "lasso",
+    text: `${surfaces.pdf.name} · page ${page} · freehand region`,
+    normalizedBounds: selection.normalizedBounds,
+    normalizedPoints: selection.normalizedPoints,
+    composerDetail: `${surfaces.pdf.name} · p.${page} · lasso mask + normalized bounds ${JSON.stringify(selection.normalizedBounds)} · selected text/OCR · source revision`,
+  };
+  document.querySelector("#pdfSelectionKind").textContent = `Lasso region · page ${page}`;
+  document.querySelector("#pdfSelectionText").textContent = "Mask, bounds, nearby text, and OCR retained";
+  document.querySelector("#pdfExtractAction").hidden = false;
+  document.querySelector("#pdfClearAction").hidden = false;
+  positionSelectionLens(document.querySelector("#pdfSelectionToolbar"), selection.viewportBounds, document.querySelector("#pdfCanvas"));
+  document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}Ask lasso`;
+  document.querySelector("#pdfAskButton").disabled = false;
+  document.querySelector(".pdf-add-button").disabled = false;
+  selectionScope.textContent = `Lasso region · page ${page}`;
+  contextTitle.textContent = "I can see the circled PDF region";
+  contextDetail.textContent = `${surfaces.pdf.name} · p.${page} · mask · normalized bounds · OCR`;
+  showToast(`PDF lasso ready · ${surfaces.pdf.name} · page ${page}`);
 }
 
 function selectPdfPage(page) {
@@ -631,10 +689,20 @@ function selectPdfPage(page) {
   document.querySelector("#pdfPageNumber").textContent = page;
   document.querySelector("#pdfToolbarPage").textContent = page;
   if (pdfMode === "page") {
-    pdfSelection = { kind: "page", text: `Page ${page}` };
+    pdfSelection = { kind: "page", text: `Page ${page}`, composerDetail: `${surfaces.pdf.name} · page ${page} · full page geometry · source revision` };
     document.querySelector("#pdfSelectionText").textContent = `Page ${page} · visible page`;
     document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}Ask page ${page}`;
     selectionScope.textContent = `Page ${page}`;
+  }
+  if (pdfMode === "lasso") {
+    clearLassoSelection("pdf", false);
+    document.querySelector("#pdfLassoHint").hidden = false;
+    document.querySelector("#pdfAskButton").innerHTML = `${iconMarkup()}Draw lasso first`;
+    document.querySelector("#pdfAskButton").disabled = true;
+    document.querySelector(".pdf-add-button").disabled = true;
+    contextTitle.textContent = `Circle a region on page ${page}`;
+    contextDetail.textContent = `${surfaces.pdf.name} · p.${page} · awaiting freehand mask`;
+    selectionScope.textContent = `Waiting for PDF lasso · page ${page}`;
   }
 }
 
@@ -682,7 +750,7 @@ function handleExcalStyle(button) {
 
 function handleAiAction(action) {
   if (action === "ask-pdf" || action === "summarize-pdf") {
-    const scopeLabel = pdfMode === "document" ? "all 18 pages" : pdfMode === "page" ? `page ${document.querySelector("#pdfToolbarPage").textContent}` : pdfMode === "text" ? "selected text" : "selected area";
+    const scopeLabel = pdfMode === "document" ? "all 18 pages" : pdfMode === "page" ? `page ${document.querySelector("#pdfToolbarPage").textContent}` : pdfMode === "text" ? "selected text" : `lasso on page ${document.querySelector("#pdfToolbarPage").textContent}`;
     showAnswer(`Answer from ${scopeLabel}`, [
       'The report argues that AI should remain inside the user’s source workflow rather than create another detached destination. <button class="citation" data-citation-page="1" data-citation-target="pdfHighlight">1 · p.1 passage</button>',
       'It treats citations and candidate review as the mechanisms that preserve trust while increasing actionability. <button class="citation" data-citation-page="1" data-citation-target="pdfCallouts">2 · p.1 area</button>',
@@ -699,7 +767,7 @@ function handleAiAction(action) {
   if (action === "extract-pdf-region") {
     showAnswer("Region extracted", [
       "Detected three labeled items: Source visible, Citations jump back, and Writes are reviewable.",
-      'The extracted structure remains linked to its page geometry. <button class="citation" data-citation-page="1" data-citation-target="pdfCallouts">p.1 · selected area</button>',
+      'The extracted structure remains linked to the PDF file, page, freehand mask, and normalized page geometry. <button class="citation" data-citation-page="1" data-citation-target="pdfCallouts">p.1 · lasso region</button>',
     ]);
     return;
   }
@@ -718,9 +786,9 @@ function handleAiAction(action) {
     return;
   }
   if (action === "describe-image-region") {
-    showAnswer("Selected image area", [
-      "The selected area contains the central Peak reasoning stage and its incoming source connections.",
-      "Only pixels and visible text inside the movable selection were used for this answer.",
+    showAnswer("Freehand image selection", [
+      "The circled subject contains the central Peak reasoning stage and its incoming source connections.",
+      "Only pixels and visible text inside the shared mask were used; the same mask can move into Composer or become a crop candidate.",
     ]);
     return;
   }
@@ -750,10 +818,9 @@ function handleAiAction(action) {
     "remove-background": ["Transparent background ready", "Background removed · original protected · review on the image surface"],
     "remove-object": ["Object edit ready", "Selected object replaced · original protected · one generated version"],
     "extend-image": ["Expanded frame ready", "Generated surroundings extend the image by 18% on both sides"],
+    "crop-image-mask": ["Freehand crop ready", "Bounds fit the lasso · outside-mask pixels stay transparent for PNG/WebP"],
     "change-html": ["Element update ready", "Selected service card rewritten · live page remains visible"],
     "materialize-pdf": ["Linked note ready", "Highlights, extracted text, and page citations will be written to a new Markdown note"],
-    "change-code": ["Code suggestion ready", "Focused replacement for the current selection · source remains directly editable"],
-    "fix-code": ["Code fix ready", "Add a failure policy around each source update · nothing executed"],
     "connect-canvas": ["Canvas edge proposed", "Preview one native connection from Workflow to Launch brief"],
     "create-canvas-cards": ["Canvas cards proposed", "Three native cards will be added inside Peak launch system"],
     "brief-canvas": ["Linked brief ready", "The selected group will become a sourced Markdown brief"],
@@ -762,14 +829,12 @@ function handleAiAction(action) {
     "tidy-diagram": ["Scene layout ready", "Spacing and alignment changed; shapes and arrow bindings preserved"],
   };
   const [title, description] = candidates[action] || ["AI suggestion ready", "Review this suggestion before it changes the source."];
-  if (action === "change-code" || action === "fix-code") document.querySelector(".code-preview").classList.add("has-ai-suggestion");
   showCandidate(action, title, description);
   showAnswer("Suggestion prepared", [description, "The source surface remains active. Accept or restore from the bar over the file."]);
 }
 
 function completeCandidate(action) {
   const accepted = action === "accept";
-  document.querySelector(".code-preview").classList.remove("has-ai-suggestion");
   candidateReview.hidden = true;
   if (accepted) setClean("Suggestion accepted · saved in prototype state");
   showToast(accepted ? "Suggestion accepted" : "Suggestion restored; source unchanged");
@@ -801,23 +866,15 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const cropRatioButton = event.target.closest(".crop-presets [data-crop-ratio]");
-  if (cropRatioButton) {
-    setCropRatio(cropRatioButton.dataset.cropRatio, cropRatioButton);
+  const imageRotateButton = event.target.closest("[data-image-rotate]");
+  if (imageRotateButton) {
+    rotateImage(imageRotateButton.dataset.imageRotate);
     return;
   }
 
-  const cropRotateButton = event.target.closest("[data-crop-rotate]");
-  if (cropRotateButton) {
-    rotateCrop(cropRotateButton.dataset.cropRotate);
-    return;
-  }
-
-  const cropAction = event.target.closest("[data-crop-action]");
-  if (cropAction) {
-    if (cropAction.dataset.cropAction === "reset") resetCrop();
-    if (cropAction.dataset.cropAction === "cancel") closeCrop(false);
-    if (cropAction.dataset.cropAction === "done") closeCrop(true);
+  const imageLassoAction = event.target.closest("[data-image-lasso-action]");
+  if (imageLassoAction) {
+    handleImageLassoAction(imageLassoAction.dataset.imageLassoAction);
     return;
   }
 
@@ -856,7 +913,7 @@ document.addEventListener("click", (event) => {
   const htmlElement = event.target.closest("[data-html-element]");
   if (htmlElement && htmlPicking) {
     document.querySelectorAll("[data-html-element]").forEach((element) => element.classList.toggle("is-picked", element === htmlElement));
-    const elementLabel = `section.${htmlElement.classList[0]}`;
+    const elementLabel = htmlElement.dataset.htmlLabel || `section.${htmlElement.classList[0]}`;
     document.querySelector("#htmlSelectionLabel").textContent = elementLabel;
     positionSelectionLens(document.querySelector("#htmlSelectionToolbar"), htmlElement, document.querySelector(".browser-preview"));
     selectionScope.textContent = `Selected ${elementLabel}`;
@@ -881,6 +938,13 @@ document.addEventListener("click", (event) => {
   const pdfZoomButton = event.target.closest("[data-pdf-zoom]");
   if (pdfZoomButton) {
     updatePdfZoom(pdfZoomButton.dataset.pdfZoom);
+    return;
+  }
+
+  const pdfLassoAction = event.target.closest("[data-pdf-lasso-action]");
+  if (pdfLassoAction) {
+    clearLassoSelection("pdf");
+    showToast("PDF lasso cleared");
     return;
   }
 
@@ -1007,51 +1071,12 @@ document.addEventListener("click", (event) => {
 
 });
 
-document.querySelector("#cropAngle").addEventListener("input", (event) => {
-  cropStraighten = Number(event.target.value);
-  document.querySelector("#cropAngleValue").textContent = `${cropStraighten}°`;
-  updateImageTransform();
-  setDirty(`Straightened ${cropStraighten}° · not saved`);
-});
-
 document.querySelector("#exportQuality").addEventListener("input", updateExportEstimate);
 document.querySelector("#exportWidth").addEventListener("input", updateExportEstimate);
 document.querySelector("#exportHeight").addEventListener("input", updateExportEstimate);
 
-const cropOverlay = document.querySelector("#cropOverlay");
-cropOverlay.querySelectorAll("[data-crop-handle]").forEach((handle) => {
-  handle.addEventListener("pointerdown", (event) => startRectDrag(
-    event,
-    cropOverlay,
-    document.querySelector("#imageFrame"),
-    handle.dataset.cropHandle,
-    updateFreeCropLabel,
-    () => setDirty("Free crop adjusted · not saved"),
-  ));
-});
-cropOverlay.addEventListener("pointerdown", (event) => {
-  if (event.target.closest("[data-crop-handle]")) return;
-  startRectDrag(event, cropOverlay, document.querySelector("#imageFrame"), "move", updateFreeCropLabel, () => setDirty("Free crop moved · not saved"));
-});
-
-const imageRegion = document.querySelector("#imageRegionSelection");
-imageRegion.querySelectorAll("[data-region-handle]").forEach((handle) => {
-  handle.addEventListener("pointerdown", (event) => startRectDrag(event, imageRegion, document.querySelector("#imageFrame"), handle.dataset.regionHandle, updateImageRegionLabel, updateImageRegionLabel));
-});
-imageRegion.addEventListener("pointerdown", (event) => {
-  if (event.target.closest("[data-region-handle], .selection-context-bar")) return;
-  startRectDrag(event, imageRegion, document.querySelector("#imageFrame"), "move", updateImageRegionLabel, updateImageRegionLabel);
-});
-
-const pdfArea = document.querySelector("#pdfAreaSelection");
-const refreshPdfAreaLens = () => positionSelectionLens(document.querySelector("#pdfSelectionToolbar"), pdfArea, document.querySelector("#pdfCanvas"));
-pdfArea.querySelectorAll("[data-pdf-area-handle]").forEach((handle) => {
-  handle.addEventListener("pointerdown", (event) => startRectDrag(event, pdfArea, document.querySelector("#pdfPage"), handle.dataset.pdfAreaHandle, refreshPdfAreaLens, refreshPdfAreaLens));
-});
-pdfArea.addEventListener("pointerdown", (event) => {
-  if (event.target.closest("[data-pdf-area-handle]")) return;
-  startRectDrag(event, pdfArea, document.querySelector("#pdfPage"), "move", refreshPdfAreaLens, refreshPdfAreaLens);
-});
+document.querySelector("#imageLassoLayer").addEventListener("pointerdown", (event) => beginLasso(event, "image"));
+document.querySelector("#pdfLassoLayer").addEventListener("pointerdown", (event) => beginLasso(event, "pdf"));
 
 document.querySelector("#pdfPage").addEventListener("mouseup", () => {
   if (pdfMode !== "text") return;
@@ -1059,8 +1084,13 @@ document.querySelector("#pdfPage").addEventListener("mouseup", () => {
   const selectedText = selection?.toString().trim() || "";
   if (!selectedText || !document.querySelector("#pdfPage").contains(selection.anchorNode)) return;
   const selectionRect = selection.getRangeAt(0).getBoundingClientRect();
-  pdfSelection = { kind: "text", text: selectedText };
-  document.querySelector("#pdfSelectionKind").textContent = "Text · page 1";
+  const page = document.querySelector("#pdfToolbarPage").textContent;
+  pdfSelection = {
+    kind: "text",
+    text: selectedText,
+    composerDetail: `${surfaces.pdf.name} · page ${page} · exact text · source geometry + revision · ${selectedText.slice(0, 80)}`,
+  };
+  document.querySelector("#pdfSelectionKind").textContent = `Text · page ${page}`;
   document.querySelector("#pdfSelectionText").textContent = `“${selectedText.slice(0, 48)}${selectedText.length > 48 ? "…" : ""}”`;
   document.querySelector("#pdfExtractAction").hidden = true;
   positionSelectionLens(document.querySelector("#pdfSelectionToolbar"), selectionRect, document.querySelector("#pdfCanvas"));
@@ -1068,16 +1098,15 @@ document.querySelector("#pdfPage").addEventListener("mouseup", () => {
   document.querySelector("#pdfAskButton").disabled = false;
   document.querySelector(".pdf-add-button").disabled = false;
   contextTitle.textContent = "I can see the selected PDF text";
-  contextDetail.textContent = "Exact text · page 1 · source geometry";
-  selectionScope.textContent = "Selected text · page 1";
+  contextDetail.textContent = `Exact text · page ${page} · source geometry`;
+  selectionScope.textContent = `Selected text · page ${page}`;
 });
 
-document.addEventListener("pointermove", dragSurfaceRect);
-document.addEventListener("pointerup", endSurfaceRectDrag);
-document.addEventListener("pointercancel", endSurfaceRectDrag);
+document.addEventListener("pointermove", appendLassoPoint);
+document.addEventListener("pointerup", finishLasso);
+document.addEventListener("pointercancel", finishLasso);
 
 document.querySelector("#imageFrame").addEventListener("wheel", (event) => {
-  if (document.querySelector(".image-stage").classList.contains("is-cropping")) return;
   event.preventDefault();
   updateImageZoom(event.deltaY < 0 ? "in" : "out");
 }, { passive: false });

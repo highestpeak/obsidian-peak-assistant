@@ -67,39 +67,34 @@
             <div class="image-stage">
               <div class="image-frame" id="imageFrame">
                 <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration" />
-                <div class="crop-overlay" id="cropOverlay" data-crop-ratio="free" hidden>
-                  <span class="crop-grid"></span><span class="crop-drag-label">Drag freely</span>
-                  <i data-crop-handle="nw"></i><i data-crop-handle="n"></i><i data-crop-handle="ne"></i><i data-crop-handle="e"></i>
-                  <i data-crop-handle="se"></i><i data-crop-handle="s"></i><i data-crop-handle="sw"></i><i data-crop-handle="w"></i>
-                </div>
-                <div class="image-region-selection" id="imageRegionSelection" hidden>
-                  <i data-region-handle="nw"></i><i data-region-handle="ne"></i><i data-region-handle="se"></i><i data-region-handle="sw"></i>
-                  <div class="selection-context-bar image-selection-bar">
-                    <span><small>Image selection</small><strong>Selected area · 38% of image</strong></span>
-                    <button data-ai-action="describe-image-region"><svg><use href="#i-sparkles"/></svg>Ask</button>
-                    <button class="add-composer" data-add-composer="image" data-context-scope="selection">Add to Composer</button>
-                  </div>
+                <svg class="freehand-layer image-lasso-layer" id="imageLassoLayer" aria-label="Draw a freehand image selection" hidden>
+                  <path class="lasso-mask" id="imageLassoPath" d="" />
+                </svg>
+                <span class="lasso-hint" id="imageLassoHint" hidden><svg><use href="#i-pen"/></svg>Draw around the subject</span>
+                <div class="selection-context-bar image-selection-bar follows-selection" id="imageSelectionToolbar" hidden>
+                  <span><small>Freehand mask</small><strong id="imageSelectionLabel">Draw one closed region</strong></span>
+                  <button data-ai-action="describe-image-region"><svg><use href="#i-sparkles"/></svg>Ask</button>
+                  <button class="add-composer" data-add-composer="image" data-context-scope="selection">Add to Composer</button>
+                  <button data-image-lasso-action="crop"><svg><use href="#i-crop"/></svg>Crop to mask</button>
+                  <button data-image-lasso-action="clear">Clear</button>
                 </div>
                 <div class="image-context-toolbar" id="imageContextDock" aria-label="图片核心工具">
                   <div class="image-dock-primary">
-                    <div class="scope-switch" aria-label="图片上下文范围"><button class="is-active" data-image-scope="all">Whole image</button><button data-image-scope="region">Select area</button></div>
+                    <div class="scope-switch" aria-label="图片上下文范围"><button class="is-active" data-image-scope="all">Whole image</button><button data-image-scope="lasso"><svg><use href="#i-pen"/></svg>Lasso</button></div>
                     <span class="toolbar-divider"></span>
-                    <button data-image-tool="crop"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
+                    <button data-image-rotate="left" aria-label="Rotate left 90 degrees"><svg class="rotate-left"><use href="#i-rotate"/></svg></button>
+                    <button data-image-rotate="right" aria-label="Rotate right 90 degrees"><svg><use href="#i-rotate"/></svg></button>
                     <button data-image-tool="export"><svg><use href="#i-download"/></svg><span>Export</span></button>
                     <span class="toolbar-divider"></span>
                     <button class="ai-inline" data-ai-action="describe-image"><svg><use href="#i-sparkles"/></svg><span>Ask</span></button>
                     <button class="add-composer" data-add-composer="image" data-context-scope="all">Add to Composer</button>
-                  </div>
-                  <div class="crop-studio" id="cropStudio" hidden>
-                    <div class="crop-presets" aria-label="裁剪比例">
-                      <button class="is-active" data-crop-ratio="free">Free</button><button data-crop-ratio="original">Original</button><button data-crop-ratio="square">Square</button><button data-crop-ratio="wide">16:9</button>
+                    <span class="toolbar-divider"></span>
+                    <div class="dock-zoom" aria-label="图片查看缩放">
+                      <button data-image-zoom="out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
+                      <span id="imageScaleLabel">100%</span>
+                      <button data-image-zoom="in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
+                      <button data-image-zoom="fit" aria-label="Fit image"><svg><use href="#i-maximize"/></svg></button>
                     </div>
-                    <div class="crop-angle">
-                      <button data-crop-rotate="left" aria-label="Rotate left 90 degrees"><svg><use href="#i-rotate"/></svg><span>90°</span></button>
-                      <label><span>Straighten</span><input id="cropAngle" type="range" min="-45" max="45" value="0" step="1"/><output id="cropAngleValue">0°</output></label>
-                      <button data-crop-rotate="right" aria-label="Rotate right 90 degrees"><span>90°</span><svg><use href="#i-rotate"/></svg></button>
-                    </div>
-                    <div class="crop-commit"><button data-crop-action="reset">Reset</button><button data-crop-action="cancel">Cancel</button><button class="primary" data-crop-action="done">Done</button></div>
                   </div>
                   <div class="image-export-sheet" id="imageExportSheet" hidden>
                     <header><span><strong>Export a copy</strong><small>Original remains unchanged</small></span><button data-export-action="close" aria-label="Close">×</button></header>
@@ -109,12 +104,6 @@
                     <div class="export-result"><span><small>Estimated copy</small><strong id="exportEstimate">1.8 MB</strong></span><span class="export-saving" id="exportSaving">2% smaller than original</span></div>
                     <footer><button data-export-action="close">Cancel</button><button class="primary" data-export-action="save">Save copy</button></footer>
                   </div>
-                </div>
-                <div class="image-zoom" aria-label="图片查看缩放">
-                  <button data-image-zoom="out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
-                  <span id="imageScaleLabel">100%</span>
-                  <button data-image-zoom="in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
-                  <button data-image-zoom="fit" aria-label="Fit image"><svg><use href="#i-maximize"/></svg></button>
                 </div>
               </div>
               <div class="stage-caption">
@@ -144,12 +133,12 @@
                     <span>Last sync · 2 min ago</span>
                   </header>
                   <div class="metric-row">
-                    <article><span>Deploy success</span><strong>98.4%</strong><small class="positive">+1.2% this week</small></article>
-                    <article><span>Open incidents</span><strong>03</strong><small>2 investigating</small></article>
-                    <article><span>P95 latency</span><strong>184 ms</strong><small class="positive">−23 ms</small></article>
+                    <article data-html-element="metric-deploy" data-html-label="metric.deploy-success · 98.4%"><span>Deploy success</span><strong>98.4%</strong><small class="positive">+1.2% this week</small></article>
+                    <article data-html-element="metric-incidents" data-html-label="metric.open-incidents · 03"><span>Open incidents</span><strong>03</strong><small>2 investigating</small></article>
+                    <article data-html-element="metric-latency" data-html-label="metric.p95-latency · 184 ms"><span>P95 latency</span><strong>184 ms</strong><small class="positive">−23 ms</small></article>
                   </div>
                   <div class="dashboard-grid">
-                    <article class="chart-card" data-html-element="chart">
+                    <article class="chart-card" data-html-element="chart" data-html-label="section.request-volume-chart">
                       <div class="card-head"><strong>Request volume</strong><span>7 days</span></div>
                       <svg viewBox="0 0 600 210" preserveAspectRatio="none" aria-label="request volume chart">
                         <defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7162d8" stop-opacity=".26"/><stop offset="1" stop-color="#7162d8" stop-opacity="0"/></linearGradient></defs>
@@ -158,7 +147,7 @@
                         <path class="chart-line" d="M0 168C55 150 73 158 118 130s70-4 112-35 64 12 103-14 72-46 111-28 86-22 156-6"/>
                       </svg>
                     </article>
-                    <article class="service-card" data-html-element="services">
+                    <article class="service-card" data-html-element="services" data-html-label="section.services">
                       <div class="card-head"><strong>Services</strong><span>12 total</span></div>
                       <div><span><i class="service-ok"></i>API Gateway</span><strong>Healthy</strong></div>
                       <div><span><i class="service-ok"></i>Search index</span><strong>Healthy</strong></div>
@@ -192,7 +181,7 @@
           <section class="format-surface pdf-surface" data-surface="pdf" aria-label="PDF workspace">
               <div class="pdf-viewer">
                 <div class="pdf-toolbar">
-                <div class="pdf-select-modes scope-switch"><button class="is-active" data-pdf-mode="document">All 18 pages</button><button data-pdf-mode="page">This page</button><button data-pdf-mode="text">Text</button><button data-pdf-mode="region">Area</button></div>
+                <div class="pdf-select-modes scope-switch"><button class="is-active" data-pdf-mode="document">All 18 pages</button><button data-pdf-mode="page">This page</button><button data-pdf-mode="text">Text</button><button data-pdf-mode="lasso"><svg><use href="#i-pen"/></svg>Lasso</button></div>
                 <div><button class="icon-button" data-pdf-zoom="out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button><span id="pdfZoomLabel">112%</span><button class="icon-button" data-pdf-zoom="in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button></div>
                 <div><span class="pdf-page-state">Page <b id="pdfToolbarPage">1</b> / 18</span><button class="pdf-ask-button" id="pdfAskButton" data-ai-action="ask-pdf"><svg><use href="#i-sparkles"/></svg>Ask document</button><button class="pdf-add-button add-composer" data-add-composer="pdf" data-context-scope="current">Add</button></div>
               </div>
@@ -213,7 +202,10 @@
                     <p data-pdf-select="passage">Teams do not need another destination for generated text. They need AI actions that remain connected to the files, evidence, and decisions already inside their working system.</p>
                     <p class="pdf-highlight" id="pdfHighlight" data-pdf-select="passage">The highest-value workflow keeps the source visible, cites the exact page behind each answer, and presents every write as a reviewable candidate.</p>
                     <div class="pdf-callouts" id="pdfCallouts" data-pdf-select="region"><span><strong>01</strong>Source visible</span><span><strong>02</strong>Citations jump back</span><span><strong>03</strong>Writes are reviewable</span></div>
-                    <div class="pdf-area-selection" id="pdfAreaSelection" hidden><span>Area selection</span><i data-pdf-area-handle="nw"></i><i data-pdf-area-handle="ne"></i><i data-pdf-area-handle="se"></i><i data-pdf-area-handle="sw"></i></div>
+                    <svg class="freehand-layer pdf-lasso-layer" id="pdfLassoLayer" aria-label="Draw a freehand PDF selection" hidden>
+                      <path class="lasso-mask" id="pdfLassoPath" d="" />
+                    </svg>
+                    <span class="lasso-hint pdf-lasso-hint" id="pdfLassoHint" hidden><svg><use href="#i-pen"/></svg>Circle any text, table, or figure</span>
                     <footer><span>Peak Assistant</span><span id="pdfPageNumber">1</span></footer>
                   </article>
                   <div class="selection-context-bar pdf-selection-toolbar follows-selection" id="pdfSelectionToolbar" hidden>
@@ -222,6 +214,7 @@
                     <button data-ai-action="translate-pdf">Translate</button>
                     <button data-ai-action="extract-pdf-region" id="pdfExtractAction" hidden>Extract</button>
                     <button class="add-composer" data-add-composer="pdf" data-context-scope="selection">Add to Composer</button>
+                    <button data-pdf-lasso-action="clear" id="pdfClearAction" hidden>Clear</button>
                   </div>
                 </div>
               </div>
@@ -254,7 +247,7 @@
               </div>
               <div class="selection-context-bar code-selection-toolbar follows-selection" id="codeSelectionToolbar" hidden>
                 <span><small>Code selection</small><strong id="codeSelectionLabel">1 line selected</strong></span>
-                <button data-ai-action="explain-selection"><svg><use href="#i-sparkles"/></svg>Ask</button><button data-ai-action="change-code">Change</button><button class="add-composer" data-add-composer="code" data-context-scope="selection">Add to Composer</button>
+                <button data-ai-action="explain-selection"><svg><use href="#i-sparkles"/></svg>Ask</button><button class="add-composer" data-add-composer="code" data-context-scope="selection">Add to Composer</button>
               </div>
               <div class="selection-actions">
                 <span><i class="edit-ready-dot"></i><b id="codeEditState">Editable · click anywhere to type</b></span>
