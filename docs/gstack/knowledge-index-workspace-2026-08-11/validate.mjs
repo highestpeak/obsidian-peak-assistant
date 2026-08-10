@@ -1,58 +1,63 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import process from 'node:process';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = path.dirname(new URL(import.meta.url).pathname);
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'mock.css'), 'utf8');
-const js = fs.readFileSync(path.join(root, 'mock.js'), 'utf8');
+const directory = path.dirname(fileURLToPath(import.meta.url));
+const read = (file) => fs.readFileSync(path.join(directory, file), "utf8");
+const html = read("index.html");
+const css = read("mock.css");
+const js = read("mock.js");
 
 const requiredHtml = [
-  'data-view="overview"',
-  'data-view="run"',
-  'data-view="problems"',
-  'data-view="history"',
-  'data-view="content"',
-  'data-view="folders"',
-  'data-demo-state-button="running"',
-  'data-demo-state-button="attention"',
-  'data-demo-state-button="complete"',
-  'Keyword search',
-  'Semantic search',
-  'Tags & summaries',
-  'Relationships',
-  'Peak Sheet',
-  'AI Graph',
-  'Draw.io',
-];
-
-const requiredCss = [
-  '.workspace-layout',
-  '.readiness-row',
-  '.run-card',
-  '.problem-row',
-  '.type-list',
-  'body[data-demo-state="attention"]',
-  'body[data-demo-state="complete"]',
+  "data-overall-progress",
+  "data-processed-count",
+  "data-speed",
+  "data-eta",
+  "data-elapsed",
+  "data-document-queue",
+  "data-current-document",
+  "data-current-step",
+  "data-order-select",
+  "data-pause",
 ];
 
 const requiredJs = [
-  'DEMO_STATES',
-  'applyDemoState',
-  'activateView',
-  'data-problem-toggle',
-  'data-open-settings',
+  "function startSimulation",
+  "function advanceSimulation",
+  "function renderQueue",
+  "function renderCurrentDocument",
+  "function renderMetrics",
 ];
 
-const missing = [
-  ...requiredHtml.filter((value) => !html.includes(value)).map((value) => `HTML: ${value}`),
-  ...requiredCss.filter((value) => !css.includes(value)).map((value) => `CSS: ${value}`),
-  ...requiredJs.filter((value) => !js.includes(value)).map((value) => `JS: ${value}`),
+const requiredCss = [
+  ".progress-hero",
+  ".workspace-grid",
+  ".queue-row.is-current",
+  ".substep.is-active",
+  "@media (max-width: 760px)",
+  "@media (prefers-reduced-motion: reduce)",
 ];
+
+const missing = [];
+for (const value of requiredHtml) {
+  if (!html.includes(value)) missing.push(`HTML: ${value}`);
+}
+for (const value of requiredJs) {
+  if (!js.includes(value)) missing.push(`JS: ${value}`);
+}
+for (const value of requiredCss) {
+  if (!css.includes(value)) missing.push(`CSS: ${value}`);
+}
+
+const forbidden = ["data-view-target", "data-view=\"problems\"", "data-view=\"history\""];
+for (const value of forbidden) {
+  if (html.includes(value)) missing.push(`forbidden multi-page control: ${value}`);
+}
 
 if (missing.length > 0) {
-  console.error(`Knowledge Index mock validation failed:\n${missing.join('\n')}`);
+  console.error("Knowledge Index progress mock validation failed:");
+  for (const item of missing) console.error(`- ${item}`);
   process.exit(1);
 }
 
-console.log('Knowledge Index mock validation passed.');
+console.log("Knowledge Index progress mock validation passed.");

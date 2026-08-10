@@ -1,43 +1,33 @@
-# Knowledge Index Workspace Mock
+# Knowledge Index Progress View
 
-Design-only mock for Peak Assistant's long-running knowledge index workflow.
-It does not change production source or claim that durable index runs already
-exist.
+Design-only mock for Peak Assistant's first-run and manual knowledge indexing experience.
 
-## Open
+## Direction
 
-Serve the repository root and open:
+The indexing job is intentionally carried by one page. It is not an index administration dashboard and it does not split progress, errors, history, file types, or folder scope into separate destinations.
 
-```text
-/docs/gstack/knowledge-index-workspace-2026-08-11/index.html
-```
+The page gives priority to four questions:
 
-## What this mock decides
+1. How much has finished?
+2. How fast is it moving and how long is left?
+3. Which document is being processed now, and what happens next?
+4. What is happening inside the current document?
 
-- The canonical runtime surface is an independent, reopenable View.
-- Settings owns long-term policy; this View owns task progress, coverage,
-  recovery and history.
-- User readiness is separate from background task progress. Keyword search can
-  be ready while vectors, summaries or relationships continue.
-- Full-text, semantic, enrichment and graph readiness are separate facts.
-- File errors are recoverable by item and do not invalidate the healthy index.
-- Peak Sheet, AI Graph and Draw.io explain their real access policy instead of
-  pretending all generated or imported content is generally indexable.
+Index products such as full-text records, embeddings, summaries, tags, and relationships remain visible as per-document substeps. They do not compete with the run's primary progress.
 
-## Review interactions
+## Mocked interactions
 
-- Use the artifact toolbar to compare `Running`, `Needs attention` and
-  `Complete` states.
-- Open Overview, Current run, Needs attention, History, Content types and
-  Folders from the sidebar.
-- Expand problem rows and try recovery actions.
-- Open Index settings to verify that long-term policy is a separate owner.
+- The run advances automatically with an accelerated demo timer.
+- Overall count, percentage, ETA, speed, elapsed time, current document, substeps, queue order, and throughput graph update together.
+- `Pause` freezes the run and `Resume` continues it.
+- `Skip current document` advances the queue.
+- `Restart demo` restores the review state.
+- The queue keeps recently completed, current, and waiting documents together so document order remains understandable.
 
-## Visual direction
+## Review
 
-- Restrained Raycast-like tone and hierarchy.
-- Linear-like content width rather than full-width dashboards.
-- macOS-style sidebar grouping and window chrome.
-- ChatGPT-like density and low decoration.
-- VS Code-like explicit status, history and search/task semantics.
-- Monochrome line icons; semantic color is reserved for real state.
+Serve from the repository root and open:
+
+`http://127.0.0.1:<port>/docs/gstack/knowledge-index-workspace-2026-08-11/index.html`
+
+This artifact changes documentation only. It is not a production implementation commitment.

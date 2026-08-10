@@ -1,318 +1,265 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Assistant · Knowledge Index Workspace Mock</title>
-  <link rel="stylesheet" href="./mock.css">
-  <script src="./mock.js" defer></script>
-</head>
-<body data-demo-state="running">
-  <svg class="icon-sprite" aria-hidden="true">
-    <symbol id="i-peak" viewBox="0 0 24 24"><path d="m3 19 6.5-12 3.4 6.1 2.7-4.3L21 19h-3l-2.7-5.6-2.6 4.1-3.2-5.7L6.2 19Z"/></symbol>
-    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
-    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
-    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2.2-6 4.1 12 2.2-6H21"/></symbol>
-    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.8 3h15.2a2 2 0 0 0 1.8-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
-    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6M12 7v5l3 2"/></symbol>
-    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
-    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 5h6l2 2h10v12H3Z"/></symbol>
-    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
-    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></symbol>
-    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
-    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 8.2A7 7 0 0 1 18.6 7M17.8 15.8A7 7 0 0 1 5.4 17"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></symbol>
-    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
-    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
-    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 3h7v7M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></symbol>
-    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7v5l-4 2v-7Z"/></symbol>
-    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
-    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
-    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-5-5L5 20"/></symbol>
-    <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5Z"/><path d="m3 7 9 5 9-5v10l-9 5-9-5Z"/></symbol>
-  </svg>
-
-  <header class="artifact-bar">
-    <div class="artifact-meta">
-      <span class="artifact-dot"></span>
-      <strong>Knowledge Index workspace mock</strong>
-      <span>Independent View · content and state review</span>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peak Assistant · Knowledge Index</title>
+    <link rel="stylesheet" href="./mock.css" />
+  </head>
+  <body>
+    <div class="artifact-bar">
+      <span class="artifact-mark" aria-hidden="true"></span>
+      <span>Design mock · live progress is accelerated for review</span>
+      <button class="quiet-button" type="button" data-restart-demo>
+        Restart demo
+      </button>
     </div>
-    <div class="demo-switch" role="group" aria-label="Preview index states">
-      <span>Preview state</span>
-      <button type="button" data-demo-state-button="running" data-active="true">Running</button>
-      <button type="button" data-demo-state-button="attention">Needs attention</button>
-      <button type="button" data-demo-state-button="complete">Complete</button>
-    </div>
-  </header>
 
-  <main class="stage">
-    <section class="app-window" aria-label="Peak Knowledge Index workspace mock">
-      <header class="app-chrome">
-        <span class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></span>
-        <div class="workspace-tabs" aria-label="Workspace tabs">
-          <button type="button" class="workspace-tab"><svg><use href="#i-file"/></svg><span>Provider inventory</span></button>
-          <button type="button" class="workspace-tab is-active"><svg><use href="#i-database"/></svg><span>Knowledge Index</span><svg class="tab-close"><use href="#i-x"/></svg></button>
-          <button type="button" class="workspace-add" aria-label="New tab">+</button>
+    <main class="app-shell">
+      <header class="page-header">
+        <div class="page-title-group">
+          <div class="page-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 6.5h16M4 12h16M4 17.5h10" />
+              <path d="m17 17 1.5 1.5L21 16" />
+            </svg>
+          </div>
+          <div>
+            <div class="eyebrow">KNOWLEDGE INDEX</div>
+            <div class="page-title">Preparing your vault</div>
+            <div class="page-subtitle">
+              Search is already available. Peak is enriching the rest of your notes in the background.
+            </div>
+          </div>
         </div>
-        <button type="button" class="chrome-action" aria-label="More workspace actions"><svg><use href="#i-more"/></svg></button>
+
+        <div class="header-actions">
+          <button class="secondary-button" type="button" data-pause>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 5v14M15 5v14" />
+            </svg>
+            <span data-pause-label>Pause</span>
+          </button>
+          <button class="icon-button" type="button" aria-label="More options">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="5" cy="12" r="1" />
+              <circle cx="12" cy="12" r="1" />
+              <circle cx="19" cy="12" r="1" />
+            </svg>
+          </button>
+        </div>
       </header>
 
-      <div class="workspace-layout">
-        <aside class="workspace-sidebar">
-          <header class="product-identity">
-            <span class="peak-mark"><svg><use href="#i-peak"/></svg></span>
-            <span><strong>Peak Assistant</strong><small>Knowledge system</small></span>
-          </header>
+      <section class="progress-hero" aria-label="Overall indexing progress">
+        <div class="hero-leading">
+          <div class="run-status">
+            <span class="live-dot" data-live-dot></span>
+            <span data-run-status>Indexing</span>
+            <span class="run-divider">·</span>
+            <span data-active-phase>Processing documents</span>
+          </div>
+          <div class="progress-count">
+            <span data-processed-count>4,102</span>
+            <span class="progress-total">of 4,860 documents</span>
+          </div>
+        </div>
+        <div class="hero-percent" data-overall-progress>84.4%</div>
 
-          <nav class="side-nav" aria-label="Knowledge Index sections">
-            <span class="side-label">Index</span>
-            <button type="button" class="is-active" data-view-target="overview"><svg><use href="#i-database"/></svg><span>Overview</span></button>
-            <button type="button" data-view-target="run"><svg><use href="#i-activity"/></svg><span>Current run</span><em class="running-indicator"><i></i>Live</em></button>
-            <button type="button" data-view-target="problems"><svg><use href="#i-alert"/></svg><span>Needs attention</span><em class="nav-count" data-problem-count>3</em></button>
-            <button type="button" data-view-target="history"><svg><use href="#i-history"/></svg><span>History</span></button>
+        <div class="progress-track" aria-hidden="true">
+          <span class="progress-fill" data-progress-fill style="width: 84.4%"></span>
+        </div>
 
-            <span class="side-label side-label--spaced">Coverage</span>
-            <button type="button" data-view-target="content"><svg><use href="#i-file"/></svg><span>Content types</span></button>
-            <button type="button" data-view-target="folders"><svg><use href="#i-folder"/></svg><span>Folders & exclusions</span></button>
-          </nav>
+        <div class="run-metrics">
+          <div class="metric primary-metric">
+            <span class="metric-value" data-eta>12 min</span>
+            <span class="metric-label">estimated remaining</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" data-speed>63 docs/min</span>
+            <span class="metric-label">current speed</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" data-elapsed>18m 04s</span>
+            <span class="metric-label">elapsed</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" data-remaining>758</span>
+            <span class="metric-label">documents left</span>
+          </div>
+        </div>
+      </section>
 
-          <footer class="sidebar-footer">
-            <div class="sidebar-health"><i></i><span><strong>Auto updates on</strong><small>Last check 22:41</small></span></div>
-            <button type="button" data-open-settings><svg><use href="#i-settings"/></svg><span>Index settings</span><svg class="trailing"><use href="#i-chevron"/></svg></button>
-          </footer>
-        </aside>
+      <section class="pipeline" aria-label="Indexing stages">
+        <div class="pipeline-step is-complete">
+          <span class="step-marker">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9" /></svg>
+          </span>
+          <span class="step-text">
+            <span class="step-title">Discover files</span>
+            <span class="step-caption">4,860 found</span>
+          </span>
+        </div>
+        <span class="step-line is-complete"></span>
+        <div class="pipeline-step is-active">
+          <span class="step-marker"><span class="marker-core"></span></span>
+          <span class="step-text">
+            <span class="step-title">Process documents</span>
+            <span class="step-caption" data-stage-progress>4,102 complete</span>
+          </span>
+        </div>
+        <span class="step-line"></span>
+        <div class="pipeline-step">
+          <span class="step-marker"></span>
+          <span class="step-text">
+            <span class="step-title">Verify index</span>
+            <span class="step-caption">Waiting</span>
+          </span>
+        </div>
+        <span class="step-line"></span>
+        <div class="pipeline-step">
+          <span class="step-marker"></span>
+          <span class="step-text">
+            <span class="step-title">Ready</span>
+            <span class="step-caption">—</span>
+          </span>
+        </div>
+      </section>
 
-        <section class="workspace-surface">
-          <header class="surface-header">
-            <div class="surface-title">
-              <span class="surface-icon"><svg><use href="#i-database"/></svg></span>
-              <div><h1>Knowledge Index</h1><p>Keep your vault searchable, enriched, and structurally up to date.</p></div>
+      <div class="workspace-grid">
+        <section class="queue-panel" aria-label="Document processing order">
+          <div class="section-header">
+            <div>
+              <div class="section-title">Document order</div>
+              <div class="section-caption">Completed documents stay visible so the queue feels continuous.</div>
             </div>
-            <div class="surface-actions">
-              <button type="button" class="button quiet" data-action="pause"><svg><use href="#i-pause"/></svg><span data-pause-label>Pause</span></button>
-              <button type="button" class="button primary" data-action="update"><svg><use href="#i-refresh"/></svg>Update index</button>
-              <button type="button" class="icon-button" aria-label="More index actions"><svg><use href="#i-more"/></svg></button>
+            <div class="queue-controls">
+              <label class="select-control">
+                <span>Order</span>
+                <select data-order-select>
+                  <option value="recent">Recently changed first</option>
+                  <option value="vault">Vault order</option>
+                  <option value="folder">Folder by folder</option>
+                </select>
+              </label>
+              <label class="follow-control">
+                <input type="checkbox" checked data-follow-current />
+                <span class="toggle-track"><span></span></span>
+                <span>Follow current</span>
+              </label>
             </div>
-          </header>
+          </div>
 
-          <div class="view-stack">
-            <section class="workspace-view is-active" data-view="overview">
-              <div class="content-wrap overview-layout">
-                <div class="overview-main">
-                  <section class="readiness-hero" data-hero-tone="running">
-                    <span class="hero-status-icon"><svg><use href="#i-check"/></svg></span>
-                    <div class="hero-copy">
-                      <span class="eyebrow" data-bind="heroEyebrow">Search is ready</span>
-                      <h2 data-bind="heroTitle">You can use your vault while deeper indexing continues.</h2>
-                      <p data-bind="heroDescription">Keyword search is available across 4,812 files. Semantic coverage and summaries are still being built in the background.</p>
-                    </div>
-                    <button type="button" class="button hero-action" data-action="open-search"><svg><use href="#i-search"/></svg>Open search</button>
-                  </section>
+          <div class="queue-table" data-document-queue>
+            <div class="queue-table-head">
+              <span>#</span>
+              <span>Document</span>
+              <span>Progress</span>
+              <span>Time</span>
+            </div>
+            <div class="queue-body" data-queue-body></div>
+          </div>
 
-                  <button type="button" class="compact-run-link" data-view-target="run">
-                    <span class="compact-live"><i></i><svg><use href="#i-activity"/></svg></span>
-                    <span><strong>First full index</strong><small>Embeddings · 4,102 / 4,860 files</small></span>
-                    <span><strong>72%</strong><small>12 min left</small></span>
-                    <svg><use href="#i-chevron"/></svg>
-                  </button>
-
-                  <section class="panel readiness-panel">
-                    <header class="panel-header">
-                      <div><h3>What is ready now</h3><p>Each capability becomes available as soon as its own work is complete.</p></div>
-                      <span class="updated-at">Updated a few seconds ago</span>
-                    </header>
-                    <div class="readiness-list">
-                      <article class="readiness-row" data-capability="search">
-                        <span class="capability-symbol"><svg><use href="#i-search"/></svg></span>
-                        <span class="capability-copy"><strong>Keyword search</strong><small>Titles, paths and full text</small></span>
-                        <span class="progress-cluster"><span class="progress-line"><i></i></span><small data-progress-copy>4,812 / 4,860</small></span>
-                        <span class="status-label is-ready"><i></i><span data-status-copy>Ready</span></span>
-                      </article>
-                      <article class="readiness-row" data-capability="semantic">
-                        <span class="capability-symbol"><svg><use href="#i-activity"/></svg></span>
-                        <span class="capability-copy"><strong>Semantic search</strong><small>Meaning-based matches and related notes</small></span>
-                        <span class="progress-cluster"><span class="progress-line"><i></i></span><small data-progress-copy>4,102 / 4,860</small></span>
-                        <span class="status-label is-running"><i></i><span data-status-copy>84%</span></span>
-                      </article>
-                      <article class="readiness-row" data-capability="enrichment">
-                        <span class="capability-symbol"><svg><use href="#i-box"/></svg></span>
-                        <span class="capability-copy"><strong>Tags & summaries</strong><small>AI enrichment for richer navigation</small></span>
-                        <span class="progress-cluster"><span class="progress-line"><i></i></span><small data-progress-copy>2,984 / 4,860</small></span>
-                        <span class="status-label is-running"><i></i><span data-status-copy>61%</span></span>
-                      </article>
-                      <article class="readiness-row" data-capability="graph">
-                        <span class="capability-symbol"><svg><use href="#i-database"/></svg></span>
-                        <span class="capability-copy"><strong>Relationships</strong><small>File Atlas, hubs and graph structure</small></span>
-                        <span class="progress-cluster"><span class="progress-line"><i></i></span><small data-progress-copy>Waiting for enrichment</small></span>
-                        <span class="status-label is-waiting"><i></i><span data-status-copy>Waiting</span></span>
-                      </article>
-                    </div>
-                  </section>
-
-                  <section class="panel coverage-panel">
-                    <header class="panel-header">
-                      <div><h3>Content coverage</h3><p>Coverage follows the file policies saved in Settings.</p></div>
-                      <button type="button" class="text-button" data-view-target="content">View all types <svg><use href="#i-chevron"/></svg></button>
-                    </header>
-                    <div class="coverage-table">
-                      <div class="coverage-head"><span>Type</span><span>Eligible</span><span>Indexed</span><span>Attention</span><span></span></div>
-                      <button type="button" class="coverage-row" data-view-target="content">
-                        <span><svg><use href="#i-file"/></svg><strong>Markdown</strong><small>.md</small></span><span>4,721</span><span>4,721</span><span>—</span><svg><use href="#i-chevron"/></svg>
-                      </button>
-                      <button type="button" class="coverage-row" data-view-target="content">
-                        <span><svg><use href="#i-file"/></svg><strong>PDF</strong><small>.pdf</small></span><span>78</span><span>76</span><span class="attention-value">2</span><svg><use href="#i-chevron"/></svg>
-                      </button>
-                      <button type="button" class="coverage-row" data-view-target="content">
-                        <span><svg><use href="#i-image"/></svg><strong>Images</strong><small>png · jpg · webp</small></span><span>43</span><span>27</span><span class="muted-value">16 waiting</span><svg><use href="#i-chevron"/></svg>
-                      </button>
-                      <button type="button" class="coverage-row" data-view-target="content">
-                        <span><svg><use href="#i-file"/></svg><strong>Office</strong><small>docx · pptx</small></span><span>18</span><span>17</span><span class="attention-value">1</span><svg><use href="#i-chevron"/></svg>
-                      </button>
-                    </div>
-                  </section>
-                </div>
-
-                <aside class="run-rail">
-                  <section class="run-card">
-                    <header class="run-card-header">
-                      <div><span class="live-label"><i></i><span data-bind="runKicker">Running now</span></span><h3 data-bind="runTitle">First full index</h3><p data-bind="runMeta">Started 18 min ago · 4,860 files</p></div>
-                      <button type="button" class="icon-button small" aria-label="Current run actions"><svg><use href="#i-more"/></svg></button>
-                    </header>
-                    <div class="run-total">
-                      <span><strong data-bind="runPercent">72%</strong><small data-bind="runEta">About 34 min remaining</small></span>
-                      <span class="progress-line large"><i data-bind-progress="run"></i></span>
-                    </div>
-                    <div class="stage-list" data-stage-list>
-                      <button type="button" class="stage-row is-complete" data-stage="scan"><span class="stage-node"><svg><use href="#i-check"/></svg></span><span><strong>Check scope & files</strong><small>4,860 eligible · 23 excluded</small></span><time>1m 12s</time></button>
-                      <button type="button" class="stage-row is-complete" data-stage="text"><span class="stage-node"><svg><use href="#i-check"/></svg></span><span><strong>Build keyword index</strong><small>4,812 searchable now</small></span><time>7m 46s</time></button>
-                      <button type="button" class="stage-row is-running" data-stage="vector"><span class="stage-node"><i></i></span><span><strong>Generate embeddings</strong><small data-bind="activeStageCopy">4,102 / 4,860 files</small></span><time data-bind="activeStageEta">12m left</time></button>
-                      <button type="button" class="stage-row is-waiting" data-stage="enrich"><span class="stage-node"></span><span><strong>Tags & summaries</strong><small>2,984 already available</small></span><time>Next</time></button>
-                      <button type="button" class="stage-row is-waiting" data-stage="graph"><span class="stage-node"></span><span><strong>Update relationships</strong><small>Runs after enrichment</small></span><time>Waiting</time></button>
-                    </div>
-                    <div class="current-file">
-                      <span><svg><use href="#i-file"/></svg><small>Currently processing</small></span>
-                      <strong data-bind="currentFile">Research/AI systems/provider-routing.md</strong>
-                    </div>
-                    <footer class="run-card-footer">
-                      <button type="button" class="button quiet" data-view-target="run">Open run details</button>
-                      <span data-bind="costCopy">Est. AI cost NZ$2.18</span>
-                    </footer>
-                  </section>
-
-                  <section class="attention-summary">
-                    <header><span><svg><use href="#i-alert"/></svg><strong>Needs attention</strong></span><button type="button" data-view-target="problems">View 3</button></header>
-                    <button type="button" data-view-target="problems"><span><i class="severity-dot is-error"></i><strong>2 PDFs could not be read</strong></span><small>Encrypted or damaged files</small></button>
-                    <button type="button" data-view-target="problems"><span><i class="severity-dot is-warning"></i><strong>16 images need a vision model</strong></span><small>Search still uses filenames and paths</small></button>
-                  </section>
-                </aside>
-              </div>
-            </section>
-
-            <section class="workspace-view" data-view="run" hidden>
-              <div class="content-wrap detail-view">
-                <header class="view-header">
-                  <div><span class="eyebrow">Active task</span><h2>First full index</h2><p>Closing this View will not stop the task. You can return from Onboarding, Settings or Search.</p></div>
-                  <div><button type="button" class="button quiet" data-action="pause"><svg><use href="#i-pause"/></svg>Pause</button><button type="button" class="button danger" data-action="cancel">Cancel run</button></div>
-                </header>
-                <div class="run-detail-grid">
-                  <section class="panel run-timeline-panel">
-                    <header class="panel-header"><div><h3>Task stages</h3><p>Each stage has its own result and recovery path.</p></div><span class="task-id">RUN-2026-0811-0042</span></header>
-                    <div class="expanded-timeline">
-                      <article class="timeline-row is-complete"><span class="timeline-mark"><svg><use href="#i-check"/></svg></span><div><header><strong>Check scope & files</strong><time>Completed · 1m 12s</time></header><p>4,860 files are eligible under the current content and folder policies. 23 files were excluded.</p><button type="button">View scope receipt</button></div></article>
-                      <article class="timeline-row is-complete"><span class="timeline-mark"><svg><use href="#i-check"/></svg></span><div><header><strong>Build keyword index</strong><time>Completed · 7m 46s</time></header><p>4,812 files are searchable. 48 items were deferred without blocking search.</p><button type="button" data-action="open-search">Try search now</button></div></article>
-                      <article class="timeline-row is-running"><span class="timeline-mark"><i></i></span><div><header><strong>Generate embeddings</strong><time>Running · 84%</time></header><p>Building meaning-based search and related-note matches.</p><span class="progress-line large"><i style="width:84%"></i></span><div class="timeline-stats"><span><small>Processed</small><strong>4,102</strong></span><span><small>Remaining</small><strong>758</strong></span><span><small>Speed</small><strong>63/min</strong></span><span><small>ETA</small><strong>12 min</strong></span></div></div></article>
-                      <article class="timeline-row is-waiting"><span class="timeline-mark"></span><div><header><strong>Generate tags & summaries</strong><time>Waiting</time></header><p>Uses the Knowledge Enrichment model. Existing results remain available.</p><button type="button" data-action="review-cost">Review model & estimated cost</button></div></article>
-                      <article class="timeline-row is-waiting"><span class="timeline-mark"></span><div><header><strong>Update relationships</strong><time>Waiting</time></header><p>Refreshes File Atlas, hubs and structural knowledge after enrichment.</p></div></article>
-                    </div>
-                  </section>
-                  <aside class="run-inspector">
-                    <section class="inspector-group"><h3>Current item</h3><div class="current-item-card"><svg><use href="#i-file"/></svg><span><strong>provider-routing.md</strong><small>Research/AI systems/</small></span></div><dl><div><dt>Stage</dt><dd>Embeddings</dd></div><div><dt>Elapsed</dt><dd>18m 04s</dd></div><div><dt>Items / min</dt><dd>63</dd></div></dl></section>
-                    <section class="inspector-group"><h3>Plan snapshot</h3><dl><div><dt>Depth</dt><dd>Full</dd></div><div><dt>Scope</dt><dd>Whole vault</dd></div><div><dt>Vector model</dt><dd>text-embedding-3-small</dd></div><div><dt>Enrichment</dt><dd>Automatic</dd></div></dl><button type="button" class="text-button" data-open-settings>Open saved settings <svg><use href="#i-external"/></svg></button></section>
-                    <section class="inspector-group cost-group"><h3>Estimated AI work</h3><strong>NZ$2.18</strong><p>Tags and summaries are the only paid stage in this run. You can review before it begins.</p></section>
-                  </aside>
-                </div>
-              </div>
-            </section>
-
-            <section class="workspace-view" data-view="problems" hidden>
-              <div class="content-wrap detail-view narrow-view">
-                <header class="view-header">
-                  <div><span class="eyebrow">Recovery queue</span><h2>Needs attention</h2><p>Fix only the items that failed. The rest of the index stays available.</p></div>
-                  <button type="button" class="button quiet"><svg><use href="#i-filter"/></svg>Filter</button>
-                </header>
-                <section class="panel problem-list">
-                  <article class="problem-row is-open">
-                    <button type="button" class="problem-summary" data-problem-toggle><span class="problem-icon is-error"><svg><use href="#i-lock"/></svg></span><span><strong>2 PDFs could not be read</strong><small>Content extraction · blocks full-text and semantic coverage for these files</small></span><span class="problem-state">Action required</span><svg class="problem-chevron"><use href="#i-down"/></svg></button>
-                    <div class="problem-detail"><p>Both files appear to be encrypted. Peak did not send them to an AI service.</p><div class="problem-files"><span><svg><use href="#i-file"/></svg>Archive/contracts/2024-supplier-agreement.pdf</span><span><svg><use href="#i-file"/></svg>Archive/finance/board-pack-private.pdf</span></div><footer><button type="button" class="button quiet">Exclude these files</button><button type="button" class="button primary" data-action="retry">Retry after unlocking</button></footer></div>
-                  </article>
-                  <article class="problem-row">
-                    <button type="button" class="problem-summary" data-problem-toggle><span class="problem-icon is-warning"><svg><use href="#i-image"/></svg></span><span><strong>16 images need a vision model</strong><small>AI enrichment · filenames remain searchable</small></span><span class="problem-state is-waiting">Waiting for model</span><svg class="problem-chevron"><use href="#i-down"/></svg></button>
-                    <div class="problem-detail"><p>The current enrichment model cannot understand images. Choose a compatible model or skip image descriptions.</p><footer><button type="button" class="button quiet">Skip image descriptions</button><button type="button" class="button primary" data-open-settings>Choose model</button></footer></div>
-                  </article>
-                  <article class="problem-row">
-                    <button type="button" class="problem-summary" data-problem-toggle><span class="problem-icon is-warning"><svg><use href="#i-refresh"/></svg></span><span><strong>1 DOCX changed while indexing</strong><small>Semantic index · the previous result was kept</small></span><span class="problem-state is-safe">Safe to retry</span><svg class="problem-chevron"><use href="#i-down"/></svg></button>
-                    <div class="problem-detail"><p>The source changed before the new embedding was saved. Peak kept the last valid result and will retry the latest version.</p><footer><button type="button" class="button primary" data-action="retry">Retry 1 file</button></footer></div>
-                  </article>
-                </section>
-              </div>
-            </section>
-
-            <section class="workspace-view" data-view="history" hidden>
-              <div class="content-wrap detail-view narrow-view">
-                <header class="view-header"><div><span class="eyebrow">Run records</span><h2>History</h2><p>Every automatic update, rebuild and recovery run keeps its own result.</p></div><button type="button" class="button quiet"><svg><use href="#i-filter"/></svg>All runs</button></header>
-                <section class="panel history-list">
-                  <article class="history-row is-live"><span class="history-status"><i></i></span><span><strong>First full index</strong><small>Whole vault · Full depth · Started today at 22:23</small></span><span><b>Running</b><small>72% · 3 issues</small></span><button type="button" data-view-target="run">Open</button></article>
-                  <article class="history-row"><span class="history-status is-success"><svg><use href="#i-check"/></svg></span><span><strong>Incremental update</strong><small>38 changed files · Yesterday at 09:14</small></span><span><b>Completed</b><small>1m 42s · no issues</small></span><button type="button">Receipt</button></article>
-                  <article class="history-row"><span class="history-status is-warning"><svg><use href="#i-alert"/></svg></span><span><strong>LLM enrichment</strong><small>Pending summaries · Aug 9 at 18:02</small></span><span><b>Partial</b><small>286 completed · 12 skipped</small></span><button type="button">Receipt</button></article>
-                  <article class="history-row"><span class="history-status is-success"><svg><use href="#i-check"/></svg></span><span><strong>Relationship refresh</strong><small>File Atlas and hubs · Aug 9 at 07:31</small></span><span><b>Completed</b><small>42s · 18,406 edges</small></span><button type="button">Receipt</button></article>
-                </section>
-              </div>
-            </section>
-
-            <section class="workspace-view" data-view="content" hidden>
-              <div class="content-wrap detail-view narrow-view">
-                <header class="view-header"><div><span class="eyebrow">Coverage by type</span><h2>Content types</h2><p>This page explains what the index can read. Long-term inclusion rules are changed in Settings.</p></div><button type="button" class="button quiet" data-open-settings><svg><use href="#i-settings"/></svg>Change policies</button></header>
-                <section class="policy-note"><svg><use href="#i-settings"/></svg><span><strong>These are status facts, not duplicate settings.</strong><small>“Can generate”, “can import” and “can index” are tracked separately.</small></span></section>
-                <section class="panel type-list">
-                  <div class="type-head"><span>Content</span><span>Read</span><span>Full text</span><span>Semantic</span><span>AI enrich</span><span>Current policy</span></div>
-                  <article><span><svg><use href="#i-file"/></svg><strong>Markdown</strong><small>4,721 files</small></span><b class="yes">Yes</b><b class="yes">Yes</b><b class="yes">Yes</b><b class="yes">Yes</b><em>Included</em></article>
-                  <article><span><svg><use href="#i-file"/></svg><strong>PDF</strong><small>78 files · 2 errors</small></span><b class="yes">Yes</b><b class="yes">Yes</b><b class="yes">Yes</b><b class="yes">Yes</b><em>Included</em></article>
-                  <article><span><svg><use href="#i-file"/></svg><strong>DOCX / PPTX</strong><small>18 files · 1 stale</small></span><b class="yes">Yes</b><b class="yes">Yes</b><b class="yes">Yes</b><b class="yes">Yes</b><em>Included</em></article>
-                  <article><span><svg><use href="#i-image"/></svg><strong>Images</strong><small>43 files · model needed</small></span><b class="yes">Yes</b><b>Partial</b><b>Partial</b><b>Waiting</b><em>Included</em></article>
-                  <article><span><svg><use href="#i-box"/></svg><strong>Peak Sheet</strong><small>7 datasets</small></span><b>Tool</b><b class="no">No</b><b class="no">No</b><b class="no">No</b><em>Read by Peak Sheet</em></article>
-                  <article><span><svg><use href="#i-database"/></svg><strong>AI Graph</strong><small>12 graph artifacts</small></span><b>Runtime</b><b class="no">No</b><b class="no">No</b><b class="no">No</b><em>Internal data excluded</em></article>
-                  <article><span><svg><use href="#i-file"/></svg><strong>Draw.io</strong><small>3 generated files</small></span><b class="no">No</b><b class="no">No</b><b class="no">No</b><b class="no">No</b><em>Can generate only</em></article>
-                </section>
-              </div>
-            </section>
-
-            <section class="workspace-view" data-view="folders" hidden>
-              <div class="content-wrap detail-view narrow-view">
-                <header class="view-header"><div><span class="eyebrow">Current scope</span><h2>Folders & exclusions</h2><p>See what this index includes without duplicating the saved folder rules.</p></div><button type="button" class="button quiet" data-open-settings><svg><use href="#i-settings"/></svg>Change scope</button></header>
-                <section class="panel folder-summary">
-                  <div class="scope-stat"><span><small>Vault files</small><strong>4,883</strong></span><span><small>Eligible</small><strong>4,860</strong></span><span><small>Excluded</small><strong>23</strong></span><span><small>Stale</small><strong>1</strong></span></div>
-                  <div class="folder-tree"><article><span><svg><use href="#i-folder"/></svg><strong>/</strong></span><em>4,860 included</em></article><article class="is-child"><span><svg><use href="#i-folder"/></svg><strong>.obsidian/</strong></span><em>Excluded by system</em></article><article class="is-child"><span><svg><use href="#i-folder"/></svg><strong>AI/DataStore/</strong></span><em>Peak internal data · excluded</em></article><article class="is-child"><span><svg><use href="#i-folder"/></svg><strong>Archive/private/</strong></span><em>User rule · 11 files excluded</em></article></div>
-                </section>
-              </div>
-            </section>
+          <div class="queue-footer">
+            <span><strong data-completed-today>4,102</strong> completed this run</span>
+            <span class="footer-separator"></span>
+            <span><strong data-inline-errors>2</strong> need attention after this run</span>
+            <button class="text-button" type="button" data-skip-current>Skip current document</button>
           </div>
         </section>
+
+        <aside class="current-panel" data-current-document>
+          <div class="current-kicker">
+            <span class="live-dot small"></span>
+            CURRENT DOCUMENT
+          </div>
+          <div class="current-file">
+            <div class="file-icon" data-current-extension>MD</div>
+            <div class="current-file-text">
+              <div class="current-file-name" data-current-name>Research synthesis.md</div>
+              <div class="current-file-path" data-current-path>Projects / Peak / Research</div>
+            </div>
+          </div>
+          <div class="file-facts">
+            <span data-current-size>38 KB</span>
+            <span>·</span>
+            <span data-current-chunks>5 chunks</span>
+            <span>·</span>
+            <span data-current-position>4,103 / 4,860</span>
+          </div>
+
+          <div class="document-progress">
+            <div class="document-progress-bar">
+              <span data-document-progress style="width: 52%"></span>
+            </div>
+            <span data-document-progress-label>52%</span>
+          </div>
+
+          <div class="substep-list" data-current-step>
+            <div class="substep is-complete" data-step="read">
+              <span class="substep-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9" /></svg>
+              </span>
+              <span>Read & extract text</span>
+              <span class="substep-value">Done</span>
+            </div>
+            <div class="substep is-complete" data-step="text">
+              <span class="substep-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9" /></svg>
+              </span>
+              <span>Full-text index</span>
+              <span class="substep-value">Done</span>
+            </div>
+            <div class="substep is-active" data-step="embedding">
+              <span class="substep-icon"><span class="spinner"></span></span>
+              <span>Generate embeddings</span>
+              <span class="substep-value" data-chunk-progress>3 / 5</span>
+            </div>
+            <div class="substep" data-step="enrich">
+              <span class="substep-icon"></span>
+              <span>Summary & tags</span>
+              <span class="substep-value">Waiting</span>
+            </div>
+            <div class="substep" data-step="relations">
+              <span class="substep-icon"></span>
+              <span>Find relationships</span>
+              <span class="substep-value">Waiting</span>
+            </div>
+            <div class="substep" data-step="save">
+              <span class="substep-icon"></span>
+              <span>Save index record</span>
+              <span class="substep-value">Waiting</span>
+            </div>
+          </div>
+
+          <div class="speed-card">
+            <div class="speed-card-head">
+              <div>
+                <span class="speed-label">Throughput</span>
+                <span class="speed-value" data-speed-compact>63/min</span>
+              </div>
+              <span class="speed-trend" data-speed-trend>steady</span>
+            </div>
+            <svg class="sparkline" viewBox="0 0 260 54" preserveAspectRatio="none" aria-hidden="true">
+              <path class="spark-area" data-spark-area d="M0 48 L0 34 L32 30 L64 33 L96 21 L128 25 L160 16 L192 20 L224 12 L260 15 L260 48 Z" />
+              <path class="spark-path" data-spark-path d="M0 34 L32 30 L64 33 L96 21 L128 25 L160 16 L192 20 L224 12 L260 15" />
+            </svg>
+            <div class="speed-scale"><span>5 min ago</span><span>now</span></div>
+          </div>
+        </aside>
       </div>
-    </section>
-  </main>
 
-  <div class="drawer-backdrop" data-settings-drawer hidden>
-    <aside class="settings-drawer" role="dialog" aria-modal="true" aria-label="Index settings ownership note">
-      <header><div><span class="eyebrow">Settings</span><h2>Long-term index policy</h2><p>The workspace runs and repairs tasks. Settings owns what should happen next time.</p></div><button type="button" class="icon-button" data-close-settings aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
-      <div class="drawer-group"><article><svg><use href="#i-sliders"/></svg><span><strong>Index depth</strong><small>Fast · Semantic · Full</small></span><em>Full</em></article><article><svg><use href="#i-file"/></svg><span><strong>Included content types</strong><small>Markdown, PDF, Images, Office and 4 more</small></span><em>9 types</em></article><article><svg><use href="#i-folder"/></svg><span><strong>Folders & exclusions</strong><small>3 system rules · 1 user rule</small></span><em>23 files</em></article><article><svg><use href="#i-settings"/></svg><span><strong>Knowledge models</strong><small>Embeddings, tags and summaries</small></span><em>Automatic</em></article></div>
-      <footer><button type="button" class="button quiet" data-close-settings>Stay here</button><button type="button" class="button primary" data-action="settings-toast">Open Peak Settings <svg><use href="#i-external"/></svg></button></footer>
-    </aside>
-  </div>
+      <footer class="run-footer">
+        <div class="footer-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v5M12 8h.01" />
+          </svg>
+          <span>You can close this view. Indexing continues in the background and this progress will be here when you return.</span>
+        </div>
+        <button class="text-button" type="button">Index settings</button>
+      </footer>
+    </main>
 
-  <div class="toast" data-toast hidden><svg><use href="#i-check"/></svg><span data-toast-copy>Mock action completed.</span></div>
-</body>
+    <script src="./mock.js"></script>
+  </body>
 </html>
