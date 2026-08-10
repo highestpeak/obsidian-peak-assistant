@@ -15,6 +15,21 @@
 5. 运行 `node docs/ui-system/validate.mjs`；
 6. 真实交互仍按 `docs/conventions/obsidian-real-ui-qa.md` 在 Obsidian 验收。
 
+## Theme Lab 视觉覆盖板
+
+Theme Lab 除了 Foundations、共享 primitives 和代表性场景，还维护 8 个产品派生的中等保真覆盖板。它们固定信息结构、内容与几何，用同一套 `--pk-*` 语义 token 检查整体主题，而不是复刻第二套产品：
+
+1. 控制条：产品 Tab、List / Tree / Graph、Compact / Detailed、工作区底栏，以及 Rest / Hover / Focus / Selected / Disabled；
+2. 输入与深度：flat、outlined、raised、error、disabled、focus 输入，以及 flat / bordered / raised / overlay surface；
+3. Report：长文本、引用、来源卡、行内 Ask / Revise / Copy 和底部动作区；
+4. Dashboard：健康总览、4 个指标卡、关系图、问题列表与 Top hubs；
+5. Composer Markdown：标题、段落、行内语法、列表、选中块、附着工具栏、callout、可编辑段落、代码和表格；
+6. File Atlas：多分区导航、正文预览、Quick actions、关键词频率和统计；
+7. Graph：两层工具栏、关系范围、布局、selected / hover / related / muted 节点与边；
+8. Long Outline：27 行分组长列表、连续选择、错误、hover 和滚动密度。
+
+新增视觉角色或高频 UI 组合时，必须先判断属于现有覆盖板还是需要新增 coverage contract，并同步扩展 `validate.mjs`。真实组件结构、数据和像素仍以 UI Inventory 与 Obsidian 实机为准。
+
 ## Codex 固定图片换肤
 
 Theme Lab 直接展示 19 个固定的 repo-local 图片槽位，覆盖 Vault Search、AI Search、Vault Intelligence、File Atlas、Composer、Composer Intelligence、Chat Studio、Settings & Usage。全部输出位于 `theme-concepts/current/*.jpg`，按产品域单列大图展示并可点击查看原始 1280×802 文件。

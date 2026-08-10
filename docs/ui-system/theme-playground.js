@@ -17,10 +17,22 @@
     button.setAttribute("aria-pressed", String(on));
   }
 
+  function selectRow(row) {
+    var scope = row.closest("[data-lab-selectable]");
+    if (!scope) return;
+    scope.querySelectorAll("[data-lab-row]").forEach(function (candidate) {
+      var selected = candidate === row;
+      candidate.dataset.selected = String(selected);
+      candidate.setAttribute("aria-selected", String(selected));
+    });
+  }
+
   document.addEventListener("click", function (event) {
     var option = event.target.closest && event.target.closest("[data-lab-option]");
     if (option) { selectOption(option); return; }
     var toggle = event.target.closest && event.target.closest("[data-lab-toggle]");
-    if (toggle) toggleSwitch(toggle);
+    if (toggle) { toggleSwitch(toggle); return; }
+    var row = event.target.closest && event.target.closest("[data-lab-row]");
+    if (row) selectRow(row);
   });
 }());

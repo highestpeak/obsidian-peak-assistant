@@ -50,7 +50,22 @@ Design System 文档不能同时承担“定义规则”“查看换肤感觉”
 - search/input、setting row、switch；
 - Rest、Hover、Focus、Selected、Disabled、Loading、Error contract。
 
-### 3.3 Representative scenes
+### 3.3 Visual coverage boards
+
+为了让 Theme 判断不局限于几个孤立控件，Theme Lab 固定维护 8 块产品派生的中等保真组合。它们共享 Theme State，但不复制生产组件的完整数据与业务逻辑：
+
+- control strips：产品 Tab、List / Tree / Graph、density、底栏动作和五态钉住对照；
+- inputs & elevation：flat / outlined / raised / error / disabled / focus，以及四级 surface 深度；
+- report & mixed content：长文本、引用、来源、行内动作与底部工作区；
+- dashboard：health banner、4 metric cards、community map、issue queue 与 top hubs；
+- Composer Markdown：标题、段落、行内语法、列表、选中块、附着动作、callout、editable paragraph、code 与 table；
+- File Atlas inspector：分区导航、正文预览、quick actions、keywords 和 statistics；
+- graph system：两级工具栏、range、layout、edge 与 selected / hover / related / muted node；
+- long outline：至少 27 行、分组、滚动、连续选择、hover、warning 与 error。
+
+每块 coverage board 必须满足：固定内容与几何；只消费 `--pk-*`；真实 hover 可操作且关键状态可固定比较；Theme Pack、Light / Dark、Density、Radius、Typography、Elevation 与 Motion 切换后同时更新。新增高频 UI 组合时必须同步补覆盖板与 `validate.mjs` 约束，避免文档悄悄退化成少量展示卡。
+
+### 3.4 Representative scenes
 
 - Search result row：层级、选中态、score 与 density；
 - Composer document block：文档表面、选区、附着动作；

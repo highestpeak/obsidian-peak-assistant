@@ -124,11 +124,20 @@ assert(new Set(documents[1].doc.themeControls).size === axes.length, "Theme Lab:
 [
   ["Foundations", "id=\"foundations\""],
   ["Primitives", "id=\"primitives\""],
+  ["Visual coverage", "id=\"coverage\""],
   ["Representative scenes", "id=\"scenes\""],
   ["Semantic colors", "role-swatches"],
   ["Type ladder", "type-specimen"],
   ["Radius and elevation", "geometry-specimen"],
   ["Actions", "primitive-row"],
+  ["Control strip coverage", "data-coverage-board=\"control-strips\""],
+  ["Input and elevation coverage", "data-coverage-board=\"inputs-elevation\""],
+  ["Report coverage", "data-coverage-board=\"report-mixed-content\""],
+  ["Dashboard coverage", "data-coverage-board=\"dashboard\""],
+  ["Composer Markdown coverage", "data-coverage-board=\"composer-markdown\""],
+  ["File Atlas inspector coverage", "data-coverage-board=\"file-atlas-inspector\""],
+  ["Graph system coverage", "data-coverage-board=\"graph-system\""],
+  ["Long outline coverage", "data-coverage-board=\"long-outline\""],
   ["Search result specimen", "result-row"],
   ["Composer specimen", "composer-block"],
   ["Chat specimen", "chat-message"],
@@ -138,6 +147,17 @@ assert(new Set(documents[1].doc.themeControls).size === axes.length, "Theme Lab:
   ["Fixed image manifest", "data-theme-image-manifest=\"ui-system/theme-concepts/manifest.json\""],
   ["Current Theme JSON", "data-theme-json"]
 ].forEach(([label, marker]) => assert(sources.labHtml.includes(marker), `Theme Lab: ${label}`));
+assert((sources.labHtml.match(/class="coverage-board"/g) || []).length === 8, "Theme Lab: renders exactly 8 visual coverage boards");
+["rest", "hover", "focus", "selected", "disabled"].forEach((state) => assert(sources.labHtml.includes(`data-state="${state}"`), `Theme Lab: pins ${state} control state`));
+["flat", "outlined", "raised", "error", "disabled", "focus"].forEach((state) => assert(sources.labHtml.includes(`data-input-state="${state}"`), `Theme Lab: covers ${state} input treatment`));
+assert((sources.labHtml.match(/class="metric-card(?:\s|\")/g) || []).length >= 4, "Theme Lab: dashboard includes at least 4 metric cards");
+assert((sources.labHtml.match(/class="report-section(?:\s|\")/g) || []).length >= 4, "Theme Lab: report includes long-form sections");
+["markdown-lead", "markdown-selected-block", "block-action-bar", "markdown-callout", "markdown-editable", "markdown-code", "markdown-table"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Composer covers ${marker}`));
+["atlas-toolbar", "atlas-preview", "atlas-inspector", "quick-actions", "keyword-list", "stats-row"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: File Atlas covers ${marker}`));
+["graph-control-row", "graph-layout-row", "graph-system__canvas", "graph-system-node--selected", "graph-system-node--hover", "graph-system-node--muted"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Graph covers ${marker}`));
+assert((sources.labHtml.match(/class="outline-row(?:\s|\")/g) || []).length >= 27, "Theme Lab: long outline includes at least 27 rows");
+assert(sources.labRuntime.includes("selectRow") && sources.labRuntime.includes("data-lab-row"), "Theme Lab: long outline rows are interactive");
+assert(sources.labCss.includes(".report-section:hover") && sources.labCss.includes(".outline-row:hover") && sources.labCss.includes(".quick-actions button:hover"), "Theme Lab: representative hover states are implemented");
 assert(sources.labHtml.includes("不复刻完整 Search、Composer 或 Graph"), "Theme Lab: explicitly rejects product parity claim");
 assert(!sources.labHtml.includes("type=\"file\"") && !sources.labHtml.includes("data-copy-image-prompt"), "Theme Lab: has no upload or Prompt-transfer UI");
 assert(!/(?:FileReader|readAsDataURL|fetch\(|XMLHttpRequest|https?:\/\/)/.test(sources.labRuntime), "Theme Lab: runtime has no image transfer or network path");
