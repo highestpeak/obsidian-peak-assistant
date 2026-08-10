@@ -6,7 +6,7 @@
 >
 > 状态：未开始
 >
-> 前置任务：[公开文档包](04-public-documentation-package.md)、[Owner Dogfood](05-owner-dogfood.md)
+> 前置任务：[公开文档包](04-public-documentation-package.md)、[Owner Dogfood](05-owner-dogfood.md)、[网站与首页演示视频](06-website-and-demo-videos.md)
 
 ## 任务目标
 

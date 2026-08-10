@@ -6,7 +6,7 @@
 >
 > 状态：未开始
 >
-> 前置任务：[上线范围与历史任务审计](01-release-scope-and-task-audit.md)、[Owner Dogfood](05-owner-dogfood.md)
+> 前置任务：[剩余功能收口](16-remaining-feature-closure.md)、[README 与公开文档包](04-public-documentation-package.md)、[Owner Dogfood](05-owner-dogfood.md)
 
 ## 任务目标
 

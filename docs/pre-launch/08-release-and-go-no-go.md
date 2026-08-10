@@ -6,7 +6,7 @@
 >
 > 状态：未开始
 >
-> 前置任务：[外部试用](07-external-beta.md)
+> 前置任务：[外部试用](07-external-beta.md)、[最终模块化](17-final-modularity-and-boundary-review.md)、[Owner 代码接管](02-owner-code-readiness.md)、[Owner 人工通读](10-owner-manual-code-and-doc-reading.md)
 
 ## 任务目标
 
@@ -72,6 +72,8 @@
 - [ ] 私有文档与 Git 历史风险已经处理。
 - [ ] README、公开文档、贡献指南和数据说明已经完成。
 - [ ] 网站与视频使用同一个版本真值。
+- [ ] 最终模块化与代码边界梳理已经完成。
+- [ ] Owner 已人工通读最终 first-party 文档与代码。
 - [ ] Owner 能解释并维护核心代码和数据流。
 - [ ] Owner 能执行发布失败回滚。
 

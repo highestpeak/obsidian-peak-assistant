@@ -20,19 +20,16 @@
 
 ## 执行顺序
 
-### 范围与接管
+### 阶段一 · 范围冻结与剩余功能收口
 
 - [ ] **P0** · [01 · 上线范围与历史任务审计](pre-launch/01-release-scope-and-task-audit.md)
   - 冻结首次公开版本。
   - 判决 Roadmap、Codex/Claude session、worktree 和历史任务。
-- [ ] **P0/P1 · 持续工作** · [02 · Owner 代码接管与理解](pre-launch/02-owner-code-readiness.md)
-  - 掌握核心 runtime、数据真值、验证与排障。
-  - 每完成一个功能收口，同步完成该功能的代码走读。
-- [ ] **P0/P1 · Owner 人工任务** · [10 · Owner 人工通读全部文档与代码](pre-launch/10-owner-manual-code-and-doc-reading.md)
-  - Owner 主动阅读全部 first-party 文档与代码，不由 AI 摘要代替。
-  - 优先核对 Landing Page，并保留相关 Codex 调研的直达链接。
+- [ ] **P0 · 功能收口** · [16 · 剩余功能完成与 Release Candidate 冻结](pre-launch/16-remaining-feature-closure.md)
+  - 只完成审计后明确进入首次公开版本的剩余功能、历史任务和真实验收。
+  - 功能范围稳定后再开始 Landing Page、README 和公开材料定稿。
 
-### 公开材料准备
+### 阶段二 · Landing Page、README 与公开材料
 
 - [ ] **P0** · [03 · 公开仓库边界与英文化](pre-launch/03-public-repository-and-english.md)
   - 分离私有历史与公开内容。
@@ -47,7 +44,7 @@
   - 把 Codex、Claude Code 等工具生成的大量 HTML、mock、截图和图片，包装为可整理、关联和继续工作的本地项目材料。
   - 只有 HTML/Image File Workspace 真正交付并通过真实验收后才启用强主张。
 
-### 真实使用验证
+### 阶段三 · 稳定版本验证与公开材料定稿
 
 - [ ] **P0/P1** · [05 · 独立知识库完整 Dogfood](pre-launch/05-owner-dogfood.md)
   - Owner 在隔离 Vault 中批量使用全部公开功能。
@@ -59,7 +56,19 @@
   - 让未参与开发的人仅依靠公开材料完成核心任务。
   - 根据真实卡点修复产品、网站和文档。
 
-### 发布
+### 阶段四 · 最终模块化与 Owner 接管
+
+- [ ] **P1 · 最终架构收口** · [17 · 最终模块化与代码边界梳理](pre-launch/17-final-modularity-and-boundary-review.md)
+  - 在功能、Landing Page、README、Dogfood 和朋友试用完成后，再检查模块边界、重复 runtime、旧路径和高风险耦合。
+  - 只做有证据、可完整复测的必要收口，不在最后阶段重新展开产品范围。
+- [ ] **P0/P1 · Owner 接管任务** · [02 · Owner 代码接管与理解](pre-launch/02-owner-code-readiness.md)
+  - 基于稳定的 Release Candidate 掌握核心 runtime、数据真值、验证与排障。
+  - 确认 Owner 能独立评审 AI 生成的改动和处理发布故障。
+- [ ] **P0/P1 · Owner 人工任务** · [10 · Owner 人工通读全部文档与代码](pre-launch/10-owner-manual-code-and-doc-reading.md)
+  - 在最终模块化和公开材料定稿后，Owner 主动阅读全部 first-party 文档与代码。
+  - AI 摘要不能代替原文阅读；相关 Codex 调研链接只作为跳转入口。
+
+### 阶段五 · 发布
 
 - [ ] **P0** · [08 · 发布工程与 Go / No-Go](pre-launch/08-release-and-go-no-go.md)
   - 验证最终 artifact、版本、License、内容和回滚。
@@ -88,12 +97,14 @@
 
 - [ ] 首次公开版本的功能、平台和限制已经冻结。
 - [ ] 所有历史 task/session 都有明确判决。
+- [ ] 所有纳入首次公开版本的剩余功能已经完成并通过对应验收。
 - [ ] Owner 完成独立 Vault 全量 dogfood。
 - [ ] 至少一位外部试用者完成核心流程。
 - [ ] 所有公开主张具有真实版本和验收证据。
 - [ ] 私有文档与 Git 历史风险已经处理。
 - [ ] README、公开文档、贡献指南和数据说明已经完成。
 - [ ] 网站与视频使用同一个版本真值。
+- [ ] 最终模块化与代码边界梳理已经完成，没有借收口重新扩大功能范围。
 - [ ] Owner 已完成人工通读文档与代码任务。
 - [ ] Owner 能解释并维护核心代码和数据流。
 - [ ] Owner 能执行发布失败回滚。

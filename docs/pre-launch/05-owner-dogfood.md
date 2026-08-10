@@ -6,7 +6,7 @@
 >
 > 状态：未开始
 >
-> 前置任务：[上线范围与历史任务审计](01-release-scope-and-task-audit.md)
+> 前置任务：[剩余功能完成与 Release Candidate 冻结](16-remaining-feature-closure.md)
 
 ## 任务目标
 
