@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peak Assistant · Settings</title>
+    <link rel="stylesheet" href="./mock.css" />
+  </head>
+  <body class="settings-artifact">
+    <svg class="symbol-sprite" aria-hidden="true">
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m16.5 16.5 4 4" /></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="m4 10 8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1Z" /></symbol>
+      <symbol id="i-plug" viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v2a6 6 0 0 1-6 6v5M9 21h6" /></symbol>
+      <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="18" r="2" /><path d="M8 6h4a4 4 0 0 1 4 4v0a4 4 0 0 1-4 4H8M10 11l-3 3 3 3" /></symbol>
+      <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" /></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6Z" /><path d="m8.5 12 2.2 2.2 4.8-5" /></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /></symbol>
+      <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.2a1.8 1.8 0 0 0 1.3-3l-.5-.5a1.5 1.5 0 0 1 1-2.5h2a4 4 0 0 0 4-4c0-4.4-4-8-9-8Z" /><circle cx="7.5" cy="10" r="1" /><circle cx="10" cy="6.8" r="1" /><circle cx="15" cy="7.5" r="1" /></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24"><path d="m9 7-5 5 5 5M15 7l5 5-5 5M13 4l-2 16" /></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4Z" /><path d="M12 9v4M12 17h.01" /></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4Z" /></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z" /><path d="M14 3v5h4" /></symbol>
+      <symbol id="i-graph" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="7" r="2" /><circle cx="8" cy="18" r="2" /><circle cx="18" cy="17" r="2" /><path d="m8 7 8-1M7 8l1 8M10 18h6M17 9l1 6" /></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m5 18 5-5 3 3 2-2 4 4" /></symbol>
+      <symbol id="i-agent" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="3" /><path d="M12 3v4M8 12h.01M16 12h.01M9 16h6" /></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></symbol>
+    </svg>
+
+    <div class="artifact-bar">
+      <span class="artifact-mark"></span>
+      <span>Unified Settings + Onboarding mock · design only</span>
+      <nav>
+        <a class="is-current" href="./settings.html">Settings</a>
+        <a href="./onboarding.html">Onboarding</a>
+      </nav>
+    </div>
+
+    <main class="settings-frame">
+      <header class="settings-topbar">
+        <div class="peak-wordmark"><span class="peak-mark">P</span><strong>Peak Settings</strong></div>
+        <label class="settings-search">
+          <svg><use href="#i-search" /></svg>
+          <input type="search" placeholder="Search settings, features, or providers" data-settings-search />
+          <kbd>⌘ K</kbd>
+          <div class="search-popover" data-search-popover hidden>
+            <span class="search-heading">SETTINGS</span>
+            <button data-search-result data-panel="connections" data-query="openai provider api connection"><span>OpenAI connection</span><small>Connections</small></button>
+            <button data-search-result data-panel="connections" data-query="openrouter models catalog"><span>OpenRouter catalog</span><small>Connections</small></button>
+            <button data-search-result data-panel="models" data-query="composer copilot block prompt model"><span>Composer Copilot models</span><small>Models by feature</small></button>
+            <button data-search-result data-panel="knowledge" data-query="index embedding file types search"><span>Knowledge Index</span><small>Knowledge & Search</small></button>
+            <button data-search-result data-panel="agent" data-query="hermes codex claude code permission agent"><span>Agent & permissions</span><small>Agent & Tools</small></button>
+            <span class="search-empty" data-search-empty hidden>No matching setting</span>
+          </div>
+        </label>
+        <div class="topbar-meta"><span class="saved-state"><svg><use href="#i-check" /></svg>Saved</span><button class="icon-button" aria-label="More"><svg><use href="#i-more" /></svg></button></div>
+      </header>
+
+      <div class="settings-body">
+        <aside class="settings-sidebar">
+          <div class="vault-identity"><span>PA</span><div><strong>Peak Assistant</strong><small>Highest Peak vault</small></div></div>
+          <nav class="settings-nav">
+            <button data-panel-target="overview"><svg><use href="#i-home" /></svg><span>Overview</span><i class="nav-status ready"></i></button>
+            <span class="nav-group-label">AI & KNOWLEDGE</span>
+            <button data-panel-target="connections"><svg><use href="#i-plug" /></svg><span>Connections</span><em>4</em></button>
+            <button class="is-active" data-panel-target="models"><svg><use href="#i-route" /></svg><span>Models by feature</span></button>
+            <button data-panel-target="knowledge"><svg><use href="#i-database" /></svg><span>Knowledge & Search</span><i class="nav-status running"></i></button>
+            <button data-panel-target="agent"><svg><use href="#i-shield" /></svg><span>Agent & Tools</span></button>
+            <span class="nav-group-label">PRODUCT</span>
+            <button data-panel-target="features"><svg><use href="#i-grid" /></svg><span>Feature settings</span></button>
+            <button data-panel-target="data"><svg><use href="#i-folder" /></svg><span>Files, data & privacy</span></button>
+            <button data-panel-target="appearance"><svg><use href="#i-palette" /></svg><span>Appearance</span></button>
+            <span class="nav-group-label">SYSTEM</span>
+            <button data-panel-target="developer"><svg><use href="#i-code" /></svg><span>Advanced & diagnostics</span></button>
+          </nav>
+          <div class="sidebar-bottom">
+            <button data-open-setup><span class="setup-ring">3/4</span><span><strong>Finish setup</strong><small>First task not tried</small></span><svg><use href="#i-chevron" /></svg></button>
+            <span>Peak Assistant · Preview design</span>
+          </div>
+        </aside>
+
+        <section class="settings-content">
+          <div class="settings-panel" data-settings-panel="overview" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">SYSTEM STATUS</span><h1>Peak is ready for everyday work</h1><p>See what works now and fix only the things that need attention.</p></div><button class="secondary-button" data-run-check>Check again</button></header>
+            <div class="readiness-hero ready"><span class="readiness-icon"><svg><use href="#i-check" /></svg></span><div><strong>Core features are ready</strong><span>Chat, Composer, Search and local indexing were checked 12 minutes ago.</span></div><button class="text-button">View check details</button></div>
+            <div class="status-grid">
+              <button class="status-card" data-panel-jump="connections"><span><svg><use href="#i-chat" /></svg>AI conversations</span><strong>Ready</strong><small>4 verified connections</small></button>
+              <button class="status-card" data-panel-jump="knowledge"><span><svg><use href="#i-database" /></svg>Knowledge Index</span><strong>Updating</strong><small>84.4% · Search available</small></button>
+              <button class="status-card" data-panel-jump="agent"><span><svg><use href="#i-agent" /></svg>Agent work</span><strong>Ready</strong><small>Hermes + 1 execution route</small></button>
+              <button class="status-card" data-panel-jump="features"><span><svg><use href="#i-image" /></svg>Media creation</span><strong>Needs setup</strong><small>Image route available</small></button>
+            </div>
+            <section class="settings-section"><div class="section-heading"><div><h2>Common changes</h2><p>Frequently used controls, linked to their owning section.</p></div></div><div class="setting-group compact-links"><button data-panel-jump="models"><span>Choose models for Composer or AI Search</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="knowledge"><span>Change indexed file types and folders</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="agent"><span>Review Agent write permissions</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="data"><span>Change generated content locations</span><svg><use href="#i-chevron" /></svg></button></div></section>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="connections" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">AVAILABLE AI</span><h1>Connections</h1><p>Connect accounts and local runtimes. Model choices live with the features that use them.</p></div><button class="primary-button" data-add-connection><svg><use href="#i-plug" /></svg>Add connection</button></header>
+            <div class="connection-summary"><span><strong>4 ready</strong><small>Verified in the last hour</small></span><span><strong>2 need setup</strong><small>Codex and Claude Code adapters</small></span><button class="text-button" data-run-check>Verify all</button></div>
+            <section class="settings-section"><div class="section-heading"><div><h2>Primary connections</h2><p>The six connection types supported by the launch design.</p></div></div><div class="connection-grid">
+              <button class="connection-card"><span class="provider-monogram">OA</span><span class="connection-copy"><strong>OpenAI</strong><small>Conversation, files, embeddings, images</small></span><span class="state-pill ready"><i></i>Ready</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
+              <button class="connection-card"><span class="provider-monogram">AN</span><span class="connection-copy"><strong>Anthropic</strong><small>Conversation, tools and long context</small></span><span class="state-pill ready"><i></i>Ready</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
+              <button class="connection-card"><span class="provider-monogram">OR</span><span class="connection-copy"><strong>OpenRouter</strong><small>Online catalog · checked 18 min ago</small></span><span class="state-pill ready"><i></i>Ready</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
+              <button class="connection-card"><span class="provider-monogram">OL</span><span class="connection-copy"><strong>Ollama</strong><small>Local service · 6 models detected</small></span><span class="state-pill local"><i></i>Local</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
+              <button class="connection-card"><span class="provider-monogram">CX</span><span class="connection-copy"><strong>Codex</strong><small>Conversation + Agent capability checked separately</small></span><span class="state-pill action"><i></i>Setup</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
+              <button class="connection-card"><span class="provider-monogram">CC</span><span class="connection-copy"><strong>Claude Code</strong><small>Conversation + Agent capability checked separately</small></span><span class="state-pill action"><i></i>Setup</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
+            </div></section>
+            <section class="settings-section"><div class="section-heading"><div><h2>Additional connections</h2><p>Media services, compatible endpoints and lower-frequency providers.</p></div></div><div class="setting-group"><button class="setting-row-button"><span><strong>Media generation services</strong><small>OpenAI native media and fal.ai</small></span><em>1 connected</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Compatible endpoints</strong><small>LiteLLM, LM Studio, vLLM or custom OpenAI-compatible APIs</small></span><em>Advanced</em><svg><use href="#i-chevron" /></svg></button></div></section>
+          </div>
+
+          <div class="settings-panel is-active" data-settings-panel="models">
+            <header class="content-header"><div><span class="content-eyebrow">TASK DEFAULTS</span><h1>Models by feature</h1><p>Start with the product you recognize. Drill down only when one action needs a different model.</p></div><button class="secondary-button" data-reset-models>Restore automatic choices</button></header>
+            <div class="readiness-strip"><svg><use href="#i-check" /></svg><span><strong>Peak automatic selection is active</strong> · 4 verified connections · model catalog checked 18 minutes ago</span><button class="text-button" data-panel-jump="connections">Connections</button></div>
+            <section class="settings-section model-tree-section">
+              <div class="section-heading"><div><h2>Product features</h2><p>Each feature inherits a compatible task default unless you fix a different choice.</p></div><span class="legend-note"><i></i>Inherited</span></div>
+              <div class="model-tree">
+                <button class="feature-row" data-tree-toggle="chat"><span class="feature-icon"><svg><use href="#i-chat" /></svg></span><span class="feature-copy"><strong>Chat Studio</strong><small>Conversation, assistants, projects and attachments</small></span><span class="effective-model"><small>Automatic</small><strong>OpenAI · GPT-5</strong></span><svg class="tree-chevron"><use href="#i-chevron" /></svg></button>
+                <div class="feature-children" data-tree-children="chat" hidden><button><span>Normal conversation</span><em>Inherits Chat Studio</em></button><button><span>Question rewrite & follow-ups</span><em>Inherits Chat Studio</em></button><button><span>Plans, projects & assistants</span><em>Inherits Chat Studio</em></button><button><span>Web and attachment tasks</span><em>Automatic · capability matched</em></button></div>
+
+                <button class="feature-row is-open" data-tree-toggle="composer"><span class="feature-icon"><svg><use href="#i-file" /></svg></span><span class="feature-copy"><strong>Composer & Copilot</strong><small>Work on documents, selections and structured blocks</small></span><span class="effective-model"><small>Automatic</small><strong>Anthropic · Claude Sonnet</strong></span><svg class="tree-chevron"><use href="#i-chevron" /></svg></button>
+                <div class="feature-children is-open" data-tree-children="composer">
+                  <button><span>Whole-document actions</span><em>Inherits Composer</em></button>
+                  <button class="is-selected is-open" data-tree-toggle="block-actions"><span>Content block actions</span><em>4 action groups</em><svg class="tree-chevron"><use href="#i-chevron" /></svg></button>
+                  <div class="action-groups is-open" data-tree-children="block-actions">
+                    <button><span><strong>Text, headings, lists & tasks</strong><small>Rewrite, explain, continue and restructure</small></span><em>Inherits · Claude Sonnet</em></button>
+                    <button><span><strong>Tables, formulas & charts</strong><small>Explain, transform and produce structured patches</small></span><em>Automatic · structured output</em></button>
+                    <button><span><strong>Code, Mermaid & native objects</strong><small>Review, explain and generate typed changes</small></span><em>Automatic · tool capable</em></button>
+                    <button><span><strong>Images & document properties</strong><small>Understand media or update guarded metadata</small></span><em>Automatic · vision when needed</em></button>
+                  </div>
+                  <button><span>Document and Vault checks</span><em>Inherits knowledge processing</em></button>
+                </div>
+
+                <button class="feature-row" data-tree-toggle="search"><span class="feature-icon"><svg><use href="#i-search" /></svg></span><span class="feature-copy"><strong>Vault Search & AI Search</strong><small>Lookup, planning, evidence collection and report writing</small></span><span class="effective-model"><small>Mixed</small><strong>Local search + automatic AI</strong></span><svg class="tree-chevron"><use href="#i-chevron" /></svg></button>
+                <div class="feature-children" data-tree-children="search" hidden><button><span>Basic Vault search</span><em>No generative model</em></button><button><span>Rewrite search question</span><em>Automatic</em></button><button><span>AI Search planner</span><em>Automatic · tools required</em></button><button><span>Report writer and follow-up</span><em>Automatic · long context</em></button></div>
+
+                <button class="feature-row" data-tree-toggle="atlas"><span class="feature-icon"><svg><use href="#i-graph" /></svg></span><span class="feature-copy"><strong>File Atlas & AI Graph</strong><small>Browse relationships, explain clusters and create graph artifacts</small></span><span class="effective-model"><small>Mixed</small><strong>Local graph + automatic AI</strong></span><svg class="tree-chevron"><use href="#i-chevron" /></svg></button>
+                <div class="feature-children" data-tree-children="atlas" hidden><button><span>Browse and filter relationships</span><em>No generative model</em></button><button><span>Explain document neighborhood</span><em>Automatic</em></button><button><span>AI Graph creation</span><em>Automatic · structured output</em></button></div>
+
+                <button class="feature-row" data-tree-toggle="agent"><span class="feature-icon"><svg><use href="#i-agent" /></svg></span><span class="feature-copy"><strong>Agent & Wizard</strong><small>Multi-step work, tools, confirmation and escalation</small></span><span class="effective-model"><small>Peak Hermes</small><strong>Automatic execution route</strong></span><svg class="tree-chevron"><use href="#i-chevron" /></svg></button>
+                <div class="feature-children" data-tree-children="agent" hidden><button><span>Main Agent task</span><em>Hermes + compatible execution route</em></button><button><span>Fast tool helper</span><em>Automatic</em></button><button><span>Use stronger model when needed</span><em>Allowed · maximum 2 upgrades</em></button></div>
+
+                <button class="feature-row" data-tree-toggle="media"><span class="feature-icon"><svg><use href="#i-image" /></svg></span><span class="feature-copy"><strong>Create media</strong><small>Images, video, music and speech stay in separate catalogs</small></span><span class="effective-model"><small>Partial setup</small><strong>Images ready</strong></span><svg class="tree-chevron"><use href="#i-chevron" /></svg></button>
+                <div class="feature-children" data-tree-children="media" hidden><button><span>Image generation & editing</span><em>OpenAI · GPT Image</em></button><button><span>Video generation</span><em>Needs connection</em></button><button><span>Music generation</span><em>Needs connection</em></button><button><span>Speech generation</span><em>Automatic · OpenAI</em></button></div>
+              </div>
+            </section>
+            <section class="settings-section"><div class="section-heading"><div><h2>Task-wide defaults</h2><p>Used only when a product feature has no more specific choice.</p></div></div><div class="setting-group"><button class="setting-row-button"><span><strong>Conversation & writing</strong><small>Chat Studio, Composer Copilot and quick assist</small></span><em>Automatic</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Research & web</strong><small>Planning, web tools, evidence and report writing</small></span><em>Automatic</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Knowledge processing</strong><small>Embeddings and Vault intelligence are managed separately</small></span><em>2 routes</em><svg><use href="#i-chevron" /></svg></button></div></section>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="knowledge" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">VAULT READINESS</span><h1>Knowledge & Search</h1><p>Choose what becomes searchable and how Peak keeps the index current.</p></div><a class="primary-button" href="../knowledge-index-workspace-2026-08-11/index.html">Open index progress</a></header>
+            <div class="index-status-card"><div class="index-status-top"><span><i class="live-dot"></i><strong>Updating in the background</strong></span><em>84.4%</em></div><div class="mini-progress"><span style="width:84.4%"></span></div><div class="index-facts"><span><strong>4,102 / 4,860</strong> documents</span><span><strong>Text search</strong> ready</span><span><strong>Semantic search</strong> updating</span><span><strong>13 min</strong> remaining</span></div></div>
+            <section class="settings-section"><div class="section-heading"><div><h2>Index depth</h2><p>Choose the lowest level that supports the work you want to do.</p></div></div><div class="segmented-control" data-segmented><button>Fast</button><button class="is-selected">Semantic</button><button>Full knowledge</button></div><div class="selection-explainer"><strong>Semantic</strong><span>Full-text search plus embeddings for meaning-based discovery. Summaries and AI tags remain optional.</span></div></section>
+            <section class="settings-section"><div class="section-heading"><div><h2>Content included</h2><p>Only readable user content enters the document index.</p></div></div><div class="setting-group"><button class="setting-row-button"><span><strong>File types</strong><small>Markdown, PDF, images and Excalidraw are included</small></span><em>4 included</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Folders and exclusions</strong><small>System folders and Peak machine data are excluded</small></span><em>6 rules</em><svg><use href="#i-chevron" /></svg></button><label class="setting-row-control"><span><strong>Keep changed files up to date</strong><small>Update the index when Vault content changes</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label></div></section>
+            <details class="advanced-disclosure"><summary>Advanced search quality</summary><div><label>Change detection interval<select><option>Automatic · 5 seconds</option><option>15 seconds</option><option>Manual only</option></select></label><label>Search result reranking<select><option>Automatic</option><option>Always use AI reranking</option><option>Off</option></select></label><button class="danger-text">Rebuild derived index data…</button></div></details>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="agent" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">SAFE DELEGATION</span><h1>Agent & Tools</h1><p>Peak Hermes owns the workflow, permissions and run record. Connections supply compatible models or execution capability.</p></div></header>
+            <div class="readiness-hero ready"><span class="readiness-icon"><svg><use href="#i-agent" /></svg></span><div><strong>Peak Hermes is ready</strong><span>Tools, stop controls and one execution route were verified 24 minutes ago.</span></div><button class="text-button">View last check</button></div>
+            <section class="settings-section"><div class="section-heading"><div><h2>Default permissions</h2><p>These are long-term defaults. Every high-impact action can still request confirmation.</p></div></div><div class="setting-group"><label class="setting-row-control"><span><strong>Read files in this Vault</strong><small>Allow Agent tasks to inspect user-selected and relevant files</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label><label class="setting-row-control"><span><strong>Edit after showing a review</strong><small>Prepare changes, show the diff, then wait for approval</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label><label class="setting-row-control"><span><strong>Use web and connected tools</strong><small>Only tools enabled below can be called</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label></div></section>
+            <section class="settings-section"><div class="section-heading"><div><h2>Execution</h2><p>Peak chooses a compatible route for each task.</p></div></div><div class="setting-group"><button class="setting-row-button"><span><strong>Preferred execution route</strong><small>Codex and Claude Code capability is verified separately</small></span><em>Automatic</em><svg><use href="#i-chevron" /></svg></button><label class="setting-row-control"><span><strong>Use a stronger model when needed</strong><small>Still follows budget and confirmation rules</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label><button class="setting-row-button"><span><strong>Connected tools and Skills</strong><small>4 tools · 7 Skills available</small></span><em>Manage</em><svg><use href="#i-chevron" /></svg></button></div></section>
+            <details class="advanced-disclosure"><summary>Advanced Agent controls</summary><div><label>Maximum automatic upgrades<select><option>2 upgrades</option><option>1 upgrade</option><option>3 upgrades</option></select></label><label>Task timeout<select><option>Automatic</option><option>15 minutes</option><option>30 minutes</option></select></label><label class="inline-check"><input type="checkbox" />Allow configured hooks</label></div></details>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="features" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">PRODUCT BEHAVIOR</span><h1>Feature settings</h1><p>Settings are grouped by the product surface where their effect is visible.</p></div></header>
+            <div class="feature-settings-grid">
+              <button><span class="feature-icon"><svg><use href="#i-chat" /></svg></span><span><strong>Chat Studio</strong><small>Conversation defaults, assistants, attachments and history</small></span><svg><use href="#i-chevron" /></svg></button>
+              <button><span class="feature-icon"><svg><use href="#i-file" /></svg></span><span><strong>Composer & Copilot</strong><small>Open behavior, suggestions, write safety and history</small></span><svg><use href="#i-chevron" /></svg></button>
+              <button><span class="feature-icon"><svg><use href="#i-search" /></svg></span><span><strong>AI Search</strong><small>Report saving, citations, history and web access</small></span><svg><use href="#i-chevron" /></svg></button>
+              <button><span class="feature-icon"><svg><use href="#i-graph" /></svg></span><span><strong>File Atlas & AI Graph</strong><small>Relationship display, graph defaults and artifact locations</small></span><svg><use href="#i-chevron" /></svg></button>
+              <button><span class="feature-icon"><svg><use href="#i-eye" /></svg></span><span><strong>Ambient & related notes</strong><small>Suggestion timing, explanation and brief behavior</small></span><svg><use href="#i-chevron" /></svg></button>
+              <button><span class="feature-icon"><svg><use href="#i-image" /></svg></span><span><strong>Media creation</strong><small>Image, video, music, speech, routes and output locations</small></span><svg><use href="#i-chevron" /></svg></button>
+            </div>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="data" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">OWNERSHIP & STORAGE</span><h1>Files, data & privacy</h1><p>Understand where Peak stores user content, durable records and rebuildable local data.</p></div></header>
+            <section class="settings-section"><div class="section-heading"><div><h2>Generated content</h2><p>User-owned outputs remain easy to find in the Vault.</p></div></div><div class="setting-group"><button class="setting-row-button"><span><strong>Generated images</strong><small>Peak/Media/Images</small></span><em>Change</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Reports and extracts</strong><small>Peak/Artifacts</small></span><em>Change</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>DataStore location</strong><small>Machine records and local derived data</small></span><em>Default</em><svg><use href="#i-chevron" /></svg></button></div></section>
+            <section class="settings-section"><div class="section-heading"><div><h2>Privacy & retention</h2><p>Provider-backed actions may send only the context selected for that task.</p></div></div><div class="setting-group"><label class="setting-row-control"><span><strong>Keep run receipts</strong><small>Record the effective model, cost estimate and result status</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label><button class="setting-row-button"><span><strong>Conversation retention</strong><small>Keep until I delete it</small></span><em>Change</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Provider data summary</strong><small>See which connected services may receive selected content</small></span><em>Review</em><svg><use href="#i-chevron" /></svg></button></div></section>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="appearance" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">DISPLAY</span><h1>Appearance</h1><p>Peak follows Obsidian by default and exposes only preferences that work across the product.</p></div></header>
+            <section class="settings-section"><div class="setting-group"><label class="setting-row-control select-row"><span><strong>Theme</strong><small>Use the current Obsidian theme or a stable Peak fallback</small></span><select><option>Follow Obsidian</option><option>Light</option><option>Dark</option></select></label><label class="setting-row-control select-row"><span><strong>Content density</strong><small>Changes spacing across supported Peak views</small></span><select><option>Compact</option><option>Comfortable</option></select></label><label class="setting-row-control"><span><strong>Reduce motion</strong><small>Limit non-essential movement and transitions</small></span><input type="checkbox" data-switch /><i class="switch"></i></label></div></section>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="developer" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">LOW-FREQUENCY CONTROLS</span><h1>Advanced & diagnostics</h1><p>Maintenance and developer controls remain available without competing with everyday settings.</p></div></header>
+            <div class="maintenance-warning"><svg><use href="#i-alert" /></svg><span><strong>These actions can reprocess data or change runtime behavior.</strong> Peak will explain impact and ask before performing destructive or high-cost work.</span></div>
+            <section class="settings-section"><div class="setting-group"><button class="setting-row-button"><span><strong>System check</strong><small>Connections, index, storage, tools and current migrations</small></span><em>Run</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Export diagnostics</strong><small>Review exactly what will be included before saving</small></span><em>Export</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Model catalog sources</strong><small>Online catalog, valid cache and bundled fallback</small></span><em>Inspect</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Maintenance actions</strong><small>Rebuild derived data, repair migrations and clear caches</small></span><em>Open</em><svg><use href="#i-chevron" /></svg></button></div></section>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="modal-backdrop" data-connection-modal hidden>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="add-connection-title">
+        <header><div><span class="content-eyebrow">ADD CONNECTION</span><h2 id="add-connection-title">What do you want Peak to use?</h2><p>Connect the service first. Choose models later from the feature that needs them.</p></div><button class="icon-button" data-close-modal aria-label="Close">×</button></header>
+        <div class="modal-provider-list"><button><span class="provider-monogram">OA</span><span><strong>OpenAI</strong><small>Recommended for the broadest first setup</small></span><svg><use href="#i-chevron" /></svg></button><button><span class="provider-monogram">AN</span><span><strong>Anthropic</strong><small>Conversation, tools and long context</small></span><svg><use href="#i-chevron" /></svg></button><button><span class="provider-monogram">OR</span><span><strong>OpenRouter</strong><small>Access compatible models through one account</small></span><svg><use href="#i-chevron" /></svg></button><button><span class="provider-monogram">OL</span><span><strong>Ollama</strong><small>Use models installed on this computer</small></span><svg><use href="#i-chevron" /></svg></button><button><span class="provider-monogram">CX</span><span><strong>Codex</strong><small>Conversation and Agent capability verified separately</small></span><svg><use href="#i-chevron" /></svg></button><button><span class="provider-monogram">CC</span><span><strong>Claude Code</strong><small>Conversation and Agent capability verified separately</small></span><svg><use href="#i-chevron" /></svg></button></div>
+        <footer><button class="text-button" data-close-modal>Cancel</button><button class="secondary-button">More connection types</button></footer>
+      </section>
+    </div>
+
+    <div class="save-toast" data-save-toast hidden><svg><use href="#i-check" /></svg><span>Saved · applies immediately</span></div>
+    <script src="./settings.js"></script>
+  </body>
+</html>

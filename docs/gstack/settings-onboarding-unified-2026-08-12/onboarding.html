@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peak Assistant · Onboarding</title>
+    <link rel="stylesheet" href="./mock.css" />
+  </head>
+  <body class="onboarding-artifact">
+    <svg class="symbol-sprite" aria-hidden="true">
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m16.5 16.5 4 4" /></symbol>
+      <symbol id="i-plug" viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v2a6 6 0 0 1-6 6v5M9 21h6" /></symbol>
+      <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="18" r="2" /><path d="M8 6h4a4 4 0 0 1 4 4v0a4 4 0 0 1-4 4H8M10 11l-3 3 3 3" /></symbol>
+      <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" /></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4Z" /></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z" /><path d="M14 3v5h4" /></symbol>
+      <symbol id="i-graph" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="7" r="2" /><circle cx="8" cy="18" r="2" /><circle cx="18" cy="17" r="2" /><path d="m8 7 8-1M7 8l1 8M10 18h6M17 9l1 6" /></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m5 18 5-5 3 3 2-2 4 4" /></symbol>
+      <symbol id="i-agent" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="3" /><path d="M12 3v4M8 12h.01M16 12h.01M9 16h6" /></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6Z" /><path d="m8.5 12 2.2 2.2 4.8-5" /></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.3 8a7 7 0 0 1 11.2-1L20 12M4 12l2.5 5a7 7 0 0 0 11.2-1" /></symbol>
+    </svg>
+
+    <div class="artifact-bar">
+      <span class="artifact-mark"></span>
+      <span>Unified Settings + Onboarding mock · design only</span>
+      <nav><a href="./settings.html">Settings</a><a class="is-current" href="./onboarding.html">Onboarding</a></nav>
+    </div>
+
+    <main class="onboarding-frame">
+      <section class="wizard-shell">
+        <header class="wizard-topbar">
+          <div class="peak-wordmark"><span class="peak-mark">P</span><strong>Set up Peak Assistant</strong></div>
+          <span class="wizard-save-state"><svg><use href="#i-check" /></svg>Progress saved</span>
+          <button class="text-button" data-skip-setup>Finish later</button>
+        </header>
+
+        <div class="wizard-layout">
+          <aside class="wizard-steps">
+            <span class="wizard-eyebrow">FIRST SUCCESS</span>
+            <button class="is-current" data-step-nav="0"><i>1</i><span><strong>Choose a first task</strong><small>What should Peak help with?</small></span></button>
+            <span class="wizard-step-line"></span>
+            <button data-step-nav="1"><i>2</i><span><strong>Connect AI</strong><small>One working connection</small></span></button>
+            <span class="wizard-step-line"></span>
+            <button data-step-nav="2"><i>3</i><span><strong>Check your vault</strong><small>Reuse what is already ready</small></span></button>
+            <span class="wizard-step-line"></span>
+            <button data-step-nav="3"><i>4</i><span><strong>Start a real task</strong><small>Open the right Peak workspace</small></span></button>
+            <div class="wizard-principle"><svg><use href="#i-shield" /></svg><span><strong>Only what you need</strong>Other models, tools and advanced choices remain available in Settings.</span></div>
+          </aside>
+
+          <section class="wizard-main">
+            <div class="wizard-progress"><span data-step-progress style="width:25%"></span></div>
+
+            <div class="wizard-panel is-active" data-wizard-panel="0">
+              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 1 OF 4</span><h1>What would you like to do first?</h1><p>Pick one real outcome. Peak will configure only what that task needs.</p></header>
+              <div class="goal-grid">
+                <button class="goal-card is-selected" data-goal="search" data-goal-name="Ask my vault"><span class="goal-icon"><svg><use href="#i-search" /></svg></span><span><strong>Ask my vault</strong><small>Find and combine information from my notes.</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="goal-card" data-goal="composer" data-goal-name="Work on this note"><span class="goal-icon"><svg><use href="#i-file" /></svg></span><span><strong>Work on this note</strong><small>Use Copilot to understand, improve or continue a document.</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="goal-card" data-goal="atlas" data-goal-name="Explore connections"><span class="goal-icon"><svg><use href="#i-graph" /></svg></span><span><strong>Explore connections</strong><small>Open File Atlas and see how notes relate.</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="goal-card" data-goal="chat" data-goal-name="Start a conversation"><span class="goal-icon"><svg><use href="#i-chat" /></svg></span><span><strong>Start a conversation</strong><small>Ask, plan or draft without setting up the entire vault first.</small></span><i><svg><use href="#i-check" /></svg></i></button>
+              </div>
+              <button class="more-goals-trigger" data-more-goals><span>More first tasks</span><svg><use href="#i-chevron" /></svg></button>
+              <div class="more-goals" data-more-goals-panel hidden>
+                <button class="goal-card compact" data-goal="agent" data-goal-name="Run an Agent task"><span class="goal-icon"><svg><use href="#i-agent" /></svg></span><span><strong>Run an Agent task</strong><small>Delegate a safe multi-step task.</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="goal-card compact" data-goal="image" data-goal-name="Create an image"><span class="goal-icon"><svg><use href="#i-image" /></svg></span><span><strong>Create an image</strong><small>Open the image generation flow.</small></span><i><svg><use href="#i-check" /></svg></i></button>
+              </div>
+              <div class="goal-impact"><svg><use href="#i-check" /></svg><span><strong data-goal-impact-title>For “Ask my vault”</strong><small data-goal-impact-copy>Peak will verify one AI connection and the existing local search index. It will not ask you to configure every model.</small></span></div>
+            </div>
+
+            <div class="wizard-panel" data-wizard-panel="1" hidden>
+              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 2 OF 4</span><h1>Connect the AI you already use</h1><p>One verified connection is enough. Peak will choose a compatible model automatically.</p></header>
+              <div class="detected-banner"><span class="scan-icon"><svg><use href="#i-plug" /></svg></span><span><strong>Recommended for this task</strong><small>OpenAI covers conversation, file understanding and the knowledge workflow selected in step 1.</small></span></div>
+              <button class="provider-choice is-selected" data-provider="OpenAI"><span class="provider-monogram">OA</span><span><strong>OpenAI</strong><small>Broadest first setup · cloud connection</small></span><span class="provider-state" data-provider-state>Use this connection</span><i><svg><use href="#i-check" /></svg></i></button>
+              <button class="other-provider-trigger" data-other-providers><span>Choose another connection</span><svg><use href="#i-chevron" /></svg></button>
+              <div class="provider-options" data-provider-options hidden>
+                <button class="provider-choice compact" data-provider="Anthropic"><span class="provider-monogram">AN</span><span><strong>Anthropic</strong><small>Conversation, tools and long context</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="provider-choice compact" data-provider="OpenRouter"><span class="provider-monogram">OR</span><span><strong>OpenRouter</strong><small>Compatible models through one account</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="provider-choice compact" data-provider="Ollama"><span class="provider-monogram">OL</span><span><strong>Ollama</strong><small>Use models installed on this computer</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="provider-choice compact" data-provider="Codex"><span class="provider-monogram">CX</span><span><strong>Codex</strong><small>Conversation and Agent capability checked separately</small></span><i><svg><use href="#i-check" /></svg></i></button>
+                <button class="provider-choice compact" data-provider="Claude Code"><span class="provider-monogram">CC</span><span><strong>Claude Code</strong><small>Conversation and Agent capability checked separately</small></span><i><svg><use href="#i-check" /></svg></i></button>
+              </div>
+              <div class="connection-check" data-connection-check>
+                <div><span class="check-line"><i class="status-dot ready" data-check-dot="auth"></i><strong>Authentication</strong><em data-check-value="auth">Ready</em></span><span class="check-line"><i class="status-dot ready" data-check-dot="model"></i><strong>Compatible model</strong><em data-check-value="model">GPT-5</em></span><span class="check-line"><i class="status-dot ready" data-check-dot="probe"></i><strong>Minimum test</strong><em data-check-value="probe">Verified just now</em></span></div>
+                <span class="check-receipt" data-check-receipt>No Vault content was sent during this check.</span>
+              </div>
+            </div>
+
+            <div class="wizard-panel" data-wizard-panel="2" hidden>
+              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 3 OF 4</span><h1>Your vault is already searchable</h1><p>Peak found and reused the existing index. You can start now while semantic enrichment continues.</p></header>
+              <div class="vault-readiness-card">
+                <div class="vault-readiness-head"><span><i class="live-dot"></i><strong>Updating changed documents</strong></span><em data-onboarding-index-percent>84.4%</em></div>
+                <div class="onboarding-index-count"><strong data-onboarding-index-count>4,102</strong><span>of 4,860 documents</span></div>
+                <div class="mini-progress"><span data-onboarding-index-bar style="width:84.4%"></span></div>
+                <div class="vault-readiness-facts"><span><svg><use href="#i-check" /></svg><strong>Text search</strong><small>Ready now</small></span><span><svg><use href="#i-clock" /></svg><strong>Semantic search</strong><small>About 13 min left</small></span><span><svg><use href="#i-file" /></svg><strong>File types</strong><small>4 included</small></span></div>
+              </div>
+              <div class="readiness-decisions">
+                <label class="readiness-option is-selected"><input type="radio" name="index-choice" checked /><span><strong>Continue now</strong><small>Use text search immediately and let Peak finish in the background.</small></span><i><svg><use href="#i-check" /></svg></i></label>
+                <label class="readiness-option"><input type="radio" name="index-choice" /><span><strong>Wait for semantic search</strong><small>Stay here until embeddings for all eligible documents are complete.</small></span><i><svg><use href="#i-check" /></svg></i></label>
+              </div>
+              <div class="vault-actions"><a href="../knowledge-index-workspace-2026-08-11/index.html">View full indexing progress</a><button class="text-button" data-refresh-vault><svg><use href="#i-refresh" /></svg>Check again</button></div>
+              <div class="automatic-defaults"><span class="automatic-icon"><svg><use href="#i-route" /></svg></span><span><strong>Peak applied safe task defaults automatically</strong><small>Search uses the local index. AI synthesis uses OpenAI · GPT-5. You can change either later in Settings.</small></span></div>
+            </div>
+
+            <div class="wizard-panel" data-wizard-panel="3" hidden>
+              <header class="wizard-panel-header final-header"><span class="success-mark"><svg><use href="#i-check" /></svg></span><span class="content-eyebrow">SETUP COMPLETE</span><h1>Now get your first real result</h1><p>Peak is configured. First success happens when the real workspace returns something useful.</p></header>
+              <div class="first-task-card">
+                <div class="first-task-heading"><span class="goal-icon"><svg data-final-icon><use href="#i-search" /></svg></span><span><strong data-final-title>Ask your vault</strong><small data-final-subtitle>This opens AI Search with an editable question.</small></span></div>
+                <label class="starter-prompt"><span>Your first question</span><textarea data-first-prompt>What am I currently working on, and which notes support it?</textarea></label>
+                <button class="launch-button" data-launch-primary><span data-launch-label>Open AI Search</span><svg><use href="#i-chevron" /></svg></button>
+              </div>
+              <div class="launchpad-heading"><strong>Or start somewhere else</strong><span>Your setup remains valid.</span></div>
+              <div class="launchpad-grid">
+                <button data-launch="Chat Studio"><svg><use href="#i-chat" /></svg><span><strong>Chat Studio</strong><small>Ask, plan or draft</small></span></button>
+                <button data-launch="Composer"><svg><use href="#i-file" /></svg><span><strong>Work on a note</strong><small>Open Composer & Copilot</small></span></button>
+                <button data-launch="File Atlas"><svg><use href="#i-graph" /></svg><span><strong>File Atlas</strong><small>Explore note relationships</small></span></button>
+                <button data-launch="Image Flow"><svg><use href="#i-image" /></svg><span><strong>Create an image</strong><small>Open Image Flow</small></span></button>
+                <button data-launch="Agent"><svg><use href="#i-agent" /></svg><span><strong>Run an Agent task</strong><small>Delegate with review</small></span></button>
+              </div>
+            </div>
+
+            <footer class="wizard-footer">
+              <button class="secondary-button" data-back disabled>Back</button>
+              <span data-footer-note>Step 1 of 4 · Your choice only guides this setup.</span>
+              <button class="primary-button" data-next>Continue</button>
+            </footer>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="action-toast" data-action-toast hidden><svg><use href="#i-check" /></svg><span data-action-toast-text>Would open the real Peak workspace</span></div>
+    <script src="./onboarding.js"></script>
+  </body>
+</html>
