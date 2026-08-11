@@ -61,9 +61,75 @@
           <div class="progress-count">
             <span data-processed-count>4,102</span>
             <span class="progress-total">of 4,860 documents</span>
+            <button
+              class="file-types-trigger"
+              type="button"
+              aria-expanded="false"
+              aria-controls="file-types-panel"
+              data-file-types-trigger
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
+                <path d="M14 3.5V8h4M9 12h6M9 15.5h4" />
+              </svg>
+              <span>4 file types</span>
+              <svg class="trigger-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg>
+            </button>
           </div>
         </div>
         <div class="hero-percent" data-overall-progress>84.4%</div>
+
+        <div class="file-types-popover" id="file-types-panel" data-file-types-panel hidden>
+          <div class="file-types-head">
+            <div>
+              <div class="file-types-title">Files in this run</div>
+              <div class="file-types-caption">4 types included · 4,860 documents</div>
+            </div>
+            <button class="popover-close" type="button" aria-label="Close file types" data-file-types-close>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>
+            </button>
+          </div>
+
+          <div class="included-types">
+            <div class="file-type-row">
+              <span class="type-glyph">MD</span>
+              <span class="type-copy"><strong>Markdown</strong><span>Full text, vectors, summary and tags</span></span>
+              <span class="type-count">4,086</span>
+              <span class="included-label">Included</span>
+            </div>
+            <div class="file-type-row">
+              <span class="type-glyph">PDF</span>
+              <span class="type-copy"><strong>PDF</strong><span>Extracted text and OCR when needed</span></span>
+              <span class="type-count">421</span>
+              <span class="included-label">Included</span>
+            </div>
+            <div class="file-type-row">
+              <span class="type-glyph">IMG</span>
+              <span class="type-copy"><strong>Images</strong><span>Recognized text and visual description</span></span>
+              <span class="type-count">263</span>
+              <span class="included-label">Included</span>
+            </div>
+            <div class="file-type-row">
+              <span class="type-glyph">EX</span>
+              <span class="type-copy"><strong>Excalidraw</strong><span>Text labels and linked references</span></span>
+              <span class="type-count">90</span>
+              <span class="included-label">Included</span>
+            </div>
+          </div>
+
+          <div class="excluded-types">
+            <div class="excluded-copy">
+              <strong>Not included in this run</strong>
+              <span>TXT, CSV, JSON, HTML, XML, DOCX, PPTX and Canvas</span>
+            </div>
+            <button class="text-button" type="button">Index settings</button>
+          </div>
+
+          <div class="product-type-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+            <span>Peak Sheet and AI Graph use their own tools. Their internal data is not added to the document index.</span>
+          </div>
+        </div>
 
         <div class="progress-track" aria-hidden="true">
           <span class="progress-fill" data-progress-fill style="width: 84.4%"></span>

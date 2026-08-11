@@ -19,6 +19,10 @@ const requiredHtml = [
   "data-current-step",
   "data-order-select",
   "data-pause",
+  "data-file-types-trigger",
+  "data-file-types-panel",
+  "Files in this run",
+  "Not included in this run",
 ];
 
 const requiredJs = [
@@ -27,6 +31,7 @@ const requiredJs = [
   "function renderQueue",
   "function renderCurrentDocument",
   "function renderMetrics",
+  "function toggleFileTypes",
 ];
 
 const requiredCss = [
@@ -34,6 +39,8 @@ const requiredCss = [
   ".workspace-grid",
   ".queue-row.is-current",
   ".substep.is-active",
+  ".file-types-popover",
+  ".file-type-row",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",
 ];

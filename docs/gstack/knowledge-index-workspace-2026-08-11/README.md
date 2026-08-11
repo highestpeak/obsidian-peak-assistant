@@ -23,6 +23,9 @@ Index products such as full-text records, embeddings, summaries, tags, and relat
 - `Skip current document` advances the queue.
 - `Restart demo` restores the review state.
 - The queue keeps recently completed, current, and waiting documents together so document order remains understandable.
+- `4 file types` opens a compact run summary. It separates types included in this run, readable types currently turned off, and Peak product data that is intentionally handled outside the ordinary document index.
+
+The default run includes Markdown, PDF, images, and Excalidraw. DOCX, PPTX, Canvas, TXT/CSV, and machine-oriented text formats remain visible as excluded choices rather than silently disappearing. XLSX, Peak Sheet, and AI Graph are not presented as ordinary indexable document types.
 
 ## Review
 

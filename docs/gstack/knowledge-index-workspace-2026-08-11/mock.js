@@ -6,16 +6,16 @@ const documents = [
   { name: "Research synthesis.md", path: "Projects / Peak / Research", extension: "MD", size: "38 KB", chunks: 5 },
   { name: "Product launch checklist.md", path: "Projects / Peak / Launch", extension: "MD", size: "21 KB", chunks: 4 },
   { name: "Customer interview 08-10.pdf", path: "Inbox / Interviews", extension: "PDF", size: "1.8 MB", chunks: 12 },
-  { name: "Graph opportunities.canvas", path: "Projects / Peak / Graph", extension: "CAN", size: "96 KB", chunks: 7 },
-  { name: "Competitive landscape.docx", path: "Research / Market", extension: "DOCX", size: "684 KB", chunks: 9 },
+  { name: "Architecture map.excalidraw.md", path: "Projects / Peak / Graph", extension: "EX", size: "96 KB", chunks: 7 },
+  { name: "Reference architecture.png", path: "Research / Visuals", extension: "IMG", size: "684 KB", chunks: 9 },
   { name: "Model routing decisions.md", path: "System / Architecture", extension: "MD", size: "27 KB", chunks: 5 },
-  { name: "Composer workflow.board", path: "Projects / Peak / Composer", extension: "BRD", size: "44 KB", chunks: 6 },
-  { name: "Q3 planning.xlsx", path: "Operations / Planning", extension: "XLSX", size: "312 KB", chunks: 8 },
+  { name: "Composer flow.excalidraw", path: "Projects / Peak / Composer", extension: "EX", size: "44 KB", chunks: 6 },
+  { name: "Interview wall.jpg", path: "Research / Interviews", extension: "IMG", size: "312 KB", chunks: 8 },
   { name: "Ambient notes.md", path: "Daily / 2026 / August", extension: "MD", size: "14 KB", chunks: 3 },
   { name: "AI Graph experiments.md", path: "Labs / AI Graph", extension: "MD", size: "33 KB", chunks: 6 },
-  { name: "File Atlas map.peak-atlas", path: "Projects / Peak / Atlas", extension: "ATLAS", size: "71 KB", chunks: 7 },
+  { name: "Launch contract.pdf", path: "Projects / Peak / Launch", extension: "PDF", size: "1.1 MB", chunks: 7 },
   { name: "Knowledge garden.md", path: "Notes / Evergreen", extension: "MD", size: "19 KB", chunks: 4 },
-  { name: "Archived attachment.pptx", path: "Archive / Imports", extension: "PPTX", size: "4.2 MB", chunks: 10, error: true },
+  { name: "Scanned receipt.pdf", path: "Archive / Imports", extension: "PDF", size: "4.2 MB", chunks: 10, error: true },
 ];
 
 const processingSteps = [
@@ -295,12 +295,35 @@ function resetSimulation() {
   renderAll();
 }
 
+function toggleFileTypes(forceOpen) {
+  const panel = $("[data-file-types-panel]");
+  const trigger = $("[data-file-types-trigger]");
+  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : panel.hidden;
+  panel.hidden = !shouldOpen;
+  trigger.setAttribute("aria-expanded", String(shouldOpen));
+}
+
 $("[data-pause]").addEventListener("click", () => {
   state.paused = !state.paused;
   renderAll();
 });
 
 $("[data-restart-demo]").addEventListener("click", resetSimulation);
+
+$("[data-file-types-trigger]").addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleFileTypes();
+});
+
+$("[data-file-types-close]").addEventListener("click", () => toggleFileTypes(false));
+
+$("[data-file-types-panel]").addEventListener("click", (event) => event.stopPropagation());
+
+document.addEventListener("click", () => toggleFileTypes(false));
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") toggleFileTypes(false);
+});
 
 $("[data-skip-current]").addEventListener("click", () => {
   finishCurrentDocument();
