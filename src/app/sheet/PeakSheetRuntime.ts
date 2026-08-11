@@ -28,8 +28,6 @@ import type { PeakSheetRepository } from '@/service/sheet/PeakSheetRepository';
 import type { PeakSheetFileChange, PeakSheetFileRepository } from '@/service/sheet/PeakSheetRepository';
 import { HyperFormulaPeakSheetEngine } from '@/service/sheet/formula/HyperFormulaPeakSheetEngine';
 import { createPeakSheetStarterDrafts } from './PeakSheetStarterDatasets';
-import { parsePeakSheetXlsx } from '@/service/sheet/import/PeakSheetXlsxImporter';
-import { exportPeakSheetXlsx } from '@/service/sheet/export/PeakSheetXlsxExporter';
 
 type PeakSheetListener = () => void;
 
@@ -242,7 +240,8 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 		return this.createDataset(parsePeakSheetJson(text, name), options);
 	}
 
-	previewXlsx(buffer: ArrayBuffer, name?: string): Promise<PeakSheetWorkbookDraft> {
+	async previewXlsx(buffer: ArrayBuffer, name?: string): Promise<PeakSheetWorkbookDraft> {
+		const { parsePeakSheetXlsx } = await import('@/service/sheet/import/PeakSheetXlsxImporter');
 		return parsePeakSheetXlsx(buffer, name);
 	}
 
@@ -265,7 +264,8 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 		return serializePeakSheetCsv(this.getDataset(datasetId));
 	}
 
-	exportXlsx(datasetId: string): Promise<ArrayBuffer> {
+	async exportXlsx(datasetId: string): Promise<ArrayBuffer> {
+		const { exportPeakSheetXlsx } = await import('@/service/sheet/export/PeakSheetXlsxExporter');
 		return exportPeakSheetXlsx(this.getDataset(datasetId));
 	}
 

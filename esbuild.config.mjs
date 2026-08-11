@@ -5,6 +5,9 @@ import alias from "esbuild-plugin-alias";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import gracefulFsQueuePatch from "./scripts/build/graceful-fs-queue-patch.cjs";
+
+const { gracefulFsQueueDataPropertyPlugin } = gracefulFsQueuePatch;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,8 +109,12 @@ const shared = {
 	plugins: [
 		alias({
 			"@": path.resolve(__dirname, "src"),
-			"lucide-react": path.resolve(__dirname, "node_modules/lucide-react/dist/cjs/lucide-react.js"),
+			// Keep every consumer on one tree-shakeable ESM graph. Pointing these
+			// imports at the CJS barrel creates one full icon namespace wrapper per
+			// importing module and millions of accessor closures at runtime.
+			"lucide-react": path.resolve(__dirname, "node_modules/lucide-react/dist/esm/lucide-react.js"),
 		}),
+		gracefulFsQueueDataPropertyPlugin,
 		fixImportMetaPlugin,
 		bluebirdConfigurablePlugin,
 	],
