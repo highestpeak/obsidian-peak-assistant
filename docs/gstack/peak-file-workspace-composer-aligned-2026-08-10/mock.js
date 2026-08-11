@@ -133,9 +133,6 @@ let pendingCandidateAction = "";
 let htmlSourceOpen = false;
 let htmlPicking = false;
 let imageQuarterRotation = 0;
-let cropStraighten = 0;
-let cropSessionRotation = 0;
-let cropMode = "rectangle";
 let imageScale = 1;
 let imageScope = "all";
 let pdfZoom = 112;
@@ -147,7 +144,7 @@ let excalZoom = 72;
 let toastTimer;
 let activeLasso = null;
 let surfaceDragState = null;
-const lassoSelections = { image: null, imageCrop: null, pdf: null };
+const lassoSelections = { image: null, pdf: null };
 
 function iconMarkup() {
   return '<svg><use href="#i-sparkles"></use></svg>';
@@ -244,7 +241,7 @@ function showCandidate(action, title, description) {
 
 function updateImageTransform() {
   const image = document.querySelector("#imageFrame img");
-  image.style.transform = `rotate(${imageQuarterRotation + cropStraighten}deg) scale(${imageScale})`;
+  image.style.transform = `rotate(${imageQuarterRotation}deg) scale(${imageScale})`;
   document.querySelector("#imageScaleLabel").textContent = `${Math.round(imageScale * 100)}%`;
 }
 
@@ -258,18 +255,17 @@ function handleImageTool(tool, button) {
       closeCrop(false);
       return;
     }
-    setImageScope("all", document.querySelector('[data-image-scope="all"]'), true);
-    cropSessionRotation = imageQuarterRotation;
-    cropStraighten = 0;
-    document.querySelector("#cropAngle").value = "0";
-    document.querySelector("#cropAngleValue").textContent = "0°";
+    if (imageScope === "lasso" && !lassoSelections.image) {
+      showToast("Draw a freehand selection first, then crop it");
+      return;
+    }
+    prepareCropOverlay();
+    document.querySelector("#imageSelectionToolbar").hidden = true;
     cropStudio.hidden = false;
-    setCropMode("rectangle", document.querySelector('[data-crop-mode="rectangle"]'));
-    cropOverlay.hidden = false;
     exportSheet.hidden = true;
     button.classList.add("is-active");
     document.querySelector('[data-image-tool="export"]').classList.remove("is-active");
-    showToast("Crop opens above the dock · choose Rectangle or Freehand");
+    showToast(imageScope === "lasso" ? "Crop will use the current freehand selection" : "Drag the crop frame directly on the image");
     return;
   }
   if (tool !== "export") return;
@@ -340,58 +336,35 @@ function updateImageZoom(direction) {
   refreshImageLassoForZoom();
 }
 
-function setCropMode(mode, button) {
-  cropMode = mode;
-  document.querySelectorAll("[data-crop-mode]").forEach((item) => item.classList.toggle("is-active", item === button));
-  const isRectangle = mode === "rectangle";
-  document.querySelector("#cropOverlay").hidden = !isRectangle;
-  document.querySelector("#cropRectangleControls").hidden = !isRectangle;
-  document.querySelector("#cropFreehandControls").hidden = isRectangle;
-  document.querySelector("#cropFreehandLayer").toggleAttribute("hidden", isRectangle);
-  if (isRectangle) {
-    document.querySelector("#cropFreehandHint").hidden = true;
-    showToast("Rectangle crop · drag the frame or any of its eight handles");
-    return;
-  }
-  document.querySelector("#cropFreehandHint").hidden = Boolean(lassoSelections.imageCrop);
-  showToast("Freehand crop · draw one closed contour on the image");
-}
-
-function setCropRatio(ratio, button, silent = false) {
+function prepareCropOverlay() {
   const overlay = document.querySelector("#cropOverlay");
   const frame = document.querySelector("#imageFrame");
-  overlay.dataset.cropRatio = ratio;
-  document.querySelectorAll("[data-crop-ratio]").forEach((item) => item.classList.toggle("is-active", item === button));
-  if (ratio === "unlocked") {
-    document.querySelector(".crop-drag-label").textContent = "Unlocked · drag edges or frame";
-    if (!silent) showToast("Aspect ratio unlocked; current crop stays in place");
+  const resetButton = document.querySelector('[data-crop-action="reset"]');
+  const label = document.querySelector("#cropScopeLabel");
+  overlay.removeAttribute("style");
+  if (imageScope === "lasso") {
+    overlay.hidden = true;
+    resetButton.hidden = true;
+    label.textContent = "Uses current freehand selection";
+    return;
+  }
+
+  overlay.hidden = false;
+  resetButton.hidden = false;
+  if (imageScope !== "region") {
+    document.querySelector(".crop-drag-label").textContent = "Drag edges or frame";
+    label.textContent = "Drag edges or frame";
     return;
   }
 
   const frameRect = frame.getBoundingClientRect();
-  const currentRect = overlay.getBoundingClientRect();
-  const centerX = currentRect.left - frameRect.left + currentRect.width / 2;
-  const centerY = currentRect.top - frameRect.top + currentRect.height / 2;
-  const ratios = { original: 1.5, square: 1, classic: 4 / 3, wide: 16 / 9 };
-  const targetRatio = ratios[ratio];
-  const inset = 6;
-  const maxWidth = frameRect.width - inset * 2;
-  const maxHeight = frameRect.height - inset * 2;
-  let width = Math.min(maxWidth, Math.max(70, currentRect.width));
-  let height = width / targetRatio;
-  if (height > maxHeight) {
-    height = maxHeight;
-    width = height * targetRatio;
-  }
-  const left = Math.max(inset, Math.min(frameRect.width - width - inset, centerX - width / 2));
-  const top = Math.max(inset, Math.min(frameRect.height - height - inset, centerY - height / 2));
+  const regionRect = document.querySelector("#imageRegionSelection").getBoundingClientRect();
   overlay.style.inset = "auto";
-  overlay.style.left = `${left}px`;
-  overlay.style.top = `${top}px`;
-  overlay.style.width = `${width}px`;
-  overlay.style.height = `${height}px`;
-  document.querySelector(".crop-drag-label").textContent = button.textContent.trim();
-  if (!silent) showToast(`${button.textContent.trim()} ratio applied around the current crop center`);
+  overlay.style.left = `${regionRect.left - frameRect.left}px`;
+  overlay.style.top = `${regionRect.top - frameRect.top}px`;
+  overlay.style.width = `${regionRect.width}px`;
+  overlay.style.height = `${regionRect.height}px`;
+  updateCropLabel(overlay);
 }
 
 function startRectDrag(event, element, container, handle, onMove, onEnd) {
@@ -460,19 +433,13 @@ function endSurfaceRectDrag(event) {
   onEnd?.(element);
 }
 
-function markUnlockedCrop() {
-  const unlockedButton = document.querySelector('[data-crop-ratio="unlocked"]');
-  document.querySelector("#cropOverlay").dataset.cropRatio = "unlocked";
-  document.querySelectorAll("[data-crop-ratio]").forEach((item) => item.classList.toggle("is-active", item === unlockedButton));
-}
-
-function updateUnlockedCropLabel(overlay) {
-  markUnlockedCrop();
+function updateCropLabel(overlay) {
   const frameRect = document.querySelector("#imageFrame").getBoundingClientRect();
   const overlayRect = overlay.getBoundingClientRect();
   const width = Math.round(2048 * overlayRect.width / frameRect.width);
   const height = Math.round(1365 * overlayRect.height / frameRect.height);
-  document.querySelector(".crop-drag-label").textContent = `Unlocked · ${width} × ${height}`;
+  document.querySelector(".crop-drag-label").textContent = `${width} × ${height}`;
+  document.querySelector("#cropScopeLabel").textContent = `${width} × ${height} px`;
 }
 
 function updateImageRegionLabel(region) {
@@ -483,55 +450,51 @@ function updateImageRegionLabel(region) {
   showImageSelectionLens("Rectangle", `${percent}% of image · drag to adjust`, region);
 }
 
-function rotateCrop(direction) {
+function restoreImageSelectionLens() {
+  if (imageScope === "region") {
+    updateImageRegionLabel(document.querySelector("#imageRegionSelection"));
+    return;
+  }
+  if (imageScope !== "lasso" || !lassoSelections.image) return;
+  const selection = lassoSelections.image;
+  const percent = Math.round(selection.normalizedBounds.width * selection.normalizedBounds.height * 100);
+  showImageSelectionLens("Freehand mask", `1 closed mask · ${percent}% bounding area`, selection.viewportBounds);
+}
+
+function rotateImage(direction) {
+  closeCrop(false, true);
+  closeExport();
   imageQuarterRotation += direction === "right" ? 90 : -90;
   updateImageTransform();
-  setDirty(`Crop rotation ${imageQuarterRotation + cropStraighten}° · not saved`);
+  setDirty(`Image rotated ${imageQuarterRotation}° · not saved`);
+  showToast(`Rotated ${direction} 90° · original remains protected`);
 }
 
 function resetCrop(silent = false) {
-  imageQuarterRotation = cropSessionRotation;
-  cropStraighten = 0;
-  document.querySelector("#cropAngle").value = "0";
-  document.querySelector("#cropAngleValue").textContent = "0°";
-  updateImageTransform();
-  if (cropMode === "freehand") {
-    clearCropFreehand(true);
-    if (!silent) showToast("Freehand crop contour cleared");
-    return;
-  }
-  const overlay = document.querySelector("#cropOverlay");
-  overlay.removeAttribute("style");
-  const unlockedButton = document.querySelector('[data-crop-ratio="unlocked"]');
-  setCropRatio("unlocked", unlockedButton, true);
-  if (!silent) showToast("Crop reset");
+  prepareCropOverlay();
+  if (!silent) showToast(imageScope === "region" ? "Crop restored to the current rectangle" : "Crop frame reset");
 }
 
 function closeCrop(commit, silent = false) {
   const overlay = document.querySelector("#cropOverlay");
   const studio = document.querySelector("#cropStudio");
   const wasOpen = !studio.hidden;
-  if (commit && cropMode === "freehand" && !lassoSelections.imageCrop) {
-    showToast("Draw a freehand crop contour before applying");
+  if (commit && imageScope === "lasso" && !lassoSelections.image) {
+    showToast("Draw a freehand selection before applying Crop");
     return;
   }
   overlay.hidden = true;
   studio.hidden = true;
-  document.querySelector("#cropFreehandLayer").toggleAttribute("hidden", true);
-  document.querySelector("#cropFreehandHint").hidden = true;
   document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
   if (!wasOpen) return;
   if (commit) {
-    imageQuarterRotation += cropStraighten;
-    cropStraighten = 0;
-    updateImageTransform();
-    setDirty("Crop applied to a new image version · not saved");
-    clearCropFreehand(false);
+    setDirty(`${imageScope === "lasso" ? "Freehand" : "Rectangle"} crop applied to a new image version · not saved`);
+    restoreImageSelectionLens();
     if (!silent) showToast("Crop applied to the working copy; original remains protected");
     return;
   }
-  resetCrop(true);
-  clearCropFreehand(false);
+  overlay.removeAttribute("style");
+  restoreImageSelectionLens();
   if (!silent) showToast("Crop cancelled; original framing restored");
 }
 
@@ -556,13 +519,12 @@ function renderLassoPath(state, closed = false) {
 function beginLasso(event, kind) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
   const layer = event.currentTarget;
-  const isImageSurface = kind === "image" || kind === "imageCrop";
+  const isImageSurface = kind === "image";
   const container = isImageSurface ? document.querySelector("#imageFrame") : document.querySelector("#pdfPage");
-  const pathSelector = kind === "image" ? "#imageLassoPath" : kind === "imageCrop" ? "#cropFreehandPath" : "#pdfLassoPath";
+  const pathSelector = kind === "image" ? "#imageLassoPath" : "#pdfLassoPath";
   const path = document.querySelector(pathSelector);
   const rect = container.getBoundingClientRect();
-  if (kind === "imageCrop") clearCropFreehand(false);
-  if (kind !== "imageCrop") clearLassoSelection(kind, false);
+  clearLassoSelection(kind, false);
   layer.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
   activeLasso = { kind, layer, path, container, pointerId: event.pointerId, points: [pointFromEvent(event, container)] };
   layer.setPointerCapture?.(event.pointerId);
@@ -593,7 +555,7 @@ function normalizedLassoSelection(state) {
   const bottom = Math.max(...ys);
   const round = (value) => Number(value.toFixed(4));
   const viewportPoints = state.points.map((point) => [point.x / rect.width, point.y / rect.height]);
-  const isImageSurface = state.kind === "image" || state.kind === "imageCrop";
+  const isImageSurface = state.kind === "image";
   const normalizedPoints = isImageSurface
     ? viewportPoints.map(([x, y]) => [round(0.5 + (x - 0.5) / imageScale), round(0.5 + (y - 0.5) / imageScale)])
     : viewportPoints.map(([x, y]) => [round(x), round(y)]);
@@ -632,8 +594,7 @@ function finishLasso(event) {
   state.layer.classList.remove("is-drawing");
   event.preventDefault();
   if (state.points.length < 4) {
-    if (state.kind === "imageCrop") clearCropFreehand(true);
-    if (state.kind !== "imageCrop") clearLassoSelection(state.kind);
+    clearLassoSelection(state.kind);
     showToast("Draw a larger closed region");
     return;
   }
@@ -641,28 +602,7 @@ function finishLasso(event) {
   const selection = normalizedLassoSelection(state);
   lassoSelections[state.kind] = selection;
   if (state.kind === "image") completeImageLasso(selection);
-  if (state.kind === "imageCrop") completeCropFreehand(selection);
   if (state.kind === "pdf") completePdfLasso(selection);
-}
-
-function clearCropFreehand(showHint = true) {
-  lassoSelections.imageCrop = null;
-  document.querySelector("#cropFreehandPath")?.setAttribute("d", "");
-  const controls = document.querySelector("#cropFreehandControls");
-  controls.querySelector("strong").textContent = "Freehand crop";
-  controls.querySelector("small").textContent = "Draw a closed contour directly on the image.";
-  const cropIsActive = cropMode === "freehand" && !document.querySelector("#cropStudio").hidden;
-  document.querySelector("#cropFreehandHint").hidden = !(showHint && cropIsActive);
-}
-
-function completeCropFreehand(selection) {
-  document.querySelector("#cropFreehandHint").hidden = true;
-  const percent = Math.round(selection.normalizedBounds.width * selection.normalizedBounds.height * 100);
-  const controls = document.querySelector("#cropFreehandControls");
-  controls.querySelector("strong").textContent = "Contour ready";
-  controls.querySelector("small").textContent = `Closed freehand boundary · ${percent}% bounding area`;
-  setDirty("Freehand crop ready · not applied");
-  showToast("Freehand crop ready; redraw or apply it to a new version");
 }
 
 function clearLassoSelection(kind, resetContext = true) {
@@ -1174,6 +1114,12 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const imageRotateButton = event.target.closest("[data-image-rotate]");
+  if (imageRotateButton) {
+    rotateImage(imageRotateButton.dataset.imageRotate);
+    return;
+  }
+
   const imageZoomButton = event.target.closest("[data-image-zoom]");
   if (imageZoomButton) {
     updateImageZoom(imageZoomButton.dataset.imageZoom);
@@ -1186,27 +1132,8 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const cropModeButton = event.target.closest("[data-crop-mode]");
-  if (cropModeButton) {
-    setCropMode(cropModeButton.dataset.cropMode, cropModeButton);
-    return;
-  }
-
-  const cropRatioButton = event.target.closest("[data-crop-ratio]");
-  if (cropRatioButton) {
-    setCropRatio(cropRatioButton.dataset.cropRatio, cropRatioButton);
-    return;
-  }
-
-  const cropRotateButton = event.target.closest("[data-crop-rotate]");
-  if (cropRotateButton) {
-    rotateCrop(cropRotateButton.dataset.cropRotate);
-    return;
-  }
-
   const cropAction = event.target.closest("[data-crop-action]");
   if (cropAction) {
-    if (cropAction.dataset.cropAction === "redraw") clearCropFreehand(true);
     if (cropAction.dataset.cropAction === "reset") resetCrop();
     if (cropAction.dataset.cropAction === "cancel") closeCrop(false);
     if (cropAction.dataset.cropAction === "done") closeCrop(true);
@@ -1409,15 +1336,8 @@ document.addEventListener("click", (event) => {
 document.querySelector("#exportQuality").addEventListener("input", updateExportEstimate);
 document.querySelector("#exportWidth").addEventListener("input", updateExportEstimate);
 document.querySelector("#exportHeight").addEventListener("input", updateExportEstimate);
-document.querySelector("#cropAngle").addEventListener("input", (event) => {
-  cropStraighten = Number(event.target.value);
-  document.querySelector("#cropAngleValue").textContent = `${cropStraighten}°`;
-  updateImageTransform();
-  setDirty(`Straightened ${cropStraighten}° · not saved`);
-});
 
 document.querySelector("#imageLassoLayer").addEventListener("pointerdown", (event) => beginLasso(event, "image"));
-document.querySelector("#cropFreehandLayer").addEventListener("pointerdown", (event) => beginLasso(event, "imageCrop"));
 document.querySelector("#pdfLassoLayer").addEventListener("pointerdown", (event) => beginLasso(event, "pdf"));
 
 const cropOverlay = document.querySelector("#cropOverlay");
@@ -1427,13 +1347,13 @@ cropOverlay.querySelectorAll("[data-crop-handle]").forEach((handle) => {
     cropOverlay,
     document.querySelector("#imageFrame"),
     handle.dataset.cropHandle,
-    updateUnlockedCropLabel,
-    () => setDirty("Unlocked crop adjusted · not saved"),
+    updateCropLabel,
+    () => setDirty("Crop adjusted · not saved"),
   ));
 });
 cropOverlay.addEventListener("pointerdown", (event) => {
   if (event.target.closest("[data-crop-handle]")) return;
-  startRectDrag(event, cropOverlay, document.querySelector("#imageFrame"), "move", updateUnlockedCropLabel, () => setDirty("Unlocked crop moved · not saved"));
+  startRectDrag(event, cropOverlay, document.querySelector("#imageFrame"), "move", updateCropLabel, () => setDirty("Crop moved · not saved"));
 });
 
 const imageRegion = document.querySelector("#imageRegionSelection");

@@ -33,14 +33,15 @@ Design-only successor to the rejected six-surface prototype in
    Rectangle, and Freehand are three direct buttons in the dock—there is no
    Select dropdown or Object-detect mode. All three scopes can feed Ask /
    Composer, while Rectangle and Freehand can also feed contextual AI edits.
-   Crop is a separate popover above the dock, so opening it never moves the
-   toolbar. Crop offers Rectangle and Freehand methods: Rectangle has a movable
-   eight-handle frame, Unlocked / Original / 1:1 / 4:3 / 16:9 ratios,
-   straighten, and left/right rotation; Freehand uses the same closed-contour
-   pointer mechanics as selection but keeps independent crop state. Changing a
-   rectangle ratio preserves the current crop center instead of recentering it.
-   Format, dimensions, quality, and live size estimates remain in Export rather
-   than an opaque Compress action.
+   Selection owns the geometry; Crop consumes that active scope instead of
+   asking for Rectangle / Freehand a second time. Whole starts a direct movable
+   eight-handle crop frame, Rectangle reuses the current rectangle, and
+   Freehand reuses the current closed mask. Crop only adds a compact
+   Reset / Cancel / Done row above the stable dock—there are no ratio presets,
+   straighten slider, or nested rotation controls. Left/right rotation are
+   independent first-level image actions. Format, dimensions, quality, and live
+   size estimates remain in Export rather than an opaque Compress action; its
+   primary dock trigger is icon-only with an accessible label.
 7. Treat Add to Composer as the shared handoff for an HTML element, PDF
    passage/region, code selection, Canvas subgraph, or Excalidraw selection.
    The handoff keeps the native source locator, not just copied text.
@@ -50,7 +51,8 @@ Design-only successor to the rejected six-surface prototype in
    sense.
 9. Keep Image selection, Crop, Export, rotation, Ask, Add, and zoom anchored to
    one compact dock. Selection methods are always one click away. Crop and
-   Export float upward from the dock without changing its geometry.
+   Export float upward from the dock without changing its geometry; rotation
+   never hides inside Crop.
 10. Make PDF scope explicit (`All pages / This page / Text / Lasso`). The lasso
     carries file identity, page, normalized point mask, bounds, selected text or
     OCR, and source revision into Composer. Code text selection immediately

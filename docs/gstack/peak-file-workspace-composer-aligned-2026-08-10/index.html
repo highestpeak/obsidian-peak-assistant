@@ -16,13 +16,6 @@
           <feComposite in="edge-color" in2="outer-edge" operator="in" result="outline"/>
           <feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <filter id="lasso-outline-white" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-          <feMorphology in="SourceAlpha" operator="dilate" radius="1.4" result="expanded"/>
-          <feComposite in="expanded" in2="SourceAlpha" operator="out" result="outer-edge"/>
-          <feFlood flood-color="#ffffff" result="edge-color"/>
-          <feComposite in="edge-color" in2="outer-edge" operator="in" result="outline"/>
-          <feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
       </defs>
       <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.2 3.8L7 8l3.8 1.2L12 13l1.2-3.8L17 8l-3.8-1.2L12 3Z"/><path d="m19 13-.8 2.2L16 16l2.2.8L19 19l.8-2.2L22 16l-2.2-.8L19 13Z"/><path d="m5 13-.7 1.8-1.8.7 1.8.7L5 18l.7-1.8 1.8-.7-1.8-.7L5 13Z"/></symbol>
       <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.6-4.6a2 2 0 0 1 2.8 0L16 17l1.1-1.1a2 2 0 0 1 2.9.1"/></symbol>
@@ -83,8 +76,8 @@
             <div class="image-stage">
               <div class="image-frame" id="imageFrame">
                 <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration" draggable="false" />
-                <div class="crop-overlay" id="cropOverlay" data-crop-ratio="unlocked" hidden>
-                  <span class="crop-grid"></span><span class="crop-drag-label">Unlocked · drag edges or frame</span>
+                <div class="crop-overlay" id="cropOverlay" hidden>
+                  <span class="crop-grid"></span><span class="crop-drag-label">Drag edges or frame</span>
                   <i data-crop-handle="nw"></i><i data-crop-handle="n"></i><i data-crop-handle="ne"></i><i data-crop-handle="e"></i>
                   <i data-crop-handle="se"></i><i data-crop-handle="s"></i><i data-crop-handle="sw"></i><i data-crop-handle="w"></i>
                 </div>
@@ -96,12 +89,7 @@
                   <rect class="lasso-hit-area" width="100%" height="100%" />
                   <path class="lasso-mask" id="imageLassoPath" d="" />
                 </svg>
-                <svg class="freehand-layer crop-freehand-layer" id="cropFreehandLayer" aria-label="Draw a freehand crop contour" hidden>
-                  <rect class="lasso-hit-area" width="100%" height="100%" />
-                  <path class="lasso-mask crop-freehand-mask" id="cropFreehandPath" d="" />
-                </svg>
                 <span class="lasso-hint" id="imageLassoHint" hidden><svg><use href="#i-pen"/></svg>Draw around the subject</span>
-                <span class="lasso-hint crop-freehand-hint" id="cropFreehandHint" hidden><svg><use href="#i-pen"/></svg>Draw the crop contour</span>
                 <div class="selection-context-bar image-selection-bar follows-selection" id="imageSelectionToolbar" hidden>
                   <span><small id="imageSelectionKind">Image selection</small><strong id="imageSelectionLabel">Whole image</strong></span>
                   <button data-ai-action="describe-image-region"><svg><use href="#i-sparkles"/></svg>Ask</button>
@@ -114,7 +102,9 @@
                     <div class="scope-switch image-scope-switch" aria-label="图片上下文范围"><button class="is-active" data-image-scope="all">Whole</button><button data-image-scope="region">Rectangle</button><button data-image-scope="lasso"><svg><use href="#i-pen"/></svg>Freehand</button></div>
                     <span class="toolbar-divider"></span>
                     <button data-image-tool="crop"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
-                    <button data-image-tool="export"><svg><use href="#i-download"/></svg><span>Export</span></button>
+                    <button class="dock-icon-button" data-image-rotate="left" aria-label="Rotate left 90 degrees" title="Rotate left 90°"><svg class="rotate-left"><use href="#i-rotate"/></svg></button>
+                    <button class="dock-icon-button" data-image-rotate="right" aria-label="Rotate right 90 degrees" title="Rotate right 90°"><svg><use href="#i-rotate"/></svg></button>
+                    <button class="dock-icon-button" data-image-tool="export" aria-label="Export" title="Export a copy"><svg><use href="#i-download"/></svg></button>
                     <span class="toolbar-divider"></span>
                     <button class="ai-inline" data-ai-action="describe-image"><svg><use href="#i-sparkles"/></svg><span>Ask</span></button>
                     <button class="add-composer" data-add-composer="image" data-context-scope="all" aria-label="Add whole image to Composer" title="Add to Composer"><svg><use href="#i-plus"/></svg><span>Composer</span></button>
@@ -127,18 +117,7 @@
                     </div>
                   </div>
                   <div class="crop-studio" id="cropStudio" hidden>
-                    <div class="scope-switch crop-mode-switch" aria-label="裁剪方式"><button class="is-active" data-crop-mode="rectangle">Rectangle</button><button data-crop-mode="freehand"><svg><use href="#i-pen"/></svg>Freehand</button></div>
-                    <div class="crop-rectangle-controls" id="cropRectangleControls">
-                      <div class="crop-presets" aria-label="裁剪比例">
-                        <button class="is-active" data-crop-ratio="unlocked">Unlocked</button><button data-crop-ratio="original">Original</button><button data-crop-ratio="square">1:1</button><button data-crop-ratio="classic">4:3</button><button data-crop-ratio="wide">16:9</button>
-                      </div>
-                      <div class="crop-angle">
-                        <button class="crop-icon-button" data-crop-rotate="left" aria-label="Rotate crop left 90 degrees" title="Rotate left 90°"><svg class="rotate-left"><use href="#i-rotate"/></svg></button>
-                        <label><span>Straighten</span><input id="cropAngle" type="range" min="-45" max="45" value="0" step="1"/><output id="cropAngleValue">0°</output></label>
-                        <button class="crop-icon-button" data-crop-rotate="right" aria-label="Rotate crop right 90 degrees" title="Rotate right 90°"><svg><use href="#i-rotate"/></svg></button>
-                      </div>
-                    </div>
-                    <div class="crop-freehand-controls" id="cropFreehandControls" hidden><span><strong>Freehand crop</strong><small>Draw a closed contour directly on the image.</small></span><button data-crop-action="redraw">Redraw</button></div>
+                    <div class="crop-studio-title"><svg><use href="#i-crop"/></svg><span><strong>Crop</strong><small id="cropScopeLabel">Drag edges or frame</small></span></div>
                     <div class="crop-commit"><button data-crop-action="reset">Reset</button><button data-crop-action="cancel">Cancel</button><button class="primary" data-crop-action="done">Done</button></div>
                   </div>
                   <div class="image-export-sheet" id="imageExportSheet" hidden>
