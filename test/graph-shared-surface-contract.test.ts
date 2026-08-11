@@ -22,5 +22,16 @@ assert.doesNotMatch(
 assert.match(canvas, /communityUnavailable/, 'Community mode presents an honest unavailable state');
 assert.match(canvas, /data-graph-inspect-mode/, 'the shared canvas exposes press-to-inspect state');
 assert.match(canvas, /multiSelected/, 'the shared canvas exposes persistent multi-selection styling');
+assert.doesNotMatch(
+	canvas,
+	/selectionDimmed/,
+	'persistent node selection never hides the graph base layer',
+);
+assert.match(canvas, /multiConnectedEdge/, 'selection emphasizes connected edges on top of the visible base graph');
+assert.match(
+	canvas,
+	/selector: 'edge\.dimmed', style: \{ opacity: 0\.38/,
+	'temporary hover focus keeps unrelated graph lines readable',
+);
 
 console.log('graph-shared-surface-contract: passed');

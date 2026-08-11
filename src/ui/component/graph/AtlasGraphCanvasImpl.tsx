@@ -484,13 +484,13 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.communityRelation.parallelEdge', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 34, 'control-point-weights': 0.5 } as never },
 	{ selector: 'node', style: { 'transition-property': 'background-color, border-color, border-width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
 	{ selector: 'edge', style: { 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
-	{ selector: '.dimmed', style: { opacity: 0.12 } as never },
+	{ selector: 'node.dimmed', style: { opacity: 0.24 } as never },
+	{ selector: 'edge.dimmed', style: { opacity: 0.38 } as never },
 	{ selector: 'node.highlighted', style: { 'border-color': '#f59e0b', 'border-width': 3, opacity: 1, 'z-index': 999 } as never },
 	{ selector: 'node.keyboard-active', style: { 'border-color': '#2563eb', 'border-width': 5, opacity: 1, 'z-index': 1000 } as never },
 	{ selector: 'edge.highlighted', style: { 'line-color': '#f59e0b', 'source-arrow-color': '#f59e0b', 'target-arrow-color': '#f59e0b', opacity: 1, 'z-index': 999, 'arrow-scale': 1.4 } as never },
 	{ selector: 'edge.reference.highlighted', style: { 'line-style': 'solid', width: 2.6 } as never },
 	{ selector: 'edge.semantic.highlighted', style: { 'line-style': 'dashed', 'line-dash-pattern': [10, 6], width: 2.0 } as never },
-	{ selector: '.selectionDimmed', style: { opacity: 0.14 } as never },
 	{ selector: 'node.multiConnected', style: { opacity: 1, 'border-color': '#a78bfa', 'border-width': 2, 'z-index': 850 } as never },
 	{ selector: 'node.multiSelected', style: { opacity: 1, 'background-color': '#7c3aed', 'border-color': '#4c1d95', 'border-width': 4, color: '#ffffff', 'z-index': 1100 } as never },
 	{ selector: 'edge.multiConnectedEdge', style: { opacity: 0.9, width: 2.2, 'z-index': 900 } as never },
@@ -780,8 +780,8 @@ function applyFolderTreeFocus(
 	});
 }
 
-const MULTI_SELECTION_NODE_CLASSES = 'selectionDimmed multiSelected multiConnected';
-const MULTI_SELECTION_EDGE_CLASSES = 'selectionDimmed multiSelectedEdge multiConnectedEdge';
+const MULTI_SELECTION_NODE_CLASSES = 'multiSelected multiConnected';
+const MULTI_SELECTION_EDGE_CLASSES = 'multiSelectedEdge multiConnectedEdge';
 
 function applyGraphSelection(cy: Core, selectedIds: readonly string[]): void {
 	cy.batch(() => {
@@ -796,8 +796,6 @@ function applyGraphSelection(cy: Core, selectedIds: readonly string[]): void {
 		if (!selected.size) return;
 
 		const connected = new Set<string>();
-		cy.nodes().not('.regionLabel').not('.folderTreeRailNode').addClass('selectionDimmed');
-		cy.edges().addClass('selectionDimmed');
 		cy.edges().forEach((edge) => {
 			if (edge.data('kind') === 'hierarchy') return;
 			const sourceId = edge.source().id();
@@ -805,30 +803,30 @@ function applyGraphSelection(cy: Core, selectedIds: readonly string[]): void {
 			const sourceSelected = selected.has(sourceId);
 			const targetSelected = selected.has(targetId);
 			if (sourceSelected && targetSelected) {
-				edge.removeClass('selectionDimmed').addClass('multiSelectedEdge');
+				edge.addClass('multiSelectedEdge');
 				return;
 			}
 			if (!sourceSelected && !targetSelected) return;
-			edge.removeClass('selectionDimmed').addClass('multiConnectedEdge');
+			edge.addClass('multiConnectedEdge');
 			connected.add(sourceSelected ? targetId : sourceId);
 		});
 
 		for (const id of selected) {
-			cy.getElementById(id).removeClass('selectionDimmed').addClass('multiSelected');
+			cy.getElementById(id).addClass('multiSelected');
 		}
 		for (const id of connected) {
 			if (selected.has(id)) continue;
-			cy.getElementById(id).removeClass('selectionDimmed').addClass('multiConnected');
+			cy.getElementById(id).addClass('multiConnected');
 		}
 
 		cy.nodes('.folderTreeDecoration').forEach((decoration) => {
 			const ownerId = String(decoration.data('ownerId') ?? '');
 			if (selected.has(ownerId)) {
-				decoration.removeClass('selectionDimmed').addClass('multiSelected');
+				decoration.addClass('multiSelected');
 				return;
 			}
 			if (connected.has(ownerId)) {
-				decoration.removeClass('selectionDimmed').addClass('multiConnected');
+				decoration.addClass('multiConnected');
 			}
 		});
 	});
