@@ -38,6 +38,9 @@ dist-desktop/
 fonts/
 main.css
 main.js
+peak-sheet-xlsx-worker.js
+document-docx-text-worker.js
+document-pptx-text-worker.js
 temp-test.js
 native/
 # Peak Composer WP8 owns legitimate source/fixture dirs literally named `native/`

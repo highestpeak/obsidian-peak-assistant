@@ -59,6 +59,18 @@ export interface PeakSheetUiPort extends PeakSheetToolPort {
 	subscribe(listener: () => void): () => void;
 }
 
+/**
+ * Optional heavyweight spreadsheet codec boundary.
+ *
+ * Production owns this at the app layer so ExcelJS can run in a disposable
+ * isolate instead of becoming permanent state in the Obsidian renderer.
+ */
+export interface PeakSheetXlsxPort {
+	preview(buffer: ArrayBuffer, name?: string): Promise<PeakSheetWorkbookDraft>;
+	export(snapshot: PeakSheetDatasetSnapshot): Promise<ArrayBuffer>;
+	dispose(): void;
+}
+
 export interface PeakSheetAttachmentPort {
 	copyExternalFile(input: {
 		readonly name: string;

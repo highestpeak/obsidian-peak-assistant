@@ -26,14 +26,34 @@ function source(relativePath: string): string {
 function testProductionBundleBoundaries(): void {
 	const config = source('esbuild.config.mjs');
 	const runtime = source('src/app/sheet/PeakSheetRuntime.ts');
+	const main = source('main.ts');
+	const loaderManager = source('src/core/document/loader/helper/DocumentLoaderManager.ts');
+	const docxLoader = source('src/core/document/loader/DocxDocumentLoader.ts');
+	const pptxLoader = source('src/core/document/loader/PptxDocumentLoader.ts');
+	const workerClient = source('src/app/platform/worker/DisposableWorkerTaskClient.ts');
 
 	assert.match(config, /gracefulFsQueueDataPropertyPlugin/);
 	assert.match(config, /lucide-react\/dist\/esm\/lucide-react\.js/);
 	assert.doesNotMatch(config, /lucide-react\/dist\/cjs\/lucide-react\.js/);
 	assert.doesNotMatch(runtime, /^import \{ parsePeakSheetXlsx \}/m);
 	assert.doesNotMatch(runtime, /^import \{ exportPeakSheetXlsx \}/m);
-	assert.match(runtime, /await import\('@\/service\/sheet\/import\/PeakSheetXlsxImporter'\)/);
-	assert.match(runtime, /await import\('@\/service\/sheet\/export\/PeakSheetXlsxExporter'\)/);
+	assert.doesNotMatch(runtime, /import\('@\/service\/sheet\/(?:import|export)\/PeakSheetXlsx/);
+	assert.match(runtime, /requireXlsxRuntime\(\)\.preview/);
+	assert.match(runtime, /requireXlsxRuntime\(\)\.export/);
+	assert.match(runtime, /xlsxRuntime\?\.dispose\(\)/);
+	assert.match(main, /PeakSheetXlsxWorkerClient/);
+	assert.match(config, /PeakSheetXlsxWorker\.ts/);
+	assert.match(config, /peak-sheet-xlsx-worker\.js/);
+	assert.match(config, /DocxTextWorker\.ts/);
+	assert.match(config, /document-docx-text-worker\.js/);
+	assert.match(config, /PptxTextWorker\.ts/);
+	assert.match(config, /document-pptx-text-worker\.js/);
+	assert.doesNotMatch(docxLoader, /from 'mammoth'/);
+	assert.doesNotMatch(pptxLoader, /from 'officeparser'/);
+	assert.match(loaderManager, /binaryTextExtractor\?\.dispose\(\)/);
+	assert.match(main, /BinaryDocumentTextWorkerClient/);
+	assert.match(workerClient, /taskTail/);
+	assert.match(workerClient, /worker\.terminate\(\)\.then/);
 }
 
 function testGracefulFsPatchIsFailLoud(): void {

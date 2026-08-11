@@ -1,4 +1,4 @@
-import type { PeakSheetUiPort, PeakSheetQueryInput } from '@/core/ports/PeakSheetToolPort';
+import type { PeakSheetUiPort, PeakSheetQueryInput, PeakSheetXlsxPort } from '@/core/ports/PeakSheetToolPort';
 import {
 	applyPeakSheetPatch,
 	executePeakSheetAnalysis,
@@ -31,6 +31,10 @@ import { createPeakSheetStarterDrafts } from './PeakSheetStarterDatasets';
 
 type PeakSheetListener = () => void;
 
+type PeakSheetRuntimeDependencies = {
+	readonly xlsxRuntime?: PeakSheetXlsxPort;
+};
+
 export class PeakSheetRuntime implements PeakSheetUiPort {
 	private readonly datasets = new Map<string, PeakSheetDatasetSnapshot>();
 	private readonly undoStacks = new Map<string, PeakSheetPatchPair[]>();
@@ -40,13 +44,17 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	private requestedDatasetId: string | null = null;
 	private unsubscribeFiles: (() => void) | null = null;
 	private disposed = false;
+	private readonly xlsxRuntime: PeakSheetXlsxPort | null;
 
 	constructor(
 		private readonly repository: PeakSheetRepository,
 		private readonly formulaEngine = new HyperFormulaPeakSheetEngine(),
 		private readonly now: () => string = () => new Date().toISOString(),
 		private readonly idFactory: () => string = () => crypto.randomUUID(),
-	) {}
+		dependencies: PeakSheetRuntimeDependencies = {},
+	) {
+		this.xlsxRuntime = dependencies.xlsxRuntime ?? null;
+	}
 
 	async initialize(): Promise<void> {
 		for (const datasetId of await this.repository.listDatasetIds()) {
@@ -241,8 +249,8 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	}
 
 	async previewXlsx(buffer: ArrayBuffer, name?: string): Promise<PeakSheetWorkbookDraft> {
-		const { parsePeakSheetXlsx } = await import('@/service/sheet/import/PeakSheetXlsxImporter');
-		return parsePeakSheetXlsx(buffer, name);
+		this.assertActive();
+		return this.requireXlsxRuntime().preview(buffer, name);
 	}
 
 	async importWorkbook(workbook: PeakSheetWorkbookDraft, sheetIndexes: readonly number[], options?: PeakSheetCreateOptions): Promise<readonly PeakSheetDatasetSnapshot[]> {
@@ -265,8 +273,8 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	}
 
 	async exportXlsx(datasetId: string): Promise<ArrayBuffer> {
-		const { exportPeakSheetXlsx } = await import('@/service/sheet/export/PeakSheetXlsxExporter');
-		return exportPeakSheetXlsx(this.getDataset(datasetId));
+		this.assertActive();
+		return this.requireXlsxRuntime().export(this.getDataset(datasetId));
 	}
 
 	exportNative(datasetId: string): string {
@@ -343,7 +351,9 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	}
 
 	dispose(): void {
+		if (this.disposed) return;
 		this.disposed = true;
+		this.xlsxRuntime?.dispose();
 		this.unsubscribeFiles?.();
 		this.unsubscribeFiles = null;
 		if (isFileRepository(this.repository)) this.repository.dispose();
@@ -472,6 +482,11 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 
 	private assertActive(): void {
 		if (this.disposed) throw new Error('Peak Sheet runtime has been disposed.');
+	}
+
+	private requireXlsxRuntime(): PeakSheetXlsxPort {
+		if (this.xlsxRuntime) return this.xlsxRuntime;
+		throw new Error('Peak Sheet XLSX worker is unavailable. Rebuild the plugin to restore XLSX support.');
 	}
 }
 

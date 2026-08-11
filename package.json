@@ -17,7 +17,7 @@
 		"build:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.tailwind.css --minify",
 		"build:streamdown": "npx tailwindcss -i src/styles/streamdown.css -o styles.streamdown.css --config tailwind.streamdown.config.js --minify",
 		"build:css": "npm run build:tailwind && npm run build:streamdown && node scripts/concat-css.mjs",
-		"check:bundle": "node --check main.js",
+		"check:bundle": "node --check main.js && node --check peak-sheet-xlsx-worker.js && node --check document-docx-text-worker.js && node --check document-pptx-text-worker.js",
 		"check:simulator-boundary": "node scripts/check-simulator-boundary.mjs",
 		"audit:boundary": "node scripts/audit/boundary-baseline.mjs",
 		"build": "npm run build:css && node esbuild.config.mjs production && npm run check:bundle && npm run check:simulator-boundary",

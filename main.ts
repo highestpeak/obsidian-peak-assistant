@@ -235,7 +235,16 @@ export default class MyPlugin extends Plugin {
 		// T11K: loaders depend on a narrow vault port; this adapter is the only
 		// place that holds Obsidian `App` / `TFile` / `TFolder`.
 		const vaultReader = new AppVaultReaderAdapter(this.app);
-		DocumentLoaderManager.init(vaultReader, vaultReader, this.settings.search);
+		const { BinaryDocumentTextWorkerClient } = await import(
+			'@/app/document/worker/BinaryDocumentTextWorkerClient'
+		);
+		DocumentLoaderManager.init(
+			vaultReader,
+			vaultReader,
+			this.settings.search,
+			undefined,
+			new BinaryDocumentTextWorkerClient(getPluginDirAbsolute(this.manifest.id, this.app)),
+		);
 
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
 		// T11I (2026-06-26): chat runtime UI toggles reach the service layer via
@@ -453,14 +462,19 @@ export default class MyPlugin extends Plugin {
 		}
 
 		try {
-			const [{ PeakSheetRuntime }, { AppPeakSheetFileRepository }] = await Promise.all([
+			const [{ PeakSheetRuntime }, { AppPeakSheetFileRepository }, { PeakSheetXlsxWorkerClient }] = await Promise.all([
 				import('@/app/sheet/PeakSheetRuntime'),
 				import('@/app/sheet/AppPeakSheetFileRepository'),
+				import('@/app/sheet/PeakSheetXlsxWorkerClient'),
 			]);
 			const peakSheetRuntime = new PeakSheetRuntime(new AppPeakSheetFileRepository(
 				this.app,
 				appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
-			));
+			), undefined, undefined, undefined, {
+				xlsxRuntime: PeakSheetXlsxWorkerClient.fromPluginDirectory(
+					getPluginDirAbsolute(this.manifest.id, this.app),
+				),
+			});
 			await peakSheetRuntime.initialize();
 			appContext.runtimeRegistry.setPeakSheetRuntime(peakSheetRuntime);
 			this.aiServiceManager.conv.setPeakSheetRuntime(peakSheetRuntime);
@@ -1437,7 +1451,7 @@ export default class MyPlugin extends Plugin {
 			const cache = require.cache;
 			const drop = [
 				'better-sqlite3', 'sqlite-vec', 'obsidian-peak-assistant',
-				'bluebird', 'handlebars', 'officeparser', 'mammoth', 'saxes', 'sax', 'p-queue', '@langchain',
+				'bluebird', 'handlebars', 'saxes', 'sax', 'p-queue', '@langchain',
 			];
 			for (const key in cache) {
 				if (drop.some((name) => key.includes(name))) delete cache[key];

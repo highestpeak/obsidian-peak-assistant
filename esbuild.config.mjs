@@ -23,6 +23,39 @@ const prod = (process.argv[2] === "production");
 
 /** Keep in sync with `SLICE_CAPS.build.esbuildLogInputs` in `src/core/constant.ts` (Node cannot import TS here). */
 const ESBUILD_LOG_TOP_INPUTS = 50;
+const DISPOSABLE_WORKER_BUILDS = [
+	{
+		name: "xlsx",
+		entryPoint: "src/app/sheet/PeakSheetXlsxWorker.ts",
+		outfile: "peak-sheet-xlsx-worker.js",
+		requiredInputs: [
+			"node_modules/exceljs/",
+			"node_modules/jszip/",
+			"node_modules/graceful-fs/",
+			"src/service/sheet/import/PeakSheetXlsxImporter.ts",
+			"src/service/sheet/export/PeakSheetXlsxExporter.ts",
+		],
+	},
+	{
+		name: "docx",
+		entryPoint: "src/app/document/worker/DocxTextWorker.ts",
+		outfile: "document-docx-text-worker.js",
+		requiredInputs: [
+			"node_modules/mammoth/",
+			"node_modules/jszip/",
+			"src/app/document/worker/DocxTextWorker.ts",
+		],
+	},
+	{
+		name: "pptx",
+		entryPoint: "src/app/document/worker/PptxTextWorker.ts",
+		outfile: "document-pptx-text-worker.js",
+		requiredInputs: [
+			"node_modules/officeparser/",
+			"src/app/document/worker/PptxTextWorker.ts",
+		],
+	},
+];
 
 /**
  * After bundle is written, patch main.js so Error.__BluebirdErrorTypes__ is configurable: true.
@@ -99,14 +132,8 @@ const fixImportMetaPlugin = {
 	},
 };
 
-const shared = {
-	banner: { js: banner },
-	bundle: true,
-	platform: "node",
-	define: {
-		"process.env.NODE_ENV": prod ? '"production"' : '"development"',
-	},
-	plugins: [
+function createBasePlugins() {
+	return [
 		alias({
 			"@": path.resolve(__dirname, "src"),
 			// Keep every consumer on one tree-shakeable ESM graph. Pointing these
@@ -116,8 +143,16 @@ const shared = {
 		}),
 		gracefulFsQueueDataPropertyPlugin,
 		fixImportMetaPlugin,
-		bluebirdConfigurablePlugin,
-	],
+	];
+}
+
+const shared = {
+	banner: { js: banner },
+	bundle: true,
+	platform: "node",
+	define: {
+		"process.env.NODE_ENV": prod ? '"production"' : '"development"',
+	},
 	external: [
 		// STUB_PKGS=pkg1,pkg2 (diagnostic builds only): externalize packages so
 		// scripts/measure-eval-mem.mjs can stub them at require time and bisect
@@ -170,10 +205,26 @@ const mainContext = await esbuild.context({
 	format: "cjs",
 	outfile: "main.js",
 	metafile: true,
+	plugins: [...createBasePlugins(), bluebirdConfigurablePlugin],
 });
 
+const disposableWorkerContexts = await Promise.all(DISPOSABLE_WORKER_BUILDS.map((worker) => (
+	esbuild.context({
+		...shared,
+		entryPoints: [worker.entryPoint],
+		format: "cjs",
+		outfile: worker.outfile,
+		metafile: true,
+		plugins: createBasePlugins(),
+	})
+)));
+
 if (prod) {
-	const result = await mainContext.rebuild();
+	const [result, ...workerResults] = await Promise.all([
+		mainContext.rebuild(),
+		...disposableWorkerContexts.map((context) => context.rebuild()),
+	]);
+	assertDisposableWorkerIsolation(result.metafile, workerResults.map((workerResult) => workerResult.metafile));
 	if (process.env.BUNDLE_METAFILE && result.metafile) {
 		await fs.promises.writeFile(
 			path.join(__dirname, ".esbuild-meta.json"),
@@ -196,5 +247,37 @@ if (prod) {
 	}
 	process.exit(0);
 } else {
-	await mainContext.watch();
+	await Promise.all([
+		mainContext.watch(),
+		...disposableWorkerContexts.map((context) => context.watch()),
+	]);
+}
+
+function assertDisposableWorkerIsolation(mainMetafile, workerMetafiles) {
+	if (process.env.STUB_PKGS) {
+		console.log("[disposable-worker-boundary] skipped for diagnostic STUB_PKGS build");
+		return;
+	}
+	const mainInputs = Object.keys(mainMetafile?.inputs ?? {}).map(normalizeBuildPath);
+	const isolatedInputs = [...new Set(DISPOSABLE_WORKER_BUILDS.flatMap((worker) => worker.requiredInputs))];
+	const leaked = isolatedInputs.filter((needle) => mainInputs.some((input) => input.includes(needle)));
+	if (leaked.length > 0) {
+		throw new Error(`[disposable-worker-boundary] Heavy parser inputs leaked into main.js: ${leaked.join(", ")}`);
+	}
+	for (let index = 0; index < DISPOSABLE_WORKER_BUILDS.length; index++) {
+		const worker = DISPOSABLE_WORKER_BUILDS[index];
+		const workerMetafile = workerMetafiles[index];
+		const workerInputs = Object.keys(workerMetafile?.inputs ?? {}).map(normalizeBuildPath);
+		const missing = worker.requiredInputs.filter((needle) => !workerInputs.some((input) => input.includes(needle)));
+		if (missing.length > 0) {
+			throw new Error(`[disposable-worker-boundary] ${worker.name} worker is missing inputs: ${missing.join(", ")}`);
+		}
+		const output = workerMetafile?.outputs?.[worker.outfile];
+		const size = output ? ` (${(output.bytes / 1024 / 1024).toFixed(2)} MB)` : "";
+		console.log(`[disposable-worker-boundary] ${worker.name} parser isolated from main.js${size}`);
+	}
+}
+
+function normalizeBuildPath(value) {
+	return value.split(path.sep).join("/");
 }

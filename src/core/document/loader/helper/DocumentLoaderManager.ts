@@ -5,6 +5,7 @@ import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
+import type { BinaryDocumentTextExtractorPort } from '@/core/ports/BinaryDocumentTextExtractorPort';
 import type { DocumentSummaryConfig } from './DocumentLoaderHelpers';
 import { createIgnoreMatcher, type IgnoreMatcher } from '@/core/utils/IgnoreMatcher';
 import { MarkdownDocumentLoader } from '../MarkdownDocumentLoader';
@@ -54,6 +55,7 @@ export class DocumentLoaderManager {
 	 * Call from plugin onunload to release memory.
 	 */
 	static clearInstance(): void {
+		DocumentLoaderManager.instance?.dispose();
 		DocumentLoaderManager.instance = null;
 	}
 
@@ -70,11 +72,19 @@ export class DocumentLoaderManager {
 		metadata: VaultMetadataResolverPort,
 		settings: SearchSettings,
 		aiServiceManager?: IDocSummarizer,
+		binaryTextExtractor?: BinaryDocumentTextExtractorPort,
 	): DocumentLoaderManager {
 		if (DocumentLoaderManager.instance) {
 			console.warn('DocumentLoaderManager already initialized. Reinitializing with new settings.');
+			DocumentLoaderManager.instance.dispose();
 		}
-		DocumentLoaderManager.instance = new DocumentLoaderManager(vault, metadata, settings, aiServiceManager);
+		DocumentLoaderManager.instance = new DocumentLoaderManager(
+			vault,
+			metadata,
+			settings,
+			aiServiceManager,
+			binaryTextExtractor,
+		);
 		return DocumentLoaderManager.instance;
 	}
 
@@ -83,6 +93,7 @@ export class DocumentLoaderManager {
 		metadata: VaultMetadataResolverPort,
 		settings: SearchSettings,
 		aiServiceManager?: IDocSummarizer,
+		private readonly binaryTextExtractor?: BinaryDocumentTextExtractorPort,
 	) {
 		this.vault = vault;
 		this.metadata = metadata;
@@ -113,8 +124,10 @@ export class DocumentLoaderManager {
 		this.registerLoader(new HtmlXmlDocumentLoader(v, sc, ai));
 		this.registerLoader(new PdfDocumentLoader(v, sc, ai));
 		this.registerLoader(new ImageDocumentLoader(v, sc, this.settings, ai));
-		this.registerLoader(new DocxDocumentLoader(v, sc, ai));
-		this.registerLoader(new PptxDocumentLoader(v, sc, ai));
+		if (this.binaryTextExtractor) {
+			this.registerLoader(new DocxDocumentLoader(v, sc, ai, this.binaryTextExtractor));
+			this.registerLoader(new PptxDocumentLoader(v, sc, ai, this.binaryTextExtractor));
+		}
 		this.registerLoader(new ExcalidrawDocumentLoader(v, sc, ai));
 		this.registerLoader(new CanvasDocumentLoader(v, sc, ai));
 		this.registerLoader(new UrlDocumentLoader(v, sc, ai));
@@ -149,6 +162,12 @@ export class DocumentLoaderManager {
 	 */
 	getIgnoreMatcher(): IgnoreMatcher {
 		return this.ignoreMatcher;
+	}
+
+	private dispose(): void {
+		this.binaryTextExtractor?.dispose();
+		this.loaderMap.clear();
+		this.extensionToLoaderMap.clear();
 	}
 
 	/**
