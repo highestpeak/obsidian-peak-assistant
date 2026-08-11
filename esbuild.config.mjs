@@ -20,6 +20,12 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+const STUBBED_PACKAGES = (process.env.STUB_PKGS ?? "").split(",").filter(Boolean);
+const DIAGNOSTIC_BUNDLE_DIRECTORY = ".dev/bundle-diagnostics";
+const diagnosticBuild = STUBBED_PACKAGES.length > 0;
+const mainOutfile = diagnosticBuild
+	? `${DIAGNOSTIC_BUNDLE_DIRECTORY}/main.js`
+	: "main.js";
 
 /** Keep in sync with `SLICE_CAPS.build.esbuildLogInputs` in `src/core/constant.ts` (Node cannot import TS here). */
 const ESBUILD_LOG_TOP_INPUTS = 50;
@@ -35,6 +41,7 @@ const DISPOSABLE_WORKER_BUILDS = [
 			"src/service/sheet/import/PeakSheetXlsxImporter.ts",
 			"src/service/sheet/export/PeakSheetXlsxExporter.ts",
 		],
+		isolatedPackages: ["exceljs", "jszip", "graceful-fs"],
 	},
 	{
 		name: "docx",
@@ -45,6 +52,7 @@ const DISPOSABLE_WORKER_BUILDS = [
 			"node_modules/jszip/",
 			"src/app/document/worker/DocxTextWorker.ts",
 		],
+		isolatedPackages: ["mammoth", "jszip"],
 	},
 	{
 		name: "pptx",
@@ -54,6 +62,7 @@ const DISPOSABLE_WORKER_BUILDS = [
 			"node_modules/officeparser/",
 			"src/app/document/worker/PptxTextWorker.ts",
 		],
+		isolatedPackages: ["officeparser"],
 	},
 ];
 
@@ -61,29 +70,31 @@ const DISPOSABLE_WORKER_BUILDS = [
  * After bundle is written, patch main.js so Error.__BluebirdErrorTypes__ is configurable: true.
  * Bluebird sets it configurable: false so we cannot delete it at runtime; we have code control so we fix it at build time.
  */
-const bluebirdConfigurablePlugin = {
-	name: 'bluebird-configurable',
-	setup(build) {
-		build.onEnd(async (result) => {
-			if (result.errors.length) return;
-			const outPath = path.join(__dirname, 'main.js');
-			try {
-				const content = await fs.promises.readFile(outPath, 'utf8');
-				// Match both dev (configurable: false) and prod minified (configurable:!1)
-				const patched = content.replace(
-					/(Error,\s*["']__BluebirdErrorTypes__["'][^)]*?)configurable:\s*(?:false|!1)/g,
-					'$1configurable: true'
-				);
-				if (patched !== content) {
-					await fs.promises.writeFile(outPath, patched, 'utf8');
-					console.log('[bluebird-configurable] Patched __BluebirdErrorTypes__ to configurable: true in main.js');
+function createBluebirdConfigurablePlugin(outfile) {
+	return {
+		name: 'bluebird-configurable',
+		setup(build) {
+			build.onEnd(async (result) => {
+				if (result.errors.length) return;
+				const outPath = path.join(__dirname, outfile);
+				try {
+					const content = await fs.promises.readFile(outPath, 'utf8');
+					// Match both dev (configurable: false) and prod minified (configurable:!1)
+					const patched = content.replace(
+						/(Error,\s*["']__BluebirdErrorTypes__["'][^)]*?)configurable:\s*(?:false|!1)/g,
+						'$1configurable: true'
+					);
+					if (patched !== content) {
+						await fs.promises.writeFile(outPath, patched, 'utf8');
+						console.log(`[bluebird-configurable] Patched __BluebirdErrorTypes__ in ${outfile}`);
+					}
+				} catch (e) {
+					console.warn('[bluebird-configurable] Patch failed:', e?.message);
 				}
-			} catch (e) {
-				console.warn('[bluebird-configurable] Patch failed:', e?.message);
-			}
-		});
-	},
-};
+			});
+		},
+	};
+}
 
 /**
  * Plugin to fix createRequire(import.meta.url) issues in bundled code
@@ -157,7 +168,7 @@ const shared = {
 		// STUB_PKGS=pkg1,pkg2 (diagnostic builds only): externalize packages so
 		// scripts/measure-eval-mem.mjs can stub them at require time and bisect
 		// module-eval memory cost. Empty in normal builds.
-		...(process.env.STUB_PKGS ?? "").split(",").filter(Boolean),
+		...STUBBED_PACKAGES,
 		"obsidian",
 		"electron",
 		"better-sqlite3", // Mark as external so it loads from node_modules (native module)
@@ -203,12 +214,12 @@ const mainContext = await esbuild.context({
 	...shared,
 	entryPoints: ["entry.ts"],
 	format: "cjs",
-	outfile: "main.js",
+	outfile: mainOutfile,
 	metafile: true,
-	plugins: [...createBasePlugins(), bluebirdConfigurablePlugin],
+	plugins: [...createBasePlugins(), createBluebirdConfigurablePlugin(mainOutfile)],
 });
 
-const disposableWorkerContexts = await Promise.all(DISPOSABLE_WORKER_BUILDS.map((worker) => (
+const disposableWorkerContexts = diagnosticBuild ? [] : await Promise.all(DISPOSABLE_WORKER_BUILDS.map((worker) => (
 	esbuild.context({
 		...shared,
 		entryPoints: [worker.entryPoint],
@@ -220,6 +231,18 @@ const disposableWorkerContexts = await Promise.all(DISPOSABLE_WORKER_BUILDS.map(
 )));
 
 if (prod) {
+	if (diagnosticBuild) {
+		const result = await mainContext.rebuild();
+		if (process.env.BUNDLE_METAFILE && result.metafile) {
+			await fs.promises.mkdir(path.join(__dirname, DIAGNOSTIC_BUNDLE_DIRECTORY), { recursive: true });
+			await fs.promises.writeFile(
+				path.join(__dirname, DIAGNOSTIC_BUNDLE_DIRECTORY, "esbuild-meta.json"),
+				JSON.stringify(result.metafile),
+			);
+		}
+		console.log(`[Bundle] diagnostic main bundle written outside production artifacts: ${mainOutfile}`);
+		process.exit(0);
+	}
 	const [result, ...workerResults] = await Promise.all([
 		mainContext.rebuild(),
 		...disposableWorkerContexts.map((context) => context.rebuild()),
@@ -254,15 +277,28 @@ if (prod) {
 }
 
 function assertDisposableWorkerIsolation(mainMetafile, workerMetafiles) {
-	if (process.env.STUB_PKGS) {
-		console.log("[disposable-worker-boundary] skipped for diagnostic STUB_PKGS build");
-		return;
-	}
 	const mainInputs = Object.keys(mainMetafile?.inputs ?? {}).map(normalizeBuildPath);
 	const isolatedInputs = [...new Set(DISPOSABLE_WORKER_BUILDS.flatMap((worker) => worker.requiredInputs))];
 	const leaked = isolatedInputs.filter((needle) => mainInputs.some((input) => input.includes(needle)));
 	if (leaked.length > 0) {
 		throw new Error(`[disposable-worker-boundary] Heavy parser inputs leaked into main.js: ${leaked.join(", ")}`);
+	}
+	const isolatedPackages = [...new Set(DISPOSABLE_WORKER_BUILDS.flatMap((worker) => worker.isolatedPackages))];
+	const mainOutput = Object.values(mainMetafile?.outputs ?? {}).find((output) => (
+		normalizeBuildPath(output.entryPoint ?? "").endsWith("/entry.ts")
+		|| normalizeBuildPath(output.entryPoint ?? "") === "entry.ts"
+	));
+	if (!mainOutput) {
+		throw new Error("[disposable-worker-boundary] main.js output metadata is missing");
+	}
+	const externalImports = (mainOutput?.imports ?? [])
+		.filter((imported) => imported.external)
+		.map((imported) => imported.path);
+	const externalLeaks = isolatedPackages.filter((packageName) => externalImports.some((importPath) => (
+		importPath === packageName || importPath.startsWith(`${packageName}/`)
+	)));
+	if (externalLeaks.length > 0) {
+		throw new Error(`[disposable-worker-boundary] Heavy parser packages left as external imports in main.js: ${externalLeaks.join(", ")}`);
 	}
 	for (let index = 0; index < DISPOSABLE_WORKER_BUILDS.length; index++) {
 		const worker = DISPOSABLE_WORKER_BUILDS[index];

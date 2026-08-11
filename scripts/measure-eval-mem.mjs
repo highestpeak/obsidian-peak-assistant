@@ -6,6 +6,10 @@
  * requires the built bundle and reports RSS / heap before and after.
  *
  * Usage: node --expose-gc scripts/measure-eval-mem.mjs
+ * Diagnostic build:
+ *   STUB_PKGS=jszip node esbuild.config.mjs production
+ *   STUB_PKGS=jszip node --expose-gc scripts/measure-eval-mem.mjs
+ * Override the input with PEAK_EVAL_BUNDLE=/absolute/or/repo-relative/path.js.
  */
 import { createRequire } from 'module';
 import Module from 'module';
@@ -14,6 +18,11 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
+const repositoryRoot = path.join(__dirname, '..');
+const diagnosticBundle = path.join('.dev', 'bundle-diagnostics', 'main.js');
+const requestedBundle = process.env.PEAK_EVAL_BUNDLE
+	?? (process.env.STUB_PKGS ? diagnosticBundle : 'main.js');
+const bundlePath = path.resolve(repositoryRoot, requestedBundle);
 
 // --- generic stub factory: works as class base, function, and namespace ---
 function makeStub(name) {
@@ -63,7 +72,7 @@ function snap(label) {
 
 const before = snap('before');
 const t0 = Date.now();
-require(path.join(__dirname, '..', 'main.js'));
+require(bundlePath);
 const evalMs = Date.now() - t0;
 const after = snap('after require');
 

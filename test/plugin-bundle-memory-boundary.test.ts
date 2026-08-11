@@ -31,6 +31,7 @@ function testProductionBundleBoundaries(): void {
 	const docxLoader = source('src/core/document/loader/DocxDocumentLoader.ts');
 	const pptxLoader = source('src/core/document/loader/PptxDocumentLoader.ts');
 	const workerClient = source('src/app/platform/worker/DisposableWorkerTaskClient.ts');
+	const evalMemoryProbe = source('scripts/measure-eval-mem.mjs');
 
 	assert.match(config, /gracefulFsQueueDataPropertyPlugin/);
 	assert.match(config, /lucide-react\/dist\/esm\/lucide-react\.js/);
@@ -48,6 +49,14 @@ function testProductionBundleBoundaries(): void {
 	assert.match(config, /document-docx-text-worker\.js/);
 	assert.match(config, /PptxTextWorker\.ts/);
 	assert.match(config, /document-pptx-text-worker\.js/);
+	assert.match(config, /DIAGNOSTIC_BUNDLE_DIRECTORY/);
+	assert.match(config, /diagnostic main bundle written outside production artifacts/);
+	assert.match(config, /mainOutput\?\.imports/);
+	assert.match(config, /imported\.external/);
+	assert.match(config, /main\.js output metadata is missing/);
+	assert.match(config, /Heavy parser packages left as external imports/);
+	assert.match(evalMemoryProbe, /PEAK_EVAL_BUNDLE/);
+	assert.match(evalMemoryProbe, /bundle-diagnostics/);
 	assert.doesNotMatch(docxLoader, /from 'mammoth'/);
 	assert.doesNotMatch(pptxLoader, /from 'officeparser'/);
 	assert.match(loaderManager, /binaryTextExtractor\?\.dispose\(\)/);
