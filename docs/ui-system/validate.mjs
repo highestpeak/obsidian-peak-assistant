@@ -12,6 +12,7 @@ const files = {
   rulesHtml: path.join(docs, "design-system.html"),
   labHtml: path.join(docs, "design-system-playground.html"),
   inventoryHtml: path.join(docs, "ui-inventory.html"),
+  composerThemeSpec: path.join(docs, "superpowers/specs/2026-08-12-composer-markdown-theme-customization.md"),
   themeCss: path.join(here, "theme.css"),
   hostCompatCss: path.join(here, "host-compat.css"),
   rulesCss: path.join(here, "design-system.css"),
@@ -44,6 +45,38 @@ function loadGlobal(file, key) {
   const sandbox = { window: {} };
   vm.runInNewContext(read(file), sandbox, { filename: file });
   return sandbox.window[key];
+}
+
+function loadThemeRuntime() {
+  const style = { colorScheme: "", setProperty() {} };
+  const document = {
+    readyState: "loading",
+    documentElement: { dataset: {}, style },
+    body: { dataset: {}, classList: { toggle() {} } },
+    addEventListener() {},
+    dispatchEvent() {},
+    querySelectorAll() { return []; }
+  };
+  const storage = new Map();
+  const window = {
+    PeakThemeSystem: themeSystem,
+    location: { search: "" },
+    localStorage: {
+      getItem(key) { return storage.get(key) || null; },
+      setItem(key, value) { storage.set(key, value); }
+    },
+    addEventListener() {}
+  };
+  const sandbox = {
+    window,
+    document,
+    URLSearchParams,
+    CustomEvent: class CustomEvent {
+      constructor(type, options) { this.type = type; this.detail = options && options.detail; }
+    }
+  };
+  vm.runInNewContext(read(files.themeRuntime), sandbox, { filename: files.themeRuntime });
+  return window.PeakThemeRuntime;
 }
 
 const themeSystem = loadGlobal(files.themePacks, "PeakThemeSystem");
@@ -120,9 +153,30 @@ assert(sources.inventoryHtml.includes("ui-system/catalog-manifest.js") && source
 const axes = Object.keys(themeSystem.defaults);
 axes.forEach((axis) => assert(documents[1].doc.themeControls.includes(axis), `Theme Lab: controls ${axis}`));
 assert(new Set(documents[1].doc.themeControls).size === axes.length, "Theme Lab: control set matches Theme State axes");
+assert(themeSystem.version === 3, "Theme System: exports schema version 3");
+assert(themeSystem.composerDefaults && themeSystem.composerDefaults.preset === "peak-default", "Theme System: declares Composer fallback");
+assert(Object.keys(themeSystem.composerPresets || {}).length === 4, "Theme System: declares exactly 4 Composer presets");
+assert(Object.keys(themeSystem.composerOverrideOptions || {}).length === 8, "Theme System: declares 8 Composer element override enums");
+assert(Object.keys(themeSystem.composerOverrideRanges || {}).length === 6, "Theme System: declares 6 Composer numeric ranges");
+const themeRuntime = loadThemeRuntime();
+themeRuntime.apply({
+  ...themeSystem.defaults,
+  composer: {
+    preset: "missing-preset",
+    overrides: { bodySizePx: 99, contentMeasurePx: 1, quoteStyle: "invalid", tableDensity: "compact" }
+  }
+});
+const runtimeState = themeRuntime.getState();
+assert(runtimeState.composer.preset === "peak-default", "Theme Runtime: invalid Composer preset falls back");
+assert(runtimeState.composer.overrides.bodySizePx === 18 && runtimeState.composer.overrides.contentMeasurePx === 620, "Theme Runtime: Composer numeric overrides clamp to declared ranges");
+assert(!("quoteStyle" in runtimeState.composer.overrides) && runtimeState.composer.overrides.tableDensity === "compact", "Theme Runtime: invalid enums drop while valid enums survive");
+const resolvedComposer = themeRuntime.resolveComposer(runtimeState);
+assert(resolvedComposer["--pk-doc-heading-6-size"] && resolvedComposer["--pk-doc-table-row-height"] === "32px", "Theme Runtime: resolves heading and compact table tokens");
+assert(resolvedComposer["--pk-doc-media-radius"] && resolvedComposer["--pk-doc-math-size"], "Theme Runtime: resolves media and formula tokens");
 
 [
   ["Foundations", "id=\"foundations\""],
+  ["Composer theme workshop", "id=\"composer-theme\""],
   ["Primitives", "id=\"primitives\""],
   ["Visual coverage", "id=\"coverage\""],
   ["Representative scenes", "id=\"scenes\""],
@@ -147,6 +201,20 @@ assert(new Set(documents[1].doc.themeControls).size === axes.length, "Theme Lab:
   ["Fixed image manifest", "data-theme-image-manifest=\"ui-system/theme-concepts/manifest.json\""],
   ["Current Theme JSON", "data-theme-json"]
 ].forEach(([label, marker]) => assert(sources.labHtml.includes(marker), `Theme Lab: ${label}`));
+assert(sources.labHtml.includes("data-composer-theme-workshop") && sources.labHtml.includes("data-composer-document"), "Theme Lab: Composer theme workshop has one shared fixed document");
+assert((sources.labHtml.match(/data-composer-preset=/g) || []).length === 4, "Theme Lab: Composer exposes exactly 4 complete presets");
+assert((sources.labHtml.match(/data-composer-theme-control=/g) || []).length === 14, "Theme Lab: Composer exposes 6 quick and 8 advanced controls");
+[
+  "frontmatter", "heading-1", "heading-2", "heading-3", "heading-4", "heading-5", "heading-6",
+  "paragraph", "lists", "ordered-list", "task-list", "quote", "callout", "divider",
+  "focused-paragraph", "ai-diff", "code", "table", "math", "image", "embed", "dataview",
+  "footnote", "raw-fallback"
+].forEach((element) => assert(sources.labHtml.includes(`data-markdown-element=\"${element}\"`), `Theme Lab: Composer covers ${element}`));
+assert(sources.labHtml.includes("data-composer-view-option=\"edit\"") && sources.labHtml.includes("data-composer-view-option=\"clean\""), "Theme Lab: Composer compares Edit and Clean on the same document");
+assert(sources.labRuntime.includes("selectComposerView") && sources.labRuntime.includes("data-composer-view-option"), "Theme Lab: Composer Edit/Clean switch is interactive");
+assert(sources.themeRuntime.includes("sanitizeComposer") && sources.themeRuntime.includes("resolveComposer") && sources.themeRuntime.includes("exportPayload"), "Theme Runtime: validates, resolves and exports Composer config");
+assert(sources.themeRuntime.includes("--pk-doc-heading-6-size") && sources.themeRuntime.includes("--pk-doc-table-row-height"), "Theme Runtime: resolves low heading and structured content roles");
+assert(sources.labCss.includes("--pk-doc-body-font") && sources.labCss.includes("--pk-doc-heading-6-size") && sources.labCss.includes("data-composer-view=\"clean\""), "Theme Lab: Composer specimen consumes document tokens and separates clean view");
 assert((sources.labHtml.match(/class="coverage-board"/g) || []).length === 8, "Theme Lab: renders exactly 8 visual coverage boards");
 ["rest", "hover", "focus", "selected", "disabled"].forEach((state) => assert(sources.labHtml.includes(`data-state="${state}"`), `Theme Lab: pins ${state} control state`));
 ["flat", "outlined", "raised", "error", "disabled", "focus"].forEach((state) => assert(sources.labHtml.includes(`data-input-state="${state}"`), `Theme Lab: covers ${state} input treatment`));
@@ -252,6 +320,8 @@ assert(!/#[0-9a-f]{3,8}\b/i.test(sources.rulesCss), "Design System CSS contains 
 
 assert(sources.rulesHtml.includes("Codex image replacement"), "Design System: documents fixed Codex image replacement boundary");
 assert(sources.rulesHtml.includes("Theme Lab") && sources.rulesHtml.includes("UI Inventory"), "Design System: links both supporting surfaces");
+assert(sources.rulesHtml.includes("design-system-playground.html#composer-theme") && sources.rulesHtml.includes("2026-08-12-composer-markdown-theme-customization.md"), "Design System: links Composer workshop and durable spec");
+assert(sources.composerThemeSpec.includes("--pk-doc-*") && sources.composerThemeSpec.includes("--pk-editor-*"), "Composer Theme spec: separates document style from editor state");
 assert(!documents.some((entry) => entry.source.includes("design-system-preview-bridge")), "UI System: no legacy preview bridge");
 
 function finish() {

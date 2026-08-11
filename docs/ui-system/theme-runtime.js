@@ -22,7 +22,25 @@
     });
     if (!/^#[0-9a-f]{6}$/i.test(String(next.accent || ""))) next.accent = system.packs[next.pack].accent;
     next.accent = String(next.accent).toLowerCase();
+    next.composer = sanitizeComposer(candidate && candidate.composer);
     return next;
+  }
+
+  function sanitizeComposer(candidate) {
+    var input = candidate && typeof candidate === "object" ? candidate : {};
+    var preset = system.composerPresets[input.preset] ? input.preset : system.composerDefaults.preset;
+    var sourceOverrides = input.overrides && typeof input.overrides === "object" ? input.overrides : {};
+    var overrides = {};
+
+    Object.keys(system.composerOverrideOptions).forEach(function (key) {
+      if (system.composerOverrideOptions[key].indexOf(sourceOverrides[key]) !== -1) overrides[key] = sourceOverrides[key];
+    });
+    Object.keys(system.composerOverrideRanges).forEach(function (key) {
+      if (!Number.isFinite(Number(sourceOverrides[key]))) return;
+      var range = system.composerOverrideRanges[key];
+      overrides[key] = Math.max(range[0], Math.min(range[1], Number(sourceOverrides[key])));
+    });
+    return { preset: preset, overrides: overrides };
   }
 
   function readInitialState() {
@@ -169,9 +187,89 @@
     };
   }
 
+  function composerValues(next) {
+    var composer = sanitizeComposer(next && next.composer);
+    var preset = system.composerPresets[composer.preset];
+    return Object.assign({}, preset.values, composer.overrides);
+  }
+
+  function resolveComposer(next) {
+    var value = composerValues(next);
+    var fonts = {
+      interface: ["var(--pk-font-sans)", "var(--pk-font-sans)"],
+      "reading-serif": ["ui-serif, 'Songti SC', 'Noto Serif CJK SC', Georgia, serif", "ui-serif, 'Songti SC', 'Noto Serif CJK SC', Georgia, serif"],
+      hybrid: ["ui-serif, 'Songti SC', 'Noto Serif CJK SC', Georgia, serif", "var(--pk-font-sans)"]
+    }[value.fontPair];
+    var headingScale = {
+      quiet: [1.7, 1.4, 1.2, 1.08, 1, 0.94],
+      clear: [2.08, 1.58, 1.3, 1.13, 1.02, 0.94],
+      strong: [2.46, 1.78, 1.4, 1.17, 1.04, 0.94]
+    }[value.headingEmphasis];
+    var quote = {
+      rail: ["3px", "transparent", "normal"],
+      tint: ["3px", "var(--pk-accent-tint)", "normal"],
+      plain: ["0px", "transparent", "italic"]
+    }[value.quoteStyle];
+    var callout = {
+      outlined: ["var(--pk-surface)", "var(--pk-border-accent)"],
+      tinted: ["var(--pk-accent-tint)", "var(--pk-border-accent)"],
+      quiet: ["var(--pk-surface-sunken)", "var(--pk-border-soft)"]
+    }[value.calloutStyle];
+    var code = {
+      flat: ["var(--pk-surface-sunken)", "transparent", "none"],
+      outlined: ["var(--pk-surface-sunken)", "var(--pk-border)", "none"],
+      raised: ["var(--pk-surface-raised)", "var(--pk-border-soft)", "var(--pk-shadow-md)"]
+    }[value.codeSurface];
+    var media = {
+      flush: ["0px", "transparent", "none", "0px"],
+      framed: ["var(--pk-radius-md)", "var(--pk-border)", "none", "8px"],
+      soft: ["var(--pk-radius-lg)", "var(--pk-border-soft)", "var(--pk-shadow-card)", "10px"]
+    }[value.mediaFrame];
+    var body = Number(value.bodySizePx);
+
+    return {
+      "--pk-doc-body-font": fonts[0],
+      "--pk-doc-heading-font": fonts[1],
+      "--pk-doc-body-size": body + "px",
+      "--pk-doc-body-line-height": String(value.bodyLineHeight),
+      "--pk-doc-measure": value.contentMeasurePx + "px",
+      "--pk-doc-paragraph-gap": value.paragraphGapPx + "px",
+      "--pk-doc-heading-1-size": (body * headingScale[0]).toFixed(2) + "px",
+      "--pk-doc-heading-2-size": (body * headingScale[1]).toFixed(2) + "px",
+      "--pk-doc-heading-3-size": (body * headingScale[2]).toFixed(2) + "px",
+      "--pk-doc-heading-4-size": (body * headingScale[3]).toFixed(2) + "px",
+      "--pk-doc-heading-5-size": (body * headingScale[4]).toFixed(2) + "px",
+      "--pk-doc-heading-6-size": (body * headingScale[5]).toFixed(2) + "px",
+      "--pk-doc-list-indent": value.listIndentPx + "px",
+      "--pk-doc-list-gap": value.listGapPx + "px",
+      "--pk-doc-quote-border-width": quote[0],
+      "--pk-doc-quote-bg": quote[1],
+      "--pk-doc-quote-font-style": quote[2],
+      "--pk-doc-callout-bg": callout[0],
+      "--pk-doc-callout-border": callout[1],
+      "--pk-doc-code-bg": code[0],
+      "--pk-doc-code-border": code[1],
+      "--pk-doc-code-shadow": code[2],
+      "--pk-doc-table-row-height": value.tableDensity === "compact" ? "32px" : "40px",
+      "--pk-doc-media-radius": media[0],
+      "--pk-doc-media-border": media[1],
+      "--pk-doc-media-shadow": media[2],
+      "--pk-doc-media-padding": media[3],
+      "--pk-doc-math-scale": value.mathScale === "compact" ? "0.9" : value.mathScale === "large" ? "1.12" : "1",
+      "--pk-doc-math-size": value.mathScale === "compact" ? "0.98em" : value.mathScale === "large" ? "1.21em" : "1.08em"
+    };
+  }
+
+  function exportPayload() {
+    var theme = clone(state);
+    var composer = theme.composer;
+    delete theme.composer;
+    return { version: system.version, theme: theme, composer: composer };
+  }
+
   function apply(next, options) {
     state = sanitize(next);
-    var variables = resolve(state);
+    var variables = Object.assign({}, resolve(state), resolveComposer(state));
     document.documentElement.dataset.peakAppearance = state.appearance;
     document.documentElement.style.colorScheme = state.appearance;
     if (document.body) {
@@ -187,6 +285,7 @@
       root.dataset.typography = state.typography;
       root.dataset.elevation = state.elevation;
       root.dataset.motion = state.motion;
+      root.dataset.composerPreset = state.composer.preset;
       Object.keys(variables).forEach(function (name) { root.style.setProperty(name, variables[name]); });
     });
     syncControls();
@@ -208,6 +307,20 @@
       option.dataset.selected = String(option.dataset.value === state[key]);
       option.setAttribute("aria-pressed", String(option.dataset.value === state[key]));
     });
+    var resolvedComposer = composerValues(state);
+    document.querySelectorAll("[data-composer-theme-control]").forEach(function (control) {
+      var key = control.dataset.composerThemeControl;
+      control.value = key === "preset" ? state.composer.preset : resolvedComposer[key];
+    });
+    document.querySelectorAll("[data-composer-theme-value]").forEach(function (node) {
+      var key = node.dataset.composerThemeValue;
+      node.textContent = String(resolvedComposer[key]);
+    });
+    document.querySelectorAll("[data-composer-preset]").forEach(function (option) {
+      var selected = option.dataset.composerPreset === state.composer.preset && Object.keys(state.composer.overrides).length === 0;
+      option.dataset.selected = String(selected);
+      option.setAttribute("aria-pressed", String(selected));
+    });
   }
 
   function renderState() {
@@ -216,7 +329,11 @@
       node.textContent = pack.label + " · " + state.appearance + " · " + state.density + " · " + state.radius;
     });
     document.querySelectorAll("[data-theme-json]").forEach(function (node) {
-      node.textContent = JSON.stringify({ version: system.version, theme: state }, null, 2);
+      node.textContent = JSON.stringify(exportPayload(), null, 2);
+    });
+    document.querySelectorAll("[data-composer-theme-summary]").forEach(function (node) {
+      var preset = system.composerPresets[state.composer.preset];
+      node.textContent = preset.label + (Object.keys(state.composer.overrides).length ? " · Custom" : " · Preset");
     });
   }
 
@@ -249,6 +366,20 @@
 
   function bindControls() {
     document.addEventListener("input", function (event) {
+      var composerControl = event.target.closest && event.target.closest("[data-composer-theme-control]");
+      if (composerControl) {
+        var composerKey = composerControl.dataset.composerThemeControl;
+        var composerNext = clone(state);
+        if (composerKey === "preset") composerNext.composer = { preset: composerControl.value, overrides: {} };
+        else {
+          composerNext.composer.overrides = Object.assign({}, composerNext.composer.overrides);
+          composerNext.composer.overrides[composerKey] = composerControl.type === "number" || composerControl.type === "range"
+            ? Number(composerControl.value)
+            : composerControl.value;
+        }
+        apply(composerNext);
+        return;
+      }
       var control = event.target.closest && event.target.closest("[data-theme-control]");
       if (!control) return;
       var key = control.dataset.themeControl;
@@ -259,6 +390,23 @@
     });
 
     document.addEventListener("click", function (event) {
+      var composerPreset = event.target.closest && event.target.closest("[data-composer-preset]");
+      if (composerPreset) {
+        var presetNext = clone(state);
+        presetNext.composer = { preset: composerPreset.dataset.composerPreset, overrides: {} };
+        apply(presetNext);
+        return;
+      }
+
+      var composerReset = event.target.closest && event.target.closest("[data-composer-theme-reset]");
+      if (composerReset) {
+        var resetNext = clone(state);
+        resetNext.composer = clone(system.composerDefaults);
+        apply(resetNext);
+        announce("Composer 文档样式已恢复");
+        return;
+      }
+
       var option = event.target.closest && event.target.closest("[data-theme-option]");
       if (option) {
         var key = option.dataset.themeOption;
@@ -274,7 +422,7 @@
 
       var exportButton = event.target.closest && event.target.closest("[data-theme-export]");
       if (exportButton) {
-        var payload = JSON.stringify({ version: system.version, theme: state }, null, 2);
+        var payload = JSON.stringify(exportPayload(), null, 2);
         copyText(payload).then(function () { announce("Theme JSON 已复制"); });
         return;
       }
@@ -285,7 +433,9 @@
         if (!input) return;
         try {
           var parsed = JSON.parse(input);
-          apply(parsed.theme || parsed);
+          var imported = Object.assign({}, parsed.theme || parsed);
+          if (parsed.composer) imported.composer = parsed.composer;
+          apply(imported);
           announce("Theme JSON 已应用");
         } catch (_) { announce("Theme JSON 无效"); }
         return;
@@ -332,7 +482,8 @@
   global.PeakThemeRuntime = Object.freeze({
     getState: function () { return clone(state); },
     apply: function (next) { apply(next); },
-    resolve: resolve
+    resolve: resolve,
+    resolveComposer: resolveComposer
   });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });

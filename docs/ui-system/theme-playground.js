@@ -178,6 +178,20 @@
     });
   }
 
+  function selectComposerView(button) {
+    var workshop = button.closest("[data-composer-theme-workshop]");
+    var group = button.closest("[data-composer-view-group]");
+    if (!workshop || !group) return;
+    var view = button.dataset.composerViewOption;
+    if (view !== "edit" && view !== "clean") return;
+    workshop.dataset.composerView = view;
+    group.querySelectorAll("[data-composer-view-option]").forEach(function (candidate) {
+      var selected = candidate === button;
+      candidate.dataset.selected = String(selected);
+      candidate.setAttribute("aria-pressed", String(selected));
+    });
+  }
+
   function toggleSwitch(button) {
     var on = button.dataset.on !== "true";
     button.dataset.on = String(on);
@@ -203,6 +217,8 @@
     if (activeThemeMenuTrigger && !insideThemeMenu) closeThemeAxisMenu(false);
     var collapse = event.target.closest && event.target.closest("[data-lab-console-collapse]");
     if (collapse) { toggleConsoleCollapse(); return; }
+    var composerView = event.target.closest && event.target.closest("[data-composer-view-option]");
+    if (composerView) { selectComposerView(composerView); return; }
     var option = event.target.closest && event.target.closest("[data-lab-option]");
     if (option) { selectOption(option); return; }
     var toggle = event.target.closest && event.target.closest("[data-lab-toggle]");

@@ -75,6 +75,18 @@ Design System 文档不能同时承担“定义规则”“查看换肤感觉”
 
 标准试件允许使用文档专属布局 class，因为它们明确不是生产页面镜像；所有视觉值仍只能消费 `--pk-*` semantic token。
 
+### 3.5 Composer document theme workshop
+
+Composer 不再只依赖 coverage board 判断总体感觉。Theme Lab 另有一块纵向文档主题工作台，固定覆盖 H1–H6、正文行内语义、四类列表、quote、callout、divider、focused paragraph、AI diff、code、table、formula、media、embed、Dataview、footnote 与 unknown fallback。
+
+工作台遵守三条边界：
+
+- 全局 Theme State 继续控制 color、appearance、density、radius、typography、elevation 与 motion；
+- `composer.preset + overrides` 只解析为 `--pk-doc-*` 文档 token；
+- Edit / Clean 只显示或移除 editor chrome，不进入 Theme JSON，也不制造第二份 Markdown 内容。
+
+默认只展示四个完整 preset 与六个高频调节；列表、引用、Callout、代码、表格、媒体和公式进入 Advanced overrides。完整字段、范围、生产迁移与验收见 [`Composer Markdown 主题与快速定制设计`](./2026-08-12-composer-markdown-theme-customization.md)。
+
 ## 4. UI Inventory 清单
 
 录屏：`iShot_2026-08-10_16.23.51.mp4`，145.13 秒，3456×2168，SHA-256 `87441fc768b532d227cb396965510058cae8017dcb26da794faa23f0752e62df`。
@@ -114,11 +126,20 @@ interface PeakThemeState {
   motion: 'reduced' | 'standard';
   accent: string;
 }
+
+interface PeakThemeFileV3 {
+  version: 3;
+  theme: PeakThemeState;
+  composer: {
+    preset: 'peak-default' | 'research-compact' | 'longform' | 'editorial';
+    overrides: Record<string, string | number>;
+  };
+}
 ```
 
 Theme Pack 提供 canvas、surface、raised、sunken、text、muted、border、accent 和 semantic colors。运行时派生 hover、selected、soft border、shadow、radius、type scale 与 motion。任何 specimen 或生产组件不得根据 pack 名写视觉分支。
 
-主题导入必须验证枚举和 accent；无效值安全回落。后续允许扩展完整 Light/Dark palette recipe，但 schema 必须版本化、可预览、可回退，不能把任意 CSS 当作 Theme Pack 导入。
+主题导入必须验证全局枚举、accent、Composer preset 与每个 override 的枚举/数值范围；无效值安全回落。后续允许扩展完整 Light/Dark palette recipe，但 schema 必须版本化、可预览、可回退，不能把任意 CSS 当作 Theme Pack 导入。
 
 Theme Lab 不维护独立 Header 或“锁定/未锁定”状态。Theme State 是页面唯一的 sticky surface，并融合章节导航、Design System 和 UI Inventory 入口；折叠后完整表单从键盘 focus order 移除，但标题、7 个枚举 Theme 轴、Accent、导航和展开保持在同一行，紧凑图标区或导航空间不足时自身横向滚动而不换行。枚举轴 icon button 不允许盲目循环值：点击后必须打开共享的小型 option popover，展示轴名称、当前值、全部选项和选中勾，明确选择后才应用；Popover 支持再次点击、outside click 和 Escape 关闭并恢复触发器焦点；Accent 继续使用系统 color input。只有折叠状态使用独立 localStorage key，不能进入 Theme JSON、Theme BroadcastChannel 或生产 schema。SVG symbol sprite 必须为零尺寸并脱离文档流，避免浏览器默认 SVG intrinsic size 制造首屏空白。
 
@@ -159,6 +180,7 @@ Peak 视觉完全自治，Obsidian 只提供挂载位置和可选 appearance int
 
 - 三个入口都有且只拥有一个 autonomous root；
 - Theme Lab 覆盖 Theme State 的全部轴、Foundation、primitive、代表性 scene 与 AI bridge；
+- Composer 工作台覆盖四个 preset、六个 quick controls、八个 advanced controls、Edit/Clean 与完整 Markdown 元素压力样张；
 - UI Inventory 的 scene、state、production/design/reference 路径全部存在；
 - Inventory 的真实证据 SHA 与时间码匹配 manifest；
 - Theme Lab 和 UI Inventory 都没有 iframe；

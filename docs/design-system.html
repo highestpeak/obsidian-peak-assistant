@@ -40,6 +40,7 @@
         <div class="pk-hero__actions">
           <a class="pk-btn pk-btn--primary" href="#theme">调试 Theme</a>
           <a class="pk-btn" href="design-system-playground.html" data-open-theme-page>用标准试件换肤</a>
+          <a class="pk-btn" href="design-system-playground.html#composer-theme">调试 Composer 文档主题</a>
           <a class="pk-btn" href="ui-inventory.html">看真实 UI Inventory</a>
           <button class="pk-btn pk-btn--ghost" data-theme-reset>恢复默认</button>
         </div>
@@ -58,6 +59,7 @@
           <article class="principle-row"><span class="principle-row__number">05</span><div><b>阴影只表达 elevation</b><span>文档内面板以 border 为主；popover、sidecar、modal 才逐级增加阴影。</span></div><code>base → card → popover → modal</code></article>
           <article class="principle-row"><span class="principle-row__number">06</span><div><b>Projection 不重新查询</b><span>List / Tree / Graph 是同一 snapshot 的视图，切换不丢 selection、inspector 与 query。</span></div><code>snapshot → projection</code></article>
           <article class="principle-row"><span class="principle-row__number">07</span><div><b>主题感受与产品原貌分开</b><span>Theme Lab 使用固定标准试件和 8 块产品派生视觉覆盖板；真实页面外观进入 UI Inventory；交互只在 Obsidian 实机验收。</span></div><code>specimen / coverage / evidence / acceptance</code></article>
+          <article class="principle-row"><span class="principle-row__number">08</span><div><b>文档样式与编辑状态分开</b><span>Composer 的标题、正文、列表和对象块由受校验的文档主题控制；focus、selection、hover 与 AI diff 由独立 editor state 控制。</span></div><code>--pk-doc-* ≠ --pk-editor-*</code></article>
         </div>
       </section>
 
@@ -150,7 +152,7 @@
       <section id="schema" class="pk-section">
         <header class="pk-section__head"><div><h2>Theme Schema</h2><p>Theme 是数据，不是另复制一份组件 CSS。导出后可以版本化、校验、预览与安全回退。</p></div><span class="pk-section__index">06 · Schema</span></header>
         <div class="theme-schema-layout">
-          <article class="pk-card theme-schema-copy"><b>可配置轴</b><p><code>pack</code> 决定 neutral ramp；<code>appearance</code> 决定 light/dark；其余轴只映射各自职责。组件永远不知道当前 Theme 名称。</p><div class="pk-note"><div class="pk-note__title">Fallback</div>无效值回落到 Peak Violet / Light / Comfortable / Balanced；缺失 accent 回落到 pack 默认值。</div><div class="pk-note"><div class="pk-note__title">Codex image replacement</div>Theme Lab 固定展示 19 张 repo 图片，覆盖 8 个产品域。复制当前 Theme JSON 后，直接让 Codex 读取页面和 manifest、生成并覆盖固定 <code>theme-concepts/current/*.jpg</code>；不上传图片、不复制额外 Prompt，也不覆盖真实 evidence。</div><div class="pk-inline-actions"><button class="pk-btn pk-btn--primary" data-theme-export>复制当前 Theme</button><button class="pk-btn" data-theme-import>导入 Theme</button><a class="pk-btn" href="design-system-playground.html#ai-bridge">查看固定主题图</a></div></article>
+          <article class="pk-card theme-schema-copy"><b>可配置轴</b><p><code>pack</code> 决定 neutral ramp；<code>appearance</code> 决定 light/dark；其余轴只映射各自职责。组件永远不知道当前 Theme 名称。</p><div class="pk-note"><div class="pk-note__title">Composer document style</div>Theme JSON v3 增加受校验的 <code>composer</code> 子配置：先选完整 preset，再保存用户实际修改过的 quick / element overrides。它不接受任意 CSS，也不保存 Edit / Clean 预览状态。</div><div class="pk-note"><div class="pk-note__title">Fallback</div>无效值回落到 Peak Violet / Light / Comfortable / Balanced；Composer 无效枚举或越界数值回落到所选 preset。</div><div class="pk-note"><div class="pk-note__title">Codex image replacement</div>Theme Lab 固定展示 19 张 repo 图片，覆盖 8 个产品域。复制当前 Theme JSON 后，直接让 Codex 读取页面和 manifest、生成并覆盖固定 <code>theme-concepts/current/*.jpg</code>；不上传图片、不复制额外 Prompt，也不覆盖真实 evidence。</div><div class="pk-inline-actions"><button class="pk-btn pk-btn--primary" data-theme-export>复制当前 Theme</button><button class="pk-btn" data-theme-import>导入 Theme</button><a class="pk-btn" href="design-system-playground.html#composer-theme">调试 Composer</a><a class="pk-btn" href="superpowers/specs/2026-08-12-composer-markdown-theme-customization.md">Composer 规范</a><a class="pk-btn" href="design-system-playground.html#ai-bridge">查看固定主题图</a></div></article>
           <pre class="pk-code" data-theme-json></pre>
         </div>
       </section>
