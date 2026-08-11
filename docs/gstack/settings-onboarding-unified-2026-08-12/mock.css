@@ -261,8 +261,157 @@ svg {
 .sidebar-bottom svg { width: 13px; height: 13px; color: var(--text-muted); }
 .sidebar-bottom > span { display: block; padding: 9px 7px 0; color: #aaaab1; font-size: 8px; }
 
-.settings-content { height: calc(100vh - 113px); min-height: 650px; overflow-y: auto; background: var(--surface); }
-.settings-panel { width: min(880px, calc(100% - 50px)); margin: 0 auto; padding: 38px 0 60px; }
+/* Native Obsidian Settings context + Peak header navigation */
+
+.settings-frame { height: calc(100vh - 62px); min-height: 650px; }
+
+.obsidian-settings-shell {
+  display: grid;
+  grid-template-columns: 238px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.obsidian-settings-sidebar {
+  min-height: 0;
+  padding: 20px 12px 18px;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: #f8f8f9;
+}
+
+.obsidian-sidebar-title {
+  display: block;
+  padding: 0 10px 8px;
+  color: #999aa1;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.obsidian-nav { display: flex; flex-direction: column; gap: 1px; }
+
+.obsidian-nav button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  width: 100%;
+  min-height: 31px;
+  padding: 0 9px;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #494a50;
+  text-align: left;
+  font-size: 11px;
+}
+
+.obsidian-nav button:hover { background: #ececee; color: var(--text); }
+.obsidian-nav button svg { width: 15px; height: 15px; color: #777880; }
+.obsidian-nav button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obsidian-nav button.is-selected { background: #5e8de6; color: #fff; font-weight: 570; }
+.obsidian-nav button.is-selected:hover { background: #5684db; color: #fff; }
+
+.obsidian-nav-group {
+  padding: 17px 10px 6px;
+  color: #9a9ba2;
+  font-size: 8px;
+  font-weight: 680;
+  letter-spacing: .03em;
+}
+
+.plugin-dot {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 1px solid #d1d2d7;
+  border-radius: 4px;
+  background: #fff;
+  color: #777880;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.obsidian-nav button.is-selected .plugin-dot.peak { border-color: rgba(255,255,255,.45); background: rgba(255,255,255,.14); color: #fff; }
+
+.peak-settings-pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.peak-settings-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(260px, 390px) auto;
+  min-height: 61px;
+  padding: 0 25px;
+  align-items: center;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255,255,255,.98);
+}
+
+.peak-heading { display: flex; min-width: 0; align-items: center; gap: 9px; }
+.peak-heading > div { display: flex; min-width: 0; flex-direction: column; }
+.peak-heading strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.peak-heading small { margin-top: 2px; color: var(--text-muted); font-size: 8.5px; }
+
+.peak-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 11px; }
+
+.setup-header-button {
+  display: inline-flex;
+  min-height: 31px;
+  padding: 0 10px 0 7px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  font-weight: 580;
+  box-shadow: 0 1px 2px rgba(24,24,30,.04);
+}
+
+.setup-header-button:hover { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
+.setup-ring.small { width: 20px; height: 20px; border-width: 1.5px; font-size: 6.5px; }
+
+.peak-settings-tabs {
+  display: flex;
+  min-height: 43px;
+  padding: 0 25px;
+  align-items: stretch;
+  gap: 20px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  scrollbar-width: none;
+}
+
+.peak-settings-tabs::-webkit-scrollbar { display: none; }
+
+.peak-settings-tabs button {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 43px;
+  padding: 1px 0 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.peak-settings-tabs button:hover { color: var(--text); }
+.peak-settings-tabs button.is-active { border-bottom-color: var(--accent); color: var(--text); font-weight: 650; }
+
+.settings-content { flex: 1; height: auto; min-height: 0; overflow-y: auto; background: var(--surface); }
+.settings-panel { width: min(820px, calc(100% - 44px)); margin: 0 auto; padding: 32px 0 60px; }
 .content-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .content-header h1 { margin: 5px 0 0; font-size: 24px; line-height: 1.18; letter-spacing: -.026em; }
 .content-header p { max-width: 660px; margin: 7px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
@@ -611,6 +760,9 @@ svg {
 
 @media (max-width: 980px) {
   .settings-frame { width: calc(100% - 18px); margin: 9px auto; }
+  .obsidian-settings-shell { grid-template-columns: 205px minmax(0, 1fr); }
+  .peak-settings-header { grid-template-columns: minmax(145px, 1fr) minmax(220px, 330px) auto; padding: 0 18px; gap: 12px; }
+  .peak-settings-tabs { padding: 0 18px; gap: 17px; }
   .settings-topbar { grid-template-columns: 195px minmax(260px, 1fr) auto; gap: 12px; }
   .settings-body { grid-template-columns: 195px minmax(0, 1fr); }
   .settings-panel { width: calc(100% - 34px); }
@@ -621,6 +773,12 @@ svg {
 }
 
 @media (max-width: 760px) {
+  .obsidian-settings-shell { grid-template-columns: 164px minmax(0, 1fr); }
+  .obsidian-settings-sidebar { padding-right: 8px; padding-left: 8px; }
+  .peak-settings-header { grid-template-columns: minmax(0, 1fr) auto; min-height: 96px; padding: 8px 14px 9px; gap: 6px 10px; }
+  .peak-settings-header .settings-search { grid-row: 2; grid-column: 1 / -1; }
+  .peak-heading small, .peak-header-actions .saved-state { display: none; }
+  .peak-settings-tabs { padding: 0 14px; gap: 16px; }
   .settings-topbar { grid-template-columns: 1fr auto; }
   .settings-topbar > .peak-wordmark { display: none; }
   .settings-body { grid-template-columns: 60px minmax(0, 1fr); }
@@ -667,6 +825,16 @@ svg {
   .artifact-bar > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .artifact-bar a { padding-right: 5px; padding-left: 5px; }
   .settings-frame { width: 100%; min-height: calc(100vh - 32px); margin: 0; border-right: 0; border-left: 0; border-radius: 0; }
+  .obsidian-settings-shell { grid-template-columns: 54px minmax(0, 1fr); }
+  .obsidian-settings-sidebar { padding: 10px 7px; }
+  .obsidian-sidebar-title, .obsidian-nav-group, .obsidian-nav button > span:last-child { display: none; }
+  .obsidian-nav { gap: 2px; }
+  .obsidian-nav button { display: grid; grid-template-columns: 1fr; min-height: 33px; padding: 0; place-items: center; }
+  .peak-settings-header { padding-right: 10px; padding-left: 10px; }
+  .peak-heading > div { display: none; }
+  .setup-header-button { padding-right: 6px; padding-left: 6px; }
+  .setup-header-button > span:last-child { display: none; }
+  .peak-settings-tabs { padding: 0 10px; gap: 14px; }
   .settings-topbar { padding-right: 8px; padding-left: 8px; }
   .settings-topbar .saved-state { display: none; }
   .settings-panel { width: calc(100% - 24px); padding-top: 27px; }

@@ -41,49 +41,68 @@
     </div>
 
     <main class="settings-frame">
-      <header class="settings-topbar">
-        <div class="peak-wordmark"><span class="peak-mark">P</span><strong>Peak Settings</strong></div>
-        <label class="settings-search">
-          <svg><use href="#i-search" /></svg>
-          <input type="search" placeholder="Search settings, features, or providers" data-settings-search />
-          <kbd>⌘ K</kbd>
-          <div class="search-popover" data-search-popover hidden>
-            <span class="search-heading">SETTINGS</span>
-            <button data-search-result data-panel="connections" data-query="openai provider api connection"><span>OpenAI connection</span><small>Connections</small></button>
-            <button data-search-result data-panel="connections" data-query="openrouter models catalog"><span>OpenRouter catalog</span><small>Connections</small></button>
-            <button data-search-result data-panel="models" data-query="composer copilot block prompt model"><span>Composer Copilot models</span><small>Models by feature</small></button>
-            <button data-search-result data-panel="knowledge" data-query="index embedding file types search"><span>Knowledge Index</span><small>Knowledge & Search</small></button>
-            <button data-search-result data-panel="agent" data-query="hermes codex claude code permission agent"><span>Agent & permissions</span><small>Agent & Tools</small></button>
-            <span class="search-empty" data-search-empty hidden>No matching setting</span>
-          </div>
-        </label>
-        <div class="topbar-meta"><span class="saved-state"><svg><use href="#i-check" /></svg>Saved</span><button class="icon-button" aria-label="More"><svg><use href="#i-more" /></svg></button></div>
-      </header>
-
-      <div class="settings-body">
-        <aside class="settings-sidebar">
-          <div class="vault-identity"><span>PA</span><div><strong>Peak Assistant</strong><small>Highest Peak vault</small></div></div>
-          <nav class="settings-nav">
-            <button data-panel-target="overview"><svg><use href="#i-home" /></svg><span>Overview</span><i class="nav-status ready"></i></button>
-            <span class="nav-group-label">AI & KNOWLEDGE</span>
-            <button data-panel-target="connections"><svg><use href="#i-plug" /></svg><span>Connections</span><em>4</em></button>
-            <button class="is-active" data-panel-target="models"><svg><use href="#i-route" /></svg><span>Models by feature</span></button>
-            <button data-panel-target="knowledge"><svg><use href="#i-database" /></svg><span>Knowledge & Search</span><i class="nav-status running"></i></button>
-            <button data-panel-target="agent"><svg><use href="#i-shield" /></svg><span>Agent & Tools</span></button>
-            <span class="nav-group-label">PRODUCT</span>
-            <button data-panel-target="features"><svg><use href="#i-grid" /></svg><span>Feature settings</span></button>
-            <button data-panel-target="data"><svg><use href="#i-folder" /></svg><span>Files, data & privacy</span></button>
-            <button data-panel-target="appearance"><svg><use href="#i-palette" /></svg><span>Appearance</span></button>
-            <span class="nav-group-label">SYSTEM</span>
-            <button data-panel-target="developer"><svg><use href="#i-code" /></svg><span>Advanced & diagnostics</span></button>
+      <div class="obsidian-settings-shell">
+        <aside class="obsidian-settings-sidebar" aria-label="Obsidian settings navigation">
+          <span class="obsidian-sidebar-title">Options</span>
+          <nav class="obsidian-nav">
+            <button><svg><use href="#i-home" /></svg><span>General</span></button>
+            <button><svg><use href="#i-file" /></svg><span>Editor</span></button>
+            <button><svg><use href="#i-folder" /></svg><span>Files and links</span></button>
+            <button><svg><use href="#i-palette" /></svg><span>Appearance</span></button>
+            <button><svg><use href="#i-grid" /></svg><span>Hotkeys</span></button>
+            <button><svg><use href="#i-shield" /></svg><span>Keychain</span></button>
+            <span class="obsidian-nav-group">CORE PLUGINS</span>
+            <button><svg><use href="#i-route" /></svg><span>Backlinks</span></button>
+            <button><svg><use href="#i-grid" /></svg><span>Canvas</span></button>
+            <button><svg><use href="#i-code" /></svg><span>Command palette</span></button>
+            <button><svg><use href="#i-clock" /></svg><span>File recovery</span></button>
+            <button><svg><use href="#i-search" /></svg><span>Quick switcher</span></button>
+            <span class="obsidian-nav-group">COMMUNITY PLUGINS</span>
+            <button><span class="plugin-dot">A</span><span>Auto Link Title</span></button>
+            <button><span class="plugin-dot">E</span><span>Excalidraw</span></button>
+            <button><span class="plugin-dot">M</span><span>Minimal Theme Settings</span></button>
+            <button class="is-selected" aria-current="page"><span class="plugin-dot peak">P</span><span>Peak Assistant</span></button>
+            <button><span class="plugin-dot">Q</span><span>Quick Switcher++</span></button>
+            <button><span class="plugin-dot">S</span><span>Style Settings</span></button>
           </nav>
-          <div class="sidebar-bottom">
-            <button data-open-setup><span class="setup-ring">3/4</span><span><strong>Finish setup</strong><small>First task not tried</small></span><svg><use href="#i-chevron" /></svg></button>
-            <span>Peak Assistant · Preview design</span>
-          </div>
         </aside>
 
-        <section class="settings-content">
+        <section class="peak-settings-pane">
+          <header class="peak-settings-header">
+            <div class="peak-heading"><span class="peak-mark">P</span><div><strong>Peak Assistant</strong><small>Settings for this Vault</small></div></div>
+            <label class="settings-search">
+              <svg><use href="#i-search" /></svg>
+              <input type="search" placeholder="Search Peak settings" data-settings-search />
+              <kbd>⌘ K</kbd>
+              <div class="search-popover" data-search-popover hidden>
+                <span class="search-heading">SETTINGS</span>
+                <button data-search-result data-panel="connections" data-query="openai provider api connection"><span>OpenAI connection</span><small>Connections</small></button>
+                <button data-search-result data-panel="connections" data-query="openrouter models catalog"><span>OpenRouter catalog</span><small>Connections</small></button>
+                <button data-search-result data-panel="models" data-query="composer copilot block prompt model"><span>Composer Copilot models</span><small>Models by feature</small></button>
+                <button data-search-result data-panel="knowledge" data-query="index embedding file types search"><span>Knowledge Index</span><small>Knowledge & Search</small></button>
+                <button data-search-result data-panel="agent" data-query="hermes codex claude code permission agent"><span>Agent & permissions</span><small>Agent & Tools</small></button>
+                <span class="search-empty" data-search-empty hidden>No matching setting</span>
+              </div>
+            </label>
+            <div class="peak-header-actions">
+              <span class="saved-state"><svg><use href="#i-check" /></svg>Saved</span>
+              <button class="setup-header-button" data-open-setup><span class="setup-ring small">3/4</span><span>Finish setup</span></button>
+            </div>
+          </header>
+
+          <nav class="peak-settings-tabs" aria-label="Peak settings sections">
+            <button data-panel-target="overview">Overview</button>
+            <button data-panel-target="connections">Connections</button>
+            <button class="is-active" data-panel-target="models">Models by feature</button>
+            <button data-panel-target="knowledge">Knowledge & Search</button>
+            <button data-panel-target="agent">Agent & Tools</button>
+            <button data-panel-target="features">Features</button>
+            <button data-panel-target="data">Data & Privacy</button>
+            <button data-panel-target="appearance">Appearance</button>
+            <button data-panel-target="developer">Advanced</button>
+          </nav>
+
+          <section class="settings-content">
           <div class="settings-panel" data-settings-panel="overview" hidden>
             <header class="content-header"><div><span class="content-eyebrow">SYSTEM STATUS</span><h1>Peak is ready for everyday work</h1><p>See what works now and fix only the things that need attention.</p></div><button class="secondary-button" data-run-check>Check again</button></header>
             <div class="readiness-hero ready"><span class="readiness-icon"><svg><use href="#i-check" /></svg></span><div><strong>Core features are ready</strong><span>Chat, Composer, Search and local indexing were checked 12 minutes ago.</span></div><button class="text-button">View check details</button></div>
@@ -192,6 +211,7 @@
             <div class="maintenance-warning"><svg><use href="#i-alert" /></svg><span><strong>These actions can reprocess data or change runtime behavior.</strong> Peak will explain impact and ask before performing destructive or high-cost work.</span></div>
             <section class="settings-section"><div class="setting-group"><button class="setting-row-button"><span><strong>System check</strong><small>Connections, index, storage, tools and current migrations</small></span><em>Run</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Export diagnostics</strong><small>Review exactly what will be included before saving</small></span><em>Export</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Model catalog sources</strong><small>Online catalog, valid cache and bundled fallback</small></span><em>Inspect</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Maintenance actions</strong><small>Rebuild derived data, repair migrations and clear caches</small></span><em>Open</em><svg><use href="#i-chevron" /></svg></button></div></section>
           </div>
+          </section>
         </section>
       </div>
     </main>

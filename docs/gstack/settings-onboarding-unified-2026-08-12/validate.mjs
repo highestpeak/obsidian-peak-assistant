@@ -34,6 +34,9 @@ requireValues("Settings HTML", settingsHtml, [
   "data-settings-search",
   "data-tree-toggle=\"composer\"",
   "data-add-connection",
+  "obsidian-settings-sidebar",
+  "peak-settings-tabs",
+  "aria-current=\"page\"",
 ]);
 
 requireValues("Onboarding HTML", onboardingHtml, [
@@ -70,7 +73,8 @@ requireValues("Onboarding JS", onboardingJs, [
 
 requireValues("CSS", css, [
   ".settings-frame",
-  ".settings-sidebar",
+  ".obsidian-settings-shell",
+  ".peak-settings-tabs",
   ".model-tree",
   ".wizard-shell",
   ".wizard-footer",
@@ -90,6 +94,10 @@ for (const value of forbidden) {
   if (settingsHtml.includes(value) || onboardingHtml.includes(value)) {
     missing.push(`Forbidden UI concept or server dependency: ${value}`);
   }
+}
+
+for (const value of ['<aside class="settings-sidebar">', '<nav class="settings-nav">']) {
+  if (settingsHtml.includes(value)) missing.push(`Removed Peak sidebar returned: ${value}`);
 }
 
 function checkSymbols(label, html) {

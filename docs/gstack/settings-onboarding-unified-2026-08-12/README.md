@@ -21,7 +21,8 @@ The two mocks use the same nouns and responsibility boundaries:
 
 ## Settings direction
 
-- A compact native settings shell with global search and stable categories.
+- Obsidian's own Settings sidebar stays visible. Peak does not add a competing second sidebar.
+- Peak categories live in a compact header tab row, with search, save state and setup status kept nearby.
 - No global `Standard / Advanced` mode. Low-frequency controls expand inside the section they affect; diagnostics remain a distinct destination.
 - The default page is `Models by feature`, demonstrating the hierarchy `product feature → action group → concrete action`.
 - Product actions that do not use a generative model say so explicitly.
@@ -41,7 +42,7 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 
 ### Settings
 
-- Sidebar navigation and direct status links
+- Header tab navigation inside the native Obsidian Settings context
 - Search across feature, Provider and system concepts
 - Expandable model hierarchy
 - Add-connection modal
