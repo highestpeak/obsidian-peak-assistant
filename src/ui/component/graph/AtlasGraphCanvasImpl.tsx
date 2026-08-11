@@ -471,7 +471,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.doc.communityDoc', style: { 'background-color': 'data(nodeColor)', 'border-color': 'data(nodeBorderColor)', color: 'data(nodeTextColor)', 'border-width': 1.4, opacity: 1 } as never },
 	{ selector: 'node.doc.communityDoc.isolated', style: { opacity: 1, 'border-style': 'solid' } as never },
 	{ selector: 'node.folderGroup', style: { 'background-color': '#f7f2fc', 'background-opacity': 1, 'border-width': 0, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '11px', 'padding-right': '11px', 'padding-top': '6px', 'padding-bottom': '6px', label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#51475e', 'text-valign': 'center', 'text-halign': 'center', 'min-width': '120px', 'z-index': 4 } as never },
-	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, 'arrow-scale': 0.7 } as never },
+	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, opacity: 1, 'arrow-scale': 0.7 } as never },
 	{ selector: 'edge[directionality = "directed"]', style: { 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "bidirectional"]', style: { 'source-arrow-shape': 'triangle', 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "undirected"]', style: { 'source-arrow-shape': 'none', 'target-arrow-shape': 'none' } as never },
@@ -483,9 +483,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.communityRelation.semantic', style: { 'line-color': '#aaa4b2', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'line-style': 'dashed', width: 1, opacity: 0.52 } as never },
 	{ selector: 'edge.communityRelation.parallelEdge', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 34, 'control-point-weights': 0.5 } as never },
 	{ selector: 'node', style: { 'transition-property': 'background-color, border-color, border-width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
-	{ selector: 'edge', style: { 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
-	{ selector: 'node.dimmed', style: { opacity: 0.24 } as never },
-	{ selector: 'edge.dimmed', style: { opacity: 0.38 } as never },
+	{ selector: 'edge', style: { 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
 	{ selector: 'node.highlighted', style: { 'border-color': '#f59e0b', 'border-width': 3, opacity: 1, 'z-index': 999 } as never },
 	{ selector: 'node.keyboard-active', style: { 'border-color': '#2563eb', 'border-width': 5, opacity: 1, 'z-index': 1000 } as never },
 	{ selector: 'edge.highlighted', style: { 'line-color': '#f59e0b', 'source-arrow-color': '#f59e0b', 'target-arrow-color': '#f59e0b', opacity: 1, 'z-index': 999, 'arrow-scale': 1.4 } as never },
@@ -1560,8 +1558,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					highlight = highlight.union(decorations);
 				}
 				cy.batch(() => {
-					cy.elements().addClass('dimmed');
-					highlight.removeClass('dimmed').addClass('highlighted');
+					cy.elements().removeClass('highlighted');
+					highlight.addClass('highlighted');
 					n.addClass('highlighted');
 				});
 				startEdgeAnimation();
@@ -1572,6 +1570,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			hoveredElementRef.current = null;
 			hoverAnchorRef.current = null;
 			if (hoverTimer) clearTimeout(hoverTimer);
+			cy.elements().removeClass('highlighted');
 			if (!bundle.folderTree) stopEdgeAnimation();
 			scheduleCardClose();
 		});

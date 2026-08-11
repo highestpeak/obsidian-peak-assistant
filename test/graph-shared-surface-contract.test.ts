@@ -28,10 +28,17 @@ assert.doesNotMatch(
 	'persistent node selection never hides the graph base layer',
 );
 assert.match(canvas, /multiConnectedEdge/, 'selection emphasizes connected edges on top of the visible base graph');
+assert.doesNotMatch(
+	canvas,
+	/addClass\('dimmed'\)/,
+	'hover focus never suppresses the graph base layer',
+);
+assert.doesNotMatch(canvas, /selector: '[^']*\.dimmed'/, 'the graph has no subtractive hover style');
+assert.match(canvas, /highlight\.addClass\('highlighted'\)/, 'hover adds an emphasis layer');
 assert.match(
 	canvas,
-	/selector: 'edge\.dimmed', style: \{ opacity: 0\.38/,
-	'temporary hover focus keeps unrelated graph lines readable',
+	/selector: 'edge', style: \{[^}]*opacity: 1/,
+	'the resting graph explicitly keeps its base edges fully visible',
 );
 
 console.log('graph-shared-surface-contract: passed');
