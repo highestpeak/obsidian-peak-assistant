@@ -303,6 +303,17 @@ function toggleFileTypes(forceOpen) {
   trigger.setAttribute("aria-expanded", String(shouldOpen));
 }
 
+function setActiveFileType(typeKey) {
+  const chart = $(".file-types-donut");
+  chart.classList.toggle("has-active", Boolean(typeKey));
+  $$('[data-type-segment]').forEach((segment) => {
+    segment.classList.toggle("is-active", segment.dataset.typeSegment === typeKey);
+  });
+  $$('[data-type-row]').forEach((row) => {
+    row.classList.toggle("is-active", row.dataset.typeRow === typeKey);
+  });
+}
+
 $("[data-pause]").addEventListener("click", () => {
   state.paused = !state.paused;
   renderAll();
@@ -323,6 +334,14 @@ document.addEventListener("click", () => toggleFileTypes(false));
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") toggleFileTypes(false);
+});
+
+$$('[data-type-segment], [data-type-row]').forEach((element) => {
+  const typeKey = element.dataset.typeSegment || element.dataset.typeRow;
+  element.addEventListener("mouseenter", () => setActiveFileType(typeKey));
+  element.addEventListener("mouseleave", () => setActiveFileType(null));
+  element.addEventListener("focus", () => setActiveFileType(typeKey));
+  element.addEventListener("blur", () => setActiveFileType(null));
 });
 
 $("[data-skip-current]").addEventListener("click", () => {

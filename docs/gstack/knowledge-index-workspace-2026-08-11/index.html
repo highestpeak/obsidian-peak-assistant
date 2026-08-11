@@ -90,28 +90,72 @@
             </button>
           </div>
 
+          <div class="file-types-overview">
+            <div class="donut-wrap">
+              <svg class="file-types-donut" viewBox="0 0 120 120" role="img" aria-label="Distribution of file types in this indexing run">
+                <circle class="donut-track" cx="60" cy="60" r="42" pathLength="100" />
+                <circle class="donut-segment type-markdown" data-type-segment="markdown" tabindex="0" cx="60" cy="60" r="42" pathLength="100" stroke-dasharray="84.1 15.9" stroke-dashoffset="0">
+                  <title>Markdown · 4,086 documents · 84.1%</title>
+                </circle>
+                <circle class="donut-segment type-pdf" data-type-segment="pdf" tabindex="0" cx="60" cy="60" r="42" pathLength="100" stroke-dasharray="8.7 91.3" stroke-dashoffset="-84.1">
+                  <title>PDF · 421 documents · 8.7%</title>
+                </circle>
+                <circle class="donut-segment type-image" data-type-segment="image" tabindex="0" cx="60" cy="60" r="42" pathLength="100" stroke-dasharray="5.4 94.6" stroke-dashoffset="-92.8">
+                  <title>Images · 263 documents · 5.4%</title>
+                </circle>
+                <circle class="donut-segment type-excalidraw" data-type-segment="excalidraw" tabindex="0" cx="60" cy="60" r="42" pathLength="100" stroke-dasharray="1.8 98.2" stroke-dashoffset="-98.2">
+                  <title>Excalidraw · 90 documents · 1.8%</title>
+                </circle>
+              </svg>
+              <div class="donut-center">
+                <strong>4,860</strong>
+                <span>documents</span>
+              </div>
+            </div>
+            <div class="type-overview-copy">
+              <span class="overview-eyebrow">VAULT MIX</span>
+              <strong>Markdown makes up 84.1%</strong>
+              <span>PDF, images and Excalidraw account for the remaining 15.9% of this run.</span>
+              <div class="overview-facts">
+                <span><i class="fact-dot included"></i>4 types included</span>
+                <span><i class="fact-dot excluded"></i>8 types currently off</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-types-table-head">
+            <span>Type and index detail</span>
+            <span>Share</span>
+            <span>Files</span>
+            <span>Status</span>
+          </div>
+
           <div class="included-types">
-            <div class="file-type-row">
+            <div class="file-type-row type-markdown-row" data-type-row="markdown">
               <span class="type-glyph">MD</span>
               <span class="type-copy"><strong>Markdown</strong><span>Full text, vectors, summary and tags</span></span>
+              <span class="type-share">84.1%</span>
               <span class="type-count">4,086</span>
               <span class="included-label">Included</span>
             </div>
-            <div class="file-type-row">
+            <div class="file-type-row type-pdf-row" data-type-row="pdf">
               <span class="type-glyph">PDF</span>
               <span class="type-copy"><strong>PDF</strong><span>Extracted text and OCR when needed</span></span>
+              <span class="type-share">8.7%</span>
               <span class="type-count">421</span>
               <span class="included-label">Included</span>
             </div>
-            <div class="file-type-row">
+            <div class="file-type-row type-image-row" data-type-row="image">
               <span class="type-glyph">IMG</span>
               <span class="type-copy"><strong>Images</strong><span>Recognized text and visual description</span></span>
+              <span class="type-share">5.4%</span>
               <span class="type-count">263</span>
               <span class="included-label">Included</span>
             </div>
-            <div class="file-type-row">
+            <div class="file-type-row type-excalidraw-row" data-type-row="excalidraw">
               <span class="type-glyph">EX</span>
               <span class="type-copy"><strong>Excalidraw</strong><span>Text labels and linked references</span></span>
+              <span class="type-share">1.8%</span>
               <span class="type-count">90</span>
               <span class="included-label">Included</span>
             </div>

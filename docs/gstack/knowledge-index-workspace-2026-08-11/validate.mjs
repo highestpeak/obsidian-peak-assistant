@@ -23,6 +23,9 @@ const requiredHtml = [
   "data-file-types-panel",
   "Files in this run",
   "Not included in this run",
+  "file-types-donut",
+  "data-type-segment=\"markdown\"",
+  "data-type-row=\"markdown\"",
 ];
 
 const requiredJs = [
@@ -32,6 +35,7 @@ const requiredJs = [
   "function renderCurrentDocument",
   "function renderMetrics",
   "function toggleFileTypes",
+  "function setActiveFileType",
 ];
 
 const requiredCss = [
@@ -41,6 +45,8 @@ const requiredCss = [
   ".substep.is-active",
   ".file-types-popover",
   ".file-type-row",
+  ".donut-segment",
+  ".file-types-overview",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",
 ];
