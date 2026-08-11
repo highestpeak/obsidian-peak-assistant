@@ -91,7 +91,7 @@
       </section>
 
       <section id="composer-theme" class="lab-section composer-theme-section">
-        <header class="lab-section__head"><div><span class="pk-eyebrow">02 · COMPOSER DOCUMENT THEME</span><h2>把 Markdown 当成一套可配置的文档系统</h2><p>Theme Pack 提供全局颜色与几何，Composer Preset 决定文档节奏；六个高频参数负责快速调整，Advanced overrides 才处理具体元素。Edit / Clean 只切换编辑辅助层，不写入 Theme JSON。</p></div><a class="pk-btn" href="superpowers/specs/2026-08-12-composer-markdown-theme-customization.md">阅读主题规范</a></header>
+        <header class="lab-section__head"><div><span class="pk-eyebrow">02 · COMPOSER DOCUMENT THEME</span><h2>把 Markdown 当成一套可配置的文档系统</h2><p>Theme Pack 提供全局颜色与几何，Composer Preset 决定文档节奏；六个高频参数负责快速调整，Advanced overrides 才处理具体元素。Edit / Clean 只切换编辑辅助层，不写入 Theme JSON。</p></div><span class="pk-chip pk-chip--accent">Single workspace</span></header>
         <div class="composer-theme-workshop" data-composer-theme-workshop data-composer-view="edit">
           <section class="composer-theme-config" aria-label="Composer theme controls">
             <header class="composer-theme-config__head"><div><span class="pk-eyebrow">DOCUMENT STYLE</span><b data-composer-theme-summary>Peak Default · Preset</b><small>Preset → quick overrides → element overrides</small></div><button class="pk-btn pk-btn--sm pk-btn--ghost" data-composer-theme-reset>恢复 Composer 默认</button></header>
@@ -120,6 +120,18 @@
                 <label><span>表格密度</span><select data-composer-theme-control="tableDensity"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
                 <label><span>媒体边框</span><select data-composer-theme-control="mediaFrame"><option value="flush">Flush</option><option value="framed">Framed</option><option value="soft">Soft</option></select></label>
                 <label><span>公式比例</span><select data-composer-theme-control="mathScale"><option value="compact">Compact</option><option value="default">Default</option><option value="large">Large</option></select></label>
+              </div>
+            </details>
+            <details id="composer-theme-contract" class="composer-theme-contract">
+              <summary><span><b>规则、边界与当前 Theme JSON</b><small>不离开本页即可理解、调整、复制和导入</small></span><svg class="pk-ui-icon"><use href="#pk-icon-chevron"></use></svg></summary>
+              <div class="composer-theme-contract__body">
+                <div class="composer-theme-contract__rules">
+                  <article><span>01 · GLOBAL THEME</span><b>产品视觉角色</b><p>颜色、Light/Dark、全局字体梯度、密度、圆角、阴影与 motion 由顶部 Theme State 管理。</p><code>theme → --pk-*</code></article>
+                  <article><span>02 · DOCUMENT STYLE</span><b>Markdown 阅读节奏</b><p>Preset 加受校验 overrides，只改变正文、标题、列表、对象块和媒体，不改变文档结构。</p><code>composer → --pk-doc-*</code></article>
+                  <article><span>03 · EDITOR STATE</span><b>交互发现性</b><p>Focus、selection、hover、block rail 与 AI diff 独立派生；Clean 只移除编辑 chrome。</p><code>state → --pk-editor-*</code></article>
+                </div>
+                <div class="composer-theme-contract__json"><div><span><b>当前完整 Theme JSON</b><small>包含全局 Theme 与 Composer 子配置</small></span><div class="pk-inline-actions"><button class="pk-btn pk-btn--sm pk-btn--primary" data-theme-export><svg class="pk-ui-icon"><use href="#pk-icon-copy"></use></svg>复制 JSON</button><button class="pk-btn pk-btn--sm" data-theme-import>导入 JSON</button></div></div><pre data-theme-json></pre></div>
+                <div class="composer-theme-contract__guard"><b>固定边界</b><span>拒绝 Obsidian 颜色、字体、圆角和控件样式进入 Peak root；不接受任意 CSS、selector、URL 或字体文件路径；无效 preset 和越界数值自动回退。</span><a href="superpowers/specs/2026-08-12-composer-markdown-theme-customization.md">查看维护者实现依据</a></div>
               </div>
             </details>
           </section>

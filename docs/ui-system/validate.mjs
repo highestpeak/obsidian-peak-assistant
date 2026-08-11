@@ -202,6 +202,8 @@ assert(resolvedComposer["--pk-doc-media-radius"] && resolvedComposer["--pk-doc-m
   ["Current Theme JSON", "data-theme-json"]
 ].forEach(([label, marker]) => assert(sources.labHtml.includes(marker), `Theme Lab: ${label}`));
 assert(sources.labHtml.includes("data-composer-theme-workshop") && sources.labHtml.includes("data-composer-document"), "Theme Lab: Composer theme workshop has one shared fixed document");
+assert(sources.labHtml.includes("id=\"composer-theme-contract\"") && sources.labHtml.includes("当前完整 Theme JSON"), "Theme Lab: Composer rules and Theme JSON remain in the single workspace");
+assert(sources.labHtml.includes("--pk-doc-*") && sources.labHtml.includes("--pk-editor-*"), "Theme Lab: Composer document and editor token boundaries are explained inline");
 assert((sources.labHtml.match(/data-composer-preset=/g) || []).length === 4, "Theme Lab: Composer exposes exactly 4 complete presets");
 assert((sources.labHtml.match(/data-composer-theme-control=/g) || []).length === 14, "Theme Lab: Composer exposes 6 quick and 8 advanced controls");
 [
@@ -215,6 +217,7 @@ assert(sources.labRuntime.includes("selectComposerView") && sources.labRuntime.i
 assert(sources.themeRuntime.includes("sanitizeComposer") && sources.themeRuntime.includes("resolveComposer") && sources.themeRuntime.includes("exportPayload"), "Theme Runtime: validates, resolves and exports Composer config");
 assert(sources.themeRuntime.includes("--pk-doc-heading-6-size") && sources.themeRuntime.includes("--pk-doc-table-row-height"), "Theme Runtime: resolves low heading and structured content roles");
 assert(sources.labCss.includes("--pk-doc-body-font") && sources.labCss.includes("--pk-doc-heading-6-size") && sources.labCss.includes("data-composer-view=\"clean\""), "Theme Lab: Composer specimen consumes document tokens and separates clean view");
+assert(sources.labCss.includes(".composer-theme-contract__rules") && sources.labCss.includes(".composer-theme-contract__json"), "Theme Lab: inline Composer contract and JSON are styled");
 assert((sources.labHtml.match(/class="coverage-board"/g) || []).length === 8, "Theme Lab: renders exactly 8 visual coverage boards");
 ["rest", "hover", "focus", "selected", "disabled"].forEach((state) => assert(sources.labHtml.includes(`data-state="${state}"`), `Theme Lab: pins ${state} control state`));
 ["flat", "outlined", "raised", "error", "disabled", "focus"].forEach((state) => assert(sources.labHtml.includes(`data-input-state="${state}"`), `Theme Lab: covers ${state} input treatment`));

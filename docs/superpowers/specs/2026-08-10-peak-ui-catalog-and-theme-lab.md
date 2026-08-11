@@ -18,6 +18,8 @@ Design System 文档不能同时承担“定义规则”“查看换肤感觉”
 
 三个入口共享 Theme State，但只有 Theme Lab 的标准试件用于判断 Theme。UI Inventory 的截图不会随 Theme 改变；其页面 chrome 可以同步主题，但证据保持原样。
 
+对 owner 而言，`docs/design-system-playground.html` 是唯一需要打开的可操作入口：全局 Theme、Composer 文档主题、组件覆盖、代表场景、固定主题图、完整 Theme JSON 和关键边界说明都必须在本页完成。Design System、UI Inventory 与 specs 是规则、证据和实现依据，不是操作工作流中的必经跳转。
+
 ## 2. 三层证据边界
 
 | 层 | 回答的问题 | 允许的实现 | 禁止冒充 |
