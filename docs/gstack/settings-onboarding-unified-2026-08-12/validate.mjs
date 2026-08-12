@@ -34,6 +34,8 @@ requireValues("Package HTML", packageHtml, [
 
 requireValues("Settings HTML", settingsHtml, [
   "AI &amp; Models",
+  "Open AI Control Center",
+  "../ai-control-center-2026-07-30/index.html",
   "Connections",
   "Available models",
   "Task defaults",

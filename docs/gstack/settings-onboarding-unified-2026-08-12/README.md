@@ -62,6 +62,7 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 ### Settings
 
 - Header tab navigation inside the native Obsidian Settings context
+- Direct `Open AI Control Center` jump from AI & Models to the independent action, Prompt, Custom Prompt and Assistant control surface
 - A compact Automatic-model rule that explains what it affects, uses understandable outcome and processing-location language, and never overwrites manual choices
 - Primary and additional connection groups, with an OpenRouter detail that separates connection health from online catalog, cache and bundled fallback state
 - Direct model selection on each product feature, expandable product feature → action hierarchy, and a focused action picker with nine capability-aware advanced overrides
