@@ -29,6 +29,7 @@
       <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></symbol>
       <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
       <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6Z" /><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8Z" /></symbol>
     </svg>
 
     <div class="artifact-bar">
@@ -334,9 +335,21 @@ Peak/AI/DataStore/
       </section>
     </div>
 
-    <div class="inline-model-menu" data-inline-model-menu role="menu" aria-label="Choose model" hidden>
+    <div class="inline-model-menu" data-inline-model-menu role="dialog" aria-label="Choose model" hidden>
+      <div class="inline-model-search-row">
+        <div class="inline-model-search"><svg><use href="#i-search" /></svg><input type="search" data-inline-model-search aria-label="Search models" placeholder="Search profiles, providers, models or capabilities" autocomplete="off" /><button type="button" data-inline-model-search-clear aria-label="Clear model search" hidden>×</button></div>
+      </div>
+      <div class="inline-model-filters" data-inline-model-filters aria-label="Filter models by capability">
+        <button class="is-selected" data-inline-model-filter="all">All</button>
+        <button data-inline-model-filter="reasoning">Reasoning</button>
+        <button data-inline-model-filter="vision">Vision</button>
+        <button data-inline-model-filter="tools">Tools</button>
+        <button data-inline-model-filter="local">Local</button>
+      </div>
+      <div class="inline-model-summary"><span data-inline-model-result-count>Compatible models</span><small>Grouped by configured connection</small></div>
       <div class="inline-model-menu-list" data-inline-model-options></div>
-      <button class="inline-model-menu-advanced" data-inline-model-advanced><span>Advanced model settings…</span><svg><use href="#i-chevron" /></svg></button>
+      <div class="inline-model-empty" data-inline-model-empty hidden><strong>No compatible models found</strong><span>Try another name or clear the capability filter.</span></div>
+      <button class="inline-model-menu-advanced" data-inline-model-advanced><span><strong>Advanced model settings…</strong><small>Parameters, fallback and limits for this action</small></span><svg><use href="#i-chevron" /></svg></button>
     </div>
 
     <div class="modal-backdrop" data-model-picker-modal hidden>

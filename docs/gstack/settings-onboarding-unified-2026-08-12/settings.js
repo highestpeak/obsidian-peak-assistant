@@ -300,54 +300,80 @@ $('[data-review-safety]').addEventListener("click", () => showSaved("Effective r
 let selectedActionModel = "Automatic";
 let currentModelTarget = null;
 
-const textModels = [
-  { value: "Automatic", label: "Automatic", detail: "Peak selects a compatible model using your strategy and data route.", state: "Recommended" },
-  { value: "OpenAI · GPT-5", label: "OpenAI · GPT-5", detail: "Reasoning, tools and structured output.", state: "Connected" },
-  { value: "Anthropic · Claude Sonnet 4.6", label: "Anthropic · Claude Sonnet 4.6", detail: "Long context, tools and strong writing.", state: "Connected" },
-  { value: "OpenRouter · DeepSeek R1", label: "OpenRouter · DeepSeek R1", detail: "Reasoning model from the online catalog.", state: "Connected" },
-  { value: "Ollama · Qwen 3", label: "Ollama · Qwen 3", detail: "Local model detected on this computer.", state: "Local" },
+const modelCatalog = [
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "gpt-5", name: "GPT-5", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "128K", state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "gpt-5-mini", name: "GPT-5 mini", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "128K", state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "gpt-5-nano", name: "GPT-5 nano", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "128K", state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "o3", name: "o3", scopes: ["text"], capabilities: ["reasoning"], context: "200K", state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "o4-mini", name: "o4-mini", scopes: ["text"], capabilities: ["reasoning"], context: "200K", state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "gpt-4.1", name: "GPT-4.1", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "128K", state: "Connected" },
+
+  { profile: "Anthropic Direct", provider: "Anthropic", monogram: "AN", id: "claude-opus-4-7", name: "Claude Opus 4.7", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "200K", state: "Connected" },
+  { profile: "Anthropic Direct", provider: "Anthropic", monogram: "AN", id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "200K", state: "Connected" },
+  { profile: "Anthropic Direct", provider: "Anthropic", monogram: "AN", id: "claude-haiku-4-5", name: "Claude Haiku 4.5", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "200K", state: "Connected" },
+  { profile: "Anthropic Direct", provider: "Anthropic", monogram: "AN", id: "claude-opus-4", name: "Claude Opus 4", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "200K", state: "Connected" },
+  { profile: "Anthropic Direct", provider: "Anthropic", monogram: "AN", id: "claude-sonnet-4", name: "Claude Sonnet 4", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "200K", state: "Connected" },
+
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "deepseek/deepseek-r1", name: "DeepSeek R1", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], context: "128K", state: "Catalog" },
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "deepseek/deepseek-chat-v3", name: "DeepSeek V3", scopes: ["text", "agent"], capabilities: ["tools"], context: "128K", state: "Catalog" },
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "qwen/qwen3-235b", name: "Qwen3 235B", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], context: "128K", state: "Catalog" },
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "2M", state: "Catalog" },
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "meta-llama/llama-4-maverick", name: "Llama 4 Maverick", scopes: ["text", "agent"], capabilities: ["tools"], context: "1M", state: "Catalog" },
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "x-ai/grok-3", name: "Grok 3", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], context: "128K", state: "Catalog" },
+
+  { profile: "Ollama Local", provider: "Ollama", monogram: "OL", id: "qwen3:14b", name: "Qwen3 14B", scopes: ["text", "agent"], capabilities: ["tools", "local"], context: "32K", state: "Local" },
+  { profile: "Ollama Local", provider: "Ollama", monogram: "OL", id: "deepseek-r1:14b", name: "DeepSeek R1 14B", scopes: ["text", "agent"], capabilities: ["reasoning", "tools", "local"], context: "32K", state: "Local" },
+  { profile: "Ollama Local", provider: "Ollama", monogram: "OL", id: "gemma3:12b", name: "Gemma 3 12B", scopes: ["text", "agent"], capabilities: ["tools", "local"], context: "128K", state: "Local" },
+  { profile: "Ollama Local", provider: "Ollama", monogram: "OL", id: "llava:13b", name: "LLaVA 13B", scopes: ["text", "vision"], capabilities: ["vision", "local"], context: "4K", state: "Local" },
+  { profile: "Ollama Local", provider: "Ollama", monogram: "OL", id: "llama3.3:70b", name: "Llama 3.3 70B", scopes: ["text", "agent"], capabilities: ["tools", "local"], context: "128K", state: "Local" },
+
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "gpt-image-1", name: "GPT Image 1", scopes: ["image", "media"], capabilities: ["image"], state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "dall-e-3", name: "DALL·E 3", scopes: ["image", "media"], capabilities: ["image"], state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "text-embedding-3-large", name: "Text Embedding 3 Large", scopes: ["embedding"], capabilities: ["embedding"], context: "8K", state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "text-embedding-3-small", name: "Text Embedding 3 Small", scopes: ["embedding"], capabilities: ["embedding"], context: "8K", state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "tts-1-hd", name: "TTS 1 HD", scopes: ["speech", "media"], capabilities: ["speech"], state: "Connected" },
+  { profile: "OpenAI Direct", provider: "OpenAI", monogram: "OA", id: "tts-1", name: "TTS 1", scopes: ["speech", "media"], capabilities: ["speech"], state: "Connected" },
+
+  { profile: "Ollama Local", provider: "Ollama", monogram: "OL", id: "nomic-embed-text:latest", name: "nomic-embed-text", scopes: ["embedding"], capabilities: ["embedding", "local"], context: "8K", state: "Local" },
+  { profile: "Ollama Local", provider: "Ollama", monogram: "OL", id: "mxbai-embed-large:latest", name: "mxbai-embed-large", scopes: ["embedding"], capabilities: ["embedding", "local"], context: "512", state: "Local" },
+
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/flux-pro/v1.1-ultra", name: "FLUX 1.1 Pro Ultra", scopes: ["image", "media"], capabilities: ["image"], state: "Setup" },
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/flux/dev", name: "FLUX Dev", scopes: ["image", "media"], capabilities: ["image"], state: "Setup" },
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/recraft-v3", name: "Recraft V3", scopes: ["image", "media"], capabilities: ["image"], state: "Setup" },
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/kling-video/v2.1/pro", name: "Kling Video 2.1 Pro", scopes: ["video", "media"], capabilities: ["video"], state: "Setup" },
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/veo3", name: "Veo 3", scopes: ["video", "media"], capabilities: ["video"], state: "Setup" },
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/minimax/speech-02-hd", name: "MiniMax Speech 02 HD", scopes: ["speech", "media"], capabilities: ["speech"], state: "Setup" },
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/minimax-music/v2", name: "MiniMax Music V2", scopes: ["music", "media"], capabilities: ["music"], state: "Setup" },
+  { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/ace-step", name: "ACE-Step", scopes: ["music", "media"], capabilities: ["music"], state: "Setup" },
 ];
 
-const modelCatalogs = {
-  text: textModels,
-  agent: textModels.map((model) => model.value === "Automatic" ? { ...model, detail: "Peak selects a tool-capable model for this task." } : model),
-  vision: [
-    { value: "Automatic", label: "Automatic", detail: "Peak selects a model that can read the supplied images or documents.", state: "Recommended" },
-    { value: "OpenAI · GPT-5", label: "OpenAI · GPT-5", detail: "Vision, document understanding and tool use.", state: "Connected" },
-    { value: "Anthropic · Claude Sonnet 4.6", label: "Anthropic · Claude Sonnet 4.6", detail: "Vision and long-document understanding.", state: "Connected" },
-  ],
-  image: [
-    { value: "Automatic", label: "Automatic", detail: "Peak selects an image-generation model that supports this action.", state: "Recommended" },
-    { value: "OpenAI · GPT Image", label: "OpenAI · GPT Image", detail: "Generate and edit images from prompts and references.", state: "Connected" },
-    { value: "fal.ai · FLUX Pro", label: "fal.ai · FLUX Pro", detail: "High-quality image generation through the media connection.", state: "Setup" },
-    { value: "Custom · Local image route", label: "Custom · Local image route", detail: "Use a configured compatible local image endpoint.", state: "Optional" },
-  ],
-  embedding: [
-    { value: "Automatic", label: "Automatic", detail: "Prefer a ready local embedding model, then a connected cloud model.", state: "Recommended" },
-    { value: "Ollama · nomic-embed-text", label: "Ollama · nomic-embed-text", detail: "Local embedding model detected on this computer.", state: "Local" },
-    { value: "OpenAI · text-embedding", label: "OpenAI · text-embedding", detail: "Cloud embedding route from the OpenAI connection.", state: "Connected" },
-  ],
-  media: [
-    { value: "Automatic", label: "Automatic by media type", detail: "Use separate compatible routes for images, video, speech and music.", state: "Recommended" },
-    { value: "OpenAI · Media routes", label: "OpenAI · Media routes", detail: "Use connected OpenAI image and audio capabilities where supported.", state: "Connected" },
-    { value: "fal.ai · Media routes", label: "fal.ai · Media routes", detail: "Use configured fal.ai image, video, speech and music routes.", state: "Setup" },
-  ],
-  video: [
-    { value: "Automatic", label: "Automatic", detail: "Use the first ready video-generation route.", state: "Recommended" },
-    { value: "fal.ai · Video route", label: "fal.ai · Video route", detail: "Generate video through a configured fal.ai model.", state: "Setup" },
-    { value: "Custom · Video route", label: "Custom · Video route", detail: "Use another compatible media endpoint.", state: "Optional" },
-  ],
-  speech: [
-    { value: "Automatic", label: "Automatic", detail: "Use a ready speech model with the selected voice preset.", state: "Recommended" },
-    { value: "OpenAI · Speech", label: "OpenAI · Speech", detail: "Speech generation from the OpenAI connection.", state: "Connected" },
-    { value: "fal.ai · Speech route", label: "fal.ai · Speech route", detail: "Speech generation through a configured media route.", state: "Setup" },
-  ],
-  music: [
-    { value: "Automatic", label: "Automatic", detail: "Use the first ready music-generation route.", state: "Recommended" },
-    { value: "fal.ai · Music route", label: "fal.ai · Music route", detail: "Music generation through a configured media connection.", state: "Setup" },
-    { value: "Custom · Music route", label: "Custom · Music route", detail: "Use another compatible music endpoint.", state: "Optional" },
-  ],
+const capabilityLabels = {
+  reasoning: "Reasoning",
+  vision: "Vision",
+  tools: "Tools",
+  local: "Local",
+  image: "Image",
+  embedding: "Embedding",
+  video: "Video",
+  speech: "Speech",
+  music: "Music",
 };
+
+const automaticDescriptions = {
+  text: "Peak chooses a compatible conversation model from your ready connections.",
+  agent: "Peak chooses a tool-capable model for this Agent task.",
+  vision: "Peak chooses a model that can read the supplied images or documents.",
+  image: "Peak chooses a ready image-generation model for this action.",
+  embedding: "Peak prefers a ready local embedding model, then a connected cloud model.",
+  media: "Peak chooses a compatible route for the requested media type.",
+  video: "Peak chooses the first ready video-generation model.",
+  speech: "Peak chooses a ready speech model with the selected voice preset.",
+  music: "Peak chooses the first ready music-generation model.",
+};
+
+function modelsForScope(scope) {
+  return modelCatalog.filter((model) => model.scopes.includes(scope ?? "text"));
+}
 
 function selectModelChoice(button) {
   $$('[data-model-choice]').forEach((candidate) => candidate.classList.remove("is-selected"));
@@ -358,7 +384,15 @@ function selectModelChoice(button) {
 function renderModelChoices(scope) {
   const group = $('[data-model-choice-group]');
   group.replaceChildren();
-  const models = modelCatalogs[scope] ?? textModels;
+  const models = [
+    { value: "Automatic", label: "Automatic", detail: automaticDescriptions[scope] ?? automaticDescriptions.text, state: "Recommended" },
+    ...modelsForScope(scope).map((model) => ({
+      value: `${model.provider} · ${model.name}`,
+      label: `${model.profile} · ${model.name}`,
+      detail: `${model.id} · ${model.capabilities.map((capability) => capabilityLabels[capability]).join(" · ")}${model.context ? ` · ${model.context}` : ""}`,
+      state: model.state,
+    })),
+  ];
   for (const model of models) {
     const button = document.createElement("button");
     button.dataset.modelChoice = model.value;
@@ -381,17 +415,22 @@ function updateModelTarget(target, modelValue) {
   $('.model-route-name', target).textContent = modelValue === "Automatic" ? target.dataset.defaultModel : parts.join(" · ");
 }
 
+let activeInlineModelFilter = "all";
+
 function closeInlineModelMenu() {
-  $('[data-inline-model-menu]').hidden = true;
+  const menu = $('[data-inline-model-menu]');
+  menu.hidden = true;
+  menu.removeAttribute("data-scope");
 }
 
 function positionInlineModelMenu(target) {
   const menu = $('[data-inline-model-menu]');
   const anchor = $('.task-model-control', target) ?? target;
   const rect = anchor.getBoundingClientRect();
-  const menuWidth = 286;
+  const menuWidth = Math.min(430, window.innerWidth - 24);
   const pagePadding = 12;
   const left = Math.min(window.innerWidth - menuWidth - pagePadding, Math.max(pagePadding, rect.right - menuWidth));
+  menu.style.width = `${menuWidth}px`;
   menu.style.left = `${left}px`;
   menu.style.top = `${rect.bottom + 5}px`;
   menu.hidden = false;
@@ -400,27 +439,117 @@ function positionInlineModelMenu(target) {
   menu.style.top = `${Math.max(pagePadding, rect.top - menuRect.height - 5)}px`;
 }
 
-function openInlineModelMenu(target) {
-  currentModelTarget = target;
+function modelValue(model) {
+  return `${model.provider} · ${model.name}`;
+}
+
+function matchesInlineModel(model, query) {
+  const searchable = [
+    model.profile,
+    model.provider,
+    model.id,
+    model.name,
+    model.state,
+    ...model.capabilities.map((capability) => capabilityLabels[capability] ?? capability),
+  ].join(" ").toLowerCase();
+  return !query || searchable.includes(query);
+}
+
+function wireInlineModelKeyboard(button) {
+  button.addEventListener("keydown", (event) => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    const options = $$('[data-inline-model-option]', $('[data-inline-model-menu]'));
+    const index = options.indexOf(button);
+    const nextIndex = event.key === 'ArrowDown'
+      ? Math.min(options.length - 1, index + 1)
+      : Math.max(0, index - 1);
+    options[nextIndex]?.focus();
+  });
+}
+
+function createInlineAutomaticOption(target, query) {
+  if (query && !`automatic ${target.dataset.defaultModel}`.toLowerCase().includes(query)) return null;
+  const button = document.createElement("button");
+  const selected = target.dataset.modelValue === "Automatic";
+  button.className = "inline-model-auto";
+  button.dataset.inlineModelOption = "automatic";
+  button.classList.toggle("is-selected", selected);
+  button.innerHTML = `<span class="inline-model-monogram"><svg><use href="#i-sparkles"></use></svg></span><span class="inline-model-copy"><strong>Automatic · ${target.dataset.defaultModel}</strong><small>${automaticDescriptions[target.dataset.modelScope] ?? automaticDescriptions.text}</small></span><em>Recommended</em>${selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
+  button.addEventListener("click", () => commitInlineModelChoice(target, "Automatic"));
+  wireInlineModelKeyboard(button);
+  return button;
+}
+
+function commitInlineModelChoice(target, value) {
+  updateModelTarget(target, value);
+  closeInlineModelMenu();
+  target.focus();
+  const scopeName = target.dataset.action === "Feature default" ? "feature" : "action";
+  showSaved(value === "Automatic" ? `Saved · ${scopeName} uses automatic selection` : `Saved · ${scopeName} uses ${value}`);
+}
+
+function createInlineModelRow(target, model) {
+  const button = document.createElement("button");
+  const selected = modelValue(model) === target.dataset.modelValue;
+  const capabilityTags = model.capabilities
+    .slice(0, 3)
+    .map((capability) => `<span>${capabilityLabels[capability] ?? capability}</span>`)
+    .join("");
+  button.dataset.inlineModelOption = model.id;
+  button.dataset.modelId = model.id;
+  button.classList.toggle("is-selected", selected);
+  button.innerHTML = `<span class="inline-model-monogram">${model.monogram}</span><span class="inline-model-copy"><strong>${model.name}</strong><small>${model.id}</small><span class="inline-model-capabilities">${capabilityTags}${model.context ? `<span>${model.context}</span>` : ""}</span></span>${selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
+  button.addEventListener("click", () => commitInlineModelChoice(target, modelValue(model)));
+  wireInlineModelKeyboard(button);
+  return button;
+}
+
+function renderInlineModelOptions() {
+  if (!currentModelTarget) return;
   const options = $('[data-inline-model-options]');
   options.replaceChildren();
-  const models = modelCatalogs[target.dataset.modelScope] ?? textModels;
+  const query = $('[data-inline-model-search]').value.trim().toLowerCase();
+  const automaticOption = createInlineAutomaticOption(currentModelTarget, query);
+  if (automaticOption) options.append(automaticOption);
+
+  const models = modelsForScope(currentModelTarget.dataset.modelScope)
+    .filter((model) => activeInlineModelFilter === "all" || model.capabilities.includes(activeInlineModelFilter))
+    .filter((model) => matchesInlineModel(model, query));
+  const groups = new Map();
   for (const model of models) {
-    const button = document.createElement("button");
-    const selected = model.value === target.dataset.modelValue;
-    const label = model.value === "Automatic" ? `Automatic · ${target.dataset.defaultModel}` : model.label;
-    button.classList.toggle("is-selected", selected);
-    button.innerHTML = `<span>${label}</span><em>${model.state}</em>${selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      updateModelTarget(target, model.value);
-      closeInlineModelMenu();
-      const scopeName = target.dataset.action === "Feature default" ? "feature" : "action";
-      showSaved(model.value === "Automatic" ? `Saved · ${scopeName} uses automatic selection` : `Saved · ${scopeName} uses ${model.value}`);
-    });
-    options.append(button);
+    const group = groups.get(model.profile) ?? [];
+    group.push(model);
+    groups.set(model.profile, group);
   }
+
+  for (const [profile, groupModels] of groups) {
+    const group = document.createElement("section");
+    group.className = "inline-model-group";
+    const heading = document.createElement("div");
+    heading.className = "inline-model-group-heading";
+    heading.innerHTML = `<span class="inline-model-monogram">${groupModels[0].monogram}</span><strong>${profile}</strong><small>${groupModels.length} model${groupModels.length === 1 ? "" : "s"}</small>`;
+    group.append(heading);
+    for (const model of groupModels) group.append(createInlineModelRow(currentModelTarget, model));
+    options.append(group);
+  }
+
+  $('[data-inline-model-result-count]').textContent = `${models.length} compatible model${models.length === 1 ? "" : "s"}`;
+  $('[data-inline-model-empty]').hidden = models.length > 0 || Boolean(automaticOption);
+  $('[data-inline-model-search-clear]').hidden = query.length === 0;
+}
+
+function openInlineModelMenu(target) {
+  currentModelTarget = target;
+  activeInlineModelFilter = "all";
+  $$('[data-inline-model-filter]').forEach((button) => button.classList.toggle("is-selected", button.dataset.inlineModelFilter === "all"));
+  const search = $('[data-inline-model-search]');
+  search.value = "";
+  const menu = $('[data-inline-model-menu]');
+  menu.dataset.scope = target.dataset.modelScope ?? "text";
+  renderInlineModelOptions();
   positionInlineModelMenu(target);
+  window.requestAnimationFrame(() => search.focus());
 }
 
 function openModelPicker(target) {
@@ -443,6 +572,37 @@ $$('[data-model-trigger]').forEach((button) => {
   button.addEventListener("click", (event) => {
     event.stopPropagation();
     openInlineModelMenu(button);
+  });
+});
+
+$('[data-inline-model-menu]').addEventListener("click", (event) => event.stopPropagation());
+
+$('[data-inline-model-search]').addEventListener("input", renderInlineModelOptions);
+$('[data-inline-model-search]').addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    closeInlineModelMenu();
+    currentModelTarget?.focus();
+    return;
+  }
+  if (event.key !== "ArrowDown") return;
+  event.preventDefault();
+  $('[data-inline-model-option]', $('[data-inline-model-menu]'))?.focus();
+});
+
+$('[data-inline-model-search-clear]').addEventListener("click", () => {
+  const search = $('[data-inline-model-search]');
+  search.value = "";
+  renderInlineModelOptions();
+  search.focus();
+});
+
+$$('[data-inline-model-filter]').forEach((button) => {
+  button.addEventListener("click", () => {
+    activeInlineModelFilter = button.dataset.inlineModelFilter;
+    $$('[data-inline-model-filter]').forEach((candidate) => candidate.classList.toggle("is-selected", candidate === button));
+    renderInlineModelOptions();
+    $('[data-inline-model-search]').focus();
   });
 });
 

@@ -56,6 +56,9 @@ requireValues("Settings HTML", settingsHtml, [
   "data-route-select",
   "data-model-trigger",
   "data-inline-model-menu",
+  "data-inline-model-search",
+  "data-inline-model-filter=\"reasoning\"",
+  "data-inline-model-result-count",
   "Advanced model settings…",
   "data-model-scope=\"image\"",
   "Generate images &amp; covers",
@@ -109,6 +112,9 @@ if (settingsHtml.includes("modal-more-connections")) {
 if (settingsJs.includes("openModelPicker(button)")) {
   missing.push("Settings JS: routine feature and action model selection must stay in the inline dropdown");
 }
+if (settingsJs.includes("const textModels =")) {
+  missing.push("Settings JS: one-representative-model-per-provider list must stay removed");
+}
 
 const connectionsHeadingPosition = settingsHtml.indexOf("connection-section-heading");
 const addConnectionPosition = settingsHtml.indexOf("data-add-connection");
@@ -144,8 +150,16 @@ requireValues("Settings JS", settingsJs, [
   "function filterCatalog",
   "function restoreActionAutomatic",
   "function openInlineModelMenu",
+  "function renderInlineModelOptions",
+  "function modelsForScope",
+  "function matchesInlineModel",
   "function updateModelTarget",
   "function toggleFocusedModal",
+  "const modelCatalog =",
+  "gpt-5-mini",
+  "claude-opus-4-7",
+  "deepseek/deepseek-chat-v3",
+  "qwen3:14b",
   "data-panel-target",
   "data-tree-toggle",
   "data-connection-modal",
@@ -171,6 +185,10 @@ requireValues("CSS", css, [
   ".action-model-row",
   ".task-model-control",
   ".inline-model-menu",
+  ".inline-model-search",
+  ".inline-model-filters",
+  ".inline-model-group-heading",
+  ".inline-model-capabilities",
   ".safety-picker",
   ".command-gateway-card",
   ".feature-settings-detail",

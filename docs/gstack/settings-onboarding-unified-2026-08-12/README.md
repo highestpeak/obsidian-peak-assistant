@@ -65,8 +65,8 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 - A low-frequency `AI Control Center` entry at the end of AI & Models, after ordinary connection and feature-model controls
 - A compact Automatic-model rule that explains what it affects, uses understandable outcome and processing-location language, and never overwrites manual choices
 - Primary and additional connection groups, with an OpenRouter detail that separates connection health from online catalog, cache and bundled fallback state
-- Borderless in-place model dropdowns on every product feature and configurable child action; choosing a routine model no longer opens a modal
-- A single explicit `Advanced model settings…` row inside the dropdown preserves access to per-action controls without putting them on the everyday path
+- Searchable in-place model pickers on every product feature and configurable child action; results come from the configured connection catalog, group many models under each Profile / Provider, expose capability and context hints, and support keyboard selection without opening a modal
+- The picker follows the production `ComposerModelSelector` / `RoleModelPicker` contract: search Profile, Provider, model ID or capability; keep Automatic visible; group by enabled Profile; show the selected model; reserve `Advanced model settings…` for parameters, fallback and limits
 - Chat Studio and Composer include explicit image-understanding and image-generation routes instead of hiding media behind a generic feature default
 - Add-connection modal presents every supported connection as one equal provider list; there is no miniature secondary tier inside the modal
 - Real safety modes: Read only, Ask every time, Accept reviewed edits and Bypass confirmations
