@@ -601,29 +601,49 @@ const EXPANSION_COPY: Record<LensId, { label: string; relation: string; classes:
 	'gap-analysis': { label: 'Verification handoff', relation: 'requires', classes: 'evaluation' },
 };
 
+function expansionPositionIsClear(cy: Core, candidate: { x: number; y: number }): boolean {
+	const candidateHalfWidth = 96;
+	const candidateHalfHeight = 38;
+	const gutter = 46;
+	let clear = true;
+	cy.nodes().filter((item) => !item.hasClass('group')).forEach((item) => {
+		if (!clear) return;
+		const box = item.boundingBox({ includeLabels: true, includeOverlays: false, includeUnderlays: false });
+		const separated = candidate.x + candidateHalfWidth + gutter < box.x1
+			|| candidate.x - candidateHalfWidth - gutter > box.x2
+			|| candidate.y + candidateHalfHeight + gutter < box.y1
+			|| candidate.y - candidateHalfHeight - gutter > box.y2;
+		if (!separated) clear = false;
+	});
+	return clear;
+}
+
 function findExpansionPosition(cy: Core, anchor: NodeSingular, attempt: number): { x: number; y: number } {
 	const origin = anchor.position();
-	const offsets = [
-		{ x: 230, y: 0 },
-		{ x: 205, y: -145 },
-		{ x: 205, y: 145 },
-		{ x: 0, y: 165 },
-		{ x: 0, y: -165 },
-		{ x: -210, y: 145 },
-		{ x: -210, y: -145 },
+	const directions = [
+		{ x: 1, y: 0 },
+		{ x: .82, y: -.72 },
+		{ x: .82, y: .72 },
+		{ x: 0, y: -1 },
+		{ x: 0, y: 1 },
+		{ x: -.82, y: -.72 },
+		{ x: -.82, y: .72 },
+		{ x: -1, y: 0 },
 	];
-	const occupied = cy.nodes().filter((item) => !item.hasClass('group'));
-	for (let index = 0; index < offsets.length; index += 1) {
-		const offset = offsets[(index + attempt) % offsets.length];
-		const candidate = { x: origin.x + offset.x, y: origin.y + offset.y };
-		let collision = false;
-		occupied.forEach((item) => {
-			const point = item.position();
-			if (Math.abs(point.x - candidate.x) < 170 && Math.abs(point.y - candidate.y) < 82) collision = true;
-		});
-		if (!collision) return candidate;
+	for (let ring = 0; ring < 8; ring += 1) {
+		const radiusX = 235 + (ring * 118);
+		const radiusY = 165 + (ring * 88);
+		for (let index = 0; index < directions.length; index += 1) {
+			const direction = directions[(index + attempt) % directions.length];
+			const candidate = {
+				x: origin.x + (direction.x * radiusX),
+				y: origin.y + (direction.y * radiusY),
+			};
+			if (expansionPositionIsClear(cy, candidate)) return candidate;
+		}
 	}
-	return { x: origin.x + 240, y: origin.y + 180 + (attempt * 38) };
+	const graphBox = cy.nodes().filter((item) => !item.hasClass('group')).boundingBox({ includeLabels: true, includeOverlays: false, includeUnderlays: false });
+	return { x: graphBox.x2 + 222 + (attempt * 18), y: origin.y };
 }
 
 interface AgentGraphCanvasProps {
@@ -667,6 +687,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 	const inspectCloseTimerRef = useRef<number | null>(null);
 	const expansionTimersRef = useRef<number[]>([]);
 	const expansionCounterRef = useRef(0);
+	const inspectionSuppressedRef = useRef(false);
 	activeRef.current = active;
 	inspectedNodeRef.current = inspectedNode;
 	inspectPinnedRef.current = inspectPinned;
@@ -693,7 +714,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 
 	const showInspection = (item: NodeSingular, pinned: boolean): void => {
 		const host = hostRef.current;
-		if (!host || item.empty() || item.hasClass('group')) return;
+		if (!host || item.empty() || item.hasClass('group') || inspectionSuppressedRef.current) return;
 		setInspectedNode(buildNodeInspection(item, script, host));
 		setInspectPinned(pinned);
 		setCardAction(null);
@@ -718,6 +739,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 
 	const resetGraph = (cy: Core): void => {
 		clearExpansionTimers();
+		inspectionSuppressedRef.current = false;
 		setExpansionRun(null);
 		closeInspection();
 		cy.elements().remove();
@@ -831,7 +853,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 		};
 		cy.on('mouseover', 'node', (event) => {
 			const item = event.target as NodeSingular;
-			if (item.hasClass('group')) return;
+			if (item.hasClass('group') || inspectionSuppressedRef.current) return;
 			hoveredNodeIdRef.current = item.id();
 			if (inspectCloseTimerRef.current !== null) window.clearTimeout(inspectCloseTimerRef.current);
 			if (inspectOpenTimerRef.current !== null) window.clearTimeout(inspectOpenTimerRef.current);
@@ -928,6 +950,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 		if (!cy || expansionCommitNonce <= 0 || expansionCommitNonceRef.current === expansionCommitNonce) return;
 		expansionCommitNonceRef.current = expansionCommitNonce;
 		cy.elements('.expansion').removeClass('expansion patch-target');
+		inspectionSuppressedRef.current = false;
 		setExpansionRun(null);
 	}, [expansionCommitNonce, script.id]);
 
@@ -936,6 +959,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 		if (!cy || expansionRollbackNonce <= 0 || expansionRollbackNonceRef.current === expansionRollbackNonce) return;
 		expansionRollbackNonceRef.current = expansionRollbackNonce;
 		clearExpansionTimers();
+		inspectionSuppressedRef.current = false;
 		const draftElements = cy.elements('.expansion');
 		if (!draftElements.empty()) draftElements.remove();
 		clearPatchTargets(cy);
@@ -1002,8 +1026,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 
 	const startExpansion = (): void => {
 		const cy = cyRef.current;
-		const host = hostRef.current;
-		if (!cy || !host || !inspectedNode || !layoutEnabled) return;
+		if (!cy || !inspectedNode || !layoutEnabled) return;
 		if (expansionRun && expansionRun.phase !== 'complete') return;
 		const anchor = cy.getElementById(inspectedNode.id) as NodeSingular;
 		if (anchor.empty()) return;
@@ -1030,6 +1053,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 			phase: 'inspecting',
 		};
 		setExpansionRun(nextRun);
+		inspectionSuppressedRef.current = true;
 		closeInspection();
 		emitExpansionActivity({ id: `${runId}-inspect`, kind: 'inspect', tool: 'graph.inspectNeighborhood', title: `Inspecting ${sourceLabel}`, detail: 'Read adjacent evidence, relation directions, occupied regions, and the current draft revision.', object: 'read only · revision guarded', state: 'running', sourceLabel });
 
@@ -1053,8 +1077,6 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 				addEdges: [edge(`${runId}-edge`, inspectedNode.id, targetNodeId, EXPANSION_COPY[script.id].relation, 'expansion')],
 				updateNodes: [{ id: targetNodeId, addClasses: EXPANSION_COPY[script.id].classes, removeClasses: 'candidate' }],
 			}, true);
-			const currentAnchor = cy.getElementById(inspectedNode.id) as NodeSingular;
-			if (!currentAnchor.empty()) setInspectedNode(buildNodeInspection(currentAnchor, script, host));
 		}, 1740);
 		expansionTimersRef.current.push(connectTimer);
 
@@ -1068,6 +1090,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 		const completeTimer = window.setTimeout(() => {
 			emitExpansionActivity({ id: `${runId}-validate`, kind: 'validate', tool: 'graph.validate', title: 'Validated the expansion draft', detail: 'The new node and relation are ready for review; the accepted graph version remains unchanged.', object: '1 node · 1 relation · valid draft', state: 'complete', sourceLabel });
 			setExpansionRun((current) => current?.id === runId ? { ...current, phase: 'complete' } : current);
+			inspectionSuppressedRef.current = false;
 		}, 3620);
 		expansionTimersRef.current.push(completeTimer);
 	};
