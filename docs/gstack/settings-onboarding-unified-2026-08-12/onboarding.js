@@ -65,6 +65,7 @@ const state = {
   provider: null,
   connectionReady: false,
   connectionFormOpen: false,
+  sqlitePhase: "required",
   indexPhase: "empty",
   indexCount: 0,
   activeRole: null,
@@ -73,6 +74,7 @@ const state = {
 
 let toastTimer;
 let indexTimer;
+let sqliteTimer;
 
 function showToast(message) {
   const toast = $("[data-action-toast]");
@@ -150,21 +152,31 @@ function setPreview(preview) {
   state.activeRole = null;
   state.connectionFormOpen = false;
   window.clearInterval(indexTimer);
+  window.clearTimeout(sqliteTimer);
   if (preview === "existing") {
     state.provider = "OpenAI";
     state.connectionReady = true;
+    state.sqlitePhase = "ready";
     state.indexPhase = "ready";
     state.indexCount = 4860;
+  } else if (preview === "repair") {
+    state.provider = "OpenAI";
+    state.connectionReady = true;
+    state.sqlitePhase = "failed";
+    state.indexPhase = "empty";
+    state.indexCount = 0;
   } else {
     state.provider = null;
     state.connectionReady = false;
+    state.sqlitePhase = "required";
     state.indexPhase = "empty";
     state.indexCount = 0;
   }
   $$('[data-preview-state]').forEach((button) => button.classList.toggle("is-active", button.dataset.previewState === preview));
   updateConnectionReadyState();
+  updateSqliteGate();
   updateVaultState();
-  showStep(0);
+  showStep(preview === "repair" ? 2 : 0);
 }
 
 function showStep(step) {
@@ -185,18 +197,26 @@ function showStep(step) {
   $("[data-back]").disabled = state.step === 0;
   const next = $("[data-next]");
   next.hidden = state.step === 4;
-  next.disabled = state.step === 0 && !state.connectionReady;
+  next.disabled = (state.step === 0 && !state.connectionReady)
+    || (state.step === 2 && (state.sqlitePhase !== "ready" || state.indexPhase === "running"));
   const names = ["Connect AI", "Core models", "Prepare vault", "System check", "Try Peak"];
   $("[data-step-summary]").textContent = `Step ${state.step + 1} of 5 · ${names[state.step]}`;
   const notes = [
     state.connectionReady ? `Step 1 of 5 · ${state.provider} passed the minimum check.` : "Step 1 of 5 · Connect and verify one service.",
     "Step 2 of 5 · Only role-compatible models are available here.",
-    state.indexPhase === "ready" ? "Step 3 of 5 · Fast local search is ready." : "Step 3 of 5 · Build the fast local index first.",
-    "Step 4 of 5 · Required checks pass; optional capabilities can wait.",
+    state.sqlitePhase === "failed"
+      ? "Step 3 of 5 · Better SQLite must be repaired before setup can continue."
+      : state.indexPhase === "ready"
+        ? "Step 3 of 5 · Better SQLite and fast local search are ready."
+        : "Step 3 of 5 · Verify Better SQLite, then build the fast local index.",
+    "Step 4 of 5 · Better SQLite and every required dependency must pass.",
     "Setup complete · Choose a real Peak workspace above.",
   ];
   $("[data-footer-note]").textContent = notes[state.step];
-  next.textContent = state.step === 2 && state.indexPhase === "empty" ? "Build fast index" : "Continue";
+  if (state.step === 2 && state.sqlitePhase !== "ready") next.textContent = "Preparing local engine…";
+  else if (state.step === 2 && state.indexPhase === "empty") next.textContent = "Build fast index";
+  else next.textContent = "Continue";
+  if (state.step === 2 && state.sqlitePhase === "required") prepareBetterSqlite();
   if (state.step === 3) runSystemCheck(false);
 }
 
@@ -243,7 +263,54 @@ function updateVaultState() {
   }
 }
 
+function updateSqliteGate() {
+  const gate = $("[data-sqlite-gate]");
+  const copy = $("[data-sqlite-gate-copy]");
+  const status = $("[data-sqlite-gate-status]");
+  const meter = $("[data-sqlite-gate-meter]");
+  const retry = $("[data-sqlite-retry]");
+  gate.dataset.state = state.sqlitePhase;
+  meter.hidden = state.sqlitePhase !== "installing";
+  retry.hidden = state.sqlitePhase !== "failed";
+  if (state.sqlitePhase === "installing") {
+    status.textContent = "Preparing";
+    copy.textContent = "Installing the compatible Better SQLite component, checking the Obsidian ABI and opening a test database.";
+    return;
+  }
+  if (state.sqlitePhase === "ready") {
+    status.textContent = "Verified";
+    copy.textContent = "Better SQLite is compatible · database opened · minimum read/write probe passed.";
+    return;
+  }
+  if (state.sqlitePhase === "failed") {
+    status.textContent = "Action required";
+    copy.textContent = "Peak could not verify Better SQLite. Index setup is blocked until the component is repaired.";
+    return;
+  }
+  status.textContent = "Required";
+  copy.textContent = "Better SQLite is required. Peak will install the compatible component and verify it automatically.";
+}
+
+function prepareBetterSqlite() {
+  state.sqlitePhase = "installing";
+  updateSqliteGate();
+  const next = $("[data-next]");
+  next.disabled = true;
+  next.textContent = "Preparing local engine…";
+  $("[data-footer-note]").textContent = "Step 3 of 5 · Installing and verifying the required local search engine.";
+  window.clearTimeout(sqliteTimer);
+  sqliteTimer = window.setTimeout(() => {
+    state.sqlitePhase = "ready";
+    updateSqliteGate();
+    if (state.step !== 2) return;
+    next.disabled = false;
+    next.textContent = state.indexPhase === "empty" ? "Build fast index" : "Continue";
+    $("[data-footer-note]").textContent = "Step 3 of 5 · Better SQLite verified. Build the fast local index to continue.";
+  }, 1100);
+}
+
 function startFastIndex() {
+  if (state.sqlitePhase !== "ready") return;
   state.indexPhase = "running";
   state.indexCount = 0;
   updateVaultState();
@@ -264,7 +331,7 @@ function startFastIndex() {
     updateVaultState();
     next.disabled = false;
     next.textContent = "Continue";
-    $("[data-footer-note]").textContent = "Step 3 of 5 · Fast local search is ready.";
+    $("[data-footer-note]").textContent = "Step 3 of 5 · Better SQLite and fast local search are ready.";
   }, 140);
 }
 
@@ -274,14 +341,14 @@ function runSystemCheck(showMessage = true) {
     row.querySelector("em").textContent = "Checking";
   });
   $("[data-system-summary-title]").textContent = "Checking required dependencies…";
-  $("[data-system-summary-copy]").textContent = "Connection, model roles, runtime, index, storage and safety are being verified.";
+  $("[data-system-summary-copy]").textContent = "Connection, models, Peak Hermes, Better SQLite, index, storage and safety are being verified.";
   window.setTimeout(() => {
     $$('[data-system-row]').forEach((row) => {
       row.classList.remove("is-checking");
       row.querySelector("em").textContent = "Ready";
     });
-    $("[data-system-summary-title]").textContent = "6 required checks passed";
-    $("[data-system-summary-copy]").textContent = "Peak is ready for Chat, Search, Composer and Agent work. Two optional capabilities are not configured.";
+    $("[data-system-summary-title]").textContent = "7 required checks passed";
+    $("[data-system-summary-copy]").textContent = "Better SQLite, the local index and every first-use dependency passed a real check.";
     if (showMessage) showToast("System check complete · no blocking issues");
   }, 620);
 }
@@ -308,6 +375,7 @@ $$('[data-role-model]').forEach((button) => button.addEventListener("click", () 
 $("[data-role-picker-close]").addEventListener("click", () => { $("[data-role-picker]").hidden = true; });
 $("[data-role-picker-search]").addEventListener("input", (event) => renderRolePicker(state.activeRole, event.target.value));
 $("[data-run-system-check]").addEventListener("click", () => runSystemCheck(true));
+$("[data-sqlite-retry]").addEventListener("click", prepareBetterSqlite);
 
 $("[data-next]").addEventListener("click", () => {
   if (state.step === 2 && state.indexPhase === "empty") { startFastIndex(); return; }

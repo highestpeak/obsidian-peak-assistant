@@ -1015,6 +1015,24 @@ button.action-model-row:hover, .action-group-toggle:hover { background: var(--su
 .empty-model-results { display: block; padding: 18px; color: var(--text-muted); font-size: 10.5px; text-align: center; }
 .onboarding-model-picker > footer { padding: 8px 10px; background: var(--surface-soft); color: var(--text-muted); font-size: 9px; line-height: 1.35; }
 
+.sqlite-gate-card { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; min-height: 72px; margin-bottom: 13px; padding: 12px 13px; align-items: center; gap: 11px; border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--surface-soft); }
+.sqlite-gate-card > span:first-child { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--accent); }
+.sqlite-gate-card > span:first-child svg { width: 17px; height: 17px; }
+.sqlite-gate-card > div:not(.sqlite-gate-meter) { display: flex; min-width: 0; flex-direction: column; }
+.sqlite-gate-card strong { font-size: 12px; }
+.sqlite-gate-card small { margin-top: 3px; color: var(--text-secondary); font-size: 10.5px; line-height: 1.4; }
+.sqlite-gate-card > em { padding: 4px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 9.5px; font-style: normal; font-weight: 660; white-space: nowrap; }
+.sqlite-gate-card[data-state="ready"] { border-left-color: var(--success); background: var(--success-soft); }
+.sqlite-gate-card[data-state="ready"] > span:first-child, .sqlite-gate-card[data-state="ready"] > em { color: var(--success); }
+.sqlite-gate-card[data-state="ready"] > em { background: #dff0e6; }
+.sqlite-gate-card[data-state="failed"] { border-left-color: var(--danger); background: #fff4f4; }
+.sqlite-gate-card[data-state="failed"] > span:first-child, .sqlite-gate-card[data-state="failed"] > em { color: var(--danger); }
+.sqlite-gate-card[data-state="failed"] > em { background: #f8dddd; }
+.sqlite-gate-card > .secondary-button { grid-column: 2; justify-self: start; }
+.sqlite-gate-meter { grid-column: 2 / 4; height: 4px; overflow: hidden; border-radius: 999px; background: var(--line); }
+.sqlite-gate-meter span { display: block; width: 32%; height: 100%; border-radius: inherit; background: var(--accent); animation: sqlite-gate-progress 900ms ease-in-out infinite alternate; }
+@keyframes sqlite-gate-progress { from { transform: translateX(-95%); } to { transform: translateX(310%); } }
+
 .vault-scan-summary { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; min-height: 64px; padding: 10px 12px; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); background: var(--surface-soft); }
 .vault-scan-summary > span:nth-child(2) { display: flex; flex-direction: column; }
 .vault-scan-summary strong { font-size: 12px; }
@@ -1246,8 +1264,10 @@ button.action-model-row:hover, .action-group-toggle:hover { background: var(--su
   .wizard-progress-header { padding-right: 12px; padding-left: 12px; }
   .wizard-step-meta > span { display: none; }
   .wizard-panel-header h1 { font-size: 22px; }
-  .setup-state-message, .vault-scan-summary { grid-template-columns: 38px minmax(0, 1fr); }
+  .setup-state-message, .sqlite-gate-card, .vault-scan-summary { grid-template-columns: 38px minmax(0, 1fr); }
   .setup-state-message > a, .vault-scan-summary > button { grid-column: 2; justify-self: start; }
+  .sqlite-gate-card > em, .sqlite-gate-card > .secondary-button { grid-column: 2; justify-self: start; }
+  .sqlite-gate-meter { grid-column: 2; width: 100%; }
   .connection-setup-card > header { grid-template-columns: auto 34px minmax(0, 1fr); }
   .connection-field { grid-template-columns: 1fr; gap: 7px; }
   .connection-setup-card > footer { align-items: flex-start; flex-direction: column; gap: 8px; padding: 10px 13px; }

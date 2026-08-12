@@ -212,14 +212,20 @@ requireValues("Onboarding HTML", onboardingHtml, [
   "Try Peak",
   "Not configured",
   "Existing setup",
+  "SQLite repair",
   "No AI connection yet",
   "Connect AI to Peak",
   "Use safe models for the core jobs",
   "Agent models must support tools, structured output and at least 64K context",
   "Make this vault searchable quickly",
+  "Better SQLite is required",
+  "data-sqlite-gate",
+  "data-sqlite-retry",
   "Fast local index",
   "Semantic search and generated knowledge can be added later",
   "Check the parts Peak depends on",
+  "7 required checks passed",
+  "data-system-sqlite",
   "Peak Hermes",
   "Where do you want to start?",
   "wizard-progress-header",
@@ -256,8 +262,18 @@ const onboardingStepCount = onboardingHtml.match(/data-step-nav="[0-9]+"/g)?.len
 if (onboardingStepCount !== 5) {
   missing.push("Onboarding HTML: exactly five necessary primary steps are required");
 }
+const requiredSystemCheckCount = onboardingHtml.match(/data-system-row(?:\s|>)/g)?.length ?? 0;
+if (requiredSystemCheckCount !== 7) {
+  missing.push("Onboarding HTML: System Check must include seven required checks, including Better SQLite and Vault search separately");
+}
 if (onboardingHtml.includes("data-first-prompt") || onboardingHtml.includes("data-launch-primary")) {
   missing.push("Onboarding HTML: the final launchpad must open features directly without another prompt form");
+}
+if (onboardingHtml.includes("SQLite backend") || onboardingHtml.includes("data-sqlite-backend")) {
+  missing.push("Onboarding HTML: Better SQLite is mandatory and must not be presented as a backend choice");
+}
+if (onboardingHtml.includes("6 required checks passed")) {
+  missing.push("Onboarding HTML: Better SQLite must remain a separate required System Check");
 }
 if (/\.wizard-steps\s+(?:strong|small)\s*\{[^}]*text-overflow:\s*ellipsis/s.test(css)) {
   missing.push("Onboarding CSS: desktop step labels must remain readable instead of truncating with ellipses");
@@ -300,6 +316,8 @@ requireValues("Settings JS", settingsJs, [
 ]);
 
 requireValues("Onboarding JS", onboardingJs, [
+  "sqlitePhase: \"required\"",
+  "preview === \"repair\"",
   "function showStep",
   "function setPreview",
   "function openConnectionForm",
@@ -307,6 +325,9 @@ requireValues("Onboarding JS", onboardingJs, [
   "function applyRecommendedModels",
   "function renderRolePicker",
   "function openRolePicker",
+  "function updateSqliteGate",
+  "function prepareBetterSqlite",
+  "if (state.sqlitePhase !== \"ready\") return;",
   "function startFastIndex",
   "function runSystemCheck",
   "data-launch-target",
@@ -354,6 +375,8 @@ requireValues("CSS", css, [
   ".onboarding-provider-grid",
   ".core-role-list",
   ".onboarding-model-picker",
+  ".sqlite-gate-card",
+  ".sqlite-gate-meter",
   ".index-path-list",
   ".system-check-groups",
   ".feature-launch-grid",

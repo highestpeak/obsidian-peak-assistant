@@ -36,6 +36,7 @@
         <span>Preview</span>
         <button class="is-active" data-preview-state="fresh">Not configured</button>
         <button data-preview-state="existing">Existing setup</button>
+        <button data-preview-state="repair">SQLite repair</button>
       </div>
       <nav><a href="./index.html">Package</a><a href="./settings.html">Settings</a><a class="is-current" href="./onboarding.html">Onboarding</a></nav>
     </div>
@@ -119,6 +120,14 @@
             <div class="wizard-panel" data-wizard-panel="2" hidden>
               <header class="wizard-panel-header"><span class="content-eyebrow">STEP 3 OF 5</span><h1 data-vault-title>Make this vault searchable quickly</h1><p data-vault-description>Peak recommends a fast local full-text index first. Semantic search and generated knowledge can be added later without blocking setup.</p></header>
 
+              <section class="sqlite-gate-card" data-sqlite-gate data-state="required">
+                <span><svg><use href="#i-database" /></svg></span>
+                <div><strong>Local search engine</strong><small data-sqlite-gate-copy>Better SQLite is required. Peak will install the compatible component and verify it automatically.</small></div>
+                <em data-sqlite-gate-status>Required</em>
+                <div class="sqlite-gate-meter" data-sqlite-gate-meter hidden><span></span></div>
+                <button class="secondary-button" data-sqlite-retry hidden>Retry setup</button>
+              </section>
+
               <section class="vault-setup-empty" data-vault-empty>
                 <div class="vault-scan-summary"><span class="scan-icon"><svg><use href="#i-folder" /></svg></span><span><strong>4,860 supported documents found</strong><small>Markdown, PDF, images and Excalidraw · your source files will not be changed</small></span><button class="text-button">Review scope</button></div>
                 <div class="index-path-list">
@@ -146,13 +155,14 @@
 
             <div class="wizard-panel" data-wizard-panel="3" hidden>
               <header class="wizard-panel-header system-check-heading"><span><span class="content-eyebrow">STEP 4 OF 5</span><h1>Check the parts Peak depends on</h1><p>This is a real pre-flight check, not a settings summary. Blocking problems can be repaired here.</p></span><button class="secondary-button" data-run-system-check><svg><use href="#i-refresh" /></svg>Run again</button></header>
-              <div class="system-check-summary"><span><svg><use href="#i-check" /></svg></span><div><strong data-system-summary-title>6 required checks passed</strong><small data-system-summary-copy>Peak is ready for Chat, Search, Composer and Agent work. Two optional capabilities are not configured.</small></div><em>Ready</em></div>
+              <div class="system-check-summary"><span><svg><use href="#i-check" /></svg></span><div><strong data-system-summary-title>7 required checks passed</strong><small data-system-summary-copy>Better SQLite, the local index and every first-use dependency passed a real check.</small></div><em>Ready</em></div>
               <div class="system-check-groups">
                 <section><header><strong>Required for first use</strong><span>All must pass</span></header>
                   <div class="system-check-row" data-system-row><span><svg><use href="#i-plug" /></svg></span><div><strong>AI connection</strong><small data-system-provider>OpenAI · authentication, catalog and minimum request passed</small></div><em>Ready</em></div>
                   <div class="system-check-row" data-system-row><span><svg><use href="#i-route" /></svg></span><div><strong>Core model roles</strong><small>Chat, knowledge and tool-capable Agent routes are valid</small></div><em>Ready</em></div>
                   <div class="system-check-row" data-system-row><span><svg><use href="#i-agent" /></svg></span><div><strong>Peak Hermes</strong><small>Runtime, tool registry, receipts and recovery are available</small></div><em>Ready</em></div>
-                  <div class="system-check-row" data-system-row><span><svg><use href="#i-database" /></svg></span><div><strong>Vault search</strong><small>Local full-text index can answer searches now</small></div><em>Ready</em></div>
+                  <div class="system-check-row" data-system-row data-system-sqlite><span><svg><use href="#i-database" /></svg></span><div><strong>Local search engine</strong><small>Better SQLite · compatible ABI · database open and read/write probe passed</small></div><em>Ready</em></div>
+                  <div class="system-check-row" data-system-row><span><svg><use href="#i-search" /></svg></span><div><strong>Vault search</strong><small>Local full-text index can answer searches now</small></div><em>Ready</em></div>
                   <div class="system-check-row" data-system-row><span><svg><use href="#i-folder" /></svg></span><div><strong>Local storage</strong><small>Data root is writable and remains Peak-managed</small></div><em>Ready</em></div>
                   <div class="system-check-row" data-system-row><span><svg><use href="#i-shield" /></svg></span><div><strong>Safety defaults</strong><small>Review-first writes and confirmation for risky actions</small></div><em>Ready</em></div>
                 </section>

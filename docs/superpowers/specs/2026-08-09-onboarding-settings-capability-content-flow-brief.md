@@ -170,14 +170,15 @@ Peak Hermes 不是 Provider 或模型。它可以使用普通模型连接完成 
 
 Onboarding 是一条结果驱动、可分支的流程，不等于固定页数。默认首次路径不要求用户先理解产品功能或预先选择 Agent / Media 等特殊目标：如果一个通用 AI 连接和现有 Vault 状态已经足够，先完成最小验证，再在最后的 launchpad 选择第一次真实任务。只有 deep link 已带入目标，或用户主动选择 Agent、Media 等具有额外阻塞依赖的能力时，才提前进入对应分支。
 
-当前目标 mock 将默认路径明确收口为五个有标签的主步骤：`Connect AI → Core models → Prepare vault → System check → Try Peak`。这里的“五步”不是要求用户完成五轮复杂决策：已有连接与索引可以直接复用；三个核心模型角色有可靠默认值；只有连接缺失或快速全文索引不存在时才要求输入或执行。保留独立 System Check，是为了在进入真实产品前集中暴露阻塞依赖，而不是把错误留到第一次任务里。
+当前目标 mock 将默认路径明确收口为五个有标签的主步骤：`Connect AI → Core models → Prepare vault → System check → Try Peak`。这里的“五步”不是要求用户完成五轮复杂决策：已有连接与索引可以直接复用；三个核心模型角色有可靠默认值；只有连接缺失、Better SQLite 未通过验证或快速全文索引不存在时才要求输入或执行。Better SQLite 是桌面端硬性依赖，但不是用户需要理解或选择的 backend；Peak 必须自动安装兼容组件并做真实探测。保留独立 System Check，是为了在进入真实产品前集中暴露阻塞依赖，而不是把错误留到第一次任务里。
 
 ```text
 检测当前环境
   → 复用或建立一个通用可用连接
   → 为 Chat、Knowledge、Agent 三个核心角色应用并验证可靠默认模型
+  → 自动安装并验证 Better SQLite：ABI、数据库打开、最小读写 probe
   → 复用已有全文索引；没有时先建立最快的本地全文索引
-  → 执行连接、模型、Peak Hermes、索引、存储和安全的 System Check
+  → 执行连接、模型、Peak Hermes、Better SQLite、索引、存储和安全的 System Check
   → 在 launchpad 选择第一次真实任务
   → 如该任务有额外依赖，再做就地补充验证
   → 直接打开真实工作入口
@@ -195,6 +196,7 @@ Onboarding 是一条结果驱动、可分支的流程，不等于固定页数。
 - Ollama 是否可达、有哪些本地模型；
 - Codex / Claude Code runtime 是否安装、是否可启动、是否已认证；
 - 当前 Vault 文件数量和可索引文件数量；
+- Better SQLite native component 是否存在、ABI 是否兼容、数据库能否打开并通过最小读写 probe；
 - 本地 store 是否可用；
 - 是否已有索引、已索引数量、最后成功时间；
 - 是否有 missing / changed 文件；
@@ -322,11 +324,12 @@ Onboarding 是一条结果驱动、可分支的流程，不等于固定页数。
 - AI 连接认证、模型目录和最小真实 probe；
 - Chat、Knowledge、Agent 三个核心角色的模型兼容性；
 - Peak Hermes 单一 runtime、工具注册、receipt 和恢复能力；
+- Better SQLite native component、当前 Electron ABI、数据库打开和最小读写 probe；
 - 本地全文索引的真实可用性；
 - Data root 可写与本地 store 状态；
 - review-first 写入和高风险操作确认规则。
 
-Web access 与 media generation 在该页显示为 optional / conditional，不得因为没有配置而阻塞普通首次使用。任何 required check 失败时必须在原地给出修复和重试入口。
+Web access 与 media generation 在该页显示为 optional / conditional，不得因为没有配置而阻塞普通首次使用。Better SQLite 属于 required check：缺失时自动安装，版本或 ABI 不兼容时自动换成兼容构建，下载、加载、打开数据库或读写 probe 失败时停在原步骤并提供重试。任何 required check 失败时都必须在原地给出修复和重试入口。
 
 #### Chat Studio / Composer
 
@@ -408,7 +411,7 @@ Web access 与 media generation 在该页显示为 optional / conditional，不�
 - Vault 很大，索引仍在后台处理；
 - 已有 text index，但没有 embeddings；
 - 已有 index，只有少量 changed files；
-- SQLite store 无法初始化；
+- Better SQLite 缺失、下载失败、Electron ABI 不兼容、native module 无法加载、数据库无法打开或最小读写 probe 失败；
 - 媒体 route 不可用或许可未确认；
 - 用户中途退出或网络中断；
 - 用户撤销凭据或模型已经下架；
@@ -980,7 +983,8 @@ Settings 不再增加一条重复的 Peak 标题工具栏。Obsidian 左侧已�
 
 #### Developer-only
 
-- SQLite backend；
+- Better SQLite 版本、Electron ABI、安装来源和 native module 加载详情（只读诊断）；
+- 旧 `sqliteBackend` 字段的迁移兼容信息；普通用户不选择 backend；
 - graph inspector；
 - raw endpoint、headers 和 provider extras；
 - exact output controls；
@@ -1146,6 +1150,8 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 - 把所有 Provider、所有模型和所有高级参数塞入首次流程；
 - 用功能宣传代替任务选择；
 - 用静态 success rows 代替真实检测；
+- 把 Better SQLite 写成静态 Ready、可跳过项或只在 Notice 中报告安装失败；
+- 让普通用户在 `auto` 与 `better-sqlite3` 之间选择一个实际不存在的 backend 分支；
 - 用“API key 已填写”代替连接验证；
 - 让 OpenRouter 的完整模型目录成为无筛选的首次决定；
 - 让用户为同一任务在多个地方分别配置互相冲突的模型；
@@ -1159,15 +1165,17 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 ### 14.1 Onboarding
 
 - 未阅读外部文档的新用户可以完成主要流程；
-- 默认路径只要求一个可用连接、三个自动配置且兼容的核心模型角色、可用的本地全文索引与通过的 System Check；首次目标在 launchpad 选择，不形成额外的功能介绍步骤；
-- 已有可用连接、Index 和本地 runtime 会被正确复用；
+- 默认路径只要求一个可用连接、三个自动配置且兼容的核心模型角色、通过真实验证的 Better SQLite、可用的本地全文索引与通过的 System Check；首次目标在 launchpad 选择，不形成额外的功能介绍步骤；
+- 已有可用连接、兼容的 Better SQLite、Index 和本地 runtime 会被正确复用；
 - 新用户无连接和已有连接两种状态都必须有独立可验证的 UI；
 - 新 Vault 默认先建立最快的本地全文索引，不要求 semantic、summary、tag、entity 或 relationship enrichment 完成后才能使用；
+- Better SQLite 会自动安装或恢复到与当前 Electron ABI 兼容的构建，并通过数据库打开与最小读写 probe 后才允许继续；
+- Better SQLite 验证失败会阻塞 Onboarding 完成并提供原地修复，不得出现假 Ready、静默降级或仅依赖右上角 Notice；
 - Agent 模型候选必须经过 tools、structured output 和上下文门槛过滤；
 - OpenAI、Anthropic、OpenRouter、Ollama 的连接可以真实验证；
 - Codex、Claude Code 在 adapter 完成后能够分别验证普通对话，以及 Agent 所需的安装、认证、权限和工作目录；
 - OpenRouter / Ollama 候选来自带新鲜度的动态目录或明确标记的 fallback cache；
-- 连接错误、Index 错误和媒体错误能在流程中修复；
+- 连接错误、Better SQLite 错误、Index 错误和媒体错误能在流程中修复；
 - 已有 Index 显示真实数量、覆盖率和新鲜度；
 - text search 可用但 semantic 不可用时，整体状态为 degraded 而不是 failed；
 - 任意中断后进度可恢复；
@@ -1213,7 +1221,7 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 - Onboarding 当前是 7 个 primary steps，并保留 bootstrap model、budget、speed / quality 和 Curator recommendation；目标流程要求将这些从默认首次决定中移出；
 - 当前 Provider step 会在恰好一个 credentialed Profile 时自动选择它，但新用户没有 Profile 时只会展开通用 Add Provider form；因此设计验收必须同时覆盖“无连接”和“已有连接可复用”两种首屏，不能只展示 ready 状态；
 - 当前 BootstrapModelStep 主要按 `modelType=llm`、Provider 名称正则和本地模型名称启发式筛选，尚未证明 Agent 候选具备 tools、structured output 和最低上下文能力；新的核心角色选择必须依赖 capability evidence，而不是“看起来像推荐模型”的正则；
-- Onboarding 的 Knowledge Index 与 System Check 当前仍读取静态配置 rows；它们不是 live readiness；
+- Onboarding 的 Knowledge Index 与 System Check 当前仍读取静态配置 rows；其中 `SQLite engine · Ready` 不是 live readiness，也没有证明安装、ABI、数据库打开或读写 probe；
 - 当前 `Ready to try` 的主操作只把 wizard 标为完成并关闭，没有可靠地打开并预填真实工作入口；
 - Settings 当前主要分为 Overview、AI Setup、Knowledge Index、Tools、Media Generation、Advanced；这只是当前实现，不是本 brief 规定的最终结构；
 - 当前 Provider profile 类型包括 Anthropic、OpenAI、Google、Perplexity、Ollama、OpenRouter、LiteLLM、custom 和 Simulator；

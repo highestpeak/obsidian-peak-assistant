@@ -52,11 +52,11 @@ The two mocks use the same nouns and responsibility boundaries:
 
 1. Detect whether a usable AI connection already exists. Reuse and verify it when possible; otherwise show a real unconfigured state and guide the user through one connection.
 2. Bind three core jobs — Chat & Writing, Search & Analysis, and Agent & Tools — from short capability-filtered model lists. Agent choices must prove tool calling, structured output and the minimum context requirement; the onboarding picker never exposes known-incompatible models.
-3. Detect the Vault state. Reuse a valid local index when available; for a new Vault, recommend the fastest local full-text index and leave semantic search, summaries, tags, entities and relationships for later runs.
-4. Run an explicit System Check covering the AI connection, core model roles, Peak Hermes, Vault search, local storage and review-first safety defaults. Web access and media generation remain visible but optional.
+3. Prepare the local search foundation before indexing. Better SQLite is a required desktop dependency: Peak installs the compatible native component, verifies its ABI, opens a test database and completes a minimal read/write probe. A failure blocks continuation and stays repairable in place. Once this gate passes, reuse a valid local index when available; for a new Vault, recommend the fastest local full-text index and leave semantic search, summaries, tags, entities and relationships for later runs.
+4. Run an explicit System Check covering the AI connection, core model roles, Peak Hermes, Better SQLite, Vault search, local storage and review-first safety defaults. Web access and media generation remain visible but optional.
 5. Present the real product launchpad. Clicking an item opens that feature immediately; the onboarding page does not insert another prompt form. Composer uses the current note or falls back to a recent eligible note.
 
-The default path is a five-step horizontal flow with no secondary step sidebar: `Connect AI → Core models → Prepare vault → System check → Try Peak`. It preserves the necessary checks from the current production wizard without making new users understand the full model catalog, budget strategy, advanced index pipeline or safety taxonomy. The mock includes reviewer controls for both `Not configured` and `Existing setup` states. The flow distinguishes `Setup complete` from `First success`, saves progress, keeps recovery local to the failing step, and provides direct next destinations instead of ending on an empty success page.
+The default path is a five-step horizontal flow with no secondary step sidebar: `Connect AI → Core models → Prepare vault → System check → Try Peak`. It preserves the necessary checks from the current production wizard without making new users understand the full model catalog, SQLite backend choice, budget strategy, advanced index pipeline or safety taxonomy. The mock includes reviewer controls for `Not configured`, `Existing setup` and `SQLite repair` states. The flow distinguishes `Setup complete` from `First success`, saves progress, keeps recovery local to the failing step, and provides direct next destinations instead of ending on an empty success page.
 
 ## Mocked interactions
 
@@ -84,11 +84,12 @@ The default path is a five-step horizontal flow with no secondary step sidebar: 
 ### Onboarding
 
 - Five labeled horizontal steps: Connect AI → Core models → Prepare vault → System check → Try Peak
-- Toggleable first-time and existing-setup review states, so empty connection and reuse behavior are both inspectable
+- Toggleable first-time, existing-setup and SQLite-repair review states, so empty connection, successful reuse and a blocking native-component failure are all inspectable
 - One-connection setup with API-key, local-service and local-authenticated-adapter variants, followed by authentication, compatible-model and minimum-request receipts
 - Three necessary model roles with searchable, Provider-aware, capability-filtered choices; no full catalog or incompatible Agent model appears in onboarding
+- A mandatory Better SQLite gate before index setup: automatic native-component install, ABI compatibility, database open and minimal read/write probe; failure blocks the next step and exposes an in-place retry instead of a backend selector
 - Existing full-text index reuse or a fastest-first local full-text build for a new Vault; semantic and generated-knowledge work does not block first use
-- A dedicated System Check for connection, roles, the single Peak Hermes runtime, local index, storage and safety, with optional Web and media status kept separate
+- A dedicated System Check for connection, roles, the single Peak Hermes runtime, Better SQLite, local index, storage and safety, with optional Web and media status kept separate
 - Back/continue with preserved choices
 - A direct final launchpad for Chat Studio, Composer & Copilot, Vault Search, AI Search, File Atlas, AI Graph, Agent & Wizard and conditional media generation; no extra prompt editor or second confirmation
 

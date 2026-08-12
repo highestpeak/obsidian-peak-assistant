@@ -837,7 +837,8 @@ Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompt
 | 设置或操作 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
 | Developer tools | 高级 / 开发设置 | 开启后暴露调试入口，不改变普通功能数据 | `CURRENT` |
-| SQLite backend override | 系统内部或故障诊断 | 当前支持 `auto / better-sqlite3`；普通用户没有稳定选择意图，不进入常规 Settings | `CURRENT` runtime / `INTERNAL` UI 决策 |
+| Better SQLite 组件状态与修复 | 状态 + 维护操作 | 普通用户不选择 backend；展示 native component 版本、Electron ABI、安装来源、最近数据库打开与读写 probe，并提供重试安装 / 重新验证 | `CURRENT` runtime / `PARTIAL` UI；Onboarding 必须补成硬门槛 |
+| 旧 `sqliteBackend` 字段 | 系统内部迁移兼容 | 当前 `auto / better-sqlite3` 最终都进入 Better SQLite runtime，不构成真实用户选择；不进入 Settings，待兼容迁移完成后评估退役 | `CURRENT` field / `INTERNAL` / `RETIRE CANDIDATE` |
 | 导出诊断包 | 操作 | 默认脱敏；列出将包含的文件和字段 | `REQUIRED` |
 | 重新检测全部连接 | 操作 | 更新健康与能力状态，不改凭证 | `REQUIRED` |
 | 打开模型目录诊断 | 导航到 AI & Models | 目录刷新、隐藏、别名、能力证据和新鲜度只有一个 owner；Advanced 只提供诊断跳转 | `REQUIRED` |
