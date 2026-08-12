@@ -1,6 +1,6 @@
 # Peak Assistant Onboarding 与 Settings 能力、内容和流程 Brief
 
-> 状态：当前产品要求 · target UI mock available · production implementation not started · interaction not verified
+> 状态：详细能力背景与证据 · 已纳入 2026-08-13 最终设计 · production implementation not started
 > 日期：2026-08-09
 > 面向读者：产品设计师、交互设计师、产品负责人、后续实现与验收人员
 > 适用范围：Peak Assistant 首次配置、重新配置、日常设置、修复与首次成功体验
@@ -18,7 +18,7 @@
 
 它不规定页面布局、导航形式、控件形态、颜色、图标、尺寸、动效或视觉风格。设计师可以自由决定具体 UI，但不能删除这里定义的必要能力、状态、依赖关系和恢复路径。
 
-本 brief 是当前能力、内容、状态和流程的 source of truth。[Settings 可配置能力总表](./2026-08-12-settings-configurable-capabilities-by-group.md) 按 `AI & Models → Agents → Knowledge & Search → Advanced` 四组列出所有用户控制、系统默认、状态、操作和当前接线事实；[2026-08-12 Settings 与 Onboarding 文档包](../../gstack/settings-onboarding-unified-2026-08-12/index.html) 提供当前目标 mock；[2026-08-06 redesign](./2026-08-06-onboarding-settings-launch-readiness-redesign.md) 与同批 HTML variants 只保留为历史探索。
+[2026-08-13 最终设计](./2026-08-13-onboarding-settings-knowledge-index-final-design.md) 是当前 surface 职责、最终交互和上线验收的 source of truth；[实现任务与验收计划](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md) 负责工程顺序。本文保留完整能力背景、分支与证据。[Settings 可配置能力总表](./2026-08-12-settings-configurable-capabilities-by-group.md) 按 `AI & Models → Agents → Knowledge & Search → Advanced` 四组维护字段级控制和当前接线事实；[2026-08-12 Settings 与 Onboarding 文档包](../../gstack/settings-onboarding-unified-2026-08-12/index.html) 提供目标 mock；[2026-08-06 redesign](./2026-08-06-onboarding-settings-launch-readiness-redesign.md) 与同批 HTML variants 只保留为历史探索。
 
 ### 0.1 产品目标
 
@@ -1242,7 +1242,7 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 
 > DESIGN REQUIREMENTS READY · TARGET UI MOCK AVAILABLE · PRODUCTION IMPLEMENTATION NOT STARTED · INTERACTION NOT VERIFIED
 
-后续 UI 设计应以本 brief 为能力 source of truth。后续工程实施还需要单独完成：
+后续 UI 与工程实现应先遵守 [2026-08-13 最终设计](./2026-08-13-onboarding-settings-knowledge-index-final-design.md) 和 [实现任务与验收计划](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md)。本文用于追溯详细能力、状态与分支；尚未接线的工作包括：
 
 - 共享 Readiness Projection；
 - connection verification receipts；

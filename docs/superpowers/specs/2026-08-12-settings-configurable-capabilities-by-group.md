@@ -4,6 +4,8 @@
 > - 日期：2026-08-12
 > - 面向读者：产品负责人、产品设计师、交互设计师、实现与验收人员
 > - Settings 一级功能组：`AI & Models → Agents → Knowledge & Search → Advanced`
+> - 最终产品与交互判决：[Onboarding、Settings 与 Knowledge Index 最终设计](./2026-08-13-onboarding-settings-knowledge-index-final-design.md)
+> - 生产实现顺序：[实现任务与验收计划](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md)
 > - 配套产品契约：[Onboarding 与 Settings 能力、内容和流程 Brief](./2026-08-09-onboarding-settings-capability-content-flow-brief.md)
 > - 字段与治理附录：[设置清单与 Onboarding / Settings 分工](./2026-08-10-peak-assistant-configuration-governance-and-settings-inventory.md)
 > - 当前交互参考：[Settings 与 Onboarding 设计包](../../gstack/settings-onboarding-unified-2026-08-12/index.html)

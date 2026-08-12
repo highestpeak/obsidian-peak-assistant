@@ -2,7 +2,7 @@
 
 Design-only mock for Peak Assistant's first-run and manual knowledge indexing experience.
 
-This is a supporting workspace in the current [Settings and Onboarding design package](../settings-onboarding-unified-2026-08-12/index.html). Settings owns durable indexing defaults; this page owns first-run setup, one run's locked choices, live progress, completion and rerun.
+This is a supporting workspace in the current [Settings and Onboarding design package](../settings-onboarding-unified-2026-08-12/index.html). The [final design](../../superpowers/specs/2026-08-13-onboarding-settings-knowledge-index-final-design.md) owns the product boundary, and the [implementation plan](../../superpowers/plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md) owns production sequencing. Settings owns durable indexing defaults; this page owns first-run setup, one run's locked choices, live progress, completion and rerun.
 
 ## Direction
 

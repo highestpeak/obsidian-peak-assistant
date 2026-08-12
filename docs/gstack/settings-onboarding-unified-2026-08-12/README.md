@@ -1,14 +1,16 @@
 # Settings and Onboarding Design Package
 
-Status: current product contract and target mocks · production implementation not started · interaction not verified in Obsidian.
+Status: consolidated target design and target mocks · production implementation not started · interaction not verified in Obsidian.
 
 This directory is the current review package for Peak Assistant's Settings and Onboarding work. It replaces the 2026-08-06 visual variants as the design reference.
 
 ## Start here
 
 - [`index.html`](./index.html) — the single entry point and document map.
-- [`2026-08-09 capability brief`](../../superpowers/specs/2026-08-09-onboarding-settings-capability-content-flow-brief.md) — the current source of truth for required capability, content, state and flow.
+- [`2026-08-13 final design`](../../superpowers/specs/2026-08-13-onboarding-settings-knowledge-index-final-design.md) — the consolidated source of truth for surface responsibility, final interaction and launch acceptance.
+- [`Implementation task and acceptance plan`](../../superpowers/plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md) — dependency-ordered production work, verification and rollback.
 - [`Settings configurable capability inventory`](../../superpowers/specs/2026-08-12-settings-configurable-capabilities-by-group.md) — every user control, automatic default, status, operation and current wiring fact, organized by the four Settings groups.
+- [`2026-08-09 capability brief`](../../superpowers/specs/2026-08-09-onboarding-settings-capability-content-flow-brief.md) — detailed capability background, branches and evidence retained for traceability.
 - [`settings.html`](./settings.html) — target experience for long-term configuration and system status.
 - [`onboarding.html`](./onboarding.html) — target experience for minimum setup and the first real task.
 - [`Knowledge Index progress`](../knowledge-index-workspace-2026-08-11/index.html) — focused run view for indexing progress, order, speed, ETA, file types and per-document work.
@@ -17,11 +19,12 @@ These HTML files are self-contained local artifacts and should be opened directl
 
 ## Source-of-truth order
 
-1. The capability brief decides what the product must preserve and how success is verified.
-2. The Settings configurable capability inventory decides which group owns every long-term control and records current implementation truth.
-3. The current Settings and Onboarding mocks show one target interaction and visual response to that contract.
-4. The Knowledge Index mock owns the detailed feedback for an active indexing run.
-5. The 2026-08-06 redesign package and visual calibration board are historical exploration only.
+1. The final design decides surface responsibility, final interaction and launch acceptance.
+2. The implementation plan decides dependency order, task scope, verification and rollback.
+3. The Settings configurable capability inventory decides which group owns every long-term control and records current implementation truth.
+4. The current Settings and Onboarding mocks show the target interaction and visual response to that contract.
+5. The Knowledge Index mock owns per-run setup, live progress, completion and failure recovery.
+6. The capability brief retains detailed branches and evidence; the 2026-08-06 package remains historical exploration only.
 
 If the documents disagree, use this order. Historical variants must not be treated as implementation requirements.
 
