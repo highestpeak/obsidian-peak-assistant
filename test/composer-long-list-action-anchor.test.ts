@@ -24,7 +24,8 @@ assert.ok(
 );
 assert.ok(
 	root.includes('(rowRect.height - 30) / 2') &&
-	!root.includes('disclosureClearance'),
+	!root.includes('disclosureClearance') &&
+	!root.includes('setCollectionActionAnchorTop(Math.max('),
 	'the handle must follow the active unit center instead of being clamped to the block-top disclosure',
 );
 assert.ok(
@@ -56,13 +57,33 @@ assert.ok(
 
 assert.match(
 	css,
-	/\.pk-composer-collection-handle-zone\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?top:\s*var\(--pk-composer-collection-anchor-top\);[\s\S]*?left:\s*-43px;[\s\S]*?width:\s*30px;[\s\S]*?height:\s*30px;/,
-	'the collection handle zone must reuse the original rail x-coordinate while following the measured unit',
+	/\.pk-composer-collection-handle-zone\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?top:\s*var\(--pk-composer-collection-anchor-top\);[\s\S]*?width:\s*30px;[\s\S]*?height:\s*30px;/,
+	'the collection handle zone must follow the measured unit with a fixed 30px hit target',
 );
 assert.match(
 	css,
-	/\.pk-composer-collection-handle-zone::before\s*\{[\s\S]*?inset:\s*-3px -13px -3px -6px;/,
-	'the rail control must have a transparent pointer bridge that reaches the block edge without changing visible geometry',
+	/\.pk-composer-block\[data-unitized='true'\]\s*>\s*\.pk-composer-rail\s*\{[\s\S]*?left:\s*-54px;[\s\S]*?padding-top:\s*0;/,
+	'unitized blocks must place disclosure in the outer structural-rail lane',
+);
+assert.match(
+	css,
+	/\.pk-composer-block\[data-unitized='true'\]\s*>\s*\.pk-composer-collection-handle-zone\s*\{[\s\S]*?left:\s*-22px;/,
+	'the active-unit six-dot handle must use the inner lane instead of covering disclosure',
+);
+assert.match(
+	css,
+	/\.pk-composer-block\[data-unitized='true'\]\s*>\s*\.pk-composer-collection-handle-zone::before\s*\{[\s\S]*?inset:\s*-3px -2px -3px -4px;/,
+	'the inner rail lane must stop its transparent pointer bridge at the text edge',
+);
+assert.match(
+	css,
+	/\.pk-composer-block\[data-unitized='true'\][\s\S]*?\.pk-composer-collection-handle__label\s*\{[\s\S]*?right:\s*calc\(100% \+ 39px\);/,
+	'the six-dot label must clear the adjacent outer-lane disclosure',
+);
+assert.match(
+	css,
+	/@media \(max-width: 720px\)[\s\S]*?\.peak-composer-root \.pk-composer-shell\s*\{[\s\S]*?padding-left:\s*50px;/,
+	'the narrow paper must retain enough left-side room for both unitized rail lanes',
 );
 assert.equal(
 	css.includes('.pk-composer-block[data-collection-anchor-unit]:hover > .pk-composer-collection-handle'),

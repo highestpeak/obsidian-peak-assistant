@@ -417,12 +417,16 @@
 	padding-bottom: var(--pk-space-10);
 }
 
-/* Narrow-viewport downgrade: card + stage gutters shrink together; block gutter
-   collapses so the rail tucks under the text edge — never a horizontal scroll. */
+/* Narrow-viewport downgrade: the right paper + stage gutters shrink, while the
+   left edge keeps enough combined paper/stage space for the two 30px unitized
+   rail lanes. The rail may straddle the paper edge but never the viewport. */
 @media (max-width: 720px) {
 	.peak-composer-root {
 		--pkc-stage-pad-x: 14px;
 		--pkc-paper-pad-x: 26px;
+	}
+	.peak-composer-root .pk-composer-shell {
+		padding-left: 50px;
 	}
 }
 
@@ -506,12 +510,27 @@
 	height: 30px;
 	pointer-events: auto;
 }
+.peak-composer-root .pk-composer-block[data-unitized='true'] > .pk-composer-rail {
+	/* Unitized blocks need two stable rail lanes: disclosure stays structural
+	   in the outer lane while the six-dot handle remains centered on the active
+	   authored row in the inner lane. Both 30px controls fit the 64px gutter. */
+	left: -54px;
+	padding-top: 0;
+}
+.peak-composer-root .pk-composer-block[data-unitized='true'] > .pk-composer-collection-handle-zone {
+	left: -22px;
+}
 .peak-composer-root .pk-composer-collection-handle-zone::before {
 	content: '';
 	position: absolute;
 	z-index: 0;
 	inset: -3px -13px -3px -6px;
 	pointer-events: auto;
+}
+.peak-composer-root .pk-composer-block[data-unitized='true'] > .pk-composer-collection-handle-zone::before {
+	/* The inner lane already ends 2px before the text edge; do not let the
+	   transparent pointer corridor cover editable text. */
+	inset: -3px -2px -3px -4px;
 }
 .peak-composer-root .pk-composer-collection-handle {
 	position: relative;
@@ -566,6 +585,10 @@
 	line-height: 1;
 	white-space: nowrap;
 	transition: opacity 90ms ease, transform 120ms ease, visibility 0s linear 120ms;
+}
+.peak-composer-root .pk-composer-block[data-unitized='true'] .pk-composer-collection-handle__label {
+	/* Clear the adjacent outer disclosure lane while the six-dot hint is open. */
+	right: calc(100% + 39px);
 }
 .peak-composer-root .pk-composer-collection-handle-zone:hover .pk-composer-collection-handle__label,
 .peak-composer-root .pk-composer-collection-handle-zone:focus-within .pk-composer-collection-handle__label,

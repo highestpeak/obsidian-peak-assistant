@@ -1424,10 +1424,9 @@ function ComposerBlockRow({
 		const update = () => {
 			const blockRect = blockElement.getBoundingClientRect();
 			const rowRect = row.getBoundingClientRect();
-			setCollectionActionAnchorTop(Math.max(
-				0,
+			setCollectionActionAnchorTop(
 				rowRect.top - blockRect.top + (rowRect.height - 30) / 2,
-			));
+			);
 			const scroller = scrollerOf(blockElement);
 			const scrollerRect = scroller?.getBoundingClientRect();
 			const viewportTop = Math.max(0, scrollerRect?.top ?? 0);
