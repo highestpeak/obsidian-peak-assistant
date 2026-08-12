@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peak Shared Graph Workspace · Single-page design review</title>
+  <link rel="stylesheet" href="mock.css">
+</head>
+<body data-page="index">
+  <nav class="prototype-nav review-nav" aria-label="Graph Workspace 单页目录">
+    <div class="prototype-title"><i></i><strong>Shared Graph Workspace</strong></div>
+    <div class="prototype-pages">
+      <a href="#contract">组件契约</a>
+      <a href="#world-search">World Search</a>
+      <a href="#file-atlas">File Atlas</a>
+      <a href="#ai-search">AI Sources</a>
+      <a href="#composer">Composer</a>
+      <a href="#ai-graph">AI Graph</a>
+    </div>
+    <span class="prototype-note">ONE-PAGE REVIEW · DESIGN ONLY</span>
+  </nav>
+
+  <main class="index-page single-review-page">
+    <div class="index-inner review-inner">
+      <header class="index-head review-head">
+        <div>
+          <span class="index-eyebrow">Peak Assistant · Public UI primitive</span>
+          <h1>一套 Graph Workspace，五个宿主状态</h1>
+          <p>下面五个完整界面全部在同一页展开。宿主只决定上下文与 capability manifest；范围、投影、工具栏、画布、Shift inspect、快捷键、Mini Map、全屏和 viewport 仍由同一个公共组件管理。</p>
+        </div>
+        <span class="index-status">连续向下审查，无需跳页</span>
+      </header>
+
+      <section class="anatomy review-contract" id="contract" aria-label="公共组件结构">
+        <div><span>01 · Host</span><strong>宿主上下文</strong><small>Search results / current file / cited sources / Composer context</small></div>
+        <div><span>02 · Scope</span><strong>数据范围</strong><small>只有两个以上选项才显示，不制造空的单选控件</small></div>
+        <div><span>03 · Projection</span><strong>关系投影</strong><small>Physical layouts 与 AI lenses 占用同一稳定位置</small></div>
+        <div><span>04 · Canvas</span><strong>同一 Cytoscape 栈</strong><small>节点、边、选择、inspect、viewport 与 Mini Map</small></div>
+        <div><span>05 · Actions</span><strong>完整工具栏</strong><small>普通视图和全屏使用同一动作集合</small></div>
+      </section>
+
+      <section class="review-screen" id="world-search">
+        <header class="review-screen-head">
+          <span class="review-screen-number">01</span>
+          <div><h2>World Search</h2><p>只有一个隐式结果范围，所以整段 Scope 控件消失；Projection、完整工具栏和画布能力不缩水。</p></div>
+          <span class="review-chip">SINGLE SCOPE</span>
+        </header>
+        <div class="embedded-screen inline-host">
+          <section class="product-window search-window">
+            <header class="window-topbar"><span class="window-dots"><i></i><i></i><i></i></span><strong class="window-title">Peak Assistant · World Search</strong><span class="window-state"><i></i> Search index ready</span></header>
+            <div class="search-tabs"><button class="is-active">Vault Search</button><button>AI Search</button></div>
+            <div class="search-command"><div class="search-field">⌕&nbsp;&nbsp; Search your vault…</div><button class="icon-button label-button">✦ Refine</button></div>
+            <div class="search-body">
+              <section class="graph-workspace" data-graph-workspace data-view-options="List,Tree,Graph" data-view="Graph" data-layout-options="Constellation,Community,Flow →,↓,Folders,Orbit" data-layout="Constellation" data-variant="world"></section>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="review-screen" id="file-atlas">
+        <header class="review-screen-head">
+          <span class="review-screen-number">02</span>
+          <div><h2>File Atlas</h2><p>当前文件是宿主上下文；One hop、Two hop 与 AI Graph 使用同一 Scope 槽位。</p></div>
+          <span class="review-chip">DOCUMENT CONTEXT</span>
+        </header>
+        <div class="embedded-screen inline-host">
+          <section class="product-window atlas-window">
+            <header class="window-topbar"><span class="window-dots"><i></i><i></i><i></i></span><strong class="window-title">Peak File Atlas</strong><span class="window-state"><i></i> Read-only relationship view</span></header>
+            <div class="atlas-body">
+              <aside class="atlas-rail">
+                <header><strong>Open files</strong><button class="icon-button">⌄</button></header>
+                <div class="atlas-files">
+                  <span>Current</span>
+                  <button class="atlas-file is-active"><i>◇</i><span><strong>Peak Composer Visual Parity QA</strong><small>Composer · active</small></span></button>
+                  <button class="atlas-file"><i>◇</i><span><strong>Information management</strong><small>Markdown · 23 links</small></span></button>
+                  <button class="atlas-file"><i>◇</i><span><strong>Graph and information tools</strong><small>Canvas · 18 links</small></span></button>
+                  <span>Recent</span>
+                  <button class="atlas-file"><i>◇</i><span><strong>AI Search architecture</strong><small>10 minutes ago</small></span></button>
+                  <button class="atlas-file"><i>◇</i><span><strong>Vault Intelligence review</strong><small>Yesterday</small></span></button>
+                </div>
+              </aside>
+              <div class="atlas-main">
+                <header class="document-header"><div class="document-title"><i>◇</i><span><strong>Peak Composer Visual Parity QA</strong><small>Read-only neighborhood from Vault links around this note</small></span></div><span class="window-state"><i></i> Index current</span></header>
+                <section class="graph-workspace" data-graph-workspace data-view-options="Tree,Graph" data-view="Graph" data-scope-options="one-hop,two-hop,ai" data-scope="two-hop" data-layout-options="Constellation,Community,Flow →,↓,Folders,Orbit" data-layout="Constellation" data-variant="local"></section>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="review-screen" id="ai-search">
+        <header class="review-screen-head">
+          <span class="review-screen-number">03</span>
+          <div><h2>AI Search · Sources</h2><p>引用文件集合成为 Graph context；List、Tree、Graph 属于结果视图，关系范围仍由公共 Workspace 管理。</p></div>
+          <span class="review-chip">CITED SOURCES</span>
+        </header>
+        <div class="embedded-screen inline-host">
+          <section class="product-window analysis-window">
+            <header class="window-topbar"><span class="window-dots"><i></i><i></i><i></i></span><strong class="window-title">Peak Assistant · AI Search</strong><span class="window-state"><i></i> Analysis complete</span></header>
+            <div class="analysis-tabs"><button>Vault Search</button><button class="is-active">✦ AI Search</button></div>
+            <div class="analysis-query"><span>What connections exist between the cited sources and the surrounding Vault?</span><button class="icon-button label-button">✦ New analysis</button></div>
+            <div class="analysis-main"><section class="graph-workspace" data-graph-workspace data-view-options="List,Tree,Graph" data-view="Graph" data-scope-options="one-hop,two-hop,ai" data-scope="one-hop" data-layout-options="Constellation,Community,Flow →,↓,Folders,Orbit" data-layout="Constellation" data-variant="sources"></section></div>
+            <footer class="analysis-footer"><nav><button>Activity</button><button>Report</button><button class="is-active">Sources</button></nav><nav><button>Ask follow-up</button><button class="is-active">Open in Chat ↗</button></nav></footer>
+          </section>
+        </div>
+      </section>
+
+      <section class="review-screen" id="composer">
+        <header class="review-screen-head">
+          <span class="review-screen-number">04</span>
+          <div><h2>Composer Relations</h2><p>当前文档与冻结的选择构成只读关系上下文；查看关系不等于授予多文件写入权限。</p></div>
+          <span class="review-chip">FROZEN SELECTION</span>
+        </header>
+        <div class="embedded-screen inline-host">
+          <section class="product-window composer-window">
+            <header class="window-topbar"><span class="window-dots"><i></i><i></i><i></i></span><strong class="window-title">Peak Composer Visual Parity QA</strong><span class="window-state"><i></i> Saved</span></header>
+            <div class="composer-chrome"><nav><button class="is-active">编辑视图</button><button>纯净阅读</button><button>原生 Markdown</button><button>窄屏</button></nav><div class="composer-actions"><button>评论 3</button><button class="is-active">✦ Intelligence</button><button>↶</button><button>↷</button></div></div>
+            <div class="composer-body">
+              <article class="composer-document"><div class="composer-paper"><h1>Shared Graph Workspace</h1><p>Graph 不是一个只负责“把节点画出来”的组件。对用户来说，它是一套稳定的关系工作空间：选择范围、切换投影、检查节点、保持视图、打开来源，并把关系带回当前写作上下文。</p><p class="composer-highlight">当前选择：World Search、File Atlas、AI Search Sources 与 Composer 应当共享同一个 Graph Workspace 外壳，只有宿主 capability manifest 不同。</p><p>多文件上下文决定图谱数据的边界，但不会自动授予多文件写入权限。选中节点以后，Composer 仍需要显式的 Add to context 或打开来源动作。</p><p>AI Graph 是持久化的、带来源和版本的关系产物；One hop 与 Two hop 则是当前上下文的即时 Vault 关系投影。两者可以共用视觉工作空间，但语义不能混在一起。</p></div></article>
+              <aside class="composer-sidecar"><header><strong>✦ Intelligence</strong><span class="window-state"><i></i> Following</span></header><section><span>Related material</span><div class="relation-card"><strong>Peak Graph architecture</strong><small>Direct Vault link · 8 shared references</small></div><div class="relation-card"><strong>File Atlas interaction contract</strong><small>Semantic relationship · evidence available</small></div><div class="relation-card"><strong>AI Graph governance</strong><small>Artifact boundary · versioned</small></div></section></aside>
+              <section class="composer-graph-overlay"><header class="overlay-title"><strong>Document relationships</strong><span>Current document + selected paragraph · read-only graph</span></header><div class="graph-workspace" data-graph-workspace data-scope-options="one-hop,two-hop,ai" data-scope="two-hop" data-context="Composer document + frozen selection" data-show-context="true" data-layout-options="Constellation,Community,Flow →,↓,Folders,Orbit" data-layout="Community" data-variant="composer"></div></section>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="review-screen" id="ai-graph">
+        <header class="review-screen-head">
+          <span class="review-screen-number">05</span>
+          <div><h2>AI Graph Artifact</h2><p>Scope 切到 AI Graph 后，同一 Projection 位置切换为 Topology、Thinking tree、Bridges、Timeline 与 Gaps，并保留来源和版本语义。</p></div>
+          <span class="review-chip">VERSIONED ARTIFACT</span>
+        </header>
+        <div class="embedded-screen inline-host">
+          <section class="product-window ai-graph-window">
+            <header class="window-topbar"><span class="window-dots"><i></i><i></i><i></i></span><strong class="window-title">Graph Workspace unification.peakaigraph</strong><span class="window-state"><i></i> Head version · v4</span></header>
+            <div class="artifact-header"><div class="artifact-title"><i>✦</i><span><strong>Graph Workspace unification</strong><small>12 nodes · 16 relations · 5 evidence sources · immutable v4</small></span></div><div class="artifact-actions"><button>Version history</button><button>Export snapshot</button><button>Propose update</button></div></div>
+            <div class="artifact-body">
+              <div class="artifact-canvas"><section class="graph-workspace" data-graph-workspace data-scope-options="one-hop,two-hop,ai" data-scope="ai" data-context="Versioned AI Graph · grounded assertions and evidence" data-show-context="true" data-layout="Topology" data-variant="ai"></section></div>
+              <aside class="artifact-aside"><header><strong>Selection</strong><span class="window-state"><i></i> Evidence current</span></header><div class="artifact-inspector"><span>Reviewed assertion</span><h2>Graph workspace unification</h2><p>All graph surfaces share one interaction shell while their host manifest controls scope, projection availability, node behavior and artifact semantics.</p><div class="evidence-row"><i>◇</i><span><strong>Graph renderer governance</strong><small>docs/conventions/ui-design.md · §7</small></span></div><div class="evidence-row"><i>◇</i><span><strong>File Atlas source contract</strong><small>Current implementation evidence</small></span></div><div class="version-list"><span>Versions</span><button class="is-active"><span>v4 · Current</span><small>12 Aug</small></button><button><span>v3</span><small>11 Aug</small></button><button><span>v2</span><small>10 Aug</small></button></div></div></aside>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <footer class="review-footer">
+        <strong>交付边界</strong>
+        <span>这是组件契约与交互设计稿，不代表生产实现已经完成；生产 Graph renderer 仍必须通过共享 AtlasGraphCanvas / Cytoscape.js 栈落地。</span>
+      </footer>
+    </div>
+  </main>
+  <script src="graph-workspace.js"></script>
+</body>
+</html>

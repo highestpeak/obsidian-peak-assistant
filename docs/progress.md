@@ -8,6 +8,14 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-12 · Shared Graph Workspace 设计收束
+
+- [x] **五个宿主单页最终稿**：World Search、File Atlas、AI Search Sources、Composer Relations 与 AI Graph Artifact 全部收进同一个可交互 HTML；最终方向锁定为宿主 capability manifest + 公共 Graph Workspace + Cytoscape 画布。
+- [x] **交互细节收口**：移除冗余说明行；Graph 激活后 View 压缩为图标，One hop / Two hop / AI Graph 从 Graph 后方展开；Projection 统一为 `Constellation / Community / Flow → / ↓ / Folders / Orbit`；动作栏悬浮画布，Mini Map 与快捷键固定在画布角落。
+- [x] **Motion 最终加速**：View、Scope、Projection active thumb 改为约 95–170ms 的距离感知滑动；Scope 展开上限压到 180ms，并保留 reduced-motion 分支。
+- [x] **编码与验收 handoff**：新增产品交互规范、实施 DAG 和真实 Obsidian Owner 验收清单；明确 AI Graph 必须从旧 React Flow `MultiLensGraph` 迁移到共享 `AtlasGraphCanvas`，Mock 不计真实交互验收。
+- [ ] **生产实现未开始**：当前仍是设计与文档里程碑；真实 Obsidian motion、Shift inspect、pin、fullscreen、Mini Map 与跨宿主 parity 保持 `INTERACTION NOT VERIFIED`。
+
 ## 2026-08-10 · Peak Sheet production implementation
 
 - [x] **一个 Dataset 真值、四个视图**：新增 app-owned `PeakSheetRuntime`，Table、Chart、Board、Calendar 共用 stable ID、revision、typed patch 与进程内 subscription；三张发布管理 starter dataset 可直接使用；`Create Peak Sheet` 全局命令一步创建、打开并定位空表。
