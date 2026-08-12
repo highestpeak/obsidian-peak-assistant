@@ -1029,9 +1029,8 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, ex
 			targetLabel,
 			phase: 'inspecting',
 		};
-		setInspectPinned(true);
-		setCardAction('expand');
 		setExpansionRun(nextRun);
+		closeInspection();
 		emitExpansionActivity({ id: `${runId}-inspect`, kind: 'inspect', tool: 'graph.inspectNeighborhood', title: `Inspecting ${sourceLabel}`, detail: 'Read adjacent evidence, relation directions, occupied regions, and the current draft revision.', object: 'read only · revision guarded', state: 'running', sourceLabel });
 
 		const placeTimer = window.setTimeout(() => {
