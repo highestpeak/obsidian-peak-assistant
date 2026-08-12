@@ -178,7 +178,6 @@ const RUN_START_DELAY_MS = 650;
 const DEFAULT_PATCH_DWELL_MS = 1100;
 const RELATION_PATCH_DWELL_MS = 2200;
 const EDGE_DRAW_DURATION_MS = 1050;
-const EDGE_HEAD_DURATION_MS = 170;
 const EDGE_STAGGER_MS = 190;
 const NODE_CORNER_PATCH_KINDS = new Set<PatchKind>(['add-node', 'remove-node', 'focus']);
 
@@ -318,43 +317,45 @@ function AddedEdge({ d, delayMs = 0 }: AddedEdgeProps): React.ReactElement {
 		if (!body || !head) return;
 
 		const pathLength = body.getTotalLength();
-		body.style.strokeDasharray = `${pathLength} ${pathLength}`;
-		body.style.strokeDashoffset = `${pathLength}`;
+		body.setAttribute('stroke-dasharray', `${pathLength} ${pathLength}`);
+		body.setAttribute('stroke-dashoffset', `${pathLength}`);
 		body.style.opacity = '0';
 		head.style.opacity = '0';
 
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-			body.style.strokeDashoffset = '0';
+			body.setAttribute('stroke-dashoffset', '0');
 			body.style.opacity = '1';
 			head.style.opacity = '1';
 			return;
 		}
 
-		const bodyAnimation = body.animate(
-			[
-				{ opacity: .22, strokeDashoffset: `${pathLength}` },
-				{ opacity: 1, strokeDashoffset: '0' },
-			],
-			{
-				delay: delayMs,
-				duration: EDGE_DRAW_DURATION_MS,
-				easing: 'cubic-bezier(.36, 0, .18, 1)',
-				fill: 'forwards',
-			},
-		);
-		const headAnimation = head.animate(
-			[{ opacity: 0 }, { opacity: 1 }],
-			{
-				delay: delayMs + EDGE_DRAW_DURATION_MS,
-				duration: EDGE_HEAD_DURATION_MS,
-				easing: 'ease-out',
-				fill: 'forwards',
-			},
-		);
+		const startAt = performance.now() + delayMs;
+		let frameId = 0;
+		const drawFrame = (now: number): void => {
+			if (now < startAt) {
+				frameId = window.requestAnimationFrame(drawFrame);
+				return;
+			}
+
+			const progress = Math.min(1, (now - startAt) / EDGE_DRAW_DURATION_MS);
+			const easedProgress = progress * progress * (3 - (2 * progress));
+			const remainingLength = pathLength * (1 - easedProgress);
+			body.setAttribute('stroke-dashoffset', `${remainingLength}`);
+			body.style.opacity = `${Math.min(1, .22 + (progress * 3))}`;
+
+			if (progress < 1) {
+				frameId = window.requestAnimationFrame(drawFrame);
+				return;
+			}
+
+			body.setAttribute('stroke-dashoffset', '0');
+			body.style.opacity = '1';
+			head.style.opacity = '1';
+		};
+		frameId = window.requestAnimationFrame(drawFrame);
 
 		return () => {
-			bodyAnimation.cancel();
-			headAnimation.cancel();
+			window.cancelAnimationFrame(frameId);
 		};
 	}, [d, delayMs]);
 
