@@ -28,6 +28,7 @@ const processingSteps = [
 ];
 
 const state = {
+  mode: "running",
   processed: initialProcessed,
   elapsedSeconds: initialElapsedSeconds,
   currentIndex: 0,
@@ -226,6 +227,10 @@ function renderSparkline() {
 function renderMetrics() {
   const percent = ((state.processed / totalDocuments) * 100).toFixed(1);
   const remaining = totalDocuments - state.processed;
+  const metricLabels = $$(".metric-label");
+  ["estimated remaining", "current speed", "elapsed", "documents left"].forEach((label, index) => {
+    metricLabels[index].textContent = label;
+  });
   $("[data-processed-count]").textContent = formatNumber(state.processed);
   $("[data-completed-today]").textContent = formatNumber(state.processed);
   $("[data-overall-progress]").textContent = `${percent}%`;
@@ -239,13 +244,37 @@ function renderMetrics() {
   const previousSpeed = state.speedHistory[state.speedHistory.length - 2] || state.speed;
   const delta = state.speed - previousSpeed;
   $("[data-speed-trend]").textContent = Math.abs(delta) <= 1 ? "steady" : delta > 0 ? "speeding up" : "slowing slightly";
+
+  if (state.mode !== "complete") return;
+  $("[data-run-status]").textContent = "Complete";
+  $("[data-active-phase]").textContent = "All search layers ready";
+  $("[data-eta]").textContent = "Ready";
+  $("[data-speed]").textContent = "Just now";
+  $("[data-speed-compact]").textContent = "—";
+  $("[data-elapsed]").textContent = "31m 02s";
+  $("[data-remaining]").textContent = "0";
+  ["search status", "run finished", "total time", "documents left"].forEach((label, index) => {
+    metricLabels[index].textContent = label;
+  });
 }
 
 function renderAll() {
+  document.body.dataset.indexState = state.mode;
   document.body.classList.toggle("is-paused", state.paused);
   $("[data-pause-label]").textContent = state.paused ? "Resume" : "Pause";
   $("[data-run-status]").textContent = state.paused ? "Paused" : "Indexing";
+  $("[data-page-title]").textContent = state.mode === "setup"
+    ? "Build your knowledge index"
+    : state.mode === "complete"
+      ? "Your knowledge index is ready"
+      : "Preparing your vault";
+  $("[data-page-subtitle]").textContent = state.mode === "setup"
+    ? "Choose what Peak should scan. Your saved files are never changed by indexing."
+    : state.mode === "complete"
+      ? "Search can use full text and semantic knowledge across the indexed Vault."
+      : "Search is already available. Peak is enriching the rest of your notes in the background.";
   renderMetrics();
+  if (state.mode !== "running") return;
   renderCurrentDocument();
   renderQueue();
   renderSparkline();
@@ -259,7 +288,7 @@ function finishCurrentDocument() {
 }
 
 function advanceSimulation() {
-  if (state.paused || state.processed >= totalDocuments) return;
+  if (state.mode !== "running" || state.paused || state.processed >= totalDocuments) return;
   state.elapsedSeconds += 2;
   state.stepTick += 1;
 
@@ -281,18 +310,28 @@ function startSimulation() {
   window.__peakIndexTimer = window.setInterval(advanceSimulation, 1300);
 }
 
-function resetSimulation() {
-  state.processed = initialProcessed;
-  state.elapsedSeconds = initialElapsedSeconds;
+function setIndexMode(mode, options = {}) {
+  state.mode = mode;
+  const freshRun = mode === "running" && options.fresh === true;
+  state.processed = mode === "complete" ? totalDocuments : mode === "setup" ? 0 : freshRun ? 48 : initialProcessed;
+  state.elapsedSeconds = mode === "complete" ? 31 * 60 + 2 : mode === "setup" ? 0 : freshRun ? 34 : initialElapsedSeconds;
   state.currentIndex = 0;
-  state.stepIndex = 2;
-  state.stepTick = 2;
+  state.stepIndex = freshRun ? 0 : 2;
+  state.stepTick = freshRun ? 1 : 2;
   state.paused = false;
   state.speed = 63;
   state.speedHistory = [56, 58, 57, 61, 60, 64, 63, 66, 65];
   state.order = "recent";
   $("[data-order-select]").value = "recent";
+  $$('[data-preview-state]').forEach((button) => {
+    button.classList.toggle("is-selected", button.dataset.previewState === mode);
+  });
+  toggleIndexSetup(mode === "setup");
   renderAll();
+}
+
+function resetSimulation() {
+  setIndexMode("running");
 }
 
 function toggleFileTypes(forceOpen) {
@@ -363,15 +402,24 @@ let selectedIndexDepth = "Semantic";
 function toggleIndexSetup(open) {
   const setup = $("[data-index-setup]");
   if (!setup) return;
-  setup.hidden = !open;
-  document.body.classList.toggle("has-setup-open", open);
+  setup.classList.toggle("is-open", open);
+  const content = $("[data-index-setup-content]");
+  content.toggleAttribute("inert", !open);
+  content.setAttribute("aria-hidden", String(!open));
+  $(".setup-summary", setup).setAttribute("aria-expanded", String(open));
+  $("[data-setup-summary-action]").textContent = open ? "Collapse" : state.mode === "complete" ? "Run again" : state.mode === "setup" ? "Setup required" : "Configure next run";
+  $("[data-setup-summary-title]").textContent = state.mode === "complete" ? "Last run complete · Semantic" : state.mode === "setup" ? "Set up your first index" : "Current run · Semantic";
+  $("[data-setup-summary-detail]").textContent = state.mode === "setup"
+    ? "Choose a run depth and confirm what Peak may scan"
+    : "4 file types · whole Vault · run choices can change without changing long-term Settings";
   if (open) toggleFileTypes(false);
 }
 
 $$('[data-open-index-setup]').forEach((button) => {
   button.addEventListener("click", (event) => {
     event.stopPropagation();
-    toggleIndexSetup(true);
+    const isSummary = button.classList.contains("setup-summary");
+    toggleIndexSetup(isSummary ? !$("[data-index-setup]").classList.contains("is-open") : true);
   });
 });
 
@@ -379,16 +427,12 @@ $$('[data-close-index-setup]').forEach((button) => {
   button.addEventListener("click", () => toggleIndexSetup(false));
 });
 
-$("[data-index-setup]").addEventListener("click", (event) => {
-  if (event.target === $("[data-index-setup]")) toggleIndexSetup(false);
-});
-
 $$('[data-index-depth]').forEach((button) => {
   button.addEventListener("click", () => {
     $$('[data-index-depth]').forEach((candidate) => candidate.classList.remove("is-selected"));
     button.classList.add("is-selected");
     selectedIndexDepth = button.dataset.indexDepth;
-    $("[data-next-run-summary]").textContent = `Next run · ${selectedIndexDepth}`;
+    $("[data-next-run-summary]").textContent = `Ready to start · ${selectedIndexDepth}`;
   });
 });
 
@@ -398,18 +442,34 @@ $$('.document-type-chips button:not(:disabled)').forEach((button) => {
 
 $("[data-save-index-setup]").addEventListener("click", () => {
   const button = $("[data-save-index-setup]");
-  button.textContent = "Saved";
+  button.textContent = "Starting…";
+  button.disabled = true;
   window.setTimeout(() => {
-    button.textContent = "Save for next run";
+    button.textContent = "Start indexing";
+    button.disabled = false;
+    setIndexMode("running", { fresh: true });
     toggleIndexSetup(false);
-  }, 550);
+    $("[data-index-setup]").scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 480);
 });
 
-$("[data-rebuild-preview]").addEventListener("click", (event) => {
-  event.currentTarget.textContent = "Preview: vectors and derived records only · original files stay safe";
+$$('[data-preview-state]').forEach((button) => {
+  button.addEventListener("click", () => setIndexMode(button.dataset.previewState));
 });
 
-renderAll();
+$$('[data-search-vault]').forEach((button) => {
+  button.addEventListener("click", () => {
+    const original = button.textContent;
+    button.textContent = "Opening Vault Search…";
+    window.setTimeout(() => { button.textContent = original; }, 800);
+  });
+});
+
+$("[data-run-again]").addEventListener("click", () => {
+  toggleIndexSetup(true);
+  $("[data-index-setup]").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 startSimulation();
-
+setIndexMode(window.location.hash === "#complete" ? "complete" : "running");
 if (window.location.hash === "#setup") toggleIndexSetup(true);

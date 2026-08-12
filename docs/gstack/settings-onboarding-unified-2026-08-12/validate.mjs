@@ -43,6 +43,14 @@ requireValues("Settings HTML", settingsHtml, [
   "Task defaults",
   "Agents",
   "Knowledge & Search",
+  "View live progress",
+  "Configure next run",
+  "Keep the index current",
+  "Processing &amp; recovery",
+  "Models &amp; generated knowledge",
+  "Summary lengths",
+  "Advanced chunking",
+  "knowledge-setting-detail",
   "Tools &amp; external capabilities",
   "Permissions &amp; confirmations",
   "Agent execution",
@@ -114,6 +122,9 @@ if (settingsHtml.includes("connection-summary")) {
 }
 if (settingsHtml.includes("modal-more-connections")) {
   missing.push("Settings HTML: Add connection must use one unified provider list");
+}
+if (settingsHtml.includes("Refresh, processing and rebuild") || settingsHtml.includes("index-workspace-row")) {
+  missing.push("Settings HTML: index workspace entry belongs in the top progress card, not Content included");
 }
 if (settingsJs.includes("openModelPicker(button)")) {
   missing.push("Settings JS: routine feature and action model selection must stay in the inline dropdown");

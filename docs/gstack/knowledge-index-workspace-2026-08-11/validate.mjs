@@ -29,11 +29,13 @@ const requiredHtml = [
   "data-type-row=\"markdown\"",
   "data-open-index-setup",
   "data-index-setup",
+  "data-index-setup-content",
+  "data-preview-state=\"setup\"",
+  "data-preview-state=\"complete\"",
+  "data-completion-panel",
+  "Start indexing",
   "Run depth",
-  "Keep the index current",
-  "Ignore patterns",
-  "Summary lengths",
-  "Advanced chunking",
+  "Run exclusions",
   "data-index-depth=\"Full knowledge\"",
   "Settings &amp; Onboarding package",
 ];
@@ -47,6 +49,10 @@ const requiredJs = [
   "function toggleFileTypes",
   "function setActiveFileType",
   "function toggleIndexSetup",
+  "function setIndexMode",
+  "state.mode",
+  "dataset.previewState",
+  "Your knowledge index is ready",
   "selectedIndexDepth",
 ];
 
@@ -60,9 +66,11 @@ const requiredCss = [
   ".donut-segment",
   ".file-types-overview",
   ".package-link",
-  ".setup-drawer",
+  ".inline-index-setup",
+  ".inline-setup-clip",
+  ".completion-panel",
+  "body[data-index-state=\"complete\"]",
   ".run-depth-list",
-  ".setup-disclosure",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",
 ];
@@ -81,6 +89,12 @@ for (const value of requiredCss) {
 const forbidden = ["data-view-target", "data-view=\"problems\"", "data-view=\"history\""];
 for (const value of forbidden) {
   if (html.includes(value)) missing.push(`forbidden multi-page control: ${value}`);
+}
+for (const value of ["setup-drawer", "setup-backdrop", "Keep the index current", "Models &amp; generated knowledge", "Advanced chunking"]) {
+  if (html.includes(value)) missing.push(`Index workspace must not own long-term setting: ${value}`);
+}
+if (html.indexOf("data-index-setup") > html.indexOf("progress-hero")) {
+  missing.push("HTML: inline setup must appear above the progress hero");
 }
 if (readme.includes("http://127.0.0.1") || readme.includes("localhost:")) {
   missing.push("README: temporary localhost instructions are not allowed");

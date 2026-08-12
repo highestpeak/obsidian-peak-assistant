@@ -35,7 +35,7 @@ The two mocks use the same nouns and responsibility boundaries:
 - Agent capability and safety remain distinct levels inside that page; enabling a capability never silently grants unrestricted access.
 - There is no generic **Features** destination. Each option lives with the thing it changes: models and generation routes in AI & Models; Agent execution, tools and access rules in Agents; Search, Atlas and Ambient behavior in Knowledge & Search; outputs, retention and appearance in Advanced.
 - **Peak Hermes** is the single Agent runtime and owns workflow, permissions and receipts. Codex, Claude Code and model connections are execution providers selected through the Provider Registry / Capability Gateway after capability verification; they are not parallel runtimes.
-- **Knowledge & Search** summarizes index state and provides scope shortcuts. The Knowledge Index workspace owns per-run depth, refresh behavior, file/folder scope, chunking, enrichment limits, rebuild impact, current progress and errors.
+- **Knowledge & Search** owns durable index scope, background refresh, batching/retries, embedding, summary and chunking defaults. The Knowledge Index workspace owns first-run setup, per-run depth and scope review, live progress, completion and rerun.
 - **Onboarding** verifies only the dependencies needed for one first task. It does not duplicate full Settings.
 
 ## Settings direction
