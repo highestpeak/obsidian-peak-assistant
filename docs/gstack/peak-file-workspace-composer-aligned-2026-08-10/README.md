@@ -30,9 +30,11 @@ Design-only successor to the rejected six-surface prototype in
    selection Ask, and Add to Composer. Do not expose a separate Code Suggest
    Change path, project tree, or symbol UI.
 6. Keep Image canvas-first. The stable dock has two explicit tasks: Select and
-   Crop. Opening either one fades a compact Rectangle / Freehand method bar in
-   directly above its source controls—there is no persistent Whole / Rectangle /
-   Freehand segment, Select dropdown, or Object-detect mode. Rectangle is the
+   Crop. Opening either one expands Rectangle / Freehand directly after the
+   active task inside the same dock; the content-width dock grows around its
+   center anchor instead of creating a second floating row. There is no
+   persistent Whole / Rectangle / Freehand segment, Select dropdown, or
+   Object-detect mode. Rectangle is the
    default and starts as an eight-handle full-image rectangle, so a valid local
    context and its Ask / Composer lens exist immediately; dragging refines it.
    Freehand removes the rectangle and shows the closed-mask lens only after the
@@ -48,10 +50,13 @@ Design-only successor to the rejected six-surface prototype in
    an explicit whole-file scope and a local selection scope. Ask / Add follows
    the active selection; format-owned write actions appear only where they make
    sense.
-9. Keep Select, Crop, Export, rotation, Ask, Add, and zoom anchored to one
-   compact dock. Rectangle / Freehand appear only while Select or Crop is
-   active. The method bar and Export float upward without changing the dock's
-   geometry; rotation never hides inside Crop.
+9. Keep Select, Crop, Export, rotation, Ask, AI edit, Add, and zoom anchored to
+   one compact, content-width dock. Rectangle / Freehand appear inline only
+   while Select or Crop is active. AI edit similarly expands four deliberate
+   shortcuts (`Clean up / Replace / Remove BG / Expand`) inside the dock;
+   selection-dependent edits request Rectangle or Freehand first. Export is the
+   only dock-owned sheet that floats upward, and rotation never hides inside
+   Crop.
 10. Make PDF scope explicit (`All pages / This page / Text / Lasso`). The lasso
     carries file identity, page, normalized point mask, bounds, selected text or
     OCR, and source revision into Composer. Code text selection immediately
@@ -74,6 +79,14 @@ Design-only successor to the rejected six-surface prototype in
 Every visible primary control in the mock must either change the file surface,
 change the current selection, or open a concrete Intelligence result. Decorative
 capability buttons are not part of this version.
+
+The AI shortcut set is intentionally smaller than the capability catalog.
+Public product feedback repeatedly asks for fast cleanup, faithful local edits,
+background work, and reframing while objecting to changes outside the mask,
+re-created removed objects, lost texture/color, opaque credits, and destructive
+results. Peak therefore keeps the source protected, uses selection before local
+edits, sends prompt-required replacement to Composer, and exposes every
+generation as a reviewable candidate rather than an immediate overwrite.
 
 This artifact does not change production code or upgrade any capability to
 shipped status.

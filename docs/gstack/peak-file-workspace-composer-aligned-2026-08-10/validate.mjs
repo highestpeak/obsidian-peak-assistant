@@ -31,6 +31,8 @@ assert.doesNotMatch(html, /lasso-outline-white/, "Retired duplicate crop mask fi
 assert.equal((html.match(/class="lasso-hit-area"/g) || []).length, 2, "Image and PDF lasso each need a full-surface hit target");
 assert.match(html, /data-image-workflow="select"[\s\S]+data-image-workflow="crop"/, "Select and Crop must be the two direct image tasks");
 assert.match(html, /id="imageMethodPanel"[^>]+hidden[\s\S]+data-image-method="rectangle"[\s\S]+data-image-method="freehand"/, "Rectangle and Freehand must appear in the temporary method panel");
+assert.match(html, /class="image-dock-primary"[\s\S]+data-image-workflow="crop"[\s\S]+id="imageMethodPanel"[\s\S]+class="toolbar-divider"/, "The method panel must live inline after the active image task, before the next primary group");
+assert.doesNotMatch(html, /image-method-title|imageMethodTitle|imageMethodDetail/, "The rejected second-row method summary must not return");
 assert.doesNotMatch(html, /data-image-method="whole"|data-image-scope=/, "Whole must not return as a selection method or persistent scope segment");
 assert.match(html, /id="imageSelectionToolbar"[^>]+hidden[\s\S]+data-ai-action="describe-image-region"[\s\S]+data-add-composer="image"[\s\S]+data-ai-action="remove-object"[\s\S]+data-image-selection-action="clear"/, "Image selection lens must expose Ask, Add, contextual AI edit, and Clear together");
 assert.doesNotMatch(html, /data-image-scope="object"|id="imageObjectSelection"|id="imageSelectPopover"/, "Object detect and the old Select popover must not return");
@@ -49,6 +51,7 @@ assert.match(html, /id="exportEstimate"/, "Live export estimate missing");
 assert.match(html, /id="exportWidth"/, "Optional export dimensions missing");
 assert.match(html, /id="imageContextDock"[\s\S]+class="dock-zoom"[\s\S]+id="imageExportSheet"/, "Image zoom and Export must remain inside the originating dock");
 assert.match(html, /data-add-composer="image" data-context-scope="all"[^>]+aria-label="Add whole image to Composer"[^>]*>[\s\S]*?#i-plus[\s\S]*?<span>Composer<\/span>/, "Primary Composer handoff must remain explicit without the long overflowing label");
+assert.match(html, /data-image-ai-toggle[^>]+aria-expanded="false"[\s\S]+id="imageAiPanel"[^>]+hidden[\s\S]+data-image-ai-action="cleanup"[\s\S]+data-image-ai-action="replace"[\s\S]+data-image-ai-action="remove-background"[\s\S]+data-image-ai-action="expand"/, "AI edit must expose the four researched shortcuts inline");
 assert.doesNotMatch(html, /class="image-zoom"/, "Detached image zoom controls must not return");
 assert.doesNotMatch(html, /data-image-tool="resize"/, "Resize must not return as a primary image tool");
 assert.doesNotMatch(html, /data-image-tool="compress"/, "Opaque one-click Compress must not return");
@@ -97,6 +100,7 @@ assert.match(js, /handleImageTool|openImageWorkflow|setImageMethod|fillImageRect
 assert.match(js, /lassoSelections = \{ image: null, pdf: null \}/, "Image selection must be the single freehand geometry source for selection and Crop");
 assert.match(js, /setImageMethod\("rectangle", document\.querySelector\('\[data-image-method="rectangle"\]'\), true\)/, "Select and Crop must both open with Rectangle as the default method");
 assert.match(js, /function fillImageRectangle[\s\S]+element\.style\.inset = "0"/, "The default Rectangle must cover the whole image");
+assert.match(js, /panel\.dataset\.task = task;[\s\S]+button\.after\(panel\)/, "Rectangle and Freehand must move directly after the active Select or Crop button");
 assert.match(js, /coversWholeImage[\s\S]+"Whole image · drag to refine"/, "The default full-image rectangle must identify itself as whole-image context");
 assert.match(js, /function updateImageRegionLabel[\s\S]+showImageSelectionLens\("Rectangle"/, "Select Rectangle must open the Ask / Composer Selection Lens immediately");
 assert.match(js, /function updateCropLabel[\s\S]+showImageSelectionLens\("Crop rectangle"/, "Crop Rectangle must also expose the contextual Selection Lens immediately");
@@ -116,23 +120,27 @@ assert.match(css, /\.selection-context-bar\.follows-selection/, "shared selectio
 assert.match(js, /function positionSelectionLens\(bar, target, container, preferredPlacement = "above", avoidElements = \[\]\)/, "Selection Lens must accept multiple collision boundaries");
 assert.match(js, /avoidRect\.top - containerRect\.top \+ scrollTop - 8/, "Selection Lens must reserve space above the image dock");
 assert.match(js, /placement = "inside"[\s\S]+targetBottom - barRect\.height - 10/, "Selection Lens must fall back inside a large selection");
-assert.match(js, /positionSelectionLens\(toolbar, target, frame, "above", \[[\s\S]+#imageMethodPanel[\s\S]+#imageContextDock/, "Image selection controls must avoid both the temporary method panel and primary dock");
+assert.match(js, /positionSelectionLens\(toolbar, target, frame, "above", \[document\.querySelector\("#imageContextDock"\)\]\)/, "Image selection controls must avoid the unified inline dock");
 assert.match(css, /\.selection-context-bar\.follows-selection\[data-placement="inside"\]::after\{display:none\}/, "Inside Selection Lens placement must not render a misleading pointer");
 assert.match(css, /\.freehand-layer\{[^}]+touch-action:none/, "Shared freehand pointer layer missing");
 assert.match(css, /\.freehand-layer\.is-drawing \.lasso-mask\{fill:none;[^}]*stroke-dasharray:[^}]+\}/, "Freehand drawing must show only the sampled trail without a temporary closing fill");
 assert.match(css, /\.lasso-hit-area\{[^}]*fill:transparent[^}]*pointer-events:all/, "Lasso needs a painted full-surface SVG hit target");
 assert.match(css, /\.lasso-mask\{[^}]*fill-rule:nonzero[^}]*stroke:none[^}]*filter:url\(#lasso-outline-purple\)[^}]*pointer-events:none/, "Completed lasso must render only the filled-region silhouette and its external outline");
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
-assert.match(css, /\.image-context-toolbar\{box-sizing:border-box;width:calc\(100% - 20px\);max-width:none[^}]+\}/, "Image dock must remain bounded by the image frame");
-assert.match(css, /\.image-dock-primary\{width:100%;max-width:100%;min-width:0[^}]+justify-content:center/, "Primary image tools must honor the bounded dock width");
-assert.match(css, /\.image-method-panel\{position:absolute[^}]+left:10px[^}]+bottom:calc\(100% \+ 9px\)[^}]+display:flex/, "Rectangle and Freehand must reveal from a stable dock-relative anchor");
-assert.match(css, /\.image-method-panel\.is-entering\{animation:image-method-reveal 160ms/, "The temporary method panel needs a restrained enter animation");
-assert.match(css, /@keyframes image-method-reveal\{from\{opacity:0;transform:translateY\(5px\) scale\(\.98\)/, "Method reveal must fade and rise from the source controls");
-assert.match(css, /\.image-method-panel\.is-leaving\{pointer-events:none;animation:image-method-dismiss 120ms/, "The temporary method panel needs a short non-interactive exit animation");
+assert.match(css, /\.image-context-toolbar\{box-sizing:border-box;width:max-content;max-width:calc\(100% - 20px\)[^}]+\}/, "Image dock must use content width while staying bounded by the image frame");
+assert.match(css, /\.image-dock-primary\{width:max-content;max-width:100%;min-width:0[^}]+justify-content:flex-start/, "Primary image tools must remove the forced full-width blank area");
+assert.match(css, /\.image-method-panel,\.image-ai-panel\{[^}]+flex:0 0 auto[^}]+max-width:0[^}]+overflow:hidden/, "Method and AI controls must expand inline instead of floating above the dock");
+assert.match(css, /\.image-method-panel\[data-task="crop"\]\{--inline-panel-width:340px\}/, "Crop commit controls need enough inline reveal width");
+assert.match(css, /\.image-method-panel\.is-entering,\.image-ai-panel\.is-entering\{animation:dock-inline-reveal 170ms/, "Inline controls need a restrained expansion animation");
+assert.match(css, /@keyframes dock-inline-reveal\{from\{max-width:0;opacity:0;transform:scaleX\(\.94\)\}to\{max-width:var\(--inline-panel-width\)/, "Dock controls must grow horizontally from their trigger");
+assert.match(css, /\.image-method-panel\.is-leaving,\.image-ai-panel\.is-leaving\{pointer-events:none;animation:dock-inline-dismiss 120ms/, "Inline controls need a short non-interactive collapse animation");
 assert.doesNotMatch(css, /\.image-scope-switch|\.crop-studio/, "The rejected persistent scope group and Crop-only panel must not remain");
 assert.doesNotMatch(css, /\.crop-mode-switch|\.crop-presets|\.crop-angle|\.crop-rectangle-controls/, "Retired nested Crop hierarchy must not remain in CSS");
 assert.doesNotMatch(css, /\.image-context-toolbar:has\(/, "Opening Crop must not resize or move the image dock");
 assert.match(readme, /stable dock has two explicit tasks: Select and\s+Crop/i, "README must record the Select / Crop task hierarchy");
+assert.match(readme, /Clean up \/ Replace \/ Remove BG \/ Expand/, "README must record the researched quick AI set");
+assert.match(js, /function handleImageAiQuick[\s\S]+cleanup-image-selection[\s\S]+remove-background[\s\S]+extend-image/, "Quick image AI actions must route to explicit reviewable candidates");
+assert.match(js, /promptInput\.value = "Replace the selected area with ";[\s\S]+promptInput\.focus\(\)/, "Replace must request a prompt in Composer instead of guessing");
 assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text selection must open contextual actions");
 
 const officialSources = [
@@ -143,6 +151,8 @@ const officialSources = [
   "support.google.com/photos",
   "support.apple.com",
   "canva.com/features/ai-photo-editing",
+  "help.openai.com/en/articles/11084440-images-in-chatgpt",
+  "photoroom.com/tools",
   "code.visualstudio.com/docs/languages/html",
   "obsidian.md/help/Plugins/Canvas",
   "github.com/excalidraw/excalidraw",
@@ -155,6 +165,18 @@ const officialSources = [
 for (const source of officialSources) {
   assert.match(research, new RegExp(source.replaceAll(".", "\\.")), `research source missing: ${source}`);
 }
+
+const publicDemandSources = [
+  "reddit.com/r/SideProject/comments/1urhn9s",
+  "reddit.com/r/StableDiffusion/comments/1ovklz3",
+  "reddit.com/r/photoshop/comments/13rhq82",
+  "reddit.com/r/Depop/comments/1u5sx0u",
+  "reddit.com/r/SideProject/comments/1sq3sj4",
+];
+for (const source of publicDemandSources) {
+  assert.match(research, new RegExp(source.replaceAll(".", "\\.")), `public image-edit demand source missing: ${source}`);
+}
+assert.match(research, /定性抽样，不是市场份额或需求量统计/, "Public demand research must keep its qualitative evidence boundary");
 
 assert.match(research, /production implementation pending/i, "design-only status missing");
 assert.match(research, /Rejected V1/, "rejected predecessor not identified");

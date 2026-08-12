@@ -102,12 +102,26 @@
                   <div class="image-dock-primary">
                     <button class="image-workflow-button" data-image-workflow="select"><svg><use href="#i-pointer"/></svg><span>Select</span></button>
                     <button class="image-workflow-button" data-image-workflow="crop"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
+                    <div class="image-method-panel" id="imageMethodPanel" data-task="select" hidden>
+                      <div class="image-method-options" aria-label="区域选择方式">
+                        <button class="is-active" data-image-method="rectangle"><svg><use href="#i-crop"/></svg><span>Rectangle</span></button>
+                        <button data-image-method="freehand"><svg><use href="#i-pen"/></svg><span>Freehand</span></button>
+                      </div>
+                      <div class="crop-commit" id="cropCommit" hidden><button data-crop-action="reset">Reset</button><button data-crop-action="cancel">Cancel</button><button class="primary" data-crop-action="done">Done</button></div>
+                    </div>
                     <span class="toolbar-divider"></span>
                     <button class="dock-icon-button" data-image-rotate="left" aria-label="Rotate left 90 degrees" title="Rotate left 90°"><svg class="rotate-left"><use href="#i-rotate"/></svg></button>
                     <button class="dock-icon-button" data-image-rotate="right" aria-label="Rotate right 90 degrees" title="Rotate right 90°"><svg><use href="#i-rotate"/></svg></button>
                     <button class="dock-icon-button" data-image-tool="export" aria-label="Export" title="Export a copy"><svg><use href="#i-download"/></svg></button>
                     <span class="toolbar-divider"></span>
                     <button class="ai-inline" data-ai-action="describe-image"><svg><use href="#i-sparkles"/></svg><span>Ask</span></button>
+                    <button class="image-ai-trigger" data-image-ai-toggle aria-expanded="false"><svg><use href="#i-edit"/></svg><span>AI edit</span></button>
+                    <div class="image-ai-panel" id="imageAiPanel" hidden aria-label="快速 AI 图片编辑">
+                      <button data-image-ai-action="cleanup">Clean up</button>
+                      <button data-image-ai-action="replace">Replace</button>
+                      <button data-image-ai-action="remove-background">Remove BG</button>
+                      <button data-image-ai-action="expand">Expand</button>
+                    </div>
                     <button class="add-composer" data-add-composer="image" data-context-scope="all" aria-label="Add whole image to Composer" title="Add to Composer"><svg><use href="#i-plus"/></svg><span>Composer</span></button>
                     <span class="toolbar-divider"></span>
                     <div class="dock-zoom" aria-label="图片查看缩放">
@@ -116,14 +130,6 @@
                       <button data-image-zoom="in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
                       <button data-image-zoom="fit" aria-label="Fit image"><svg><use href="#i-maximize"/></svg></button>
                     </div>
-                  </div>
-                  <div class="image-method-panel" id="imageMethodPanel" data-task="select" hidden>
-                    <div class="image-method-title"><svg id="imageMethodIcon"><use href="#i-pointer"/></svg><span><strong id="imageMethodTitle">Select area</strong><small id="imageMethodDetail">Rectangle starts with the whole image</small></span></div>
-                    <div class="image-method-options" aria-label="区域选择方式">
-                      <button class="is-active" data-image-method="rectangle"><svg><use href="#i-crop"/></svg><span>Rectangle</span></button>
-                      <button data-image-method="freehand"><svg><use href="#i-pen"/></svg><span>Freehand</span></button>
-                    </div>
-                    <div class="crop-commit" id="cropCommit" hidden><button data-crop-action="reset">Reset</button><button data-crop-action="cancel">Cancel</button><button class="primary" data-crop-action="done">Done</button></div>
                   </div>
                   <div class="image-export-sheet" id="imageExportSheet" hidden>
                     <header><span><strong>Export a copy</strong><small>Original remains unchanged</small></span><button data-export-action="close" aria-label="Close">×</button></header>

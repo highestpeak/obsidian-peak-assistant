@@ -7,7 +7,7 @@ const surfaces = {
     contextTitle: "I can see this image",
     contextDetail: "Pixels · dimensions · visible text",
     headline: "Select precisely, crop directly, and keep AI attached to the source.",
-    description: "Select and Crop are the two stable tasks. Each reveals Rectangle or Freehand above the dock; Rectangle starts with the whole image, while Freehand replaces it with a drawn mask.",
+    description: "Select and Crop expand Rectangle or Freehand inside the dock. AI edit adds four predictable shortcuts without covering the image; every generated result remains reviewable.",
     scope: "Whole image",
     placeholder: "Ask about this image or propose a change…",
     actions: [
@@ -144,6 +144,7 @@ let canvasZoom = 84;
 let excalZoom = 72;
 let toastTimer;
 let imageMethodTimer;
+let imageAiTimer;
 let activeLasso = null;
 let surfaceDragState = null;
 const lassoSelections = { image: null, pdf: null };
@@ -269,10 +270,7 @@ function showImageSelectionLens(kind, label, target) {
   const frame = document.querySelector("#imageFrame");
   document.querySelector("#imageSelectionKind").textContent = kind;
   document.querySelector("#imageSelectionLabel").textContent = label;
-  positionSelectionLens(toolbar, target, frame, "above", [
-    document.querySelector("#imageMethodPanel"),
-    document.querySelector("#imageContextDock"),
-  ]);
+  positionSelectionLens(toolbar, target, frame, "above", [document.querySelector("#imageContextDock")]);
 }
 
 function fillImageRectangle(element) {
@@ -298,12 +296,12 @@ function openImageWorkflow(task, button) {
   }
 
   closeImageWorkflow(false, true);
+  closeImageAiPanel(true);
   closeExport();
   imageTask = task;
   document.querySelectorAll("[data-image-workflow]").forEach((item) => item.classList.toggle("is-active", item === button));
   panel.dataset.task = task;
-  document.querySelector("#imageMethodTitle").textContent = task === "crop" ? "Crop area" : "Select area";
-  document.querySelector("#imageMethodIcon use").setAttribute("href", task === "crop" ? "#i-crop" : "#i-pointer");
+  button.after(panel);
   document.querySelector("#cropCommit").hidden = task !== "crop";
   restartImageMethodAnimation();
   setImageMethod("rectangle", document.querySelector('[data-image-method="rectangle"]'), true);
@@ -323,7 +321,6 @@ function setImageMethod(method, button, silent = false) {
   if (method === "freehand") {
     layer.toggleAttribute("hidden", false);
     hint.hidden = false;
-    document.querySelector("#imageMethodDetail").textContent = "Draw one closed region on the image";
     contextTitle.textContent = imageTask === "crop" ? "Draw the crop boundary" : "Draw a freehand image region";
     contextDetail.textContent = imageTask === "crop" ? "Closed mask · review before applying" : "Irregular mask · Ask · Composer · AI edit";
     selectionScope.textContent = imageTask === "crop" ? "Waiting for freehand crop" : "Waiting for freehand selection";
@@ -331,7 +328,6 @@ function setImageMethod(method, button, silent = false) {
     return;
   }
 
-  document.querySelector("#imageMethodDetail").textContent = "Rectangle starts with the whole image";
   if (imageTask === "crop") {
     const overlay = document.querySelector("#cropOverlay");
     fillImageRectangle(overlay);
@@ -437,7 +433,6 @@ function updateCropLabel(overlay) {
   const width = Math.round(2048 * overlayRect.width / frameRect.width);
   const height = Math.round(1365 * overlayRect.height / frameRect.height);
   document.querySelector(".crop-drag-label").textContent = `${width} × ${height}`;
-  document.querySelector("#imageMethodDetail").textContent = `${width} × ${height} px · drag edges or frame`;
   showImageSelectionLens("Crop rectangle", `${width} × ${height} px`, overlay);
 }
 
@@ -457,6 +452,79 @@ function rotateImage(direction) {
   updateImageTransform();
   setDirty(`Image rotated ${imageQuarterRotation}° · not saved`);
   showToast(`Rotated ${direction} 90° · original remains protected`);
+}
+
+function closeImageAiPanel(silent = false) {
+  const panel = document.querySelector("#imageAiPanel");
+  const trigger = document.querySelector("[data-image-ai-toggle]");
+  const wasOpen = !panel.hidden;
+  window.clearTimeout(imageAiTimer);
+  panel.classList.remove("is-entering");
+  trigger.classList.remove("is-active");
+  trigger.setAttribute("aria-expanded", "false");
+  const skipMotion = silent || !wasOpen || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (skipMotion) {
+    panel.hidden = true;
+    panel.classList.remove("is-leaving");
+    return;
+  }
+  panel.classList.add("is-leaving");
+  imageAiTimer = window.setTimeout(() => {
+    if (!panel.classList.contains("is-leaving")) return;
+    panel.hidden = true;
+    panel.classList.remove("is-leaving");
+  }, 120);
+}
+
+function toggleImageAiPanel(button) {
+  const panel = document.querySelector("#imageAiPanel");
+  if (!panel.hidden) {
+    closeImageAiPanel();
+    return;
+  }
+  if (imageTask === "crop") closeImageWorkflow(false, true);
+  closeExport();
+  window.clearTimeout(imageAiTimer);
+  panel.hidden = false;
+  panel.classList.remove("is-leaving");
+  button.classList.add("is-active");
+  button.setAttribute("aria-expanded", "true");
+  window.requestAnimationFrame(() => panel.classList.add("is-entering"));
+}
+
+function hasImageEditSelection() {
+  if (imageTask !== "select") return false;
+  if (imageScope === "lasso") return Boolean(lassoSelections.image);
+  return !document.querySelector("#imageRegionSelection").hidden;
+}
+
+function requestImageEditSelection(action) {
+  const selectButton = document.querySelector('[data-image-workflow="select"]');
+  if (imageTask !== "select") openImageWorkflow("select", selectButton);
+  closeImageAiPanel();
+  const label = action === "cleanup" ? "Clean up" : "Replace";
+  showToast(`${label} needs a region · refine Rectangle or choose Freehand`);
+}
+
+function handleImageAiQuick(action) {
+  if ((action === "cleanup" || action === "replace") && !hasImageEditSelection()) {
+    requestImageEditSelection(action);
+    return;
+  }
+  if (action === "replace") {
+    promptInput.value = "Replace the selected area with ";
+    promptInput.focus();
+    showToast("Describe the replacement in Composer");
+    closeImageAiPanel();
+    return;
+  }
+  const actionMap = {
+    cleanup: "cleanup-image-selection",
+    "remove-background": "remove-background",
+    expand: "extend-image",
+  };
+  handleAiAction(actionMap[action]);
+  closeImageAiPanel();
 }
 
 function resetCrop(silent = false) {
@@ -641,7 +709,6 @@ function completeImageLasso(selection) {
   const percent = Math.round(selection.normalizedBounds.width * selection.normalizedBounds.height * 100);
   const kind = imageTask === "crop" ? "Freehand crop" : "Freehand selection";
   showImageSelectionLens(kind, `1 closed mask · ${percent}% bounding area`, selection.viewportBounds);
-  document.querySelector("#imageMethodDetail").textContent = `Closed mask · ${percent}% bounding area`;
   contextTitle.textContent = imageTask === "crop" ? "Freehand crop ready" : "I can see the freehand image selection";
   contextDetail.textContent = "Normalized mask · source pixels · OCR · original path";
   selectionScope.textContent = `${kind} · 1 region`;
@@ -677,7 +744,7 @@ function refreshImageLassoForZoom() {
     viewportBounds,
     frame,
     "above",
-    [document.querySelector("#imageMethodPanel"), document.querySelector("#imageContextDock")],
+    [document.querySelector("#imageContextDock")],
   );
 }
 
@@ -1080,6 +1147,7 @@ function handleAiAction(action) {
 
   const candidates = {
     "remove-background": ["Transparent background ready", "Background removed · original protected · review on the image surface"],
+    "cleanup-image-selection": ["Clean-up candidate ready", "Selected distraction removed and the surrounding background reconstructed · original protected"],
     "remove-object": ["Selection edit ready", "Selected region replaced · original protected · one generated version"],
     "extend-image": ["Expanded frame ready", "Generated surroundings extend the image by 18% on both sides"],
     "crop-image-mask": ["Freehand crop ready", "Bounds fit the lasso · outside-mask pixels stay transparent for PNG/WebP"],
@@ -1121,6 +1189,18 @@ document.addEventListener("click", (event) => {
   const imageWorkflowButton = event.target.closest("[data-image-workflow]");
   if (imageWorkflowButton) {
     openImageWorkflow(imageWorkflowButton.dataset.imageWorkflow, imageWorkflowButton);
+    return;
+  }
+
+  const imageAiToggle = event.target.closest("[data-image-ai-toggle]");
+  if (imageAiToggle) {
+    toggleImageAiPanel(imageAiToggle);
+    return;
+  }
+
+  const imageAiAction = event.target.closest("[data-image-ai-action]");
+  if (imageAiAction) {
+    handleImageAiQuick(imageAiAction.dataset.imageAiAction);
     return;
   }
 
