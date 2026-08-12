@@ -488,7 +488,7 @@ Knowledge & Search 管理长期知识状态：
 | 设置能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
 | 自动更新索引 | 普通设置 | 文件变化后增量维护；默认当前为关闭 | `CURRENT` |
-| 每次索引生成什么 | 在 Index workspace 配置 | Full-text 固定开启；Embeddings、Summaries、Tags、Relationships 独立选择；Recommended 只恢复推荐组合 | `TARGET`：替代 fast / indexLevel 等抽象套餐 |
+| 每次索引生成什么 | 在 Index workspace 配置 | Core search 显示 Full-text 与 Embeddings；Generated knowledge 再按摘要、标签与实体、关系、内容理解展开到具体动作；Recommended 只恢复推荐组合 | `TARGET`：替代 fast / indexLevel 等抽象套餐 |
 | 包含的文档类型 | 普通设置 | 按真实能力矩阵选择，不只按扩展名 | `CURRENT` |
 | 包含 / 排除文件夹 | 普通设置 | 支持 Vault 路径范围；与 ignore pattern 合并解释 | `PARTIAL` |
 | Ignore patterns | 高级设置 | 排除生成目录、缓存或用户指定 pattern | `CURRENT` |
@@ -536,12 +536,26 @@ Knowledge & Search 管理长期知识状态：
 | 短摘要长度 | 高级设置 | 当前默认 150；影响列表与轻量上下文 | `CURRENT` |
 | 完整摘要长度 | 高级设置 | 当前默认 2000；影响文档理解 | `CURRENT` |
 | AI Analysis 会话摘要长度 | 高级设置 | 当前默认 3000；只影响分析产物 | `CURRENT` |
-| 生成标签 | 每次运行独立选择 | 直接显示为 Tags；依赖 AI 模型，并显示预计用量 | `PARTIAL` |
-| 生成摘要 | 每次运行独立选择 | 直接显示为 Summaries；详细长度仍由长期设置管理 | `CURRENT` / 路径依 index level，所有权需迁移 |
-| 生成向量 | 每次运行独立选择 | 直接显示为 Embeddings；语义检索和 Relationships 依赖它，需显示模型和重建影响 | `CURRENT` |
-| 生成语义边 / Hub | 每次运行独立选择 | 直接显示为 Relationships；开启时自动保证 Embeddings 可用 | `PARTIAL` |
+| 生成向量 | 每次运行独立选择 | Core search 中直接显示为 Embeddings；语义检索和语义关系依赖它，需显示模型和重建影响 | `CURRENT` |
+| Markdown 摘要 | 每次运行独立选择 | 从笔记正文生成短摘要和完整摘要；长度由长期设置管理 | `CURRENT` |
+| PDF 摘要 | 每次运行独立选择 | 必须基于已抽取 PDF 正文生成，不能用文件名或占位文本代替 | `IN DEVELOPMENT`：底层可抽取正文，索引 enrichment 尚未接通 |
+| 图片描述与摘要 | 每次运行独立选择 | 必须把真实图像内容交给视觉模型，并说明成本与隐私 | `IN DEVELOPMENT`：当前索引路径没有传递图像内容 |
+| Canvas / Excalidraw 摘要 | 每次运行独立选择 | 基于可读文字、引用和结构生成，不把内部 JSON 当摘要 | `IN DEVELOPMENT` |
+| 本地关键词与关键句 | 系统自动 | 使用确定性本地分析，不产生模型调用 | `CURRENT` |
+| AI topic tags | 每次运行独立选择 | 生成用于发现和聚类的主题概念，并显示预计用量 | `CURRENT` / Markdown 路径 |
+| Functional tags | 每次运行独立选择 | 识别 decision、plan、reference 等文档作用 | `CURRENT` / Markdown 路径 |
+| 人物、地点、日期 | 每次运行独立选择 | 抽取可复用的上下文实体 | `CURRENT` / Markdown 路径 |
+| 推断文档日期 | 每次运行独立选择 | 只有来源足够明确时才写入索引产物 | `CURRENT` / Markdown 路径 |
+| 显式链接、标签与文件夹关系 | 系统自动 | 保留 Vault 已经存在的关系事实 | `CURRENT` |
+| 语义相似关系 | 每次运行独立选择 | 开启时自动保证 Embeddings 可用 | `CURRENT` |
+| Communities / Hub signals | 每次运行独立选择 | 生成聚类、中心性与结构缺口信号 | `CURRENT` 处理存在 / 用户级开关是 `TARGET` |
+| Search ranking signals | 系统自动 | 维护 PageRank 与关系感知排序信号 | `CURRENT` |
+| PDF、Canvas、Excalidraw 文本抽取 | 系统自动 | 作为相应文件类型进入全文与向量步骤前的准备动作 | `CURRENT` / 能力依 loader |
+| 扫描 PDF OCR、图片 OCR、图片视觉描述 | 每次运行独立选择 | 只在真实 OCR / vision pipeline 可用时开放，不能用 disabled 外观假装已经支持 | `IN DEVELOPMENT` |
 
-Index workspace 直接展示真实产物，不再要求用户先理解“快速 / 语义 / 完整”等套餐名。Full-text 是每次运行的基础层；Embeddings、Summaries、Tags、Relationships 都可以独立选择。`Recommended` 只是恢复推荐组合的快捷操作，不能隐藏或锁住具体选择。界面同时说明依赖关系、所用模型、预计时间、AI 用量，以及哪些产物可以稍后补做；长期参数仍留在 Settings，避免同一配置出现两个 owner。
+Index workspace 直接展示真实产物，不再要求用户先理解“快速 / 语义 / 完整”等套餐名。第一层是 `Core search`：Full-text 是每次运行的基础，Embeddings 可以直接开关。第二层是 `Generated knowledge`：按照 Summaries、Tags & entities、Relationships、Content understanding 四组展开，每个动作独立说明其状态、依赖、成本和处理对象。
+
+组名只是导航，不能充当一个会模糊能力边界的总开关。例如 `Summaries` 必须继续拆成 Markdown、PDF、图片和视觉文档；还没接通的路径明确标为 `In development`，而不是让用户误以为一个开关已经覆盖所有文件类型。`Recommended` 只恢复核心层和必要自动动作，不能隐藏或覆盖用户逐项选择。详细长度、chunking、后台刷新等长期参数仍留在 Settings，避免同一配置出现两个 owner。
 
 ### 5.4 Search 与 AI Analysis
 

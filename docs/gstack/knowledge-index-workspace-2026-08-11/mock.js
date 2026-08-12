@@ -41,7 +41,7 @@ const state = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 const formatNumber = (value) => new Intl.NumberFormat("en-US").format(value);
 
@@ -400,9 +400,27 @@ $("[data-order-select]").addEventListener("change", (event) => {
 const indexLayerDefinitions = {
   fulltext: { label: "Full-text", minutes: 5, ai: false },
   embeddings: { label: "Embeddings", minutes: 13, ai: true },
-  summaries: { label: "Summaries", minutes: 6, ai: true },
-  tags: { label: "Tags", minutes: 3, ai: true },
-  relationships: { label: "Relationships", minutes: 4, ai: true },
+};
+
+const indexActionDefinitions = {
+  "markdown-summary": { minutes: 6, ai: true },
+  "pdf-summary": { minutes: 7, ai: true },
+  "image-summary": { minutes: 9, ai: true },
+  "visual-document-summary": { minutes: 6, ai: true },
+  "local-keywords": { minutes: 0, ai: false },
+  "topic-tags": { minutes: 3, ai: true },
+  "functional-tags": { minutes: 3, ai: true },
+  "context-entities": { minutes: 3, ai: true },
+  "inferred-date": { minutes: 2, ai: true },
+  "explicit-relations": { minutes: 0, ai: false },
+  "semantic-relations": { minutes: 4, ai: false },
+  "community-signals": { minutes: 2, ai: false },
+  "ranking-signals": { minutes: 0, ai: false },
+  "pdf-text": { minutes: 0, ai: false },
+  "visual-document-text": { minutes: 0, ai: false },
+  "pdf-ocr": { minutes: 8, ai: true },
+  "image-ocr": { minutes: 7, ai: true },
+  "image-description": { minutes: 9, ai: true },
 };
 
 function activeIndexLayerKeys() {
@@ -411,23 +429,56 @@ function activeIndexLayerKeys() {
     .map((input) => input.dataset.indexLayer);
 }
 
+function activeIndexActionKeys() {
+  return $$('[data-index-action]')
+    .filter((input) => input.checked)
+    .map((input) => input.dataset.indexAction);
+}
+
+function selectedIndexActionKeys() {
+  return $$('[data-index-action]')
+    .filter((input) => input.checked && input.dataset.actionMode !== "automatic")
+    .map((input) => input.dataset.indexAction);
+}
+
 function indexLayerRunLabel() {
   const layers = activeIndexLayerKeys();
-  if (layers.length <= 2) return layers.map((key) => indexLayerDefinitions[key].label).join(" + ");
-  return `${indexLayerDefinitions[layers[0]].label} + ${indexLayerDefinitions[layers[1]].label} + ${layers.length - 2} more`;
+  const core = layers.map((key) => indexLayerDefinitions[key].label).join(" + ");
+  const selectedCount = selectedIndexActionKeys().length;
+  return selectedCount > 0 ? `${core} · ${selectedCount} enrichments` : core;
+}
+
+function updateIndexActionGroupCounts() {
+  $$('[data-action-group]').forEach((group) => {
+    const inputs = $$('[data-index-action]', group);
+    const automatic = inputs.filter((input) => input.checked && input.dataset.actionMode === "automatic").length;
+    const selected = inputs.filter((input) => input.checked && !input.disabled).length;
+    const unavailable = inputs.filter((input) => input.disabled && input.dataset.actionMode !== "automatic").length;
+    const parts = [];
+    if (automatic > 0) parts.push(`${automatic} automatic`);
+    parts.push(`${selected} selected`);
+    if (unavailable > 0) parts.push(`${unavailable} in development`);
+    $(`[data-action-group-count="${group.dataset.actionGroup}"]`).textContent = parts.join(" · ");
+  });
 }
 
 function updateIndexLayerSummary() {
   const layers = activeIndexLayerKeys();
-  const minutes = layers.reduce((total, key) => total + indexLayerDefinitions[key].minutes, 0);
-  const modelLayers = layers.filter((key) => indexLayerDefinitions[key].ai).length;
-  const aiUsage = modelLayers >= 3 ? "Moderate" : modelLayers > 0 ? "Low" : "None";
+  const actions = activeIndexActionKeys();
+  const minutes = layers.reduce((total, key) => total + indexLayerDefinitions[key].minutes, 0)
+    + actions.reduce((total, key) => total + indexActionDefinitions[key].minutes, 0);
+  const modelActions = layers.filter((key) => indexLayerDefinitions[key].ai).length
+    + actions.filter((key) => indexActionDefinitions[key].ai).length;
+  const aiUsage = modelActions >= 5 ? "High" : modelActions >= 3 ? "Moderate" : modelActions > 0 ? "Low" : "None";
   const label = indexLayerRunLabel();
+  const automaticCount = $$('[data-index-action][data-action-mode="automatic"]').filter((input) => input.checked).length;
+  const selectedCount = selectedIndexActionKeys().length;
   $("[data-index-layer-summary]").textContent = label;
-  $("[data-index-layer-count]").textContent = `${layers.length} of 5 layers`;
+  $("[data-index-layer-count]").textContent = `${layers.length} core layers · ${automaticCount} automatic${selectedCount > 0 ? ` · ${selectedCount} selected` : ""}`;
   $("[data-index-layer-time]").textContent = `About ${minutes} min`;
   $("[data-index-layer-ai]").textContent = aiUsage;
   $("[data-next-run-summary]").textContent = `Ready to start · ${label}`;
+  updateIndexActionGroupCounts();
 }
 
 function toggleIndexSetup(open) {
@@ -440,10 +491,11 @@ function toggleIndexSetup(open) {
   $(".setup-summary", setup).setAttribute("aria-expanded", String(open));
   $("[data-setup-summary-action]").textContent = open ? "Collapse" : state.mode === "complete" ? "Run again" : state.mode === "setup" ? "Setup required" : "Configure next run";
   const layerCount = activeIndexLayerKeys().length;
-  $("[data-setup-summary-title]").textContent = state.mode === "complete" ? `Last run complete · ${layerCount} layers` : state.mode === "setup" ? "Set up your first index" : `Current run · ${layerCount} layers`;
+  const selectedCount = selectedIndexActionKeys().length;
+  $("[data-setup-summary-title]").textContent = state.mode === "complete" ? `Last run complete · ${layerCount} core layers` : state.mode === "setup" ? "Set up your first index" : `Current run · ${layerCount} core layers`;
   $("[data-setup-summary-detail]").textContent = state.mode === "setup"
-    ? "Choose index layers and confirm what Peak may scan"
-    : "4 file types · whole Vault · layer choices can change without changing long-term Settings";
+    ? "Choose index outputs and confirm what Peak may scan"
+    : `4 file types · whole Vault · ${selectedCount} optional enrichments`;
   if (open) toggleFileTypes(false);
 }
 
@@ -461,10 +513,17 @@ $$('[data-close-index-setup]').forEach((button) => {
 
 $$('[data-index-layer]').forEach((input) => {
   input.addEventListener("change", () => {
-    const embeddings = $('[data-index-layer="embeddings"]');
-    const relationships = $('[data-index-layer="relationships"]');
-    if (input.dataset.indexLayer === "relationships" && input.checked) embeddings.checked = true;
-    if (input.dataset.indexLayer === "embeddings" && !input.checked) relationships.checked = false;
+    const semanticRelations = $('[data-index-action="semantic-relations"]');
+    if (input.dataset.indexLayer === "embeddings" && !input.checked) semanticRelations.checked = false;
+    updateIndexLayerSummary();
+  });
+});
+
+$$('[data-index-action]:not(:disabled)').forEach((input) => {
+  input.addEventListener("change", () => {
+    if (input.dataset.indexAction === "semantic-relations" && input.checked) {
+      $('[data-index-layer="embeddings"]').checked = true;
+    }
     updateIndexLayerSummary();
   });
 });
@@ -472,6 +531,9 @@ $$('[data-index-layer]').forEach((input) => {
 $("[data-restore-index-layers]").addEventListener("click", () => {
   $$('[data-index-layer]').forEach((input) => {
     input.checked = ["fulltext", "embeddings"].includes(input.dataset.indexLayer);
+  });
+  $$('[data-index-action]').forEach((input) => {
+    input.checked = input.dataset.actionMode === "automatic";
   });
   updateIndexLayerSummary();
 });

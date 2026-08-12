@@ -70,16 +70,55 @@
             </header>
             <div class="inline-setup-grid">
               <section class="setup-section index-layers-section">
-                <div class="setup-section-head"><div><h2>Index layers</h2></div><button class="text-button layer-reset-button" type="button" data-restore-index-layers>Use recommended</button></div>
+                <div class="setup-section-head"><div><h2>Index outputs</h2></div><button class="text-button layer-reset-button" type="button" data-restore-index-layers>Use recommended</button></div>
+                <div class="index-output-label"><strong>Core search</strong><span>Required foundations for finding your files</span></div>
                 <div class="index-layer-list" data-index-layer-list>
                   <label class="index-layer-row is-required" title="Required foundation for every index run"><span><strong>Full-text index</strong><em>Keyword and exact-phrase search</em></span><b>Required</b><input type="checkbox" checked disabled data-index-layer="fulltext" /><i class="layer-switch"></i></label>
                   <label class="index-layer-row" title="Build vectors for semantic search"><span><strong>Embeddings</strong><em>Semantic and similar-note search</em></span><b>Ollama ready</b><input type="checkbox" checked data-index-layer="embeddings" /><i class="layer-switch"></i></label>
-                  <label class="index-layer-row" title="Generate reusable document summaries"><span><strong>Summaries</strong><em>Short and full document summaries</em></span><b>AI model</b><input type="checkbox" data-index-layer="summaries" /><i class="layer-switch"></i></label>
-                  <label class="index-layer-row" title="Generate descriptive tags for discovery"><span><strong>Tags</strong><em>AI-generated discovery tags</em></span><b>AI model</b><input type="checkbox" data-index-layer="tags" /><i class="layer-switch"></i></label>
-                  <label class="index-layer-row" title="Discover semantic relationships; enabling it also enables Embeddings"><span><strong>Relationships</strong><em>Links, semantic edges and hub signals</em></span><b>Needs embeddings</b><input type="checkbox" data-index-layer="relationships" /><i class="layer-switch"></i></label>
+                </div>
+                <div class="index-output-label generated-label"><strong>Generated knowledge</strong><span>Open a group and choose each output separately</span></div>
+                <div class="index-action-groups" data-index-action-groups>
+                  <details class="index-action-group" data-action-group="summaries" open>
+                    <summary><span><strong>Summaries</strong><small>Choose separately for text, PDFs, images and visual documents</small></span><em data-action-group-count="summaries">0 selected · 3 in development</em><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary>
+                    <div class="index-action-body">
+                      <label class="index-action-row"><span><strong>Markdown summaries</strong><small>Short and full summaries from note text</small></span><b class="action-status is-ready">Available</b><input type="checkbox" data-index-action="markdown-summary" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-unavailable"><span><strong>PDF summaries</strong><small>Summaries generated from extracted PDF text</small></span><b class="action-status">In development</b><input type="checkbox" disabled data-index-action="pdf-summary" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-unavailable"><span><strong>Image summaries</strong><small>Short summaries built from OCR and visual understanding</small></span><b class="action-status">In development</b><input type="checkbox" disabled data-index-action="image-summary" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-unavailable"><span><strong>Canvas &amp; Excalidraw summaries</strong><small>Summaries from extracted text and document structure</small></span><b class="action-status">In development</b><input type="checkbox" disabled data-index-action="visual-document-summary" /><i class="layer-switch"></i></label>
+                    </div>
+                  </details>
+                  <details class="index-action-group" data-action-group="tags">
+                    <summary><span><strong>Tags &amp; entities</strong><small>Keywords, document roles and named context</small></span><em data-action-group-count="tags">1 automatic · 0 selected</em><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary>
+                    <div class="index-action-body">
+                      <label class="index-action-row is-required"><span><strong>Local keywords &amp; key sentences</strong><small>Deterministic TextRank analysis; no AI call</small></span><b class="action-status">Automatic</b><input type="checkbox" checked disabled data-index-action="local-keywords" data-action-mode="automatic" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row"><span><strong>AI topic tags</strong><small>Concepts used for discovery and grouping</small></span><b class="action-status is-ready">Text model ready</b><input type="checkbox" data-index-action="topic-tags" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row"><span><strong>Functional tags</strong><small>Recognize notes such as decisions, plans and references</small></span><b class="action-status is-ready">Text model ready</b><input type="checkbox" data-index-action="functional-tags" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row"><span><strong>People, places &amp; dates</strong><small>Extract reusable context entities</small></span><b class="action-status is-ready">Text model ready</b><input type="checkbox" data-index-action="context-entities" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row"><span><strong>Inferred document date</strong><small>Estimate a useful date only when the source is clear</small></span><b class="action-status is-ready">Text model ready</b><input type="checkbox" data-index-action="inferred-date" /><i class="layer-switch"></i></label>
+                    </div>
+                  </details>
+                  <details class="index-action-group" data-action-group="relationships">
+                    <summary><span><strong>Relationships</strong><small>Build explicit and inferred connections between documents</small></span><em data-action-group-count="relationships">2 automatic · 0 selected</em><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary>
+                    <div class="index-action-body">
+                      <label class="index-action-row is-required"><span><strong>Links, tags &amp; folder relations</strong><small>Preserve relationships already present in the Vault</small></span><b class="action-status">Automatic</b><input type="checkbox" checked disabled data-index-action="explicit-relations" data-action-mode="automatic" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row"><span><strong>Semantic similarities</strong><small>Discover related documents using Embeddings</small></span><b class="action-status is-ready">Embeddings ready</b><input type="checkbox" data-index-action="semantic-relations" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row"><span><strong>Communities &amp; Hub signals</strong><small>Find clusters, central notes and structural gaps</small></span><b class="action-status is-ready">Available</b><input type="checkbox" data-index-action="community-signals" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-required"><span><strong>Search ranking signals</strong><small>Maintain PageRank and relationship-aware ranking</small></span><b class="action-status">Automatic</b><input type="checkbox" checked disabled data-index-action="ranking-signals" data-action-mode="automatic" /><i class="layer-switch"></i></label>
+                    </div>
+                  </details>
+                  <details class="index-action-group" data-action-group="understanding">
+                    <summary><span><strong>Content understanding</strong><small>Prepare non-Markdown files before indexing</small></span><em data-action-group-count="understanding">2 automatic · 3 in development</em><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary>
+                    <div class="index-action-body">
+                      <label class="index-action-row is-required"><span><strong>PDF text extraction</strong><small>Read embedded text from supported PDFs</small></span><b class="action-status">Automatic</b><input type="checkbox" checked disabled data-index-action="pdf-text" data-action-mode="automatic" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-required"><span><strong>Canvas &amp; Excalidraw text</strong><small>Read visible labels, file references and drawing text</small></span><b class="action-status">Automatic</b><input type="checkbox" checked disabled data-index-action="visual-document-text" data-action-mode="automatic" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-unavailable"><span><strong>Scanned PDF OCR</strong><small>Recognize text when a PDF has no embedded text</small></span><b class="action-status">In development</b><input type="checkbox" disabled data-index-action="pdf-ocr" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-unavailable"><span><strong>Image OCR</strong><small>Recognize text inside images</small></span><b class="action-status">In development</b><input type="checkbox" disabled data-index-action="image-ocr" /><i class="layer-switch"></i></label>
+                      <label class="index-action-row is-unavailable"><span><strong>Image visual description</strong><small>Describe the actual image with a vision-capable model</small></span><b class="action-status">In development</b><input type="checkbox" disabled data-index-action="image-description" /><i class="layer-switch"></i></label>
+                    </div>
+                  </details>
                 </div>
                 <article class="index-build-summary" data-index-build-summary>
-                  <span><strong data-index-layer-summary>Full-text + Embeddings</strong><em data-index-layer-count>2 of 5 layers</em></span>
+                  <span><strong data-index-layer-summary>Full-text + Embeddings</strong><em data-index-layer-count>2 core layers · 5 automatic actions</em></span>
                   <span><strong data-index-layer-time>About 18 min</strong><em>estimated</em></span>
                   <span><strong data-index-layer-ai>Low</strong><em>AI usage</em></span>
                 </article>
