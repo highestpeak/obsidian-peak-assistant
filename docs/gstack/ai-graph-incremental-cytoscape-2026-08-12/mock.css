@@ -52,6 +52,7 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 .aig-brand, .aig-actions, .aig-status, .aig-instruction, .aig-context, .aig-toolbar-end,
 .aig-runtime-badge, .aig-layout-stage, .aig-layout-switcher, .aig-layout-fixed, .aig-canvas-context,
 .aig-current-operation, .aig-refine-stage, .aig-review-chip, .aig-canvas-footer,
+.aig-view-explanation, .aig-view-explanation__copy > div, .aig-canvas-footer__end,
 .aig-agent-summary, .aig-activity-head, .aig-agent-tools, .aig-runbar, .aig-run-state,
 .aig-run-actions, .aig-selection {
 	display: flex;
@@ -136,6 +137,7 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 .aig-workspace.is-activity-open { grid-template-columns: minmax(0, 1fr) 336px; }
 .aig-canvas-card, .aig-activity-drawer { min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--aig-line); border-radius: 10px; background: var(--aig-surface); box-shadow: var(--aig-shadow); }
 .aig-canvas-card { display: grid; grid-template-rows: 48px minmax(0, 1fr) 40px; }
+.aig-canvas-card.has-explanation { grid-template-rows: 48px minmax(0, 1fr) auto 40px; }
 
 .aig-canvas-toolbar { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 8px; border-bottom: 1px solid var(--aig-line); background: #fdfdfd; }
 .aig-lens-tabs { min-width: 0; display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; }
@@ -173,34 +175,38 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 .aig-runtime-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aig-layout-stage { gap: 5px; padding: 5px 7px; color: var(--aig-amber); border: 1px solid #ead9bd; border-radius: 7px; background: #fff9ef; font-size: 8px; font-weight: 700; white-space: nowrap; }
 .aig-layout-stage svg { width: 11px; height: 11px; }
-.aig-layout-switcher { gap: 2px; padding: 2px; border: 1px solid var(--aig-line); border-radius: 8px; background: #f4f3f6; }
+.aig-layout-switcher { position: relative; gap: 0; padding: 3px; border: 1px solid var(--aig-line); border-radius: 999px; background: #f4f3f6; }
 .aig-layout-switcher.is-locked { border-color: #e3e0e7; background: #f8f7f9; }
 .peak-design-root .aig-layout-switcher button {
+	position: relative;
 	width: auto !important;
 	min-width: 0 !important;
 	max-width: none !important;
-	height: 28px !important;
-	min-height: 28px !important;
-	max-height: 28px !important;
+	height: 30px !important;
+	min-height: 30px !important;
+	max-height: 30px !important;
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 5px;
-	padding: 0 7px !important;
+	padding: 0 12px !important;
 	color: var(--aig-ink-2);
 	border: 0;
-	border-radius: 6px;
+	border-radius: 999px;
 	background: transparent;
-	font-size: 8px;
+	font-size: 9px;
 	font-weight: 680;
 	cursor: pointer;
 	white-space: nowrap;
 }
-.aig-layout-switcher button.is-active { color: #fff; background: var(--aig-accent); box-shadow: 0 1px 3px rgba(75, 48, 159, .2); }
+.aig-layout-switcher button > span:last-child { position: relative; z-index: 1; }
+.aig-layout-thumb { position: absolute; inset: 0; z-index: 0; border-radius: 999px; background: var(--aig-accent); box-shadow: 0 2px 5px rgba(89, 49, 185, .18); }
+.aig-layout-switcher button.is-active { color: #fff; }
+.aig-layout-switcher button:not(.is-active):hover { color: var(--aig-accent-dark); background: rgba(114, 85, 231, .08); }
 .aig-layout-switcher button:disabled { cursor: not-allowed; opacity: .46; }
-.aig-layout-switcher.is-locked button.is-active { color: #706879; background: #e8e5eb; box-shadow: none; }
-.aig-layout-switcher svg, .aig-layout-fixed svg { width: 11px; height: 11px; }
-.aig-layout-fixed { height: 30px; gap: 5px; padding: 0 8px; color: var(--aig-ink-2); border: 1px solid var(--aig-line); border-radius: 7px; background: #f8f7fa; font-size: 8px; font-weight: 680; white-space: nowrap; }
-.aig-layout-fixed svg { color: var(--aig-accent); }
+.aig-layout-switcher.is-locked button.is-active { color: #706879; }
+.aig-layout-switcher.is-locked .aig-layout-thumb { background: #e8e5eb; box-shadow: none; }
+.aig-layout-fixed { height: 30px; padding: 0 11px; color: var(--aig-ink-2); border: 1px solid var(--aig-line); border-radius: 999px; background: #f8f7fa; font-size: 9px; font-weight: 680; white-space: nowrap; }
 
 .aig-canvas { min-width: 0; min-height: 0; position: relative; overflow: hidden; background-color: #fff; background-image: radial-gradient(circle at 1px 1px, rgba(104, 91, 126, .12) 1px, transparent 0); background-size: 22px 22px; }
 .aig-agent-canvas-stack, .aig-agent-graph, .aig-cytoscape-host { position: absolute; inset: 0; }
@@ -227,10 +233,43 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 .aig-review-chip.is-accepted { color: var(--aig-green); border-color: #cae6da; background: var(--aig-green-soft); }
 .aig-review-chip svg { width: 13px; height: 13px; }
 
+.aig-view-explanation { min-width: 0; position: relative; z-index: 5; align-items: flex-start; gap: 10px; padding: 10px 12px; border-top: 1px solid #ded8eb; background: #fbfaff; box-shadow: 0 -6px 18px rgba(54, 41, 88, .035); }
+.aig-view-explanation__icon { width: 30px; height: 30px; flex: none; display: grid; place-items: center; color: var(--aig-accent-dark); border: 1px solid #ddd4ff; border-radius: 8px; background: var(--aig-accent-soft); }
+.aig-view-explanation__icon svg { width: 15px; height: 15px; }
+.aig-view-explanation__copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.aig-view-explanation__copy > div { justify-content: space-between; gap: 12px; }
+.aig-view-explanation__copy > div span { color: var(--aig-accent-dark); font-size: 7px; font-weight: 780; letter-spacing: .09em; text-transform: uppercase; }
+.aig-view-explanation__copy > div small { color: var(--aig-ink-3); font-size: 7px; white-space: nowrap; }
+.aig-view-explanation__copy strong { color: var(--aig-ink); font-size: 10px; line-height: 1.35; }
+.aig-view-explanation__copy > span { color: var(--aig-ink-2); font-size: 9px; line-height: 1.45; }
+.peak-design-root .aig-view-explanation > button {
+	width: 28px !important;
+	min-width: 28px !important;
+	max-width: 28px !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	max-height: 28px !important;
+	flex: none;
+	display: grid;
+	place-items: center;
+	padding: 0 !important;
+	color: var(--aig-ink-3);
+	border: 1px solid transparent;
+	border-radius: 7px;
+	background: transparent;
+	cursor: pointer;
+}
+.aig-view-explanation > button:hover { color: var(--aig-ink); border-color: var(--aig-line); background: #fff; }
+.aig-view-explanation > button svg { width: 13px; height: 13px; }
+
 .aig-canvas-footer { min-width: 0; justify-content: space-between; gap: 12px; padding: 0 12px; color: var(--aig-ink-3); border-top: 1px solid var(--aig-line); background: #fdfdfd; font-size: 8px; }
 .aig-canvas-footer > span:first-child { min-width: 0; display: inline-flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aig-canvas-footer svg { width: 11px; height: 11px; color: var(--aig-green); }
 .aig-canvas-footer b { color: var(--aig-ink-2); }
+.aig-canvas-footer__end { min-width: 0; flex: none; justify-content: flex-end; gap: 8px; }
+.peak-design-root .aig-canvas-footer__end button { width: auto !important; min-width: 0 !important; max-width: none !important; height: 26px !important; min-height: 26px !important; max-height: 26px !important; display: inline-flex; align-items: center; gap: 5px; padding: 0 7px !important; color: var(--aig-accent-dark); border: 1px solid #ded6ff; border-radius: 6px; background: var(--aig-accent-soft); font-size: 8px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.aig-canvas-footer__end button:hover { border-color: #cfc2ff; background: #ede8ff; }
+.aig-canvas-footer__end button svg { color: var(--aig-accent-dark); }
 .aig-selection { flex: none; max-width: 250px; overflow: hidden; color: var(--aig-accent-dark); text-overflow: ellipsis; white-space: nowrap; }
 
 .aig-activity-drawer { display: grid; grid-template-rows: 52px minmax(0, 1fr); }

@@ -21,7 +21,7 @@ inspect current revision
 
 The Agent controls graph semantics. It can inspect the graph, add or update nodes and relations, remove a rejected object, inspect connected components or paths, and request a layout. The rendering engine owns coordinates, collision avoidance, viewport movement, and animation.
 
-The current accepted AI Graph remains immutable throughout the run. The working graph becomes a new canonical version only after the complete five-view package is validated and accepted.
+The current accepted AI Graph remains immutable throughout the run. The working graph becomes a new canonical version only after the complete five-view package is validated and accepted. Each completed view also produces a version-bound prose explanation derived from that view's visible nodes, relations, diagnostics, and evidence. It explains the result rather than exposing hidden chain-of-thought.
 
 ## Five distinct construction stories
 
@@ -40,8 +40,9 @@ The current accepted AI Graph remains immutable throughout the run. The working 
 - A local reflow happens only when the Agent explicitly changes structure, such as pruning a tree branch or inserting one task into a temporal branch. It changes the affected structure while preserving the current construction orientation.
 - `Constellation`, `Flow`, and Timeline orientation are display layouts, not Agent generation tools. Their controls are locked while any view is generating. Incremental placement therefore stays spatially continuous and does not jump between presentation algorithms.
 - After all views finish, one explicit `Refine` stage applies the selected display layout on the same graph instances. Only after Refine can the owner switch layouts interactively.
-- Layout controls are semantic: Topology offers `Constellation`, `Flow →`, and `Flow ↓`; Bridges offers `Flow →` and `Constellation`; Thinking Tree is horizontal flow; Timeline offers `Time →` and `Time ↓` while retaining the same temporal DAG; Gaps is a diagnostic map.
+- Layout controls follow the shared Graph Workspace segmented-control contract. A horizontal/vertical pair is written as `Flow → · ↓` or `Timeline → · ↓`; direction is never duplicated as both an icon and label. Topology offers `Constellation · Flow → · ↓`; Bridges offers `Constellation · Flow →`; Thinking Tree is fixed at `Flow →`; Timeline offers `Timeline → · ↓` while retaining the same temporal DAG; Gaps is a fixed diagnostic map.
 - Activity is optional and opens as a drawer. The graph remains the primary UI; there is no permanent Added/Changed/Removed review dashboard.
+- When a view completes, a concise generated explanation opens beneath the canvas. It states the view-specific conclusion in ordinary language and can be collapsed back into an `Explain this view` action. Switching views switches both the graph and its version-bound explanation.
 
 ## Production implication
 

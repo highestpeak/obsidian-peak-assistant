@@ -3,17 +3,17 @@ import { createRoot } from 'react-dom/client';
 import cytoscape from 'cytoscape';
 import type { Core, ElementDefinition, NodeSingular, SingularElementReturnValue, StylesheetJson } from 'cytoscape';
 import dagre from 'cytoscape-dagre';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
-	ArrowDown,
-	ArrowRight,
+	BookOpenText,
 	Check,
+	ChevronDown,
 	CircleDotDashed,
 	CirclePause,
 	CirclePlay,
 	Clock3,
 	GitBranch,
 	History,
-	LayoutGrid,
 	LocateFixed,
 	Network,
 	Pause,
@@ -93,6 +93,10 @@ interface LensScript {
 	question: string;
 	description: string;
 	meaning: string;
+	interpretation: {
+		headline: string;
+		body: string;
+	};
 	defaultLayout: LayoutId;
 	layouts: LayoutId[];
 	initialNodes: AgentNode[];
@@ -132,6 +136,10 @@ const TOPOLOGY_SCRIPT: LensScript = {
 	question: 'How is this knowledge connected?',
 	description: 'The Agent expands a stable graph with reversible node and relation patches.',
 	meaning: 'Shows the complete relationship structure: what connects to what.',
+	interpretation: {
+		headline: 'Evidence and control now form one reviewable loop.',
+		body: 'The v13 draft keeps GraphRAG as the hub, adds provenance and source lineage between retrieval and evidence, routes claims into evaluation and human review, and returns run observability to the root. The keyword-only branch and the ungrounded hypothesis were removed.',
+	},
 	defaultLayout: 'constellation',
 	layouts: ['constellation', 'flow-lr', 'flow-tb'],
 	finalLayout: 'cose',
@@ -170,6 +178,10 @@ const TREE_SCRIPT: LensScript = {
 	question: 'How did the explicit decision structure grow?',
 	description: 'An inspectable decision tree grows one branch at a time; future node names are never previewed.',
 	meaning: 'Shows why a decision branched and which outcome each branch produced.',
+	interpretation: {
+		headline: 'The answer path is controlled by evidence sufficiency and source agreement.',
+		body: 'Local evidence can produce a cited synthesis when independent sources agree, while contradictions escalate to human review. Insufficient coverage broadens the search. The keyword-only shortcut was tested and pruned because it could not support a reviewable answer.',
+	},
 	defaultLayout: 'flow-lr',
 	layouts: ['flow-lr'],
 	finalLayout: 'dagre',
@@ -195,8 +207,12 @@ const BRIDGE_SCRIPT: LensScript = {
 	question: 'Which concepts create real paths between disconnected domains?',
 	description: 'A bridge is a validated concept that joins two knowledge domains which otherwise have no path.',
 	meaning: 'Useful for finding the few concepts that let evidence travel between separate domains.',
+	interpretation: {
+		headline: 'Two concepts connect three previously separate domains.',
+		body: 'Claim provenance carries retrieval evidence into evaluation, while Agent observability connects evaluation to the human-control domain. Keyword overlap touched only one component, so it was rejected rather than presented as a bridge.',
+	},
 	defaultLayout: 'flow-lr',
-	layouts: ['flow-lr', 'constellation'],
+	layouts: ['constellation', 'flow-lr'],
 	finalLayout: 'preset',
 	initialNodes: [
 		node('bridge-group-retrieval', 'Retrieval domain', 0, 0, 'group retrieval-group'),
@@ -233,6 +249,10 @@ const TIMELINE_SCRIPT: LensScript = {
 	question: 'What happened when, and which parallel work depended on which?',
 	description: 'A temporal DAG can branch, run tasks in parallel, merge at gates, and carry cross-stage dependencies.',
 	meaning: 'Time controls the main direction; dependency edges explain parallel work and later convergence.',
+	interpretation: {
+		headline: 'The work advances through three phases with parallel branches and explicit joins.',
+		body: 'Entity and query work begin in parallel, converge at claim provenance, split again for citation and evaluation, and rejoin at the quality gate. Governance then runs review policy and observability together; retrieval telemetry supplies one cross-stage dependency before the v13 release candidate is created.',
+	},
 	defaultLayout: 'timeline-lr',
 	layouts: ['timeline-lr', 'timeline-tb'],
 	finalLayout: 'timeline',
@@ -260,6 +280,10 @@ const GAP_SCRIPT: LensScript = {
 	question: 'Where does this real graph lack a required path?',
 	description: 'A gap is a required path that is absent or too weak in the existing graph; it is not empty canvas space.',
 	meaning: 'Useful for finding where an answer, workflow, or evidence chain cannot safely continue.',
+	interpretation: {
+		headline: 'Two actionable breaks remain in the evidence-to-review path.',
+		body: 'Citation audit has no validated handoff to the Evaluation gate, and the path from Contradiction check to Human review is supported by only one source. Community search already reaches Claim provenance through Answer synthesis, so that candidate was rejected as a false-positive gap.',
+	},
 	defaultLayout: 'diagnostic',
 	layouts: ['diagnostic'],
 	finalLayout: 'preset',
@@ -342,10 +366,10 @@ assertValidScripts(SCRIPTS);
 const LAYOUT_OPTIONS: Record<LayoutId, { label: string; detail: string }> = {
 	constellation: { label: 'Constellation', detail: 'Stable spatial graph' },
 	'flow-lr': { label: 'Flow →', detail: 'Left to right' },
-	'flow-tb': { label: 'Flow ↓', detail: 'Top to bottom' },
-	'timeline-lr': { label: 'Time →', detail: 'Horizontal temporal DAG' },
-	'timeline-tb': { label: 'Time ↓', detail: 'Vertical temporal DAG' },
-	diagnostic: { label: 'Diagnostic map', detail: 'Existing graph with gap overlays' },
+	'flow-tb': { label: '↓', detail: 'Flow top to bottom' },
+	'timeline-lr': { label: 'Timeline →', detail: 'Horizontal temporal DAG' },
+	'timeline-tb': { label: '↓', detail: 'Timeline top to bottom' },
+	diagnostic: { label: 'Diagnostic', detail: 'Existing graph with gap overlays' },
 };
 
 const NODE_CHANGE_MARKER = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#7255e7" stroke="#fff" stroke-width="2"/><path d="M11 7v8M7 11h8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>')}`;
@@ -706,11 +730,29 @@ function LensGlyph({ id }: { id: LensId }): React.ReactElement {
 	return <Network aria-hidden />;
 }
 
-function LayoutGlyph({ id }: { id: LayoutId }): React.ReactElement {
-	if (id === 'flow-tb' || id === 'timeline-tb') return <ArrowDown aria-hidden />;
-	if (id === 'flow-lr' || id === 'timeline-lr') return <ArrowRight aria-hidden />;
-	if (id === 'diagnostic') return <CircleDotDashed aria-hidden />;
-	return <LayoutGrid aria-hidden />;
+interface LayoutSwitcherProps {
+	lensId: LensId;
+	layouts: LayoutId[];
+	value: LayoutId;
+	enabled: boolean;
+	onChange: (layout: LayoutId) => void;
+}
+
+function LayoutSwitcher({ lensId, layouts, value, enabled, onChange }: LayoutSwitcherProps): React.ReactElement {
+	const reduceMotion = useReducedMotion();
+	return (
+		<div className={`aig-layout-switcher${enabled ? '' : ' is-locked'}`} role="tablist" aria-label={`${SCRIPT_BY_ID[lensId].label} layouts`} title={enabled ? 'Change display layout' : 'Available after the Agent finishes and Refine runs'}>
+			{layouts.map((layoutId) => {
+				const active = value === layoutId;
+				return (
+					<button key={layoutId} className={active ? 'is-active' : ''} type="button" role="tab" aria-selected={active} disabled={!enabled} title={LAYOUT_OPTIONS[layoutId].detail} onClick={() => onChange(layoutId)}>
+						{active && <motion.span className="aig-layout-thumb" layoutId={`${lensId}-layout-thumb`} transition={reduceMotion ? { duration: 0 } : { duration: .125, ease: [.2, .8, .2, 1] }} />}
+						<span>{LAYOUT_OPTIONS[layoutId].label}</span>
+					</button>
+				);
+			})}
+		</div>
+	);
 }
 
 function stepIcon(kind: StepKind): React.ReactNode {
@@ -747,6 +789,7 @@ function Prototype(): React.ReactElement {
 	const [runNonce, setRunNonce] = useState(0);
 	const [refineNonce, setRefineNonce] = useState(0);
 	const [activityOpen, setActivityOpen] = useState(false);
+	const [explanationOpen, setExplanationOpen] = useState(false);
 	const [activeLensId, setActiveLensId] = useState<LensId>('topology');
 	const [layoutByLens, setLayoutByLens] = useState<Record<LensId, LayoutId>>(() => Object.fromEntries(SCRIPTS.map((script) => [script.id, script.defaultLayout])) as Record<LensId, LayoutId>);
 	const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -764,6 +807,8 @@ function Prototype(): React.ReactElement {
 	const activeLayout = layoutByLens[activeLensId];
 	const activeStats = statsByLens[activeLensId];
 	const layoutEnabled = !liveRun && mode !== 'refining';
+	const activeViewReady = mode === 'review' || accepted;
+	const explanationVisible = activeViewReady && explanationOpen;
 
 	const startRun = (): void => {
 		setRunNonce((current) => current + 1);
@@ -771,6 +816,7 @@ function Prototype(): React.ReactElement {
 		setGlobalStep(-1);
 		setMode('running');
 		setSelectedNode(null);
+		setExplanationOpen(false);
 	};
 
 	useEffect(() => {
@@ -805,6 +851,10 @@ function Prototype(): React.ReactElement {
 		currentActivityRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 	}, [activityOpen, activeLensId, activeStepIndex]);
 
+	useEffect(() => {
+		setExplanationOpen(activeViewReady);
+	}, [activeLensId, activeViewReady]);
+
 	const updateStats = (lensId: LensId, stats: GraphStats): void => {
 		setStatsByLens((current) => {
 			const existing = current[lensId];
@@ -819,6 +869,7 @@ function Prototype(): React.ReactElement {
 		setRefineNonce(0);
 		setMode('idle');
 		setActivityOpen(false);
+		setExplanationOpen(false);
 		setSelectedNode(null);
 	};
 
@@ -853,7 +904,7 @@ function Prototype(): React.ReactElement {
 			</section>
 
 			<main className={`aig-workspace${activityOpen ? ' is-activity-open' : ''}`}>
-				<section className="aig-canvas-card">
+				<section className={`aig-canvas-card${explanationVisible ? ' has-explanation' : ''}`}>
 					<div className="aig-canvas-toolbar">
 						<div className="aig-lens-tabs" role="tablist" aria-label="Generated graph views">
 							{SCRIPTS.map((script) => {
@@ -871,10 +922,8 @@ function Prototype(): React.ReactElement {
 							<div className="aig-runtime-badge"><Workflow aria-hidden /><span>{activeStep ? activeStep.tool : 'graph.inspect'}</span></div>
 							{!layoutEnabled && <div className="aig-layout-stage" title="Generation keeps stable incremental coordinates. The selected display layout is applied by Refine."><LocateFixed aria-hidden />Layout after Refine</div>}
 							{activeScript.layouts.length > 1 ? (
-								<div className={`aig-layout-switcher${layoutEnabled ? '' : ' is-locked'}`} role="tablist" aria-label={`${activeScript.label} layouts`} title={layoutEnabled ? 'Change display layout' : 'Available after the Agent finishes and Refine runs'}>
-									{activeScript.layouts.map((layoutId) => <button key={layoutId} className={activeLayout === layoutId ? 'is-active' : ''} type="button" role="tab" aria-selected={activeLayout === layoutId} disabled={!layoutEnabled} onClick={() => setLayoutByLens((current) => ({ ...current, [activeLensId]: layoutId }))}><LayoutGlyph id={layoutId} />{LAYOUT_OPTIONS[layoutId].label}</button>)}
-								</div>
-							) : <div className="aig-layout-fixed"><LayoutGlyph id={activeLayout} />{LAYOUT_OPTIONS[activeLayout].label}</div>}
+								<LayoutSwitcher lensId={activeLensId} layouts={activeScript.layouts} value={activeLayout} enabled={layoutEnabled} onChange={(layoutId) => setLayoutByLens((current) => ({ ...current, [activeLensId]: layoutId }))} />
+							) : <div className="aig-layout-fixed">{LAYOUT_OPTIONS[activeLayout].label}</div>}
 						</div>
 					</div>
 
@@ -892,9 +941,24 @@ function Prototype(): React.ReactElement {
 						{mode === 'accepted' && <div className="aig-review-chip is-accepted"><Check aria-hidden /> v13 canonical</div>}
 					</div>
 
+					{explanationVisible && (
+						<section className="aig-view-explanation" aria-label={`${activeScript.label} generated explanation`} aria-live="polite">
+							<div className="aig-view-explanation__icon"><BookOpenText aria-hidden /></div>
+							<div className="aig-view-explanation__copy">
+								<div><span>Generated view explanation</span><small>{accepted ? 'v13 canonical' : 'v13 draft'} · {activeStats.nodes} nodes · {activeStats.edges} relations</small></div>
+								<strong>{activeScript.interpretation.headline}</strong>
+								<span>{activeScript.interpretation.body}</span>
+							</div>
+							<button type="button" aria-label="Collapse view explanation" title="Collapse explanation" onClick={() => setExplanationOpen(false)}><ChevronDown aria-hidden /></button>
+						</section>
+					)}
+
 					<footer className="aig-canvas-footer">
 						<span><ShieldCheck aria-hidden /><b>{activeStats.nodes} nodes · {activeStats.edges} relations{activeStats.diagnostics > 0 ? ` · ${activeStats.diagnostics} diagnostics` : ''}</b> · one Cytoscape geometry model from first patch through review</span>
-						{selectedNode && <span className="aig-selection">Selected · {selectedNode}</span>}
+						<div className="aig-canvas-footer__end">
+							{selectedNode && <span className="aig-selection">Selected · {selectedNode}</span>}
+							{activeViewReady && !explanationOpen && <button type="button" onClick={() => setExplanationOpen(true)}><BookOpenText aria-hidden /> Explain this view</button>}
+						</div>
 					</footer>
 				</section>
 
