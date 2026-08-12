@@ -242,6 +242,33 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 .aig-graph-layer--working { z-index: 1; opacity: 1; }
 .aig-graph-layer--working.is-refined-away { opacity: 0; filter: blur(2px); pointer-events: none; }
 .aig-graph-layer--refined { z-index: 4; opacity: 0; animation: refined-graph-in 1.15s cubic-bezier(.2, .8, .2, 1) 180ms forwards; }
+.aig-graph-layer--refined.is-timeline-default .pk-graph-inline-slot { z-index: 1; }
+.aig-graph-layer--refined.is-timeline-default .pk-graph-surface { background: transparent; }
+.aig-timeline-backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+}
+.aig-timeline-year { position: absolute; top: 48px; left: 26px; display: flex; align-items: center; gap: 6px; color: var(--aig-ink-3); font-size: 8px; font-weight: 720; letter-spacing: .04em; text-transform: uppercase; }
+.aig-timeline-year svg { width: 11px; height: 11px; color: var(--aig-accent); }
+.aig-timeline-lane { position: absolute; right: 18px; left: 18px; height: 92px; overflow: hidden; border: 1px solid #edeaf5; border-radius: 10px; background: rgba(249, 248, 252, .58); }
+.aig-timeline-lane:nth-child(2) { top: 24%; }
+.aig-timeline-lane:nth-child(3) { top: 41%; }
+.aig-timeline-lane:nth-child(4) { top: 58%; }
+.aig-timeline-lane__label { position: absolute; top: 8px; left: 10px; display: flex; align-items: baseline; gap: 6px; }
+.aig-timeline-lane__label strong { color: var(--aig-ink-2); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.aig-timeline-lane__label span { color: var(--aig-ink-3); font-size: 7px; }
+.aig-timeline-lane__axis { position: absolute; top: calc(50% + 5px); right: 26px; left: 26px; height: 1px; background: #ddd8ea; }
+.aig-timeline-lane__axis > i { position: absolute; top: 50%; width: 6px; height: 6px; border: 1px solid #c8c0de; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); }
+.aig-timeline-lane__axis > i:nth-child(1) { left: 2%; }
+.aig-timeline-lane__axis > i:nth-child(2) { left: 34%; }
+.aig-timeline-lane__axis > i:nth-child(3) { left: 66%; }
+.aig-timeline-lane__axis > i:nth-child(4) { left: 98%; }
+.aig-timeline-lane__axis > b { position: absolute; top: 50%; right: -1px; width: 7px; height: 7px; border-top: 1px solid #b8afce; border-right: 1px solid #b8afce; transform: translateY(-50%) rotate(45deg); }
+.aig-timeline-lane.is-violet { border-left: 3px solid #8c72e8; }
+.aig-timeline-lane.is-blue { border-left: 3px solid #698ccf; }
+.aig-timeline-lane.is-green { border-left: 3px solid #4d9a86; }
 .aig-canvas--running::after {
 	position: absolute;
 	inset: 0;

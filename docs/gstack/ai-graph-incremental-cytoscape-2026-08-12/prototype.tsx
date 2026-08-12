@@ -432,7 +432,7 @@ const LENSES: LensDefinition[] = [
 	{ id: 'topology', label: 'Topology', defaultPreset: 'constellation', description: 'Complete relation structure · force-directed by default, with six switchable arrangements', question: 'How is this knowledge connected?', subgraph: TOPOLOGY_SUBGRAPH },
 	{ id: 'thinking-tree', label: 'Thinking Tree', defaultPreset: 'flow-tb', description: 'Derivation hierarchy · roots above, dependent ideas below', question: 'How did the reasoning branch?', subgraph: THINKING_TREE_SUBGRAPH },
 	{ id: 'bridge', label: 'Bridges', defaultPreset: 'flow-lr', description: 'Cross-domain paths · bridge concepts sit between knowledge areas', question: 'Which concepts connect otherwise separate domains?', subgraph: BRIDGE_SUBGRAPH },
-	{ id: 'timeline', label: 'Timeline', defaultPreset: 'flow-tb', description: 'Evolution chain · dated ideas progress from top to bottom', question: 'How did the model evolve over time?', subgraph: TIMELINE_SUBGRAPH },
+	{ id: 'timeline', label: 'Timeline', defaultPreset: 'flow-lr', description: 'Evolution lanes · dated ideas progress left to right across three themes', question: 'How did the model evolve over time?', subgraph: TIMELINE_SUBGRAPH },
 	{ id: 'gap-analysis', label: 'Gaps', defaultPreset: 'community', description: 'Community structure · weak cross-cluster links expose structural holes', question: 'Where is knowledge missing or weakly connected?', subgraph: GAP_SUBGRAPH },
 ];
 
@@ -460,6 +460,26 @@ function LayoutGlyph({ id }: { id: AtlasGraphPreset }): React.ReactElement {
 	if (id === 'orbit') return <Orbit aria-hidden />;
 	if (id === 'community') return <CircleDotDashed aria-hidden />;
 	return <LayoutGrid aria-hidden />;
+}
+
+const TIMELINE_LANES = [
+	{ label: 'Foundation', range: 'Jan – Apr', tone: 'violet' },
+	{ label: 'Evidence', range: 'May – Aug', tone: 'blue' },
+	{ label: 'Control', range: 'Sep – Dec', tone: 'green' },
+] as const;
+
+function TimelineBackdrop(): React.ReactElement {
+	return (
+		<div className="aig-timeline-backdrop" aria-hidden>
+			<div className="aig-timeline-year"><Clock3 /><span>2026 · knowledge evolution</span></div>
+			{TIMELINE_LANES.map((lane) => (
+				<div key={lane.label} className={`aig-timeline-lane is-${lane.tone}`}>
+					<div className="aig-timeline-lane__label"><strong>{lane.label}</strong><span>{lane.range}</span></div>
+					<div className="aig-timeline-lane__axis"><i /><i /><i /><i /><b /></div>
+				</div>
+			))}
+		</div>
+	);
 }
 
 interface WorkingOverlayProps {
@@ -915,7 +935,8 @@ function Prototype(): React.ReactElement {
 							<WorkingOverlay hidden={false} step={visibleStep} />
 						</div>
 						{refined && (
-							<div key={`${activeLens.id}:${effectivePreset}`} className="aig-graph-layer aig-graph-layer--refined">
+							<div key={`${activeLens.id}:${effectivePreset}`} className={`aig-graph-layer aig-graph-layer--refined${activeLens.id === 'timeline' && effectivePreset === 'flow-lr' ? ' is-timeline-default' : ''}`}>
+								{activeLens.id === 'timeline' && effectivePreset === 'flow-lr' && <TimelineBackdrop />}
 								<AtlasGraphCanvas
 									subgraph={activeLens.subgraph}
 									preset={effectivePreset}
