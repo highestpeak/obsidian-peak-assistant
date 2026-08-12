@@ -10,8 +10,11 @@ This is a design-only, standalone `file://` prototype for owner review.
 - A completed run becomes a semantic diff. `Accept new version` is the only action that advances `v12` to `v13`.
 - `Pause`, `Continue`, `Stop`, `Skip to review`, `Discard`, and `Replay` expose the minimum control and recovery model.
 - The graph is rendered through the production public `AtlasGraphCanvas` facade and therefore uses the shared Cytoscape stack. No React Flow dependency or consumer is introduced.
+- The Cytoscape base receives one stable `subgraph` reference for the entire replay. Agent changes are demonstrated in a transient working-overlay layer, so an operation cannot destroy the canvas, rerun the whole layout, or auto-fit the viewport.
 
 The graph content and run events are illustrative mock data. This prototype does not call an AI provider, write an AI Graph version, or modify production source.
+
+The working overlay is intentionally mock-only. A production implementation should apply the same mutations through a shared `AtlasGraphCanvas` incremental patch API (`add / update / tombstone`) rather than keeping HTML/SVG overlay objects.
 
 ## Product implication being tested
 

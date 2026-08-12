@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
 	Check,
@@ -128,62 +128,80 @@ const BASE_EDGES: ResultSubgraphOutput['edges'] = [
 	{ from: 'keyword', to: 'community', kind: 'semantic', directionality: 'undirected', weight: .42 },
 ];
 
-function graphFor(step: number, accepted: boolean): ResultSubgraphOutput {
-	const nodes = BASE_NODES.map((node) => ({ ...node }));
-	const edges = BASE_EDGES.map((edge) => ({ ...edge }));
-	if (step >= 2 || accepted) {
-		nodes.push({
-			id: 'provenance',
-			path: 'ai-graph://graphrag/provenance',
-			title: 'Claim provenance',
-			score: .92,
-			communityId: null,
-			folder: 'Evidence',
-			preview: 'New in working overlay · suggested',
-			incomingLinks: 1,
-			outgoingLinks: 1,
-		});
-	}
-	if (step >= 3 || accepted) {
-		edges.push(
-			{ from: 'evidence', to: 'provenance', kind: 'reference', directionality: 'directed' },
-			{ from: 'provenance', to: 'citations', kind: 'reference', directionality: 'directed' },
-		);
-	}
-	if (step >= 4 || accepted) {
-		nodes.push({
-			id: 'human-review',
-			path: 'ai-graph://graphrag/human-review',
-			title: 'Human review loop',
-			score: .86,
-			communityId: null,
-			folder: 'Controls',
-			preview: 'New in working overlay · suggested',
-			incomingLinks: 1,
-			outgoingLinks: 1,
-		});
-		edges.push(
-			{ from: 'provenance', to: 'human-review', kind: 'reference', directionality: 'directed' },
-			{ from: 'human-review', to: 'graphrag', kind: 'reference', directionality: 'directed' },
-		);
-	}
-	if (step >= 6 || accepted) {
-		for (let index = edges.length - 1; index >= 0; index -= 1) {
-			if (edges[index]?.from === 'keyword' || edges[index]?.to === 'keyword') edges.splice(index, 1);
-		}
-	}
-	if (accepted) {
-		const index = nodes.findIndex((node) => node.id === 'keyword');
-		if (index >= 0) nodes.splice(index, 1);
-	}
-	const connected = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
-	return {
-		resultNodes: nodes,
-		hubAnchors: [],
-		edges,
-		isolatedDocIds: nodes.filter((node) => !connected.has(node.id)).map((node) => node.id),
-		overflowCount: 0,
-	};
+const STABLE_SUBGRAPH: ResultSubgraphOutput = {
+	resultNodes: BASE_NODES.map((node) => ({ ...node })),
+	hubAnchors: [],
+	edges: BASE_EDGES.map((edge) => ({ ...edge })),
+	isolatedDocIds: [],
+	overflowCount: 0,
+};
+
+interface WorkingOverlayProps {
+	accepted: boolean;
+	step: number;
+}
+
+function WorkingOverlay({ accepted, step }: WorkingOverlayProps): React.ReactElement {
+	const showProvenance = step >= 2 || accepted;
+	const showProvenanceRelations = step >= 3 || accepted;
+	const showReviewLoop = step >= 4 || accepted;
+	const showRelationUpdate = step >= 5 || accepted;
+	const showDetachedPath = step >= 6 || accepted;
+	const showTombstone = step >= 7 && !accepted;
+
+	return (
+		<div className={`aig-working-overlay${accepted ? ' is-accepted' : ''}`} aria-hidden="true">
+			<svg className="aig-overlay-edges" viewBox="0 0 1000 620" preserveAspectRatio="none">
+				<defs>
+					<marker id="aig-arrow-added" markerHeight="7" markerWidth="7" orient="auto" refX="6" refY="3.5">
+						<path d="M0,0 L7,3.5 L0,7 Z" />
+					</marker>
+				</defs>
+				{showProvenanceRelations && (
+					<>
+						<path className="aig-overlay-edge is-added" d="M520 318 C575 270 610 230 676 188" />
+						<path className="aig-overlay-edge is-added is-delay" d="M700 198 C760 218 800 264 848 312" />
+					</>
+				)}
+				{showReviewLoop && (
+					<>
+						<path className="aig-overlay-edge is-added" d="M704 215 C733 292 744 365 722 430" />
+						<path className="aig-overlay-edge is-added is-delay" d="M690 458 C550 526 300 500 154 350" />
+					</>
+				)}
+				{showDetachedPath && !accepted && (
+					<path className="aig-overlay-edge is-removing" d="M162 474 C248 520 356 502 438 414" />
+				)}
+			</svg>
+
+			{showProvenance && (
+				<div className="aig-overlay-node aig-overlay-node--provenance">
+					<span>PROPOSED NODE</span>
+					<strong>Claim provenance</strong>
+					<small>Evidence · confidence 0.92</small>
+				</div>
+			)}
+			{showReviewLoop && (
+				<div className="aig-overlay-node aig-overlay-node--review">
+					<span>PROPOSED NODE</span>
+					<strong>Human review loop</strong>
+					<small>Control · confidence 0.86</small>
+				</div>
+			)}
+			{showRelationUpdate && (
+				<div className="aig-relation-update"><GitBranch aria-hidden /><span>supports</span><b>grounds</b></div>
+			)}
+			{showDetachedPath && !accepted && (
+				<div className={`aig-tombstone${showTombstone ? ' is-node-removal' : ''}`}>
+					<Trash2 aria-hidden />
+					<span><strong>{showTombstone ? 'Keyword-only clustering' : 'Legacy path detached'}</strong><small>{showTombstone ? 'Removal proposed · position retained' : '2 relations · reversible'}</small></span>
+				</div>
+			)}
+			{accepted && (
+				<div className="aig-removal-marker"><Check aria-hidden /><span>Legacy branch removed</span></div>
+			)}
+		</div>
+	);
 }
 
 function patchIcon(kind: PatchKind): React.ReactNode {
@@ -211,9 +229,10 @@ function Prototype(): React.ReactElement {
 
 	const accepted = mode === 'accepted';
 	const visibleStep = accepted ? PATCHES.length : patchIndex + 1;
-	const subgraph = useMemo(() => graphFor(visibleStep, accepted), [accepted, visibleStep]);
 	const activePatch = patchIndex >= 0 ? PATCHES[Math.min(patchIndex, PATCHES.length - 1)] : null;
 	const cursor = CURSOR_POINTS[Math.max(0, Math.min(patchIndex, CURSOR_POINTS.length - 1))] ?? CURSOR_POINTS[0];
+	const visibleNodeCount = BASE_NODES.length + (visibleStep >= 2 ? 1 : 0) + (visibleStep >= 4 ? 1 : 0) - (accepted ? 1 : 0);
+	const visibleRelationCount = BASE_EDGES.length + (visibleStep >= 3 ? 2 : 0) + (visibleStep >= 4 ? 2 : 0) - (visibleStep >= 6 ? 2 : 0);
 
 	const startRun = (): void => {
 		setMode('running');
@@ -300,6 +319,7 @@ function Prototype(): React.ReactElement {
 							<span className="aig-section-subtitle">Canonical v12 + reversible Agent overlay</span>
 						</div>
 						<div className="aig-legend">
+							<span className="aig-spatial-lock"><ShieldCheck aria-hidden /> Spatial lock</span>
 							<span><i className="is-existing" /> Existing</span>
 							<span><i className="is-added" /> Added</span>
 							<span><i className="is-removed" /> Removal</span>
@@ -307,17 +327,17 @@ function Prototype(): React.ReactElement {
 					</div>
 					<div className={`aig-canvas aig-canvas--${mode}`}>
 						<AtlasGraphCanvas
-							subgraph={subgraph}
+							subgraph={STABLE_SUBGRAPH}
 							preset="flow-lr"
 							showSemantic
-							summary={`${subgraph.resultNodes.length} nodes · ${subgraph.edges.length} relations`}
+							summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
 							emptyLabel="No graph objects"
 							buildingLabel="Preparing Cytoscape canvas…"
 							onNodeTap={(node) => setSelectedNode(node.id)}
 						/>
+						<WorkingOverlay accepted={accepted} step={visibleStep} />
 						{(mode === 'running' || mode === 'paused') && activePatch && (
 							<div
-								key={activePatch.id}
 								className={`aig-agent-cursor aig-agent-cursor--${activePatch.kind}`}
 								style={cursor}
 							>
@@ -333,7 +353,7 @@ function Prototype(): React.ReactElement {
 						)}
 					</div>
 					<footer className="aig-canvas-footer">
-						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : 'v12 unchanged'}</b>{accepted ? ' · immutable version created' : ' · Agent changes are not saved yet'}</span></div>
+						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : 'v12 unchanged · positions locked'}</b>{accepted ? ' · immutable version created' : ' · Agent changes are not saved yet'}</span></div>
 						{selectedNode && <span className="aig-selection">Selected: {selectedNode}</span>}
 					</footer>
 				</section>

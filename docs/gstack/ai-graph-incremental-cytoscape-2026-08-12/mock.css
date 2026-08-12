@@ -157,6 +157,8 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 .aig-legend i { width: 8px; height: 8px; border: 2px solid #a39dad; border-radius: 3px; background: white; }
 .aig-legend .is-added { border-color: var(--aig-accent); background: var(--aig-accent-soft); }
 .aig-legend .is-removed { border-color: var(--aig-red); border-style: dashed; background: var(--aig-red-soft); }
+.aig-legend .aig-spatial-lock { padding: 4px 7px; color: var(--aig-green); border: 1px solid #cce6dc; border-radius: 999px; background: var(--aig-green-soft); font-weight: 700; }
+.aig-spatial-lock svg { width: 11px; height: 11px; }
 
 .aig-canvas { position: relative; min-height: 0; overflow: hidden; background: #fbfbfc; }
 .aig-canvas > .pk-graph-surface { min-height: 100%; }
@@ -169,6 +171,117 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	background: radial-gradient(circle at 52% 46%, rgba(108, 85, 217, .035), transparent 32%);
 	animation: canvas-breathe 2.4s ease-in-out infinite;
 }
+.aig-working-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 24;
+	overflow: hidden;
+	pointer-events: none;
+}
+.aig-overlay-edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.aig-overlay-edge {
+	fill: none;
+	stroke: var(--aig-accent);
+	stroke-width: 2;
+	stroke-linecap: round;
+	vector-effect: non-scaling-stroke;
+	marker-end: url(#aig-arrow-added);
+	stroke-dasharray: 1000;
+	stroke-dashoffset: 1000;
+	animation: edge-draw 640ms cubic-bezier(.2, .8, .2, 1) forwards;
+}
+.aig-overlay-edge.is-delay { animation-delay: 130ms; }
+.aig-overlay-edge.is-removing {
+	stroke: var(--aig-red);
+	stroke-width: 2.25;
+	stroke-dasharray: 7 6;
+	marker-end: none;
+	animation: edge-remove 560ms ease-out forwards;
+}
+.aig-overlay-edges marker path { fill: var(--aig-accent); }
+.aig-overlay-node {
+	position: absolute;
+	width: 152px;
+	min-height: 55px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 3px;
+	padding: 8px 11px 8px 13px;
+	border: 1px solid #cfc5ff;
+	border-left: 3px solid var(--aig-accent);
+	border-radius: 7px;
+	background: rgba(255, 255, 255, .98);
+	box-shadow: 0 8px 24px rgba(60, 43, 141, .16);
+	transform: translate(-50%, -50%);
+	transform-origin: center;
+	animation: node-born 520ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.aig-overlay-node span { color: var(--aig-accent); font-size: 7px; font-weight: 780; letter-spacing: .09em; }
+.aig-overlay-node strong { overflow: hidden; color: #332d43; font-size: 10px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.aig-overlay-node small { color: var(--aig-ink-3); font-size: 7px; }
+.aig-overlay-node--provenance { left: 69%; top: 29%; }
+.aig-overlay-node--review { left: 72%; top: 71%; animation-delay: 40ms; }
+.aig-relation-update {
+	position: absolute;
+	left: 47%;
+	top: 54%;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 5px 7px;
+	color: var(--aig-amber);
+	border: 1px solid #ead4ae;
+	border-radius: 6px;
+	background: rgba(255, 250, 241, .97);
+	box-shadow: 0 5px 16px rgba(82, 59, 20, .1);
+	font-size: 8px;
+	animation: watermark-in 320ms ease-out both;
+}
+.aig-relation-update svg { width: 11px; height: 11px; }
+.aig-relation-update span { color: #9d9386; text-decoration: line-through; }
+.aig-relation-update b { font-weight: 760; }
+.aig-tombstone {
+	position: absolute;
+	left: 18%;
+	top: 75%;
+	width: 170px;
+	min-height: 48px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 10px;
+	color: var(--aig-red);
+	border: 1px dashed #d9909d;
+	border-radius: 7px;
+	background: rgba(253, 240, 242, .96);
+	box-shadow: 0 5px 15px rgba(117, 39, 54, .1);
+	transform: translate(-50%, -50%);
+	animation: tombstone-in 420ms ease-out both;
+	transition: opacity 260ms ease, filter 260ms ease, background 260ms ease;
+}
+.aig-tombstone.is-node-removal { background: rgba(251, 232, 235, .98); filter: saturate(.86); }
+.aig-tombstone > svg { width: 14px; height: 14px; flex: none; }
+.aig-tombstone > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.aig-tombstone strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.aig-tombstone small { color: #a46f79; font-size: 7px; }
+.aig-removal-marker {
+	position: absolute;
+	left: 18%;
+	top: 75%;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 5px 7px;
+	color: var(--aig-green);
+	border: 1px solid #c7e5d9;
+	border-radius: 6px;
+	background: rgba(242, 251, 247, .97);
+	font-size: 8px;
+	transform: translate(-50%, -50%);
+	animation: removal-marker-in 320ms ease-out both;
+}
+.aig-removal-marker svg { width: 11px; height: 11px; }
 .aig-agent-cursor {
 	position: absolute;
 	z-index: 40;
@@ -307,8 +420,29 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	from { opacity: 0; transform: translateY(7px); }
 	to { opacity: 1; transform: translateY(0); }
 }
+@keyframes node-born {
+	from { opacity: 0; transform: translate(-50%, -50%) scale(.78); }
+	65% { opacity: 1; transform: translate(-50%, -50%) scale(1.035); }
+	to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes edge-draw {
+	to { stroke-dashoffset: 0; }
+}
+@keyframes edge-remove {
+	from { opacity: .78; stroke-dashoffset: 0; }
+	to { opacity: .34; stroke-dashoffset: -34; }
+}
+@keyframes tombstone-in {
+	from { opacity: 0; transform: translate(-50%, -50%) scale(.94); }
+	to { opacity: .9; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes removal-marker-in {
+	from { opacity: 0; transform: translate(-50%, calc(-50% + 7px)); }
+	to { opacity: 1; transform: translate(-50%, -50%); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-	.aig-status__dot, .aig-canvas--running::after, .aig-agent-cursor > span, .aig-review-watermark, .aig-accepted-watermark { animation: none; }
+	.aig-status__dot, .aig-canvas--running::after, .aig-agent-cursor > span, .aig-review-watermark, .aig-accepted-watermark,
+	.aig-overlay-edge, .aig-overlay-node, .aig-relation-update, .aig-tombstone, .aig-removal-marker { animation: none; }
 	.aig-agent-cursor, .aig-progress span { transition: none; }
 }
