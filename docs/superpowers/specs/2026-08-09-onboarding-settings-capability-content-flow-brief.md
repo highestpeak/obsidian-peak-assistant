@@ -676,7 +676,7 @@ Onboarding 是一条目标驱动、可分支的流程，不等于固定页数。
 
 **用户问题：AI 可以使用哪些外部能力，我是否信任它们？**
 
-本节与 [Safety、权限、预算与确认](#settings-safety) 在 Settings 中共用 `Tools & Safety` 一级入口。这里定义可用能力，Safety 部分定义这些能力的访问范围和确认边界。
+本节与 [Safety、权限、预算与确认](#settings-safety) 在 Settings 中共用 `Agents` 一级入口。这里定义 Agent 可用的执行能力，Safety 部分定义这些能力的访问范围和确认边界。
 
 #### Web
 
@@ -773,15 +773,15 @@ MCP 是工具来源，Skill 是工作手册，Provider 是模型来源。Setting
 
 - 模型、prompt 和生成 route 归 `AI & Models`；
 - Search、File Atlas、AI Graph 和 Ambient 的知识行为归 `Knowledge & Search`；
-- Web、工具、写入权限、确认和 Agent 执行归 `Tools & Safety`；
+- Web、工具、写入权限、确认和 Agent 执行归 `Agents`；
 - 历史、输出位置、数据保留、隐私详情和展示偏好归 `Advanced` 内各自独立分组；
 - 低频 runtime 与维护行为留在所属模块的展开项，或由明确的状态与修复入口到达。
 
 移除 `Features` 入口不等于移除这些设置。每个现有字段仍必须在迁移审计中标记新的 owner，并保留真实 consumer、保存反馈、恢复默认和生效说明。
 
-`Data & Privacy` 与 `Appearance` 也不作为一级入口。它们都是低频、全局性的长期控制，放入 `Advanced` 的独立分组；但隐私的当前状态、Provider 数据去向和风险修复入口必须继续出现在 Overview 与 `Tools & Safety`，不能因为详细设置被收纳而变得不可见。
+`Data & Privacy` 与 `Appearance` 也不作为一级入口。它们都是低频、全局性的长期控制，放入 `Advanced` 的独立分组；但隐私的当前状态、Provider 数据去向和风险修复入口必须继续出现在 `AI & Models` 与 `Agents` 的所属内容中，不能因为详细设置被收纳而变得不可见。
 
-Settings 不再增加一条重复的 Peak 标题工具栏。Obsidian 左侧已经说明当前插件，Peak 内容区顶部只保留居中的一级分类导航；不提供 Settings 搜索，保存采用短暂反馈，未完成的 setup 只在 Overview 出现。
+Settings 不再增加一条重复的 Peak 标题工具栏。Obsidian 左侧已经说明当前插件，Peak 内容区顶部只保留居中的四项一级分类导航，顺序固定为 `AI & Models → Agents → Knowledge & Search → Advanced`；不提供 Settings 搜索，保存采用短暂反馈，未完成的 setup 留在 Onboarding，不再占用一个永久 Settings 入口。
 
 #### Chat Studio
 

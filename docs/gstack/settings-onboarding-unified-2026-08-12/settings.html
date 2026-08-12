@@ -71,27 +71,14 @@
         <section class="peak-settings-pane">
           <div class="peak-settings-nav-shell">
             <nav class="peak-settings-tabs" aria-label="Peak settings sections">
-              <button data-panel-target="overview">Overview</button>
               <button class="is-active" data-panel-target="ai">AI &amp; Models</button>
+              <button data-panel-target="agents">Agents</button>
               <button data-panel-target="knowledge">Knowledge & Search</button>
-              <button data-panel-target="tools">Tools &amp; Safety</button>
               <button data-panel-target="advanced">Advanced</button>
             </nav>
           </div>
 
           <section class="settings-content">
-          <div class="settings-panel" data-settings-panel="overview" hidden>
-            <header class="content-header"><div><span class="content-eyebrow">SYSTEM STATUS</span><h1>Peak is ready for everyday work</h1><p>See what works now and fix only the things that need attention.</p></div><button class="secondary-button" data-run-check>Check again</button></header>
-            <div class="readiness-hero ready"><span class="readiness-icon"><svg><use href="#i-check" /></svg></span><div><strong>Core features are ready</strong><span>Chat, Composer, Search and local indexing were checked 12 minutes ago.</span></div><button class="text-button">View check details</button></div>
-            <div class="status-grid">
-              <button class="status-card" data-panel-jump="ai"><span><svg><use href="#i-chat" /></svg>AI &amp; models</span><strong>Ready</strong><small>4 connections · automatic defaults</small></button>
-              <button class="status-card" data-panel-jump="knowledge"><span><svg><use href="#i-database" /></svg>Knowledge Index</span><strong>Updating</strong><small>84.4% · Search available</small></button>
-              <button class="status-card" data-panel-jump="tools"><span><svg><use href="#i-shield" /></svg>Tools &amp; safety</span><strong>Ready</strong><small>4 tools · guarded writes</small></button>
-              <button class="status-card" data-panel-jump="ai"><span><svg><use href="#i-image" /></svg>Media generation</span><strong>Needs setup</strong><small>Image route available</small></button>
-            </div>
-            <section class="settings-section"><div class="section-heading"><div><h2>Common changes</h2><p>Frequently used controls, linked to their owning section.</p></div></div><div class="setting-group compact-links"><button data-open-setup><span>Continue setup · 3 of 4 complete</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="ai"><span>Manage connections, models and task defaults</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="knowledge"><span>Change indexed file types and folders</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="tools"><span>Review tools, permissions and confirmations</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="advanced"><span>Manage files, privacy and appearance</span><svg><use href="#i-chevron" /></svg></button></div></section>
-          </div>
-
           <div class="settings-panel is-active" data-settings-panel="ai">
             <header class="content-header"><div><span class="content-eyebrow">AI SETUP</span><h1>AI &amp; Models</h1><p>Connect a service, see the models it provides, then decide which models Peak should use for each task.</p></div><button class="primary-button" data-add-connection><svg><use href="#i-plug" /></svg>Add connection</button></header>
             <div class="settings-relationship-strip" aria-label="AI configuration relationship">
@@ -157,9 +144,9 @@
             <details class="advanced-disclosure"><summary>Advanced search quality</summary><div><label>Change detection interval<select><option>Automatic · 5 seconds</option><option>15 seconds</option><option>Manual only</option></select></label><label>Search result reranking<select><option>Automatic</option><option>Always use AI reranking</option><option>Off</option></select></label><button class="danger-text">Rebuild derived index data…</button></div></details>
           </div>
 
-          <div class="settings-panel" data-settings-panel="tools" hidden>
-            <header class="content-header"><div><span class="content-eyebrow">CAPABILITIES &amp; CONTROL</span><h1>Tools &amp; Safety</h1><p>Choose what Peak can use, what it may read or change, and when it must stop for your confirmation.</p></div></header>
-            <div class="settings-relationship-strip" aria-label="Tools and safety relationship">
+          <div class="settings-panel" data-settings-panel="agents" hidden>
+            <header class="content-header"><div><span class="content-eyebrow">AGENT CAPABILITIES &amp; CONTROL</span><h1>Agents</h1><p>Choose how Peak Hermes works, which capabilities it may use, and when it must stop for your confirmation.</p></div></header>
+            <div class="settings-relationship-strip" aria-label="Agent configuration relationship">
               <span><i>1</i><strong>Tools</strong><small>What Peak can call</small></span>
               <b>→</b>
               <span><i>2</i><strong>Permissions</strong><small>What each tool may access</small></span>

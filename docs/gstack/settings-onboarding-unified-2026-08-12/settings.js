@@ -108,10 +108,6 @@ $("[data-reset-models]").addEventListener("click", () => {
   showSaved("All model choices now inherit Peak automatic selection");
 });
 
-$("[data-open-setup]").addEventListener("click", () => {
-  window.location.href = "./onboarding.html";
-});
-
 $$('.setting-row-button, .connection-card').forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.panelJump) return;

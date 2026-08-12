@@ -36,8 +36,8 @@ requireValues("Settings HTML", settingsHtml, [
   "Connections",
   "Available models",
   "Task defaults",
+  "Agents",
   "Knowledge & Search",
-  "Tools &amp; Safety",
   "Available tools",
   "Permissions &amp; confirmations",
   "Agent execution",
@@ -53,7 +53,7 @@ requireValues("Settings HTML", settingsHtml, [
   "data-tree-toggle=\"composer\"",
   "data-add-connection",
   "data-settings-panel=\"ai\"",
-  "data-settings-panel=\"tools\"",
+  "data-settings-panel=\"agents\"",
   "obsidian-settings-sidebar",
   "peak-settings-tabs",
   "aria-current=\"page\"",
@@ -128,8 +128,25 @@ for (const value of ['data-settings-panel="connections"', 'data-settings-panel="
   if (settingsHtml.includes(value)) missing.push(`Split AI configuration destination returned: ${value}`);
 }
 
-for (const value of ['data-settings-panel="agent"', 'data-panel-target="agent"']) {
-  if (settingsHtml.includes(value)) missing.push(`Split tools and safety destination returned: ${value}`);
+for (const value of ['data-settings-panel="tools"', 'data-panel-target="tools"', 'data-settings-panel="safety"', 'data-panel-target="safety"']) {
+  if (settingsHtml.includes(value)) missing.push(`Split Agent configuration destination returned: ${value}`);
+}
+
+for (const value of ['data-settings-panel="overview"', 'data-panel-target="overview"', '>Tools &amp; Safety<']) {
+  if (settingsHtml.includes(value)) missing.push(`Retired Settings destination returned: ${value}`);
+}
+
+const navOrder = [
+  'data-panel-target="ai"',
+  'data-panel-target="agents"',
+  'data-panel-target="knowledge"',
+  'data-panel-target="advanced"',
+];
+for (let index = 1; index < navOrder.length; index += 1) {
+  if (settingsHtml.indexOf(navOrder[index - 1]) >= settingsHtml.indexOf(navOrder[index])) {
+    missing.push(`Settings navigation order is incorrect: ${navOrder.join(' -> ')}`);
+    break;
+  }
 }
 
 for (const value of ['data-settings-panel="features"', 'data-panel-target="features"', 'data-panel-jump="features"']) {
