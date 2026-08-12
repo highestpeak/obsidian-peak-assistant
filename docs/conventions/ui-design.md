@@ -12,6 +12,7 @@ The single source for how plugin UI gets built — from raw color values up thro
 | **§4 Obsidian CSS defense** | Obsidian injects styles onto bare tags (`<button>`, `<input>`, `<h1-6>`, `<a>`). Modal-mounted surfaces MUST add `peak-design-root` to the outermost element; button-based primitives need `!important` on bg/border/padding/border-radius to beat `.modal-content button`. |
 | **§5 JSX-mock fidelity** | Audits include a JSX-vs-mock structural diff, not just CSS-vs-CSS. `{x ?? ''}` and `<span>{maybe || ''}</span>` inside flex/grid are NOT no-ops — they pollute height. Optional decorations sit inline with required content, not in sometimes-empty subtitle slots. |
 | **§6 Surface drift prevention** | Per-surface chip/pill/button classes are a smell — one Chip primitive across the plugin. Surface migrations are all-or-nothing: leaving one screen in a family on the old system reliably drifts. "Intentionally omitted" scope in a PR is a debt receipt — track it. Mock data fixtures are required for rich UI states (agent runs, artifacts) — without a fixture the UI is invisible and rots. |
+| **§7 Graph renderer** | Interactive node-edge graphs use Cytoscape.js through the shared `AtlasGraphCanvas` stack. React Flow is forbidden for new work; the existing `MultiLensGraph` implementation is migration-only legacy and cannot be extended. |
 
 ## Quick navigation
 
@@ -21,7 +22,8 @@ The single source for how plugin UI gets built — from raw color values up thro
 - §4 — [Obsidian CSS defense](#4-obsidian-css-defense)
 - §5 — [JSX-mock fidelity](#5-jsx-mock-fidelity)
 - §6 — [Surface drift prevention](#6-surface-drift-prevention)
-- §7 — [Consolidated checklist](#7-consolidated-checklist)
+- §7 — [Cytoscape-only graph renderer](#7-cytoscape-only-graph-renderer)
+- §8 — [Consolidated checklist](#8-consolidated-checklist)
 
 For unrelated rules see [`configurability.md`](./configurability.md) (data layer — no inline i18n / regex / label maps).
 
@@ -1180,7 +1182,69 @@ Every time an audit finds the same root cause across ≥3 surfaces or ≥3 compo
 
 ---
 
-## 7. Consolidated checklist
+## 7. Cytoscape-only graph renderer
+
+Peak has one runtime renderer family for interactive node-edge visualization:
+Cytoscape.js behind the shared `AtlasGraphCanvas`. This is an implementation
+boundary, not a recommendation. A Graph surface may define its own data query,
+view preset, labels, actions, and product-specific inspector, but it must not
+introduce another canvas runtime.
+
+### 7.1 Scope
+
+This rule applies to:
+
+- knowledge graphs and relationship maps;
+- Vault Search, Result Browser, File Atlas, AI Graph, and future Graph projections;
+- interactive graph previews embedded in product UI or maintained HTML labs;
+- node/edge selection, hover, focus, layout, viewport, keyboard, and export behavior.
+
+Static Mermaid or Graphviz diagrams used only to explain architecture remain
+valid documentation carriers. Statistical charts without a node-edge model may
+use their chart-specific renderer. Neither exception permits React Flow.
+
+### 7.2 Required implementation path
+
+- Use `src/ui/component/graph/AtlasGraphCanvas.tsx` as the public rendering
+  entry point. Do not import `AtlasGraphCanvasImpl` from a product surface.
+- Keep domain query, result shaping, empty/error states, commands, and inspector
+  actions in the owning surface adapter.
+- Keep Cytoscape lifecycle, element conversion, layout execution, viewport,
+  selection, hover, keyboard, and shared export behavior in the graph canvas.
+- Reuse the registered Cytoscape layouts and shared presets before adding a new
+  layout extension or surface-local layout engine.
+- Express graph color, type, emphasis, and state through semantic graph roles;
+  a surface must not create a second unrelated graph theme system.
+
+### 7.3 React Flow prohibition and legacy boundary
+
+Do not add:
+
+- `@xyflow/react` imports, React Flow nodes, edges, hooks, types, or providers;
+- React Flow CSS imports or surface-local copies of its base styles;
+- wrappers that hide React Flow behind a Peak-named component;
+- new consumers, features, or visual states on the existing React Flow path.
+
+The current `src/ui/component/mine/multi-lens-graph/` implementation and the
+global React Flow CSS import are migration-only legacy. When a task needs to
+change that graph, first characterize its behavior, migrate the affected lens
+to `AtlasGraphCanvas`, verify parity, and then remove the retired React Flow
+nodes, edges, types, styles, and dependency when no consumers remain. Historical
+specs may still record the old choice; they are evidence of the past, not a
+current implementation authority.
+
+### 7.4 Review and migration checks
+
+- [ ] New graph work imports only the shared `AtlasGraphCanvas` public facade.
+- [ ] No new `@xyflow/react`, `ReactFlow`, React Flow CSS, node, edge, or hook appears.
+- [ ] Product-specific behavior remains in an adapter rather than forking the canvas.
+- [ ] Layout and graph theme roles reuse the shared Cytoscape contracts.
+- [ ] A touched legacy MultiLens graph includes a Cytoscape migration and parity evidence, not a React Flow extension.
+- [ ] Interaction claims are verified in real Obsidian according to the real-UI QA protocol; mock-only evidence is labeled as such.
+
+---
+
+## 8. Consolidated checklist
 
 When implementing or reviewing a new UI surface, work through this list (each item links to the section that explains it):
 
@@ -1224,5 +1288,12 @@ When implementing or reviewing a new UI surface, work through this list (each it
 - [ ] Every `// intentionally omitted` comment has a tracking handle + mock-element reference + blocker (§6.3)
 - [ ] If the surface relies on rich data states (agent artifacts, tool calls, cost receipts), a fixture conversation exists and is exercised by the audit (§6.4)
 - [ ] Domain pickers reuse one shared composite; model selection does not add a surface-local Profile + model dropdown or duplicate search/list JSX (§6.5)
+
+**Graph renderer (§7)**
+- [ ] Interactive node-edge views use the shared Cytoscape `AtlasGraphCanvas` facade
+- [ ] No new React Flow / `@xyflow/react` import, type, style, wrapper, or consumer was added
+- [ ] Existing `MultiLensGraph` code was not extended; touched behavior was migrated to Cytoscape first
+- [ ] Product-specific query and actions stay outside the shared renderer; graph lifecycle and interaction stay inside it
+- [ ] Graph interaction and geometry were checked in real Obsidian when the change affects behavior
 
 **Test inside Obsidian, not just the mock browser** — Obsidian leaks (§4) only show in Obsidian. A mock-HTML preview will lie about the final appearance.
