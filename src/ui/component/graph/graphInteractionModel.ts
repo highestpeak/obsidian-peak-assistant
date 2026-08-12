@@ -3,21 +3,6 @@ interface GraphViewport {
 	pan: Point;
 }
 
-export function minimumReadableEdgeWidth(
-	authoredModelWidth: number,
-	zoom: number,
-	minimumRenderedWidth: number,
-): number {
-	const safeAuthoredWidth = Number.isFinite(authoredModelWidth) && authoredModelWidth > 0
-		? authoredModelWidth
-		: 1;
-	const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-	const safeRenderedWidth = Number.isFinite(minimumRenderedWidth) && minimumRenderedWidth > 0
-		? minimumRenderedWidth
-		: 1;
-	return Math.max(safeAuthoredWidth, safeRenderedWidth / safeZoom);
-}
-
 export function updateGraphSelection(
 	current: readonly string[],
 	nodeId: string,

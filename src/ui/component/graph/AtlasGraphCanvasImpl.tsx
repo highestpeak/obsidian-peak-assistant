@@ -77,7 +77,6 @@ import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
 import { portalHostForDocument } from '@/ui/react/ReactRenderer';
 import {
 	centerViewportOnSameModelPoint,
-	minimumReadableEdgeWidth,
 	placeGraphInspectCard,
 	resolveGraphEscapeAction,
 	retainGraphSelection,
@@ -472,7 +471,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.doc.communityDoc', style: { 'background-color': 'data(nodeColor)', 'border-color': 'data(nodeBorderColor)', color: 'data(nodeTextColor)', 'border-width': 1.4, opacity: 1 } as never },
 	{ selector: 'node.doc.communityDoc.isolated', style: { opacity: 1, 'border-style': 'solid' } as never },
 	{ selector: 'node.folderGroup', style: { 'background-color': '#f7f2fc', 'background-opacity': 1, 'border-width': 0, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '11px', 'padding-right': '11px', 'padding-top': '6px', 'padding-bottom': '6px', label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#51475e', 'text-valign': 'center', 'text-halign': 'center', 'min-width': '120px', 'z-index': 4 } as never },
-	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, opacity: 1, 'display': 'element', 'visibility': 'visible', 'arrow-scale': 0.7 } as never },
+	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, 'arrow-scale': 0.7 } as never },
 	{ selector: 'edge[directionality = "directed"]', style: { 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "bidirectional"]', style: { 'source-arrow-shape': 'triangle', 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "undirected"]', style: { 'source-arrow-shape': 'none', 'target-arrow-shape': 'none' } as never },
@@ -518,8 +517,6 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.folderFocusSelected', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1000 } as never },
 	{ selector: 'node.folderFocusScope', style: { 'background-color': '#eee3fb', color: '#5b2d96', 'border-width': 0, opacity: 1, 'z-index': 800 } as never },
 	{ selector: 'node.folderFocusConnected', style: { 'background-color': '#f7f1fd', color: '#51475e', opacity: 1, 'z-index': 700 } as never },
-	{ selector: 'node.folderFocusDimmed', style: { opacity: 0.45 } as never },
-	{ selector: 'edge.folderFocusHidden', style: { opacity: 0.04 } as never },
 	{ selector: 'edge.folderFocusActive', style: { opacity: 1, width: 2.05, 'arrow-scale': 1.08, 'z-index': 900 } as never },
 	{ selector: 'edge.folderFocusIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
 	{ selector: 'edge.folderFocusOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'source-arrow-color': '#0f9d83' } as never },
@@ -574,7 +571,8 @@ function layoutConfig(
 		case 'fcose':
 			return {
 				name: 'fcose',
-				animate: false,
+				animate: true,
+				animationDuration: 500,
 				nodeRepulsion: config.nodeRepulsion,
 				idealEdgeLength: (edge: EdgeSingular) => {
 					if (edge.data('kind') !== 'semantic') return config.structuralIdealLength;
@@ -596,15 +594,15 @@ function layoutConfig(
 				nodeDimensionsIncludeLabels: true,
 			} as never;
 		case 'cola':
-			return { name: 'cola', animate: false, maxSimulationTime: 3000, nodeSpacing: config.componentSeparation, edgeLength: config.structuralIdealLength, avoidOverlap: true, nodeDimensionsIncludeLabels: true } as never;
+			return { name: 'cola', animate: true, maxSimulationTime: 3000, nodeSpacing: config.componentSeparation, edgeLength: config.structuralIdealLength, avoidOverlap: true, nodeDimensionsIncludeLabels: true } as never;
 		case 'dagre-tb':
-			return { name: 'dagre', rankDir: 'TB', nodeSep: config.flowNodeSeparation, edgeSep: config.flowEdgeSeparation, rankSep: config.flowRankSeparationTopDown, nodeDimensionsIncludeLabels: true, animate: false } as never;
+			return { name: 'dagre', rankDir: 'TB', nodeSep: config.flowNodeSeparation, edgeSep: config.flowEdgeSeparation, rankSep: config.flowRankSeparationTopDown, nodeDimensionsIncludeLabels: true, animate: true } as never;
 		case 'dagre-lr':
-			return { name: 'dagre', rankDir: 'LR', nodeSep: config.flowNodeSeparation, edgeSep: config.flowEdgeSeparation, rankSep: config.flowRankSeparationLeftRight, nodeDimensionsIncludeLabels: true, animate: false } as never;
+			return { name: 'dagre', rankDir: 'LR', nodeSep: config.flowNodeSeparation, edgeSep: config.flowEdgeSeparation, rankSep: config.flowRankSeparationLeftRight, nodeDimensionsIncludeLabels: true, animate: true } as never;
 		case 'concentric-hub':
-			return { name: 'concentric', animate: false, concentric: (n: NodeSingular) => { if (n.data('kind') === 'hub') return 4; if (n.hasClass('isolated')) return 1; if (n.hasClass('semanticOnly')) return 2; return 3 + Math.min(1, Number(n.data('degreeNorm')) || 0); }, levelWidth: () => 1, minNodeSpacing: config.orbitNodeSeparation, spacingFactor: 1.1, avoidOverlap: true, nodeDimensionsIncludeLabels: true } as never;
+			return { name: 'concentric', animate: true, concentric: (n: NodeSingular) => { if (n.data('kind') === 'hub') return 4; if (n.hasClass('isolated')) return 1; if (n.hasClass('semanticOnly')) return 2; return 3 + Math.min(1, Number(n.data('degreeNorm')) || 0); }, levelWidth: () => 1, minNodeSpacing: config.orbitNodeSeparation, spacingFactor: 1.1, avoidOverlap: true, nodeDimensionsIncludeLabels: true } as never;
 		case 'folder-tree':
-			return { name: 'preset', fit: false, animate: false } as never;
+			return { name: 'preset', fit: false, animate: true, animationDuration: 320 } as never;
 	}
 }
 
@@ -661,17 +659,6 @@ function fitAllGraphViewport(cy: Core): void {
 	cy.fit(undefined, 40);
 }
 
-function applyReadableEdgeWidths(cy: Core, minimumRenderedWidth: number): void {
-	const zoom = cy.zoom();
-	cy.edges().forEach((edge) => {
-		edge.removeStyle('width');
-		const authoredWidth = Number(edge.numericStyle('width'));
-		const readableWidth = minimumReadableEdgeWidth(authoredWidth, zoom, minimumRenderedWidth);
-		if (readableWidth <= authoredWidth) return;
-		edge.style('width', readableWidth);
-	});
-}
-
 function fitReadableGraphViewport(cy: Core, folderTree: boolean): void {
 	fitAllGraphViewport(cy);
 	if (!folderTree || cy.zoom() >= FOLDER_TREE_MIN_INITIAL_ZOOM) return;
@@ -687,8 +674,8 @@ function fitReadableGraphViewport(cy: Core, folderTree: boolean): void {
 	});
 }
 
-const FOLDER_FOCUS_NODE_CLASSES = 'folderFocusSelected folderFocusScope folderFocusConnected folderFocusDimmed';
-const FOLDER_FOCUS_EDGE_CLASSES = 'folderFocusHidden folderFocusActive folderFocusIncoming folderFocusOutgoing folderFocusInternal folderHierarchyActive';
+const FOLDER_FOCUS_NODE_CLASSES = 'folderFocusSelected folderFocusScope folderFocusConnected';
+const FOLDER_FOCUS_EDGE_CLASSES = 'folderFocusActive folderFocusIncoming folderFocusOutgoing folderFocusInternal folderHierarchyActive';
 
 function mirrorFolderTreeFocusToDecorations(cy: Core): void {
 	cy.nodes('.folderTreeDecoration').forEach((decoration) => {
@@ -748,10 +735,7 @@ function applyFolderTreeFocus(
 		cy.edges('.folderRelation').forEach((edge) => {
 			const sourceSelected = scope.documentIds.has(edge.source().id());
 			const targetSelected = scope.documentIds.has(edge.target().id());
-			if (!sourceSelected && !targetSelected) {
-				edge.addClass('folderFocusHidden');
-				return;
-			}
+			if (!sourceSelected && !targetSelected) return;
 
 			edge.addClass('folderFocusActive');
 			readableNodeIds.add(edge.source().id());
@@ -765,13 +749,9 @@ function applyFolderTreeFocus(
 		});
 
 		cy.nodes().not('.regionLabel').forEach((node) => {
-			if (readableNodeIds.has(node.id())) {
-				if (!node.hasClass('folderFocusSelected') && !node.hasClass('folderFocusScope')) {
-					node.addClass('folderFocusConnected');
-				}
-				return;
-			}
-			node.addClass('folderFocusDimmed');
+			if (!readableNodeIds.has(node.id())) return;
+			if (node.hasClass('folderFocusSelected') || node.hasClass('folderFocusScope')) return;
+			node.addClass('folderFocusConnected');
 		});
 
 		const activeHierarchyNodeIds = new Set<string>([
@@ -1011,11 +991,6 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const [fullscreen, setFullscreen] = useState<GraphFullscreenState | null>(null);
 	const [surfaceHost, setSurfaceHost] = useState<HTMLDivElement | null>(null);
 	const [zoomPercent, setZoomPercent] = useState(100);
-	const [layoutReadyState, setLayoutReadyState] = useState<{
-		subgraph: ResultSubgraphOutput;
-		preset: AtlasGraphPreset;
-		showSemantic: boolean;
-	} | null>(null);
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 	const [inspectMode, setInspectMode] = useState(false);
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1044,12 +1019,6 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	hoveredLabelRef.current = hoveredLabel;
 	nodeListOpenRef.current = nodeListOpen;
 	fullscreenRef.current = fullscreen;
-	const layoutReady = Boolean(
-		layoutReadyState
-		&& layoutReadyState.subgraph === subgraph
-		&& layoutReadyState.preset === preset
-		&& layoutReadyState.showSemantic === showSemantic,
-	);
 
 	const cancelCardClose = useCallback(() => {
 		if (!cardCloseTimerRef.current) return;
@@ -1064,7 +1033,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		setHoveredLabel(null);
 		const cy = cyRef.current;
 		cy?.batch(() => {
-			cy.elements().removeClass('dimmed').removeClass('highlighted');
+			cy.elements().removeClass('highlighted');
 			cy.edges().removeStyle('line-dash-offset');
 		});
 	}, [cancelCardClose]);
@@ -1399,9 +1368,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			container,
 			elements: els,
 			style: CYTOSCAPE_STYLES,
-			// Cytoscape's constructor otherwise runs its default grid layout before
-			// our preset layout and discards the explicit folder-tree positions.
-			layout: { name: 'preset' },
+			layout: bundle.folderTree ? { name: 'preset' } : undefined,
 			minZoom: 0.15,
 			maxZoom: 3,
 			wheelSensitivity: 0.2,
@@ -1447,13 +1414,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			setZoomPercent(Math.round(cy.zoom() * 100));
 			positionCacheRef.current.set(layoutKey, captureGraphNodePositions(cy));
 			applyGraphSelection(cy, selectedNodeIdsRef.current);
-			applyReadableEdgeWidths(cy, graphLayout.minimumRenderedEdgeWidth);
-			setLayoutReadyState({ subgraph, preset, showSemantic });
 		});
 		layoutObj.run();
-		cy.on('zoom', () => {
-			applyReadableEdgeWidths(cy, graphLayout.minimumRenderedEdgeWidth);
-		});
 		cy.on('pan zoom', () => {
 			const viewport = { zoom: cy.zoom(), pan: cy.pan() };
 			lastViewportRef.current = viewport;
@@ -1491,7 +1453,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				last = now;
 				offset -= dt * 0.024;
 				const edges = bundle.folderTree
-					? cy.edges('edge.folderRelation.semantic').not('.folderFocusHidden')
+					? cy.edges('edge.folderRelation.semantic')
 					: cy.edges('edge.semantic.highlighted');
 				if (edges.length === 0) { animRef.current = null; return; }
 				edges.style('line-dash-offset', offset);
@@ -2009,13 +1971,11 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		if (preset === 'community' && !subgraph.communities?.length) {
 			return communityInteraction.ui.communityUnavailable;
 		}
-		if (!layoutReady) return buildingLabel;
 		return null;
 	}, [
 		buildingLabel,
 		communityInteraction.ui.communityUnavailable,
 		emptyLabel,
-		layoutReady,
 		preset,
 		subgraph,
 	]);
@@ -2052,11 +2012,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			<span className="pk-keyboard-live-region" aria-live="polite">
 				{keyboardNodeLabel}
 			</span>
-			<div
-				ref={containerRef}
-				className="pktw-absolute pktw-inset-0"
-				style={{ visibility: emptyMessage ? 'hidden' : 'visible' }}
-			/>
+			<div ref={containerRef} className="pktw-absolute pktw-inset-0" />
 			{emptyMessage && (
 				<div className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
 					{emptyMessage}

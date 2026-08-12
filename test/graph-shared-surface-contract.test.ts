@@ -35,17 +35,16 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(canvas, /selector: '[^']*\.dimmed'/, 'the graph has no subtractive hover style');
 assert.match(canvas, /highlight\.addClass\('highlighted'\)/, 'hover adds an emphasis layer');
+assert.doesNotMatch(canvas, /folderFocusHidden/, 'Folder focus never hides unrelated edges');
+assert.doesNotMatch(canvas, /applyReadableEdgeWidths/, 'the renderer does not override authored edge widths after zoom');
+assert.doesNotMatch(canvas, /minimumRenderedEdgeWidth/, 'edge visibility is not patched with a screen-space width floor');
+assert.doesNotMatch(canvas, /layoutReadyState/, 'the graph canvas is not hidden behind a second layout-ready gate');
+assert.doesNotMatch(canvas, /visibility: emptyMessage/, 'the graph canvas is not hidden while layout state catches up');
 assert.match(
 	canvas,
-	/selector: 'edge', style: \{[^}]*opacity: 1/,
-	'the resting graph explicitly keeps its base edges fully visible',
+	/layout: bundle\.folderTree \? \{ name: 'preset' \} : undefined/,
+	'only the explicit-position Folder projection bypasses Cytoscape initial layout',
 );
-assert.match(canvas, /'display': 'element'/, 'the resting graph explicitly renders edge elements');
-assert.match(canvas, /'visibility': 'visible'/, 'the resting graph explicitly exposes edge elements');
-assert.match(
-	canvas,
-	/applyReadableEdgeWidths\(cy, graphLayout\.minimumRenderedEdgeWidth\)/,
-	'fit and zoom preserve a minimum screen-space edge width',
-);
+assert.match(canvas, /name: 'fcose',[\s\S]*?animate: true,[\s\S]*?animationDuration: 500/, 'Constellation keeps the proven layout lifecycle');
 
 console.log('graph-shared-surface-contract: passed');

@@ -32,7 +32,6 @@
     }
   },
   "graphLayout": {
-    "minimumRenderedEdgeWidth": 1.25,
     "semanticWeightExponent": 2.0,
     "semanticIdealLengthMin": 72,
     "semanticIdealLengthMax": 156,
