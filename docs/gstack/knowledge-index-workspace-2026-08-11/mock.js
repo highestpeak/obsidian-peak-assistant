@@ -40,7 +40,7 @@ const state = {
   order: "recent",
 };
 
-const $ = (selector) => document.querySelector(selector);
+const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 const formatNumber = (value) => new Intl.NumberFormat("en-US").format(value);
@@ -455,11 +455,26 @@ function updateIndexActionGroupCounts() {
     const selected = inputs.filter((input) => input.checked && !input.disabled).length;
     const unavailable = inputs.filter((input) => input.disabled && input.dataset.actionMode !== "automatic").length;
     const parts = [];
-    if (automatic > 0) parts.push(`${automatic} automatic`);
-    parts.push(`${selected} selected`);
-    if (unavailable > 0) parts.push(`${unavailable} in development`);
+    if (automatic > 0) parts.push(`${automatic} auto`);
+    parts.push(`${selected} on`);
+    if (unavailable > 0) parts.push(`${unavailable} later`);
     $(`[data-action-group-count="${group.dataset.actionGroup}"]`).textContent = parts.join(" · ");
   });
+}
+
+let activeIndexActionRow = null;
+
+function showIndexActionDetail(row) {
+  if (!row) return;
+  const input = $('[data-index-action]', row);
+  const ready = row.dataset.actionReady || "Ready";
+  let stateLabel = input.checked ? `Included · ${ready}` : ready;
+  if (input.dataset.actionMode === "automatic") stateLabel = "Always on";
+  if (input.disabled && input.dataset.actionMode !== "automatic") stateLabel = "In development";
+  activeIndexActionRow = row;
+  $(`[data-action-explainer-title]`).textContent = $("strong", row).textContent;
+  $(`[data-action-explainer-copy]`).textContent = row.dataset.actionDetail;
+  $(`[data-action-explainer-state]`).textContent = stateLabel;
 }
 
 function updateIndexLayerSummary() {
@@ -525,7 +540,14 @@ $$('[data-index-action]:not(:disabled)').forEach((input) => {
       $('[data-index-layer="embeddings"]').checked = true;
     }
     updateIndexLayerSummary();
+    showIndexActionDetail(input.closest('[data-action-row]'));
   });
+});
+
+$$('[data-action-row]').forEach((row) => {
+  row.addEventListener("mouseenter", () => showIndexActionDetail(row));
+  row.addEventListener("focusin", () => showIndexActionDetail(row));
+  row.addEventListener("click", () => window.setTimeout(() => showIndexActionDetail(row), 0));
 });
 
 $("[data-restore-index-layers]").addEventListener("click", () => {
@@ -536,6 +558,7 @@ $("[data-restore-index-layers]").addEventListener("click", () => {
     input.checked = input.dataset.actionMode === "automatic";
   });
   updateIndexLayerSummary();
+  if (activeIndexActionRow) showIndexActionDetail(activeIndexActionRow);
 });
 
 $$('.document-type-chips button:not(:disabled)').forEach((button) => {

@@ -553,7 +553,9 @@ Knowledge & Search 管理长期知识状态：
 | PDF、Canvas、Excalidraw 文本抽取 | 系统自动 | 作为相应文件类型进入全文与向量步骤前的准备动作 | `CURRENT` / 能力依 loader |
 | 扫描 PDF OCR、图片 OCR、图片视觉描述 | 每次运行独立选择 | 只在真实 OCR / vision pipeline 可用时开放，不能用 disabled 外观假装已经支持 | `IN DEVELOPMENT` |
 
-Index workspace 直接展示真实产物，不再要求用户先理解“快速 / 语义 / 完整”等套餐名。第一层是 `Core search`：Full-text 是每次运行的基础，Embeddings 可以直接开关。第二层是 `Generated knowledge`：按照 Summaries、Tags & entities、Relationships、Content understanding 四组展开，每个动作独立说明其状态、依赖、成本和处理对象。
+Index workspace 直接展示真实产物，不再要求用户先理解“快速 / 语义 / 完整”等套餐名。第一层是 `Core search`：Full-text 是每次运行的基础，Embeddings 可以直接开关。第二层是 `Generated knowledge`：按照 Summaries、Tags & entities、Relationships、Content understanding 四组组成常显能力矩阵，不再要求逐组展开。每个动作独立说明其状态、依赖、成本和处理对象。
+
+桌面端四组横向并列，使全部动作可以同时浏览；窄窗口降为两列或一列。动作行只保留可读字号的名称与状态控件，重复说明集中到矩阵下方的一条详情栏，在悬浮、键盘聚焦或选择动作时更新。这样既不隐藏选项，也不会因为每项都永久显示两行小字而把首轮设置拉成长页面。
 
 组名只是导航，不能充当一个会模糊能力边界的总开关。例如 `Summaries` 必须继续拆成 Markdown、PDF、图片和视觉文档；还没接通的路径明确标为 `In development`，而不是让用户误以为一个开关已经覆盖所有文件类型。`Recommended` 只恢复核心层和必要自动动作，不能隐藏或覆盖用户逐项选择。详细长度、chunking、后台刷新等长期参数仍留在 Settings，避免同一配置出现两个 owner。
 

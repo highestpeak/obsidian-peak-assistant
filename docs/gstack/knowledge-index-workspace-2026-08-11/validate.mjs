@@ -45,6 +45,8 @@ const requiredHtml = [
   "data-action-group=\"tags\"",
   "data-action-group=\"relationships\"",
   "data-action-group=\"understanding\"",
+  "data-action-row",
+  "data-index-action-explainer",
   "data-index-action=\"markdown-summary\"",
   "data-index-action=\"pdf-summary\"",
   "data-index-action=\"image-summary\"",
@@ -53,7 +55,7 @@ const requiredHtml = [
   "data-index-action=\"semantic-relations\"",
   "data-index-action=\"pdf-ocr\"",
   "data-index-action=\"image-description\"",
-  "In development",
+  ">Later</i>",
   "data-restore-index-layers",
   "data-index-build-summary",
   "data-completion-attention",
@@ -80,6 +82,8 @@ const requiredJs = [
   "function activeIndexLayerKeys",
   "function activeIndexActionKeys",
   "function updateIndexActionGroupCounts",
+  "function showIndexActionDetail",
+  "In development",
   "function updateIndexLayerSummary",
 ];
 
@@ -102,6 +106,8 @@ const requiredCss = [
   ".index-action-groups",
   ".index-action-group",
   ".index-action-row",
+  ".generated-knowledge-section",
+  ".index-action-explainer",
   ".index-output-label",
   ".index-build-summary",
   ".completion-attention",
@@ -130,7 +136,7 @@ for (const value of ["DOCX", "PPTX", "XLSX"]) {
 for (const value of ["setup-drawer", "setup-backdrop", "Keep the index current", "Models &amp; generated knowledge", "Advanced chunking"]) {
   if (html.includes(value)) missing.push(`Index workspace must not own long-term setting: ${value}`);
 }
-for (const value of ["Find words", "Find meaning", "Build knowledge", "data-index-depth"]) {
+for (const value of ["Find words", "Find meaning", "Build knowledge", "data-index-depth", "<details class=\"index-action-group\""]) {
   if (html.includes(value)) missing.push(`abstract index preset must not replace direct layer controls: ${value}`);
 }
 if (html.indexOf("data-index-setup") > html.indexOf("progress-hero")) {
