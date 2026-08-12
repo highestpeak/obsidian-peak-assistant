@@ -4,6 +4,7 @@
   var consoleStateKey = "peak-theme-lab-console-v1";
   var consoleState = readConsoleState();
   var activeThemeMenuTrigger = null;
+  var activeThemeImageIndex = -1;
 
   function readConsoleState() {
     var fallback = { collapsed: false };
@@ -208,7 +209,70 @@
     });
   }
 
+  function themeImageSlots() {
+    return Array.prototype.slice.call(document.querySelectorAll(".theme-image-slot"));
+  }
+
+  function renderThemeImageLightbox(index) {
+    var slots = themeImageSlots();
+    var dialog = document.querySelector("[data-theme-image-lightbox]");
+    if (!slots.length || !dialog) return;
+    activeThemeImageIndex = (index + slots.length) % slots.length;
+    var slot = slots[activeThemeImageIndex];
+    var preview = slot.querySelector(".theme-image-slot__preview");
+    var source = slot.querySelector("img");
+    var title = slot.querySelector("figcaption b");
+    var meta = slot.querySelector("figcaption span");
+    var path = slot.querySelector("figcaption code");
+    var dialogImage = dialog.querySelector("[data-theme-image-lightbox-image]");
+    var dialogTitle = dialog.querySelector("[data-theme-image-lightbox-title]");
+    var dialogMeta = dialog.querySelector("[data-theme-image-lightbox-meta]");
+    var dialogPath = dialog.querySelector("[data-theme-image-lightbox-path]");
+    var original = dialog.querySelector("[data-theme-image-lightbox-open]");
+    if (!preview || !source || !dialogImage || !dialogTitle || !dialogMeta || !dialogPath || !original) return;
+    dialogImage.src = preview.href;
+    dialogImage.alt = source.alt;
+    dialogTitle.textContent = title ? title.textContent : source.alt;
+    dialogMeta.textContent = meta ? meta.textContent + " · " + (activeThemeImageIndex + 1) + " / " + slots.length : (activeThemeImageIndex + 1) + " / " + slots.length;
+    dialogPath.textContent = path ? path.textContent : preview.getAttribute("href");
+    original.href = preview.href;
+  }
+
+  function openThemeImageLightbox(preview) {
+    var slots = themeImageSlots();
+    var slot = preview.closest(".theme-image-slot");
+    var dialog = document.querySelector("[data-theme-image-lightbox]");
+    var index = slots.indexOf(slot);
+    if (index < 0 || !dialog) return;
+    renderThemeImageLightbox(index);
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
+  function closeThemeImageLightbox() {
+    var dialog = document.querySelector("[data-theme-image-lightbox]");
+    if (!dialog) return;
+    if (typeof dialog.close === "function") dialog.close();
+    else dialog.removeAttribute("open");
+    activeThemeImageIndex = -1;
+  }
+
+  function stepThemeImageLightbox(step) {
+    if (activeThemeImageIndex < 0) return;
+    renderThemeImageLightbox(activeThemeImageIndex + step);
+  }
+
   document.addEventListener("click", function (event) {
+    var imagePreview = event.target.closest && event.target.closest(".theme-image-slot__preview");
+    if (imagePreview) { event.preventDefault(); openThemeImageLightbox(imagePreview); return; }
+    var lightboxClose = event.target.closest && event.target.closest("[data-theme-image-lightbox-close]");
+    if (lightboxClose) { closeThemeImageLightbox(); return; }
+    var lightboxPrevious = event.target.closest && event.target.closest("[data-theme-image-lightbox-prev]");
+    if (lightboxPrevious) { stepThemeImageLightbox(-1); return; }
+    var lightboxNext = event.target.closest && event.target.closest("[data-theme-image-lightbox-next]");
+    if (lightboxNext) { stepThemeImageLightbox(1); return; }
+    var lightbox = document.querySelector("[data-theme-image-lightbox]");
+    if (event.target === lightbox) { closeThemeImageLightbox(); return; }
     var themeSelection = event.target.closest && event.target.closest("[data-lab-theme-select]");
     if (themeSelection) { selectThemeAxis(themeSelection); return; }
     var themeMenuTrigger = event.target.closest && event.target.closest("[data-lab-theme-menu-trigger]");
@@ -228,6 +292,9 @@
   });
 
   document.addEventListener("keydown", function (event) {
+    var lightbox = document.querySelector("[data-theme-image-lightbox]");
+    if (lightbox && lightbox.open && event.key === "ArrowLeft") { event.preventDefault(); stepThemeImageLightbox(-1); return; }
+    if (lightbox && lightbox.open && event.key === "ArrowRight") { event.preventDefault(); stepThemeImageLightbox(1); return; }
     if (event.key !== "Escape" || !activeThemeMenuTrigger) return;
     event.preventDefault();
     closeThemeAxisMenu(true);

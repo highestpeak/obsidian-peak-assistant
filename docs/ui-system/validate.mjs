@@ -177,30 +177,31 @@ assert(resolvedComposer["--pk-doc-media-radius"] && resolvedComposer["--pk-doc-m
 [
   ["Foundations", "id=\"foundations\""],
   ["Composer theme workshop", "id=\"composer-theme\""],
-  ["Primitives", "id=\"primitives\""],
-  ["Visual coverage", "id=\"coverage\""],
-  ["Representative scenes", "id=\"scenes\""],
+  ["Component library", "id=\"primitives\""],
+  ["Product pressure boards", "id=\"coverage\""],
   ["Semantic colors", "role-swatches"],
   ["Type ladder", "type-specimen"],
+  ["Spacing and control scale", "scale-specimen"],
   ["Radius and elevation", "geometry-specimen"],
-  ["Actions", "primitive-row"],
+  ["Icon scale", "icon-scale"],
+  ["Motion scale", "motion-scale"],
+  ["Foundation research references", "foundation-reference-strip"],
+  ["Component families", "component-family"],
   ["Control strip coverage", "data-coverage-board=\"control-strips\""],
   ["Input and elevation coverage", "data-coverage-board=\"inputs-elevation\""],
   ["Report coverage", "data-coverage-board=\"report-mixed-content\""],
   ["Dashboard coverage", "data-coverage-board=\"dashboard\""],
-  ["Composer Markdown coverage", "data-coverage-board=\"composer-markdown\""],
   ["File Atlas inspector coverage", "data-coverage-board=\"file-atlas-inspector\""],
   ["Graph system coverage", "data-coverage-board=\"graph-system\""],
   ["Long outline coverage", "data-coverage-board=\"long-outline\""],
   ["Search result specimen", "result-row"],
-  ["Composer specimen", "composer-block"],
   ["Chat specimen", "chat-message"],
-  ["Graph specimen", "graph-node"],
   ["Overlay specimen", "overlay-panel"],
   ["Codex image slots", "id=\"ai-bridge\""],
   ["Fixed image manifest", "data-theme-image-manifest=\"ui-system/theme-concepts/manifest.json\""],
   ["Current Theme JSON", "data-theme-json"]
 ].forEach(([label, marker]) => assert(sources.labHtml.includes(marker), `Theme Lab: ${label}`));
+assert(sources.labHtml.includes("atlassian.design/foundations") && sources.labHtml.includes("radix-ui.com/themes") && sources.labHtml.includes("m3.material.io/foundations/interaction/states"), "Theme Lab: links the primary design-system coverage references used for the expanded inventory");
 assert(sources.labHtml.includes("data-composer-theme-workshop") && sources.labHtml.includes("data-composer-document"), "Theme Lab: Composer theme workshop has one shared fixed document");
 assert(sources.labHtml.includes("id=\"composer-theme-contract\"") && sources.labHtml.includes("当前完整 Theme JSON"), "Theme Lab: Composer rules and Theme JSON remain in the single workspace");
 assert(sources.labHtml.includes("--pk-doc-*") && sources.labHtml.includes("--pk-editor-*"), "Theme Lab: Composer document and editor token boundaries are explained inline");
@@ -218,13 +219,13 @@ assert(sources.themeRuntime.includes("sanitizeComposer") && sources.themeRuntime
 assert(sources.themeRuntime.includes("--pk-doc-heading-6-size") && sources.themeRuntime.includes("--pk-doc-table-row-height"), "Theme Runtime: resolves low heading and structured content roles");
 assert(sources.labCss.includes("--pk-doc-body-font") && sources.labCss.includes("--pk-doc-heading-6-size") && sources.labCss.includes("data-composer-view=\"clean\""), "Theme Lab: Composer specimen consumes document tokens and separates clean view");
 assert(sources.labCss.includes(".composer-theme-contract__rules") && sources.labCss.includes(".composer-theme-contract__json"), "Theme Lab: inline Composer contract and JSON are styled");
-assert((sources.labHtml.match(/class="coverage-board"/g) || []).length === 8, "Theme Lab: renders exactly 8 visual coverage boards");
+assert((sources.labHtml.match(/class="coverage-board"/g) || []).length === 7, "Theme Lab: renders exactly 7 product pressure boards");
 ["rest", "hover", "focus", "selected", "disabled"].forEach((state) => assert(sources.labHtml.includes(`data-state="${state}"`), `Theme Lab: pins ${state} control state`));
 ["flat", "outlined", "raised", "error", "disabled", "focus"].forEach((state) => assert(sources.labHtml.includes(`data-input-state="${state}"`), `Theme Lab: covers ${state} input treatment`));
 assert((sources.labHtml.match(/class="metric-card(?:\s|\")/g) || []).length >= 4, "Theme Lab: dashboard includes at least 4 metric cards");
 assert((sources.labHtml.match(/class="report-section(?:\s|\")/g) || []).length >= 4, "Theme Lab: report includes long-form sections");
-["markdown-lead", "markdown-selected-block", "block-action-bar", "markdown-callout", "markdown-editable", "markdown-code", "markdown-table"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Composer covers ${marker}`));
-["atlas-toolbar", "atlas-preview", "atlas-inspector", "quick-actions", "keyword-list", "stats-row"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: File Atlas covers ${marker}`));
+["doc-frontmatter__grid", "doc-block--selected", "doc-block-action-bar", "doc-callout", "doc-block--focus", "doc-code-block", "doc-markdown-table"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Composer workshop covers ${marker}`));
+["atlas-workspace", "atlas-file-rail", "atlas-search-band", "atlas-toolbar", "atlas-tree", "atlas-inspector", "atlas-tray"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: File Atlas covers ${marker}`));
 ["graph-control-row", "graph-layout-row", "graph-system__canvas", "graph-system-node--selected", "graph-system-node--hover", "graph-system-node--muted"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Graph covers ${marker}`));
 assert((sources.labHtml.match(/class="outline-row(?:\s|\")/g) || []).length >= 27, "Theme Lab: long outline includes at least 27 rows");
 assert(sources.labRuntime.includes("selectRow") && sources.labRuntime.includes("data-lab-row"), "Theme Lab: long outline rows are interactive");
@@ -242,7 +243,7 @@ assert(sources.labHtml.includes("data-lab-theme-axis-menu") && sources.labCss.in
 assert(sources.labRuntime.includes("toggleThemeAxisMenu") && sources.labRuntime.includes("selectThemeAxis") && sources.labRuntime.includes("closeThemeAxisMenu"), "Theme Lab: compact popover opens, selects an explicit value, and closes");
 assert(sources.labRuntime.includes("menuitemradio") && sources.labRuntime.includes("event.key !== \"Escape\""), "Theme Lab: compact popover exposes selection semantics and Escape dismissal");
 assert(sources.labCss.includes(".lab-console[data-collapsed=\"true\"] .lab-console__head { flex-wrap: nowrap; }") && sources.labCss.includes("overflow-x: auto; scrollbar-width: none;"), "Theme Lab: collapsed controls remain on one row and scroll within their own strip");
-assert(sources.labHtml.includes("不复刻完整 Search、Composer 或 Graph"), "Theme Lab: explicitly rejects product parity claim");
+assert(sources.labHtml.includes("组件试件用于校准公共语言") && sources.labHtml.includes("产品覆盖板用于验证组合压力"), "Theme Lab: explains its three-layer review model");
 assert(!sources.labHtml.includes("type=\"file\"") && !sources.labHtml.includes("data-copy-image-prompt"), "Theme Lab: has no upload or Prompt-transfer UI");
 assert(!/(?:FileReader|readAsDataURL|fetch\(|XMLHttpRequest|https?:\/\/)/.test(sources.labRuntime), "Theme Lab: runtime has no image transfer or network path");
 
@@ -265,9 +266,11 @@ themeConceptManifest.slots.forEach((slot) => {
   assert(sources.labHtml.includes(`ui-system/theme-concepts/${slot.output}`), `Theme Lab ${slot.id}: HTML uses fixed output path`);
   assert(sources.labHtml.includes(`href=\"ui-system/theme-concepts/${slot.output}\"`), `Theme Lab ${slot.id}: image opens at original size`);
 });
-assert((sources.labHtml.match(/class=\"theme-image-domain\"/g) || []).length === 8, "Theme Lab: renders 8 vertical image groups");
-assert((sources.labHtml.match(/class=\"theme-image-slot\"/g) || []).length === 19, "Theme Lab: renders 19 large image cards");
-assert(sources.labCss.includes("grid-template-columns: minmax(0, 1fr)"), "Theme Lab: image gallery uses a single large column");
+assert((sources.labHtml.match(/class=\"theme-image-domain\"/g) || []).length === 8, "Theme Lab: renders 8 compact image groups");
+assert((sources.labHtml.match(/class=\"theme-image-slot\"/g) || []).length === 19, "Theme Lab: renders 19 thumbnail cards");
+assert(sources.labHtml.includes("class=\"theme-image-index\"") && sources.labHtml.includes("data-theme-image-lightbox"), "Theme Lab: image gallery has dense domain navigation and an in-page lightbox");
+assert(sources.labCss.includes(".theme-image-gallery { display: grid; grid-template-columns: repeat(2") && sources.labCss.includes(".theme-image-slot__preview") && sources.labCss.includes("aspect-ratio"), "Theme Lab: image gallery uses compact responsive thumbnails");
+assert(sources.labRuntime.includes("openThemeImageLightbox") && sources.labRuntime.includes("stepThemeImageLightbox") && sources.labRuntime.includes("showModal"), "Theme Lab: image lightbox opens, steps and closes interactively");
 
 assert(catalog.scenes.length === 8, "UI Inventory: declares 8 product domains");
 catalog.scenes.forEach((scene) => {
