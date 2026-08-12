@@ -45,9 +45,19 @@ import type {
 import { composerTargetBlockId } from '@/core/composer';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { ModelSelection } from '@/core/types/chat-studio';
-import { Button, IconButton } from '@/ui/components/primitives';
-import { ChatStudioStringsProvider } from '@/ui/view/chat-view/chatStudioStringsContext';
-import { ComposerModelSelector } from '@/ui/view/chat-view/components/composer/ComposerModelSelector';
+import {
+	Button,
+	IconButton,
+	Popover,
+	PopoverContent,
+	PopoverItem,
+	PopoverTrigger,
+} from '@/ui/components/primitives';
+import {
+	ChatStudioStringsProvider,
+	useChatStudioStrings,
+} from '@/ui/view/chat-view/chatStudioStringsContext';
+import { buildProfileModelItems } from '@/ui/component/model-picker/modelPickerData';
 import { useComposerChrome } from '../chrome/ComposerChromeContext';
 import { BriefView } from './BriefView';
 import { RunReceiptCard } from './RunReceiptCard';
@@ -72,15 +82,17 @@ export {
 export function CopilotView(): React.ReactElement {
 	const { runtime } = useSidecar();
 	const projection = useSessionProjection(runtime);
-	if (projection.stage === 'session') {
-		return (
-			<ChatStudioStringsProvider>
-				<SessionView />
-			</ChatStudioStringsProvider>
-		);
-	}
-	if (projection.stage === 'review') return <ReviewView />;
+	if (projection.surface === 'talk') return <TalkView />;
 	return <BriefView />;
+}
+
+/** The real Copilot conversation, separate from proactive Suggestions. */
+export function TalkView(): React.ReactElement {
+	return (
+		<ChatStudioStringsProvider>
+			<SessionView />
+		</ChatStudioStringsProvider>
+	);
 }
 
 // ── session ─────────────────────────────────────────────────────────────────
@@ -264,9 +276,6 @@ function SessionView(): React.ReactElement {
 	return (
 		<div className="pk-session" data-testid="pk-session">
 			<div className="pk-session-head">
-				<IconButton className="pk-back-btn" label={s.back} onClick={() => runtime.session.backToBrief()}>
-					<ArrowLeft size={14} />
-				</IconButton>
 				<span className="pk-session-title">{projection.sessionTitle ?? s.tabCopilot}</span>
 			</div>
 			<div className="pk-session-thread">
@@ -379,7 +388,7 @@ function SessionView(): React.ReactElement {
 					submitDisabled={!selectedCapability}
 					autoFocus
 					trailingControls={(
-						<ComposerModelSelector
+						<CopilotModelSelector
 							selection={modelSelection}
 							onSelect={setModelSelection}
 							profiles={copilotProfiles}
@@ -388,6 +397,84 @@ function SessionView(): React.ReactElement {
 				/>
 			</div>
 		</div>
+	);
+}
+
+function CopilotModelSelector({
+	selection,
+	onSelect,
+	profiles,
+}: {
+	selection: ModelSelection;
+	onSelect: (selection: ModelSelection) => void;
+	profiles: readonly import('@/core/profiles/types').Profile[];
+}): React.ReactElement {
+	const strings = useChatStudioStrings();
+	const [open, setOpen] = React.useState(false);
+	const items = React.useMemo(() => buildProfileModelItems(profiles), [profiles]);
+	const selected = selection.mode === 'fixed'
+		? items.find((item) => item.profileId === selection.profileId && item.modelId === selection.modelId)
+		: null;
+	const label = selected
+		? `${selected.profileName} · ${selected.displayName ?? selected.modelId}`
+		: strings.composer.modelAutoLabel;
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="pk-session-model-trigger"
+					aria-label={strings.composer.modelAutoLabel}
+				>
+					<Sparkles size={13} aria-hidden />
+					<span>{label}</span>
+					<ChevronDown size={13} aria-hidden />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent
+				align="end"
+				side="top"
+				sideOffset={8}
+				className="pk-session-model-popover"
+			>
+				<PopoverItem
+					className="pk-session-model-row"
+					data-selected={selection.mode === 'auto' ? 'true' : undefined}
+					onClick={() => {
+						onSelect({ mode: 'auto' });
+						setOpen(false);
+					}}
+				>
+					<Sparkles aria-hidden />
+					<span>{strings.composer.modelAutoLabel}</span>
+					{selection.mode === 'auto' ? <Check aria-hidden /> : null}
+				</PopoverItem>
+				{items.map((item) => {
+					const isSelected = selection.mode === 'fixed'
+						&& selection.profileId === item.profileId
+						&& selection.modelId === item.modelId;
+					return (
+						<PopoverItem
+							key={`${item.profileId}:${item.modelId}`}
+							className="pk-session-model-row"
+							data-selected={isSelected ? 'true' : undefined}
+							onClick={() => {
+								onSelect({ mode: 'fixed', profileId: item.profileId, modelId: item.modelId });
+								setOpen(false);
+							}}
+						>
+							<span className="pk-session-model-row__mark">{item.profileName.slice(0, 1)}</span>
+							<span>
+								<strong>{item.displayName ?? item.modelId}</strong>
+								<small>{item.profileName}</small>
+							</span>
+							{isSelected ? <Check aria-hidden /> : null}
+						</PopoverItem>
+					);
+				})}
+			</PopoverContent>
+		</Popover>
 	);
 }
 

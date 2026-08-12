@@ -2,10 +2,9 @@ import * as React from 'react';
 import {
 	ArrowLeft,
 	ArrowRight,
-	Layers3,
-	Maximize2,
+	ChevronsLeftRight,
+	ChevronsRightLeft,
 	MessageSquare,
-	Minimize2,
 	Redo2,
 	Sparkles,
 	Undo2,
@@ -14,13 +13,17 @@ import type {
 	ComposerWorkspaceNavigationPort,
 	ComposerWorkspaceNavigationSnapshot,
 	ComposerContentWidth,
+	ComposerCandidate,
+	ComposerCandidateRuntimePort,
 } from '@/core/composer';
+import type { ComposerWorkspaceIntelligenceRuntime } from '@/service/composer';
 import { Button, Chip, IconButton } from '@/ui/components/primitives';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { DisplayStateSwitch, type ComposerDisplayState } from './DisplayStateSwitch';
 import { useComposerChrome } from './ComposerChromeContext';
 import { useHubProjection } from './useHubProjection';
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig } from '../sidecar/sidecarConfig';
+import { ComposerReviewNavigation } from './ComposerReviewNavigation';
 import {
 	PEAK_CONTROL_KEY_TIP_KEYS,
 	PEAK_KEYBOARD_ZONE_LABELS,
@@ -52,9 +55,13 @@ export function UndoRedoBar({
 	onOpenNativeMarkdown,
 	contentWidth,
 	onContentWidth,
-	reviewCandidateCount = 0,
-	reviewAll = false,
-	onReviewAll,
+	reviewCandidates = [],
+	candidateRuntime,
+	workspaceIntelligence,
+	documentId,
+	documentPath,
+	onLocateReviewCandidate,
+	onOpenReviewDocument,
 	intelligenceTriggerRef,
 	commentTriggerRef,
 }: {
@@ -71,9 +78,13 @@ export function UndoRedoBar({
 	onOpenNativeMarkdown?: () => void;
 	contentWidth: ComposerContentWidth;
 	onContentWidth: (width: ComposerContentWidth) => void;
-	reviewCandidateCount?: number;
-	reviewAll?: boolean;
-	onReviewAll?: (open: boolean) => void;
+	reviewCandidates?: readonly ComposerCandidate[];
+	candidateRuntime?: ComposerCandidateRuntimePort;
+	workspaceIntelligence?: ComposerWorkspaceIntelligenceRuntime;
+	documentId?: string;
+	documentPath?: string;
+	onLocateReviewCandidate?: (candidate: ComposerCandidate) => void;
+	onOpenReviewDocument?: (path: string) => void;
 	intelligenceTriggerRef?: React.Ref<HTMLButtonElement>;
 	commentTriggerRef?: React.Ref<HTMLButtonElement>;
 }): React.ReactElement {
@@ -188,24 +199,18 @@ export function UndoRedoBar({
 				title={contentWidthAction}
 				onClick={() => onContentWidth(nextContentWidth)}
 			>
-				{contentWidth === 'wide' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-				<span>{nextContentWidth === 'wide' ? contentWidthStrings.wide : contentWidthStrings.readable}</span>
+				{contentWidth === 'wide' ? <ChevronsRightLeft size={15} /> : <ChevronsLeftRight size={15} />}
 			</Button>
-			{reviewCandidateCount >= 2 && onReviewAll ? (
-				<Button
-					variant={reviewAll ? 'primary' : 'ghost'}
-					size="sm"
-					className="pk-composer-review-all"
-					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.reviewAll}
-					data-peak-keytip-label={config.chrome.displayStates.reviewAll.replace('{count}', String(reviewCandidateCount))}
-					aria-pressed={reviewAll}
-					onClick={() => onReviewAll(!reviewAll)}
-				>
-					<Layers3 size={14} />
-					<span>
-						{config.chrome.displayStates.reviewAll.replace('{count}', String(reviewCandidateCount))}
-					</span>
-				</Button>
+			{documentId && documentPath && onLocateReviewCandidate ? (
+				<ComposerReviewNavigation
+					candidates={reviewCandidates}
+					candidateRuntime={candidateRuntime}
+					workspaceRuntime={workspaceIntelligence}
+					documentId={documentId}
+					documentPath={documentPath}
+					onLocateCandidate={onLocateReviewCandidate}
+					onOpenDocument={onOpenReviewDocument}
+				/>
 			) : null}
 			<span className="pk-composer-controlbar__spacer" />
 			{comments && (

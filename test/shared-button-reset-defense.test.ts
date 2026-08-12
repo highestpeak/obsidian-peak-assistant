@@ -151,8 +151,32 @@ assert.match(
 
 assert.match(
 	composerCss,
-	/\.peak-composer-root \.pk-composer-content-width-toggle\s*\{[\s\S]*?width:\s*auto !important;[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*0 7px !important;/,
-	'Composer content-width control must retain its native-sized hit target under the Obsidian button reset',
+	/\.peak-composer-root \.pk-composer-content-width-toggle\s*\{[\s\S]*?width:\s*28px !important;[\s\S]*?min-width:\s*28px !important;[\s\S]*?max-width:\s*28px !important;[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*0 !important;/,
+	'Composer content-width icon must retain its square hit target under the Obsidian button reset',
+);
+
+assert.match(
+	composerCss,
+	/\.peak-composer-root \.pk-composer-review-control\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*30px !important;[\s\S]*?min-width:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-width:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 !important;/,
+	'Composer review navigation arrows must keep a comfortable 30px target',
+);
+
+assert.match(
+	composerSidecarCss,
+	/\.peak-design-root \.pk-sidecar-task-new\s*\{[\s\S]*?width:\s*28px !important;[\s\S]*?height:\s*28px !important;[\s\S]*?min-width:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-width:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*0 !important;/,
+	'Composer task-session add control must survive the Obsidian reset',
+);
+
+assert.match(
+	composerSidecarCss,
+	/\.pk-sidecar-task-tab__close\s*\{[\s\S]*?width:\s*18px !important;[\s\S]*?height:\s*18px !important;[\s\S]*?min-width:\s*18px !important;[\s\S]*?min-height:\s*18px !important;[\s\S]*?max-width:\s*18px !important;[\s\S]*?max-height:\s*18px !important;[\s\S]*?padding:\s*0 !important;/,
+	'Composer task-session close control must survive the Obsidian reset',
+);
+
+assert.match(
+	composerSidecarCss,
+	/\.peak-design-root \.pk-session-model-trigger\s*\{[\s\S]*?width:\s*auto !important;[\s\S]*?max-width:\s*176px !important;[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*0 7px !important;/,
+	'Composer Copilot model trigger must survive the Obsidian reset',
 );
 
 assert.match(

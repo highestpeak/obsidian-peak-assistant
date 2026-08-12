@@ -49,7 +49,7 @@ function snapshot(revision: string): ComposerContextSnapshot {
 // ── (1) top-surface switch is projection-only ───────────────────────────────────
 {
 	const m = new CopilotSessionMachine();
-	check('initial surface copilot', m.projection().surface === 'copilot');
+	check('initial surface suggestions', m.projection().surface === 'suggestions');
 	check('initial stage brief', m.projection().stage === 'brief');
 	check('initial run idle', m.projection().runStatus === 'idle');
 	m.openSession('润色引言');
@@ -57,7 +57,7 @@ function snapshot(revision: string): ComposerContextSnapshot {
 	check('surface switched', m.projection().surface === 'history');
 	check('stage preserved across surface switch', m.projection().stage === 'session');
 	check('title preserved', m.projection().sessionTitle === '润色引言');
-	m.selectSurface('copilot');
+	m.selectSurface('suggestions');
 }
 
 // ── (2)/(3) lifecycle + frozen run context ──────────────────────────────────────
@@ -137,7 +137,7 @@ function snapshot(revision: string): ComposerContextSnapshot {
 	// review is transient — close returns to the originating session (not History).
 	m.closeReview();
 	check('closeReview → session', m.projection().stage === 'session');
-	check('closeReview keeps copilot surface', m.projection().surface === 'copilot');
+	check('closeReview keeps talk surface', m.projection().surface === 'talk');
 
 	// a second send freezes fresh (different runId + context).
 	const frozen2 = m.send({ snapshot: snapshot('r2'), targetQuote: 'second' });

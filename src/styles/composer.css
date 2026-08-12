@@ -2319,8 +2319,7 @@
 	background: var(--pk-surface);
 	box-shadow: none;
 	backdrop-filter: none;
-	overflow-x: auto;
-	overflow-y: hidden;
+	overflow: visible;
 	scrollbar-width: none;
 }
 .peak-composer-root .pk-composer-controlbar::-webkit-scrollbar { display: none; }
@@ -2362,8 +2361,7 @@
 }
 .peak-composer-root .pk-composer-comment-toggle,
 .peak-composer-root .pk-composer-intelligence-toggle,
-.peak-composer-root .pk-composer-content-width-toggle,
-.peak-composer-root .pk-composer-review-all {
+.peak-composer-root .pk-composer-content-width-toggle {
 	flex: none;
 	min-height: 28px !important;
 	height: 28px !important;
@@ -2372,18 +2370,17 @@
 	border-radius: var(--pk-radius-full) !important;
 }
 .peak-composer-root .pk-composer-content-width-toggle {
-	width: auto !important;
+	width: 28px !important;
+	min-width: 28px !important;
+	max-width: 28px !important;
 	height: 28px !important;
 	min-height: 28px !important;
 	max-height: 28px !important;
-	padding: 0 7px !important;
+	padding: 0 !important;
 	white-space: nowrap;
 }
 .peak-composer-root .pk-composer-display-switch {
 	flex: none;
-}
-.peak-composer-root .pk-composer-review-all {
-	white-space: nowrap;
 }
 .peak-composer-root :is(.pk-composer-comment-toggle, .pk-composer-intelligence-toggle)[aria-pressed='true'] {
 	box-shadow: var(--pk-shadow-sm);
@@ -2412,6 +2409,261 @@
 .peak-composer-root .pk-undo-redo__btn:hover:not(:disabled) {
 	background: var(--pk-accent-tint);
 	color: var(--pk-accent-text);
+}
+
+/* ── task review navigation ───────────────────────────────────────────────── */
+.peak-composer-root .pk-composer-review-navigation {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	max-width: calc(100% - 500px);
+	transform: translate(-50%, -50%);
+	white-space: nowrap;
+}
+.peak-composer-root .pk-composer-review-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	flex: none;
+}
+.peak-composer-root .pk-composer-review-control {
+	width: 30px !important;
+	height: 30px !important;
+	min-width: 30px !important;
+	min-height: 30px !important;
+	max-width: 30px !important;
+	max-height: 30px !important;
+	padding: 0 !important;
+	border-radius: var(--pk-radius-md) !important;
+	color: var(--pk-text-secondary) !important;
+}
+.peak-composer-root .pk-composer-review-control:hover:not(:disabled),
+.peak-composer-root .pk-composer-review-decision:hover:not(:disabled),
+.peak-composer-root .pk-composer-task-documents-trigger:hover:not(:disabled) {
+	background: var(--pk-surface-sunken) !important;
+	color: var(--pk-text-primary) !important;
+}
+.peak-composer-root .pk-composer-review-index {
+	display: inline-flex;
+	align-items: baseline;
+	justify-content: center;
+	gap: 3px;
+	min-width: 36px;
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-xs);
+	font-weight: 680;
+	font-variant-numeric: tabular-nums;
+}
+.peak-composer-root .pk-composer-review-index i {
+	color: var(--pk-text-tertiary);
+	font-style: normal;
+	font-weight: 450;
+}
+.peak-composer-root .pk-composer-review-decisions {
+	gap: 3px;
+}
+.peak-composer-root .pk-composer-review-decision {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	width: auto !important;
+	height: 30px !important;
+	min-height: 30px !important;
+	max-height: 30px !important;
+	padding: 0 8px !important;
+	border-radius: var(--pk-radius-md) !important;
+	color: var(--pk-text-secondary) !important;
+	font-size: var(--pk-text-xs) !important;
+}
+.peak-composer-root .pk-composer-review-decision--accept {
+	color: var(--pk-accent-text) !important;
+}
+.peak-composer-root .pk-composer-task-documents-trigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	width: auto !important;
+	height: 30px !important;
+	min-height: 30px !important;
+	max-height: 30px !important;
+	padding: 0 8px !important;
+	border-radius: var(--pk-radius-md) !important;
+	color: var(--pk-text-secondary) !important;
+	font-size: var(--pk-text-xs) !important;
+}
+.peak-composer-root .pk-composer-task-documents-trigger strong {
+	color: var(--pk-accent-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.peak-design-root .pk-composer-task-documents-popover {
+	width: min(500px, calc(100vw - 24px));
+	max-height: min(560px, calc(100vh - 80px));
+	padding: 8px !important;
+	overflow-y: auto;
+	border-radius: var(--pk-radius-lg) !important;
+	box-shadow: var(--pk-shadow-modal) !important;
+	animation: pk-task-documents-enter 140ms ease-out;
+}
+.pk-composer-task-documents-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 32px;
+	padding: 0 6px 6px;
+	border-bottom: 1px solid var(--pk-border-soft);
+	font-size: var(--pk-text-xs);
+}
+.pk-composer-task-documents-head > span {
+	color: var(--pk-text-primary);
+	font-weight: 680;
+}
+.pk-composer-task-documents-head > strong {
+	color: var(--pk-accent-text);
+	font-weight: 650;
+}
+.pk-composer-task-documents-section {
+	display: block;
+	margin: 7px 4px 3px;
+	padding-top: 7px;
+	border-top: 1px solid var(--pk-border-soft);
+	color: var(--pk-text-tertiary);
+	font-size: 10px;
+	font-weight: 620;
+	letter-spacing: .02em;
+}
+.peak-design-root .pk-composer-task-document-row {
+	display: grid;
+	grid-template-columns: 16px minmax(0, 1fr) 82px;
+	align-items: center;
+	gap: 7px;
+	width: 100%;
+	min-height: 34px;
+	padding: 4px 6px;
+	border-radius: var(--pk-radius-md);
+	font-size: var(--pk-text-xs);
+}
+.peak-design-root .pk-composer-task-document-row--current {
+	background: var(--pk-accent-tint);
+	box-shadow: inset 2px 0 0 var(--pk-accent);
+}
+.peak-design-root .pk-composer-task-document-row--created {
+	color: var(--pk-success);
+	background: var(--pk-success-bg);
+}
+.peak-design-root .pk-composer-task-document-row--deleted .pk-composer-task-document-row__name {
+	color: var(--pk-error-text);
+	text-decoration: line-through;
+}
+.pk-composer-task-document-row__name {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.pk-composer-task-document-row__name small {
+	padding: 1px 4px;
+	border-radius: var(--pk-radius-sm);
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent-text);
+	font-size: 9px;
+	text-decoration: none;
+}
+.pk-composer-task-document-row__stats {
+	display: grid;
+	grid-template-columns: 38px 38px;
+	justify-content: end;
+	gap: 3px;
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+}
+.pk-composer-task-document-row__stats b {
+	color: var(--pk-success);
+}
+.pk-composer-task-document-row__stats i {
+	color: var(--pk-error-text);
+	font-style: normal;
+}
+.pk-composer-task-document-row__stats [aria-hidden='true'] {
+	visibility: hidden;
+}
+.pk-composer-task-documents-empty {
+	display: block;
+	padding: 12px 7px;
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+}
+.peak-design-root .pk-composer-task-documents-add {
+	width: 100%;
+	margin-top: 6px;
+	border-top: 1px solid var(--pk-border-soft);
+	border-radius: 0;
+	color: var(--pk-accent-text);
+}
+@keyframes pk-task-documents-enter {
+	from { opacity: 0; transform: translateY(-4px) scale(.985); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@container composer-main (max-width: 1100px) {
+	.peak-composer-root .pk-composer-comment-toggle > span:not(.pk-composer-comment-count),
+	.peak-composer-root .pk-composer-intelligence-toggle > span {
+		display: none;
+	}
+	.peak-composer-root .pk-composer-comment-toggle,
+	.peak-composer-root .pk-composer-intelligence-toggle {
+		position: relative;
+		justify-content: center;
+		width: 28px !important;
+		min-width: 28px !important;
+		max-width: 28px !important;
+		padding: 0 !important;
+	}
+	.peak-composer-root .pk-composer-review-navigation {
+		gap: 7px;
+		max-width: calc(100% - 360px);
+	}
+}
+@container composer-main (max-width: 860px) {
+	.peak-composer-root .pk-composer-review-navigation {
+		gap: 5px;
+		max-width: calc(100% - 310px);
+	}
+	.peak-composer-root .pk-composer-review-decision {
+		width: 30px !important;
+		min-width: 30px !important;
+		max-width: 30px !important;
+		padding: 0 !important;
+	}
+	.peak-composer-root .pk-composer-review-decision > span,
+	.peak-composer-root .pk-composer-task-documents-trigger > span {
+		display: none;
+	}
+}
+@container composer-main (max-width: 700px) {
+	.peak-composer-root .pk-composer-controlbar {
+		gap: 4px;
+		padding-inline: 10px;
+	}
+	.peak-composer-root .pk-composer-review-navigation {
+		position: static;
+		max-width: none;
+		margin-left: auto;
+		transform: none;
+	}
+	.peak-composer-root .pk-composer-controlbar__spacer {
+		display: none;
+	}
 }
 
 /* Properties belong to the document hierarchy, not to a floating card. Keep
@@ -2956,6 +3208,7 @@
 /* ── reduced motion ────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
 	.peak-composer-root .pk-composer-rail,
+	.peak-design-root .pk-composer-task-documents-popover,
 	.peak-composer-root .pk-block-action-row,
 	.peak-composer-root .pk-block-action-row__options,
 	.peak-composer-root .pk-block-action-row__instruction-shell,

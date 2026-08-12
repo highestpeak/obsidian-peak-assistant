@@ -1,16 +1,10 @@
 import * as React from 'react';
 import {
-	Check,
-	ChevronDown,
-	FileText,
-	Focus,
 	History,
 	Layers3,
 	MessageSquare,
-	Pin,
 	Plus,
 	Sparkles,
-	Square,
 	X,
 } from 'lucide-react';
 import type {
@@ -31,10 +25,6 @@ import type {
 import {
 	Button,
 	IconButton,
-	Popover,
-	PopoverContent,
-	PopoverItem,
-	PopoverTrigger,
 } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import {
@@ -48,7 +38,8 @@ import {
 	type SidecarRelatedFocus,
 } from './SidecarContext';
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from './sidecarConfig';
-import { CopilotView } from './CopilotView';
+import { TalkView } from './CopilotView';
+import { BriefView } from './BriefView';
 import { SensingControl } from './BriefView';
 import {
 	composerHistoryActivityLabels,
@@ -65,8 +56,8 @@ export type SidecarMode = 'desktop' | 'drawer';
 /**
  * Peak Composer — Intelligence Sidecar shell (WP9, handoff §12.1 / §12.6).
  *
- * Top level is only `Copilot | History` — Ambient is projected into the Copilot
- * brief, never a third tab (§12.1). Wide viewport ⇒ a stable right column; below
+ * The task strip owns explicit task sessions; the second row switches the
+ * active task between Suggestions, Talk and History. Wide viewport ⇒ a stable right column; below
  * the configured breakpoint ⇒ a fixed right drawer that slides fully in/out of
  * the viewport, restores on close/reopen and never causes horizontal overflow
  * (§12.6). All width/window queries use the container's ownerDocument /
@@ -365,26 +356,12 @@ function SidecarShell({
 	});
 	return (
 		<div className="pk-sidecar-shell peak-design-root">
-			<div className="pk-sidecar-header" data-chrome="true">
-				<div className="pk-sidecar-brand">
-					<Sparkles size={18} className="pk-sidecar-spark" aria-hidden />
-					<div className="pk-sidecar-brand-text">
-						<span className="pk-sidecar-title">{s.title}</span>
-						<span className="pk-sidecar-subtitle">{s.followingDoc}</span>
-					</div>
-				</div>
-				{closable && (
-					<IconButton
-						className="pk-sidecar-close"
-						label={s.close}
-						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.close}
-						data-peak-keytip-label={s.close}
-						onClick={onClose}
-					>
-						<X size={15} />
-					</IconButton>
-				)}
-			</div>
+			<TaskTabs
+				runtime={workspaceRuntime}
+				documentId={documentId}
+				config={config}
+				onClose={closable ? onClose : undefined}
+			/>
 			<div
 				ref={tabsRef}
 				className="pk-sidecar-tabs"
@@ -394,11 +371,24 @@ function SidecarShell({
 				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-sidecar-tabs']}
 			>
 				<SidecarTab
-					active={surface === 'copilot'}
+					active={surface === 'suggestions'}
+					icon={<Sparkles size={13} />}
+					label={s.tabSuggestions}
+					onSelect={() => runtime.session.selectSurface('suggestions')}
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.suggestions}
+				/>
+				<SidecarTab
+					active={surface === 'talk'}
 					icon={<MessageSquare size={13} />}
-					label={s.tabCopilot}
-					onSelect={() => runtime.session.selectSurface('copilot')}
-					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.copilot}
+					label={s.tabTalk}
+					onSelect={() => {
+						if (runtime.session.projection().stage === 'brief') {
+							runtime.session.openSession(s.tabCopilot);
+							return;
+						}
+						runtime.session.selectSurface('talk');
+					}}
+					keyTipKey={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.talk}
 				/>
 				<SidecarTab
 					active={surface === 'history'}
@@ -415,17 +405,88 @@ function SidecarShell({
 				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-sidecar-content']}
 			>
 				<div className="pk-sidecar-body-content">
-					{surface === 'copilot' && workspaceRuntime && documentId ? (
-						<WorkspaceScopeMenu
+					{surface === 'suggestions' && workspaceRuntime && documentId ? (
+						<TaskContextBar
 							runtime={workspaceRuntime}
 							intelligenceRuntime={runtime}
 							documentId={documentId}
 							config={config}
 						/>
 					) : null}
-					{surface === 'copilot' ? <CopilotView /> : <HistoryView />}
+					{surface === 'suggestions' ? <BriefView /> : null}
+					{surface === 'talk' ? <TalkView /> : null}
+					{surface === 'history' ? <HistoryView /> : null}
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function TaskTabs({
+	runtime,
+	documentId,
+	config,
+	onClose,
+}: {
+	runtime?: ComposerWorkspaceIntelligenceRuntime;
+	documentId?: string;
+	config: SidecarConfig;
+	onClose?: () => void;
+}): React.ReactElement {
+	const projection = useWorkspaceProjection(runtime);
+	const tasks = projection?.tasks ?? [];
+	const activeTaskId = projection?.activeTaskId ?? null;
+	return (
+		<div className="pk-sidecar-task-header" data-chrome="true">
+			<div className="pk-sidecar-task-tabs" role="tablist" aria-label={config.strings.activeTask}>
+				{tasks.map((task) => (
+					<div
+						key={task.taskId}
+						className={cn(
+							'pk-sidecar-task-tab-shell',
+							task.taskId === activeTaskId && 'pk-sidecar-task-tab-shell--active',
+						)}
+					>
+						<Button
+							variant="ghost"
+							size="sm"
+							role="tab"
+							aria-selected={task.taskId === activeTaskId}
+							className="pk-sidecar-task-tab"
+							onClick={() => runtime?.activateTaskSession(task.taskId)}
+						>
+							<span className="pk-sidecar-task-tab__status" aria-hidden />
+							<Layers3 size={13} aria-hidden />
+							<span className="pk-sidecar-task-tab__title">{task.title}</span>
+						</Button>
+						<IconButton
+							className="pk-sidecar-task-tab__close"
+							label={`${config.strings.close}: ${task.title}`}
+							onClick={() => runtime?.closeTaskSession(task.taskId)}
+						>
+							<X size={11} />
+						</IconButton>
+					</div>
+				))}
+			</div>
+			<IconButton
+				className="pk-sidecar-task-new"
+				label={config.strings.newTask}
+				onClick={() => runtime?.createTaskSession(config.strings.newTask, documentId ? [documentId] : [])}
+			>
+				<Plus size={15} />
+			</IconButton>
+			{onClose ? (
+				<IconButton
+					className="pk-sidecar-close"
+					label={config.strings.close}
+					data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.close}
+					data-peak-keytip-label={config.strings.close}
+					onClick={onClose}
+				>
+					<X size={15} />
+				</IconButton>
+			) : null}
 		</div>
 	);
 }
@@ -451,7 +512,7 @@ function useHistoryTransactionProjection(
 	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-function WorkspaceScopeMenu({
+function TaskContextBar({
 	runtime,
 	intelligenceRuntime,
 	documentId,
@@ -462,91 +523,28 @@ function WorkspaceScopeMenu({
 	documentId: string;
 	config: SidecarConfig;
 }): React.ReactElement {
-	const [projection, setProjection] = React.useState(() => runtime.projection());
-	const [open, setOpen] = React.useState(false);
-	React.useEffect(() => runtime.subscribe(setProjection), [runtime]);
+	const projection = useWorkspaceProjection(runtime);
 	const brief = useBriefProjection(intelligenceRuntime);
-	const scopeKind = projection.scope?.kind ?? 'document';
 	const s = config.strings;
-	const scopeOptions = [
-		{ kind: 'document' as const, label: s.scopeDocument, icon: FileText },
-		{ kind: 'work-segment' as const, label: s.scopeWorkSegment, icon: Layers3 },
-		{ kind: 'pinned' as const, label: s.scopePinned, icon: Pin },
-	];
-	const activeLabel =
-		scopeOptions.find((option) => option.kind === scopeKind)?.label
-		?? s.scopeDocument;
-	const selectScope = (kind: 'document' | 'work-segment' | 'pinned'): void => {
-		if (kind === 'document') runtime.setDocumentScope(documentId);
-		else if (kind === 'work-segment') runtime.setWorkSegmentScope();
-		else runtime.pinDocuments([documentId]);
-		setOpen(false);
-	};
+	const activeTask = projection?.tasks.find((task) => task.taskId === projection.activeTaskId);
+	const documentCount = activeTask?.documentIds.length ?? 0;
+	const includesCurrent = activeTask?.documentIds.includes(documentId) ?? false;
 	return (
 		<div className="pk-sidecar-context-bar" data-chrome="true">
-			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger asChild>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="pk-sidecar-scope-trigger"
-						data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.sidecar.scope}
-						data-peak-keytip-label={`${s.scopeLabel}: ${activeLabel}`}
-						aria-label={`${s.scopeLabel}: ${activeLabel}`}
-						aria-haspopup="menu"
-						aria-expanded={open}
-					>
-						<Focus size={13} aria-hidden />
-						<span className="pk-sidecar-scope-trigger__prefix">{s.scopeTrigger}</span>
-						<span className="pk-sidecar-scope-trigger__value">{activeLabel}</span>
-						<ChevronDown size={12} aria-hidden />
-					</Button>
-				</PopoverTrigger>
-				<PopoverContent
-					className="pk-sidecar-scope-menu"
-					align="start"
-					sideOffset={5}
-					role="menu"
-					aria-label={s.scopeLabel}
-				>
-					<span className="pk-sidecar-scope-menu__title">{s.scopeLabel}</span>
-					{scopeOptions.map(({ kind, label, icon: Icon }) => (
-						<PopoverItem
-							key={kind}
-							role="menuitemradio"
-							aria-checked={scopeKind === kind}
-							onClick={() => selectScope(kind)}
-						>
-							<Icon aria-hidden />
-							<span>{label}</span>
-							{scopeKind === kind ? <Check className="pk-sidecar-scope-check" aria-hidden /> : null}
-						</PopoverItem>
-					))}
-					<div className="pk-sidecar-scope-menu__separator" role="separator" />
-					<PopoverItem
-						onClick={() => {
-							const followsWorkSegment = projection.scope?.kind === 'work-segment';
-							runtime.startNewSegment();
-							if (followsWorkSegment) runtime.setWorkSegmentScope();
-							setOpen(false);
-						}}
-					>
-						<Plus aria-hidden />
-						<span>{s.startNewWorkSegment}</span>
-					</PopoverItem>
-					{projection.activeSegment && !projection.activeSegment.endedAt ? (
-						<PopoverItem
-							onClick={() => {
-								runtime.endCurrentSegment();
-								setOpen(false);
-							}}
-						>
-							<Square aria-hidden />
-							<span>{s.endWorkSegment}</span>
-						</PopoverItem>
-					) : null}
-				</PopoverContent>
-			</Popover>
+			<Button
+				variant="ghost"
+				size="sm"
+				className="pk-sidecar-task-context"
+				aria-label={`${s.taskDocuments}: ${documentCount}`}
+				onClick={() => {
+					if (includesCurrent) return;
+					runtime.addDocumentToActiveTask(documentId);
+				}}
+			>
+				<Layers3 size={13} aria-hidden />
+				<strong>{documentCount}</strong>
+				<span>{includesCurrent ? s.activeTask : s.taskDocuments}</span>
+			</Button>
 			<SensingControl
 				runtime={intelligenceRuntime}
 				sensingMode={brief.sensingMode}

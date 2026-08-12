@@ -156,6 +156,8 @@ export interface ComposerRootProps {
 	scrollGuardGestureWindowMs?: number;
 	/** Host callback for opening links from the preview popover. */
 	onOpenLink?: (kind: 'vault' | 'external', target: string) => void;
+	/** Keep task-review file navigation in this Composer leaf. */
+	onOpenReviewDocument?: (path: string) => void;
 	/** Optional revalidate handler surfaced on the stale banner. */
 	onRevalidate?: () => void;
 	/**
@@ -207,6 +209,7 @@ export function ComposerRoot({
 	burstWindowMs,
 	scrollGuardGestureWindowMs,
 	onOpenLink,
+	onOpenReviewDocument,
 	onRevalidate,
 	intelligence: intelligenceProp,
 	intelligenceSource,
@@ -440,6 +443,7 @@ export function ComposerRoot({
 							onOpenNativeMarkdown={onOpenNativeMarkdown}
 							initialContentWidth={initialContentWidth}
 							onContentWidthChange={onContentWidthChange}
+							onOpenReviewDocument={onOpenReviewDocument}
 						/>
 					</div>
 					{intelligence && currentSnapshot && (
@@ -497,6 +501,7 @@ interface BodyProps {
 	onOpenNativeMarkdown?: () => void | Promise<void>;
 	initialContentWidth?: ComposerContentWidth;
 	onContentWidthChange?: (width: ComposerContentWidth) => void | Promise<void>;
+	onOpenReviewDocument?: (path: string) => void;
 	intelligenceTriggerRef?: React.Ref<HTMLButtonElement>;
 }
 
@@ -607,6 +612,7 @@ function ComposerDocument({
 	onOpenNativeMarkdown,
 	initialContentWidth = 'readable',
 	onContentWidthChange,
+	onOpenReviewDocument,
 	intelligenceTriggerRef,
 }: BodyProps): React.ReactElement {
 	const chrome = useComposerChrome();
@@ -641,7 +647,6 @@ function ComposerDocument({
 	const selectionSurfaceId = React.useId();
 	const [guard, setGuard] = React.useState<string | null>(null);
 	const [invokeErrors, setInvokeErrors] = React.useState<Record<string, string>>({});
-	const [reviewAll, setReviewAll] = React.useState(false);
 	const guardTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const setCommentSurfaceOpen = React.useCallback((open: boolean) => {
 		setCommentRailOpen(open);
@@ -932,10 +937,26 @@ function ComposerDocument({
 	const visibleBlocks = snapshot.blocks.filter((b) => !hidden.has(b.blockId));
 	const findings = useComposerFindings(intelligence);
 	const reviewCandidates = useDocumentCandidates(runtime.candidateRuntime);
-	React.useEffect(() => {
-		if (reviewCandidates.length >= 2) return;
-		setReviewAll(false);
-	}, [reviewCandidates.length]);
+	const locateReviewCandidate = React.useCallback((candidate: ComposerCandidate) => {
+		const candidateElement = Array.from(
+			containerRef.current?.querySelectorAll<HTMLElement>('[data-candidate-id]') ?? [],
+		).find((element) => element.dataset.candidateId === candidate.candidateId);
+		if (candidateElement?.tagName === 'BUTTON') candidateElement.click();
+		const ownerWindow = containerRef.current?.ownerDocument.defaultView;
+		ownerWindow?.requestAnimationFrame(() => {
+			const visibleCandidate = Array.from(
+				containerRef.current?.querySelectorAll<HTMLElement>('[data-candidate-id]') ?? [],
+			).find((element) =>
+				element.dataset.candidateId === candidate.candidateId
+				&& element.tagName !== 'BUTTON');
+			if (!visibleCandidate) return;
+			markScrollIntent(scrollerOf(containerRef.current));
+			visibleCandidate.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		});
+		const blockId = candidate.anchorBlockId ?? composerTargetBlockId(candidate.target);
+		if (!blockId) return;
+		locateAndFlashComposerBlock(containerRef.current, blockId);
+	}, []);
 
 	// INT-1: keep the edited block's React subtree (and its focused
 	// contenteditable DOM node) mounted through a burst commit — see
@@ -967,9 +988,13 @@ function ComposerDocument({
 							void onOpenNativeMarkdown();
 						}
 					: undefined}
-				reviewCandidateCount={reviewCandidates.length}
-				reviewAll={reviewAll}
-				onReviewAll={setReviewAll}
+				reviewCandidates={displayState === 'edit' ? reviewCandidates : []}
+				candidateRuntime={runtime.candidateRuntime}
+				workspaceIntelligence={runtime.workspaceIntelligence}
+				documentId={snapshot.documentId}
+				documentPath={snapshot.filePath}
+				onLocateReviewCandidate={locateReviewCandidate}
+				onOpenReviewDocument={onOpenReviewDocument}
 				intelligenceTriggerRef={intelligenceTriggerRef}
 				commentTriggerRef={commentTriggerRef}
 			/>
@@ -1020,12 +1045,12 @@ function ComposerDocument({
 							foldStore={foldStore}
 							editing={editing}
 							displayState={displayState}
-							reviewAll={reviewAll}
+							reviewAll={false}
 							invokeError={invokeErrors[b.blockId]}
 							findings={findings.filter((finding) => composerTargetBlockId(finding.target) === b.blockId)}
 							onAskFinding={(finding) => {
 								if (!intelligence) return;
-								intelligence.session.selectSurface('copilot');
+								intelligence.session.selectSurface('talk');
 								intelligence.session.openSession(finding.body?.title ?? finding.reason, []);
 								const blockId = composerTargetBlockId(finding.target);
 								if (!blockId) return;
@@ -1161,7 +1186,7 @@ function ComposerDocument({
 				}}
 				onAskCopilot={intelligence
 					? (comment) => {
-							intelligence.session.selectSurface('copilot');
+							intelligence.session.selectSurface('talk');
 							intelligence.session.openSession(
 								config.chrome.comment.copilotTaskTitle,
 								[],
@@ -2119,6 +2144,7 @@ function CollapsedCandidateList({
 				return (
 					<Button
 						key={candidate.candidateId}
+						data-candidate-id={candidate.candidateId}
 						variant="ghost"
 						size="sm"
 						className="pk-composer-candidate-collapsed"

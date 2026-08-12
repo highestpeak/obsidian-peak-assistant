@@ -45,6 +45,19 @@ async function main(): Promise<void> {
 	runtime.trackDocument('doc-a', 'A.md');
 	check('opening a document does not silently start a work segment', runtime.projection().activeSegment === null);
 	check('first document becomes the workspace scope', runtime.projection().scope?.kind === 'document');
+	const firstTaskId = runtime.projection().activeTaskId;
+	check('first document creates one explicit active task session', Boolean(firstTaskId));
+	check('default task contains only the opening document', runtime.projection().tasks[0]?.documentIds[0] === 'doc-a');
+	runtime.session.openSession('评测任务');
+	check('opening a conversation selects Talk inside the active task', runtime.session.projection().surface === 'talk');
+	const secondTask = runtime.createTaskSession('发布任务', ['doc-a']);
+	check('new task becomes the only active task', runtime.projection().activeTaskId === secondTask.taskId);
+	check('new task starts on Suggestions', runtime.session.projection().surface === 'suggestions');
+	runtime.session.openSession('发布任务对话');
+	runtime.activateTaskSession(firstTaskId!);
+	check('task switch restores the first independent conversation', runtime.session.projection().sessionTitle === '评测任务');
+	runtime.activateTaskSession(secondTask.taskId);
+	check('switching back restores the second independent conversation', runtime.session.projection().sessionTitle === '发布任务对话');
 
 	const candidate = {
 		candidateId: 'candidate-1',

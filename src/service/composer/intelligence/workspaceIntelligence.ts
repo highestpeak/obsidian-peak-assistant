@@ -6,6 +6,14 @@ import type {
 	ComposerTarget,
 	IntelligencePresentationOrigin,
 } from '@/core/composer';
+import {
+	CopilotSessionMachine,
+	type CopilotSessionPort,
+	type CopilotSessionStateSnapshot,
+	type FrozenRunContext,
+	type IntelligenceSessionProjection,
+	type RunReceipt,
+} from './runSession';
 
 export type ComposerIntelligenceScope =
 	| { kind: 'document'; documentId: string }
@@ -73,6 +81,18 @@ export interface ComposerWorkspaceIntelligenceProjection {
 	scope: ComposerIntelligenceScope | null;
 	runs: readonly FrozenComposerRunEnvelope[];
 	documents: Readonly<Record<string, string>>;
+	/** Explicit user-created task sessions; exactly one may be active. */
+	tasks: readonly ComposerTaskSession[];
+	activeTaskId: string | null;
+}
+
+export interface ComposerTaskSession {
+	taskId: string;
+	title: string;
+	documentIds: readonly string[];
+	createdAt: number;
+	updatedAt: number;
+	session: CopilotSessionStateSnapshot;
 }
 
 export type ComposerWorkspaceStateEvent =
@@ -81,7 +101,10 @@ export type ComposerWorkspaceStateEvent =
 	| { type: 'document-tracked'; at: number; documentId: string; filePath: string; segmentId?: string }
 	| { type: 'document-renamed'; at: number; documentId: string; filePath: string }
 	| { type: 'scope-changed'; at: number; scope: ComposerIntelligenceScope }
-	| { type: 'run-upserted'; at: number; run: FrozenComposerRunEnvelope };
+	| { type: 'run-upserted'; at: number; run: FrozenComposerRunEnvelope }
+	| { type: 'task-upserted'; at: number; task: ComposerTaskSession }
+	| { type: 'task-removed'; at: number; taskId: string }
+	| { type: 'active-task-changed'; at: number; taskId: string | null };
 
 export interface ComposerWorkspaceStatePersistencePort {
 	load(): Promise<readonly ComposerWorkspaceStateEvent[]>;
@@ -103,6 +126,8 @@ export function compactComposerWorkspaceStateEvents(
 	let scopeEvent: Extract<ComposerWorkspaceStateEvent, { type: 'scope-changed' }> | null = null;
 	const documents = new Map<string, { filePath: string; at: number }>();
 	const runs = new Map<string, Extract<ComposerWorkspaceStateEvent, { type: 'run-upserted' }>>();
+	const tasks = new Map<string, Extract<ComposerWorkspaceStateEvent, { type: 'task-upserted' }>>();
+	let activeTaskEvent: Extract<ComposerWorkspaceStateEvent, { type: 'active-task-changed' }> | null = null;
 
 	for (const event of events) {
 		if (event.type === 'segment-started') {
@@ -139,10 +164,22 @@ export function compactComposerWorkspaceStateEvents(
 			};
 			continue;
 		}
-		runs.set(event.run.runId, {
-			...event,
-			run: cloneRun(event.run),
-		});
+		if (event.type === 'run-upserted') {
+			runs.set(event.run.runId, {
+				...event,
+				run: cloneRun(event.run),
+			});
+			continue;
+		}
+		if (event.type === 'task-upserted') {
+			tasks.set(event.task.taskId, { ...event, task: cloneTask(event.task) });
+			continue;
+		}
+		if (event.type === 'task-removed') {
+			tasks.delete(event.taskId);
+			continue;
+		}
+		activeTaskEvent = { ...event };
 	}
 
 	const compacted: ComposerWorkspaceStateEvent[] = [];
@@ -169,6 +206,10 @@ export function compactComposerWorkspaceStateEvents(
 	for (const event of [...runs.values()].sort((left, right) => left.at - right.at)) {
 		compacted.push(event);
 	}
+	for (const event of [...tasks.values()].sort((left, right) => left.task.createdAt - right.task.createdAt)) {
+		compacted.push(event);
+	}
+	if (activeTaskEvent) compacted.push(activeTaskEvent);
 	if (activeSegment?.endedAt) {
 		compacted.push({
 			type: 'segment-ended',
@@ -196,6 +237,115 @@ function nextId(prefix: string): string {
 }
 
 /**
+ * Stable session object injected into every Composer document runtime. Its
+ * identity never changes, while its delegate follows the single active task.
+ * That keeps React subscriptions and the transaction/history bridge intact
+ * when the user switches task tabs.
+ */
+class TaskScopedCopilotSession implements CopilotSessionPort {
+	private active = new CopilotSessionMachine();
+	private offActive: (() => void) | null = null;
+	private readonly subscribers = new Set<(projection: IntelligenceSessionProjection) => void>();
+
+	constructor(private readonly onMutate: () => void) {
+		this.bind(this.active);
+	}
+
+	bind(machine: CopilotSessionMachine): void {
+		if (this.active === machine && this.offActive) return;
+		this.offActive?.();
+		this.active = machine;
+		this.offActive = machine.subscribe((projection) => {
+			for (const subscriber of this.subscribers) subscriber(projection);
+		});
+	}
+
+	subscribe(cb: (projection: IntelligenceSessionProjection) => void): () => void {
+		this.subscribers.add(cb);
+		cb(this.active.projection());
+		return () => this.subscribers.delete(cb);
+	}
+
+	projection(): IntelligenceSessionProjection {
+		return this.active.projection();
+	}
+
+	exportState(): CopilotSessionStateSnapshot {
+		return this.active.exportState();
+	}
+
+	restore(state: CopilotSessionStateSnapshot): void {
+		this.active.restore(state);
+		this.onMutate();
+	}
+
+	selectSurface(...args: Parameters<CopilotSessionMachine['selectSurface']>): void {
+		this.active.selectSurface(...args);
+		this.onMutate();
+	}
+
+	openSession(...args: Parameters<CopilotSessionMachine['openSession']>): void {
+		this.active.openSession(...args);
+		this.onMutate();
+	}
+
+	backToBrief(): void {
+		this.active.backToBrief();
+		this.onMutate();
+	}
+
+	send(...args: Parameters<CopilotSessionMachine['send']>): FrozenRunContext {
+		const result = this.active.send(...args);
+		this.onMutate();
+		return result;
+	}
+
+	frozenContext(runId: string): FrozenRunContext | undefined {
+		return this.active.frozenContext(runId);
+	}
+
+	markStreaming(runId: string): void {
+		this.active.markStreaming(runId);
+		this.onMutate();
+	}
+
+	markProposed(runId: string, receipt: Partial<RunReceipt>): void {
+		this.active.markProposed(runId, receipt);
+		this.onMutate();
+	}
+
+	markNoChange(runId: string, receipt?: Partial<RunReceipt>): void {
+		this.active.markNoChange(runId, receipt);
+		this.onMutate();
+	}
+
+	markError(runId: string, message: string): void {
+		this.active.markError(runId, message);
+		this.onMutate();
+	}
+
+	markCancelled(runId: string): void {
+		this.active.markCancelled(runId);
+		this.onMutate();
+	}
+
+	closeReview(): void {
+		this.active.closeReview();
+		this.onMutate();
+	}
+
+	linkAcceptedTransaction(runId: string, transactionId: string): void {
+		this.active.linkAcceptedTransaction(runId, transactionId);
+		this.onMutate();
+	}
+
+	linkExternalRun(externalRunId: string, sessionRunId: string): void {
+		this.active.linkExternalRun(externalRunId, sessionRunId);
+		this.onMutate();
+	}
+}
+
+/**
  * Workspace-lifetime Current Work State, scope and Frozen Run Registry.
  *
  * This is a normal app-composed object, not a module singleton. It is
@@ -208,6 +358,11 @@ export class ComposerWorkspaceIntelligenceRuntime {
 	private readonly runs = new Map<string, FrozenComposerRunEnvelope>();
 	private readonly pendingPresentationOrigins = new Map<string, IntelligencePresentationOrigin>();
 	private readonly documents = new Map<string, string>();
+	private readonly tasks = new Map<string, ComposerTaskSession>();
+	private readonly taskMachines = new Map<string, CopilotSessionMachine>();
+	private activeTaskId: string | null = null;
+	/** Stable task-scoped Copilot port shared by every document host. */
+	readonly session: CopilotSessionPort;
 	private readonly subscribers = new Set<(projection: ComposerWorkspaceIntelligenceProjection) => void>();
 	private hydratePromise: Promise<void> | null = null;
 	private hydrated: boolean;
@@ -216,6 +371,7 @@ export class ComposerWorkspaceIntelligenceRuntime {
 
 	constructor(private readonly persistence?: ComposerWorkspaceStatePersistencePort) {
 		this.hydrated = !persistence;
+		this.session = new TaskScopedCopilotSession(() => this.persistActiveTaskSession());
 	}
 
 	subscribe(cb: (projection: ComposerWorkspaceIntelligenceProjection) => void): () => void {
@@ -230,8 +386,12 @@ export class ComposerWorkspaceIntelligenceRuntime {
 				? { ...this.activeSegment, documentIds: [...this.activeSegment.documentIds] }
 				: null,
 			scope: cloneScope(this.scope),
-			runs: [...this.runs.values()].map(cloneRun),
+				runs: [...this.runs.values()].map(cloneRun),
 			documents: Object.fromEntries(this.documents),
+			tasks: [...this.tasks.values()]
+				.sort((left, right) => left.createdAt - right.createdAt)
+				.map(cloneTask),
+			activeTaskId: this.activeTaskId,
 		};
 	}
 
@@ -251,6 +411,9 @@ export class ComposerWorkspaceIntelligenceRuntime {
 			this.scope = null;
 			this.runs.clear();
 			this.documents.clear();
+			this.tasks.clear();
+			this.taskMachines.clear();
+			this.activeTaskId = null;
 			for (const event of events) this.applyEvent(event, false);
 			for (const event of liveEvents) this.applyEvent(event, false);
 			for (const [runId, run] of this.runs) {
@@ -264,6 +427,7 @@ export class ComposerWorkspaceIntelligenceRuntime {
 			this.replaying = false;
 			this.hydrated = true;
 			this.preHydrationEvents = [];
+			this.bindActiveTaskSession();
 			this.notify();
 		});
 		return this.hydratePromise;
@@ -295,6 +459,76 @@ export class ComposerWorkspaceIntelligenceRuntime {
 			});
 		}
 		if (!this.scope) this.setDocumentScope(documentId);
+		if (this.activeTaskId) return;
+		if (!this.hydrated) {
+			void this.hydrate().then(() => {
+				if (!this.activeTaskId) {
+					this.createTaskSession(taskTitleFromPath(filePath), [documentId]);
+				}
+			});
+			return;
+		}
+		this.createTaskSession(taskTitleFromPath(filePath), [documentId]);
+	}
+
+	createTaskSession(title = '新任务', documentIds: readonly string[] = []): ComposerTaskSession {
+		const at = Date.now();
+		const task: ComposerTaskSession = {
+			taskId: nextId('cmp-task'),
+			title: title.trim() || '新任务',
+			documentIds: [...new Set(documentIds.filter(Boolean))],
+			createdAt: at,
+			updatedAt: at,
+			session: new CopilotSessionMachine().exportState(),
+		};
+		this.applyAndPersist({ type: 'task-upserted', at, task });
+		this.applyAndPersist({ type: 'active-task-changed', at, taskId: task.taskId });
+		return cloneTask(task);
+	}
+
+	activateTaskSession(taskId: string): void {
+		if (!this.tasks.has(taskId) || this.activeTaskId === taskId) return;
+		this.applyAndPersist({ type: 'active-task-changed', at: Date.now(), taskId });
+	}
+
+	closeTaskSession(taskId: string): void {
+		if (!this.tasks.has(taskId)) return;
+		const wasActive = this.activeTaskId === taskId;
+		this.applyAndPersist({ type: 'task-removed', at: Date.now(), taskId });
+		if (!wasActive) return;
+		const fallback = [...this.tasks.values()].sort((left, right) => right.updatedAt - left.updatedAt)[0];
+		this.applyAndPersist({
+			type: 'active-task-changed',
+			at: Date.now(),
+			taskId: fallback?.taskId ?? null,
+		});
+	}
+
+	renameTaskSession(taskId: string, title: string): void {
+		const task = this.tasks.get(taskId);
+		const nextTitle = title.trim();
+		if (!task || !nextTitle || task.title === nextTitle) return;
+		this.upsertTask({ ...task, title: nextTitle, updatedAt: Date.now() });
+	}
+
+	addDocumentToActiveTask(documentId: string): void {
+		const task = this.activeTaskId ? this.tasks.get(this.activeTaskId) : undefined;
+		if (!task || task.documentIds.includes(documentId)) return;
+		this.upsertTask({
+			...task,
+			documentIds: [...task.documentIds, documentId],
+			updatedAt: Date.now(),
+		});
+	}
+
+	removeDocumentFromActiveTask(documentId: string): void {
+		const task = this.activeTaskId ? this.tasks.get(this.activeTaskId) : undefined;
+		if (!task || !task.documentIds.includes(documentId)) return;
+		this.upsertTask({
+			...task,
+			documentIds: task.documentIds.filter((id) => id !== documentId),
+			updatedAt: Date.now(),
+		});
 	}
 
 	renameDocument(documentId: string, filePath: string): void {
@@ -346,6 +580,7 @@ export class ComposerWorkspaceIntelligenceRuntime {
 	startRun(input: StartWorkspaceRunInput): FrozenComposerRunEnvelope {
 		const segment = this.ensureWorkSegment();
 		this.ensureDocumentInSegment(segment.segmentId, input.documentId, input.filePath);
+		this.addDocumentToActiveTask(input.documentId);
 		const scopeSnapshot =
 			cloneScope(this.scope)
 			?? { kind: 'document' as const, documentId: input.documentId };
@@ -583,6 +818,37 @@ export class ComposerWorkspaceIntelligenceRuntime {
 		this.applyAndPersist({ type: 'run-upserted', at: Date.now(), run });
 	}
 
+	private upsertTask(task: ComposerTaskSession): void {
+		this.applyAndPersist({ type: 'task-upserted', at: Date.now(), task });
+	}
+
+	private persistActiveTaskSession(): void {
+		if (this.replaying || !this.activeTaskId) return;
+		const task = this.tasks.get(this.activeTaskId);
+		if (!task) return;
+		this.upsertTask({
+			...task,
+			updatedAt: Date.now(),
+			session: this.session.exportState(),
+		});
+	}
+
+	private machineForTask(task: ComposerTaskSession): CopilotSessionMachine {
+		const existing = this.taskMachines.get(task.taskId);
+		if (existing) return existing;
+		const machine = new CopilotSessionMachine();
+		machine.restore(task.session);
+		this.taskMachines.set(task.taskId, machine);
+		return machine;
+	}
+
+	private bindActiveTaskSession(): void {
+		if (!(this.session instanceof TaskScopedCopilotSession)) return;
+		const task = this.activeTaskId ? this.tasks.get(this.activeTaskId) : undefined;
+		if (!task) return;
+		this.session.bind(this.machineForTask(task));
+	}
+
 	private applyAndPersist(event: ComposerWorkspaceStateEvent): void {
 		if (!this.hydrated) this.preHydrationEvents.push(event);
 		this.applyEvent(event, true);
@@ -610,8 +876,23 @@ export class ComposerWorkspaceIntelligenceRuntime {
 			this.documents.set(event.documentId, event.filePath);
 		} else if (event.type === 'scope-changed') {
 			this.scope = cloneScope(event.scope);
-		} else {
+		} else if (event.type === 'run-upserted') {
 			this.runs.set(event.run.runId, cloneRun(event.run));
+		} else if (event.type === 'task-upserted') {
+			this.tasks.set(event.task.taskId, cloneTask(event.task));
+			const machine = this.taskMachines.get(event.task.taskId);
+			if (machine && event.task.taskId !== this.activeTaskId) {
+				machine.restore(event.task.session);
+			}
+		} else if (event.type === 'task-removed') {
+			this.tasks.delete(event.taskId);
+			this.taskMachines.delete(event.taskId);
+			if (this.activeTaskId === event.taskId) this.activeTaskId = null;
+		} else {
+			this.activeTaskId = event.taskId && this.tasks.has(event.taskId)
+				? event.taskId
+				: null;
+			this.bindActiveTaskSession();
 		}
 		this.notify();
 		if (persist && this.persistence) void this.persistence.append(event);
@@ -642,6 +923,19 @@ function cloneRun(run: FrozenComposerRunEnvelope): FrozenComposerRunEnvelope {
 			: {}),
 		...(run.review ? { review: cloneReview(run.review) } : {}),
 	};
+}
+
+function cloneTask(task: ComposerTaskSession): ComposerTaskSession {
+	return {
+		...task,
+		documentIds: [...task.documentIds],
+		session: JSON.parse(JSON.stringify(task.session)) as CopilotSessionStateSnapshot,
+	};
+}
+
+function taskTitleFromPath(filePath: string): string {
+	const name = filePath.slice(Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')) + 1);
+	return name.replace(/\.md$/i, '') || '新任务';
 }
 
 /** Group immutable generation attempts by review candidate, newest first. */

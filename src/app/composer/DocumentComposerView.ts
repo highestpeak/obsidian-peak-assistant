@@ -257,6 +257,16 @@ export class DocumentComposerView extends ReactFileViewHost {
 					}
 					: undefined,
 				onOpenLink: (kind, target) => this.openLink(kind, target),
+				onOpenReviewDocument: runtime?.navigation
+					? (filePath) => {
+							void runtime.navigation!.open({
+								filePath,
+								view: 'composer',
+								disposition: 'replace-current',
+								reason: 'view-conversion',
+							});
+						}
+					: undefined,
 				revealRequest: this.pendingReveal ?? undefined,
 			},
 			this.appContext,

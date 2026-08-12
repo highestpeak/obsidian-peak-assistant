@@ -1,8 +1,8 @@
 /**
  * Peak Composer — Copilot session lifecycle + run receipt (WP9, handoff §12.1–3).
  *
- * The Sidecar top level is only `Copilot | History`. Inside Copilot the user
- * moves through a lifecycle WITHOUT a permanent stage rail (spec §Copilot):
+ * The Sidecar top level is `Suggestions | Talk | History`. Talk moves through
+ * a lifecycle WITHOUT a permanent stage rail (spec §Copilot):
  *
  *   brief → session → running → session / review / error / cancelled
  *
@@ -29,8 +29,12 @@ import type {
 } from '@/core/composer';
 import type { ComposerCommentSourceRef } from '../comment/commentModel';
 
-/** Sidecar top-level surface — switching only re-projects, never re-owns context. */
-export type IntelligenceTopSurface = 'copilot' | 'history';
+/**
+ * Sidecar top-level surface. Suggestions and the real Copilot conversation are
+ * deliberately separate projections; switching either one never changes the
+ * task session, frozen context, receipts, or review ownership.
+ */
+export type IntelligenceTopSurface = 'suggestions' | 'talk' | 'history';
 
 /** Copilot internal stage (no permanent rail). */
 export type CopilotStage = 'brief' | 'session' | 'review';
@@ -164,7 +168,8 @@ export interface IntelligenceSessionProjection {
 /** Durable, framework-neutral session state saved by the app-owned repository. */
 export interface CopilotSessionStateSnapshot {
 	readonly schemaVersion: 1;
-	readonly surface: IntelligenceTopSurface;
+	/** `copilot` is accepted only while replaying the pre-three-view schema. */
+	readonly surface: IntelligenceTopSurface | 'copilot';
 	readonly stage: CopilotStage;
 	readonly runStatus: CopilotRunStatus;
 	readonly activeRunId: string | null;
@@ -189,7 +194,7 @@ function nextRunId(): string {
  * originating session; the top-surface switch never mutates run/receipt state.
  */
 export class CopilotSessionMachine {
-	private surface: IntelligenceTopSurface = 'copilot';
+	private surface: IntelligenceTopSurface = 'suggestions';
 	private stage: CopilotStage = 'brief';
 	private runStatus: CopilotRunStatus = 'idle';
 	private activeRunId: string | null = null;
@@ -247,7 +252,13 @@ export class CopilotSessionMachine {
 	/** Restore a persisted session without fabricating missing receipt details. */
 	restore(state: CopilotSessionStateSnapshot): void {
 		if (state.schemaVersion !== 1) return;
-		this.surface = state.surface;
+		// `copilot` was the pre-task-workspace two-tab surface. Old JSONL records
+		// remain readable and reopen on the quiet Suggestions projection.
+		this.surface = state.surface === 'history'
+			? 'history'
+			: state.surface === 'talk'
+				? 'talk'
+				: 'suggestions';
 		this.stage = state.stage;
 		this.runStatus = state.runStatus;
 		this.activeRunId = state.activeRunId;
@@ -289,6 +300,7 @@ export class CopilotSessionMachine {
 		commentRefs: readonly ComposerCommentSourceRef[] = [],
 		capabilityId?: ComposerCapabilityId,
 	): void {
+		this.surface = 'talk';
 		this.stage = 'session';
 		this.runStatus = 'idle';
 		this.sessionTitle = taskTitle;
@@ -300,6 +312,7 @@ export class CopilotSessionMachine {
 
 	/** Session → brief, preserving receipts + frozen contexts for resume. */
 	backToBrief(): void {
+		this.surface = 'suggestions';
 		this.stage = 'brief';
 		this.runStatus = 'idle';
 		this.notify();
@@ -484,6 +497,28 @@ export class CopilotSessionMachine {
 		for (const cb of this.subs) cb(projection);
 	}
 }
+
+/** Stable structural port used by the workspace task-session coordinator. */
+export type CopilotSessionPort = Pick<
+	CopilotSessionMachine,
+	| 'subscribe'
+	| 'projection'
+	| 'exportState'
+	| 'restore'
+	| 'selectSurface'
+	| 'openSession'
+	| 'backToBrief'
+	| 'send'
+	| 'frozenContext'
+	| 'markStreaming'
+	| 'markProposed'
+	| 'markNoChange'
+	| 'markError'
+	| 'markCancelled'
+	| 'closeReview'
+	| 'linkAcceptedTransaction'
+	| 'linkExternalRun'
+>;
 
 function freezeCommentRefs(refs: readonly ComposerCommentSourceRef[]): readonly ComposerCommentSourceRef[] {
 	const unique = new Map<string, ComposerCommentSourceRef>();

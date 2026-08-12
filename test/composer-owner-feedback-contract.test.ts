@@ -23,7 +23,7 @@ assert.ok(root.includes('setInvokeErrors'), 'synchronous AI invocation errors st
 assert.equal(displaySwitch.includes("value: 'all'"), false, '全部改动 is not a persistent top-level display state');
 assert.equal(displaySwitch.includes("value: 'work'"), false, 'legacy 工作视图 is retired');
 assert.ok(displaySwitch.includes("value: 'edit'"), 'the explicit 编辑视图 state is available');
-assert.ok(undoRedo.includes('pk-composer-review-all'), 'multiple candidates expose the contextual review-all action');
+assert.ok(undoRedo.includes('<ComposerReviewNavigation'), 'pending candidates expose task-level review navigation');
 assert.ok(displaySwitch.includes('variant="animated-pill"'), 'display modes use the animated pill segmented variant');
 assert.ok(displaySwitch.includes('size="sm"'), 'display modes match the compact document toolbar density');
 assert.ok(displaySwitch.includes('thumbLayoutId="composer-display-state-thumb"'), 'display modes own a stable thumb animation');
@@ -56,8 +56,16 @@ assert.equal(
 assert.ok(frontmatter.includes('MetadataSuggestionPanel'), 'AI property flow has a concrete suggestion-selection stage');
 assert.ok(frontmatter.includes('setCandidateReviewOpen(true)'), 'a field candidate appears only after choosing 添加');
 assert.ok(frontmatter.includes("candidate={candidateReviewOpen ? candidatePayload : null}"), 'suggestions do not project into YAML before selection');
-assert.ok(copilot.includes('<ComposerModelSelector'), 'Copilot reuses the Chat Studio model selector');
-assert.equal(copilot.includes('function ModelPicker('), false, 'Copilot does not ship a surface-local model dropdown');
+assert.ok(copilot.includes('<CopilotModelSelector'), 'Copilot keeps a model selector in the shared instruction composer');
+assert.ok(
+	copilot.includes('buildProfileModelItems(profiles)'),
+	'Copilot model choices reuse the shared profile-qualified model catalog without importing protected Chat UI',
+);
+assert.equal(
+	copilot.includes("@/ui/view/chat-view/components/composer/ComposerModelSelector"),
+	false,
+	'Copilot does not cross the protected Chat Composer boundary',
+);
 assert.ok(copilot.includes("modelSelection.mode === 'fixed'"), 'Copilot resolves the shared fixed selection to a model override');
 assert.ok(copilot.includes('...(selectedModelId ? { modelId: selectedModelId } : {})'), 'selected model is passed into capability invocation');
 assert.ok(capabilityRuntime.includes('modelId?: string'), 'capability runtime retains the selected model');

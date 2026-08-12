@@ -27,7 +27,12 @@ export interface SidecarStrings {
 	startNewWorkSegment: string;
 	endWorkSegment: string;
 	tabCopilot: string;
+	tabSuggestions: string;
+	tabTalk: string;
 	tabHistory: string;
+	newTask: string;
+	taskDocuments: string;
+	activeTask: string;
 	close: string;
 	openDrawer: string;
 	back: string;
@@ -331,7 +336,12 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		startNewWorkSegment: '开始新工作段',
 		endWorkSegment: '结束工作段',
 		tabCopilot: 'Copilot',
+		tabSuggestions: '建议',
+		tabTalk: '对话',
 		tabHistory: 'History',
+		newTask: '新建任务',
+		taskDocuments: '任务文档',
+		activeTask: '当前追踪任务',
 		close: '关闭',
 		openDrawer: '打开智能侧栏',
 		back: '返回',

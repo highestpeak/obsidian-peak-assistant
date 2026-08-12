@@ -33,9 +33,12 @@ const sidecar = cssBlock(css, '.pk-sidecar');
 assertDecl(sidecar, 'flex: 0 0 430px;', 'desktop sidecar must keep the canonical 430px column');
 assertDecl(sidecar, 'width: 430px;', 'desktop sidecar width must match the canonical reference');
 assertDecl(sidecar, 'max-width: none;', 'desktop sidecar must not shrink through the old 40vw cap');
-assertDecl(sidecar, 'align-self: stretch;', 'desktop sidecar must stretch inside the 444px anchor track');
+assertDecl(sidecar, 'align-self: stretch;', 'desktop sidecar must stretch inside the dock track');
 assertDecl(sidecar, 'height: auto;', 'desktop sidecar must not rely on percentage/calc height');
-assertDecl(sidecar, 'margin: 14px 14px 14px 0;', 'desktop sidecar must keep narrow dock gutters');
+assertDecl(sidecar, 'margin: 0;', 'desktop sidecar must dock flush against the Composer workspace');
+assertDecl(sidecar, 'border-left: 1px solid var(--pk-border);', 'desktop sidecar uses one structural divider rather than a card frame');
+assertDecl(sidecar, 'border-radius: 0;', 'desktop sidecar must not read as a rounded modal card');
+assertDecl(sidecar, 'box-shadow: none;', 'desktop sidecar must not float above the Composer workspace');
 
 const sidecarDrawer = cssBlock(css, '.pk-sidecar-drawer');
 assertDecl(sidecarDrawer, 'position: absolute;', 'narrow drawer must be contained by the Composer host, not the owner window');
@@ -89,7 +92,7 @@ assert.ok(
 );
 assertDecl(
 	cssBlock(css, ".pk-sidecar-anchor[data-sidecar-mode='desktop'][data-open='true']"),
-	'flex: 0 0 444px;',
+	'flex: 0 0 430px;',
 	'desktop anchor must keep reserved width when open',
 );
 assertDecl(
@@ -152,55 +155,44 @@ assert.ok(
 	'closed sidecar entry must be owned by the unified Composer control bar, not a detached sidecar toggle',
 );
 
-const header = cssBlock(css, '.pk-sidecar-header');
-assertDecl(header, 'min-height: 58px;', 'sidecar header must keep the canonical restrained presence height');
-assertDecl(header, 'padding: 10px 13px 8px;', 'sidecar header padding must match the canonical balance');
-
-const spark = cssBlock(css, '.pk-sidecar-spark');
-assertDecl(spark, 'width: 18px;', 'sidecar presence icon must remain an unboxed 18px spark');
-assertDecl(spark, 'height: 18px;', 'sidecar presence icon must remain an unboxed 18px spark');
-assertDecl(spark, 'border-radius: 0;', 'sidecar presence icon must stay unboxed');
-
-const title = cssBlock(css, '.pk-sidecar-title');
-assertDecl(title, 'font-size: var(--pk-text-xl);', 'sidecar title must use the canonical 16px token');
-const subtitle = cssBlock(css, '.pk-sidecar-subtitle');
-assertDecl(subtitle, 'font-size: var(--pk-text-xs);', 'sidecar subtitle must use the canonical 10px token');
+const taskHeader = cssBlock(css, '.pk-sidecar-task-header');
+assertDecl(taskHeader, 'height: 52px;', 'sidecar task header must align with the Composer header height');
+assertDecl(taskHeader, 'border-bottom: 1px solid var(--pk-border);', 'task tabs need one structural divider');
+const taskTabs = cssBlock(css, '.pk-sidecar-task-tabs');
+assertDecl(taskTabs, 'overflow-x: auto;', 'multiple task tabs must scroll horizontally');
+assert.ok(sidecarTsx.includes('<TaskTabs'), 'the generic Intelligence title must be replaced by task tabs');
+assert.ok(!sidecarTsx.includes('pk-sidecar-brand'), 'the redundant Intelligence brand block must be absent');
 
 const tabs = cssBlock(css, '.pk-sidecar-tabs');
 assertDecl(tabs, 'display: grid;', 'primary Copilot/History switch must be a segmented grid');
-assertDecl(tabs, 'grid-template-columns: 1fr 1fr;', 'primary switch must keep two equal columns');
-assertDecl(tabs, 'flex: 0 0 42px;', 'primary switch must not shrink when History has a taller content basis');
-assertDecl(tabs, 'height: 42px;', 'primary switch must keep the canonical 42px height');
-assertDecl(tabs, 'min-height: 42px;', 'primary switch must keep the canonical minimum height');
-assertDecl(tabs, 'max-height: 42px;', 'primary switch must keep the canonical maximum height');
-assertDecl(tabs, 'gap: 3px;', 'primary switch must keep the canonical 3px inner gap');
-assertDecl(tabs, 'padding: 3px;', 'primary switch must keep the canonical 3px inner padding');
-assertDecl(tabs, 'background: var(--pk-surface-sunken);', 'primary switch must keep the sunken segmented background');
+assertDecl(tabs, 'grid-template-columns: repeat(3, minmax(0, 1fr));', 'task views must expose Suggestions, Talk and History equally');
+assertDecl(tabs, 'flex: 0 0 40px;', 'task-view row must keep its compact height');
+assertDecl(tabs, 'height: 40px;', 'task-view row must keep the canonical 40px height');
+assertDecl(tabs, 'border-bottom: 1px solid var(--pk-border-soft);', 'task views use one divider instead of a filled header card');
 assert.ok(
 	sidecarTsx.indexOf('className="pk-sidecar-tabs"')
-		< sidecarTsx.indexOf('<WorkspaceScopeMenu'),
-	'workspace scope must sit inside Copilot content after the primary Copilot / History navigation',
+		< sidecarTsx.indexOf('<TaskContextBar'),
+	'task metadata must sit inside Suggestions after the three task views',
 );
 assert.ok(
-	!sidecarTsx.includes('pk-sidecar-scope-switch'),
-	'workspace scope must not remain a second full-width segmented navigation row',
+	!sidecarTsx.includes('WorkspaceScopeMenu'),
+	'current document/work segment/pinned scope must not remain in the UI',
 );
 const contextBar = cssBlock(css, '.pk-sidecar-context-bar');
-assertDecl(contextBar, 'min-height: 34px;', 'Copilot scope context should stay visually secondary and compact');
-const scopeTrigger = cssBlock(css, '.peak-design-root .pk-sidecar-scope-trigger');
-assertDecl(scopeTrigger, 'height: 28px !important;', 'scope trigger must retain its compact hit target under Obsidian resets');
-assertDecl(scopeTrigger, 'width: auto !important;', 'scope trigger must not read as a full-width primary navigation control');
+assertDecl(contextBar, 'min-height: 38px;', 'task metadata and update policy share one compact row');
+const taskContext = cssBlock(css, '.peak-design-root .pk-sidecar-task-context');
+assertDecl(taskContext, 'height: 28px !important;', 'task-document metadata keeps a reliable hit target');
 
 const tab = cssBlock(css, '.pk-sidecar-tab');
 assertDecl(tab, 'justify-content: center;', 'primary switch labels must be centered');
 assertDecl(tab, 'height: 100% !important;', 'primary switch buttons must fill the locked tablist height');
 assertDecl(tab, 'min-height: 100% !important;', 'primary switch buttons must resist the Obsidian minimum-height reset');
 assertDecl(tab, 'max-height: 100% !important;', 'primary switch buttons must resist content-driven height changes');
-assertDecl(tab, 'border-radius: 9px;', 'primary switch active surface must keep the canonical inner radius');
+assertDecl(tab, 'border-radius: 0 !important;', 'task views use an underline instead of three rounded cards');
 assertDecl(tab, 'font-weight: 620;', 'primary switch labels must keep the canonical weight');
 const activeTab = cssBlock(css, '.pk-sidecar-tab--active');
-assertDecl(activeTab, 'background: var(--pk-surface);', 'active primary tab must use a raised surface');
-assertDecl(activeTab, 'box-shadow: var(--pk-shadow-sm);', 'active primary tab must keep the subtle shadow');
+assertDecl(activeTab, 'background: transparent !important;', 'active task view stays on the shared header surface');
+assertDecl(activeTab, 'box-shadow: inset 0 -2px 0 var(--pk-accent) !important;', 'active task view is identified by a restrained underline');
 
 const relatedModalOverlay = cssBlock(css, '.pk-related-modal-overlay');
 assertDecl(relatedModalOverlay, 'z-index: var(--pk-sidecar-modal-z, 110);', 'related material modal must cover the drawer and sticky Composer chrome');

@@ -20,8 +20,16 @@ assert.equal(
 assert.ok(copilot.includes('<AIInstructionComposer'), 'the prompt uses the shared instruction capability');
 assert.ok(copilot.includes('source: \'automatic\''), 'the prompt marks document context as automatic');
 assert.ok(copilot.includes('formatCopilotContextLabel'), 'the prompt displays concise body context');
-assert.ok(copilot.includes('<ComposerModelSelector'), 'the prompt reuses Chat Studio model-selection UI');
-assert.equal(copilot.includes('function ModelPicker('), false, 'the prompt has no private model picker');
+assert.ok(copilot.includes('<CopilotModelSelector'), 'the prompt retains a task-local model selector');
+assert.ok(
+	copilot.includes('buildProfileModelItems(profiles)'),
+	'the model selector reuses the shared profile-qualified catalog rather than duplicating model data',
+);
+assert.equal(
+	copilot.includes("@/ui/view/chat-view/components/composer/ComposerModelSelector"),
+	false,
+	'the prompt does not import protected Chat Composer UI',
+);
 assert.ok(copilot.includes('capabilityProjection.invoke('), 'capability choices execute through the real Composer projection port');
 assert.ok(copilot.includes('candidateRuntime.onRunEvent'), 'session receipts follow real capability run events');
 assert.match(

@@ -17,10 +17,14 @@ const EVENT_TYPES = new Set([
 	'document-renamed',
 	'scope-changed',
 	'run-upserted',
+	'task-upserted',
+	'task-removed',
+	'active-task-changed',
 ]);
 
 /**
- * Append-only machine state for Composer work segments, scope and Frozen Runs.
+ * Append-only machine state for Composer task sessions, legacy work segments,
+ * scope and Frozen Runs.
  * It is deliberately separate from evaluation telemetry and user Markdown.
  */
 export class ObsidianComposerWorkspaceStatePersistence

@@ -54,11 +54,12 @@ assertDecl(
 );
 
 const desktopAnchor = cssBlock(sidecarCss, ".pk-sidecar-anchor[data-sidecar-mode='desktop'][data-open='true']");
-assertDecl(desktopAnchor, 'flex: 0 0 444px;', 'desktop sidecar track must equal 430px sidecar plus the 14px right gutter');
+assertDecl(desktopAnchor, 'flex: 0 0 430px;', 'desktop sidecar track must equal the flush 430px sidecar');
 
 const sidecar = cssBlock(sidecarCss, '.pk-sidecar');
 assertDecl(sidecar, 'flex: 0 0 430px;', 'desktop sidecar body width must remain 430px');
-assertDecl(sidecar, 'margin: 14px 14px 14px 0;', 'desktop sidecar gutters must remain 14px');
+assertDecl(sidecar, 'margin: 0;', 'desktop sidecar must join the Composer edge without an outer gutter');
+assertDecl(sidecar, 'border-radius: 0;', 'desktop sidecar must not look like a floating rounded card');
 
 const controlbar = cssBlock(composerCss, '.peak-composer-root .pk-composer-controlbar');
 assertDecl(controlbar, 'z-index: 80;', 'sticky controlbar layer is the reference drawer must clear');

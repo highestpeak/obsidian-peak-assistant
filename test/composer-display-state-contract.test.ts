@@ -12,8 +12,9 @@ assert.doesNotMatch(displaySwitch, /value:\s*'all'/, 'review-all cannot remain a
 assert.equal(config.chrome.displayStates.edit, '编辑视图');
 assert.equal(config.chrome.displayStates.clean, '纯净阅读');
 assert.equal(config.chrome.displayStates.nativeMarkdown, '原生 Markdown');
-assert.match(undoBar, /reviewAll/, 'review-all must remain a contextual action');
-assert.match(root, /reviewAll/, 'review-all must expand pending candidates without becoming a third mode');
+assert.doesNotMatch(undoBar, /reviewAll|pk-composer-review-all/, 'the obsolete review-all action must leave the toolbar');
+assert.match(undoBar, /ComposerReviewNavigation/, 'task review navigation must remain contextual to Composer edit chrome');
+assert.match(root, /displayState === 'edit' \? reviewCandidates : \[\]/, 'candidate navigation only appears in edit view');
 assert.match(
 	displaySwitch,
 	/value: 'markdown' as const,[\s\S]*?label: s\.nativeMarkdown,[\s\S]*?keyTipKey: PEAK_CONTROL_KEY_TIP_KEYS\.composer\.display\.markdown/,

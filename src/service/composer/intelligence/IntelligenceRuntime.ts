@@ -29,7 +29,10 @@ import {
 } from './findingIdentity';
 import { ComposerBriefState, type BriefFocus, type BriefSensingMode } from './briefState';
 import { DEFAULT_BRIEF_SENSING_POLICY, type BriefSensingPolicy } from './briefSensingDefaults';
-import { CopilotSessionMachine } from './runSession';
+import {
+	CopilotSessionMachine,
+	type CopilotSessionPort,
+} from './runSession';
 import type { ComposerRelatedMaterialsPort } from './relatedMaterials';
 import {
 	NOOP_INTELLIGENCE_TELEMETRY,
@@ -53,11 +56,13 @@ export interface IntelligenceRuntimeDeps {
 	historyPersistence?: ComposerHistoryPersistencePort;
 	documentId?: string;
 	filePath?: string;
+	/** Workspace-owned stable session delegate for explicit task tabs. */
+	session?: CopilotSessionPort;
 }
 
 export class IntelligenceRuntime {
 	readonly findings = new ComposerFindingStore();
-	readonly session = new CopilotSessionMachine();
+	readonly session: CopilotSessionPort;
 	/** Observable document-adjacent Brief projection (focus, sensing, real insights). */
 	readonly brief: ComposerBriefState;
 	readonly related?: ComposerRelatedMaterialsPort;
@@ -80,6 +85,7 @@ export class IntelligenceRuntime {
 	private producerFindingIds = new Set<string>();
 
 	constructor(deps: IntelligenceRuntimeDeps) {
+		this.session = deps.session ?? new CopilotSessionMachine();
 		this.related = deps.related;
 		this.getSnapshot = deps.getSnapshot;
 		this.produceFindings = deps.produceFindings;
@@ -94,7 +100,7 @@ export class IntelligenceRuntime {
 			this.brief.syncReceiptInsights(projection.receipts);
 			this.persistSessionProjection(projection);
 		});
-		this.sessionHistoryReady = this.hydrateSession();
+		this.sessionHistoryReady = deps.session ? Promise.resolve() : this.hydrateSession();
 	}
 
 	/** Ingest a discovered finding (dedup + surface projection). */
@@ -305,8 +311,9 @@ export class IntelligenceRuntime {
 	}
 
 	private persistSessionProjection(
-		projection: ReturnType<CopilotSessionMachine['projection']>,
+		projection: ReturnType<CopilotSessionPort['projection']>,
 	): void {
+		if (!(this.session instanceof CopilotSessionMachine)) return;
 		if (!this.historyPersistence || !this.documentId || !this.filePath) return;
 		if (this.restoringSession) return;
 		if (!this.sessionHydrated) {

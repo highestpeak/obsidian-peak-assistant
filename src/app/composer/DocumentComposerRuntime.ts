@@ -407,6 +407,7 @@ export class DocumentComposerRuntime {
 		const intelligence = features.intelligence
 			? new IntelligenceRuntime({
 				hub,
+				session: this.workspaceIntelligence.session,
 				...(this.relatedMaterials ? { related: this.relatedMaterials } : {}),
 				...(this.intelligenceTelemetry ? { telemetry: this.intelligenceTelemetry } : {}),
 				getSnapshot: () => session.snapshot,
@@ -482,6 +483,7 @@ export class DocumentComposerRuntime {
 		// accepted-change → History receipt bridge. App-owned (no singleton).
 		const intelligence = new IntelligenceRuntime({
 			hub,
+			session: this.workspaceIntelligence.session,
 			...(this.historyPersistence
 				? {
 						historyPersistence: this.historyPersistence,
