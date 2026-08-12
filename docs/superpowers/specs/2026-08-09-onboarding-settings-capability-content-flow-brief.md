@@ -781,6 +781,8 @@ MCP 是工具来源，Skill 是工作手册，Provider 是模型来源。Setting
 
 `Data & Privacy` 与 `Appearance` 也不作为一级入口。它们都是低频、全局性的长期控制，放入 `Advanced` 的独立分组；但隐私的当前状态、Provider 数据去向和风险修复入口必须继续出现在 Overview、Settings 搜索与 `Tools & Safety`，不能因为详细设置被收纳而变得不可见。
 
+Settings 不再增加一条重复的 Peak 标题工具栏。Obsidian 左侧已经说明当前插件，Peak 内容区顶部只保留居中的一级分类导航；搜索收为导航右侧的紧凑入口，保存采用短暂反馈，未完成的 setup 只在 Overview 出现。
+
 #### Chat Studio
 
 - conversation 默认模型的继承；

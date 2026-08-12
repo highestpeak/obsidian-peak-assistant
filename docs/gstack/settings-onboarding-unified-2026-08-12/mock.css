@@ -257,9 +257,13 @@ svg {
   background: var(--surface-soft);
 }
 
-.settings-search { position: relative; display: flex; align-items: center; }
-.settings-search > svg { position: absolute; left: 10px; width: 15px; height: 15px; color: var(--text-muted); }
-.settings-search input {
+.settings-search { position: absolute; z-index: 20; top: 6px; right: 18px; }
+.nav-search-button { display: grid; width: 31px; height: 31px; padding: 0; place-items: center; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-muted); }
+.nav-search-button:hover { border-color: var(--line); background: var(--surface-hover); color: var(--text); }
+.nav-search-button svg { width: 14px; height: 14px; }
+.search-input-row { position: relative; display: flex; align-items: center; }
+.search-input-row > svg { position: absolute; left: 10px; width: 15px; height: 15px; color: var(--text-muted); }
+.search-input-row input {
   width: 100%;
   height: 31px;
   padding: 0 52px 0 31px;
@@ -270,15 +274,15 @@ svg {
   color: var(--text);
   font-size: 11px;
 }
-.settings-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-.settings-search kbd { position: absolute; right: 8px; padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-soft); color: var(--text-muted); font-size: 9px; font-family: inherit; }
+.search-input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.search-input-row kbd { position: absolute; right: 8px; padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-soft); color: var(--text-muted); font-size: 9px; font-family: inherit; }
 
 .search-popover {
   position: absolute;
   z-index: 30;
-  top: 37px;
+  top: 36px;
   right: 0;
-  left: 0;
+  width: min(340px, calc(100vw - 56px));
   padding: 6px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
@@ -339,7 +343,7 @@ svg {
 .sidebar-bottom svg { width: 13px; height: 13px; color: var(--text-muted); }
 .sidebar-bottom > span { display: block; padding: 9px 7px 0; color: #aaaab1; font-size: 8px; }
 
-/* Native Obsidian Settings context + Peak header navigation */
+/* Native Obsidian Settings context + centered Peak navigation */
 
 .settings-frame { height: calc(100vh - 62px); min-height: 650px; }
 
@@ -422,51 +426,17 @@ svg {
   background: var(--surface);
 }
 
-.peak-settings-header {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(260px, 390px) auto;
-  min-height: 61px;
-  padding: 0 25px;
-  align-items: center;
-  gap: 18px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(255,255,255,.98);
-}
-
-.peak-heading { display: flex; min-width: 0; align-items: center; gap: 9px; }
-.peak-heading > div { display: flex; min-width: 0; flex-direction: column; }
-.peak-heading strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.peak-heading small { margin-top: 2px; color: var(--text-muted); font-size: 8.5px; }
-
-.peak-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 11px; }
-
-.setup-header-button {
-  display: inline-flex;
-  min-height: 31px;
-  padding: 0 10px 0 7px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid var(--line-strong);
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-size: 9.5px;
-  font-weight: 580;
-  box-shadow: 0 1px 2px rgba(24,24,30,.04);
-}
-
-.setup-header-button:hover { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
-.setup-ring.small { width: 20px; height: 20px; border-width: 1.5px; font-size: 6.5px; }
+.peak-settings-nav-shell { position: relative; flex: 0 0 auto; min-height: 43px; border-bottom: 1px solid var(--line); background: var(--surface); }
 
 .peak-settings-tabs {
   display: flex;
+  width: 100%;
   min-height: 43px;
-  padding: 0 25px;
+  padding: 0 62px;
   align-items: stretch;
-  gap: 20px;
+  justify-content: center;
+  gap: 24px;
   overflow-x: auto;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
   scrollbar-width: none;
 }
 
@@ -866,8 +836,7 @@ svg {
 @media (max-width: 980px) {
   .settings-frame { width: calc(100% - 18px); margin: 9px auto; }
   .obsidian-settings-shell { grid-template-columns: 205px minmax(0, 1fr); }
-  .peak-settings-header { grid-template-columns: minmax(145px, 1fr) minmax(220px, 330px) auto; padding: 0 18px; gap: 12px; }
-  .peak-settings-tabs { padding: 0 18px; gap: 17px; }
+  .peak-settings-tabs { gap: 20px; }
   .settings-topbar { grid-template-columns: 195px minmax(260px, 1fr) auto; gap: 12px; }
   .settings-body { grid-template-columns: 195px minmax(0, 1fr); }
   .settings-panel { width: calc(100% - 34px); }
@@ -886,10 +855,8 @@ svg {
   .historical-links { grid-template-columns: 1fr; }
   .obsidian-settings-shell { grid-template-columns: 164px minmax(0, 1fr); }
   .obsidian-settings-sidebar { padding-right: 8px; padding-left: 8px; }
-  .peak-settings-header { grid-template-columns: minmax(0, 1fr) auto; min-height: 96px; padding: 8px 14px 9px; gap: 6px 10px; }
-  .peak-settings-header .settings-search { grid-row: 2; grid-column: 1 / -1; }
-  .peak-heading small, .peak-header-actions .saved-state { display: none; }
-  .peak-settings-tabs { padding: 0 14px; gap: 16px; }
+  .peak-settings-tabs { padding: 0 54px; gap: 16px; }
+  .settings-search { right: 10px; }
   .settings-topbar { grid-template-columns: 1fr auto; }
   .settings-topbar > .peak-wordmark { display: none; }
   .settings-body { grid-template-columns: 60px minmax(0, 1fr); }
@@ -950,11 +917,7 @@ svg {
   .obsidian-sidebar-title, .obsidian-nav-group, .obsidian-nav button > span:last-child { display: none; }
   .obsidian-nav { gap: 2px; }
   .obsidian-nav button { display: grid; grid-template-columns: 1fr; min-height: 33px; padding: 0; place-items: center; }
-  .peak-settings-header { padding-right: 10px; padding-left: 10px; }
-  .peak-heading > div { display: none; }
-  .setup-header-button { padding-right: 6px; padding-left: 6px; }
-  .setup-header-button > span:last-child { display: none; }
-  .peak-settings-tabs { padding: 0 10px; gap: 14px; }
+  .peak-settings-tabs { justify-content: flex-start; padding: 0 48px 0 10px; gap: 14px; }
   .settings-topbar { padding-right: 8px; padding-left: 8px; }
   .settings-topbar .saved-state { display: none; }
   .settings-panel { width: calc(100% - 24px); padding-top: 27px; }

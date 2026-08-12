@@ -71,6 +71,7 @@ $$('select').forEach((select) => {
 
 const searchInput = $("[data-settings-search]");
 const searchPopover = $("[data-search-popover]");
+const searchTrigger = $("[data-search-trigger]");
 
 function updateSearch() {
   const query = searchInput.value.trim().toLowerCase();
@@ -89,6 +90,11 @@ searchInput.addEventListener("focus", () => {
 });
 
 searchInput.addEventListener("input", updateSearch);
+
+searchTrigger.addEventListener("click", () => {
+  searchPopover.hidden = false;
+  searchInput.focus();
+});
 
 $$('[data-search-result]').forEach((result) => {
   result.addEventListener("click", () => {

@@ -69,13 +69,22 @@
         </aside>
 
         <section class="peak-settings-pane">
-          <header class="peak-settings-header">
-            <div class="peak-heading"><span class="peak-mark">P</span><div><strong>Peak Assistant</strong><small>Settings for this Vault</small></div></div>
-            <label class="settings-search">
-              <svg><use href="#i-search" /></svg>
-              <input type="search" placeholder="Search Peak settings" data-settings-search />
-              <kbd>⌘ K</kbd>
+          <div class="peak-settings-nav-shell">
+            <nav class="peak-settings-tabs" aria-label="Peak settings sections">
+              <button data-panel-target="overview">Overview</button>
+              <button class="is-active" data-panel-target="ai">AI &amp; Models</button>
+              <button data-panel-target="knowledge">Knowledge & Search</button>
+              <button data-panel-target="tools">Tools &amp; Safety</button>
+              <button data-panel-target="advanced">Advanced</button>
+            </nav>
+            <div class="settings-search">
+              <button class="nav-search-button" data-search-trigger aria-label="Search Peak settings"><svg><use href="#i-search" /></svg></button>
               <div class="search-popover" data-search-popover hidden>
+                <label class="search-input-row">
+                  <svg><use href="#i-search" /></svg>
+                  <input type="search" placeholder="Search Peak settings" data-settings-search />
+                  <kbd>⌘ K</kbd>
+                </label>
                 <span class="search-heading">SETTINGS</span>
                 <button data-search-result data-panel="ai" data-query="openai provider api connection"><span>OpenAI connection</span><small>AI &amp; Models</small></button>
                 <button data-search-result data-panel="ai" data-query="openrouter models catalog"><span>OpenRouter catalog</span><small>AI &amp; Models</small></button>
@@ -88,20 +97,8 @@
                 <button data-search-result data-panel="advanced" data-query="appearance theme density motion display"><span>Appearance</span><small>Advanced</small></button>
                 <span class="search-empty" data-search-empty hidden>No matching setting</span>
               </div>
-            </label>
-            <div class="peak-header-actions">
-              <span class="saved-state"><svg><use href="#i-check" /></svg>Saved</span>
-              <button class="setup-header-button" data-open-setup><span class="setup-ring small">3/4</span><span>Finish setup</span></button>
             </div>
-          </header>
-
-          <nav class="peak-settings-tabs" aria-label="Peak settings sections">
-            <button data-panel-target="overview">Overview</button>
-            <button class="is-active" data-panel-target="ai">AI &amp; Models</button>
-            <button data-panel-target="knowledge">Knowledge & Search</button>
-            <button data-panel-target="tools">Tools &amp; Safety</button>
-            <button data-panel-target="advanced">Advanced</button>
-          </nav>
+          </div>
 
           <section class="settings-content">
           <div class="settings-panel" data-settings-panel="overview" hidden>
@@ -113,7 +110,7 @@
               <button class="status-card" data-panel-jump="tools"><span><svg><use href="#i-shield" /></svg>Tools &amp; safety</span><strong>Ready</strong><small>4 tools · guarded writes</small></button>
               <button class="status-card" data-panel-jump="ai"><span><svg><use href="#i-image" /></svg>Media generation</span><strong>Needs setup</strong><small>Image route available</small></button>
             </div>
-            <section class="settings-section"><div class="section-heading"><div><h2>Common changes</h2><p>Frequently used controls, linked to their owning section.</p></div></div><div class="setting-group compact-links"><button data-panel-jump="ai"><span>Manage connections, models and task defaults</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="knowledge"><span>Change indexed file types and folders</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="tools"><span>Review tools, permissions and confirmations</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="advanced"><span>Manage files, privacy and appearance</span><svg><use href="#i-chevron" /></svg></button></div></section>
+            <section class="settings-section"><div class="section-heading"><div><h2>Common changes</h2><p>Frequently used controls, linked to their owning section.</p></div></div><div class="setting-group compact-links"><button data-open-setup><span>Continue setup · 3 of 4 complete</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="ai"><span>Manage connections, models and task defaults</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="knowledge"><span>Change indexed file types and folders</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="tools"><span>Review tools, permissions and confirmations</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="advanced"><span>Manage files, privacy and appearance</span><svg><use href="#i-chevron" /></svg></button></div></section>
           </div>
 
           <div class="settings-panel is-active" data-settings-panel="ai">

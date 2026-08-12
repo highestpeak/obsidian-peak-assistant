@@ -51,6 +51,7 @@ requireValues("Settings HTML", settingsHtml, [
   "File Atlas & AI Graph",
   "Peak Hermes",
   "data-settings-search",
+  "data-search-trigger",
   "data-tree-toggle=\"composer\"",
   "data-add-connection",
   "data-settings-panel=\"ai\"",
@@ -139,6 +140,10 @@ for (const value of ['data-settings-panel="features"', 'data-panel-target="featu
 
 for (const value of ['data-settings-panel="data"', 'data-panel-target="data"', 'data-panel-jump="data"', 'data-settings-panel="appearance"', 'data-panel-target="appearance"', 'data-panel-jump="appearance"']) {
   if (settingsHtml.includes(value)) missing.push(`Low-frequency top-level destination returned: ${value}`);
+}
+
+for (const value of ['peak-settings-header', 'peak-heading', 'peak-header-actions', 'setup-header-button']) {
+  if (settingsHtml.includes(value)) missing.push(`Redundant Settings toolbar returned: ${value}`);
 }
 
 function checkSymbols(label, html) {
