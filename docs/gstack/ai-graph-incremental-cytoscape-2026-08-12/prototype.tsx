@@ -177,6 +177,7 @@ const CURSOR_POINTS = [
 const RUN_START_DELAY_MS = 650;
 const DEFAULT_PATCH_DWELL_MS = 1100;
 const RELATION_PATCH_DWELL_MS = 2200;
+const NODE_CORNER_PATCH_KINDS = new Set<PatchKind>(['add-node', 'remove-node', 'focus']);
 
 const BASE_NODES: ResultSubgraphOutput['resultNodes'] = [
 	{ id: 'graphrag', path: 'ai-graph://graphrag/root', title: 'GraphRAG', score: 1, communityId: null, folder: 'Concepts', preview: 'Root concept · accepted', incomingLinks: 2, outgoingLinks: 3 },
@@ -442,6 +443,7 @@ function Prototype(): React.ReactElement {
 	const refined = mode === 'layouting' || mode === 'review' || accepted;
 	const visibleStep = refined ? PATCHES.length : patchIndex + 1;
 	const activePatch = patchIndex >= 0 ? PATCHES[Math.min(patchIndex, PATCHES.length - 1)] : null;
+	const anchorAgentToNodeCorner = activePatch ? NODE_CORNER_PATCH_KINDS.has(activePatch.kind) : false;
 	const cursor = CURSOR_POINTS[Math.max(0, Math.min(patchIndex, CURSOR_POINTS.length - 1))] ?? CURSOR_POINTS[0];
 	const focusOverflow = visibleStep >= 8 && !refined;
 	const visibleNodeCount = BASE_NODES.length
@@ -593,7 +595,7 @@ function Prototype(): React.ReactElement {
 						)}
 						{(mode === 'running' || mode === 'paused' || mode === 'layouting') && activePatch && (
 							<div
-								className={`aig-agent-cursor aig-agent-cursor--${activePatch.kind}`}
+								className={`aig-agent-cursor aig-agent-cursor--${activePatch.kind}${anchorAgentToNodeCorner ? ' is-node-corner' : ''}`}
 								style={cursor}
 							>
 								<span>{patchIcon(activePatch.kind)}</span>

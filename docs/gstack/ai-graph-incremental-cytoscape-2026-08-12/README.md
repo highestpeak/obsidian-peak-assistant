@@ -16,6 +16,7 @@ This is a design-only, standalone `file://` prototype for owner review.
 - The Cytoscape base receives one stable `subgraph` reference for the entire replay. Agent changes are demonstrated in a transient working-overlay layer, so an operation cannot destroy the canvas, rerun the whole layout, or auto-fit the viewport.
 - Overlay relations share one calibrated canvas coordinate system. Paths terminate at the boundary of their source and target cards rather than at free-floating cursor coordinates; removal strokes trace the two existing relations attached to the original node.
 - Added relations use normalized path lengths, a 1.05-second eased stroke, and a 190 ms per-edge stagger. Relation operations dwell for 2.2 seconds so the final arrow finishes before the Agent advances.
+- Node-targeted Agent markers sit on the lower-right card corner, with their object label opening below and outside the card. Relation markers remain near their paths, so activity feedback never masks node content.
 - After all 16 Agent operations complete, the Agent explicitly chooses `Auto layout`. A second shared `AtlasGraphCanvas` renders the complete 12-node / 15-relation proposal once, cross-fades it over the spatially locked working view, and only then opens the 20-change semantic-diff review.
 
 The graph content and run events are illustrative mock data. This prototype does not call an AI provider, write an AI Graph version, or modify production source.

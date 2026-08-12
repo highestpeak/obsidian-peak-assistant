@@ -362,8 +362,15 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	align-items: center;
 	gap: 7px;
 	transform: translate(-14px, -14px);
-	transition: left 680ms cubic-bezier(.2,.8,.2,1), top 680ms cubic-bezier(.2,.8,.2,1);
+	transition: left 680ms cubic-bezier(.2,.8,.2,1), top 680ms cubic-bezier(.2,.8,.2,1), transform 420ms cubic-bezier(.2,.8,.2,1);
 	pointer-events: none;
+}
+.aig-agent-cursor.is-node-corner { transform: translate(62px, 13px); }
+.aig-agent-cursor.is-node-corner b {
+	position: absolute;
+	top: 34px;
+	right: 0;
+	box-shadow: 0 5px 14px rgba(35, 31, 47, .1);
 }
 .aig-agent-cursor > span {
 	width: 29px;
