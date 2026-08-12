@@ -110,7 +110,12 @@ requireValues("Settings HTML", settingsHtml, [
   "single Agent runtime",
   "Open Command Gateway",
   "External tool servers",
-  "Generated media location",
+  "Data root",
+  "Media root",
+  "Auto-save AI analysis",
+  "Personalized PageRank",
+  "Inspector links",
+  "data-settings-help-tooltip",
   "Advanced controls for this action",
   "Total request timeout",
   "data-tree-toggle=\"composer\"",
@@ -127,6 +132,12 @@ if (settingsHtml.includes("content-header-actions")) {
 }
 if (settingsHtml.includes("connection-summary")) {
   missing.push("Settings HTML: redundant connection summary must stay removed");
+}
+if (settingsHtml.includes("Saved analysis history")) {
+  missing.push("Settings HTML: analysis history is a workspace destination, not a setting");
+}
+if (settingsHtml.includes("Generated media location")) {
+  missing.push("Settings HTML: storage must use Data root and Media root rather than per-output folders");
 }
 if (settingsHtml.includes("<fieldset class=\"policy-choice-list\"")) {
   missing.push("Settings HTML: Automatic choices must not use a fieldset legend that breaks the panel border");
@@ -201,6 +212,8 @@ requireValues("Settings JS", settingsJs, [
   "function updateModelTarget",
   "function toggleFocusedModal",
   "function updateFileTypeSummary",
+  "function installSettingHelp",
+  "function showSettingHelp",
   "const modelCatalog =",
   "gpt-5-mini",
   "claude-opus-4-7",
@@ -245,6 +258,8 @@ requireValues("CSS", css, [
   ".safety-picker",
   ".command-gateway-card",
   ".feature-settings-detail",
+  ".settings-help-tooltip",
+  ".root-path-input",
   ".model-picker-modal",
   ".catalog-browser",
   ".wizard-shell",

@@ -247,7 +247,7 @@ function renderMetrics() {
 
   if (state.mode !== "complete") return;
   $("[data-run-status]").textContent = "Complete";
-  $("[data-active-phase]").textContent = "All search layers ready";
+  $("[data-active-phase]").textContent = "Search ready · 2 files need attention";
   $("[data-eta]").textContent = "Ready";
   $("[data-speed]").textContent = "Just now";
   $("[data-speed-compact]").textContent = "—";
@@ -399,6 +399,45 @@ $("[data-order-select]").addEventListener("change", (event) => {
 
 let selectedIndexDepth = "Semantic";
 
+const indexDepthPresets = {
+  Fast: {
+    kicker: "FAST INDEX",
+    title: "Find exact words and phrases quickly",
+    description: "Peak builds full-text search and skips AI processing.",
+    estimate: "About 5 min",
+    recommendation: "Fastest",
+    capabilities: [["Text", true], ["Meaning", false], ["Summaries", false], ["Relations", false]],
+  },
+  Semantic: {
+    kicker: "SEMANTIC INDEX",
+    title: "Search by meaning, not only exact words",
+    description: "Peak adds embeddings to full-text search.",
+    estimate: "About 18 min",
+    recommendation: "Recommended",
+    capabilities: [["Text", true], ["Meaning", true], ["Summaries", false], ["Relations", false]],
+  },
+  "Full knowledge": {
+    kicker: "FULL KNOWLEDGE",
+    title: "Connect documents into reusable knowledge",
+    description: "Peak also generates summaries, tags and relationship signals.",
+    estimate: "About 31 min",
+    recommendation: "Most complete",
+    capabilities: [["Text", true], ["Meaning", true], ["Summaries", true], ["Relations", true]],
+  },
+};
+
+function updateDepthOutcome(depth) {
+  const preset = indexDepthPresets[depth];
+  $("[data-depth-kicker]").textContent = preset.kicker;
+  $("[data-depth-title]").textContent = preset.title;
+  $("[data-depth-description]").textContent = preset.description;
+  $("[data-depth-estimate]").textContent = preset.estimate;
+  $("[data-depth-recommendation]").textContent = preset.recommendation;
+  $("[data-depth-capabilities]").innerHTML = preset.capabilities
+    .map(([label, enabled]) => `<span class="${enabled ? "is-on" : ""}">${label}</span>`)
+    .join("");
+}
+
 function toggleIndexSetup(open) {
   const setup = $("[data-index-setup]");
   if (!setup) return;
@@ -433,6 +472,7 @@ $$('[data-index-depth]').forEach((button) => {
     button.classList.add("is-selected");
     selectedIndexDepth = button.dataset.indexDepth;
     $("[data-next-run-summary]").textContent = `Ready to start · ${selectedIndexDepth}`;
+    updateDepthOutcome(selectedIndexDepth);
   });
 });
 
@@ -470,6 +510,18 @@ $("[data-run-again]").addEventListener("click", () => {
   $("[data-index-setup]").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
+$("[data-retry-failed]").addEventListener("click", (event) => {
+  const button = event.currentTarget;
+  button.textContent = "Retry queued";
+  button.disabled = true;
+});
+
+$("[data-open-file-scope]").addEventListener("click", () => {
+  toggleIndexSetup(true);
+  $("[data-index-setup]").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 startSimulation();
+updateDepthOutcome(selectedIndexDepth);
 setIndexMode(window.location.hash === "#complete" ? "complete" : "running");
 if (window.location.hash === "#setup") toggleIndexSetup(true);

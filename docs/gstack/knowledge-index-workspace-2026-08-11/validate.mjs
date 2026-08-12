@@ -34,11 +34,15 @@ const requiredHtml = [
   "data-preview-state=\"complete\"",
   "data-completion-panel",
   "Start indexing",
-  "Run depth",
+  "What should be ready?",
   "Run exclusions",
   "Plain text",
   "Canvas",
   "data-index-depth=\"Full knowledge\"",
+  "data-depth-outcome",
+  "data-completion-attention",
+  "2 files need attention",
+  "data-retry-failed",
   "Settings &amp; Onboarding package",
 ];
 
@@ -56,6 +60,8 @@ const requiredJs = [
   "dataset.previewState",
   "Your knowledge index is ready",
   "selectedIndexDepth",
+  "indexDepthPresets",
+  "function updateDepthOutcome",
 ];
 
 const requiredCss = [
@@ -73,6 +79,8 @@ const requiredCss = [
   ".completion-panel",
   "body[data-index-state=\"complete\"]",
   ".run-depth-list",
+  ".depth-outcome",
+  ".completion-attention",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",
 ];

@@ -13,6 +13,50 @@ function showSaved(message = "Saved · applies immediately") {
   }, 1800);
 }
 
+function hideSettingHelp() {
+  const tooltip = $("[data-settings-help-tooltip]");
+  tooltip.hidden = true;
+}
+
+function showSettingHelp(row) {
+  const tooltip = $("[data-settings-help-tooltip]");
+  const message = row.dataset.settingHelp;
+  if (!message) return;
+  tooltip.textContent = message;
+  tooltip.hidden = false;
+  const bounds = row.getBoundingClientRect();
+  const left = Math.max(12, Math.min(bounds.left, window.innerWidth - tooltip.offsetWidth - 12));
+  let top = bounds.bottom + 7;
+  if (top + tooltip.offsetHeight > window.innerHeight - 12) {
+    top = bounds.top - tooltip.offsetHeight - 7;
+  }
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${Math.max(12, top)}px`;
+}
+
+function installSettingHelp() {
+  const rows = $$([
+    ".setting-row-button",
+    ".setting-row-control",
+    ".knowledge-setting-detail > summary",
+    ".knowledge-setting-detail > div > label",
+    ".feature-settings-detail > summary",
+    ".feature-settings-body > label",
+  ].join(","));
+  rows.forEach((row) => {
+    const help = row.querySelector("small");
+    const message = help?.textContent.trim();
+    if (!message) return;
+    row.dataset.settingHelp = message;
+    row.addEventListener("mouseenter", () => showSettingHelp(row));
+    row.addEventListener("mouseleave", hideSettingHelp);
+    row.addEventListener("focusin", () => showSettingHelp(row));
+    row.addEventListener("focusout", hideSettingHelp);
+  });
+  $(".settings-content").addEventListener("scroll", hideSettingHelp, { passive: true });
+  window.addEventListener("resize", hideSettingHelp);
+}
+
 function showPanel(panelName) {
   $$('[data-settings-panel]').forEach((panel) => {
     const active = panel.dataset.settingsPanel === panelName;
@@ -699,3 +743,9 @@ $$('.setting-row-button, .connection-card').forEach((button) => {
     showSaved("This row would open its focused detail view");
   });
 });
+
+$$('[data-setting-input]').forEach((input) => {
+  input.addEventListener("change", () => showSaved());
+});
+
+installSettingHelp();

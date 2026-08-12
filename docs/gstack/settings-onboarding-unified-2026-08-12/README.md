@@ -73,7 +73,8 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 - One Peak Hermes runtime with a separate execution-provider selector; Codex and Claude Code are not presented as runtimes
 - Vertical safety-mode picker, external MCP/tool-server setup, Web Access, and an entry to the separate Command Gateway workspace
 - Clickable file-type and folder-exclusion details, with Office formats excluded from the product scope and Peak Sheet / AI Graph explained as separately governed formats; plus concrete File Atlas, Ambient and Vault Intelligence controls
-- Advanced exposes only the user-meaningful generated-media path; analysis, Skills, Inbox, DataStore and derived folders remain Peak-managed
+- Advanced exposes exactly two storage boundaries: `Data root` for Peak-managed records and rebuildable data, and `Media root` for large generated media. Every internal subfolder remains derived rather than independently configurable.
+- Knowledge rows show the setting name and current value at rest; longer explanations move to hover/focus help. Search quality includes Personalized PageRank and a folded Inspector-links group, while analysis history remains in the AI Analysis workspace rather than becoming a setting.
 - Save/effect feedback for controls
 
 ### Onboarding

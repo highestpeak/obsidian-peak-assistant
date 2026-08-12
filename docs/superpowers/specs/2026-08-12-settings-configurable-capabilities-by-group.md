@@ -515,14 +515,11 @@ Knowledge & Search 管理长期知识状态：
 | 图片 | 开 | OCR / 视觉描述是否启用，成本和隐私提示 | `CURRENT` / enrichment 依连接 |
 | Excalidraw | 开 | 文本标签、引用和画布关系 | `CURRENT` |
 | TXT | 关 | 是否纳入全文与向量 | `CURRENT` 类型存在 |
-| CSV / JSON / HTML / XML | 关 | 结构化或文本抽取边界；避免把机器数据误作笔记 | `CURRENT` 类型存在 |
-| DOCX | 关 | 文本抽取与向量；不等于可原生编辑 | `CURRENT` |
-| XLSX | 关 | 必须诚实区分注册、预览和解析；当前不应声称完整解析 | `PARTIAL` |
-| PPTX | 关 | 幻灯片文本抽取；可以允许产品关闭支持 | `CURRENT` / 质量需验证 |
+| CSV / JSON / HTML | 关 | 结构化或文本抽取边界；避免把机器数据误作笔记 | `CURRENT` 类型存在 |
 | Canvas | 关 | 卡片文本和链接；与 Excalidraw 分开 | `CURRENT` 类型存在 |
 | Peak Sheet | 按产品策略 | 使用自己的结构化工具和索引投影，不按普通文档解析 | `REQUIRED` / 新文件类型需登记 |
 | Peak AI Graph | 按产品策略 | 索引用户可读说明与来源，不把内部图数据重复作为普通文档 | `CURRENT` artifact，索引策略需收口 |
-| 文件夹 / URL / Unknown | 关 | 只有明确 materialization 或 loader 后才允许 | `CURRENT` 类型存在 |
+| DOCX / PPTX / XLSX / XML / URL / Unknown | 不进入产品范围 | 即使存在底层 loader 或历史注册，也不在本轮 Knowledge Index 设置中承诺支持 | `OUT OF PRODUCT SCOPE` |
 
 新增 Peak 原生文件类型时，必须先登记其识别、读取、搜索、向量、AI enrichment、编辑和生成能力，再决定是否出现在文档类型设置中。
 
@@ -555,9 +552,9 @@ Knowledge & Search 管理长期知识状态：
 | Rerank | 高级设置 | 依赖可用模型；失败时保留原排序 | `PARTIAL` |
 | AI 查询分析模型 | 跳转 / 引用任务默认 | AI & Models 是唯一模型 owner | `CURRENT` 字段存在，所有权需迁移统一 |
 | AI Analysis 自动保存 | 普通设置 | 当前默认开启；影响是否产生持久分析记录 | `CURRENT` |
-| 保存的分析历史数量 | 高级设置 | 当前默认 5 | `CURRENT` |
-| 排除已保存分析 | 普通设置 | 当前默认开启，避免分析产物污染后续检索 | `CURRENT` |
-| 分析输出目录 | 不在本组修改 | 在 Advanced 的 Files & Data 中唯一管理 | `CURRENT` |
+| 分析历史查看、重试和删除 | 不作为设置 | 属于 AI Analysis 运行结果 / 历史工作区 | `CURRENT` 能力，入口需统一 |
+| 排除已保存分析以避免反馈循环 | 系统自动 | 属于检索安全策略，不要求普通用户维护一个含混开关 | `CURRENT` 内部行为 |
+| 分析输出位置 | 跟随 Data root | 不再单独暴露目录覆盖 | `TARGET` |
 | Inspector links | 高级设置 | 决定结果检查器显示哪些跳转 | `PARTIAL`：当前恢复和消费者不完整 |
 
 Inspector links 当前还拆成五个底层字段：关键词数量默认 8、标签数量默认 8、文件夹分组默认开启、分组最小数量默认 6、最大目录深度默认 4。目标 Settings 可以把它们放在同一处高级展开，但必须先补齐持久化恢复和真实消费者，不能因为控件能修改就标成已生效。
@@ -620,18 +617,12 @@ Advanced 收纳低频但必要的长期控制。它不是一套隐藏的“专�
 
 | 设置能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
-| Chat / AI 工作根目录 | 高级设置 | Prompts、Attachments、Hub summaries 等派生路径的根；改变后必须说明旧内容处理 | `CURRENT` |
-| Peak DataStore 目录 | 高级设置 | SQLite、插件数据和本地产物位置；可以跟随 Chat root，也可以单独覆盖 | `CURRENT` |
-| AI Analysis 保存目录 | 高级设置 | 与自动保存联动；唯一修改位置 | `CURRENT` |
-| 媒体生成保存目录 | 高级设置 | 图片、视频、音频和音乐共用或按类型扩展 | `CURRENT` |
-| Skills 目录 | 高级设置 | 决定 Agent 可发现的技能文件 | `CURRENT` |
-| Inbox 目录 | 高级设置 | 决定捕获或生成内容的默认去向 | `CURRENT` |
-| 自定义 Prompt 目录 | 高级设置 | 只管理用户 prompt artifact，不改变内置模板 | `CURRENT` |
-| 索引数据库位置 | 只读状态或维护迁移 | SQLite 是可重建 read model，不应当作普通文件设置 | `CURRENT` / 系统治理 |
+| Data root | 高级设置 | Chat、AI Analysis、Prompts、Skills、Inbox、receipts、DataStore 与可重建索引都从该根目录派生；改变时必须说明迁移和旧内容处理 | `TARGET`：收口现有多个路径字段 |
+| Media root | 高级设置 | 图片、视频、音频和音乐共用独立根目录，因为体积和同步策略通常不同 | `CURRENT` 能力，目标命名需统一 |
 | 数据迁移 | 操作 | 复制、校验、切换、失败回滚；不能静默执行 | `REQUIRED` |
-| 恢复默认目录 | 操作 | 只移除用户路径覆盖，不删除旧内容 | `REQUIRED` |
+| 恢复默认目录 | 操作 | 只移除 Data root / Media root 的用户覆盖，不删除旧内容 | `REQUIRED` |
 
-Prompts、Attachments、Resource summary cache、Hub summaries 和 User profile 等派生目录以只读方式显示计算结果。只有 AI Analysis、Skills、Inbox、Custom prompts、DataStore 和媒体输出等确实有用户意图的路径才提供覆盖；内置 Prompts 等系统目录不能因为技术上是路径就全部开放。
+Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompts、Attachments、Resource summaries、Hub summaries、User profile、receipts、DataStore 和索引等子路径都由产品从 Data root 稳定派生，不再逐项暴露。诊断可以显示最终路径，但不能把内部目录结构重新变成普通设置。
 
 路径变更必须说明：哪些新内容会写到新位置、旧内容是否迁移、是否需要重启或重建、失败后如何恢复。
 

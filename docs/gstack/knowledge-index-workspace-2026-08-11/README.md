@@ -30,7 +30,9 @@ Index products such as full-text records, embeddings, summaries, tags, and relat
 - The same summary separates types included in this run, readable types currently turned off, and Peak product data that is intentionally handled outside the ordinary document index.
 - Index setup is an expandable region above the progress card, not a drawer. A Vault with no index opens this region first.
 - The region contains only per-run choices: run depth, file types, folder scope and optional run exclusions.
+- Run depth is chosen from three large outcomes. Only the selected outcome explains its result, included capabilities and typical duration, avoiding three paragraphs of small text at once.
 - Starting a run animates the region closed and transitions the same page into live progress. The completed state replaces the processing workspace with search and rerun actions.
+- Completion distinguishes processed files from successfully indexed files. Failed and skipped documents remain visible in an expandable attention list with reason and recovery actions; they never disappear behind a nominal `100%` state.
 - Automatic refresh, startup catch-up, large-change behavior, batching, retries, embedding model, summary lengths and chunking are durable controls in `Settings → Knowledge & Search`.
 
 The default run includes Markdown, PDF, images, and Excalidraw. Plain text, CSV, JSON, HTML, and Canvas remain available but off by default. DOC/DOCX and PPT/PPTX are outside Peak's product support scope; XLSX belongs to Peak Sheet interoperability rather than ordinary document indexing. Peak Sheet and AI Graph keep separate content policies.

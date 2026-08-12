@@ -70,12 +70,17 @@
             </header>
             <div class="inline-setup-grid">
               <section class="setup-section run-depth-section">
-                <div class="setup-section-head"><div><h2>Run depth</h2><p>Choose the lightest run that produces what you need.</p></div><span class="setup-state">Recommended · Semantic</span></div>
+                <div class="setup-section-head"><div><h2>What should be ready?</h2></div><span class="setup-state" data-depth-recommendation>Recommended</span></div>
                 <div class="run-depth-list" data-index-depth-group>
-                  <button type="button" data-index-depth="Fast"><span><strong>Fast</strong><small>Full-text search only. Make the Vault searchable as quickly as possible.</small></span><em>Lowest processing</em></button>
-                  <button class="is-selected" type="button" data-index-depth="Semantic"><span><strong>Semantic</strong><small>Full text plus embeddings for meaning-based search.</small></span><em>Recommended</em></button>
-                  <button type="button" data-index-depth="Full knowledge"><span><strong>Full knowledge</strong><small>Add summaries, tags and relationship enrichment where supported.</small></span><em>More time and AI usage</em></button>
+                  <button type="button" data-index-depth="Fast"><strong>Find words</strong><span>Fast</span></button>
+                  <button class="is-selected" type="button" data-index-depth="Semantic"><strong>Find meaning</strong><span>Semantic</span></button>
+                  <button type="button" data-index-depth="Full knowledge"><strong>Build knowledge</strong><span>Full</span></button>
                 </div>
+                <article class="depth-outcome" data-depth-outcome>
+                  <div class="depth-outcome-copy"><span data-depth-kicker>SEMANTIC INDEX</span><strong data-depth-title>Search by meaning, not only exact words</strong><p data-depth-description>Peak adds embeddings to full-text search.</p></div>
+                  <div class="depth-capabilities" data-depth-capabilities><span class="is-on">Text</span><span class="is-on">Meaning</span><span>Summaries</span><span>Relations</span></div>
+                  <div class="depth-estimate"><span>Typical run</span><strong data-depth-estimate>About 18 min</strong></div>
+                </article>
               </section>
               <section class="setup-section content-scope-section">
                 <div class="setup-section-head"><div><h2>Content scope</h2><p>Review the inputs before scanning begins.</p></div><span class="setup-state">4 types · whole Vault</span></div>
@@ -251,9 +256,16 @@ Peak/AI/DataStore/
 
       <section class="completion-panel" data-completion-panel aria-label="Completed index summary">
         <span class="completion-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9" /></svg></span>
-        <div class="completion-copy"><span class="eyebrow">INDEX READY</span><h2>4,860 documents are ready to search</h2><p>Text search and semantic search are available. Peak will keep changed files current using the defaults in Settings.</p></div>
+        <div class="completion-copy"><span class="eyebrow">INDEX READY</span><h2>4,858 documents are ready to search</h2><p>Search is available now. Two files need attention and remain visible below.</p></div>
         <div class="completion-actions"><button class="primary-button" type="button" data-search-vault>Search the Vault</button><button class="secondary-button" type="button" data-run-again>Run again</button></div>
-        <div class="completion-facts"><span><strong>31m 02s</strong>total time</span><span><strong>4 file types</strong>processed</span><span><strong>2 documents</strong>need attention</span><span><strong>Just now</strong>last completed</span></div>
+        <div class="completion-facts"><span><strong>31m 02s</strong>total time</span><span><strong>4 file types</strong>processed</span><span class="has-attention"><strong>2 files</strong>failed or skipped</span><span><strong>Just now</strong>last completed</span></div>
+        <details class="completion-attention" data-completion-attention>
+          <summary><span class="attention-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 17h.01" /></svg></span><span><strong>2 files need attention</strong><small>They do not block search. Review the reason, then retry or leave them skipped.</small></span><em>Review &amp; retry</em><svg class="attention-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary>
+          <div class="attention-file-list">
+            <div><span class="file-icon">PDF</span><span><strong>Scanned receipt.pdf</strong><small>OCR timed out after 3 attempts</small></span><em>Failed</em><button class="secondary-button" type="button" data-retry-failed>Retry</button></div>
+            <div><span class="file-icon">IMG</span><span><strong>Archive poster.tiff</strong><small>Format is registered but no compatible extractor is available</small></span><em>Skipped</em><button class="secondary-button" type="button" data-open-file-scope>Review scope</button></div>
+          </div>
+        </details>
       </section>
 
       <section class="pipeline" aria-label="Indexing stages">
