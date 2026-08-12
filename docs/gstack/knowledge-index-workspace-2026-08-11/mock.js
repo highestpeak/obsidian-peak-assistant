@@ -333,7 +333,9 @@ $("[data-file-types-panel]").addEventListener("click", (event) => event.stopProp
 document.addEventListener("click", () => toggleFileTypes(false));
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") toggleFileTypes(false);
+  if (event.key !== "Escape") return;
+  toggleFileTypes(false);
+  toggleIndexSetup(false);
 });
 
 $$('[data-type-segment], [data-type-row]').forEach((element) => {
@@ -356,5 +358,58 @@ $("[data-order-select]").addEventListener("change", (event) => {
   renderAll();
 });
 
+let selectedIndexDepth = "Semantic";
+
+function toggleIndexSetup(open) {
+  const setup = $("[data-index-setup]");
+  if (!setup) return;
+  setup.hidden = !open;
+  document.body.classList.toggle("has-setup-open", open);
+  if (open) toggleFileTypes(false);
+}
+
+$$('[data-open-index-setup]').forEach((button) => {
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleIndexSetup(true);
+  });
+});
+
+$$('[data-close-index-setup]').forEach((button) => {
+  button.addEventListener("click", () => toggleIndexSetup(false));
+});
+
+$("[data-index-setup]").addEventListener("click", (event) => {
+  if (event.target === $("[data-index-setup]")) toggleIndexSetup(false);
+});
+
+$$('[data-index-depth]').forEach((button) => {
+  button.addEventListener("click", () => {
+    $$('[data-index-depth]').forEach((candidate) => candidate.classList.remove("is-selected"));
+    button.classList.add("is-selected");
+    selectedIndexDepth = button.dataset.indexDepth;
+    $("[data-next-run-summary]").textContent = `Next run · ${selectedIndexDepth}`;
+  });
+});
+
+$$('.document-type-chips button:not(:disabled)').forEach((button) => {
+  button.addEventListener("click", () => button.classList.toggle("is-selected"));
+});
+
+$("[data-save-index-setup]").addEventListener("click", () => {
+  const button = $("[data-save-index-setup]");
+  button.textContent = "Saved";
+  window.setTimeout(() => {
+    button.textContent = "Save for next run";
+    toggleIndexSetup(false);
+  }, 550);
+});
+
+$("[data-rebuild-preview]").addEventListener("click", (event) => {
+  event.currentTarget.textContent = "Preview: vectors and derived records only · original files stay safe";
+});
+
 renderAll();
 startSimulation();
+
+if (window.location.hash === "#setup") toggleIndexSetup(true);

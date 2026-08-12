@@ -31,11 +31,11 @@ The two mocks use the same nouns and responsibility boundaries:
 
 - **AI & Models** keeps one continuous configuration chain together: connection → available models → task defaults.
 - Connections, models and task defaults remain distinct levels inside that page; an account is not a model, and a model is not a product feature.
-- **Agents** keeps the second control chain together: Hermes execution → available tools → permissions → confirmations.
+- **Agents** keeps the second control chain together: Peak Hermes → external capabilities → permissions → confirmations.
 - Agent capability and safety remain distinct levels inside that page; enabling a capability never silently grants unrestricted access.
 - There is no generic **Features** destination. Each option lives with the thing it changes: models and generation routes in AI & Models; Agent execution, tools and access rules in Agents; Search, Atlas and Ambient behavior in Knowledge & Search; outputs, retention and appearance in Advanced.
-- **Peak Hermes** owns Agent workflow, permissions and receipts; Codex, Claude Code and model connections supply compatible execution capability.
-- **Knowledge settings** own long-term scope and quality. The Knowledge Index workspace owns a current run's progress, errors and history.
+- **Peak Hermes** is the single Agent runtime and owns workflow, permissions and receipts. Codex, Claude Code and model connections are execution providers selected through the Provider Registry / Capability Gateway after capability verification; they are not parallel runtimes.
+- **Knowledge & Search** summarizes index state and provides scope shortcuts. The Knowledge Index workspace owns per-run depth, refresh behavior, file/folder scope, chunking, enrichment limits, rebuild impact, current progress and errors.
 - **Onboarding** verifies only the dependencies needed for one first task. It does not duplicate full Settings.
 
 ## Settings direction
@@ -62,15 +62,15 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 ### Settings
 
 - Header tab navigation inside the native Obsidian Settings context
-- Automatic setup that combines a quality / cost strategy with an independent cloud / local data route, previews the effect, and preserves manual overrides
+- A compact Automatic-model rule that explains what it affects, uses understandable outcome and processing-location language, and never overwrites manual choices
 - Primary and additional connection groups, with an OpenRouter detail that separates connection health from online catalog, cache and bundled fallback state
-- Expandable product feature → action model hierarchy, plus a focused action picker with inheritance and per-action advanced overrides
+- Direct model selection on each product feature, expandable product feature → action hierarchy, and a focused action picker with nine capability-aware advanced overrides
 - Add-connection modal with the six primary launch connections and a lower-pressure additional list
 - Real safety modes: Read only, Ask every time, Accept reviewed edits and Bypass confirmations
-- Peak Hermes, Codex and Claude Code execution routes shown separately from model choice
-- Segmented index depth and contextual advanced disclosure
-- File-type scope detail that distinguishes extraction / indexing capability and includes Peak Sheet and Peak AI Graph
-- Advanced Files & Data, Privacy / Usage / Retention, Workspace behavior, Appearance / Accessibility and Diagnostics / Maintenance controls
+- One Peak Hermes runtime with a separate execution-provider selector; Codex and Claude Code are not presented as runtimes
+- Vertical safety-mode picker, external MCP/tool-server setup, Web Access, and an entry to the separate Command Gateway workspace
+- Clickable file-type and folder-exclusion details, plus concrete File Atlas, Ambient and Vault Intelligence controls
+- Advanced exposes only the user-meaningful generated-media path; analysis, Skills, Inbox, DataStore and derived folders remain Peak-managed
 - Save/effect feedback for controls
 
 ### Onboarding
@@ -84,7 +84,7 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 
 ## Truth boundary
 
-This is a target design. Current or partially implemented capabilities must still be verified against production source before implementation. In particular, Codex and Claude Code ordinary-generation and Agent capabilities require separate verification; OpenRouter and Ollama model lists must use fresh runtime/catalog evidence; Knowledge Index readiness must not be inferred from a static preference.
+This is a target design. Current or partially implemented capabilities must still be verified against production source before implementation. The source currently exposes `hermes-harness` and `provider-direct` backend kinds; Codex and Claude Code provider adapters still require separate verification before they may appear as ready execution providers. OpenRouter and Ollama model lists must use fresh runtime/catalog evidence, and Knowledge Index readiness must not be inferred from a static preference.
 
 ## Historical evidence
 

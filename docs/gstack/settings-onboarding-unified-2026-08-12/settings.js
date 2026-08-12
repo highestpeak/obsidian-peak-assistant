@@ -42,6 +42,7 @@ $$('[data-tree-toggle]').forEach((button) => {
     children.hidden = !open;
     children.classList.toggle("is-open", open);
     button.classList.toggle("is-open", open);
+    button.closest(".feature-row-shell")?.classList.toggle("is-open", open);
   });
 });
 
@@ -61,8 +62,8 @@ $$('[data-segmented] button').forEach((button) => {
   });
 });
 
-let selectedStrategy = "Balanced";
-let selectedRoute = "Cloud allowed";
+let selectedStrategy = "Recommended";
+let selectedRoute = "cloud and local";
 
 function updateStrategySummary() {
   $("[data-strategy-summary]").textContent = `${selectedStrategy} · ${selectedRoute}`;
@@ -74,18 +75,19 @@ $$('[data-strategy]').forEach((button) => {
     button.classList.add("is-selected");
     selectedStrategy = button.dataset.strategy;
     updateStrategySummary();
-    showSaved("Strategy selected · preview before applying");
+    showSaved("Automatic rule selected · manual model choices stay unchanged");
   });
 });
 
-$$('[data-route]').forEach((button) => {
-  button.addEventListener("click", () => {
-    $$('[data-route]').forEach((candidate) => candidate.classList.remove("is-selected"));
-    button.classList.add("is-selected");
-    selectedRoute = button.dataset.route;
-    updateStrategySummary();
-    showSaved("Data route selected · preview before applying");
-  });
+$('[data-route-select]').addEventListener("change", (event) => {
+  const labels = {
+    "Cloud and this computer": "cloud and local",
+    "Prefer this computer": "prefer this computer",
+    "This computer only": "this computer only",
+  };
+  selectedRoute = labels[event.target.value];
+  updateStrategySummary();
+  showSaved("Processing location selected · manual model choices stay unchanged");
 });
 
 $('[data-preview-strategy]').addEventListener("click", () => {
@@ -94,6 +96,15 @@ $('[data-preview-strategy]').addEventListener("click", () => {
 
 $('[data-apply-strategy]').addEventListener("click", () => {
   showSaved(`Applied · ${selectedStrategy} + ${selectedRoute} · manual choices preserved`);
+});
+
+$('[data-policy-reset]').addEventListener("click", () => {
+  selectedStrategy = "Recommended";
+  selectedRoute = "cloud and local";
+  $$('[data-strategy]').forEach((candidate) => candidate.classList.toggle("is-selected", candidate.dataset.strategy === "Recommended"));
+  $('[data-route-select]').selectedIndex = 0;
+  updateStrategySummary();
+  showSaved("Custom Automatic rule removed · product defaults restored");
 });
 
 const safetyDescriptions = {
@@ -110,7 +121,8 @@ $$('[data-safety]').forEach((button) => {
     const mode = button.dataset.safety;
     $("[data-safety-summary]").textContent = mode;
     $("[data-safety-detail]").textContent = safetyDescriptions[mode];
-    $(".safety-explainer").classList.toggle("is-danger", mode === "Bypass confirmations");
+    $("[data-safety-picker]").classList.toggle("is-danger", mode === "Bypass confirmations");
+    $("[data-safety-picker]").open = false;
     showSaved(mode === "Bypass confirmations" ? "Saved · high-risk mode remains visibly active" : "Saved · new Agent tasks use this mode");
   });
 });
@@ -128,6 +140,8 @@ document.addEventListener("keydown", (event) => {
     $("[data-connection-modal]").hidden = true;
     $("[data-provider-detail-modal]").hidden = true;
     $("[data-file-types-modal]").hidden = true;
+    $("[data-folder-rules-modal]").hidden = true;
+    $("[data-external-tool-modal]").hidden = true;
     $("[data-model-picker-modal]").hidden = true;
   }
 });
@@ -177,6 +191,52 @@ $('[data-save-file-types]').addEventListener("click", () => {
 
 $('[data-file-types-modal]').addEventListener("click", (event) => {
   if (event.target === $('[data-file-types-modal]')) toggleFocusedModal("[data-file-types-modal]", false);
+});
+
+$('[data-folder-rules]').addEventListener("click", () => toggleFocusedModal("[data-folder-rules-modal]", true));
+
+$$('[data-close-folder-rules]').forEach((button) => {
+  button.addEventListener("click", () => toggleFocusedModal("[data-folder-rules-modal]", false));
+});
+
+$('[data-save-folder-rules]').addEventListener("click", () => {
+  toggleFocusedModal("[data-folder-rules-modal]", false);
+  showSaved("Saved · folder scope will be applied to the next index run");
+});
+
+$('[data-folder-rules-modal]').addEventListener("click", (event) => {
+  if (event.target === $('[data-folder-rules-modal]')) toggleFocusedModal("[data-folder-rules-modal]", false);
+});
+
+$$('[data-add-external-tool]').forEach((button) => {
+  button.addEventListener("click", () => toggleFocusedModal("[data-external-tool-modal]", true));
+});
+
+$$('[data-close-external-tool]').forEach((button) => {
+  button.addEventListener("click", () => toggleFocusedModal("[data-external-tool-modal]", false));
+});
+
+$('[data-test-external-tool]').addEventListener("click", (event) => {
+  const button = event.currentTarget;
+  button.textContent = "Testing…";
+  window.setTimeout(() => {
+    button.textContent = "Test again";
+    $('[data-save-external-tool]').disabled = false;
+    showSaved("Connection ready · 6 tools discovered for review");
+  }, 700);
+});
+
+$('[data-save-external-tool]').addEventListener("click", () => {
+  toggleFocusedModal("[data-external-tool-modal]", false);
+  showSaved("Connected · discovered tools remain disabled until reviewed");
+});
+
+$('[data-external-tool-modal]').addEventListener("click", (event) => {
+  if (event.target === $('[data-external-tool-modal]')) toggleFocusedModal("[data-external-tool-modal]", false);
+});
+
+$('[data-open-command-gateway]').addEventListener("click", () => {
+  showSaved("Command Gateway opens as a separate Obsidian workspace");
 });
 
 let activeCatalogFilter = "recommended";
@@ -231,6 +291,12 @@ $$('.execution-card').forEach((button) => {
     $$('.execution-card').forEach((candidate) => candidate.classList.remove("is-selected"));
     button.classList.add("is-selected");
     showSaved("Saved · new Agent tasks use this route automatically");
+  });
+});
+
+$$('[data-inline-model]').forEach((select) => {
+  select.addEventListener("change", () => {
+    showSaved(`${select.dataset.inlineModel} now uses ${select.value}`);
   });
 });
 
@@ -301,7 +367,7 @@ $("[data-reset-models]").addEventListener("click", () => {
 
 $$('.setting-row-button, .connection-card').forEach((button) => {
   button.addEventListener("click", () => {
-    if (button.dataset.panelJump || button.dataset.connectionDetail || button.dataset.fileTypes !== undefined) return;
+    if (button.dataset.panelJump || button.dataset.connectionDetail || button.dataset.fileTypes !== undefined || button.dataset.folderRules !== undefined || button.dataset.addExternalTool !== undefined || button.dataset.openCommandGateway !== undefined) return;
     showSaved("This row would open its focused detail view");
   });
 });

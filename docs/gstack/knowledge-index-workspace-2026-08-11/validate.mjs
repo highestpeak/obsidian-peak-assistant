@@ -27,6 +27,14 @@ const requiredHtml = [
   "file-types-donut",
   "data-type-segment=\"markdown\"",
   "data-type-row=\"markdown\"",
+  "data-open-index-setup",
+  "data-index-setup",
+  "Run depth",
+  "Keep the index current",
+  "Ignore patterns",
+  "Summary lengths",
+  "Advanced chunking",
+  "data-index-depth=\"Full knowledge\"",
   "Settings &amp; Onboarding package",
 ];
 
@@ -38,6 +46,8 @@ const requiredJs = [
   "function renderMetrics",
   "function toggleFileTypes",
   "function setActiveFileType",
+  "function toggleIndexSetup",
+  "selectedIndexDepth",
 ];
 
 const requiredCss = [
@@ -50,6 +60,9 @@ const requiredCss = [
   ".donut-segment",
   ".file-types-overview",
   ".package-link",
+  ".setup-drawer",
+  ".run-depth-list",
+  ".setup-disclosure",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",
 ];

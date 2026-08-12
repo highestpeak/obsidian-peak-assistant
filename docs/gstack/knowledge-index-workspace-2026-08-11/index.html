@@ -35,6 +35,9 @@
         </div>
 
         <div class="header-actions">
+          <button class="secondary-button" type="button" data-open-index-setup>
+            Index setup
+          </button>
           <button class="secondary-button" type="button" data-pause>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M9 5v14M15 5v14" />
@@ -167,7 +170,7 @@
               <strong>Not included in this run</strong>
               <span>TXT, CSV, JSON, HTML, XML, DOCX, PPTX and Canvas</span>
             </div>
-            <button class="text-button" type="button">Index settings</button>
+            <button class="text-button" type="button" data-open-index-setup>Index setup</button>
           </div>
 
           <div class="product-type-note">
@@ -367,9 +370,68 @@
           </svg>
           <span>You can close this view. Indexing continues in the background and this progress will be here when you return.</span>
         </div>
-        <button class="text-button" type="button">Index settings</button>
+        <button class="text-button" type="button" data-open-index-setup>Index setup</button>
       </footer>
     </main>
+
+    <div class="setup-backdrop" data-index-setup hidden>
+      <aside class="setup-drawer" role="dialog" aria-modal="true" aria-labelledby="index-setup-title">
+        <header class="setup-header">
+          <div><span class="eyebrow">INDEX SETUP</span><h1 id="index-setup-title">Choose what the next run builds</h1><p>These controls belong to the Index workspace because they affect scanning, processing time and generated knowledge.</p></div>
+          <button class="icon-button" type="button" data-close-index-setup aria-label="Close index setup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg></button>
+        </header>
+
+        <div class="setup-scroll">
+          <section class="setup-section run-depth-section">
+            <div class="setup-section-head"><div><h2>Run depth</h2><p>Choose per run. Changing this does not interrupt the run already in progress.</p></div><span class="setup-state">Current run · Semantic</span></div>
+            <div class="run-depth-list" data-index-depth-group>
+              <button data-index-depth="Fast"><span><strong>Fast</strong><small>Full-text search only. Best when you need the Vault searchable immediately.</small></span><em>Lowest processing</em></button>
+              <button class="is-selected" data-index-depth="Semantic"><span><strong>Semantic</strong><small>Full text plus embeddings for meaning-based search.</small></span><em>Recommended</em></button>
+              <button data-index-depth="Full knowledge"><span><strong>Full knowledge</strong><small>Add summaries, tags and relationship enrichment where supported.</small></span><em>More time and AI usage</em></button>
+            </div>
+          </section>
+
+          <section class="setup-section">
+            <div class="setup-section-head"><div><h2>Content scope</h2><p>Review the inputs for this run before scanning begins.</p></div><span class="setup-state">4 types · whole Vault</span></div>
+            <div class="setup-card">
+              <div class="setup-row is-stacked"><span><strong>Document types</strong><small>Only enable types Peak can actually extract and process.</small></span><div class="document-type-chips"><button class="is-selected">Markdown</button><button class="is-selected">PDF</button><button class="is-selected">Images</button><button class="is-selected">Excalidraw</button><button>CSV</button><button>JSON</button><button>HTML</button><button>DOCX</button><button>PPTX</button><button disabled>XLSX</button></div></div>
+              <label class="setup-row"><span><strong>Folders to scan</strong><small>Start with the whole Vault or select specific folders.</small></span><select><option>Whole Vault</option><option>Choose folders…</option></select></label>
+              <label class="setup-row is-stacked"><span><strong>Ignore patterns</strong><small>One Vault-relative glob per line.</small></span><textarea>.git/
+node_modules/
+.obsidian/
+Peak/AI/DataStore/
+*.tmp
+*.temp</textarea></label>
+            </div>
+          </section>
+
+          <section class="setup-section">
+            <div class="setup-section-head"><div><h2>Keep the index current</h2><p>Configure how changes are noticed, grouped and recovered.</p></div><span class="setup-state">Automatic</span></div>
+            <div class="setup-card">
+              <label class="setup-row"><span><strong>Update changed files automatically</strong><small>Queue changed documents without rebuilding unaffected content.</small></span><input type="checkbox" checked data-setup-switch /><i class="toggle-track"><i></i></i></label>
+              <label class="setup-row"><span><strong>Wait for changes to settle</strong><small>Prevents repeated work while a file is still being written.</small></span><select><option>5 seconds</option><option>15 seconds</option><option>30 seconds</option></select></label>
+              <label class="setup-row"><span><strong>When Peak starts</strong><small>Catch up on changes made while Obsidian was closed.</small></span><select><option>Check changed files</option><option>Ask first</option><option>Do nothing</option></select></label>
+              <label class="setup-row"><span><strong>Large change sets</strong><small>Keep progress visible when many files need processing.</small></span><select><option>Open this progress view</option><option>Run quietly in background</option><option>Ask first</option></select></label>
+              <label class="setup-row"><span><strong>Documents per batch</strong><small>Lower this when local models or the computer are under load.</small></span><select><option>25 documents</option><option>10 documents</option><option>50 documents</option></select></label>
+              <label class="setup-row"><span><strong>Retry failed documents</strong><small>Failures remain visible and can be retried manually.</small></span><select><option>3 attempts</option><option>1 attempt</option><option>5 attempts</option></select></label>
+            </div>
+          </section>
+
+          <section class="setup-section">
+            <div class="setup-section-head"><div><h2>Models &amp; generated knowledge</h2><p>Used only by run depths that need these outputs.</p></div><span class="setup-state">Inherited from AI &amp; Models</span></div>
+            <div class="setup-card">
+              <label class="setup-row"><span><strong>Embedding model</strong><small>Powers semantic search; changing it requires rebuilding vectors.</small></span><select><option>Ollama · nomic-embed-text</option><option>OpenAI · text-embedding</option></select></label>
+              <details class="setup-disclosure"><summary><span><strong>Summary lengths</strong><small>Targets for analysis and document summaries.</small></span><em>Session 3000 · short 150 · full 2000</em><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary><div><label><span>Analysis session summary</span><span class="number-control"><input value="3000" /><em>words</em></span></label><label><span>Short document summary</span><span class="number-control"><input value="150" /><em>words</em></span></label><label><span>Full document summary</span><span class="number-control"><input value="2000" /><em>words</em></span></label></div></details>
+              <details class="setup-disclosure"><summary><span><strong>Advanced chunking</strong><small>How long documents are split before embedding.</small></span><em>6 controls</em><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary><div><label><span>Maximum chunk size</span><span class="number-control"><input value="1000" /><em>chars</em></span></label><label><span>Chunk overlap</span><span class="number-control"><input value="200" /><em>chars</em></span></label><label><span>Minimum document size</span><span class="number-control"><input value="1500" /><em>chars</em></span></label><label><span>Skip code blocks when chunking</span><input type="checkbox" data-setup-switch /><i class="toggle-track"><i></i></i></label><label><span>Code block placeholder</span><input value="[code omitted]" /></label><label><span>Maximum inline code characters</span><span class="number-control"><input value="0" /><em>chars</em></span></label></div></details>
+            </div>
+          </section>
+
+          <section class="setup-section danger-setup-section"><div class="setup-section-head"><div><h2>Rebuild</h2><p>Rebuild only derived index data. Original Vault content is never deleted.</p></div></div><button class="danger-button" type="button" data-rebuild-preview>Review rebuild impact…</button></section>
+        </div>
+
+        <footer class="setup-footer"><span><strong data-next-run-summary>Next run · Semantic</strong><small>4 types · whole Vault · automatic refresh</small></span><button class="text-button" type="button" data-close-index-setup>Cancel</button><button class="primary-button" type="button" data-save-index-setup>Save for next run</button></footer>
+      </aside>
+    </div>
 
     <script src="./mock.js"></script>
   </body>

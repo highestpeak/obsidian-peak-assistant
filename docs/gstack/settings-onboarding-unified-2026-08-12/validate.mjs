@@ -39,7 +39,7 @@ requireValues("Settings HTML", settingsHtml, [
   "Task defaults",
   "Agents",
   "Knowledge & Search",
-  "Available tools",
+  "Tools &amp; external capabilities",
   "Permissions &amp; confirmations",
   "Agent execution",
   "Advanced settings",
@@ -47,9 +47,10 @@ requireValues("Settings HTML", settingsHtml, [
   "Privacy, usage &amp; retention",
   "Appearance",
   "Diagnostics &amp; maintenance",
-  "Automatic setup",
-  "data-strategy=\"Balanced\"",
-  "data-route=\"Local only\"",
+  "How Automatic chooses a model",
+  "data-strategy=\"Recommended\"",
+  "data-route-select",
+  "data-inline-model=\"Chat Studio\"",
   "Advanced model controls",
   "Default safety mode",
   "Ask every time",
@@ -61,6 +62,8 @@ requireValues("Settings HTML", settingsHtml, [
   "data-provider-detail-modal",
   "data-model-picker-modal",
   "data-file-types-modal",
+  "data-folder-rules-modal",
+  "data-external-tool-modal",
   "Peak Sheet",
   "Peak AI Graph",
   "Usage tracking",
@@ -69,6 +72,12 @@ requireValues("Settings HTML", settingsHtml, [
   "Vault Search & AI Search",
   "File Atlas & AI Graph",
   "Peak Hermes",
+  "single Agent runtime",
+  "Open Command Gateway",
+  "External tool servers",
+  "Generated media location",
+  "Advanced controls for this action",
+  "Total request timeout",
   "data-tree-toggle=\"composer\"",
   "data-add-connection",
   "data-settings-panel=\"ai\"",
@@ -100,6 +109,7 @@ requireValues("Settings JS", settingsJs, [
   "function updateStrategySummary",
   "function filterCatalog",
   "function restoreActionAutomatic",
+  "function toggleFocusedModal",
   "data-panel-target",
   "data-tree-toggle",
   "data-connection-modal",
@@ -120,8 +130,11 @@ requireValues("CSS", css, [
   ".obsidian-settings-shell",
   ".peak-settings-tabs",
   ".model-tree",
-  ".strategy-grid",
-  ".safety-mode-grid",
+  ".automatic-policy",
+  ".inline-model-select",
+  ".safety-picker",
+  ".command-gateway-card",
+  ".feature-settings-detail",
   ".model-picker-modal",
   ".catalog-browser",
   ".wizard-shell",
@@ -186,6 +199,10 @@ for (const value of ['data-settings-panel="data"', 'data-panel-target="data"', '
 
 for (const value of ['peak-settings-header', 'peak-heading', 'peak-header-actions', 'setup-header-button']) {
   if (settingsHtml.includes(value)) missing.push(`Redundant Settings toolbar returned: ${value}`);
+}
+
+for (const value of ['AI result reranking', '<h2>Index depth</h2>', 'class="execution-grid"', '<strong>AI Analysis reports</strong>', '<strong>Skills, Inbox &amp; custom prompts</strong>', '<strong>DataStore location</strong>', '<strong>Derived folders</strong>']) {
+  if (settingsHtml.includes(value)) missing.push(`Retired or relocated Settings control returned: ${value}`);
 }
 
 for (const value of ['data-settings-search', 'data-search-trigger', 'data-search-popover', 'data-search-result']) {
