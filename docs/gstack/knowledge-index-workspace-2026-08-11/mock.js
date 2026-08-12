@@ -470,7 +470,9 @@ function showIndexActionDetail(row) {
   const ready = row.dataset.actionReady || "Ready";
   let stateLabel = input.checked ? `Included · ${ready}` : ready;
   if (input.dataset.actionMode === "automatic") stateLabel = "Always on";
-  if (input.disabled && input.dataset.actionMode !== "automatic") stateLabel = "In development";
+  if (input.disabled && input.dataset.actionMode !== "automatic") {
+    stateLabel = row.dataset.actionRequired === "true" ? "Required · not implemented" : "In development";
+  }
   activeIndexActionRow = row;
   $(`[data-action-explainer-title]`).textContent = $("strong", row).textContent;
   $(`[data-action-explainer-copy]`).textContent = row.dataset.actionDetail;

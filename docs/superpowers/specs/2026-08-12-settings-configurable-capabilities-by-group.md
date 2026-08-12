@@ -538,9 +538,9 @@ Knowledge & Search 管理长期知识状态：
 | AI Analysis 会话摘要长度 | 高级设置 | 当前默认 3000；只影响分析产物 | `CURRENT` |
 | 生成向量 | 每次运行独立选择 | Core search 中直接显示为 Embeddings；语义检索和语义关系依赖它，需显示模型和重建影响 | `CURRENT` |
 | Markdown 摘要 | 每次运行独立选择 | 从笔记正文生成短摘要和完整摘要；长度由长期设置管理 | `CURRENT` |
-| PDF 摘要 | 每次运行独立选择 | 必须基于已抽取 PDF 正文生成，不能用文件名或占位文本代替 | `IN DEVELOPMENT`：底层可抽取正文，索引 enrichment 尚未接通 |
-| 图片描述与摘要 | 每次运行独立选择 | 必须把真实图像内容交给视觉模型，并说明成本与隐私 | `IN DEVELOPMENT`：当前索引路径没有传递图像内容 |
-| Canvas / Excalidraw 摘要 | 每次运行独立选择 | 基于可读文字、引用和结构生成，不把内部 JSON 当摘要 | `IN DEVELOPMENT` |
+| PDF 摘要 | 每次运行独立选择 | 必须基于已抽取 PDF 正文生成，不能用文件名或占位文本代替 | `REQUIRED · IMPLEMENTATION PENDING`：底层可抽取正文，索引 enrichment 尚未接通 |
+| 图片描述与摘要 | 每次运行独立选择 | 必须把真实图像内容交给视觉模型，并说明成本与隐私 | `REQUIRED · IMPLEMENTATION PENDING`：当前索引路径没有传递图像内容 |
+| Canvas / Excalidraw 摘要 | 每次运行独立选择 | 基于可读文字、引用和结构生成，不把内部 JSON 当摘要 | `REQUIRED · IMPLEMENTATION PENDING` |
 | 本地关键词与关键句 | 系统自动 | 使用确定性本地分析，不产生模型调用 | `CURRENT` |
 | AI topic tags | 每次运行独立选择 | 生成用于发现和聚类的主题概念，并显示预计用量 | `CURRENT` / Markdown 路径 |
 | Functional tags | 每次运行独立选择 | 识别 decision、plan、reference 等文档作用 | `CURRENT` / Markdown 路径 |
@@ -551,13 +551,83 @@ Knowledge & Search 管理长期知识状态：
 | Communities / Hub signals | 每次运行独立选择 | 生成聚类、中心性与结构缺口信号 | `CURRENT` 处理存在 / 用户级开关是 `TARGET` |
 | Search ranking signals | 系统自动 | 维护 PageRank 与关系感知排序信号 | `CURRENT` |
 | PDF、Canvas、Excalidraw 文本抽取 | 系统自动 | 作为相应文件类型进入全文与向量步骤前的准备动作 | `CURRENT` / 能力依 loader |
-| 扫描 PDF OCR、图片 OCR、图片视觉描述 | 每次运行独立选择 | 只在真实 OCR / vision pipeline 可用时开放，不能用 disabled 外观假装已经支持 | `IN DEVELOPMENT` |
+| 扫描 PDF OCR、图片 OCR、图片视觉描述 | 每次运行独立选择 | 只在真实 OCR / vision pipeline 可用时开放，不能用 disabled 外观假装已经支持 | `REQUIRED · IMPLEMENTATION PENDING` |
 
 Index workspace 直接展示真实产物，不再要求用户先理解“快速 / 语义 / 完整”等套餐名。第一层是 `Core search`：Full-text 是每次运行的基础，Embeddings 可以直接开关。第二层是 `Generated knowledge`：按照 Summaries、Tags & entities、Relationships、Content understanding 四组组成常显能力矩阵，不再要求逐组展开。每个动作独立说明其状态、依赖、成本和处理对象。
 
 桌面端四组横向并列，使全部动作可以同时浏览；窄窗口降为两列或一列。动作行只保留可读字号的名称与状态控件，重复说明集中到矩阵下方的一条详情栏，在悬浮、键盘聚焦或选择动作时更新。这样既不隐藏选项，也不会因为每项都永久显示两行小字而把首轮设置拉成长页面。
 
 组名只是导航，不能充当一个会模糊能力边界的总开关。例如 `Summaries` 必须继续拆成 Markdown、PDF、图片和视觉文档；还没接通的路径明确标为 `In development`，而不是让用户误以为一个开关已经覆盖所有文件类型。`Recommended` 只恢复核心层和必要自动动作，不能隐藏或覆盖用户逐项选择。详细长度、chunking、后台刷新等长期参数仍留在 Settings，避免同一配置出现两个 owner。
+
+#### 5.3.1 `Later` 是本需求的必做范围
+
+Index workspace 中的 `Later` 是对**当前产品事实**的诚实标记，不是可选 backlog。本需求完成时必须交付以下六项能力：
+
+1. PDF summaries；
+2. Image summaries；
+3. Canvas & Excalidraw summaries；
+4. Scanned PDF OCR；
+5. Image OCR；
+6. Image visual description。
+
+工程内部可以按依赖分阶段合入，但不能把任意一项从最终完成条件中移除。能力在真实 runtime、持久化状态和验证证据齐备之前，mock 与生产 UI 都必须保持不可选；完成后才把对应的 `Later` 切换为可配置动作。
+
+当前实现边界必须作为开发起点：PDF loader 已经读取真实 PDF bytes 并能抽取嵌入文本，但没有扫描件 OCR；图片 loader 能读取真实图片 bytes，却仍用文件名占位文本进入摘要路径，没有把图像内容传给视觉模型；Canvas 与 Excalidraw 已有可读文本、引用或结构抽取，但还没有进入对应的摘要 enrichment。Prompt 已登记不等于能力已经接通。
+
+##### 交付顺序
+
+1. **统一输入产物**：为 PDF 页、图片、Canvas 与 Excalidraw 建立带 source hash、MIME、页码或结构位置的规范输入；禁止后续步骤绕过该输入直接使用文件名、占位文本或原始内部 JSON。
+2. **接通 OCR 与视觉理解**：先提供 Scanned PDF OCR、Image OCR 和 Image visual description，并把成功、部分成功、失败分别记录为可恢复状态。
+3. **接通摘要消费者**：PDF summary 消费正文或 OCR 文本；Image summary 消费视觉描述并可合并 OCR；Canvas / Excalidraw summary 消费可读文字、引用和结构。
+4. **接入 Index 运行编排**：六项动作都进入同一运行的进度、失败明细、重试、取消、用量 receipt、缓存和增量重跑，而不是成为与 Knowledge Index 脱离的孤立工具。
+
+##### 六项能力的实现契约
+
+**PDF summaries**
+
+- 文本型 PDF 直接使用逐页抽取的正文；扫描页在启用 OCR 时使用 OCR 结果。
+- 摘要必须保留来源文件与页码范围，禁止对文件名、空正文或 placeholder 生成“成功”结果。
+- 验收至少覆盖文本型 PDF、纯扫描 PDF、混合 PDF 和单页失败但整份文档部分成功。
+
+**Scanned PDF OCR**
+
+- 只在页面缺少足够嵌入文本时运行，避免无意义地重复 OCR。
+- 逐页记录状态和页码锚点；单页失败不能抹掉已成功抽取的其他页，也不能阻塞基础全文索引。
+- 用户可以只重试失败页或失败文档，不必重新构建整个 Vault。
+
+**Image visual description**
+
+- 必须把真实图片 bytes、MIME 和受支持的图像输入交给视觉模型，不得通过纯文本 `queryText` 加文件名模拟视觉理解。
+- 结果记录模型、配置版本、source hash、成本和数据处理位置；图片变更后旧描述自动失效。
+- 验收使用固定图片 fixture 断言可观察的语义内容，而不是只断言接口返回非空字符串。
+
+**Image OCR**
+
+- OCR 是独立产物和独立状态，可以与视觉描述分别启用、失败和重试。
+- OCR 失败不影响图片被识别、登记或参与其他已可用索引步骤。
+- 结果保留文本区域或足以回到来源图片的定位信息，并记录所用 OCR 能力与语言配置。
+
+**Image summaries**
+
+- 摘要以视觉描述为主要输入，并在存在 OCR 文本时明确合并两类证据；不得只总结文件名或 OCR 片段。
+- Receipt 必须说明本次使用了视觉描述、OCR 或两者，缺少依赖时显示阻塞原因而不是生成伪结果。
+- 重跑 Image summary 不应强制重做 source hash 未变化且配置兼容的 OCR / 视觉描述。
+
+**Canvas & Excalidraw summaries**
+
+- 只使用用户可读文字、文件引用、连线关系和必要结构，不把 Canvas / Excalidraw 原始 JSON 直接作为 prompt 正文。
+- 摘要应能表达主要节点、引用与关系；无法解析的局部元素记录警告，不把整份视觉文档判为失败。
+- 验收 fixture 至少覆盖纯文本节点、文件引用、连线标签和部分未知元素。
+
+##### 共同完成门槛
+
+- 每个产物都有稳定状态键，至少包含 source hash、动作类型、模型或处理器版本和影响结果的配置版本。
+- 文件只重跑受变更影响的动作；可复用的 extraction、OCR、视觉描述和摘要不得静默重复计费。
+- Live progress 能显示当前动作、完成量、失败量和阻塞依赖；失败项可以按动作或文档原地重试。
+- 所有模型动作都产生可检查的 receipt，包含模型、Provider、用量、耗时、数据处理位置和结果状态。
+- OCR、vision 或 summary 失败不能让已经成功的 Full-text、文件登记或其他 enrichment 回滚。
+- 不得把 placeholder、空结果或错误信息保存为成功的 generated knowledge。
+- 每项能力都需要 focused test、真实文件 fixture 和至少一次端到端 Index 运行证据；只有全部通过后，对应控件才可以从 `Later` 变为可选。
 
 ### 5.4 Search 与 AI Analysis
 

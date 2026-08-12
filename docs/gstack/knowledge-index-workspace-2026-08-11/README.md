@@ -42,8 +42,21 @@ Index products such as full-text records, embeddings, summaries, tags, and relat
 
 The default run includes Markdown, PDF, images, and Excalidraw. Plain text, CSV, JSON, HTML, and Canvas remain available but off by default. DOC/DOCX and PPT/PPTX are outside Peak's product support scope; XLSX belongs to Peak Sheet interoperability rather than ordinary document indexing. Peak Sheet and AI Graph keep separate content policies.
 
+## Required follow-up implementation
+
+The six actions currently labeled `Later` are required scope for this Knowledge Index work, not optional visual backlog:
+
+- PDF summaries
+- Image summaries
+- Canvas & Excalidraw summaries
+- Scanned PDF OCR
+- Image OCR
+- Image visual description
+
+`Later` remains visible because the mock must describe the current product honestly. Each action stays disabled until it consumes real file content, records durable per-action status, appears in progress and failure recovery, supports incremental reruns, and passes focused fixture plus end-to-end Index verification. The implementation order, data boundaries and completion gates are defined in [Settings configurable capabilities by group §5.3.1](../../superpowers/specs/2026-08-12-settings-configurable-capabilities-by-group.md#531-later-是本需求的必做范围).
+
 ## Review
 
 Open [`index.html`](./index.html) directly from its local file path. A temporary localhost server is not required.
 
-This artifact changes documentation only. It is not a production implementation commitment.
+This artifact changes documentation only. The mock itself is not production implementation, but the six required follow-up actions above are part of the accepted Knowledge Index product requirement.

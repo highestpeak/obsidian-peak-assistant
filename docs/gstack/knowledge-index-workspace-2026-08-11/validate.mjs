@@ -84,6 +84,7 @@ const requiredJs = [
   "function updateIndexActionGroupCounts",
   "function showIndexActionDetail",
   "In development",
+  "Required · not implemented",
   "function updateIndexLayerSummary",
 ];
 
@@ -144,6 +145,31 @@ if (html.indexOf("data-index-setup") > html.indexOf("progress-hero")) {
 }
 if (readme.includes("http://127.0.0.1") || readme.includes("localhost:")) {
   missing.push("README: temporary localhost instructions are not allowed");
+}
+
+const requiredLaterActions = [
+  "pdf-summary",
+  "image-summary",
+  "visual-document-summary",
+  "pdf-ocr",
+  "image-ocr",
+  "image-description",
+];
+for (const action of requiredLaterActions) {
+  const actionIndex = html.indexOf(`data-index-action="${action}"`);
+  const rowStart = html.lastIndexOf("<label", actionIndex);
+  const rowEnd = html.indexOf("</label>", actionIndex);
+  const row = html.slice(rowStart, rowEnd);
+  if (actionIndex < 0 || rowStart < 0 || rowEnd < 0 || !row.includes('data-action-required="true"')) {
+    missing.push(`HTML: required Later action is not traceable: ${action}`);
+  }
+}
+const requiredLaterCount = html.match(/data-action-required="true"/g)?.length ?? 0;
+if (requiredLaterCount !== requiredLaterActions.length) {
+  missing.push(`HTML: expected ${requiredLaterActions.length} required Later actions, found ${requiredLaterCount}`);
+}
+if (!readme.includes("The six actions currently labeled `Later` are required scope")) {
+  missing.push("README: required Later implementation contract is missing");
 }
 
 if (missing.length > 0) {
