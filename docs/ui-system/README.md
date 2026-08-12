@@ -32,7 +32,9 @@ Theme Lab 除了 Foundations、共享 primitives 和代表性场景，还维护 
 
 Theme Lab 不维护独立的全局 Header，也没有“锁定/未锁定”状态。Theme State 是页面唯一的 sticky surface，并融合基础、组件、视觉覆盖、场景、主题图、规则和真实 UI 导航；折叠后标题、7 个枚举 Theme 轴、Accent 色块、导航与展开保持在同一行，空间不足时只允许图标区或导航内部横向滚动。点击枚举轴图标弹出小型 option popover，显示轴名称、当前值、所有可选值和选中勾，用户明确选择后才应用；再次点击、点击外部或 Escape 关闭并恢复焦点。Accent 继续使用系统颜色选择器。只有折叠偏好进入独立 localStorage key，不进入 Theme JSON，也不跨页面广播。页面开头的 SVG symbol sprite 必须保持零尺寸并脱离文档流，禁止重新引入首屏空白。
 
-Graph Component 使用真实 Cytoscape runtime，不保留手写 SVG 替身。节点形状/缩放、标签字号、边宽、布局间距和画布纹理进入 Theme JSON v4；One / Two hop、AI Graph、Semantic edge、布局预览、选中节点和 viewport 只用于工作台试验。工作台必须支持节点点击/拖动/hover、scope 切换、布局切换、fit、PNG 导出和全屏检查，所有 Theme 调整即时作用于同一画布。
+Graph Component 使用真实 Cytoscape runtime，不保留手写 SVG 替身。节点形状/缩放、标签字号、边宽、布局间距和画布纹理进入 Theme JSON v4；One / Two hop、AI Graph、Semantic edge、布局预览、选中节点和 viewport 只用于工作台试验。工作台必须支持节点点击/拖动/hover、scope 切换、布局切换、Nodes 列表、Mermaid 复制、图片复制和全屏检查，所有 Theme 调整即时作用于同一画布。图片剪贴板不可用时才降级下载 PNG。Cytoscape 只消费 `--pk-graph-node-*` 这一组不透明颜色角色，不能把带 alpha 的 selection/tint token 直接交给 renderer。
+
+图标动作统一使用 `pk-icon-btn` 与页面 SVG sprite，不在 Theme Lab 另造带边框、阴影或不同 hit target 的图标按钮，也不用文本字符或 emoji 冒充图标。Light/Dark、全部 Theme Pack、状态色表面和 Graph 节点的文字对比度由 `validate.mjs` 以 4.5:1 为最低门槛自动检查。
 
 ## Codex 固定图片换肤
 

@@ -9,23 +9,23 @@
   var lastGraphGeometry = "";
 
   var elements = [
-    { data: { id: "peak", label: "Peak Design System", level: 0, kind: "hub", detail: "Shared graph renderer and semantic roles" }, classes: "root" },
-    { data: { id: "search", label: "Vault Search", level: 1, kind: "note", detail: "List, Tree and Graph projection" } },
-    { data: { id: "ai-search", label: "AI Search", level: 1, kind: "note", detail: "Evidence-backed analysis workspace" } },
-    { data: { id: "composer", label: "Composer", level: 1, kind: "note", detail: "Markdown document surface" } },
-    { data: { id: "atlas", label: "File Atlas", level: 1, kind: "hub", detail: "File navigation and inspection" } },
-    { data: { id: "theme", label: "Theme Pack", level: 1, kind: "note", detail: "Semantic color and geometry map" } },
-    { data: { id: "boundary", label: "Host boundary", level: 1, kind: "note", detail: "Obsidian inheritance isolation" } },
-    { data: { id: "graph", label: "AtlasGraphCanvas", level: 1, kind: "hub", detail: "Shared Cytoscape canvas" } },
-    { data: { id: "tokens", label: "Semantic tokens", level: 2, kind: "note", detail: "Stable visual roles" } },
-    { data: { id: "layouts", label: "Layout presets", level: 2, kind: "note", detail: "Constellation, flow and orbit" } },
-    { data: { id: "keyboard", label: "Keyboard + focus", level: 2, kind: "note", detail: "Shared navigation contract" } },
-    { data: { id: "export", label: "Graph export", level: 2, kind: "note", detail: "PNG and viewport state" } },
-    { data: { id: "folders", label: "Folder communities", level: 2, kind: "hub", detail: "Structural grouping" } },
-    { data: { id: "evidence", label: "Source evidence", level: 2, kind: "note", detail: "Traceable relationship data" } },
-    { data: { id: "ai-graph", label: "AI Graph artifact", level: 3, kind: "ai", detail: "Persisted graph proposal" }, classes: "ai-node" },
-    { data: { id: "suggestions", label: "Suggested links", level: 3, kind: "ai", detail: "AI-derived semantic edges" }, classes: "ai-node" },
-    { data: { id: "communities", label: "Community summary", level: 3, kind: "ai", detail: "Generated structural explanation" }, classes: "ai-node" },
+    { data: { id: "peak", label: "2-Story Cards · OT Performance Optimisation", level: 0, kind: "hub", detail: "当前文档 · 结构与性能优化" }, classes: "root" },
+    { data: { id: "search", label: "docs · 关于表格的数据结构", level: 1, kind: "note", detail: "直接 Vault link" } },
+    { data: { id: "ai-search", label: "docs · 表格代码中的数据结构与性能考量", level: 1, kind: "note", detail: "语义相关文档" } },
+    { data: { id: "composer", label: "表格的性能分析", level: 1, kind: "hub", detail: "高连接度文档" } },
+    { data: { id: "atlas", label: "docs · 电子表格中的数组公式", level: 1, kind: "note", detail: "直接 Vault link" } },
+    { data: { id: "theme", label: "A-0 · Spreadsheet OT 算法优化", level: 1, kind: "note", detail: "结构优化记录" } },
+    { data: { id: "boundary", label: "docs · 表格中的 Deltas 和 Mask 插槽机制", level: 1, kind: "note", detail: "实现机制" } },
+    { data: { id: "graph", label: "docs · 区域 Mutation 数据结构优化", level: 1, kind: "hub", detail: "高连接度文档" } },
+    { data: { id: "tokens", label: "OT 事件序列与冲突合并", level: 2, kind: "note", detail: "二跳结构" } },
+    { data: { id: "layouts", label: "公式依赖关系图", level: 2, kind: "note", detail: "二跳结构" } },
+    { data: { id: "keyboard", label: "表格键盘导航", level: 2, kind: "note", detail: "二跳结构" } },
+    { data: { id: "export", label: "性能基准记录", level: 2, kind: "note", detail: "二跳结构" } },
+    { data: { id: "folders", label: "Story Cards", level: 2, kind: "hub", detail: "Folder community" } },
+    { data: { id: "evidence", label: "源代码证据", level: 2, kind: "note", detail: "Traceable source" } },
+    { data: { id: "ai-graph", label: "AI Graph · 性能改进候选", level: 3, kind: "ai", detail: "AI 提议关系" }, classes: "ai-node" },
+    { data: { id: "suggestions", label: "建议链接 · 数据结构", level: 3, kind: "ai", detail: "待确认语义边" }, classes: "ai-node" },
+    { data: { id: "communities", label: "Community · Spreadsheet", level: 3, kind: "ai", detail: "AI community summary" }, classes: "ai-node" },
 
     { data: { id: "e-peak-search", source: "peak", target: "search", level: 1, kind: "structural" } },
     { data: { id: "e-peak-ai-search", source: "peak", target: "ai-search", level: 1, kind: "semantic" }, classes: "semantic" },
@@ -48,14 +48,14 @@
   ];
 
   function readPreviewState() {
-    var fallback = { scope: "one", layout: "constellation", semantic: true, labels: true };
+    var fallback = { scope: "one", layout: "constellation", semantic: true, nodeList: false };
     try {
       var stored = JSON.parse(window.localStorage.getItem(previewStateKey) || "{}");
       return {
         scope: ["one", "two", "ai"].indexOf(stored.scope) >= 0 ? stored.scope : fallback.scope,
         layout: ["constellation", "community", "right", "down", "folder", "orbit"].indexOf(stored.layout) >= 0 ? stored.layout : fallback.layout,
         semantic: typeof stored.semantic === "boolean" ? stored.semantic : fallback.semantic,
-        labels: typeof stored.labels === "boolean" ? stored.labels : fallback.labels
+        nodeList: typeof stored.nodeList === "boolean" ? stored.nodeList : fallback.nodeList
       };
     } catch (_) { return fallback; }
   }
@@ -94,36 +94,36 @@
           shape: graph.nodeShape,
           width: function (node) { return Math.max(86, Math.min(260, node.data("label").length * labelSize * 0.63 + 26 * nodeScale)); },
           height: function (node) { return (node.hasClass("root") ? 48 : 38) * nodeScale; },
-          label: preview.labels ? "data(label)" : "",
+          label: "data(label)",
           "font-family": token("--pk-font-sans"),
           "font-size": labelSize,
           "font-weight": 620,
-          color: token("--pk-text-primary"),
+          color: token("--pk-graph-node-text"),
           "text-wrap": "wrap",
           "text-max-width": 235,
           "text-valign": "center",
           "text-halign": "center",
-          "background-color": token("--pk-surface"),
+          "background-color": token("--pk-graph-node-bg"),
           "border-color": token("--pk-border-strong"),
-          "border-width": 1.5,
+          "border-width": 1,
           "overlay-opacity": 0,
           "transition-property": "background-color, border-color, border-width, opacity",
           "transition-duration": state && state.motion === "reduced" ? 0 : 120
         }
       },
-      { selector: "node[kind = 'hub']", style: { "font-weight": 700, "border-width": 2 } },
-      { selector: "node.root", style: { "background-color": token("--pk-accent-tint"), "border-color": token("--pk-accent"), color: token("--pk-accent-text"), "border-width": 3 } },
-      { selector: "node.ai-node", style: { "background-color": token("--pk-info-bg"), "border-color": token("--pk-info-border") } },
-      { selector: "node.hovered", style: { "background-color": token("--pk-surface-raised"), "border-color": token("--pk-accent"), "border-width": 2.5, "z-index": 20 } },
-      { selector: "node.related", style: { "background-color": token("--pk-accent-tint"), "border-color": token("--pk-border-accent"), color: token("--pk-accent-text"), opacity: 1 } },
+      { selector: "node[kind = 'hub']", style: { "font-weight": 700, "border-width": 1.5 } },
+      { selector: "node.root", style: { "background-color": token("--pk-graph-node-related-bg"), "border-color": token("--pk-accent"), color: token("--pk-graph-node-text"), "border-width": 2.5 } },
+      { selector: "node.ai-node", style: { "background-color": token("--pk-graph-node-ai-bg"), "border-color": token("--pk-info"), color: token("--pk-graph-node-text") } },
+      { selector: "node.hovered", style: { "background-color": token("--pk-surface-raised"), "border-color": token("--pk-accent"), "border-width": 2, "z-index": 20 } },
+      { selector: "node.related", style: { "background-color": token("--pk-graph-node-related-bg"), "border-color": token("--pk-accent"), color: token("--pk-graph-node-text"), opacity: 1 } },
       { selector: "node.dimmed", style: { opacity: 0.32 } },
-      { selector: "node:selected", style: { "background-color": token("--pk-state-selected"), "border-color": token("--pk-accent"), color: token("--pk-accent-text"), "border-width": 4, "font-weight": 760, "z-index": 30 } },
+      { selector: "node:selected", style: { "background-color": token("--pk-graph-node-selected-bg"), "border-color": token("--pk-accent"), color: token("--pk-graph-node-selected-text"), "border-width": 3, "font-weight": 760, "z-index": 30 } },
       {
         selector: "edge",
         style: {
           width: edgeWidth,
-          "line-color": token("--pk-border-strong"),
-          "target-arrow-color": token("--pk-border-strong"),
+          "line-color": token("--pk-graph-edge"),
+          "target-arrow-color": token("--pk-graph-edge"),
           "target-arrow-shape": "triangle",
           "arrow-scale": 0.82,
           "curve-style": "bezier",
@@ -167,6 +167,8 @@
       });
     });
     updateCounts();
+    renderNodeList();
+    updateSelection();
   }
 
   function layoutOptions() {
@@ -216,6 +218,7 @@
     }
 
     var status = workbench.querySelector("[data-graph-selection]");
+    syncNodeListSelection();
     if (!status) return;
     if (!selected.length) {
       status.innerHTML = "<b>未选择节点</b><small>点击任一节点检查选中与邻接状态</small>";
@@ -237,6 +240,55 @@
     if (count) count.textContent = visibleNodes.length + " notes · " + hubs + " hubs · " + visibleEdges.length + " links";
   }
 
+  function renderNodeList() {
+    if (!cy || !workbench) return;
+    var container = workbench.querySelector("[data-graph-node-list-items]");
+    if (!container) return;
+    container.innerHTML = "";
+    cy.nodes(":visible").toArray().sort(function (a, b) {
+      return String(a.data("label")).localeCompare(String(b.data("label")), "zh-CN");
+    }).forEach(function (node) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "graph-node-list__item";
+      button.dataset.graphNodeId = node.id();
+      button.innerHTML = "<svg class='pk-ui-icon'><use href='#pk-icon-file'></use></svg><span><b></b><small></small></span>";
+      button.querySelector("b").textContent = node.data("label");
+      button.querySelector("small").textContent = node.data("kind") === "hub" ? "Hub · high connectivity" : node.data("detail");
+      button.addEventListener("click", function () {
+        cy.nodes().unselect();
+        node.select();
+        cy.animate({ center: { eles: node }, zoom: Math.max(cy.zoom(), 0.85) }, { duration: 160 });
+        updateSelection();
+      });
+      container.appendChild(button);
+    });
+    syncNodeListSelection();
+  }
+
+  function syncNodeListSelection() {
+    if (!cy || !workbench) return;
+    workbench.querySelectorAll("[data-graph-node-id]").forEach(function (button) {
+      var selected = cy.$id(button.dataset.graphNodeId).selected();
+      button.dataset.selected = String(selected);
+      button.setAttribute("aria-selected", String(selected));
+    });
+  }
+
+  function toggleNodeList(force) {
+    if (!workbench) return;
+    preview.nodeList = typeof force === "boolean" ? force : !preview.nodeList;
+    persistPreviewState();
+    var panel = workbench.querySelector("[data-graph-node-list]");
+    var trigger = workbench.querySelector("[data-graph-nodes]");
+    if (panel) panel.hidden = !preview.nodeList;
+    if (trigger) {
+      trigger.dataset.selected = String(preview.nodeList);
+      trigger.setAttribute("aria-expanded", String(preview.nodeList));
+    }
+    if (preview.nodeList) renderNodeList();
+  }
+
   function updateStyle(reflow) {
     if (!cy) return;
     cy.style(graphStyle());
@@ -255,11 +307,7 @@
       semantic.dataset.on = String(preview.semantic);
       semantic.setAttribute("aria-pressed", String(preview.semantic));
     }
-    var labels = workbench.querySelector("[data-graph-labels]");
-    if (labels) {
-      labels.dataset.selected = String(preview.labels);
-      labels.setAttribute("aria-pressed", String(preview.labels));
-    }
+    toggleNodeList(preview.nodeList);
   }
 
   function selectNode(event) {
@@ -271,12 +319,80 @@
     updateSelection();
   }
 
-  function exportPng() {
-    if (!cy) return;
+  function downloadPng(dataUri) {
+    var source = dataUri || (cy && cy.png({ output: "base64uri", full: true, scale: 2, bg: token("--pk-surface") }));
+    if (!source) return;
     var link = document.createElement("a");
-    link.href = cy.png({ output: "base64uri", full: true, scale: 2, bg: token("--pk-surface") });
+    link.href = source;
     link.download = "peak-graph-theme.png";
     link.click();
+  }
+
+  function mermaidSource() {
+    var nodes = cy.nodes(":visible").toArray();
+    var nodeIds = new Map();
+    var lines = ["flowchart LR"];
+    nodes.forEach(function (node, index) {
+      var mermaidId = "n" + index;
+      nodeIds.set(node.id(), mermaidId);
+      lines.push("  " + mermaidId + "[" + JSON.stringify(String(node.data("label"))) + "]");
+    });
+    cy.edges(":visible").forEach(function (edge) {
+      var source = nodeIds.get(edge.source().id());
+      var target = nodeIds.get(edge.target().id());
+      if (source && target) lines.push("  " + source + " --> " + target);
+    });
+    return lines.join("\n");
+  }
+
+  function flashButtonIcon(button, icon, label) {
+    if (!button) return;
+    var use = button.querySelector("use");
+    var originalIcon = use && use.getAttribute("href");
+    var originalLabel = button.getAttribute("aria-label");
+    if (use) use.setAttribute("href", icon);
+    button.dataset.active = "true";
+    button.setAttribute("aria-label", label);
+    window.setTimeout(function () {
+      if (use && originalIcon) use.setAttribute("href", originalIcon);
+      delete button.dataset.active;
+      button.setAttribute("aria-label", originalLabel || "");
+    }, 1200);
+  }
+
+  function copyMermaid(button) {
+    if (!cy) return;
+    var source = mermaidSource();
+    var copy = navigator.clipboard && navigator.clipboard.writeText
+      ? navigator.clipboard.writeText(source)
+      : Promise.reject(new Error("Clipboard unavailable"));
+    copy.then(function () {
+      flashButtonIcon(button, "#pk-icon-check", "Copied graph as Mermaid");
+    }).catch(function () {
+      var area = document.createElement("textarea");
+      area.value = source;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      var copied = document.execCommand("copy");
+      area.remove();
+      if (copied) flashButtonIcon(button, "#pk-icon-check", "Copied graph as Mermaid");
+    });
+  }
+
+  function copyImage(button) {
+    if (!cy) return;
+    var dataUri = cy.png({ output: "base64uri", full: true, scale: 2, bg: token("--pk-surface") });
+    if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) {
+      downloadPng(dataUri);
+      return;
+    }
+    fetch(dataUri).then(function (response) { return response.blob(); }).then(function (blob) {
+      return navigator.clipboard.write([new window.ClipboardItem({ "image/png": blob })]);
+    }).then(function () {
+      flashButtonIcon(button, "#pk-icon-check", "Copied graph as image");
+    }).catch(function () { downloadPng(dataUri); });
   }
 
   function toggleFullscreen(button) {
@@ -287,6 +403,8 @@
     graphSystem.dataset.expanded = String(expanded);
     button.setAttribute("aria-pressed", String(expanded));
     button.setAttribute("aria-label", expanded ? "Collapse graph" : "Expand graph");
+    var icon = button.querySelector("use");
+    if (icon) icon.setAttribute("href", expanded ? "#pk-icon-minimize" : "#pk-icon-maximize");
     document.body.style.overflow = expanded ? "hidden" : "";
     window.requestAnimationFrame(function () { cy.resize(); cy.fit(cy.elements(":visible"), 54); });
   }
@@ -319,22 +437,26 @@
         runLayout();
         return;
       }
-      var labels = event.target.closest && event.target.closest("[data-graph-labels]");
-      if (labels) {
-        preview.labels = !preview.labels;
-        persistPreviewState();
-        syncPreviewControls();
-        updateStyle(false);
+      var nodes = event.target.closest && event.target.closest("[data-graph-nodes]");
+      if (nodes) {
+        toggleNodeList();
         return;
       }
-      if (event.target.closest && event.target.closest("[data-graph-fit]")) { cy.fit(cy.elements(":visible"), 54); return; }
-      if (event.target.closest && event.target.closest("[data-graph-export]")) { exportPng(); return; }
+      if (event.target.closest && event.target.closest("[data-graph-node-list-close]")) { toggleNodeList(false); return; }
+      var copy = event.target.closest && event.target.closest("[data-graph-copy]");
+      if (copy) { copyMermaid(copy); return; }
+      var copyImageButton = event.target.closest && event.target.closest("[data-graph-copy-image]");
+      if (copyImageButton) { copyImage(copyImageButton); return; }
       var fullscreen = event.target.closest && event.target.closest("[data-graph-fullscreen]");
       if (fullscreen) toggleFullscreen(fullscreen);
     });
 
     document.addEventListener("keydown", function (event) {
       if (event.key !== "Escape") return;
+      if (preview.nodeList) {
+        toggleNodeList(false);
+        return;
+      }
       var graphSystem = workbench.querySelector(".graph-system[data-expanded='true']");
       if (!graphSystem) return;
       var button = workbench.querySelector("[data-graph-fullscreen]");

@@ -92,13 +92,35 @@
     return "rgba(" + rgb.join(", ") + ", " + alpha + ")";
   }
 
-  function contrastText(hex) {
+  function relativeLuminance(hex) {
     var rgb = hexRgb(hex).map(function (value) { return value / 255; });
-    var lum = rgb.reduce(function (sum, value, index) {
+    return rgb.reduce(function (sum, value, index) {
       var channelValue = value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
       return sum + channelValue * [0.2126, 0.7152, 0.0722][index];
     }, 0);
-    return lum > 0.48 ? "#17191d" : "#ffffff";
+  }
+
+  function contrastRatio(a, b) {
+    var aa = relativeLuminance(a);
+    var bb = relativeLuminance(b);
+    return (Math.max(aa, bb) + 0.05) / (Math.min(aa, bb) + 0.05);
+  }
+
+  function contrastText(hex) {
+    var darkText = "#000000";
+    var lightText = "#ffffff";
+    return contrastRatio(hex, darkText) >= contrastRatio(hex, lightText) ? darkText : lightText;
+  }
+
+  function accessibleAccentText(accent, surface, dark) {
+    var candidate = accent;
+    var destination = dark ? "#ffffff" : "#000000";
+    var tintSurface = mix(surface, accent, dark ? 0.18 : 0.10);
+    for (var step = 0; step <= 10; step += 1) {
+      candidate = mix(accent, destination, step / 10);
+      if (contrastRatio(candidate, surface) >= 4.5 && contrastRatio(candidate, tintSurface) >= 4.5) return candidate;
+    }
+    return dark ? "#ffffff" : "#17191d";
   }
 
   function resolve(next) {
@@ -125,10 +147,14 @@
         ? ["0 1px 3px rgba(0,0,0,.42)", "0 8px 24px rgba(0,0,0,.52)", "0 18px 44px rgba(0,0,0,.66)", "0 28px 72px rgba(0,0,0,.78)"]
         : ["0 1px 3px rgba(24,31,39,.10)", "0 8px 24px rgba(24,31,39,.14)", "0 18px 44px rgba(24,31,39,.20)", "0 28px 72px rgba(24,31,39,.25)"]
     }[next.elevation];
-    var success = dark ? "#55d98b" : "#17874c";
-    var warning = dark ? "#f4bf52" : "#b76416";
-    var error = dark ? "#ff8188" : "#c73e4a";
+    var success = dark ? "#55d98b" : "#147b45";
+    var warning = dark ? "#f4bf52" : "#a65712";
+    var error = dark ? "#ff8188" : "#bd3743";
     var info = dark ? "#70a7ff" : "#2769cf";
+    var accentText = accessibleAccentText(accent, palette.surface, dark);
+    var graphSelected = mix(palette.surface, accent, dark ? 0.32 : 0.16);
+    var graphRelated = mix(palette.surface, accent, dark ? 0.16 : 0.08);
+    var graphAi = mix(palette.surface, info, dark ? 0.20 : 0.10);
 
     return {
       "--pk-bg": palette.background,
@@ -151,7 +177,7 @@
       "--pk-accent-hover": mix(accent, dark ? "#ffffff" : "#000000", dark ? 0.18 : 0.12),
       "--pk-accent-tint": rgba(accent, dark ? 0.18 : 0.10),
       "--pk-accent-soft": rgba(accent, dark ? 0.34 : 0.22),
-      "--pk-accent-text": dark ? mix(accent, "#ffffff", 0.36) : mix(accent, "#000000", 0.13),
+      "--pk-accent-text": accentText,
       "--pk-accent-fg": contrastText(accent),
       "--pk-success": success,
       "--pk-success-text": success,
@@ -174,6 +200,13 @@
       "--pk-state-hover": dark ? "rgba(255,255,255,.06)" : "rgba(22,27,34,.045)",
       "--pk-state-active": dark ? "rgba(255,255,255,.10)" : "rgba(22,27,34,.075)",
       "--pk-state-selected": rgba(accent, dark ? 0.20 : 0.11),
+      "--pk-graph-node-bg": palette.surface,
+      "--pk-graph-node-text": palette.text,
+      "--pk-graph-node-selected-bg": graphSelected,
+      "--pk-graph-node-selected-text": palette.text,
+      "--pk-graph-node-related-bg": graphRelated,
+      "--pk-graph-node-ai-bg": graphAi,
+      "--pk-graph-edge": mix(palette.strong, palette.text, dark ? 0.14 : 0.08),
       "--pk-skeleton": palette.border,
       "--pk-shadow-sm": shadows[0],
       "--pk-shadow-md": shadows[1],

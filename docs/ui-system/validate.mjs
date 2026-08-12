@@ -38,6 +38,26 @@ const assert = (condition, message) => {
   else errors.push(message);
 };
 
+function relativeLuminance(hex) {
+  const channels = String(hex).slice(1).match(/../g).map((value) => parseInt(value, 16) / 255);
+  const linear = channels.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+}
+
+function contrastRatio(a, b) {
+  const aa = relativeLuminance(a);
+  const bb = relativeLuminance(b);
+  return (Math.max(aa, bb) + 0.05) / (Math.min(aa, bb) + 0.05);
+}
+
+function compositeRgbaOver(rgba, background) {
+  const channels = String(rgba).match(/[\d.]+/g).map(Number);
+  const base = String(background).slice(1).match(/../g).map((value) => parseInt(value, 16));
+  const alpha = channels[3];
+  const mixed = base.map((value, index) => Math.round(channels[index] * alpha + value * (1 - alpha)));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
 Object.entries(files).forEach(([label, file]) => assert(fs.existsSync(file), `${label}: ${path.relative(root, file)} exists`));
 if (errors.length) finish();
 
@@ -192,6 +212,42 @@ assert(runtimeState.graph.nodeScale === 1.5 && runtimeState.graph.labelSizePx ==
 const resolvedGraph = themeRuntime.resolveGraph(runtimeState);
 assert(resolvedGraph["--pk-graph-node-scale"] === "1.5" && resolvedGraph["--pk-graph-edge-width"] === "3px", "Theme Runtime: resolves Graph component tokens");
 
+Object.keys(themeSystem.packs).forEach((pack) => {
+  ["light", "dark"].forEach((appearance) => {
+    themeRuntime.apply({ ...themeSystem.defaults, pack, appearance, accent: themeSystem.packs[pack].accent });
+    const tokens = themeRuntime.resolve(themeRuntime.getState());
+    [
+      ["primary text", tokens["--pk-text-primary"], tokens["--pk-surface"]],
+      ["secondary text", tokens["--pk-text-secondary"], tokens["--pk-surface"]],
+      ["tertiary text", tokens["--pk-text-tertiary"], tokens["--pk-surface"]],
+      ["accent text", tokens["--pk-accent-text"], tokens["--pk-surface"]],
+      ["accent foreground", tokens["--pk-accent-fg"], tokens["--pk-accent"]],
+      ["Graph normal node", tokens["--pk-graph-node-text"], tokens["--pk-graph-node-bg"]],
+      ["Graph selected node", tokens["--pk-graph-node-selected-text"], tokens["--pk-graph-node-selected-bg"]],
+      ["Graph AI node", tokens["--pk-graph-node-text"], tokens["--pk-graph-node-ai-bg"]]
+    ].forEach(([role, foreground, background]) => {
+      assert(contrastRatio(foreground, background) >= 4.5, `Theme ${pack}/${appearance}: ${role} contrast is at least 4.5:1`);
+    });
+    ["success", "warning", "error", "info"].forEach((tone) => {
+      const foreground = tokens[`--pk-${tone}-text`];
+      const tint = compositeRgbaOver(tokens[`--pk-${tone}-bg`], tokens["--pk-surface"]);
+      assert(contrastRatio(foreground, tokens["--pk-surface"]) >= 4.5, `Theme ${pack}/${appearance}: ${tone} text contrast is at least 4.5:1`);
+      assert(contrastRatio(foreground, tint) >= 4.5, `Theme ${pack}/${appearance}: ${tone} tinted surface contrast is at least 4.5:1`);
+    });
+    const accentTint = compositeRgbaOver(tokens["--pk-accent-tint"], tokens["--pk-surface"]);
+    assert(contrastRatio(tokens["--pk-accent-text"], accentTint) >= 4.5, `Theme ${pack}/${appearance}: accent tint text contrast is at least 4.5:1`);
+  });
+});
+
+["#000000", "#ffffff", "#777777", "#ffff00"].forEach((accent) => {
+  themeRuntime.apply({ ...themeSystem.defaults, accent });
+  const tokens = themeRuntime.resolve(themeRuntime.getState());
+  const accentTint = compositeRgbaOver(tokens["--pk-accent-tint"], tokens["--pk-surface"]);
+  assert(contrastRatio(tokens["--pk-accent-fg"], accent) >= 4.5, `Theme Runtime: custom accent ${accent} receives a readable foreground`);
+  assert(contrastRatio(tokens["--pk-accent-text"], tokens["--pk-surface"]) >= 4.5, `Theme Runtime: custom accent ${accent} receives readable surface text`);
+  assert(contrastRatio(tokens["--pk-accent-text"], accentTint) >= 4.5, `Theme Runtime: custom accent ${accent} receives readable tinted-surface text`);
+});
+
 const graphSmoke = cytoscape({
   headless: true,
   styleEnabled: true,
@@ -272,17 +328,21 @@ assert((sources.labHtml.match(/class="metric-card(?:\s|\")/g) || []).length >= 4
 assert((sources.labHtml.match(/class="report-section(?:\s|\")/g) || []).length >= 4, "Theme Lab: report includes long-form sections");
 ["doc-frontmatter__grid", "doc-block--selected", "doc-block-action-bar", "doc-callout", "doc-block--focus", "doc-code-block", "doc-markdown-table"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Composer workshop covers ${marker}`));
 ["atlas-workspace", "atlas-file-rail", "atlas-search-band", "atlas-toolbar", "atlas-tree", "atlas-inspector", "atlas-tray"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: File Atlas covers ${marker}`));
-["data-graph-workbench", "graph-control-row", "graph-layout-row", "graph-system__canvas", "data-graph-scope", "data-graph-layout", "data-graph-semantic", "data-graph-fit", "data-graph-export", "data-graph-fullscreen"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Graph covers ${marker}`));
+["data-graph-workbench", "graph-control-row", "graph-layout-row", "graph-stage", "graph-system__canvas", "data-graph-scope", "data-graph-layout", "data-graph-semantic", "data-graph-nodes", "data-graph-node-list", "data-graph-copy", "data-graph-copy-image", "data-graph-fullscreen"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Graph covers ${marker}`));
 assert((sources.labHtml.match(/data-graph-theme-control=/g) || []).length === 6, "Theme Lab: Graph exposes exactly 6 theme controls");
 assert(!sources.labHtml.includes("<svg class=\"graph-system__canvas\"") && !sources.labHtml.includes("graph-system-node--selected"), "Theme Lab: Graph no longer uses a hand-drawn SVG substitute");
 assert(sources.graphRuntime.includes("window.cytoscape") && sources.graphRuntime.includes("runLayout") && sources.graphRuntime.includes("applyVisibility"), "Theme Lab: Graph is rendered and relaid out by Cytoscape");
-assert(sources.graphRuntime.includes("mouseover") && sources.graphRuntime.includes("selectNode") && sources.graphRuntime.includes("toggleFullscreen") && sources.graphRuntime.includes("exportPng"), "Theme Lab: Graph implements hover, selection, fullscreen and PNG export");
+assert(sources.graphRuntime.includes("mouseover") && sources.graphRuntime.includes("selectNode") && sources.graphRuntime.includes("toggleNodeList") && sources.graphRuntime.includes("copyMermaid") && sources.graphRuntime.includes("copyImage") && sources.graphRuntime.includes("toggleFullscreen") && sources.graphRuntime.includes("downloadPng"), "Theme Lab: Graph implements hover, selection, node list, Mermaid copy, image copy with download fallback, and fullscreen");
+assert(sources.graphRuntime.includes("--pk-graph-node-selected-bg") && sources.graphRuntime.includes("--pk-graph-node-selected-text") && !sources.graphRuntime.includes('color: token("--pk-accent-text")'), "Theme Lab: Graph consumes opaque, contrast-safe node color roles");
 assert(!/(?:ReactFlow|@xyflow\/react)/.test(sources.graphRuntime + sources.labHtml), "Theme Lab: Graph contains no React Flow runtime or import");
 assert((sources.labHtml.match(/class="outline-row(?:\s|\")/g) || []).length >= 27, "Theme Lab: long outline includes at least 27 rows");
 assert(sources.labRuntime.includes("selectRow") && sources.labRuntime.includes("data-lab-row"), "Theme Lab: long outline rows are interactive");
 assert(sources.labCss.includes(".report-section:hover") && sources.labCss.includes(".outline-row:hover") && sources.labCss.includes(".quick-actions button:hover"), "Theme Lab: representative hover states are implemented");
 assert(sources.labHtml.includes("class=\"pk-icon-sprite\" width=\"0\" height=\"0\""), "Theme Lab: icon sprite has zero intrinsic geometry");
 assert(sources.labCss.includes(".pk-icon-sprite") && sources.labCss.includes("position: absolute;"), "Theme Lab: icon sprite cannot create top-of-page whitespace");
+assert(!sources.labHtml.includes("pk-icon-button") && !sources.labCss.includes(".pk-icon-button"), "Theme Lab: all icon-only actions use the canonical pk-icon-btn primitive");
+assert(!/<button class="pk-icon-btn"[^>]*>\s*[^<\s]/.test(sources.labHtml), "Theme Lab: icon-only buttons never use typographic glyphs as icons");
+assert(!/\p{Extended_Pictographic}/u.test(sources.labHtml), "Theme Lab: controls and specimens contain no emoji icons");
 assert(!sources.labHtml.includes("class=\"lab-header\"") && !sources.labHtml.includes("data-lab-console-pin"), "Theme Lab: has no separate sticky header or lock control");
 assert(sources.labHtml.includes("class=\"lab-console__nav\"") && (sources.labHtml.match(/class="lab-console__nav"[^>]*>[\s\S]*?<\/nav>/g) || []).length === 1, "Theme Lab: page navigation is fused into Theme State");
 assert((sources.labCss.match(/position: sticky;/g) || []).length === 1 && sources.labCss.includes(".lab-console { position: sticky; z-index: 20; top: 12px;"), "Theme Lab: Theme State is the only sticky document surface");
