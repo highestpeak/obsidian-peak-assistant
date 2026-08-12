@@ -316,14 +316,20 @@ function AddedEdge({ d, delayMs = 0 }: AddedEdgeProps): React.ReactElement {
 		const head = headRef.current;
 		if (!body || !head) return;
 
-		const pathLength = body.getTotalLength();
-		body.setAttribute('stroke-dasharray', `${pathLength} ${pathLength}`);
-		body.setAttribute('stroke-dashoffset', `${pathLength}`);
+		const pathLength = head.getTotalLength();
+		const sampleCount = Math.max(32, Math.ceil(pathLength / 4));
+		const sampledPoints = Array.from({ length: sampleCount + 1 }, (_, index) => (
+			head.getPointAtLength((pathLength * index) / sampleCount)
+		));
+		const startPoint = sampledPoints[0];
+		body.removeAttribute('stroke-dasharray');
+		body.removeAttribute('stroke-dashoffset');
+		body.setAttribute('d', `M ${startPoint.x} ${startPoint.y}`);
 		body.style.opacity = '0';
 		head.style.opacity = '0';
 
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-			body.setAttribute('stroke-dashoffset', '0');
+			body.setAttribute('d', d);
 			body.style.opacity = '1';
 			head.style.opacity = '1';
 			return;
@@ -339,8 +345,12 @@ function AddedEdge({ d, delayMs = 0 }: AddedEdgeProps): React.ReactElement {
 
 			const progress = Math.min(1, (now - startAt) / EDGE_DRAW_DURATION_MS);
 			const easedProgress = progress * progress * (3 - (2 * progress));
-			const remainingLength = pathLength * (1 - easedProgress);
-			body.setAttribute('stroke-dashoffset', `${remainingLength}`);
+			const completedSampleCount = Math.max(1, Math.floor(easedProgress * sampleCount));
+			const partialPoints = sampledPoints.slice(0, completedSampleCount + 1);
+			const partialPath = partialPoints
+				.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+				.join(' ');
+			body.setAttribute('d', partialPath);
 			body.style.opacity = `${Math.min(1, .22 + (progress * 3))}`;
 
 			if (progress < 1) {
@@ -348,7 +358,7 @@ function AddedEdge({ d, delayMs = 0 }: AddedEdgeProps): React.ReactElement {
 				return;
 			}
 
-			body.setAttribute('stroke-dashoffset', '0');
+			body.setAttribute('d', d);
 			body.style.opacity = '1';
 			head.style.opacity = '1';
 		};

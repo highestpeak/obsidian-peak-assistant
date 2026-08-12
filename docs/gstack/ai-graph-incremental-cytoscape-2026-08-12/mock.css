@@ -207,7 +207,7 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 }
 .aig-overlay-edge.is-added {
 	opacity: 0;
-	will-change: stroke-dashoffset, opacity;
+	will-change: opacity;
 }
 .aig-overlay-edge-head {
 	fill: none;
@@ -557,7 +557,6 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	.aig-status__dot, .aig-canvas--running::after, .aig-agent-cursor > span, .aig-review-watermark, .aig-accepted-watermark,
 	.aig-overlay-edge, .aig-overlay-edge-head, .aig-overlay-node, .aig-relation-update, .aig-detach-badge, .aig-tombstone, .aig-placement-batch, .aig-focus-chip, .aig-graph-layer--refined,
 	.aig-refine-stage, .aig-refine-stage > svg { animation: none; }
-	.aig-overlay-edge.is-added { stroke-dashoffset: 0; }
 	.aig-overlay-edge-head { opacity: 1; }
 	.aig-agent-cursor, .aig-progress span, .aig-graph-layer, .aig-working-overlay, .aig-working-scene { transition: none; }
 }
