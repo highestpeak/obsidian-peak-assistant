@@ -681,10 +681,10 @@ function Prototype(): React.ReactElement {
 	const [selectedNode, setSelectedNode] = useState<string | null>(null);
 	const [activeLensId, setActiveLensId] = useState<LensId>('topology');
 	const [layoutOverride, setLayoutOverride] = useState<AtlasGraphPreset | null>(null);
-	const [viewMenuOpen, setViewMenuOpen] = useState(false);
+	const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
 	const startedOnce = useRef(false);
 	const currentPatchRef = useRef<HTMLDivElement | null>(null);
-	const viewMenuRef = useRef<HTMLDivElement | null>(null);
+	const layoutMenuRef = useRef<HTMLDivElement | null>(null);
 	const initialRunTimerRef = useRef<number | null>(null);
 
 	const accepted = mode === 'accepted';
@@ -757,14 +757,14 @@ function Prototype(): React.ReactElement {
 	}, [activityOpen, mode, patchIndex]);
 
 	useEffect(() => {
-		if (!viewMenuOpen) return;
+		if (!layoutMenuOpen) return;
 		const closeOnPointerDown = (event: PointerEvent): void => {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
-			if (!viewMenuRef.current?.contains(target)) setViewMenuOpen(false);
+			if (!layoutMenuRef.current?.contains(target)) setLayoutMenuOpen(false);
 		};
 		const closeOnEscape = (event: KeyboardEvent): void => {
-			if (event.key === 'Escape') setViewMenuOpen(false);
+			if (event.key === 'Escape') setLayoutMenuOpen(false);
 		};
 		document.addEventListener('pointerdown', closeOnPointerDown);
 		document.addEventListener('keydown', closeOnEscape);
@@ -772,7 +772,7 @@ function Prototype(): React.ReactElement {
 			document.removeEventListener('pointerdown', closeOnPointerDown);
 			document.removeEventListener('keydown', closeOnEscape);
 		};
-	}, [viewMenuOpen]);
+	}, [layoutMenuOpen]);
 
 	const togglePause = (): void => {
 		setMode((current) => current === 'paused' ? 'running' : 'paused');
@@ -803,14 +803,13 @@ function Prototype(): React.ReactElement {
 		setActiveLensId(lensId);
 		setLayoutOverride(null);
 		setSelectedNode(null);
-		setViewMenuOpen(false);
 		showCompleteGraph();
 	};
 
 	const selectLayout = (preset: AtlasGraphPreset | null): void => {
 		setLayoutOverride(preset);
 		setSelectedNode(null);
-		setViewMenuOpen(false);
+		setLayoutMenuOpen(false);
 		showCompleteGraph();
 	};
 
@@ -831,44 +830,6 @@ function Prototype(): React.ReactElement {
 				</div>
 				<div className="aig-actions">
 					<button className="aig-btn aig-btn--ghost" type="button"><History aria-hidden /> History</button>
-					<div className="aig-view-switcher" ref={viewMenuRef}>
-						<button
-							className={`aig-btn aig-btn--ghost aig-view-trigger${viewMenuOpen ? ' is-active' : ''}`}
-							type="button"
-							onClick={() => setViewMenuOpen((current) => !current)}
-							aria-expanded={viewMenuOpen}
-						>
-							<LensGlyph id={activeLens.id} /> {activeLens.label} <ChevronDown aria-hidden />
-						</button>
-						{viewMenuOpen && (
-							<div className="aig-view-menu">
-								<div className="aig-view-menu__heading"><span>Graph lens</span><small>Meaning + default layout</small></div>
-								<div className="aig-lens-list">
-									{LENSES.map((lens) => (
-										<button key={lens.id} className={`aig-lens-option${lens.id === activeLens.id ? ' is-active' : ''}`} type="button" onClick={() => selectLens(lens.id)}>
-											<span className="aig-lens-option__icon"><LensGlyph id={lens.id} /></span>
-											<span><strong>{lens.label}</strong><small>{lens.question}</small></span>
-											<em>{LAYOUT_OPTIONS.find((layout) => layout.id === lens.defaultPreset)?.label}</em>
-											{lens.id === activeLens.id && <Check aria-hidden />}
-										</button>
-									))}
-								</div>
-								<div className="aig-view-menu__divider" />
-								<div className="aig-view-menu__heading"><span>Layout override</span><small>Same lens, different arrangement</small></div>
-								<div className="aig-layout-grid">
-									<button className={`aig-layout-option${layoutOverride === null ? ' is-active' : ''}`} type="button" onClick={() => selectLayout(null)}>
-										<Sparkles aria-hidden /><span><strong>Lens default</strong><small>{LAYOUT_OPTIONS.find((layout) => layout.id === activeLens.defaultPreset)?.label}</small></span>
-									</button>
-									{LAYOUT_OPTIONS.map((layout) => (
-										<button key={layout.id} className={`aig-layout-option${layoutOverride === layout.id ? ' is-active' : ''}`} type="button" onClick={() => selectLayout(layout.id)}>
-											<LayoutGlyph id={layout.id} /><span><strong>{layout.label}</strong><small>{layout.detail}</small></span>
-										</button>
-									))}
-								</div>
-								{!refined && <div className="aig-view-menu__hint">Choosing a lens opens the complete proposed graph. Replay remains available.</div>}
-							</div>
-						)}
-					</div>
 					<button className={`aig-btn aig-btn--ghost aig-activity-trigger${activityOpen ? ' is-active' : ''}`} type="button" onClick={() => setActivityOpen((current) => !current)}>
 						<Workflow aria-hidden /> Activity <span>{Math.max(0, patchIndex + 1)}</span>
 					</button>
@@ -890,16 +851,63 @@ function Prototype(): React.ReactElement {
 
 			<main className={`aig-workspace${activityOpen ? ' is-activity-open' : ''}`}>
 				<section className="aig-canvas-card">
-					<div className="aig-canvas-head">
-						<div>
-							<span className="aig-section-title">{refined ? activeLens.label : 'Working graph'}</span>
-							<span className="aig-section-subtitle">{refined ? activeLens.description : focusOverflow ? 'Viewport follows the newest off-canvas node · coordinates remain stable' : 'Canonical v12 + collision-free Agent placement overlay'}</span>
+					<div className="aig-canvas-toolbar">
+						<div className="aig-lens-tabs" role="tablist" aria-label="Graph lens">
+							{LENSES.map((lens) => (
+								<button
+									key={lens.id}
+									className={`aig-lens-tab${lens.id === activeLens.id ? ' is-active' : ''}`}
+									type="button"
+									role="tab"
+									aria-selected={lens.id === activeLens.id}
+									title={lens.question}
+									onClick={() => selectLens(lens.id)}
+								>
+									<LensGlyph id={lens.id} />
+									{lens.label}
+								</button>
+							))}
 						</div>
-						<div className="aig-legend">
-							<span className="aig-spatial-lock">{refined ? <><LayoutGlyph id={effectivePreset} /> {activeLayout.label}</> : focusOverflow ? <><LocateFixed aria-hidden /> Focus follows newest</> : <><ShieldCheck aria-hidden /> Spatial lock</>}</span>
-							<span><i className="is-existing" /> Existing</span>
-							<span><i className="is-added" /> Added</span>
-							<span><i className="is-removed" /> Removal</span>
+						<div className="aig-canvas-toolbar__end">
+							{!refined && (
+								<div className="aig-live-legend">
+									<span className="aig-spatial-lock">{focusOverflow ? <><LocateFixed aria-hidden /> Following newest</> : <><ShieldCheck aria-hidden /> Spatial lock</>}</span>
+									<span><i className="is-existing" /> Existing</span>
+									<span><i className="is-added" /> Added</span>
+									<span><i className="is-removed" /> Removal</span>
+								</div>
+							)}
+							<div className="aig-layout-switcher" ref={layoutMenuRef}>
+								<span className="aig-layout-label">Layout</span>
+								<button
+									className={`aig-layout-trigger${layoutMenuOpen ? ' is-active' : ''}`}
+									type="button"
+									onClick={() => setLayoutMenuOpen((current) => !current)}
+									aria-expanded={layoutMenuOpen}
+								>
+									<LayoutGlyph id={effectivePreset} />
+									{activeLayout.label}
+									<ChevronDown aria-hidden />
+								</button>
+								{layoutMenuOpen && (
+									<div className="aig-layout-menu" role="menu" aria-label="Graph layout">
+										<div className="aig-layout-menu__head"><strong>Layout</strong><span>Arrangement only</span></div>
+										<button className={`aig-layout-menu__item${layoutOverride === null ? ' is-active' : ''}`} type="button" role="menuitemradio" aria-checked={layoutOverride === null} onClick={() => selectLayout(null)}>
+											<Sparkles aria-hidden />
+											<span><strong>Lens default</strong><small>{LAYOUT_OPTIONS.find((layout) => layout.id === activeLens.defaultPreset)?.label}</small></span>
+											{layoutOverride === null && <Check aria-hidden />}
+										</button>
+										<div className="aig-layout-menu__rule" />
+										{LAYOUT_OPTIONS.map((layout) => (
+											<button key={layout.id} className={`aig-layout-menu__item${layoutOverride === layout.id ? ' is-active' : ''}`} type="button" role="menuitemradio" aria-checked={layoutOverride === layout.id} onClick={() => selectLayout(layout.id)}>
+												<LayoutGlyph id={layout.id} />
+												<span><strong>{layout.label}</strong><small>{layout.detail}</small></span>
+												{layoutOverride === layout.id && <Check aria-hidden />}
+											</button>
+										))}
+									</div>
+								)}
+							</div>
 						</div>
 					</div>
 					<div className={`aig-canvas aig-canvas--${mode}`}>
@@ -928,13 +936,6 @@ function Prototype(): React.ReactElement {
 									buildingLabel={`Building ${activeLens.label}…`}
 									onNodeTap={(node) => setSelectedNode(node.id)}
 								/>
-							</div>
-						)}
-						{refined && mode !== 'layouting' && (
-							<div className="aig-lens-note">
-								<span className="aig-lens-note__icon"><LensGlyph id={activeLens.id} /></span>
-								<span><strong>{activeLens.label}</strong><small>{activeLens.question}</small></span>
-								<b>{layoutOverride ? `Custom · ${activeLayout.label}` : `Default · ${activeLayout.label}`}</b>
 							</div>
 						)}
 						{(mode === 'running' || mode === 'paused' || mode === 'layouting') && activePatch && (
