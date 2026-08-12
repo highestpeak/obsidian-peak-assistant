@@ -43,6 +43,7 @@ The current accepted AI Graph remains immutable throughout the run. The working 
 - Layout controls follow the shared Graph Workspace segmented-control contract. A horizontal/vertical pair is written as `Flow → · ↓` or `Timeline → · ↓`; direction is never duplicated as both an icon and label. Topology offers `Constellation · Flow → · ↓`; Bridges offers `Constellation · Flow →`; Thinking Tree is fixed at `Flow →`; Timeline offers `Timeline → · ↓` while retaining the same temporal DAG; Gaps is a fixed diagnostic map.
 - Activity is optional and opens as a drawer. The graph remains the primary UI; there is no permanent Added/Changed/Removed review dashboard.
 - When a view completes, a concise generated explanation opens beneath the canvas. It states the view-specific conclusion in ordinary language and can be collapsed back into an `Explain this view` action. Switching views switches both the graph and its version-bound explanation.
+- Hovering a node opens the shared rich inspection card beside that Cytoscape node. The card follows the node during pan and zoom, keeps a pointer corridor for interactive controls, can be pinned by clicking the node or pressing `I`, and closes with `Esc`. Its actions are `Explain`, `Expand`, `Focus`, and `Evidence`; `Expand` stages a revision-guarded Graph Agent update instead of mutating the accepted artifact in place.
 
 ## Production implication
 

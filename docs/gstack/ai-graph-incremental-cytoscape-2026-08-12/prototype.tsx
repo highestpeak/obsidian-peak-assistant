@@ -12,11 +12,13 @@ import {
 	CirclePause,
 	CirclePlay,
 	Clock3,
+	ExternalLink,
 	GitBranch,
 	History,
 	LocateFixed,
 	Network,
 	Pause,
+	Pin,
 	Play,
 	Plus,
 	RotateCcw,
@@ -109,6 +111,20 @@ interface GraphStats {
 	nodes: number;
 	edges: number;
 	diagnostics: number;
+}
+
+type NodeCardAction = 'explain' | 'expand' | 'evidence' | null;
+
+interface NodeInspection {
+	id: string;
+	label: string;
+	role: string;
+	summary: string;
+	incoming: number;
+	outgoing: number;
+	left: number;
+	top: number;
+	side: 'left' | 'right';
 }
 
 const node = (
@@ -504,6 +520,57 @@ function focusNewestIfOutside(cy: Core, nodeIds: string[]): void {
 	cy.animate({ center: { eles: target }, duration: 560, easing: 'ease-out-cubic' });
 }
 
+function inspectionRole(item: NodeSingular): string {
+	if (item.hasClass('bridge')) return 'Validated bridge';
+	if (item.hasClass('gap-endpoint')) return 'Gap endpoint';
+	if (item.hasClass('milestone')) return 'Temporal milestone';
+	if (item.hasClass('decision')) return 'Decision point';
+	if (item.hasClass('outcome')) return 'Reviewable outcome';
+	if (item.hasClass('candidate')) return 'Provisional concept';
+	if (item.hasClass('evidence')) return 'Evidence concept';
+	if (item.hasClass('evaluation')) return 'Evaluation concept';
+	if (item.hasClass('control')) return 'Control concept';
+	if (item.hasClass('root')) return 'Root concept';
+	return 'Graph concept';
+}
+
+function inspectionSummary(item: NodeSingular, script: LensScript): string {
+	if (script.id === 'bridge' && item.hasClass('bridge')) return 'This concept creates a validated path between two domains that were previously disconnected.';
+	if (script.id === 'gap-analysis' && item.hasClass('gap-endpoint')) return 'This endpoint participates in a missing or weak path required by the current graph contract.';
+	if (script.id === 'timeline') return 'This dated milestone participates in the temporal dependency graph; its position expresses time while edges express prerequisites.';
+	if (script.id === 'thinking-tree') return 'This node records one externally reviewable decision, action, or outcome in the reasoning structure.';
+	return 'This concept belongs to the current evidence-grounded topology and retains its relation provenance in this graph version.';
+}
+
+function buildNodeInspection(item: NodeSingular, script: LensScript, host: HTMLDivElement): NodeInspection {
+	const point = item.renderedPosition();
+	const cardWidth = 336;
+	const cardHeight = 344;
+	const offset = 24;
+	const placeRight = point.x + offset + cardWidth <= host.clientWidth - 12;
+	const left = placeRight
+		? point.x + offset
+		: Math.max(12, point.x - cardWidth - offset);
+	const top = Math.max(12, Math.min(point.y - 72, host.clientHeight - cardHeight - 12));
+	let incoming = 0;
+	let outgoing = 0;
+	item.connectedEdges().forEach((relation) => {
+		if (relation.target().id() === item.id()) incoming += 1;
+		if (relation.source().id() === item.id()) outgoing += 1;
+	});
+	return {
+		id: item.id(),
+		label: String(item.data('label')).replace(/\n/g, ' · '),
+		role: inspectionRole(item),
+		summary: inspectionSummary(item, script),
+		incoming,
+		outgoing,
+		left,
+		top,
+		side: placeRight ? 'right' : 'left',
+	};
+}
+
 interface AgentGraphCanvasProps {
 	script: LensScript;
 	active: boolean;
@@ -512,13 +579,17 @@ interface AgentGraphCanvasProps {
 	refineNonce: number;
 	layout: LayoutId;
 	layoutEnabled: boolean;
+	revisionLabel: string;
 	onSelect: (label: string) => void;
 	onStats: (lensId: LensId, stats: GraphStats) => void;
 }
 
-function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, layout, layoutEnabled, onSelect, onStats }: AgentGraphCanvasProps): React.ReactElement {
+function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, layout, layoutEnabled, revisionLabel, onSelect, onStats }: AgentGraphCanvasProps): React.ReactElement {
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
+	const [inspectedNode, setInspectedNode] = useState<NodeInspection | null>(null);
+	const [inspectPinned, setInspectPinned] = useState(false);
+	const [cardAction, setCardAction] = useState<NodeCardAction>(null);
 	const appliedStepRef = useRef(-1);
 	const runNonceRef = useRef(-1);
 	const refineNonceRef = useRef(-1);
@@ -528,7 +599,47 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 	const pendingFocusRef = useRef<string | null>(null);
 	const hostSizeRef = useRef({ width: 0, height: 0 });
 	const resizeTimerRef = useRef<number | null>(null);
+	const inspectedNodeRef = useRef<NodeInspection | null>(null);
+	const inspectPinnedRef = useRef(false);
+	const hoveredNodeIdRef = useRef<string | null>(null);
+	const inspectOpenTimerRef = useRef<number | null>(null);
+	const inspectCloseTimerRef = useRef<number | null>(null);
 	activeRef.current = active;
+	inspectedNodeRef.current = inspectedNode;
+	inspectPinnedRef.current = inspectPinned;
+
+	const clearInspectTimers = (): void => {
+		if (inspectOpenTimerRef.current !== null) window.clearTimeout(inspectOpenTimerRef.current);
+		if (inspectCloseTimerRef.current !== null) window.clearTimeout(inspectCloseTimerRef.current);
+		inspectOpenTimerRef.current = null;
+		inspectCloseTimerRef.current = null;
+	};
+
+	const closeInspection = (): void => {
+		clearInspectTimers();
+		setInspectedNode(null);
+		setInspectPinned(false);
+		setCardAction(null);
+		hoveredNodeIdRef.current = null;
+	};
+
+	const showInspection = (item: NodeSingular, pinned: boolean): void => {
+		const host = hostRef.current;
+		if (!host || item.empty() || item.hasClass('group')) return;
+		setInspectedNode(buildNodeInspection(item, script, host));
+		setInspectPinned(pinned);
+		setCardAction(null);
+	};
+
+	const scheduleInspectionClose = (): void => {
+		if (inspectPinnedRef.current) return;
+		if (inspectCloseTimerRef.current !== null) window.clearTimeout(inspectCloseTimerRef.current);
+		inspectCloseTimerRef.current = window.setTimeout(() => {
+			if (hoveredNodeIdRef.current || inspectPinnedRef.current) return;
+			setInspectedNode(null);
+			setCardAction(null);
+		}, 220);
+	};
 
 	const reportStats = (cy: Core): void => {
 		const ordinaryNodes = cy.nodes().filter((item) => !item.hasClass('group')).length;
@@ -538,6 +649,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 	};
 
 	const resetGraph = (cy: Core): void => {
+		closeInspection();
 		cy.elements().remove();
 		cy.add([
 			...script.initialNodes.map(toNodeDefinition),
@@ -551,6 +663,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 	};
 
 	const applyStep = (cy: Core, step: AgentStep, animate: boolean): void => {
+		if (step.removeNodeIds?.includes(inspectedNodeRef.current?.id ?? '')) closeInspection();
 		clearPatchTargets(cy);
 		const enteringIds: string[] = [];
 		const retiring = cy.collection();
@@ -636,16 +749,43 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 			wheelSensitivity: .18,
 		});
 		cyRef.current = cy;
+		const refreshInspectionPosition = (): void => {
+			const current = inspectedNodeRef.current;
+			if (!current) return;
+			const item = cy.getElementById(current.id);
+			if (item.empty()) {
+				closeInspection();
+				return;
+			}
+			setInspectedNode(buildNodeInspection(item as NodeSingular, script, host));
+		};
+		cy.on('mouseover', 'node', (event) => {
+			const item = event.target as NodeSingular;
+			if (item.hasClass('group')) return;
+			hoveredNodeIdRef.current = item.id();
+			if (inspectCloseTimerRef.current !== null) window.clearTimeout(inspectCloseTimerRef.current);
+			if (inspectOpenTimerRef.current !== null) window.clearTimeout(inspectOpenTimerRef.current);
+			inspectOpenTimerRef.current = window.setTimeout(() => showInspection(item, false), 180);
+		});
+		cy.on('mouseout', 'node', () => {
+			hoveredNodeIdRef.current = null;
+			if (inspectOpenTimerRef.current !== null) window.clearTimeout(inspectOpenTimerRef.current);
+			scheduleInspectionClose();
+		});
 		cy.on('tap', 'node', (event) => {
 			const item = event.target as NodeSingular;
 			if (item.hasClass('group')) return;
 			onSelect(String(item.data('label')));
+			hoveredNodeIdRef.current = item.id();
+			showInspection(item, true);
 		});
+		cy.on('pan zoom resize', refreshInspectionPosition);
 		const observer = new ResizeObserver((entries) => {
 			const nextSize = entries[0]?.contentRect;
 			const previousSize = hostSizeRef.current;
 			hostSizeRef.current = { width: nextSize?.width ?? host.clientWidth, height: nextSize?.height ?? host.clientHeight };
 			cy.resize();
+			refreshInspectionPosition();
 			if (resizeTimerRef.current !== null) window.clearTimeout(resizeTimerRef.current);
 			resizeTimerRef.current = window.setTimeout(() => {
 				if (!initializedRef.current) {
@@ -663,11 +803,31 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 		resetGraph(cy);
 		return () => {
 			observer.disconnect();
+			clearInspectTimers();
 			if (resizeTimerRef.current !== null) window.clearTimeout(resizeTimerRef.current);
 			cy.destroy();
 			cyRef.current = null;
 		};
 	}, [script.id]);
+
+	useEffect(() => {
+		if (!active) {
+			closeInspection();
+			return;
+		}
+		const handleKeyDown = (event: KeyboardEvent): void => {
+			if (event.key === 'Escape' && inspectedNodeRef.current) {
+				event.preventDefault();
+				closeInspection();
+				return;
+			}
+			if (event.key.toLowerCase() !== 'i' || !inspectedNodeRef.current) return;
+			event.preventDefault();
+			setInspectPinned((current) => !current);
+		};
+		window.addEventListener('keydown', handleKeyDown);
+		return () => window.removeEventListener('keydown', handleKeyDown);
+	}, [active]);
 
 	useEffect(() => {
 		const cy = cyRef.current;
@@ -719,7 +879,63 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 		}, 30);
 	}, [active]);
 
-	return <div className={`aig-agent-graph${active ? ' is-active' : ''}`} aria-hidden={!active}><div ref={hostRef} className="aig-cytoscape-host" /></div>;
+	const actionDetail = !inspectedNode || !cardAction ? null
+		: cardAction === 'explain'
+			? `${inspectedNode.summary} The ${inspectedNode.incoming + inspectedNode.outgoing} visible relations are grounded in the current ${script.label} draft.`
+			: cardAction === 'expand'
+				? 'Expansion staged for the next Graph Agent update. The Agent will inspect adjacent evidence before proposing any new node or relation; the current accepted version stays unchanged.'
+				: `Evidence bundle ready: ${inspectedNode.incoming} incoming and ${inspectedNode.outgoing} outgoing relation anchors are attached to this node.`;
+
+	const focusInspectedNode = (): void => {
+		const cy = cyRef.current;
+		if (!cy || !inspectedNode) return;
+		const item = cy.getElementById(inspectedNode.id);
+		if (item.empty()) return;
+		cy.animate({ center: { eles: item }, zoom: Math.max(.9, cy.zoom()), duration: 520, easing: 'ease-out-cubic' });
+	};
+
+	return (
+		<div className={`aig-agent-graph${active ? ' is-active' : ''}`} aria-hidden={!active}>
+			<div ref={hostRef} className="aig-cytoscape-host" />
+			{active && <div className="aig-inspect-hint"><span>Hover</span> inspect <i>·</i><span>I</span> pin <i>·</i><span>Esc</span> close</div>}
+			{active && inspectedNode && (
+				<div
+					className="aig-node-inspect-card"
+					data-card-side={inspectedNode.side}
+					data-pinned={inspectPinned ? 'true' : 'false'}
+					style={{ left: inspectedNode.left, top: inspectedNode.top }}
+					tabIndex={-1}
+					onMouseEnter={() => {
+						hoveredNodeIdRef.current = '__card__';
+						if (inspectCloseTimerRef.current !== null) window.clearTimeout(inspectCloseTimerRef.current);
+					}}
+					onMouseLeave={() => {
+						hoveredNodeIdRef.current = null;
+						scheduleInspectionClose();
+					}}
+				>
+					<header>
+						<div><span>{inspectedNode.role}</span><small>Evidence current · {script.label}</small></div>
+						<nav>
+							<button className={inspectPinned ? 'is-active' : ''} type="button" aria-label={inspectPinned ? 'Unpin node card' : 'Pin node card'} title={inspectPinned ? 'Unpin · I' : 'Pin · I'} onClick={() => setInspectPinned((current) => !current)}><Pin aria-hidden /></button>
+							<button type="button" aria-label="Close node card" title="Close · Esc" onClick={closeInspection}><X aria-hidden /></button>
+						</nav>
+					</header>
+					<strong>{inspectedNode.label}</strong>
+					<span className="aig-node-inspect-card__summary">{inspectedNode.summary}</span>
+					<div className="aig-node-inspect-card__metrics"><span><b>{inspectedNode.incoming}</b> incoming</span><span><b>{inspectedNode.outgoing}</b> outgoing</span><span><b>{inspectedNode.incoming + inspectedNode.outgoing}</b> total</span></div>
+					{actionDetail && <div className={`aig-node-inspect-card__result is-${cardAction}`} aria-live="polite"><Sparkles aria-hidden /><span>{actionDetail}</span></div>}
+					<div className="aig-node-inspect-card__actions" aria-label="Node actions">
+						<button type="button" className={cardAction === 'explain' ? 'is-active' : ''} onClick={() => setCardAction('explain')}><Sparkles aria-hidden /> Explain</button>
+						<button type="button" className={cardAction === 'expand' ? 'is-active' : ''} disabled={!layoutEnabled} title={layoutEnabled ? 'Continue the graph from this node' : 'Available after the current Agent run finishes'} onClick={() => setCardAction('expand')}><Network aria-hidden /> Expand</button>
+						<button type="button" onClick={focusInspectedNode}><LocateFixed aria-hidden /> Focus</button>
+						<button type="button" className={cardAction === 'evidence' ? 'is-active' : ''} onClick={() => setCardAction('evidence')}><ExternalLink aria-hidden /> Evidence</button>
+					</div>
+					<footer><span>{inspectPinned ? 'Pinned · actions stay interactive' : 'Move into card · click node or I to pin'}</span><b>{revisionLabel}</b></footer>
+				</div>
+			)}
+		</div>
+	);
 }
 
 function LensGlyph({ id }: { id: LensId }): React.ReactElement {
@@ -809,6 +1025,7 @@ function Prototype(): React.ReactElement {
 	const layoutEnabled = !liveRun && mode !== 'refining';
 	const activeViewReady = mode === 'review' || accepted;
 	const explanationVisible = activeViewReady && explanationOpen;
+	const revisionLabel = accepted ? 'v13 canonical' : refined ? 'v13 draft' : liveRun ? 'working draft' : 'v12 current';
 
 	const startRun = (): void => {
 		setRunNonce((current) => current + 1);
@@ -929,7 +1146,7 @@ function Prototype(): React.ReactElement {
 
 					<div className="aig-canvas">
 						<div className="aig-agent-canvas-stack">
-							{SCRIPTS.map((script) => <AgentGraphCanvas key={script.id} script={script} active={activeLensId === script.id} stepIndex={visibleStepIndex(script, globalStep, refined)} runNonce={runNonce} refineNonce={refineNonce} layout={layoutByLens[script.id]} layoutEnabled={layoutEnabled} onSelect={setSelectedNode} onStats={updateStats} />)}
+							{SCRIPTS.map((script) => <AgentGraphCanvas key={script.id} script={script} active={activeLensId === script.id} stepIndex={visibleStepIndex(script, globalStep, refined)} runNonce={runNonce} refineNonce={refineNonce} layout={layoutByLens[script.id]} layoutEnabled={layoutEnabled} revisionLabel={revisionLabel} onSelect={setSelectedNode} onStats={updateStats} />)}
 						</div>
 						<div className="aig-canvas-context">
 							<LensGlyph id={activeLensId} />

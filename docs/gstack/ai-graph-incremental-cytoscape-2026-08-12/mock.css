@@ -213,6 +213,35 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 .aig-agent-graph { visibility: hidden; pointer-events: none; }
 .aig-agent-graph.is-active { visibility: visible; pointer-events: auto; }
 .aig-cytoscape-host { z-index: 1; }
+.aig-inspect-hint { position: absolute; z-index: 4; bottom: 12px; left: 14px; display: flex; align-items: center; gap: 5px; color: var(--aig-ink-3); font-size: 8px; pointer-events: none; }
+.aig-inspect-hint span { padding: 2px 5px; color: var(--aig-ink-2); border: 1px solid var(--aig-line); border-radius: 4px; background: rgba(255,255,255,.92); box-shadow: 0 2px 5px rgba(48,39,60,.04); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 7px; }
+.aig-inspect-hint i { font-style: normal; }
+.aig-node-inspect-card { position: absolute; z-index: 12; width: 336px; max-height: calc(100% - 24px); overflow-y: auto; padding: 13px; color: var(--aig-ink); border: 1px solid #d7d1df; border-top: 3px solid var(--aig-accent); border-radius: 10px; background: rgba(255,255,255,.985); box-shadow: 0 18px 42px rgba(43,34,54,.2); animation: aig-card-in 150ms cubic-bezier(.2,.8,.2,1); }
+.aig-node-inspect-card[data-card-side="right"] { transform-origin: left center; }
+.aig-node-inspect-card[data-card-side="left"] { transform-origin: right center; }
+.aig-node-inspect-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.aig-node-inspect-card header > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aig-node-inspect-card header > div span { color: var(--aig-accent-dark); font-size: 8px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.aig-node-inspect-card header > div small { color: var(--aig-ink-3); font-size: 8px; }
+.aig-node-inspect-card header nav { flex: none; display: flex; gap: 3px; }
+.peak-design-root .aig-node-inspect-card header button { width: 26px !important; min-width: 26px !important; max-width: 26px !important; height: 26px !important; min-height: 26px !important; max-height: 26px !important; display: grid; place-items: center; padding: 0 !important; color: var(--aig-ink-3); border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
+.aig-node-inspect-card header button:hover, .aig-node-inspect-card header button.is-active { color: var(--aig-accent-dark); border-color: #ddd4ff; background: var(--aig-accent-soft); }
+.aig-node-inspect-card header button svg { width: 12px; height: 12px; }
+.aig-node-inspect-card > strong { display: block; margin-top: 8px; font-size: 13px; line-height: 1.3; }
+.aig-node-inspect-card__summary { display: block; margin-top: 5px; color: var(--aig-ink-2); font-size: 9px; line-height: 1.5; }
+.aig-node-inspect-card__metrics { display: flex; gap: 12px; margin-top: 10px; padding: 8px 0; color: var(--aig-ink-3); border-top: 1px solid var(--aig-line); border-bottom: 1px solid var(--aig-line); font-size: 8px; }
+.aig-node-inspect-card__metrics b { color: var(--aig-ink); font-size: 9px; }
+.aig-node-inspect-card__result { display: grid; grid-template-columns: 17px minmax(0, 1fr); gap: 7px; margin-top: 9px; padding: 8px; color: var(--aig-ink-2); border: 1px solid #ded7f4; border-radius: 7px; background: #f8f5ff; font-size: 8px; line-height: 1.45; }
+.aig-node-inspect-card__result.is-expand { color: #765527; border-color: #ead9bc; background: #fff9ef; }
+.aig-node-inspect-card__result.is-evidence { color: #316f5e; border-color: #cee4dc; background: #f0faf6; }
+.aig-node-inspect-card__result svg { width: 13px; height: 13px; color: var(--aig-accent); }
+.aig-node-inspect-card__actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+.peak-design-root .aig-node-inspect-card__actions button { width: auto !important; min-width: 0 !important; max-width: none !important; height: 30px !important; min-height: 30px !important; max-height: 30px !important; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 6px !important; color: var(--aig-ink-2); border: 1px solid var(--aig-line); border-radius: 6px; background: #fff; font-size: 8px; font-weight: 680; cursor: pointer; white-space: nowrap; }
+.aig-node-inspect-card__actions button:hover, .aig-node-inspect-card__actions button.is-active { color: var(--aig-accent-dark); border-color: #d8ceff; background: var(--aig-accent-soft); }
+.aig-node-inspect-card__actions button:disabled { cursor: not-allowed; opacity: .42; }
+.aig-node-inspect-card__actions button svg { width: 11px; height: 11px; flex: none; }
+.aig-node-inspect-card footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; color: var(--aig-ink-3); font-size: 7px; }
+.aig-node-inspect-card footer b { color: var(--aig-green); font-weight: 720; }
 .aig-canvas-context { position: absolute; z-index: 4; top: 14px; left: 14px; gap: 9px; max-width: 520px; padding: 9px 11px; color: #605969; border: 1px solid rgba(224, 219, 231, .9); border-radius: 8px; background: rgba(255,255,255,.92); box-shadow: 0 4px 16px rgba(47, 37, 66, .05); backdrop-filter: blur(8px); pointer-events: none; }
 .aig-canvas-context > svg { width: 14px; height: 14px; color: var(--aig-accent); }
 .aig-canvas-context > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -316,6 +345,7 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 
 @keyframes aig-pulse { 0% { box-shadow: 0 0 0 0 rgba(114,85,231,.24); } 70%,100% { box-shadow: 0 0 0 7px rgba(114,85,231,0); } }
 @keyframes aig-spin { to { transform: rotate(360deg); } }
+@keyframes aig-card-in { from { opacity: 0; transform: translateY(4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 1250px) {
 	.aig-topbar { grid-template-columns: minmax(260px, 1fr) auto minmax(260px, 1fr); }
@@ -332,6 +362,7 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 	.aig-lens-tab { padding-inline: 7px !important; }
 	.aig-layout-stage { display: none; }
 	.aig-canvas-context { max-width: 390px; }
+	.aig-node-inspect-card { width: min(320px, calc(100% - 24px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
