@@ -62,9 +62,15 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 ### Settings
 
 - Header tab navigation inside the native Obsidian Settings context
-- Expandable model hierarchy
-- Add-connection modal
+- Automatic setup that combines a quality / cost strategy with an independent cloud / local data route, previews the effect, and preserves manual overrides
+- Primary and additional connection groups, with an OpenRouter detail that separates connection health from online catalog, cache and bundled fallback state
+- Expandable product feature → action model hierarchy, plus a focused action picker with inheritance and per-action advanced overrides
+- Add-connection modal with the six primary launch connections and a lower-pressure additional list
+- Real safety modes: Read only, Ask every time, Accept reviewed edits and Bypass confirmations
+- Peak Hermes, Codex and Claude Code execution routes shown separately from model choice
 - Segmented index depth and contextual advanced disclosure
+- File-type scope detail that distinguishes extraction / indexing capability and includes Peak Sheet and Peak AI Graph
+- Advanced Files & Data, Privacy / Usage / Retention, Workspace behavior, Appearance / Accessibility and Diagnostics / Maintenance controls
 - Save/effect feedback for controls
 
 ### Onboarding
