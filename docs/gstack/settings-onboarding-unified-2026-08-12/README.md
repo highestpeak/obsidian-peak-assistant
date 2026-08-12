@@ -65,8 +65,9 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 - A low-frequency `AI Control Center` entry at the end of AI & Models, after ordinary connection and feature-model controls
 - A compact Automatic-model rule that explains what it affects, uses understandable outcome and processing-location language, and never overwrites manual choices
 - Primary and additional connection groups, with an OpenRouter detail that separates connection health from online catalog, cache and bundled fallback state
-- Direct model selection on each product feature, expandable product feature → action hierarchy, and a focused action picker with nine capability-aware advanced overrides
-- Add-connection modal with the six primary launch connections and a lower-pressure additional list
+- One consistent model-route control on every product feature and configurable child action, with capability-specific text, vision, image, embedding, video, speech and music choices
+- Chat Studio and Composer include explicit image-understanding and image-generation routes instead of hiding media behind a generic feature default
+- Add-connection modal presents every supported connection as one equal provider list; there is no miniature secondary tier inside the modal
 - Real safety modes: Read only, Ask every time, Accept reviewed edits and Bypass confirmations
 - One Peak Hermes runtime with a separate execution-provider selector; Codex and Claude Code are not presented as runtimes
 - Vertical safety-mode picker, external MCP/tool-server setup, Web Access, and an entry to the separate Command Gateway workspace

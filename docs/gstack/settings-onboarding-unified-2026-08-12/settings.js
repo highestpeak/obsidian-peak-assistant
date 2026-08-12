@@ -275,7 +275,7 @@ $('[data-catalog-search]').addEventListener("input", filterCatalog);
 
 $('.catalog-footer-note .text-button').addEventListener("click", () => showSaved("Full catalog · 113 models grouped by capability and provider"));
 
-$$('.modal-provider-list button, .modal-more-connections button').forEach((button) => {
+$$('.modal-provider-list button').forEach((button) => {
   button.addEventListener("click", () => {
     const providerName = $('strong', button)?.textContent ?? button.textContent.trim();
     showSaved(`${providerName} · focused connection setup would open next`);
@@ -294,35 +294,103 @@ $$('.execution-card').forEach((button) => {
   });
 });
 
-$$('[data-inline-model]').forEach((select) => {
-  select.addEventListener("change", () => {
-    showSaved(`${select.dataset.inlineModel} now uses ${select.value}`);
-  });
-});
-
 $('[data-review-safety]').addEventListener("click", () => showSaved("Effective rules · 6 remembered approvals · high-risk actions always ask"));
 
 let selectedActionModel = "Automatic";
+let currentModelTarget = null;
 
-$$('.feature-children > button:not([data-tree-toggle]), .action-groups button').forEach((button) => {
-  button.addEventListener("click", () => {
-    const featureChildren = button.closest('.feature-children');
-    const featureRow = featureChildren?.previousElementSibling;
-    const featureName = $('.feature-copy strong', featureRow)?.textContent ?? "Product feature";
-    const actionName = $('strong', button)?.textContent ?? $('span', button)?.textContent ?? "Action";
-    $('[data-model-breadcrumb]').textContent = `${featureName.toUpperCase()} · ACTION DEFAULT`;
-    $('[data-model-action-title]').textContent = actionName.trim();
-    restoreActionAutomatic();
-    toggleFocusedModal("[data-model-picker-modal]", true);
-  });
-});
+const textModels = [
+  { value: "Automatic", label: "Automatic", detail: "Peak selects a compatible model using your strategy and data route.", state: "Recommended" },
+  { value: "OpenAI · GPT-5", label: "OpenAI · GPT-5", detail: "Reasoning, tools and structured output.", state: "Connected" },
+  { value: "Anthropic · Claude Sonnet 4.6", label: "Anthropic · Claude Sonnet 4.6", detail: "Long context, tools and strong writing.", state: "Connected" },
+  { value: "OpenRouter · DeepSeek R1", label: "OpenRouter · DeepSeek R1", detail: "Reasoning model from the online catalog.", state: "Connected" },
+  { value: "Ollama · Qwen 3", label: "Ollama · Qwen 3", detail: "Local model detected on this computer.", state: "Local" },
+];
 
-$$('[data-model-choice]').forEach((button) => {
-  button.addEventListener("click", () => {
-    $$('[data-model-choice]').forEach((candidate) => candidate.classList.remove("is-selected"));
-    button.classList.add("is-selected");
-    selectedActionModel = button.dataset.modelChoice;
-  });
+const modelCatalogs = {
+  text: textModels,
+  agent: textModels.map((model) => model.value === "Automatic" ? { ...model, detail: "Peak selects a tool-capable model for this task." } : model),
+  vision: [
+    { value: "Automatic", label: "Automatic", detail: "Peak selects a model that can read the supplied images or documents.", state: "Recommended" },
+    { value: "OpenAI · GPT-5", label: "OpenAI · GPT-5", detail: "Vision, document understanding and tool use.", state: "Connected" },
+    { value: "Anthropic · Claude Sonnet 4.6", label: "Anthropic · Claude Sonnet 4.6", detail: "Vision and long-document understanding.", state: "Connected" },
+  ],
+  image: [
+    { value: "Automatic", label: "Automatic", detail: "Peak selects an image-generation model that supports this action.", state: "Recommended" },
+    { value: "OpenAI · GPT Image", label: "OpenAI · GPT Image", detail: "Generate and edit images from prompts and references.", state: "Connected" },
+    { value: "fal.ai · FLUX Pro", label: "fal.ai · FLUX Pro", detail: "High-quality image generation through the media connection.", state: "Setup" },
+    { value: "Custom · Local image route", label: "Custom · Local image route", detail: "Use a configured compatible local image endpoint.", state: "Optional" },
+  ],
+  embedding: [
+    { value: "Automatic", label: "Automatic", detail: "Prefer a ready local embedding model, then a connected cloud model.", state: "Recommended" },
+    { value: "Ollama · nomic-embed-text", label: "Ollama · nomic-embed-text", detail: "Local embedding model detected on this computer.", state: "Local" },
+    { value: "OpenAI · text-embedding", label: "OpenAI · text-embedding", detail: "Cloud embedding route from the OpenAI connection.", state: "Connected" },
+  ],
+  media: [
+    { value: "Automatic", label: "Automatic by media type", detail: "Use separate compatible routes for images, video, speech and music.", state: "Recommended" },
+    { value: "OpenAI · Media routes", label: "OpenAI · Media routes", detail: "Use connected OpenAI image and audio capabilities where supported.", state: "Connected" },
+    { value: "fal.ai · Media routes", label: "fal.ai · Media routes", detail: "Use configured fal.ai image, video, speech and music routes.", state: "Setup" },
+  ],
+  video: [
+    { value: "Automatic", label: "Automatic", detail: "Use the first ready video-generation route.", state: "Recommended" },
+    { value: "fal.ai · Video route", label: "fal.ai · Video route", detail: "Generate video through a configured fal.ai model.", state: "Setup" },
+    { value: "Custom · Video route", label: "Custom · Video route", detail: "Use another compatible media endpoint.", state: "Optional" },
+  ],
+  speech: [
+    { value: "Automatic", label: "Automatic", detail: "Use a ready speech model with the selected voice preset.", state: "Recommended" },
+    { value: "OpenAI · Speech", label: "OpenAI · Speech", detail: "Speech generation from the OpenAI connection.", state: "Connected" },
+    { value: "fal.ai · Speech route", label: "fal.ai · Speech route", detail: "Speech generation through a configured media route.", state: "Setup" },
+  ],
+  music: [
+    { value: "Automatic", label: "Automatic", detail: "Use the first ready music-generation route.", state: "Recommended" },
+    { value: "fal.ai · Music route", label: "fal.ai · Music route", detail: "Music generation through a configured media connection.", state: "Setup" },
+    { value: "Custom · Music route", label: "Custom · Music route", detail: "Use another compatible music endpoint.", state: "Optional" },
+  ],
+};
+
+function selectModelChoice(button) {
+  $$('[data-model-choice]').forEach((candidate) => candidate.classList.remove("is-selected"));
+  button.classList.add("is-selected");
+  selectedActionModel = button.dataset.modelChoice;
+}
+
+function renderModelChoices(scope) {
+  const group = $('[data-model-choice-group]');
+  group.replaceChildren();
+  const models = modelCatalogs[scope] ?? textModels;
+  for (const model of models) {
+    const button = document.createElement("button");
+    button.dataset.modelChoice = model.value;
+    button.classList.toggle("is-selected", model.value === selectedActionModel);
+    button.innerHTML = `<span><strong>${model.label}</strong><small>${model.detail}</small></span><em>${model.state}</em>`;
+    button.addEventListener("click", () => selectModelChoice(button));
+    group.append(button);
+  }
+}
+
+function describeModelChoice(target) {
+  if (target.dataset.modelValue !== "Automatic") return target.dataset.modelValue;
+  return `Automatic · ${target.dataset.defaultModel}`;
+}
+
+function openModelPicker(target) {
+  currentModelTarget = target;
+  selectedActionModel = target.dataset.modelValue ?? "Automatic";
+  const isFeatureDefault = target.dataset.action === "Feature default";
+  $('[data-model-breadcrumb]').textContent = isFeatureDefault ? `${target.dataset.feature.toUpperCase()} · FEATURE DEFAULT` : `${target.dataset.feature.toUpperCase()} · ACTION DEFAULT`;
+  $('[data-model-action-title]').textContent = isFeatureDefault ? target.dataset.feature : target.dataset.action;
+  $('[data-model-picker-description]').textContent = isFeatureDefault ? "Choose the default used by this feature. Individual actions can still override it." : "Choose a model for this action without changing the rest of the feature.";
+  $('[data-current-model-path]').textContent = isFeatureDefault ? "Automatic rule → this feature" : "Automatic rule → feature default → this action";
+  $('[data-current-model-value]').textContent = describeModelChoice(target);
+  $('[data-picker-advanced]').hidden = !["text", "vision", "agent"].includes(target.dataset.modelScope);
+  $('[data-model-detail-note]').textContent = isFeatureDefault ? "This changes the feature default only. Existing action overrides remain unchanged." : "This changes only this action. The feature default and Provider connection remain unchanged.";
+  $('[data-save-model-choice]').textContent = isFeatureDefault ? "Save feature default" : "Save action default";
+  renderModelChoices(target.dataset.modelScope);
+  toggleFocusedModal("[data-model-picker-modal]", true);
+}
+
+$$('[data-model-trigger]').forEach((button) => {
+  button.addEventListener("click", () => openModelPicker(button));
 });
 
 function restoreActionAutomatic() {
@@ -340,8 +408,15 @@ $$('[data-close-model-picker]').forEach((button) => {
 });
 
 $('[data-save-model-choice]').addEventListener("click", () => {
+  if (currentModelTarget) {
+    currentModelTarget.dataset.modelValue = selectedActionModel;
+    const parts = selectedActionModel.split(" · ");
+    $('.model-route-kind', currentModelTarget).textContent = selectedActionModel === "Automatic" ? "Automatic" : parts.shift();
+    $('.model-route-name', currentModelTarget).textContent = selectedActionModel === "Automatic" ? currentModelTarget.dataset.defaultModel : parts.join(" · ");
+  }
   toggleFocusedModal("[data-model-picker-modal]", false);
-  showSaved(selectedActionModel === "Automatic" ? "Saved · action inherits automatic selection" : `Saved · action uses ${selectedActionModel}`);
+  const scopeName = currentModelTarget?.dataset.action === "Feature default" ? "feature" : "action";
+  showSaved(selectedActionModel === "Automatic" ? `Saved · ${scopeName} inherits automatic selection` : `Saved · ${scopeName} uses ${selectedActionModel}`);
 });
 
 $('[data-model-picker-modal]').addEventListener("click", (event) => {
@@ -362,6 +437,11 @@ $$('[data-run-check]').forEach((button) => {
 });
 
 $("[data-reset-models]").addEventListener("click", () => {
+  $$('[data-model-trigger]').forEach((target) => {
+    target.dataset.modelValue = "Automatic";
+    $('.model-route-kind', target).textContent = "Automatic";
+    $('.model-route-name', target).textContent = target.dataset.defaultModel;
+  });
   showSaved("All model choices now inherit Peak automatic selection");
 });
 

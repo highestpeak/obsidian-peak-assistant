@@ -54,7 +54,11 @@ requireValues("Settings HTML", settingsHtml, [
   "How Automatic chooses a model",
   "data-strategy=\"Recommended\"",
   "data-route-select",
-  "data-inline-model=\"Chat Studio\"",
+  "data-model-trigger",
+  "data-model-scope=\"image\"",
+  "Generate images &amp; covers",
+  "Understand images &amp; documents",
+  "connection-picker-modal",
   "Advanced model controls",
   "Default safety mode",
   "Ask every time",
@@ -93,6 +97,12 @@ requireValues("Settings HTML", settingsHtml, [
 
 if (settingsHtml.includes("content-header-actions")) {
   missing.push("Settings HTML: AI actions must not be placed in the page header");
+}
+if (settingsHtml.includes("connection-summary")) {
+  missing.push("Settings HTML: redundant connection summary must stay removed");
+}
+if (settingsHtml.includes("modal-more-connections")) {
+  missing.push("Settings HTML: Add connection must use one unified provider list");
 }
 
 const connectionsHeadingPosition = settingsHtml.indexOf("connection-section-heading");
@@ -150,7 +160,9 @@ requireValues("CSS", css, [
   ".peak-settings-tabs",
   ".model-tree",
   ".automatic-policy",
-  ".inline-model-select",
+  ".model-route-button",
+  ".action-model-row",
+  ".task-model-control",
   ".safety-picker",
   ".command-gateway-card",
   ".feature-settings-detail",
