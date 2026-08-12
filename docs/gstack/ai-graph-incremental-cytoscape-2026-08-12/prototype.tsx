@@ -4,7 +4,6 @@ import {
 	ArrowDown,
 	ArrowRight,
 	Check,
-	ChevronDown,
 	CircleDotDashed,
 	CirclePause,
 	CirclePlay,
@@ -430,7 +429,7 @@ interface LensDefinition {
 }
 
 const LENSES: LensDefinition[] = [
-	{ id: 'topology', label: 'Topology', defaultPreset: 'flow-lr', description: 'Complete relation structure · connected components flow left to right', question: 'How is this knowledge connected?', subgraph: TOPOLOGY_SUBGRAPH },
+	{ id: 'topology', label: 'Topology', defaultPreset: 'constellation', description: 'Complete relation structure · force-directed by default, with six switchable arrangements', question: 'How is this knowledge connected?', subgraph: TOPOLOGY_SUBGRAPH },
 	{ id: 'thinking-tree', label: 'Thinking Tree', defaultPreset: 'flow-tb', description: 'Derivation hierarchy · roots above, dependent ideas below', question: 'How did the reasoning branch?', subgraph: THINKING_TREE_SUBGRAPH },
 	{ id: 'bridge', label: 'Bridges', defaultPreset: 'flow-lr', description: 'Cross-domain paths · bridge concepts sit between knowledge areas', question: 'Which concepts connect otherwise separate domains?', subgraph: BRIDGE_SUBGRAPH },
 	{ id: 'timeline', label: 'Timeline', defaultPreset: 'flow-tb', description: 'Evolution chain · dated ideas progress from top to bottom', question: 'How did the model evolve over time?', subgraph: TIMELINE_SUBGRAPH },
@@ -440,9 +439,9 @@ const LENSES: LensDefinition[] = [
 const LAYOUT_OPTIONS: Array<{ id: AtlasGraphPreset; label: string; detail: string }> = [
 	{ id: 'constellation', label: 'Constellation', detail: 'Force cluster' },
 	{ id: 'community', label: 'Community', detail: 'Compound groups' },
-	{ id: 'flow-tb', label: 'Flow ↓', detail: 'Top to bottom' },
-	{ id: 'flow-lr', label: 'Flow →', detail: 'Left to right' },
-	{ id: 'folder', label: 'Folder tree', detail: 'Path hierarchy' },
+	{ id: 'flow-lr', label: 'Links →', detail: 'Left to right' },
+	{ id: 'flow-tb', label: 'Links ↓', detail: 'Top to bottom' },
+	{ id: 'folder', label: 'Folders', detail: 'Path hierarchy' },
 	{ id: 'orbit', label: 'Orbit', detail: 'Degree rings' },
 ];
 
@@ -681,10 +680,8 @@ function Prototype(): React.ReactElement {
 	const [selectedNode, setSelectedNode] = useState<string | null>(null);
 	const [activeLensId, setActiveLensId] = useState<LensId>('topology');
 	const [layoutOverride, setLayoutOverride] = useState<AtlasGraphPreset | null>(null);
-	const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
 	const startedOnce = useRef(false);
 	const currentPatchRef = useRef<HTMLDivElement | null>(null);
-	const layoutMenuRef = useRef<HTMLDivElement | null>(null);
 	const initialRunTimerRef = useRef<number | null>(null);
 
 	const accepted = mode === 'accepted';
@@ -756,24 +753,6 @@ function Prototype(): React.ReactElement {
 		currentPatchRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 	}, [activityOpen, mode, patchIndex]);
 
-	useEffect(() => {
-		if (!layoutMenuOpen) return;
-		const closeOnPointerDown = (event: PointerEvent): void => {
-			const target = event.target;
-			if (!(target instanceof Node)) return;
-			if (!layoutMenuRef.current?.contains(target)) setLayoutMenuOpen(false);
-		};
-		const closeOnEscape = (event: KeyboardEvent): void => {
-			if (event.key === 'Escape') setLayoutMenuOpen(false);
-		};
-		document.addEventListener('pointerdown', closeOnPointerDown);
-		document.addEventListener('keydown', closeOnEscape);
-		return () => {
-			document.removeEventListener('pointerdown', closeOnPointerDown);
-			document.removeEventListener('keydown', closeOnEscape);
-		};
-	}, [layoutMenuOpen]);
-
 	const togglePause = (): void => {
 		setMode((current) => current === 'paused' ? 'running' : 'paused');
 	};
@@ -806,11 +785,30 @@ function Prototype(): React.ReactElement {
 		showCompleteGraph();
 	};
 
-	const selectLayout = (preset: AtlasGraphPreset | null): void => {
+	const selectLayout = (preset: AtlasGraphPreset): void => {
 		setLayoutOverride(preset);
 		setSelectedNode(null);
-		setLayoutMenuOpen(false);
 		showCompleteGraph();
+	};
+
+	const moveLayoutFocus = (event: React.KeyboardEvent<HTMLButtonElement>): void => {
+		if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+		const segments = Array.from(
+			event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('.aig-layout-segment') ?? [],
+		);
+		if (segments.length === 0) return;
+		event.preventDefault();
+		const currentIndex = Math.max(0, segments.indexOf(event.currentTarget));
+		let nextIndex = currentIndex;
+		if (event.key === 'Home') nextIndex = 0;
+		if (event.key === 'End') nextIndex = segments.length - 1;
+		if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + segments.length) % segments.length;
+		if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % segments.length;
+		const next = segments[nextIndex];
+		const nextPreset = next?.dataset.layoutId as AtlasGraphPreset | undefined;
+		if (!next || !nextPreset) return;
+		next.focus();
+		selectLayout(nextPreset);
 	};
 
 	return (
@@ -877,36 +875,27 @@ function Prototype(): React.ReactElement {
 									<span><i className="is-removed" /> Removal</span>
 								</div>
 							)}
-							<div className="aig-layout-switcher" ref={layoutMenuRef}>
+							<div className="aig-layout-switcher">
 								<span className="aig-layout-label">Layout</span>
-								<button
-									className={`aig-layout-trigger${layoutMenuOpen ? ' is-active' : ''}`}
-									type="button"
-									onClick={() => setLayoutMenuOpen((current) => !current)}
-									aria-expanded={layoutMenuOpen}
-								>
-									<LayoutGlyph id={effectivePreset} />
-									{activeLayout.label}
-									<ChevronDown aria-hidden />
-								</button>
-								{layoutMenuOpen && (
-									<div className="aig-layout-menu" role="menu" aria-label="Graph layout">
-										<div className="aig-layout-menu__head"><strong>Layout</strong><span>Arrangement only</span></div>
-										<button className={`aig-layout-menu__item${layoutOverride === null ? ' is-active' : ''}`} type="button" role="menuitemradio" aria-checked={layoutOverride === null} onClick={() => selectLayout(null)}>
-											<Sparkles aria-hidden />
-											<span><strong>Lens default</strong><small>{LAYOUT_OPTIONS.find((layout) => layout.id === activeLens.defaultPreset)?.label}</small></span>
-											{layoutOverride === null && <Check aria-hidden />}
+								<div className="aig-layout-segments" role="tablist" aria-label="Graph layout">
+									{LAYOUT_OPTIONS.map((layout) => (
+										<button
+											key={layout.id}
+											className={`aig-layout-segment${effectivePreset === layout.id ? ' is-active' : ''}`}
+											type="button"
+											role="tab"
+											aria-selected={effectivePreset === layout.id}
+											tabIndex={effectivePreset === layout.id ? 0 : -1}
+											data-layout-id={layout.id}
+											title={`${layout.label} · ${layout.detail}`}
+											onClick={() => selectLayout(layout.id)}
+											onKeyDown={moveLayoutFocus}
+										>
+											<LayoutGlyph id={layout.id} />
+											<span>{layout.label}</span>
 										</button>
-										<div className="aig-layout-menu__rule" />
-										{LAYOUT_OPTIONS.map((layout) => (
-											<button key={layout.id} className={`aig-layout-menu__item${layoutOverride === layout.id ? ' is-active' : ''}`} type="button" role="menuitemradio" aria-checked={layoutOverride === layout.id} onClick={() => selectLayout(layout.id)}>
-												<LayoutGlyph id={layout.id} />
-												<span><strong>{layout.label}</strong><small>{layout.detail}</small></span>
-												{layoutOverride === layout.id && <Check aria-hidden />}
-											</button>
-										))}
-									</div>
-								)}
+									))}
+								</div>
 							</div>
 						</div>
 					</div>
