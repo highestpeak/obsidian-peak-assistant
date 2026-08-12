@@ -114,6 +114,28 @@ interface GraphStats {
 }
 
 type NodeCardAction = 'explain' | 'expand' | 'evidence' | null;
+type ExpansionPhase = 'inspecting' | 'placing' | 'connecting' | 'validating' | 'complete';
+
+interface ExpansionActivity {
+	id: string;
+	lensId: LensId;
+	kind: StepKind;
+	tool: string;
+	title: string;
+	detail: string;
+	object: string;
+	state: 'running' | 'complete';
+	sourceLabel: string;
+}
+
+interface ExpansionRun {
+	id: string;
+	sourceNodeId: string;
+	sourceLabel: string;
+	targetNodeId: string;
+	targetLabel: string;
+	phase: ExpansionPhase;
+}
 
 interface NodeInspection {
 	id: string;
@@ -571,28 +593,67 @@ function buildNodeInspection(item: NodeSingular, script: LensScript, host: HTMLD
 	};
 }
 
+const EXPANSION_COPY: Record<LensId, { label: string; relation: string; classes: string }> = {
+	topology: { label: 'Query decomposition', relation: 'expands to', classes: 'evidence' },
+	'thinking-tree': { label: 'Inspect conflicting evidence', relation: 'next check', classes: 'action' },
+	bridge: { label: 'Cross-domain evidence alignment', relation: 'tests path', classes: 'method' },
+	timeline: { label: 'Post-run evidence audit', relation: 'then', classes: 'milestone' },
+	'gap-analysis': { label: 'Verification handoff', relation: 'requires', classes: 'evaluation' },
+};
+
+function findExpansionPosition(cy: Core, anchor: NodeSingular, attempt: number): { x: number; y: number } {
+	const origin = anchor.position();
+	const offsets = [
+		{ x: 230, y: 0 },
+		{ x: 205, y: -145 },
+		{ x: 205, y: 145 },
+		{ x: 0, y: 165 },
+		{ x: 0, y: -165 },
+		{ x: -210, y: 145 },
+		{ x: -210, y: -145 },
+	];
+	const occupied = cy.nodes().filter((item) => !item.hasClass('group'));
+	for (let index = 0; index < offsets.length; index += 1) {
+		const offset = offsets[(index + attempt) % offsets.length];
+		const candidate = { x: origin.x + offset.x, y: origin.y + offset.y };
+		let collision = false;
+		occupied.forEach((item) => {
+			const point = item.position();
+			if (Math.abs(point.x - candidate.x) < 170 && Math.abs(point.y - candidate.y) < 82) collision = true;
+		});
+		if (!collision) return candidate;
+	}
+	return { x: origin.x + 240, y: origin.y + 180 + (attempt * 38) };
+}
+
 interface AgentGraphCanvasProps {
 	script: LensScript;
 	active: boolean;
 	stepIndex: number;
 	runNonce: number;
 	refineNonce: number;
+	expansionCommitNonce: number;
+	expansionRollbackNonce: number;
 	layout: LayoutId;
 	layoutEnabled: boolean;
 	revisionLabel: string;
 	onSelect: (label: string) => void;
 	onStats: (lensId: LensId, stats: GraphStats) => void;
+	onExpansionActivity: (event: ExpansionActivity) => void;
 }
 
-function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, layout, layoutEnabled, revisionLabel, onSelect, onStats }: AgentGraphCanvasProps): React.ReactElement {
+function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, expansionCommitNonce, expansionRollbackNonce, layout, layoutEnabled, revisionLabel, onSelect, onStats, onExpansionActivity }: AgentGraphCanvasProps): React.ReactElement {
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const [inspectedNode, setInspectedNode] = useState<NodeInspection | null>(null);
 	const [inspectPinned, setInspectPinned] = useState(false);
 	const [cardAction, setCardAction] = useState<NodeCardAction>(null);
+	const [expansionRun, setExpansionRun] = useState<ExpansionRun | null>(null);
 	const appliedStepRef = useRef(-1);
 	const runNonceRef = useRef(-1);
 	const refineNonceRef = useRef(-1);
+	const expansionCommitNonceRef = useRef(0);
+	const expansionRollbackNonceRef = useRef(0);
 	const layoutRef = useRef(layout);
 	const activeRef = useRef(active);
 	const initializedRef = useRef(false);
@@ -604,6 +665,8 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 	const hoveredNodeIdRef = useRef<string | null>(null);
 	const inspectOpenTimerRef = useRef<number | null>(null);
 	const inspectCloseTimerRef = useRef<number | null>(null);
+	const expansionTimersRef = useRef<number[]>([]);
+	const expansionCounterRef = useRef(0);
 	activeRef.current = active;
 	inspectedNodeRef.current = inspectedNode;
 	inspectPinnedRef.current = inspectPinned;
@@ -613,6 +676,11 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 		if (inspectCloseTimerRef.current !== null) window.clearTimeout(inspectCloseTimerRef.current);
 		inspectOpenTimerRef.current = null;
 		inspectCloseTimerRef.current = null;
+	};
+
+	const clearExpansionTimers = (): void => {
+		for (const timer of expansionTimersRef.current) window.clearTimeout(timer);
+		expansionTimersRef.current = [];
 	};
 
 	const closeInspection = (): void => {
@@ -649,6 +717,8 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 	};
 
 	const resetGraph = (cy: Core): void => {
+		clearExpansionTimers();
+		setExpansionRun(null);
 		closeInspection();
 		cy.elements().remove();
 		cy.add([
@@ -804,6 +874,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 		return () => {
 			observer.disconnect();
 			clearInspectTimers();
+			clearExpansionTimers();
 			if (resizeTimerRef.current !== null) window.clearTimeout(resizeTimerRef.current);
 			cy.destroy();
 			cyRef.current = null;
@@ -854,6 +925,27 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 
 	useEffect(() => {
 		const cy = cyRef.current;
+		if (!cy || expansionCommitNonce <= 0 || expansionCommitNonceRef.current === expansionCommitNonce) return;
+		expansionCommitNonceRef.current = expansionCommitNonce;
+		cy.elements('.expansion').removeClass('expansion patch-target');
+		setExpansionRun(null);
+	}, [expansionCommitNonce, script.id]);
+
+	useEffect(() => {
+		const cy = cyRef.current;
+		if (!cy || expansionRollbackNonce <= 0 || expansionRollbackNonceRef.current === expansionRollbackNonce) return;
+		expansionRollbackNonceRef.current = expansionRollbackNonce;
+		clearExpansionTimers();
+		const draftElements = cy.elements('.expansion');
+		if (!draftElements.empty()) draftElements.remove();
+		clearPatchTargets(cy);
+		setExpansionRun(null);
+		closeInspection();
+		reportStats(cy);
+	}, [expansionRollbackNonce, script.id]);
+
+	useEffect(() => {
+		const cy = cyRef.current;
 		if (!cy || !active || !layoutEnabled || layoutRef.current === layout) return;
 		layoutRef.current = layout;
 		runFinalLayout(cy, script, layout);
@@ -883,7 +975,17 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 		: cardAction === 'explain'
 			? `${inspectedNode.summary} The ${inspectedNode.incoming + inspectedNode.outgoing} visible relations are grounded in the current ${script.label} draft.`
 			: cardAction === 'expand'
-				? 'Expansion staged for the next Graph Agent update. The Agent will inspect adjacent evidence before proposing any new node or relation; the current accepted version stays unchanged.'
+				? expansionRun?.sourceNodeId !== inspectedNode.id
+					? 'Start a revision-guarded Graph Agent expansion from this node. The accepted graph stays unchanged until review.'
+					: expansionRun.phase === 'inspecting'
+						? 'Inspecting the selected node, adjacent relations, evidence anchors, and nearby free space.'
+						: expansionRun.phase === 'placing'
+							? `Placed “${expansionRun.targetLabel}” as an unlinked draft node. Existing nodes did not move.`
+							: expansionRun.phase === 'connecting'
+								? `Drawing the validated relation from “${expansionRun.sourceLabel}” to “${expansionRun.targetLabel}”.`
+								: expansionRun.phase === 'validating'
+									? 'Validating endpoint existence, evidence references, and the expected draft revision.'
+									: `Expansion complete: “${expansionRun.targetLabel}” and its relation are now part of the reviewable draft.`
 				: `Evidence bundle ready: ${inspectedNode.incoming} incoming and ${inspectedNode.outgoing} outgoing relation anchors are attached to this node.`;
 
 	const focusInspectedNode = (): void => {
@@ -892,6 +994,83 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 		const item = cy.getElementById(inspectedNode.id);
 		if (item.empty()) return;
 		cy.animate({ center: { eles: item }, zoom: Math.max(.9, cy.zoom()), duration: 520, easing: 'ease-out-cubic' });
+	};
+
+	const emitExpansionActivity = (event: Omit<ExpansionActivity, 'lensId'>): void => {
+		onExpansionActivity({ ...event, lensId: script.id });
+	};
+
+	const startExpansion = (): void => {
+		const cy = cyRef.current;
+		const host = hostRef.current;
+		if (!cy || !host || !inspectedNode || !layoutEnabled) return;
+		if (expansionRun && expansionRun.phase !== 'complete') return;
+		const anchor = cy.getElementById(inspectedNode.id) as NodeSingular;
+		if (anchor.empty()) return;
+		clearExpansionTimers();
+		expansionCounterRef.current += 1;
+		const sequence = expansionCounterRef.current;
+		const runId = `expand-${script.id}-${sequence}`;
+		const targetNodeId = `${runId}-node`;
+		const targetLabel = sequence === 1 ? EXPANSION_COPY[script.id].label : `${EXPANSION_COPY[script.id].label} ${sequence}`;
+		const sourceLabel = inspectedNode.label;
+		const position = findExpansionPosition(cy, anchor, sequence - 1);
+		const parent = anchor.parent();
+		const parentId = parent.empty() ? undefined : parent.first().id();
+		const timelineOrder = script.id === 'timeline'
+			? Math.max(0, ...cy.nodes('.milestone').map((item) => Number(item.data('order')) || 0)) + 1
+			: undefined;
+		const timelineLane = script.id === 'timeline' ? Number(anchor.data('lane')) || 0 : undefined;
+		const nextRun: ExpansionRun = {
+			id: runId,
+			sourceNodeId: inspectedNode.id,
+			sourceLabel,
+			targetNodeId,
+			targetLabel,
+			phase: 'inspecting',
+		};
+		setInspectPinned(true);
+		setCardAction('expand');
+		setExpansionRun(nextRun);
+		emitExpansionActivity({ id: `${runId}-inspect`, kind: 'inspect', tool: 'graph.inspectNeighborhood', title: `Inspecting ${sourceLabel}`, detail: 'Read adjacent evidence, relation directions, occupied regions, and the current draft revision.', object: 'read only · revision guarded', state: 'running', sourceLabel });
+
+		const placeTimer = window.setTimeout(() => {
+			emitExpansionActivity({ id: `${runId}-inspect`, kind: 'inspect', tool: 'graph.inspectNeighborhood', title: `Inspected ${sourceLabel}`, detail: 'Adjacent evidence and a collision-free placement slot are available.', object: 'neighborhood ready', state: 'complete', sourceLabel });
+			emitExpansionActivity({ id: `${runId}-node`, kind: 'add-node', tool: 'graph.addNode', title: `Placing ${targetLabel}`, detail: 'The new concept is staged without a relation so the mutation remains observable.', object: '+ 1 node · unlinked', state: 'running', sourceLabel });
+			setExpansionRun((current) => current?.id === runId ? { ...current, phase: 'placing' } : current);
+			applyStep(cy, {
+				id: `${runId}-node`, kind: 'add-node', tool: 'graph.addNode', title: `Placed ${targetLabel}`, detail: 'Placed beside the selected node without moving existing coordinates.', object: '+ 1 node · unlinked',
+				addNodes: [node(targetNodeId, targetLabel, position.x, position.y, 'candidate expansion', parentId, timelineOrder, timelineLane)],
+			}, true);
+		}, 760);
+		expansionTimersRef.current.push(placeTimer);
+
+		const connectTimer = window.setTimeout(() => {
+			emitExpansionActivity({ id: `${runId}-node`, kind: 'add-node', tool: 'graph.addNode', title: `Placed ${targetLabel}`, detail: 'The draft node occupies a collision-free slot; no existing node moved.', object: '+ 1 node · unlinked', state: 'complete', sourceLabel });
+			emitExpansionActivity({ id: `${runId}-edge`, kind: 'add-relation', tool: 'graph.addEdge', title: 'Connecting the expansion', detail: 'Both endpoints exist before the relation animation begins.', object: '+ 1 relation · drawing', state: 'running', sourceLabel });
+			setExpansionRun((current) => current?.id === runId ? { ...current, phase: 'connecting' } : current);
+			applyStep(cy, {
+				id: `${runId}-edge`, kind: 'add-relation', tool: 'graph.addEdge', title: 'Connected the expansion', detail: 'The relation uses Cytoscape endpoint geometry from its first visible frame.', object: '+ 1 relation',
+				addEdges: [edge(`${runId}-edge`, inspectedNode.id, targetNodeId, EXPANSION_COPY[script.id].relation, 'expansion')],
+				updateNodes: [{ id: targetNodeId, addClasses: EXPANSION_COPY[script.id].classes, removeClasses: 'candidate' }],
+			}, true);
+			const currentAnchor = cy.getElementById(inspectedNode.id) as NodeSingular;
+			if (!currentAnchor.empty()) setInspectedNode(buildNodeInspection(currentAnchor, script, host));
+		}, 1740);
+		expansionTimersRef.current.push(connectTimer);
+
+		const validateTimer = window.setTimeout(() => {
+			emitExpansionActivity({ id: `${runId}-edge`, kind: 'add-relation', tool: 'graph.addEdge', title: 'Connected the expansion', detail: 'The relation is attached to the selected source and the newly staged target.', object: '+ 1 relation', state: 'complete', sourceLabel });
+			emitExpansionActivity({ id: `${runId}-validate`, kind: 'validate', tool: 'graph.validate', title: 'Validating the expansion draft', detail: 'Checking endpoint integrity, evidence references, and expected revision.', object: 'draft validation', state: 'running', sourceLabel });
+			setExpansionRun((current) => current?.id === runId ? { ...current, phase: 'validating' } : current);
+		}, 2840);
+		expansionTimersRef.current.push(validateTimer);
+
+		const completeTimer = window.setTimeout(() => {
+			emitExpansionActivity({ id: `${runId}-validate`, kind: 'validate', tool: 'graph.validate', title: 'Validated the expansion draft', detail: 'The new node and relation are ready for review; the accepted graph version remains unchanged.', object: '1 node · 1 relation · valid draft', state: 'complete', sourceLabel });
+			setExpansionRun((current) => current?.id === runId ? { ...current, phase: 'complete' } : current);
+		}, 3620);
+		expansionTimersRef.current.push(completeTimer);
 	};
 
 	return (
@@ -927,7 +1106,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 					{actionDetail && <div className={`aig-node-inspect-card__result is-${cardAction}`} aria-live="polite"><Sparkles aria-hidden /><span>{actionDetail}</span></div>}
 					<div className="aig-node-inspect-card__actions" aria-label="Node actions">
 						<button type="button" className={cardAction === 'explain' ? 'is-active' : ''} onClick={() => setCardAction('explain')}><Sparkles aria-hidden /> Explain</button>
-						<button type="button" className={cardAction === 'expand' ? 'is-active' : ''} disabled={!layoutEnabled} title={layoutEnabled ? 'Continue the graph from this node' : 'Available after the current Agent run finishes'} onClick={() => setCardAction('expand')}><Network aria-hidden /> Expand</button>
+						<button type="button" className={`${cardAction === 'expand' ? 'is-active' : ''}${expansionRun && expansionRun.phase !== 'complete' ? ' is-running' : ''}`} disabled={!layoutEnabled || Boolean(expansionRun && expansionRun.phase !== 'complete')} aria-busy={Boolean(expansionRun && expansionRun.phase !== 'complete')} title={layoutEnabled ? 'Run a revision-guarded graph expansion from this node' : 'Available after the current Agent run finishes'} onClick={startExpansion}><Network aria-hidden /> Expand</button>
 						<button type="button" onClick={focusInspectedNode}><LocateFixed aria-hidden /> Focus</button>
 						<button type="button" className={cardAction === 'evidence' ? 'is-active' : ''} onClick={() => setCardAction('evidence')}><ExternalLink aria-hidden /> Evidence</button>
 					</div>
@@ -1004,11 +1183,17 @@ function Prototype(): React.ReactElement {
 	const [globalStep, setGlobalStep] = useState(-1);
 	const [runNonce, setRunNonce] = useState(0);
 	const [refineNonce, setRefineNonce] = useState(0);
+	const [expansionCommitNonce, setExpansionCommitNonce] = useState(0);
+	const [expansionRollbackNonce, setExpansionRollbackNonce] = useState(0);
+	const [canonicalVersion, setCanonicalVersion] = useState(12);
+	const [followUpDraft, setFollowUpDraft] = useState(false);
 	const [activityOpen, setActivityOpen] = useState(false);
 	const [explanationOpen, setExplanationOpen] = useState(false);
 	const [activeLensId, setActiveLensId] = useState<LensId>('topology');
 	const [layoutByLens, setLayoutByLens] = useState<Record<LensId, LayoutId>>(() => Object.fromEntries(SCRIPTS.map((script) => [script.id, script.defaultLayout])) as Record<LensId, LayoutId>);
 	const [selectedNode, setSelectedNode] = useState<string | null>(null);
+	const [expansionEvents, setExpansionEvents] = useState<ExpansionActivity[]>([]);
+	const [activeExpansion, setActiveExpansion] = useState<ExpansionActivity | null>(null);
 	const [statsByLens, setStatsByLens] = useState<Record<LensId, GraphStats>>(() => Object.fromEntries(SCRIPTS.map((script) => [script.id, { nodes: script.initialNodes.filter((item) => !item.classes?.split(' ').includes('group')).length, edges: script.initialEdges.length, diagnostics: 0 }])) as Record<LensId, GraphStats>);
 	const startedRef = useRef(false);
 	const currentActivityRef = useRef<HTMLDivElement | null>(null);
@@ -1019,19 +1204,32 @@ function Prototype(): React.ReactElement {
 	const activeScript = SCRIPT_BY_ID[activeLensId];
 	const activeStepIndex = visibleStepIndex(activeScript, globalStep, refined);
 	const activeStep = activeStepIndex >= 0 ? activeScript.steps[activeStepIndex] : null;
+	const activeExpansionEvents = expansionEvents.filter((event) => event.lensId === activeLensId);
+	const currentExpansionEvent = activeExpansion?.lensId === activeLensId ? activeExpansion : null;
 	const readyCount = SCRIPTS.filter((script) => refined || globalStep >= script.steps.length - 1).length;
 	const activeLayout = layoutByLens[activeLensId];
 	const activeStats = statsByLens[activeLensId];
-	const layoutEnabled = !liveRun && mode !== 'refining';
+	const layoutEnabled = !liveRun && mode !== 'refining' && !activeExpansion;
 	const activeViewReady = mode === 'review' || accepted;
 	const explanationVisible = activeViewReady && explanationOpen;
-	const revisionLabel = accepted ? 'v13 canonical' : refined ? 'v13 draft' : liveRun ? 'working draft' : 'v12 current';
+	const targetVersion = canonicalVersion + 1;
+	const revisionLabel = followUpDraft ? `v${targetVersion} draft` : accepted ? `v${canonicalVersion} canonical` : refined ? `v${targetVersion} draft` : liveRun ? 'working draft' : `v${canonicalVersion} current`;
+	const visibleStatus = activeExpansion
+		? `Expanding ${activeExpansion.sourceLabel}`
+		: followUpDraft
+			? `Version v${targetVersion} expansion ready for review`
+			: accepted
+				? `Version v${canonicalVersion} created`
+				: modeLabel(mode, readyCount);
 
 	const startRun = (): void => {
 		setRunNonce((current) => current + 1);
 		setRefineNonce(0);
 		setGlobalStep(-1);
 		setMode('running');
+		setExpansionEvents([]);
+		setActiveExpansion(null);
+		setFollowUpDraft(false);
 		setSelectedNode(null);
 		setExplanationOpen(false);
 	};
@@ -1066,7 +1264,7 @@ function Prototype(): React.ReactElement {
 
 	useEffect(() => {
 		currentActivityRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-	}, [activityOpen, activeLensId, activeStepIndex]);
+	}, [activityOpen, activeLensId, activeStepIndex, activeExpansionEvents.length, activeExpansion?.id]);
 
 	useEffect(() => {
 		setExplanationOpen(activeViewReady);
@@ -1080,14 +1278,48 @@ function Prototype(): React.ReactElement {
 		});
 	};
 
+	const recordExpansionActivity = (event: ExpansionActivity): void => {
+		setExpansionEvents((current) => {
+			const index = current.findIndex((item) => item.id === event.id);
+			if (index < 0) return [...current, event];
+			const next = [...current];
+			next[index] = event;
+			return next;
+		});
+		if (event.state === 'running') {
+			if (mode === 'accepted') setFollowUpDraft(true);
+			setActiveExpansion(event);
+			return;
+		}
+		if (event.tool === 'graph.validate') setActiveExpansion(null);
+	};
+
 	const discard = (): void => {
 		setRunNonce((current) => current + 1);
 		setGlobalStep(-1);
 		setRefineNonce(0);
 		setMode('idle');
+		setExpansionEvents([]);
+		setActiveExpansion(null);
+		setFollowUpDraft(false);
 		setActivityOpen(false);
 		setExplanationOpen(false);
 		setSelectedNode(null);
+	};
+
+	const acceptCurrentDraft = (): void => {
+		setExpansionCommitNonce((current) => current + 1);
+		setCanonicalVersion((current) => current + 1);
+		setFollowUpDraft(false);
+		setExpansionEvents([]);
+		setMode('accepted');
+	};
+
+	const discardFollowUpExpansion = (): void => {
+		setExpansionRollbackNonce((current) => current + 1);
+		setExpansionEvents([]);
+		setActiveExpansion(null);
+		setFollowUpDraft(false);
 	};
 
 	const skipToFinal = (): void => {
@@ -1104,13 +1336,13 @@ function Prototype(): React.ReactElement {
 				<div className="aig-brand">
 					<div className="aig-brandmark"><Sparkles aria-hidden /></div>
 					<div><span className="aig-eyebrow">PEAK AI GRAPH</span><span className="aig-title">Evidence-grounded GraphRAG</span></div>
-					<span className="aig-version">{accepted ? 'v13' : 'v12'}</span>
+					<span className="aig-version">v{canonicalVersion}</span>
 				</div>
-				<div className={`aig-status aig-status--${mode}`}><span className="aig-status__dot" />{modeLabel(mode, readyCount)}</div>
+				<div className={`aig-status aig-status--${activeExpansion ? 'running' : mode}`}><span className="aig-status__dot" />{visibleStatus}</div>
 				<div className="aig-actions">
 					<button className="aig-btn aig-btn--ghost" type="button"><History aria-hidden /> History</button>
 					<button className={`aig-btn aig-btn--ghost${activityOpen ? ' is-active' : ''}`} type="button" onClick={() => setActivityOpen((current) => !current)}><Workflow aria-hidden /> Activity</button>
-					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'refining'}><RotateCcw aria-hidden /> Replay run</button>
+					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'refining' || Boolean(activeExpansion) || followUpDraft}><RotateCcw aria-hidden /> Replay run</button>
 				</div>
 			</header>
 
@@ -1146,23 +1378,25 @@ function Prototype(): React.ReactElement {
 
 					<div className="aig-canvas">
 						<div className="aig-agent-canvas-stack">
-							{SCRIPTS.map((script) => <AgentGraphCanvas key={script.id} script={script} active={activeLensId === script.id} stepIndex={visibleStepIndex(script, globalStep, refined)} runNonce={runNonce} refineNonce={refineNonce} layout={layoutByLens[script.id]} layoutEnabled={layoutEnabled} revisionLabel={revisionLabel} onSelect={setSelectedNode} onStats={updateStats} />)}
+							{SCRIPTS.map((script) => <AgentGraphCanvas key={script.id} script={script} active={activeLensId === script.id} stepIndex={visibleStepIndex(script, globalStep, refined)} runNonce={runNonce} refineNonce={refineNonce} expansionCommitNonce={expansionCommitNonce} expansionRollbackNonce={expansionRollbackNonce} layout={layoutByLens[script.id]} layoutEnabled={layoutEnabled} revisionLabel={revisionLabel} onSelect={setSelectedNode} onStats={updateStats} onExpansionActivity={recordExpansionActivity} />)}
 						</div>
 						<div className="aig-canvas-context">
 							<LensGlyph id={activeLensId} />
 							<span><strong>{activeScript.label}</strong><em>{activeScript.meaning}</em><small>{activeScript.description}</small></span>
 						</div>
 						{liveRun && activeStep && <div className="aig-current-operation"><span>{stepIcon(activeStep.kind)}</span><div><b>{activeStep.tool}</b><strong>{activeStep.title}</strong><small>{activeStep.object}</small></div></div>}
+						{currentExpansionEvent && <div className="aig-current-operation is-expansion"><span>{stepIcon(currentExpansionEvent.kind)}</span><div><b>{currentExpansionEvent.tool}</b><strong>{currentExpansionEvent.title}</strong><small>{currentExpansionEvent.object}</small></div></div>}
 						{mode === 'refining' && <div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Refining all five graph drafts</strong><small>One intentional final layout; graph state stays unchanged.</small></span></div>}
-						{mode === 'review' && <div className="aig-review-chip"><ShieldCheck aria-hidden /> Five graph drafts ready</div>}
-						{mode === 'accepted' && <div className="aig-review-chip is-accepted"><Check aria-hidden /> v13 canonical</div>}
+						{!currentExpansionEvent && mode === 'review' && <div className="aig-review-chip"><ShieldCheck aria-hidden /> Five graph drafts ready</div>}
+						{!currentExpansionEvent && accepted && followUpDraft && <div className="aig-review-chip"><ShieldCheck aria-hidden /> v{targetVersion} expansion draft</div>}
+						{!currentExpansionEvent && accepted && !followUpDraft && <div className="aig-review-chip is-accepted"><Check aria-hidden /> v{canonicalVersion} canonical</div>}
 					</div>
 
 					{explanationVisible && (
 						<section className="aig-view-explanation" aria-label={`${activeScript.label} generated explanation`} aria-live="polite">
 							<div className="aig-view-explanation__icon"><BookOpenText aria-hidden /></div>
 							<div className="aig-view-explanation__copy">
-								<div><span>Generated view explanation</span><small>{accepted ? 'v13 canonical' : 'v13 draft'} · {activeStats.nodes} nodes · {activeStats.edges} relations</small></div>
+								<div><span>Generated view explanation</span><small>{revisionLabel} · {activeStats.nodes} nodes · {activeStats.edges} relations</small></div>
 								<strong>{activeScript.interpretation.headline}</strong>
 								<span>{activeScript.interpretation.body}</span>
 							</div>
@@ -1181,7 +1415,7 @@ function Prototype(): React.ReactElement {
 
 				{activityOpen && (
 					<aside className="aig-activity-drawer">
-						<div className="aig-activity-head"><div><strong>{activeScript.label} activity</strong><span>{Math.max(0, activeStepIndex + 1)} of {activeScript.steps.length} committed steps</span></div><button type="button" aria-label="Close activity" onClick={() => setActivityOpen(false)}><X aria-hidden /></button></div>
+						<div className="aig-activity-head"><div><strong>{activeScript.label} activity</strong><span>{Math.max(0, activeStepIndex + 1) + activeExpansionEvents.filter((event) => event.state === 'complete').length} committed graph steps</span></div><button type="button" aria-label="Close activity" onClick={() => setActivityOpen(false)}><X aria-hidden /></button></div>
 						<div className="aig-activity-body">
 							<div className="aig-agent-summary"><div><Sparkles aria-hidden /></div><span><strong>Graph Agent</strong><small>Each entry is one validated patch transaction, not token streaming.</small></span></div>
 							<div className="aig-progress"><span style={{ width: `${stepProgress(activeScript, activeStepIndex, refined)}%` }} /></div>
@@ -1192,6 +1426,11 @@ function Prototype(): React.ReactElement {
 									const current = liveRun && index === activeStepIndex;
 									return <div key={step.id} ref={current ? currentActivityRef : undefined} className={`aig-feed-item${complete ? ' is-complete' : ''}${current ? ' is-current' : ''}`}><div className={`aig-feed-icon is-${step.kind}`}>{complete ? stepIcon(step.kind) : <Clock3 aria-hidden />}</div><div><b>{step.tool}</b><strong>{step.title}</strong><span>{step.detail}</span><small>{step.object}</small></div></div>;
 								})}
+								{activeExpansionEvents.length > 0 && <div className="aig-feed-divider"><Network aria-hidden /> Follow-up expansion</div>}
+								{activeExpansionEvents.map((event) => {
+									const current = event.state === 'running';
+									return <div key={event.id} ref={current ? currentActivityRef : undefined} className={`aig-feed-item is-expansion${event.state === 'complete' ? ' is-complete' : ''}${current ? ' is-current' : ''}`}><div className={`aig-feed-icon is-${event.kind}`}>{event.state === 'complete' ? stepIcon(event.kind) : <Clock3 aria-hidden />}</div><div><b>{event.tool}</b><strong>{event.title}</strong><span>{event.detail}</span><small>{event.object}</small></div></div>;
+								})}
 							</div>
 						</div>
 					</aside>
@@ -1200,13 +1439,14 @@ function Prototype(): React.ReactElement {
 
 			<footer className="aig-runbar">
 				<div className="aig-run-state">
-					{mode === 'running' && <CirclePlay aria-hidden />}{mode === 'paused' && <CirclePause aria-hidden />}{mode === 'refining' && <Workflow aria-hidden />}{mode === 'review' && <ShieldCheck aria-hidden />}{mode === 'accepted' && <Check aria-hidden />}{mode === 'idle' && <Sparkles aria-hidden />}
-					<span><strong>{modeLabel(mode, readyCount)}</strong><small>One run · five independent patch streams · one reversible acceptance boundary</small></span>
+					{activeExpansion ? <CirclePlay aria-hidden /> : <>{mode === 'running' && <CirclePlay aria-hidden />}{mode === 'paused' && <CirclePause aria-hidden />}{mode === 'refining' && <Workflow aria-hidden />}{mode === 'review' && <ShieldCheck aria-hidden />}{mode === 'accepted' && <Check aria-hidden />}{mode === 'idle' && <Sparkles aria-hidden />}</>}
+					<span><strong>{visibleStatus}</strong><small>{activeExpansion ? 'Follow-up Graph Agent run · accepted version remains unchanged' : 'One run · five independent patch streams · one reversible acceptance boundary'}</small></span>
 				</div>
 				<div className="aig-run-actions">
 					{liveRun && <><button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><Square aria-hidden /> Stop</button><button className="aig-btn aig-btn--ghost" type="button" onClick={() => setMode((current) => current === 'paused' ? 'running' : 'paused')}>{mode === 'paused' ? <Play aria-hidden /> : <Pause aria-hidden />}{mode === 'paused' ? 'Continue' : 'Pause'}</button><button className="aig-btn aig-btn--soft" type="button" onClick={skipToFinal}>Skip to review</button></>}
-					{mode === 'review' && <><button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><X aria-hidden /> Discard</button><button className="aig-btn aig-btn--primary" type="button" onClick={() => setMode('accepted')}><Check aria-hidden /> Accept new version</button></>}
-					{accepted && <button className="aig-btn aig-btn--soft" type="button" onClick={startRun}><RotateCcw aria-hidden /> Replay incremental run</button>}
+					{mode === 'review' && <><button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><X aria-hidden /> Discard</button><button className="aig-btn aig-btn--primary" type="button" disabled={Boolean(activeExpansion)} onClick={acceptCurrentDraft}><Check aria-hidden /> Accept v{targetVersion}</button></>}
+					{accepted && followUpDraft && <><button className="aig-btn aig-btn--ghost" type="button" disabled={Boolean(activeExpansion)} onClick={discardFollowUpExpansion}><X aria-hidden /> Discard expansion</button><button className="aig-btn aig-btn--primary" type="button" disabled={Boolean(activeExpansion)} onClick={acceptCurrentDraft}><Check aria-hidden /> Accept v{targetVersion}</button></>}
+					{accepted && !followUpDraft && <button className="aig-btn aig-btn--soft" type="button" disabled={Boolean(activeExpansion)} onClick={startRun}><RotateCcw aria-hidden /> Replay incremental run</button>}
 				</div>
 			</footer>
 		</div>
