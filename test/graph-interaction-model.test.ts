@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
 	centerViewportOnSameModelPoint,
 	placeGraphInspectCard,
+	resolveInlineViewportRestore,
 	resolveGraphEscapeAction,
 	retainGraphSelection,
 	updateGraphSelection,
@@ -63,6 +64,24 @@ assert.deepEqual(
 	}),
 	{ zoom: 2, pan: { x: 110, y: 70 } },
 	'fullscreen resize preserves the model point under the viewport center',
+);
+
+const inlineViewport = { zoom: 0.72, pan: { x: 145, y: 88 } };
+assert.deepEqual(
+	resolveInlineViewportRestore({
+		snapshot: { projectionKey: 'constellation|structural', viewport: inlineViewport },
+		currentProjectionKey: 'constellation|structural',
+	}),
+	inlineViewport,
+	'exiting fullscreen restores the exact pre-fullscreen inline viewport for the same graph projection',
+);
+assert.equal(
+	resolveInlineViewportRestore({
+		snapshot: { projectionKey: 'constellation|structural', viewport: inlineViewport },
+		currentProjectionKey: 'orbit|semantic',
+	}),
+	null,
+	'a projection changed in fullscreen must fit the current graph instead of applying stale inline coordinates',
 );
 
 console.log('graph-interaction-model: passed');

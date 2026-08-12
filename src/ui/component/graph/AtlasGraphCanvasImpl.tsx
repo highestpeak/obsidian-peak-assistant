@@ -79,6 +79,7 @@ import { portalHostForDocument } from '@/ui/react/ReactRenderer';
 import {
 	centerViewportOnSameModelPoint,
 	placeGraphInspectCard,
+	resolveInlineViewportRestore,
 	resolveGraphEscapeAction,
 	retainGraphSelection,
 	updateGraphSelection,
@@ -1045,6 +1046,11 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const positionCacheRef = useRef<Map<string, Map<string, { x: number; y: number }>>>(new Map());
 	const lastViewportRef = useRef<AtlasGraphViewport | null>(null);
 	const lastRenderedRef = useRef<{ subgraph: ResultSubgraphOutput; preset: AtlasGraphPreset } | null>(null);
+	const inlineViewportBeforeFullscreenRef = useRef<{
+		projectionKey: string;
+		viewport: AtlasGraphViewport;
+	} | null>(null);
+	const surfaceFullscreenRef = useRef(false);
 	const selectedNodeIdsRef = useRef<string[]>([]);
 	const pointerInsideRef = useRef(false);
 	const hoverAnchorRef = useRef<GraphHoverAnchor | null>(null);
@@ -1157,35 +1163,73 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		if (!surfaceHost) return;
 		const target = fullscreen ? fullscreenSlotRef.current : inlineSlotRef.current;
 		if (!target) return;
-		const cy = cyRef.current;
-		const viewport = cy ? { zoom: cy.zoom(), pan: cy.pan() } : null;
-		const before = cy ? { width: cy.width(), height: cy.height() } : null;
+		const movedCy = cyRef.current;
+		const viewport = movedCy ? { zoom: movedCy.zoom(), pan: movedCy.pan() } : null;
+		const before = movedCy ? { width: movedCy.width(), height: movedCy.height() } : null;
+		const wasFullscreen = surfaceFullscreenRef.current;
+		const movingToFullscreen = Boolean(fullscreen);
+		const returningInline = wasFullscreen && !movingToFullscreen;
+		const projectionKey = `${preset}|${showSemantic ? 'semantic' : 'structural'}`;
+		if (!wasFullscreen && movingToFullscreen && viewport) {
+			inlineViewportBeforeFullscreenRef.current = { projectionKey, viewport };
+		}
+		surfaceFullscreenRef.current = movingToFullscreen;
 		surfaceHost.style.visibility = 'hidden';
 		target.appendChild(surfaceHost);
 		const ownerWindow = target.ownerDocument.defaultView;
 		const resizeAndRestore = () => {
 			const currentCy = cyRef.current;
+			if (movedCy && currentCy !== movedCy) {
+				if (returningInline) inlineViewportBeforeFullscreenRef.current = null;
+				surfaceHost.style.visibility = '';
+				return;
+			}
 			if (currentCy) {
 				currentCy.resize();
-				if (viewport && before) {
-					const centered = centerViewportOnSameModelPoint({
+				let restoredViewport: AtlasGraphViewport | null = null;
+				if (returningInline) {
+					restoredViewport = resolveInlineViewportRestore({
+						snapshot: inlineViewportBeforeFullscreenRef.current,
+						currentProjectionKey: projectionKey,
+					});
+					inlineViewportBeforeFullscreenRef.current = null;
+					if (restoredViewport) {
+						currentCy.zoom(restoredViewport.zoom);
+						currentCy.pan(restoredViewport.pan);
+					} else {
+						fitReadableGraphViewport(currentCy, PRESETS[preset].folderTree);
+						restoredViewport = { zoom: currentCy.zoom(), pan: currentCy.pan() };
+					}
+				} else if (viewport && before) {
+					restoredViewport = centerViewportOnSameModelPoint({
 						viewport,
 						before,
 						after: { width: currentCy.width(), height: currentCy.height() },
 					});
-					currentCy.zoom(centered.zoom);
-					currentCy.pan(centered.pan);
-					lastViewportRef.current = centered;
-					setZoomPercent(Math.round(centered.zoom * 100));
+					currentCy.zoom(restoredViewport.zoom);
+					currentCy.pan(restoredViewport.pan);
+				}
+				if (restoredViewport) {
+					lastViewportRef.current = restoredViewport;
+					setZoomPercent(Math.round(restoredViewport.zoom * 100));
 				}
 			}
 			surfaceHost.style.visibility = '';
 			if (fullscreen) surfaceRootRef.current?.focus({ preventScroll: true });
 		};
-		const frame = ownerWindow?.requestAnimationFrame(resizeAndRestore);
+		let settleFrame: number | undefined;
+		const afterSurfaceMove = () => {
+			if (returningInline && ownerWindow) {
+				settleFrame = ownerWindow.requestAnimationFrame(resizeAndRestore);
+				return;
+			}
+			resizeAndRestore();
+		};
+		const frame = ownerWindow?.requestAnimationFrame(afterSurfaceMove);
 		if (!ownerWindow) resizeAndRestore();
 		return () => {
 			if (frame !== undefined) ownerWindow?.cancelAnimationFrame(frame);
+			if (settleFrame !== undefined) ownerWindow?.cancelAnimationFrame(settleFrame);
 			surfaceHost.style.visibility = '';
 		};
 	}, [fullscreen, surfaceHost]);

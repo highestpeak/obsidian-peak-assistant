@@ -121,7 +121,12 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 
 	// Result view toggle + graph preset + semantic overlay
 	resultView: 'list',
-	setResultView: (view) => set({ resultView: view }),
+	setResultView: (view) => set((state) => {
+		if (state.resultView === view) return { resultView: view };
+		if (view === 'list') return { resultView: view, resultDensity: 'detailed' };
+		if (view === 'tree') return { resultView: view, resultDensity: 'compact' };
+		return { resultView: view };
+	}),
 	graphPreset: 'constellation',
 	setGraphPreset: (preset) => {
 		// Orbit shows semantic edges by default (its whole point is showing
@@ -134,9 +139,8 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	setGraphShowSemantic: (on) => set({ graphShowSemantic: on }),
 	toggleGraphShowSemantic: () => set((s) => ({ graphShowSemantic: !s.graphShowSemantic })),
 
-	// Result-panel density (shared between List and Tree). Default 'detailed'
-	// so List keeps its snippet + path breadcrumb by default and Tree gets its
-	// heading anchor + snippet; users flip to 'compact' explicitly.
+	// Result-panel density remains user-switchable inside both row views, but
+	// each view has its own entry default: List is Detailed; Tree is Compact.
 	resultDensity: 'detailed',
 	setResultDensity: (density) => set({ resultDensity: density }),
 	treeCollapsedFolders: [],
@@ -185,6 +189,7 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		lastSearchResults: [],
 		fuzzyCorrection: null,
 		resultView: 'list',
+		resultDensity: 'detailed',
 		graphPreset: 'constellation',
 		graphShowSemantic: false,
 		pinnedResultDocIds: null,

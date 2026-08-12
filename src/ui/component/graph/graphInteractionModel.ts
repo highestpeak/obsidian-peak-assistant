@@ -1,6 +1,23 @@
-interface GraphViewport {
+export interface GraphViewport {
 	zoom: number;
 	pan: Point;
+}
+
+export interface GraphInlineViewportSnapshot {
+	projectionKey: string;
+	viewport: GraphViewport;
+}
+
+export function resolveInlineViewportRestore(input: {
+	snapshot: GraphInlineViewportSnapshot | null;
+	currentProjectionKey: string;
+}): GraphViewport | null {
+	const { snapshot, currentProjectionKey } = input;
+	if (!snapshot || snapshot.projectionKey !== currentProjectionKey) return null;
+	return {
+		zoom: snapshot.viewport.zoom,
+		pan: { ...snapshot.viewport.pan },
+	};
 }
 
 export function updateGraphSelection(
