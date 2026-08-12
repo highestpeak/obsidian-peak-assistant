@@ -8,7 +8,7 @@
 >
 > 前置任务：[网站与首页演示视频](06-website-and-demo-videos.md)、[朋友试用与外部内容检查](07-external-beta.md)、[发布工程与 Go / No-Go](08-release-and-go-no-go.md)
 >
-> 内容输入：[Landing Page 类比定位](11-landing-page-comparison-positioning.md)、[AI 生成 HTML 与图片产物定位](12-ai-generated-html-image-workspace-positioning.md)
+> 内容输入：[Landing Page 类比定位](11-landing-page-comparison-positioning.md)、[AI 生成 HTML 与图片产物定位](12-ai-generated-html-image-workspace-positioning.md)、[品牌宣传语](19-brand-tagline-and-peak-wordplay.md)
 
 ## 任务目标
 
