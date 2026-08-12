@@ -41,6 +41,21 @@ assert.match(canvas, /onMouseEnter: cancelCardClose/, 'anchored graph cards keep
 assert.match(canvas, /onPointerDown:[\s\S]*?inspectPinnedRef/, 'interactive detail cards pin only after deliberate pointer input');
 assert.match(
 	canvas,
+	/const \[hoverSummary, setHoverSummary\]/,
+	'plain node hover owns a lightweight summary independently from the Shift inspect card',
+);
+assert.match(
+	canvas,
+	/setHoverSummary\(\{ label: anchor\.label, path: anchor\.path \}\)/,
+	'node mouseover immediately publishes the full-path hover summary without waiting for Inspect',
+);
+assert.match(
+	canvas,
+	/data-peak-graph-hover-summary[\s\S]*?\{hoverSummary\.path \|\| title\}/,
+	'the bottom hover summary renders the complete path as its primary large label',
+);
+assert.match(
+	canvas,
 	/communityAiState\[hoveredLabel\.id\]\?\.generating/,
 	'a streaming community explanation keeps its card open after the action button reflows',
 );

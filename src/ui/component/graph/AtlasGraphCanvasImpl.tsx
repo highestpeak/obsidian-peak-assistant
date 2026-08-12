@@ -1018,6 +1018,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	graphLayout = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout,
 }) => {
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
+	const [hoverSummary, setHoverSummary] = useState<Pick<GraphHoverAnchor, 'label' | 'path'> | null>(null);
 	const [hoveredLabel, setHoveredLabel] = useState<GraphHoverAnchor | null>(null);
 	const [communityAiState, setCommunityAiState] = useState<Record<string, CommunityAiCardState>>({});
 	const [nodeAiState, setNodeAiState] = useState<Record<string, NodeAiCardState>>({});
@@ -1374,6 +1375,10 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	}, [subgraph]);
 
 	useEffect(() => {
+		setHoverSummary(null);
+	}, [preset, showSemantic, subgraph]);
+
+	useEffect(() => {
 		const available = new Set([
 			...(subgraph?.resultNodes.map((node) => node.id) ?? []),
 			...(subgraph?.hubAnchors.map((hub) => hub.id) ?? []),
@@ -1514,6 +1519,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			hoverExitFrame = null;
 			if (hoveredElementRef.current) return;
 			hoverRef.current?.(null);
+			setHoverSummary(null);
 			hoverAnchorRef.current = null;
 			cy.elements().removeClass('highlighted');
 			if (folderProjection) applyFolderTreeHover(cy, folderProjection, null);
@@ -1563,6 +1569,9 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			const anchor = buildHoverAnchor(n);
 			hoveredElementRef.current = n.id();
 			hoverAnchorRef.current = anchor;
+			if (anchor.label || anchor.path) {
+				setHoverSummary({ label: anchor.label, path: anchor.path });
+			}
 			if (anchor.label && inspectHeldRef.current && !inspectPinnedRef.current) {
 				setHoveredLabel(anchor);
 			}
@@ -2063,6 +2072,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			}}
 			onPointerLeave={() => {
 				pointerInsideRef.current = false;
+				setHoverSummary(null);
 				if (inspectPinnedRef.current) return;
 				inspectHeldRef.current = false;
 				setInspectMode(false);
@@ -2254,6 +2264,35 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					))}
 			</div>
 			)}
+			{hoverSummary && (() => {
+				const [title, ...metaParts] = hoverSummary.label.split('\n');
+				const secondaryLabel = hoverSummary.path && title && title !== hoverSummary.path
+					? title
+					: '';
+				const meta = metaParts.join(' ').trim();
+				return (
+					<div
+						className="pktw-pointer-events-none pktw-absolute pktw-bottom-10 pktw-left-1/2 pktw-z-20 pktw-w-max pktw-max-w-[80%] pktw--translate-x-1/2"
+						data-peak-graph-hover-summary
+					>
+						<div className="pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised/95 pktw-px-5 pktw-py-3 pktw-text-center pktw-shadow-md">
+							<span className="pktw-block pktw-break-all pktw-text-lg pktw-font-semibold pktw-text-pk-text-primary">
+								{hoverSummary.path || title}
+							</span>
+							{secondaryLabel && (
+								<span className="pktw-mt-1 pktw-block pktw-break-all pktw-text-xs pktw-text-pk-text-tertiary">
+									{secondaryLabel}
+								</span>
+							)}
+							{meta && (
+								<span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">
+									{meta}
+								</span>
+							)}
+						</div>
+					</div>
+				);
+			})()}
 			{hoveredLabel && subgraph && (() => {
 				const width = hoveredLabel.kind === 'community' ? 390 : 350;
 				const containerWidth = containerRef.current?.clientWidth ?? 900;
