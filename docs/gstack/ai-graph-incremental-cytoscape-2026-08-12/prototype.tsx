@@ -34,7 +34,7 @@ cytoscape.use(dagre as never);
 
 type RunMode = 'idle' | 'running' | 'paused' | 'refining' | 'review' | 'accepted';
 type LensId = 'topology' | 'thinking-tree' | 'bridge' | 'timeline' | 'gap-analysis';
-type LayoutId = 'constellation' | 'flow-lr' | 'flow-tb' | 'timeline' | 'diagnostic';
+type LayoutId = 'constellation' | 'flow-lr' | 'flow-tb' | 'timeline-lr' | 'timeline-tb' | 'diagnostic';
 type StepKind = 'inspect' | 'add-node' | 'add-relation' | 'update' | 'remove-node' | 'validate';
 
 interface AgentNode {
@@ -45,6 +45,7 @@ interface AgentNode {
 	classes?: string;
 	parent?: string;
 	order?: number;
+	lane?: number;
 }
 
 interface AgentEdge {
@@ -91,6 +92,7 @@ interface LensScript {
 	label: string;
 	question: string;
 	description: string;
+	meaning: string;
 	defaultLayout: LayoutId;
 	layouts: LayoutId[];
 	initialNodes: AgentNode[];
@@ -113,7 +115,8 @@ const node = (
 	classes = '',
 	parent?: string,
 	order?: number,
-): AgentNode => ({ id, label, x, y, classes, parent, order });
+	lane?: number,
+): AgentNode => ({ id, label, x, y, classes, parent, order, lane });
 
 const edge = (
 	id: string,
@@ -128,6 +131,7 @@ const TOPOLOGY_SCRIPT: LensScript = {
 	label: 'Topology',
 	question: 'How is this knowledge connected?',
 	description: 'The Agent expands a stable graph with reversible node and relation patches.',
+	meaning: 'Shows the complete relationship structure: what connects to what.',
 	defaultLayout: 'constellation',
 	layouts: ['constellation', 'flow-lr', 'flow-tb'],
 	finalLayout: 'cose',
@@ -165,6 +169,7 @@ const TREE_SCRIPT: LensScript = {
 	label: 'Thinking Tree',
 	question: 'How did the explicit decision structure grow?',
 	description: 'An inspectable decision tree grows one branch at a time; future node names are never previewed.',
+	meaning: 'Shows why a decision branched and which outcome each branch produced.',
 	defaultLayout: 'flow-lr',
 	layouts: ['flow-lr'],
 	finalLayout: 'dagre',
@@ -188,7 +193,8 @@ const BRIDGE_SCRIPT: LensScript = {
 	id: 'bridge',
 	label: 'Bridges',
 	question: 'Which concepts create real paths between disconnected domains?',
-	description: 'Bridge candidates are promoted only after they connect two previously separate components.',
+	description: 'A bridge is a validated concept that joins two knowledge domains which otherwise have no path.',
+	meaning: 'Useful for finding the few concepts that let evidence travel between separate domains.',
 	defaultLayout: 'flow-lr',
 	layouts: ['flow-lr', 'constellation'],
 	finalLayout: 'preset',
@@ -224,24 +230,27 @@ const BRIDGE_SCRIPT: LensScript = {
 const TIMELINE_SCRIPT: LensScript = {
 	id: 'timeline',
 	label: 'Timeline',
-	question: 'How did this GraphRAG design evolve over time?',
-	description: 'Dated evidence is discovered out of order and inserted into one real temporal graph.',
-	defaultLayout: 'timeline',
-	layouts: ['timeline'],
+	question: 'What happened when, and which parallel work depended on which?',
+	description: 'A temporal DAG can branch, run tasks in parallel, merge at gates, and carry cross-stage dependencies.',
+	meaning: 'Time controls the main direction; dependency edges explain parallel work and later convergence.',
+	defaultLayout: 'timeline-lr',
+	layouts: ['timeline-lr', 'timeline-tb'],
 	finalLayout: 'timeline',
 	initialNodes: [],
 	initialEdges: [],
 	steps: [
-		{ id: 'time-baseline', kind: 'add-node', tool: 'graph.addGroup + graph.addNode', title: 'Placed the earliest confirmed milestone', detail: 'The first evidence anchor is dated; no future months or empty named nodes are shown.', object: 'Jan 12 · foundation', addNodes: [node('time-foundation', 'Foundation · Jan–Mar', 0, 0, 'group timeline-foundation'), node('time-jan', 'Jan 12\nBaseline ingestion', 100, 340, 'milestone', 'time-foundation', 1)], reflow: 'timeline' },
-		{ id: 'time-march', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Added a later community milestone', detail: 'At this point the graph only knows January and March.', object: 'Mar 18 · + milestone', addNodes: [node('time-mar', 'Mar 18\nCommunity summaries', 300, 340, 'milestone', 'time-foundation', 3)], addEdges: [edge('time-jan-mar', 'time-jan', 'time-mar', 'next')], reflow: 'timeline' },
-		{ id: 'time-february', kind: 'update', tool: 'graph.insertBetween', title: 'Inserted newly discovered February evidence', detail: 'The Agent replaces one adjacency with two; existing nodes slide instead of rebuilding the canvas.', object: 'Feb 03 · inserted out of order', addNodes: [node('time-feb', 'Feb 03\nEntity extraction', 200, 340, 'milestone', 'time-foundation', 2)], removeEdgeIds: ['time-jan-mar'], addEdges: [edge('time-jan-feb', 'time-jan', 'time-feb', 'next'), edge('time-feb-mar', 'time-feb', 'time-mar', 'next')], reflow: 'timeline' },
-		{ id: 'time-may', kind: 'add-relation', tool: 'graph.addGroup + graph.addNode + graph.addEdge', title: 'Opened the grounding phase', detail: 'A compound phase wrapper is created with its first real child and follows that child automatically.', object: 'May 06 · new phase', addNodes: [node('time-grounding', 'Grounding · May–Jul', 0, 0, 'group timeline-grounding'), node('time-may', 'May 06\nLocal + global search', 480, 340, 'milestone', 'time-grounding', 4)], addEdges: [edge('time-mar-may', 'time-mar', 'time-may', 'next')], reflow: 'timeline' },
-		{ id: 'time-july', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Added citation auditing', detail: 'July is appended from a dated source record.', object: 'Jul 21 · + milestone', addNodes: [node('time-jul', 'Jul 21\nCitation audit', 680, 340, 'milestone', 'time-grounding', 6)], addEdges: [edge('time-may-jul', 'time-may', 'time-jul', 'next')], reflow: 'timeline' },
-		{ id: 'time-june', kind: 'update', tool: 'graph.insertBetween', title: 'Inserted provenance into the chronology', detail: 'June evidence arrives late and is placed between May and July with one atomic edge replacement.', object: 'Jun 09 · inserted out of order', addNodes: [node('time-jun', 'Jun 09\nClaim provenance', 580, 340, 'milestone', 'time-grounding', 5)], removeEdgeIds: ['time-may-jul'], addEdges: [edge('time-may-jun', 'time-may', 'time-jun', 'next'), edge('time-jun-jul', 'time-jun', 'time-jul', 'next')], reflow: 'timeline' },
-		{ id: 'time-october', kind: 'add-relation', tool: 'graph.addGroup + graph.addNode + graph.addEdge', title: 'Opened the governance phase', detail: 'The final phase begins only when an October evaluation record is found.', object: 'Oct 02 · new phase', addNodes: [node('time-governance', 'Governance · Sep–Nov', 0, 0, 'group timeline-governance'), node('time-oct', 'Oct 02\nEvaluation gate', 900, 340, 'milestone', 'time-governance', 8)], addEdges: [edge('time-jul-oct', 'time-jul', 'time-oct', 'next')], reflow: 'timeline' },
-		{ id: 'time-september', kind: 'update', tool: 'graph.insertBetween', title: 'Inserted the human-review policy', detail: 'September is inserted before the already visible October gate.', object: 'Sep 14 · inserted out of order', addNodes: [node('time-sep', 'Sep 14\nHuman review policy', 790, 340, 'milestone', 'time-governance', 7)], removeEdgeIds: ['time-jul-oct'], addEdges: [edge('time-jul-sep', 'time-jul', 'time-sep', 'next'), edge('time-sep-oct', 'time-sep', 'time-oct', 'next')], reflow: 'timeline' },
-		{ id: 'time-november', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Appended run observability', detail: 'The chronology ends at the latest known dated event; nothing beyond it is pre-rendered.', object: 'Nov 11 · latest milestone', addNodes: [node('time-nov', 'Nov 11\nRun observability', 1030, 340, 'milestone', 'time-governance', 9)], addEdges: [edge('time-oct-nov', 'time-oct', 'time-nov', 'next')], reflow: 'timeline' },
-		{ id: 'time-validate', kind: 'validate', tool: 'graph.validateTimeline', title: 'Validated temporal ordering', detail: 'Every adjacency follows event time and every phase wrapper derives from its child milestones.', object: '9 milestones · 3 derived phases' },
+		{ id: 'time-contract', kind: 'add-node', tool: 'graph.addGroup + graph.addNode', title: 'Placed the first dated decision', detail: 'The temporal graph begins with one confirmed contract; no later task is pre-rendered.', object: 'Jan 12 · graph contract', addNodes: [node('time-foundation', 'Foundation · Jan–Apr', 0, 0, 'group timeline-foundation'), node('time-contract', 'Jan 12\nGraph contract', 120, 355, 'milestone gate', 'time-foundation', 1, 0)], reflow: 'timeline' },
+		{ id: 'time-parallel-plan', kind: 'add-relation', tool: 'graph.addNodes + graph.addEdges', title: 'Opened two parallel workstreams', detail: 'Entity modeling and query design can begin from the same contract without waiting for each other.', object: '+ 2 parallel tasks · + 2 dependencies', addNodes: [node('time-entities', 'Feb 03\nEntity extraction', 300, 220, 'milestone parallel', 'time-foundation', 2, -1), node('time-query', 'Feb 05\nQuery contract', 300, 490, 'milestone parallel', 'time-foundation', 2, 1)], addEdges: [edge('time-contract-entities', 'time-contract', 'time-entities', 'starts', 'timeline-dependency'), edge('time-contract-query', 'time-contract', 'time-query', 'starts', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-parallel-results', kind: 'add-relation', tool: 'graph.addNodes + graph.addEdges', title: 'Advanced both branches independently', detail: 'Community summaries follow entity work while retrieval planning follows the query contract.', object: '+ 2 branch results', addNodes: [node('time-community', 'Mar 18\nCommunity summaries', 480, 220, 'milestone', 'time-foundation', 3, -1), node('time-retrieval', 'Mar 25\nLocal + global retrieval', 480, 490, 'milestone', 'time-foundation', 3, 1)], addEdges: [edge('time-entities-community', 'time-entities', 'time-community', 'produces', 'timeline-dependency'), edge('time-query-retrieval', 'time-query', 'time-retrieval', 'produces', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-schema-insert', kind: 'update', tool: 'graph.insertBetween', title: 'Inserted a late-discovered schema milestone', detail: 'A February schema decision is inserted into only the upper branch; the parallel query branch remains untouched.', object: 'Feb 21 · branch-local insertion', addNodes: [node('time-schema', 'Feb 21\nEntity schema', 390, 220, 'milestone inserted', 'time-foundation', 2.5, -1)], removeEdgeIds: ['time-entities-community'], addEdges: [edge('time-entities-schema', 'time-entities', 'time-schema', 'refines', 'timeline-dependency'), edge('time-schema-community', 'time-schema', 'time-community', 'enables', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-merge-provenance', kind: 'add-relation', tool: 'graph.addGroup + graph.addNode + graph.addEdges', title: 'Merged both branches at provenance', detail: 'Claim provenance is a convergence task: it requires both structured communities and retrieval behavior.', object: 'May 06 · 2 branches → 1 gate', addNodes: [node('time-grounding', 'Evidence · May–Jul', 0, 0, 'group timeline-grounding'), node('time-provenance', 'May 06\nClaim provenance', 670, 355, 'milestone gate', 'time-grounding', 4, 0)], addEdges: [edge('time-community-provenance', 'time-community', 'time-provenance', 'content', 'timeline-dependency'), edge('time-retrieval-provenance', 'time-retrieval', 'time-provenance', 'retrieval', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-evaluation-parallel', kind: 'add-relation', tool: 'graph.addNodes + graph.addEdges', title: 'Started two evaluation tasks in parallel', detail: 'Citation auditing and benchmark construction proceed independently from the same grounded claims.', object: '+ citation lane · + benchmark lane', addNodes: [node('time-citation', 'Jun 09\nCitation audit', 850, 220, 'milestone parallel', 'time-grounding', 5, -1), node('time-benchmark', 'Jun 14\nEvaluation dataset', 850, 490, 'milestone parallel', 'time-grounding', 5, 1)], addEdges: [edge('time-provenance-citation', 'time-provenance', 'time-citation', 'audit', 'timeline-dependency'), edge('time-provenance-benchmark', 'time-provenance', 'time-benchmark', 'sample', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-quality-merge', kind: 'add-relation', tool: 'graph.addNode + graph.addEdges', title: 'Merged evidence at the quality gate', detail: 'The quality gate cannot complete until both citation and evaluation branches arrive.', object: 'Jul 21 · parallel join', addNodes: [node('time-quality', 'Jul 21\nQuality gate', 1030, 355, 'milestone gate', 'time-grounding', 6, 0)], addEdges: [edge('time-citation-quality', 'time-citation', 'time-quality', 'citations pass', 'timeline-dependency'), edge('time-benchmark-quality', 'time-benchmark', 'time-quality', 'metrics pass', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-governance-parallel', kind: 'add-relation', tool: 'graph.addGroup + graph.addNodes + graph.addEdges', title: 'Opened parallel governance work', detail: 'Human policy and run observability are separate tasks that both follow the quality gate.', object: 'Sep · 2 governance lanes', addNodes: [node('time-governance', 'Governance · Sep–Nov', 0, 0, 'group timeline-governance'), node('time-review', 'Sep 14\nHuman review policy', 1210, 220, 'milestone parallel', 'time-governance', 7, -1), node('time-observability', 'Sep 18\nRun observability', 1210, 490, 'milestone parallel', 'time-governance', 7, 1)], addEdges: [edge('time-quality-review', 'time-quality', 'time-review', 'govern', 'timeline-dependency'), edge('time-quality-observability', 'time-quality', 'time-observability', 'instrument', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-cross-dependency', kind: 'add-relation', tool: 'graph.addEdge', title: 'Added a cross-stage dependency', detail: 'Observability also depends on retrieval telemetry discovered months earlier; chronology is not the same thing as one chain.', object: '+ cross-stage dependency', addEdges: [edge('time-retrieval-observability', 'time-retrieval', 'time-observability', 'telemetry contract', 'timeline-cross')], reflow: 'timeline' },
+		{ id: 'time-release-merge', kind: 'add-relation', tool: 'graph.addNode + graph.addEdges', title: 'Joined governance at the release gate', detail: 'Release requires both an approved review policy and observable runs.', object: 'Oct 02 · parallel join', addNodes: [node('time-release', 'Oct 02\nRelease gate', 1390, 355, 'milestone gate', 'time-governance', 8, 0)], addEdges: [edge('time-review-release', 'time-review', 'time-release', 'policy ready', 'timeline-dependency'), edge('time-observability-release', 'time-observability', 'time-release', 'telemetry ready', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-candidate', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Created the version candidate', detail: 'The final milestone appears only after its release dependency exists.', object: 'Nov 11 · v13 candidate', addNodes: [node('time-candidate', 'Nov 11\nv13 candidate', 1570, 355, 'milestone outcome', 'time-governance', 9, 0)], addEdges: [edge('time-release-candidate', 'time-release', 'time-candidate', 'creates', 'timeline-dependency')], reflow: 'timeline' },
+		{ id: 'time-validate', kind: 'validate', tool: 'graph.validateTimelineDag', title: 'Validated the temporal DAG', detail: 'Dates remain monotonic while parallel branches, joins, and one cross-stage dependency stay acyclic.', object: '14 milestones · 17 dependencies · 3 phases' },
 	],
 };
 
@@ -249,7 +258,8 @@ const GAP_SCRIPT: LensScript = {
 	id: 'gap-analysis',
 	label: 'Gaps',
 	question: 'Where does this real graph lack a required path?',
-	description: 'Gaps are diagnostic overlays on an existing graph, never fake semantic nodes.',
+	description: 'A gap is a required path that is absent or too weak in the existing graph; it is not empty canvas space.',
+	meaning: 'Useful for finding where an answer, workflow, or evidence chain cannot safely continue.',
 	defaultLayout: 'diagnostic',
 	layouts: ['diagnostic'],
 	finalLayout: 'preset',
@@ -333,14 +343,15 @@ const LAYOUT_OPTIONS: Record<LayoutId, { label: string; detail: string }> = {
 	constellation: { label: 'Constellation', detail: 'Stable spatial graph' },
 	'flow-lr': { label: 'Flow →', detail: 'Left to right' },
 	'flow-tb': { label: 'Flow ↓', detail: 'Top to bottom' },
-	timeline: { label: 'Timeline →', detail: 'Chronological compound phases' },
+	'timeline-lr': { label: 'Time →', detail: 'Horizontal temporal DAG' },
+	'timeline-tb': { label: 'Time ↓', detail: 'Vertical temporal DAG' },
 	diagnostic: { label: 'Diagnostic map', detail: 'Existing graph with gap overlays' },
 };
 
 const NODE_CHANGE_MARKER = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#7255e7" stroke="#fff" stroke-width="2"/><path d="M11 7v8M7 11h8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>')}`;
 
 const CY_STYLES: StylesheetJson = [
-	{ selector: 'node', style: { 'background-color': '#ece7ff', 'border-color': '#8c72e8', 'border-width': 1.5, color: '#332452', label: 'data(label)', 'font-size': 11, 'font-weight': 650, 'text-wrap': 'wrap', 'text-max-width': 138, 'text-valign': 'center', 'text-halign': 'center', shape: 'round-rectangle', width: 'label', height: 'label', padding: '10px', 'min-zoomed-font-size': 7, 'overlay-opacity': 0, 'transition-property': 'opacity, background-color, border-color, border-width', 'transition-duration': 320 } },
+	{ selector: 'node', style: { 'background-color': '#ece7ff', 'border-color': '#8c72e8', 'border-width': 1.5, color: '#332452', label: 'data(label)', 'font-size': 11, 'font-weight': 650, 'text-wrap': 'wrap', 'text-max-width': '138px', 'text-valign': 'center', 'text-halign': 'center', shape: 'round-rectangle', width: 'label', height: 'label', padding: '10px', 'min-zoomed-font-size': 7, 'overlay-opacity': 0, 'transition-property': 'opacity, background-color, border-color, border-width', 'transition-duration': 320 } },
 	{ selector: 'node.root', style: { 'background-color': '#c9bcff', 'border-color': '#6d28d9', 'border-width': 3, 'font-size': 12, 'font-weight': 760 } },
 	{ selector: 'node.decision', style: { 'background-color': '#f1edff', 'border-width': 2 } },
 	{ selector: 'node.action', style: { 'background-color': '#eef3ff', 'border-color': '#7291cf' } },
@@ -353,7 +364,11 @@ const CY_STYLES: StylesheetJson = [
 	{ selector: 'node.candidate', style: { 'background-color': '#fff9ef', 'border-color': '#c88c3f', 'border-style': 'dashed', 'border-width': 2 } },
 	{ selector: 'node.bridge', style: { 'background-color': '#d8cbff', 'border-color': '#6d28d9', 'border-width': 4, 'font-weight': 760 } },
 	{ selector: 'node.stale', style: { 'background-color': '#fff5f6', 'border-color': '#cf8492', 'border-style': 'dashed' } },
-	{ selector: 'node.milestone', style: { 'background-color': '#eee8ff', 'border-color': '#8062df', 'font-size': 10, 'text-max-width': 120, padding: '9px' } },
+	{ selector: 'node.milestone', style: { 'background-color': '#eee8ff', 'border-color': '#8062df', 'font-size': 10, 'text-max-width': '120px', padding: '9px' } },
+	{ selector: 'node.milestone.parallel', style: { 'background-color': '#f4f1ff', 'border-width': 1.7 } },
+	{ selector: 'node.milestone.gate', style: { 'background-color': '#ddd2ff', 'border-color': '#6d43dc', 'border-width': 2.7, 'font-weight': 760 } },
+	{ selector: 'node.milestone.inserted', style: { 'background-color': '#fff5e8', 'border-color': '#c78b3b' } },
+	{ selector: 'node.milestone.outcome', style: { 'background-color': '#e7f6f0', 'border-color': '#3e9279', 'border-width': 2.7, 'font-weight': 760 } },
 	{ selector: 'node.group', style: { 'background-color': '#faf9fd', 'background-opacity': .72, 'border-color': '#dcd5e7', 'border-width': 1.2, 'border-style': 'dashed', color: '#766d80', 'font-size': 9, 'font-weight': 720, 'text-valign': 'top', 'text-halign': 'left', 'text-margin-x': 10, 'text-margin-y': 8, padding: '25px', shape: 'round-rectangle', 'z-compound-depth': 'bottom' } },
 	{ selector: 'node.timeline-foundation', style: { 'background-color': '#f7f4ff', 'border-color': '#a891ec' } },
 	{ selector: 'node.timeline-grounding', style: { 'background-color': '#f3f7fe', 'border-color': '#8aa5d6' } },
@@ -367,6 +382,8 @@ const CY_STYLES: StylesheetJson = [
 	{ selector: 'edge.semantic', style: { 'line-style': 'dashed', 'line-color': '#9ca7b8', 'target-arrow-shape': 'none' } },
 	{ selector: 'edge.weak', style: { 'line-style': 'dashed', 'line-color': '#c49a54', 'target-arrow-color': '#c49a54' } },
 	{ selector: 'edge.diagnostic', style: { width: 2.3, 'line-style': 'dashed', 'line-color': '#ce7a38', 'target-arrow-shape': 'none', color: '#9a5c2c', 'font-weight': 720, 'text-background-color': '#fff9f1', 'text-background-opacity': 1, 'text-background-padding': '5px' } },
+	{ selector: 'edge.timeline-dependency', style: { width: 1.8, 'line-color': '#615a6d', 'target-arrow-color': '#615a6d', 'curve-style': 'bezier' } },
+	{ selector: 'edge.timeline-cross', style: { width: 2, 'line-style': 'dashed', 'line-color': '#5484bc', 'target-arrow-color': '#5484bc', color: '#426d9e', 'curve-style': 'unbundled-bezier', 'control-point-distances': 90, 'control-point-weights': .55 } },
 	{ selector: 'edge.missing', style: { 'line-color': '#d16f31' } },
 	{ selector: 'edge.patch-target', style: { width: 3.2, 'line-color': '#7452df', 'target-arrow-color': '#7452df' } },
 	{ selector: 'edge.entering', style: { opacity: 0 } },
@@ -376,7 +393,7 @@ const CY_STYLES: StylesheetJson = [
 function toNodeDefinition(item: AgentNode): ElementDefinition {
 	return {
 		group: 'nodes',
-		data: { id: item.id, label: item.label, parent: item.parent, order: item.order },
+		data: { id: item.id, label: item.label, parent: item.parent, order: item.order, lane: item.lane ?? 0 },
 		position: { x: item.x, y: item.y },
 		classes: item.classes ?? '',
 	};
@@ -394,10 +411,15 @@ function clearPatchTargets(cy: Core): void {
 	cy.elements().removeClass('patch-target');
 }
 
-function runTimelineLayout(cy: Core, animate: boolean): void {
+function runTimelineLayout(cy: Core, animate: boolean, layout: LayoutId = 'timeline-lr'): void {
+	const horizontal = layout !== 'timeline-tb';
 	const milestones = cy.nodes('.milestone').sort((left, right) => Number(left.data('order')) - Number(right.data('order')));
-	milestones.forEach((item, index) => {
-		const target = { x: 115 + (index * 175), y: 355 };
+	milestones.forEach((item) => {
+		const rank = Number(item.data('order'));
+		const lane = Number(item.data('lane'));
+		const target = horizontal
+			? { x: 120 + ((rank - 1) * 180), y: 355 + (lane * 170) }
+			: { x: 560 + (lane * 260), y: 120 + ((rank - 1) * 132) };
 		if (!animate) {
 			item.position(target);
 			return;
@@ -414,7 +436,7 @@ function fitGraph(cy: Core, duration = 360): void {
 
 function runLocalReflow(cy: Core, script: LensScript): void {
 	if (script.id === 'timeline') {
-		runTimelineLayout(cy, true);
+		runTimelineLayout(cy, true, 'timeline-lr');
 		return;
 	}
 	if (script.id === 'thinking-tree') {
@@ -423,9 +445,9 @@ function runLocalReflow(cy: Core, script: LensScript): void {
 }
 
 function runFinalLayout(cy: Core, script: LensScript, layout: LayoutId): void {
-	if (layout === 'timeline') {
-		runTimelineLayout(cy, true);
-		window.setTimeout(() => fitGraph(cy, 720), 380);
+	if (layout === 'timeline-lr' || layout === 'timeline-tb') {
+		runTimelineLayout(cy, true, layout);
+		window.setTimeout(() => fitGraph(cy, 720), 680);
 		return;
 	}
 	if (layout === 'flow-lr' || layout === 'flow-tb') {
@@ -465,11 +487,12 @@ interface AgentGraphCanvasProps {
 	runNonce: number;
 	refineNonce: number;
 	layout: LayoutId;
+	layoutEnabled: boolean;
 	onSelect: (label: string) => void;
 	onStats: (lensId: LensId, stats: GraphStats) => void;
 }
 
-function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, layout, onSelect, onStats }: AgentGraphCanvasProps): React.ReactElement {
+function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, layout, layoutEnabled, onSelect, onStats }: AgentGraphCanvasProps): React.ReactElement {
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const appliedStepRef = useRef(-1);
@@ -496,7 +519,7 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 			...script.initialNodes.map(toNodeDefinition),
 			...script.initialEdges.map(toEdgeDefinition),
 		]);
-		if (script.id === 'timeline') runTimelineLayout(cy, false);
+		if (script.id === 'timeline') runTimelineLayout(cy, false, 'timeline-lr');
 		appliedStepRef.current = -1;
 		refineNonceRef.current = -1;
 		reportStats(cy);
@@ -641,15 +664,16 @@ function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, la
 		const cy = cyRef.current;
 		if (!cy || refineNonce <= 0 || refineNonceRef.current === refineNonce) return;
 		refineNonceRef.current = refineNonce;
+		layoutRef.current = layout;
 		runFinalLayout(cy, script, layout);
 	}, [refineNonce, script.id]);
 
 	useEffect(() => {
 		const cy = cyRef.current;
-		if (!cy || layoutRef.current === layout) return;
+		if (!cy || !active || !layoutEnabled || layoutRef.current === layout) return;
 		layoutRef.current = layout;
-		if (active) runFinalLayout(cy, script, layout);
-	}, [active, layout, script.id]);
+		runFinalLayout(cy, script, layout);
+	}, [active, layout, layoutEnabled, script.id]);
 
 	useEffect(() => {
 		const cy = cyRef.current;
@@ -683,8 +707,8 @@ function LensGlyph({ id }: { id: LensId }): React.ReactElement {
 }
 
 function LayoutGlyph({ id }: { id: LayoutId }): React.ReactElement {
-	if (id === 'flow-tb') return <ArrowDown aria-hidden />;
-	if (id === 'flow-lr' || id === 'timeline') return <ArrowRight aria-hidden />;
+	if (id === 'flow-tb' || id === 'timeline-tb') return <ArrowDown aria-hidden />;
+	if (id === 'flow-lr' || id === 'timeline-lr') return <ArrowRight aria-hidden />;
 	if (id === 'diagnostic') return <CircleDotDashed aria-hidden />;
 	return <LayoutGrid aria-hidden />;
 }
@@ -739,6 +763,7 @@ function Prototype(): React.ReactElement {
 	const readyCount = SCRIPTS.filter((script) => refined || globalStep >= script.steps.length - 1).length;
 	const activeLayout = layoutByLens[activeLensId];
 	const activeStats = statsByLens[activeLensId];
+	const layoutEnabled = !liveRun && mode !== 'refining';
 
 	const startRun = (): void => {
 		setRunNonce((current) => current + 1);
@@ -844,9 +869,10 @@ function Prototype(): React.ReactElement {
 						</div>
 						<div className="aig-toolbar-end">
 							<div className="aig-runtime-badge"><Workflow aria-hidden /><span>{activeStep ? activeStep.tool : 'graph.inspect'}</span></div>
+							{!layoutEnabled && <div className="aig-layout-stage" title="Generation keeps stable incremental coordinates. The selected display layout is applied by Refine."><LocateFixed aria-hidden />Layout after Refine</div>}
 							{activeScript.layouts.length > 1 ? (
-								<div className="aig-layout-switcher" role="tablist" aria-label={`${activeScript.label} layouts`}>
-									{activeScript.layouts.map((layoutId) => <button key={layoutId} className={activeLayout === layoutId ? 'is-active' : ''} type="button" role="tab" aria-selected={activeLayout === layoutId} onClick={() => setLayoutByLens((current) => ({ ...current, [activeLensId]: layoutId }))}><LayoutGlyph id={layoutId} />{LAYOUT_OPTIONS[layoutId].label}</button>)}
+								<div className={`aig-layout-switcher${layoutEnabled ? '' : ' is-locked'}`} role="tablist" aria-label={`${activeScript.label} layouts`} title={layoutEnabled ? 'Change display layout' : 'Available after the Agent finishes and Refine runs'}>
+									{activeScript.layouts.map((layoutId) => <button key={layoutId} className={activeLayout === layoutId ? 'is-active' : ''} type="button" role="tab" aria-selected={activeLayout === layoutId} disabled={!layoutEnabled} onClick={() => setLayoutByLens((current) => ({ ...current, [activeLensId]: layoutId }))}><LayoutGlyph id={layoutId} />{LAYOUT_OPTIONS[layoutId].label}</button>)}
 								</div>
 							) : <div className="aig-layout-fixed"><LayoutGlyph id={activeLayout} />{LAYOUT_OPTIONS[activeLayout].label}</div>}
 						</div>
@@ -854,11 +880,11 @@ function Prototype(): React.ReactElement {
 
 					<div className="aig-canvas">
 						<div className="aig-agent-canvas-stack">
-							{SCRIPTS.map((script) => <AgentGraphCanvas key={script.id} script={script} active={activeLensId === script.id} stepIndex={visibleStepIndex(script, globalStep, refined)} runNonce={runNonce} refineNonce={refineNonce} layout={layoutByLens[script.id]} onSelect={setSelectedNode} onStats={updateStats} />)}
+							{SCRIPTS.map((script) => <AgentGraphCanvas key={script.id} script={script} active={activeLensId === script.id} stepIndex={visibleStepIndex(script, globalStep, refined)} runNonce={runNonce} refineNonce={refineNonce} layout={layoutByLens[script.id]} layoutEnabled={layoutEnabled} onSelect={setSelectedNode} onStats={updateStats} />)}
 						</div>
 						<div className="aig-canvas-context">
 							<LensGlyph id={activeLensId} />
-							<span><strong>{activeScript.label}</strong><small>{activeScript.description}</small></span>
+							<span><strong>{activeScript.label}</strong><em>{activeScript.meaning}</em><small>{activeScript.description}</small></span>
 						</div>
 						{liveRun && activeStep && <div className="aig-current-operation"><span>{stepIcon(activeStep.kind)}</span><div><b>{activeStep.tool}</b><strong>{activeStep.title}</strong><small>{activeStep.object}</small></div></div>}
 						{mode === 'refining' && <div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Refining all five graph drafts</strong><small>One intentional final layout; graph state stays unchanged.</small></span></div>}

@@ -50,7 +50,7 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 	background: var(--aig-surface);
 }
 .aig-brand, .aig-actions, .aig-status, .aig-instruction, .aig-context, .aig-toolbar-end,
-.aig-runtime-badge, .aig-layout-switcher, .aig-layout-fixed, .aig-canvas-context,
+.aig-runtime-badge, .aig-layout-stage, .aig-layout-switcher, .aig-layout-fixed, .aig-canvas-context,
 .aig-current-operation, .aig-refine-stage, .aig-review-chip, .aig-canvas-footer,
 .aig-agent-summary, .aig-activity-head, .aig-agent-tools, .aig-runbar, .aig-run-state,
 .aig-run-actions, .aig-selection {
@@ -171,7 +171,10 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 .aig-runtime-badge { gap: 5px; max-width: 160px; padding: 5px 7px; color: #6c6474; border: 1px solid var(--aig-line); border-radius: 7px; background: #f8f7fa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; }
 .aig-runtime-badge svg { width: 11px; height: 11px; color: var(--aig-accent); }
 .aig-runtime-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aig-layout-stage { gap: 5px; padding: 5px 7px; color: var(--aig-amber); border: 1px solid #ead9bd; border-radius: 7px; background: #fff9ef; font-size: 8px; font-weight: 700; white-space: nowrap; }
+.aig-layout-stage svg { width: 11px; height: 11px; }
 .aig-layout-switcher { gap: 2px; padding: 2px; border: 1px solid var(--aig-line); border-radius: 8px; background: #f4f3f6; }
+.aig-layout-switcher.is-locked { border-color: #e3e0e7; background: #f8f7f9; }
 .peak-design-root .aig-layout-switcher button {
 	width: auto !important;
 	min-width: 0 !important;
@@ -193,6 +196,8 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 	white-space: nowrap;
 }
 .aig-layout-switcher button.is-active { color: #fff; background: var(--aig-accent); box-shadow: 0 1px 3px rgba(75, 48, 159, .2); }
+.aig-layout-switcher button:disabled { cursor: not-allowed; opacity: .46; }
+.aig-layout-switcher.is-locked button.is-active { color: #706879; background: #e8e5eb; box-shadow: none; }
 .aig-layout-switcher svg, .aig-layout-fixed svg { width: 11px; height: 11px; }
 .aig-layout-fixed { height: 30px; gap: 5px; padding: 0 8px; color: var(--aig-ink-2); border: 1px solid var(--aig-line); border-radius: 7px; background: #f8f7fa; font-size: 8px; font-weight: 680; white-space: nowrap; }
 .aig-layout-fixed svg { color: var(--aig-accent); }
@@ -202,11 +207,12 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 .aig-agent-graph { visibility: hidden; pointer-events: none; }
 .aig-agent-graph.is-active { visibility: visible; pointer-events: auto; }
 .aig-cytoscape-host { z-index: 1; }
-.aig-canvas-context { position: absolute; z-index: 4; top: 14px; left: 14px; gap: 8px; max-width: 330px; padding: 8px 10px; color: #605969; border: 1px solid rgba(224, 219, 231, .9); border-radius: 8px; background: rgba(255,255,255,.9); box-shadow: 0 4px 16px rgba(47, 37, 66, .05); backdrop-filter: blur(8px); pointer-events: none; }
+.aig-canvas-context { position: absolute; z-index: 4; top: 14px; left: 14px; gap: 9px; max-width: 520px; padding: 9px 11px; color: #605969; border: 1px solid rgba(224, 219, 231, .9); border-radius: 8px; background: rgba(255,255,255,.92); box-shadow: 0 4px 16px rgba(47, 37, 66, .05); backdrop-filter: blur(8px); pointer-events: none; }
 .aig-canvas-context > svg { width: 14px; height: 14px; color: var(--aig-accent); }
 .aig-canvas-context > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .aig-canvas-context strong { font-size: 9px; }
-.aig-canvas-context small { overflow: hidden; color: var(--aig-ink-3); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.aig-canvas-context em { color: #514a5a; font-size: 9px; font-style: normal; font-weight: 680; line-height: 1.35; }
+.aig-canvas-context small { color: var(--aig-ink-3); font-size: 8px; line-height: 1.35; }
 
 .aig-current-operation, .aig-refine-stage { position: absolute; z-index: 4; right: 16px; bottom: 16px; gap: 9px; min-width: 230px; max-width: 310px; padding: 10px 11px; border: 1px solid #ddd5ff; border-radius: 9px; background: rgba(255,255,255,.94); box-shadow: 0 12px 28px rgba(57, 41, 104, .12); backdrop-filter: blur(8px); pointer-events: none; }
 .aig-current-operation > span { width: 25px; height: 25px; flex: none; display: grid; place-items: center; color: #fff; border-radius: 50%; background: var(--aig-accent); box-shadow: 0 0 0 5px rgba(114,85,231,.1); }
@@ -285,7 +291,8 @@ button:focus-visible { outline: 2px solid rgba(114, 85, 231, .42); outline-offse
 	.aig-actions .aig-btn:first-child { display: none; }
 	.aig-context { display: none; }
 	.aig-lens-tab { padding-inline: 7px !important; }
-	.aig-canvas-context { max-width: 250px; }
+	.aig-layout-stage { display: none; }
+	.aig-canvas-context { max-width: 390px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

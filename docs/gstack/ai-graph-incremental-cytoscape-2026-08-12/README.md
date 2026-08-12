@@ -27,9 +27,9 @@ The current accepted AI Graph remains immutable throughout the run. The working 
 
 - `Topology` starts from a stable six-node graph. The Agent stages unlinked nodes, connects them only after evidence is available, focuses an off-screen addition, refines one predicate, and removes rejected structure.
 - `Thinking Tree` starts empty. The question appears first, and each decision or outcome is added only when its parent is known. A provisional shortcut branch is later pruned. Future node names never appear as ghost placeholders.
-- `Bridges` starts with three real disconnected domain components. A concept is only promoted from candidate to bridge after validated edges connect it to two previously separate components. A one-sided keyword candidate is rejected.
-- `Timeline` starts empty and uses meaningful dated GraphRAG milestones. February, June, and September are intentionally discovered out of order and inserted by atomic adjacency replacement. Phase wrappers are Cytoscape compound nodes created with their first real child, so wrappers follow the graph geometry.
-- `Gaps` starts from an existing semantic graph. The Agent finds one missing path and one weak path between actual endpoints, while rejecting one false positive that already has a valid route. A gap is a typed diagnostic overlay, never a fabricated semantic node.
+- `Bridges` starts with three real disconnected domain components. Here, a bridge means a concept that gives two otherwise separate domains a validated path. A concept is promoted from candidate only after it reaches both sides; a one-sided keyword candidate is rejected. A valid run may also report no bridge rather than fabricate one.
+- `Timeline` starts empty and builds a temporal DAG rather than a single chain. The same dated contract opens two parallel branches; branch-local work can be inserted later; independent tasks merge at provenance, quality, and release gates; and one retrieval dependency crosses forward into observability. Phase wrappers are Cytoscape compound nodes created with their first real child, so wrappers follow the graph geometry. The completed DAG can be viewed horizontally or vertically.
+- `Gaps` starts from an existing semantic graph. Here, a gap means that a path required by the task contract is absent or supported too weakly between two real endpoints. The Agent finds one missing path and one weak path while rejecting one false positive that already has a valid route. A gap is a typed diagnostic overlay, never a fabricated semantic node; a valid run may report zero gaps.
 
 ## Interaction and layout rules
 
@@ -37,9 +37,10 @@ The current accepted AI Graph remains immutable throughout the run. The working 
 - Nodes and edges use one renderer and one coordinate system. There is no separate HTML-node/SVG-edge overlay, so resize, zoom, and drawer changes cannot detach lines from their endpoints.
 - A normal add/update/remove patch never calls whole-graph `fit()`. Existing coordinates and the camera stay stable.
 - If a newly added node falls outside the visible viewport, the camera pans to that node without changing graph coordinates.
-- A local reflow happens only when the Agent explicitly changes structure, such as pruning a tree branch or inserting a dated milestone.
-- After all views finish, one explicit `Refine` stage runs a final layout on the same graph instances. This is the only intentional whole-view reorganization during generation.
-- Layout controls are semantic: Topology offers `Constellation`, `Flow →`, and `Flow ↓`; Bridges offers `Flow →` and `Constellation`; Thinking Tree is horizontal flow; Timeline is chronological flow with compound phases; Gaps is a diagnostic map.
+- A local reflow happens only when the Agent explicitly changes structure, such as pruning a tree branch or inserting one task into a temporal branch. It changes the affected structure while preserving the current construction orientation.
+- `Constellation`, `Flow`, and Timeline orientation are display layouts, not Agent generation tools. Their controls are locked while any view is generating. Incremental placement therefore stays spatially continuous and does not jump between presentation algorithms.
+- After all views finish, one explicit `Refine` stage applies the selected display layout on the same graph instances. Only after Refine can the owner switch layouts interactively.
+- Layout controls are semantic: Topology offers `Constellation`, `Flow →`, and `Flow ↓`; Bridges offers `Flow →` and `Constellation`; Thinking Tree is horizontal flow; Timeline offers `Time →` and `Time ↓` while retaining the same temporal DAG; Gaps is a diagnostic map.
 - Activity is optional and opens as a drawer. The graph remains the primary UI; there is no permanent Added/Changed/Removed review dashboard.
 
 ## Production implication
