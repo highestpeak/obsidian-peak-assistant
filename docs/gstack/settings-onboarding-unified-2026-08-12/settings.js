@@ -137,6 +137,7 @@ $$('select').forEach((select) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    closeInlineModelMenu();
     $("[data-connection-modal]").hidden = true;
     $("[data-provider-detail-modal]").hidden = true;
     $("[data-file-types-modal]").hidden = true;
@@ -373,6 +374,55 @@ function describeModelChoice(target) {
   return `Automatic · ${target.dataset.defaultModel}`;
 }
 
+function updateModelTarget(target, modelValue) {
+  target.dataset.modelValue = modelValue;
+  const parts = modelValue.split(" · ");
+  $('.model-route-kind', target).textContent = modelValue === "Automatic" ? "Automatic" : parts.shift();
+  $('.model-route-name', target).textContent = modelValue === "Automatic" ? target.dataset.defaultModel : parts.join(" · ");
+}
+
+function closeInlineModelMenu() {
+  $('[data-inline-model-menu]').hidden = true;
+}
+
+function positionInlineModelMenu(target) {
+  const menu = $('[data-inline-model-menu]');
+  const anchor = $('.task-model-control', target) ?? target;
+  const rect = anchor.getBoundingClientRect();
+  const menuWidth = 286;
+  const pagePadding = 12;
+  const left = Math.min(window.innerWidth - menuWidth - pagePadding, Math.max(pagePadding, rect.right - menuWidth));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${rect.bottom + 5}px`;
+  menu.hidden = false;
+  const menuRect = menu.getBoundingClientRect();
+  if (menuRect.bottom <= window.innerHeight - pagePadding) return;
+  menu.style.top = `${Math.max(pagePadding, rect.top - menuRect.height - 5)}px`;
+}
+
+function openInlineModelMenu(target) {
+  currentModelTarget = target;
+  const options = $('[data-inline-model-options]');
+  options.replaceChildren();
+  const models = modelCatalogs[target.dataset.modelScope] ?? textModels;
+  for (const model of models) {
+    const button = document.createElement("button");
+    const selected = model.value === target.dataset.modelValue;
+    const label = model.value === "Automatic" ? `Automatic · ${target.dataset.defaultModel}` : model.label;
+    button.classList.toggle("is-selected", selected);
+    button.innerHTML = `<span>${label}</span><em>${model.state}</em>${selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      updateModelTarget(target, model.value);
+      closeInlineModelMenu();
+      const scopeName = target.dataset.action === "Feature default" ? "feature" : "action";
+      showSaved(model.value === "Automatic" ? `Saved · ${scopeName} uses automatic selection` : `Saved · ${scopeName} uses ${model.value}`);
+    });
+    options.append(button);
+  }
+  positionInlineModelMenu(target);
+}
+
 function openModelPicker(target) {
   currentModelTarget = target;
   selectedActionModel = target.dataset.modelValue ?? "Automatic";
@@ -390,8 +440,21 @@ function openModelPicker(target) {
 }
 
 $$('[data-model-trigger]').forEach((button) => {
-  button.addEventListener("click", () => openModelPicker(button));
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openInlineModelMenu(button);
+  });
 });
+
+$('[data-inline-model-advanced]').addEventListener("click", (event) => {
+  event.stopPropagation();
+  closeInlineModelMenu();
+  if (currentModelTarget) openModelPicker(currentModelTarget);
+});
+
+document.addEventListener("click", closeInlineModelMenu);
+$('.settings-content').addEventListener("scroll", closeInlineModelMenu);
+window.addEventListener("resize", closeInlineModelMenu);
 
 function restoreActionAutomatic() {
   selectedActionModel = "Automatic";
@@ -409,10 +472,7 @@ $$('[data-close-model-picker]').forEach((button) => {
 
 $('[data-save-model-choice]').addEventListener("click", () => {
   if (currentModelTarget) {
-    currentModelTarget.dataset.modelValue = selectedActionModel;
-    const parts = selectedActionModel.split(" · ");
-    $('.model-route-kind', currentModelTarget).textContent = selectedActionModel === "Automatic" ? "Automatic" : parts.shift();
-    $('.model-route-name', currentModelTarget).textContent = selectedActionModel === "Automatic" ? currentModelTarget.dataset.defaultModel : parts.join(" · ");
+    updateModelTarget(currentModelTarget, selectedActionModel);
   }
   toggleFocusedModal("[data-model-picker-modal]", false);
   const scopeName = currentModelTarget?.dataset.action === "Feature default" ? "feature" : "action";
@@ -438,9 +498,7 @@ $$('[data-run-check]').forEach((button) => {
 
 $("[data-reset-models]").addEventListener("click", () => {
   $$('[data-model-trigger]').forEach((target) => {
-    target.dataset.modelValue = "Automatic";
-    $('.model-route-kind', target).textContent = "Automatic";
-    $('.model-route-name', target).textContent = target.dataset.defaultModel;
+    updateModelTarget(target, "Automatic");
   });
   showSaved("All model choices now inherit Peak automatic selection");
 });

@@ -55,6 +55,8 @@ requireValues("Settings HTML", settingsHtml, [
   "data-strategy=\"Recommended\"",
   "data-route-select",
   "data-model-trigger",
+  "data-inline-model-menu",
+  "Advanced model settings…",
   "data-model-scope=\"image\"",
   "Generate images &amp; covers",
   "Understand images &amp; documents",
@@ -104,6 +106,9 @@ if (settingsHtml.includes("connection-summary")) {
 if (settingsHtml.includes("modal-more-connections")) {
   missing.push("Settings HTML: Add connection must use one unified provider list");
 }
+if (settingsJs.includes("openModelPicker(button)")) {
+  missing.push("Settings JS: routine feature and action model selection must stay in the inline dropdown");
+}
 
 const connectionsHeadingPosition = settingsHtml.indexOf("connection-section-heading");
 const addConnectionPosition = settingsHtml.indexOf("data-add-connection");
@@ -138,6 +143,8 @@ requireValues("Settings JS", settingsJs, [
   "function updateStrategySummary",
   "function filterCatalog",
   "function restoreActionAutomatic",
+  "function openInlineModelMenu",
+  "function updateModelTarget",
   "function toggleFocusedModal",
   "data-panel-target",
   "data-tree-toggle",
@@ -163,6 +170,7 @@ requireValues("CSS", css, [
   ".model-route-button",
   ".action-model-row",
   ".task-model-control",
+  ".inline-model-menu",
   ".safety-picker",
   ".command-gateway-card",
   ".feature-settings-detail",
