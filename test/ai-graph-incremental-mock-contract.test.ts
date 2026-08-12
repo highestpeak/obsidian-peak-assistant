@@ -15,6 +15,17 @@ assert.match(placement, /for \(let ring = 0; ring < 8; ring \+= 1\)/, 'placement
 assert.match(placement, /const gutter = 46/, 'placement preserves a visual safety gutter');
 assert.match(placement, /graphBox\.x2 \+ 222/, 'placement has a graph-bounds fallback outside the occupied region');
 
+const layoutStart = source.indexOf('function settleNodeOverlaps');
+const layoutEnd = source.indexOf('function applyClassDelta');
+assert.ok(layoutStart >= 0 && layoutEnd > layoutStart, 'collision-safe final layout contract exists');
+const layout = source.slice(layoutStart, layoutEnd);
+assert.match(layout, /boundingBox\(\{ includeLabels: true/, 'final layout collision checks include rendered labels');
+assert.match(layout, /for \(let pass = 0; pass < 36; pass \+= 1\)/, 'final layout repeatedly resolves collision chains');
+assert.match(layout, /layout\.one\('layoutstop'/, 'collision settling runs only after the layout engine finishes');
+assert.match(layout, /nodeDimensionsIncludeLabels: true/, 'Dagre and CoSE receive label-aware node dimensions');
+assert.match(layout, /nodeOverlap: 64/, 'Constellation applies stronger overlap pressure');
+assert.match(layout, /runCollisionSafeLayout\(cy/, 'all automatic graph layouts use the collision-safe wrapper');
+
 const expansionStart = source.indexOf('const startExpansion =');
 const expansionEnd = source.indexOf('\n\treturn (', expansionStart);
 assert.ok(expansionStart >= 0 && expansionEnd > expansionStart, 'expand interaction exists');

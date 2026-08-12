@@ -496,13 +496,100 @@ function fitGraph(cy: Core, duration = 360): void {
 	cy.animate({ fit: { eles: cy.elements(), padding: 72 }, duration, easing: 'ease-out-cubic' });
 }
 
+interface CollisionNode {
+	item: NodeSingular;
+	x: number;
+	y: number;
+	halfWidth: number;
+	halfHeight: number;
+}
+
+function settleNodeOverlaps(cy: Core, padding = 44, duration = 460): boolean {
+	const records: CollisionNode[] = [];
+	cy.nodes().forEach((item) => {
+		const node = item as NodeSingular;
+		if (node.hasClass('group')) return;
+		const box = node.boundingBox({ includeLabels: true, includeOverlays: false, includeUnderlays: false });
+		const position = node.position();
+		records.push({
+			item: node,
+			x: position.x,
+			y: position.y,
+			halfWidth: Math.max(1, box.w) / 2,
+			halfHeight: Math.max(1, box.h) / 2,
+		});
+	});
+	let moved = false;
+	for (let pass = 0; pass < 36; pass += 1) {
+		let collisionCount = 0;
+		for (let leftIndex = 0; leftIndex < records.length; leftIndex += 1) {
+			for (let rightIndex = leftIndex + 1; rightIndex < records.length; rightIndex += 1) {
+				const left = records[leftIndex];
+				const right = records[rightIndex];
+				const deltaX = left.x - right.x;
+				const deltaY = left.y - right.y;
+				const overlapX = left.halfWidth + right.halfWidth + padding - Math.abs(deltaX);
+				const overlapY = left.halfHeight + right.halfHeight + padding - Math.abs(deltaY);
+				if (overlapX <= 0 || overlapY <= 0) continue;
+
+				collisionCount += 1;
+				moved = true;
+				const leftIsRoot = left.item.hasClass('root');
+				const rightIsRoot = right.item.hasClass('root');
+				const leftWeight = leftIsRoot && !rightIsRoot ? .18 : rightIsRoot && !leftIsRoot ? .82 : .5;
+				const rightWeight = 1 - leftWeight;
+				if (overlapX < overlapY) {
+					const direction = deltaX === 0 ? (left.item.id().localeCompare(right.item.id()) < 0 ? -1 : 1) : Math.sign(deltaX);
+					left.x += direction * overlapX * leftWeight;
+					right.x -= direction * overlapX * rightWeight;
+					continue;
+				}
+				const direction = deltaY === 0 ? (left.item.id().localeCompare(right.item.id()) < 0 ? -1 : 1) : Math.sign(deltaY);
+				left.y += direction * overlapY * leftWeight;
+				right.y -= direction * overlapY * rightWeight;
+			}
+		}
+		if (collisionCount === 0) break;
+	}
+	if (!moved) return false;
+	records.forEach(({ item, x, y }) => {
+		item.stop();
+		item.animate({ position: { x, y }, duration, easing: 'ease-out-cubic' });
+	});
+	return true;
+}
+
+function runCollisionSafeLayout(
+	cy: Core,
+	options: Record<string, unknown>,
+	settlePadding = 44,
+	fitAfter = true,
+): void {
+	const layout = cy.elements().layout({ ...options, fit: false } as never);
+	layout.one('layoutstop', () => {
+		const moved = settleNodeOverlaps(cy, settlePadding);
+		if (!fitAfter) return;
+		window.setTimeout(() => fitGraph(cy, 560), moved ? 500 : 0);
+	});
+	layout.run();
+}
+
 function runLocalReflow(cy: Core, script: LensScript): void {
 	if (script.id === 'timeline') {
 		runTimelineLayout(cy, true, 'timeline-lr');
 		return;
 	}
 	if (script.id === 'thinking-tree') {
-		cy.elements().layout({ name: 'dagre', rankDir: 'LR', nodeSep: 45, rankSep: 82, fit: false, animate: true, animationDuration: 650 } as never).run();
+		runCollisionSafeLayout(cy, {
+			name: 'dagre',
+			rankDir: 'LR',
+			nodeDimensionsIncludeLabels: true,
+			nodeSep: 64,
+			edgeSep: 24,
+			rankSep: 108,
+			animate: true,
+			animationDuration: 650,
+		}, 36, false);
 	}
 }
 
@@ -513,11 +600,33 @@ function runFinalLayout(cy: Core, script: LensScript, layout: LayoutId): void {
 		return;
 	}
 	if (layout === 'flow-lr' || layout === 'flow-tb') {
-		cy.elements().layout({ name: 'dagre', rankDir: layout === 'flow-tb' ? 'TB' : 'LR', nodeSep: 48, rankSep: 92, fit: true, padding: 74, animate: true, animationDuration: 980 } as never).run();
+		runCollisionSafeLayout(cy, {
+			name: 'dagre',
+			rankDir: layout === 'flow-tb' ? 'TB' : 'LR',
+			nodeDimensionsIncludeLabels: true,
+			nodeSep: 72,
+			edgeSep: 28,
+			rankSep: 118,
+			animate: true,
+			animationDuration: 980,
+		}, 40);
 		return;
 	}
 	if (layout === 'constellation') {
-		cy.elements().layout({ name: 'cose', fit: true, padding: 76, animate: true, animationDuration: 980, randomize: false, nodeRepulsion: 7200, idealEdgeLength: 120 } as never).run();
+		runCollisionSafeLayout(cy, {
+			name: 'cose',
+			nodeDimensionsIncludeLabels: true,
+			componentSpacing: 110,
+			nodeOverlap: 64,
+			nodeRepulsion: 14000,
+			idealEdgeLength: 185,
+			edgeElasticity: 80,
+			gravity: .45,
+			numIter: 1800,
+			animate: true,
+			animationDuration: 980,
+			randomize: false,
+		}, 48);
 		return;
 	}
 	fitGraph(cy, 820);
