@@ -95,7 +95,7 @@
                   <span><small id="imageSelectionKind">Image selection</small><strong id="imageSelectionLabel">Whole image</strong></span>
                   <button data-ai-action="describe-image-region"><svg><use href="#i-sparkles"/></svg>Ask</button>
                   <button class="add-composer" data-add-composer="image" data-context-scope="selection">Add to Composer</button>
-                  <button id="imageRegionEditAction" data-ai-action="remove-object">Remove / replace</button>
+                  <button id="imageRegionEditAction" data-image-editor-open="quick" data-image-editor-preset="Replace">Remove / replace</button>
                   <button data-image-selection-action="clear">Clear</button>
                 </div>
                 <div class="image-context-toolbar" id="imageContextDock" aria-label="图片核心工具">
@@ -115,13 +115,7 @@
                     <button class="dock-icon-button" data-image-tool="export" aria-label="Export" title="Export a copy"><svg><use href="#i-download"/></svg></button>
                     <span class="toolbar-divider"></span>
                     <button class="ai-inline" data-ai-action="describe-image"><svg><use href="#i-sparkles"/></svg><span>Ask</span></button>
-                    <button class="image-ai-trigger" data-image-ai-toggle aria-expanded="false"><svg><use href="#i-edit"/></svg><span>AI edit</span></button>
-                    <div class="image-ai-panel" id="imageAiPanel" hidden aria-label="快速 AI 图片编辑">
-                      <button data-image-ai-action="cleanup">Clean up</button>
-                      <button data-image-ai-action="replace">Replace</button>
-                      <button data-image-ai-action="remove-background">Remove BG</button>
-                      <button data-image-ai-action="expand">Expand</button>
-                    </div>
+                    <button class="image-ai-trigger" data-image-editor-open="restyle" aria-expanded="false"><svg><use href="#i-edit"/></svg><span>AI edit</span></button>
                     <button class="add-composer" data-add-composer="image" data-context-scope="all" aria-label="Add whole image to Composer" title="Add to Composer"><svg><use href="#i-plus"/></svg><span>Composer</span></button>
                     <span class="toolbar-divider"></span>
                     <div class="dock-zoom" aria-label="图片查看缩放">
@@ -361,22 +355,66 @@
             <span class="context-status">Connected</span>
           </div>
           <div class="intelligence-scroll">
-            <section class="ai-brief">
-              <span class="eyebrow">CURRENT FILE</span>
-              <h2 id="aiHeadline">Work with the image, not around it.</h2>
-              <p id="aiDescription">Use lightweight transforms on the canvas. Bring AI in only for semantic changes or understanding.</p>
+            <div class="default-intelligence-content" id="defaultIntelligenceContent">
+              <section class="ai-brief">
+                <span class="eyebrow">CURRENT FILE</span>
+                <h2 id="aiHeadline">Work with the image, not around it.</h2>
+                <p id="aiDescription">Use lightweight transforms on the canvas. Bring AI in only for semantic changes or understanding.</p>
+              </section>
+              <section class="suggested-actions">
+                <div class="section-label"><span>Preset actions</span><small id="selectionScope">Whole image</small></div>
+                <div id="aiActions"></div>
+              </section>
+              <section class="ai-answer" id="aiAnswer" hidden></section>
+              <section class="composer-receipt" id="composerReceipt" hidden><svg><use href="#i-check"/></svg><span><strong>Added to Composer context</strong><small id="composerReceiptDetail"></small></span></section>
+            </div>
+
+            <section class="image-edit-studio" id="imageEditStudio" hidden>
+              <header class="image-edit-studio-header">
+                <button data-image-editor-close aria-label="Back to Intelligence"><svg><use href="#i-chevron"/></svg></button>
+                <span><small>AI IMAGE EDIT</small><strong>Create a new version</strong></span>
+                <i>Draft</i>
+              </header>
+              <div class="image-edit-scope-row">
+                <span><svg><use href="#i-eye"/></svg><b id="imageEditScope">Whole image</b></span>
+                <small>Original protected</small>
+              </div>
+              <nav class="image-edit-tabs" aria-label="AI 图片编辑类别">
+                <button data-image-edit-category="quick">Quick</button>
+                <button class="is-active" data-image-edit-category="restyle">Restyle</button>
+                <button data-image-edit-category="light">Light</button>
+                <button data-image-edit-category="material">Material</button>
+                <button data-image-edit-category="compose">Compose</button>
+              </nav>
+              <div class="image-edit-section-heading"><span><strong id="imageEditCategoryTitle">Restyle</strong><small id="imageEditCategoryDetail">Re-render the look while preserving the source structure.</small></span><small id="imageEditPresetCount">8 presets</small></div>
+              <div class="image-edit-presets" id="imageEditPresets"></div>
+
+              <section class="image-edit-controls">
+                <header><span><strong>References & control</strong><small>Tell the model what each image is allowed to influence.</small></span></header>
+                <div class="image-reference-slots">
+                  <button data-image-edit-reference="style" aria-pressed="false"><svg><use href="#i-plus"/></svg><span><strong>Style</strong><small>Color · texture</small></span></button>
+                  <button data-image-edit-reference="subject" aria-pressed="false"><svg><use href="#i-plus"/></svg><span><strong>Subject</strong><small>Identity · product</small></span></button>
+                  <button data-image-edit-reference="composition" aria-pressed="false"><svg><use href="#i-plus"/></svg><span><strong>Composition</strong><small>Layout · depth</small></span></button>
+                </div>
+                <div class="image-preserve-row" aria-label="保护内容">
+                  <button class="is-active" data-image-preserve="identity" aria-pressed="true">Identity</button>
+                  <button class="is-active" data-image-preserve="layout" aria-pressed="true">Layout</button>
+                  <button class="is-active" data-image-preserve="text" aria-pressed="true">Text</button>
+                  <button class="is-active" data-image-preserve="unselected" aria-pressed="true">Unselected</button>
+                </div>
+                <label class="image-edit-strength"><span><strong>Creative strength</strong><small id="imageEditStrengthLabel">65% · balanced</small></span><input id="imageEditStrength" type="range" min="10" max="100" value="65"/></label>
+              </section>
+
+              <section class="image-edit-candidates" id="imageEditCandidates" hidden>
+                <header><span><strong>4 generated directions</strong><small>Choose one to preview against the source.</small></span><button data-image-editor-generate>Regenerate</button></header>
+                <div class="image-candidate-grid" id="imageCandidateGrid"></div>
+              </section>
             </section>
-            <section class="suggested-actions">
-              <div class="section-label"><span>Preset actions</span><small id="selectionScope">Whole image</small></div>
-              <div id="aiActions"></div>
-            </section>
-            <section class="ai-answer" id="aiAnswer" hidden></section>
-            <section class="composer-receipt" id="composerReceipt" hidden><svg><use href="#i-check"/></svg><span><strong>Added to Composer context</strong><small id="composerReceiptDetail"></small></span></section>
           </div>
           <footer class="prompt-area">
             <div class="prompt-context"><span><svg><use href="#i-file"/></svg><b id="promptFile">ai-knowledge-workflow.png</b></span></div>
             <textarea id="promptInput" rows="2" placeholder="Ask about this image or propose a change…"></textarea>
-            <div class="prompt-footer"><span>Source stays unchanged until accepted</span><button class="send-button" id="sendPrompt" aria-label="Send"><svg><use href="#i-send"/></svg></button></div>
+            <div class="prompt-footer"><span id="promptModeLabel">Source stays unchanged until accepted</span><button class="send-button" id="sendPrompt" aria-label="Send"><span id="sendPromptLabel" hidden>Generate 4</span><svg><use href="#i-send"/></svg></button></div>
           </footer>
       </aside>
     </div>

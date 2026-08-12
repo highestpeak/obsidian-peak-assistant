@@ -7,7 +7,7 @@ const surfaces = {
     contextTitle: "I can see this image",
     contextDetail: "Pixels · dimensions · visible text",
     headline: "Select precisely, crop directly, and keep AI attached to the source.",
-    description: "Select and Crop expand Rectangle or Freehand inside the dock. AI edit adds four predictable shortcuts without covering the image; every generated result remains reviewable.",
+    description: "Select and Crop expand Rectangle or Freehand inside the dock. AI edit opens a dedicated generative workspace with presets, references, preservation controls, and reviewable versions.",
     scope: "Whole image",
     placeholder: "Ask about this image or propose a change…",
     actions: [
@@ -107,6 +107,71 @@ const surfaces = {
   },
 };
 
+const imageEditCatalog = {
+  quick: {
+    title: "Quick edits",
+    detail: "Predictable fixes that preserve the rest of the image.",
+    presets: [
+      ["Clean up", "Remove a distraction", "cleanup", "Remove the selected distraction and reconstruct only the surrounding background."],
+      ["Replace", "Change the selected area", "replace", "Replace the selected area with "],
+      ["Remove BG", "Transparent background", "background", "Remove the background while preserving the foreground subject."],
+      ["Expand", "Generate beyond the frame", "expand", "Expand the image naturally beyond its current frame."],
+    ],
+  },
+  restyle: {
+    title: "Restyle",
+    detail: "Re-render the look while preserving the source structure.",
+    presets: [
+      ["Editorial", "Restrained magazine art", "editorial", "Restyle as restrained editorial artwork with clean hierarchy."],
+      ["Watercolor", "Soft pigment and paper", "watercolor", "Restyle as a refined watercolor illustration on textured paper."],
+      ["Ink sketch", "Monochrome drawn lines", "sketch", "Restyle as a precise monochrome ink sketch."],
+      ["3D clay", "Soft sculpted forms", "clay", "Restyle as a tactile 3D clay composition."],
+      ["Anime", "Graphic cel rendering", "anime", "Restyle as polished anime artwork with controlled linework."],
+      ["Pixel art", "Crisp low-resolution forms", "pixel", "Restyle as deliberate pixel art while preserving the composition."],
+      ["Cinematic", "Film color and contrast", "cinematic", "Restyle with cinematic lighting, color, and depth."],
+      ["Paper cut", "Layered paper shapes", "paper", "Restyle as layered paper-cut artwork."],
+    ],
+  },
+  light: {
+    title: "Light & mood",
+    detail: "Change illumination and atmosphere without redesigning the subject.",
+    presets: [
+      ["Golden hour", "Warm directional light", "golden", "Relight the scene at golden hour."],
+      ["Studio", "Clean controlled lighting", "studio", "Relight with clean professional studio lighting."],
+      ["Neon night", "Colored night lighting", "neon", "Relight as a neon-lit night scene."],
+      ["Day to night", "Preserve scene geometry", "daynight", "Transform the scene from daytime to night."],
+      ["Soft daylight", "Natural window light", "cleanup", "Relight with soft natural daylight."],
+      ["Dramatic", "High-contrast direction", "cinematic", "Add dramatic directional light while preserving the subject."],
+    ],
+  },
+  material: {
+    title: "Material",
+    detail: "Apply color, texture, or surface behavior to the chosen subject.",
+    presets: [
+      ["Chrome", "Reflective metal", "chrome", "Render the selected subject in reflective chrome."],
+      ["Glass", "Transparent solid", "glass", "Render the selected subject as translucent glass."],
+      ["Fabric", "Woven tactile surface", "fabric", "Apply a refined woven fabric texture to the subject."],
+      ["Clay", "Matte sculpted surface", "clay", "Render the subject as matte sculpted clay."],
+      ["Wood", "Natural warm grain", "wood", "Apply natural wood grain while preserving the object form."],
+      ["Paper", "Fibrous cut-paper finish", "paper", "Render the subject with a layered paper texture."],
+    ],
+  },
+  compose: {
+    title: "Compose",
+    detail: "Use references to build a new scene without losing source identity.",
+    presets: [
+      ["New scene", "Place subject elsewhere", "scene", "Place the source subject in a new scene: "],
+      ["Blend images", "Combine references", "blend", "Blend the source and attached references into one coherent image."],
+      ["Change outfit", "Preserve face and body", "outfit", "Change the subject outfit to "],
+      ["Product mockup", "Keep product accurate", "studio", "Create a polished product mockup while preserving product details."],
+      ["Match style", "Use the Style reference", "editorial", "Apply only the attached Style reference to this image."],
+      ["Generate similar", "Explore nearby variants", "similar", "Generate similar variations with the same subject and composition."],
+    ],
+  },
+};
+
+const imageSourcePath = "../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png";
+
 const appShell = document.querySelector(".app-shell");
 const documentName = document.querySelector("#documentName");
 const documentPath = document.querySelector("#documentPath");
@@ -127,6 +192,12 @@ const candidateReview = document.querySelector("#candidateReview");
 const candidateTitle = document.querySelector("#candidateTitle");
 const candidateDescription = document.querySelector("#candidateDescription");
 const toast = document.querySelector("#workbenchToast");
+const intelligencePanel = document.querySelector(".intelligence-panel");
+const defaultIntelligenceContent = document.querySelector("#defaultIntelligenceContent");
+const imageEditStudio = document.querySelector("#imageEditStudio");
+const imageEditPresets = document.querySelector("#imageEditPresets");
+const imageEditCandidates = document.querySelector("#imageEditCandidates");
+const imageFrame = document.querySelector("#imageFrame");
 
 let currentSurface = "image";
 let pendingCandidateAction = "";
@@ -144,7 +215,9 @@ let canvasZoom = 84;
 let excalZoom = 72;
 let toastTimer;
 let imageMethodTimer;
-let imageAiTimer;
+let imageEditCategory = "restyle";
+let imageEditPreset = null;
+let imageEditVariation = 1;
 let activeLasso = null;
 let surfaceDragState = null;
 const lassoSelections = { image: null, pdf: null };
@@ -183,6 +256,8 @@ function setClean(message) {
 function selectSurface(surface, updateHash = true) {
   const config = surfaces[surface];
   if (!config) return;
+
+  if (surface !== "image") closeImageEditStudio(true);
 
   currentSurface = surface;
   appShell.dataset.currentSurface = surface;
@@ -271,6 +346,7 @@ function showImageSelectionLens(kind, label, target) {
   document.querySelector("#imageSelectionKind").textContent = kind;
   document.querySelector("#imageSelectionLabel").textContent = label;
   positionSelectionLens(toolbar, target, frame, "above", [document.querySelector("#imageContextDock")]);
+  updateImageEditScope();
 }
 
 function fillImageRectangle(element) {
@@ -296,7 +372,7 @@ function openImageWorkflow(task, button) {
   }
 
   closeImageWorkflow(false, true);
-  closeImageAiPanel(true);
+  if (task === "crop") closeImageEditStudio(true);
   closeExport();
   imageTask = task;
   document.querySelectorAll("[data-image-workflow]").forEach((item) => item.classList.toggle("is-active", item === button));
@@ -324,6 +400,7 @@ function setImageMethod(method, button, silent = false) {
     contextTitle.textContent = imageTask === "crop" ? "Draw the crop boundary" : "Draw a freehand image region";
     contextDetail.textContent = imageTask === "crop" ? "Closed mask · review before applying" : "Irregular mask · Ask · Composer · AI edit";
     selectionScope.textContent = imageTask === "crop" ? "Waiting for freehand crop" : "Waiting for freehand selection";
+    updateImageEditScope();
     if (!silent) showToast("Rectangle removed · draw a freehand region");
     return;
   }
@@ -336,6 +413,7 @@ function setImageMethod(method, button, silent = false) {
     contextTitle.textContent = "Crop the whole image or resize the frame";
     contextDetail.textContent = "Eight handles · original protected";
     selectionScope.textContent = "Full-image crop rectangle";
+    updateImageEditScope();
     if (!silent) showToast("Full-image crop selected · drag any edge to refine it");
     return;
   }
@@ -348,6 +426,7 @@ function setImageMethod(method, button, silent = false) {
     contextTitle.textContent = "I can see the rectangular image selection";
     contextDetail.textContent = "Pixels · coordinates · visible text inside selection";
     selectionScope.textContent = "Whole image · resizable rectangle";
+    updateImageEditScope();
     if (!silent) showToast("Whole image selected · drag the rectangle to refine it");
     return;
   }
@@ -454,77 +533,145 @@ function rotateImage(direction) {
   showToast(`Rotated ${direction} 90° · original remains protected`);
 }
 
-function closeImageAiPanel(silent = false) {
-  const panel = document.querySelector("#imageAiPanel");
-  const trigger = document.querySelector("[data-image-ai-toggle]");
-  const wasOpen = !panel.hidden;
-  window.clearTimeout(imageAiTimer);
-  panel.classList.remove("is-entering");
-  trigger.classList.remove("is-active");
-  trigger.setAttribute("aria-expanded", "false");
-  const skipMotion = silent || !wasOpen || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (skipMotion) {
-    panel.hidden = true;
-    panel.classList.remove("is-leaving");
-    return;
-  }
-  panel.classList.add("is-leaving");
-  imageAiTimer = window.setTimeout(() => {
-    if (!panel.classList.contains("is-leaving")) return;
-    panel.hidden = true;
-    panel.classList.remove("is-leaving");
-  }, 120);
+function currentImageEditScope() {
+  if (imageTask !== "select") return "Whole image";
+  if (imageScope === "lasso" && lassoSelections.image) return "Freehand selection";
+  if (imageScope === "lasso") return "Waiting for freehand selection";
+  return document.querySelector("#imageSelectionLabel").textContent || "Rectangle selection";
 }
 
-function toggleImageAiPanel(button) {
-  const panel = document.querySelector("#imageAiPanel");
-  if (!panel.hidden) {
-    closeImageAiPanel();
-    return;
+function updateImageEditScope() {
+  if (imageEditStudio.hidden) return;
+  const scope = currentImageEditScope();
+  document.querySelector("#imageEditScope").textContent = scope;
+  promptFile.textContent = `${surfaces.image.name} · ${scope}`;
+}
+
+function resetImageEditPreview() {
+  imageFrame.removeAttribute("data-ai-preview");
+  imageFrame.removeAttribute("data-ai-variation");
+  imageEditCandidates.hidden = true;
+  document.querySelector("#imageCandidateGrid").innerHTML = "";
+  if (pendingCandidateAction.startsWith("image-edit:")) {
+    candidateReview.hidden = true;
+    pendingCandidateAction = "";
   }
+}
+
+function selectImageEditPreset(button, focusPrompt = false) {
+  const config = imageEditCatalog[imageEditCategory];
+  const preset = config.presets.find(([name]) => name === button.dataset.imageEditPreset);
+  if (!preset) return;
+  imageEditPreset = preset;
+  imageEditPresets.querySelectorAll("[data-image-edit-preset]").forEach((item) => item.classList.toggle("is-active", item === button));
+  promptInput.value = preset[3];
+  promptInput.placeholder = `Describe the ${preset[0].toLowerCase()} direction…`;
+  resetImageEditPreview();
+  if (focusPrompt && preset[3].endsWith(" ")) promptInput.focus();
+}
+
+function renderImageEditCategory(category, preferredPreset = "") {
+  const config = imageEditCatalog[category] || imageEditCatalog.restyle;
+  imageEditCategory = imageEditCatalog[category] ? category : "restyle";
+  document.querySelectorAll("[data-image-edit-category]").forEach((button) => button.classList.toggle("is-active", button.dataset.imageEditCategory === imageEditCategory));
+  document.querySelector("#imageEditCategoryTitle").textContent = config.title;
+  document.querySelector("#imageEditCategoryDetail").textContent = config.detail;
+  document.querySelector("#imageEditPresetCount").textContent = `${config.presets.length} presets`;
+  imageEditPresets.innerHTML = config.presets.map(([name, detail, look]) => `
+    <button class="image-edit-preset" data-image-edit-preset="${name}">
+      <span class="image-edit-preset-preview" data-look="${look}"><img src="${imageSourcePath}" alt="" /></span>
+      <span><strong>${name}</strong><small>${detail}</small></span>
+    </button>
+  `).join("");
+  const buttons = [...imageEditPresets.querySelectorAll("[data-image-edit-preset]")];
+  const preferred = buttons.find((button) => button.dataset.imageEditPreset === preferredPreset) || buttons[0];
+  selectImageEditPreset(preferred);
+}
+
+function openImageEditStudio(category = "restyle", preferredPreset = "") {
   if (imageTask === "crop") closeImageWorkflow(false, true);
   closeExport();
-  window.clearTimeout(imageAiTimer);
-  panel.hidden = false;
-  panel.classList.remove("is-leaving");
-  button.classList.add("is-active");
-  button.setAttribute("aria-expanded", "true");
-  window.requestAnimationFrame(() => panel.classList.add("is-entering"));
+  defaultIntelligenceContent.hidden = true;
+  imageEditStudio.hidden = false;
+  intelligencePanel.classList.add("is-image-editing");
+  const trigger = document.querySelector(".image-ai-trigger");
+  trigger.classList.add("is-active");
+  trigger.setAttribute("aria-expanded", "true");
+  document.querySelector("#sendPromptLabel").hidden = false;
+  document.querySelector("#promptModeLabel").textContent = "4 candidates · save as new version";
+  renderImageEditCategory(category, preferredPreset);
+  updateImageEditScope();
 }
 
-function hasImageEditSelection() {
-  if (imageTask !== "select") return false;
-  if (imageScope === "lasso") return Boolean(lassoSelections.image);
-  return !document.querySelector("#imageRegionSelection").hidden;
+function closeImageEditStudio(silent = false) {
+  if (imageEditStudio.hidden) return;
+  imageEditStudio.hidden = true;
+  defaultIntelligenceContent.hidden = false;
+  intelligencePanel.classList.remove("is-image-editing");
+  const trigger = document.querySelector(".image-ai-trigger");
+  trigger.classList.remove("is-active");
+  trigger.setAttribute("aria-expanded", "false");
+  document.querySelector("#sendPromptLabel").hidden = true;
+  document.querySelector("#promptModeLabel").textContent = "Source stays unchanged until accepted";
+  promptFile.textContent = surfaces[currentSurface].name;
+  promptInput.value = "";
+  promptInput.placeholder = surfaces[currentSurface].placeholder;
+  resetImageEditPreview();
+  if (!silent) showToast("AI image editor closed · source unchanged");
 }
 
-function requestImageEditSelection(action) {
-  const selectButton = document.querySelector('[data-image-workflow="select"]');
-  if (imageTask !== "select") openImageWorkflow("select", selectButton);
-  closeImageAiPanel();
-  const label = action === "cleanup" ? "Clean up" : "Replace";
-  showToast(`${label} needs a region · refine Rectangle or choose Freehand`);
+function toggleImageEditReference(button) {
+  const attached = button.getAttribute("aria-pressed") !== "true";
+  button.setAttribute("aria-pressed", String(attached));
+  button.querySelector("use").setAttribute("href", attached ? "#i-check" : "#i-plus");
+  const label = button.querySelector("strong").textContent;
+  button.querySelector("small").textContent = attached ? "Reference attached" : ({ Style: "Color · texture", Subject: "Identity · product", Composition: "Layout · depth" })[label];
+  showToast(`${label} reference ${attached ? "attached" : "removed"}`);
 }
 
-function handleImageAiQuick(action) {
-  if ((action === "cleanup" || action === "replace") && !hasImageEditSelection()) {
-    requestImageEditSelection(action);
-    return;
-  }
-  if (action === "replace") {
-    promptInput.value = "Replace the selected area with ";
+function toggleImagePreserve(button) {
+  const active = button.getAttribute("aria-pressed") !== "true";
+  button.setAttribute("aria-pressed", String(active));
+  button.classList.toggle("is-active", active);
+}
+
+function updateImageEditStrength() {
+  const value = Number(document.querySelector("#imageEditStrength").value);
+  const level = value < 40 ? "subtle" : value < 76 ? "balanced" : "strong";
+  document.querySelector("#imageEditStrengthLabel").textContent = `${value}% · ${level}`;
+}
+
+function selectImageEditCandidate(button) {
+  imageEditVariation = Number(button.dataset.imageEditCandidate);
+  document.querySelectorAll("[data-image-edit-candidate]").forEach((item) => item.classList.toggle("is-active", item === button));
+  imageFrame.dataset.aiPreview = imageEditPreset[2];
+  imageFrame.dataset.aiVariation = String(imageEditVariation);
+  showCandidate(
+    `image-edit:${imageEditPreset[0]}`,
+    `${imageEditPreset[0]} · variation ${imageEditVariation}`,
+    `Previewing a protected ${currentImageEditScope().toLowerCase()} edit · accept saves a new version`,
+  );
+}
+
+function generateImageEditCandidates() {
+  if (!imageEditPreset) return;
+  const prompt = promptInput.value.trim() || imageEditPreset[3].trim();
+  if (!prompt) {
     promptInput.focus();
-    showToast("Describe the replacement in Composer");
-    closeImageAiPanel();
+    showToast("Describe the edit before generating");
     return;
   }
-  const actionMap = {
-    cleanup: "cleanup-image-selection",
-    "remove-background": "remove-background",
-    expand: "extend-image",
-  };
-  handleAiAction(actionMap[action]);
-  closeImageAiPanel();
+  const grid = document.querySelector("#imageCandidateGrid");
+  grid.innerHTML = [1, 2, 3, 4].map((variation) => `
+    <button class="image-candidate" data-image-edit-candidate="${variation}" data-look="${imageEditPreset[2]}">
+      <img src="${imageSourcePath}" alt="${imageEditPreset[0]} variation ${variation}" />
+      <span>V${variation}</span>
+    </button>
+  `).join("");
+  imageEditCandidates.hidden = false;
+  selectImageEditCandidate(grid.querySelector("[data-image-edit-candidate]"));
+  imageEditCandidates.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  showToast("4 protected candidates generated in the prototype");
 }
 
 function resetCrop(silent = false) {
@@ -564,6 +711,7 @@ function closeImageWorkflow(commit, silent = false) {
   contextTitle.textContent = "I can see this image";
   contextDetail.textContent = "Pixels · dimensions · visible text";
   selectionScope.textContent = "Whole image";
+  updateImageEditScope();
   if (!wasOpen) return;
   if (commit && closingTask === "crop") {
     setDirty(`${imageScope === "lasso" ? "Freehand" : "Rectangle"} crop applied to a new image version · not saved`);
@@ -712,6 +860,7 @@ function completeImageLasso(selection) {
   contextTitle.textContent = imageTask === "crop" ? "Freehand crop ready" : "I can see the freehand image selection";
   contextDetail.textContent = "Normalized mask · source pixels · OCR · original path";
   selectionScope.textContent = `${kind} · 1 region`;
+  updateImageEditScope();
   showToast(imageTask === "crop" ? "Freehand crop ready · review or apply" : "Selection ready for Ask, Add to Composer, or AI edit");
 }
 
@@ -1168,6 +1317,19 @@ function handleAiAction(action) {
 function completeCandidate(action) {
   const accepted = action === "accept";
   candidateReview.hidden = true;
+  if (pendingCandidateAction.startsWith("image-edit:")) {
+    if (accepted) {
+      setClean(`${imageEditPreset?.[0] || "AI edit"} accepted · saved as a new image version`);
+      imageEditCandidates.hidden = true;
+      showToast("AI edit accepted · source preserved as version history");
+    } else {
+      resetImageEditPreview();
+      setClean("Original protected · Save as new version");
+      showToast("Original restored · generated candidates discarded");
+    }
+    pendingCandidateAction = "";
+    return;
+  }
   if (accepted) setClean("Suggestion accepted · saved in prototype state");
   showToast(accepted ? "Suggestion accepted" : "Suggestion restored; source unchanged");
   pendingCandidateAction = "";
@@ -1192,15 +1354,53 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const imageAiToggle = event.target.closest("[data-image-ai-toggle]");
-  if (imageAiToggle) {
-    toggleImageAiPanel(imageAiToggle);
+  const imageEditorOpen = event.target.closest("[data-image-editor-open]");
+  if (imageEditorOpen) {
+    const isDockTrigger = imageEditorOpen.classList.contains("image-ai-trigger");
+    if (isDockTrigger && !imageEditStudio.hidden) closeImageEditStudio();
+    else openImageEditStudio(imageEditorOpen.dataset.imageEditorOpen, imageEditorOpen.dataset.imageEditorPreset || "");
     return;
   }
 
-  const imageAiAction = event.target.closest("[data-image-ai-action]");
-  if (imageAiAction) {
-    handleImageAiQuick(imageAiAction.dataset.imageAiAction);
+  const imageEditorClose = event.target.closest("[data-image-editor-close]");
+  if (imageEditorClose) {
+    closeImageEditStudio();
+    return;
+  }
+
+  const imageEditCategoryButton = event.target.closest("[data-image-edit-category]");
+  if (imageEditCategoryButton) {
+    renderImageEditCategory(imageEditCategoryButton.dataset.imageEditCategory);
+    return;
+  }
+
+  const imageEditPresetButton = event.target.closest("[data-image-edit-preset]");
+  if (imageEditPresetButton) {
+    selectImageEditPreset(imageEditPresetButton, true);
+    return;
+  }
+
+  const imageEditReference = event.target.closest("[data-image-edit-reference]");
+  if (imageEditReference) {
+    toggleImageEditReference(imageEditReference);
+    return;
+  }
+
+  const imagePreserve = event.target.closest("[data-image-preserve]");
+  if (imagePreserve) {
+    toggleImagePreserve(imagePreserve);
+    return;
+  }
+
+  const imageEditorGenerate = event.target.closest("[data-image-editor-generate]");
+  if (imageEditorGenerate) {
+    generateImageEditCandidates();
+    return;
+  }
+
+  const imageEditCandidate = event.target.closest("[data-image-edit-candidate]");
+  if (imageEditCandidate) {
+    selectImageEditCandidate(imageEditCandidate);
     return;
   }
 
@@ -1420,7 +1620,8 @@ document.addEventListener("click", (event) => {
   if (candidateAction) {
     const action = candidateAction.dataset.candidate;
     if (action === "retry") {
-      showToast("Generating another suggestion…");
+      if (pendingCandidateAction.startsWith("image-edit:")) generateImageEditCandidates();
+      else showToast("Generating another suggestion…");
       return;
     }
     completeCandidate(action);
@@ -1432,6 +1633,7 @@ document.addEventListener("click", (event) => {
 document.querySelector("#exportQuality").addEventListener("input", updateExportEstimate);
 document.querySelector("#exportWidth").addEventListener("input", updateExportEstimate);
 document.querySelector("#exportHeight").addEventListener("input", updateExportEstimate);
+document.querySelector("#imageEditStrength").addEventListener("input", updateImageEditStrength);
 
 document.querySelector("#imageLassoLayer").addEventListener("pointerdown", (event) => beginLasso(event, "image"));
 document.querySelector("#pdfLassoLayer").addEventListener("pointerdown", (event) => beginLasso(event, "pdf"));
@@ -1547,6 +1749,10 @@ codeEditor.addEventListener("keydown", (event) => {
 });
 
 document.querySelector("#sendPrompt").addEventListener("click", () => {
+  if (!imageEditStudio.hidden) {
+    generateImageEditCandidates();
+    return;
+  }
   const prompt = promptInput.value.trim();
   if (!prompt) {
     promptInput.focus();

@@ -52,11 +52,15 @@ Design-only successor to the rejected six-surface prototype in
    sense.
 9. Keep Select, Crop, Export, rotation, Ask, AI edit, Add, and zoom anchored to
    one compact, content-width dock. Rectangle / Freehand appear inline only
-   while Select or Crop is active. AI edit similarly expands four deliberate
-   shortcuts (`Clean up / Replace / Remove BG / Expand`) inside the dock;
-   selection-dependent edits request Rectangle or Freehand first. Export is the
-   only dock-owned sheet that floats upward, and rotation never hides inside
-   Crop.
+   while Select or Crop is active. AI edit is a single entry point: it opens a
+   dedicated Intelligence workspace rather than expanding a preset wall inside
+   the dock. That workspace groups intent as
+   `Quick / Restyle / Light / Material / Compose`, gives reference images typed
+   roles (`Style / Subject / Composition`), exposes Identity / Layout / Text /
+   Unselected preservation plus creative strength, and returns four comparable
+   candidates. Accept always saves a new version; Restore returns to the
+   protected source. Export is the only dock-owned sheet that floats upward,
+   and rotation never hides inside Crop.
 10. Make PDF scope explicit (`All pages / This page / Text / Lasso`). The lasso
     carries file identity, page, normalized point mask, bounds, selected text or
     OCR, and source revision into Composer. Code text selection immediately

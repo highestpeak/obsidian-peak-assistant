@@ -34,7 +34,7 @@ assert.match(html, /id="imageMethodPanel"[^>]+hidden[\s\S]+data-image-method="re
 assert.match(html, /class="image-dock-primary"[\s\S]+data-image-workflow="crop"[\s\S]+id="imageMethodPanel"[\s\S]+class="toolbar-divider"/, "The method panel must live inline after the active image task, before the next primary group");
 assert.doesNotMatch(html, /image-method-title|imageMethodTitle|imageMethodDetail/, "The rejected second-row method summary must not return");
 assert.doesNotMatch(html, /data-image-method="whole"|data-image-scope=/, "Whole must not return as a selection method or persistent scope segment");
-assert.match(html, /id="imageSelectionToolbar"[^>]+hidden[\s\S]+data-ai-action="describe-image-region"[\s\S]+data-add-composer="image"[\s\S]+data-ai-action="remove-object"[\s\S]+data-image-selection-action="clear"/, "Image selection lens must expose Ask, Add, contextual AI edit, and Clear together");
+assert.match(html, /id="imageSelectionToolbar"[^>]+hidden[\s\S]+data-ai-action="describe-image-region"[\s\S]+data-add-composer="image"[\s\S]+data-image-editor-open="quick" data-image-editor-preset="Replace"[\s\S]+data-image-selection-action="clear"/, "Image selection lens must expose Ask, Add, contextual AI edit, and Clear together");
 assert.doesNotMatch(html, /data-image-scope="object"|id="imageObjectSelection"|id="imageSelectPopover"/, "Object detect and the old Select popover must not return");
 assert.match(html, /id="imageRegionSelection"[^>]+hidden/, "Resizable rectangular image selection missing");
 assert.equal((html.match(/data-region-handle=/g) || []).length, 8, "Rectangle selection needs eight handles");
@@ -51,7 +51,13 @@ assert.match(html, /id="exportEstimate"/, "Live export estimate missing");
 assert.match(html, /id="exportWidth"/, "Optional export dimensions missing");
 assert.match(html, /id="imageContextDock"[\s\S]+class="dock-zoom"[\s\S]+id="imageExportSheet"/, "Image zoom and Export must remain inside the originating dock");
 assert.match(html, /data-add-composer="image" data-context-scope="all"[^>]+aria-label="Add whole image to Composer"[^>]*>[\s\S]*?#i-plus[\s\S]*?<span>Composer<\/span>/, "Primary Composer handoff must remain explicit without the long overflowing label");
-assert.match(html, /data-image-ai-toggle[^>]+aria-expanded="false"[\s\S]+id="imageAiPanel"[^>]+hidden[\s\S]+data-image-ai-action="cleanup"[\s\S]+data-image-ai-action="replace"[\s\S]+data-image-ai-action="remove-background"[\s\S]+data-image-ai-action="expand"/, "AI edit must expose the four researched shortcuts inline");
+assert.match(html, /class="image-ai-trigger" data-image-editor-open="restyle" aria-expanded="false"/, "AI edit needs one restrained dock entry point");
+assert.doesNotMatch(html, /id="imageAiPanel"|data-image-ai-action|data-image-ai-toggle/, "Generative presets must not crowd the primary image dock");
+assert.doesNotMatch(css, /\.image-ai-panel/, "Retired inline AI preset panel styles must not return");
+assert.match(html, /id="imageEditStudio"[^>]+hidden[\s\S]+data-image-edit-category="quick"[\s\S]+data-image-edit-category="restyle"[\s\S]+data-image-edit-category="light"[\s\S]+data-image-edit-category="material"[\s\S]+data-image-edit-category="compose"/, "AI image editor category architecture missing");
+assert.match(html, /data-image-edit-reference="style"[\s\S]+data-image-edit-reference="subject"[\s\S]+data-image-edit-reference="composition"/, "AI image references must have explicit roles");
+assert.match(html, /data-image-preserve="identity"[\s\S]+data-image-preserve="layout"[\s\S]+data-image-preserve="text"[\s\S]+data-image-preserve="unselected"/, "AI image preservation controls missing");
+assert.match(html, /id="imageEditStrength"[^>]+type="range"[\s\S]+id="imageEditCandidates"[^>]+hidden[\s\S]+id="imageCandidateGrid"/, "AI image strength and candidate review surface missing");
 assert.doesNotMatch(html, /class="image-zoom"/, "Detached image zoom controls must not return");
 assert.doesNotMatch(html, /data-image-tool="resize"/, "Resize must not return as a primary image tool");
 assert.doesNotMatch(html, /data-image-tool="compress"/, "Opaque one-click Compress must not return");
@@ -129,18 +135,27 @@ assert.match(css, /\.lasso-mask\{[^}]*fill-rule:nonzero[^}]*stroke:none[^}]*filt
 assert.match(css, /\.image-context-toolbar \.image-export-sheet\{position:absolute/, "Export must be anchored to the image dock");
 assert.match(css, /\.image-context-toolbar\{box-sizing:border-box;width:max-content;max-width:calc\(100% - 20px\)[^}]+\}/, "Image dock must use content width while staying bounded by the image frame");
 assert.match(css, /\.image-dock-primary\{width:max-content;max-width:100%;min-width:0[^}]+justify-content:flex-start/, "Primary image tools must remove the forced full-width blank area");
-assert.match(css, /\.image-method-panel,\.image-ai-panel\{[^}]+flex:0 0 auto[^}]+max-width:0[^}]+overflow:hidden/, "Method and AI controls must expand inline instead of floating above the dock");
+assert.match(css, /\.image-method-panel\{[^}]+flex:0 0 auto[^}]+max-width:0[^}]+overflow:hidden/, "Selection and Crop methods must expand inline instead of floating above the dock");
 assert.match(css, /\.image-method-panel\[data-task="crop"\]\{--inline-panel-width:340px\}/, "Crop commit controls need enough inline reveal width");
-assert.match(css, /\.image-method-panel\.is-entering,\.image-ai-panel\.is-entering\{animation:dock-inline-reveal 170ms/, "Inline controls need a restrained expansion animation");
+assert.match(css, /\.image-method-panel\.is-entering\{animation:dock-inline-reveal 170ms/, "Inline controls need a restrained expansion animation");
 assert.match(css, /@keyframes dock-inline-reveal\{from\{max-width:0;opacity:0;transform:scaleX\(\.94\)\}to\{max-width:var\(--inline-panel-width\)/, "Dock controls must grow horizontally from their trigger");
-assert.match(css, /\.image-method-panel\.is-leaving,\.image-ai-panel\.is-leaving\{pointer-events:none;animation:dock-inline-dismiss 120ms/, "Inline controls need a short non-interactive collapse animation");
+assert.match(css, /\.image-method-panel\.is-leaving\{pointer-events:none;animation:dock-inline-dismiss 120ms/, "Inline controls need a short non-interactive collapse animation");
+assert.match(css, /\.image-edit-studio\{[^}]+animation:lens-reveal/, "Dedicated AI image editor needs a restrained entrance");
+assert.match(css, /\.image-edit-presets\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/, "AI image presets need a compact two-column visual gallery");
+assert.match(css, /\.image-reference-slots\{display:grid;grid-template-columns:repeat\(3,1fr\)/, "Reference roles need a compact three-slot layout");
+assert.match(css, /\.image-candidate-grid\{display:grid;grid-template-columns:repeat\(2,1fr\)/, "Generated directions need a comparable candidate grid");
+assert.match(css, /\.image-frame\[data-ai-preview="editorial"\]>img/, "Chosen AI candidate must preview on the source surface");
 assert.doesNotMatch(css, /\.image-scope-switch|\.crop-studio/, "The rejected persistent scope group and Crop-only panel must not remain");
 assert.doesNotMatch(css, /\.crop-mode-switch|\.crop-presets|\.crop-angle|\.crop-rectangle-controls/, "Retired nested Crop hierarchy must not remain in CSS");
 assert.doesNotMatch(css, /\.image-context-toolbar:has\(/, "Opening Crop must not resize or move the image dock");
 assert.match(readme, /stable dock has two explicit tasks: Select and\s+Crop/i, "README must record the Select / Crop task hierarchy");
-assert.match(readme, /Clean up \/ Replace \/ Remove BG \/ Expand/, "README must record the researched quick AI set");
-assert.match(js, /function handleImageAiQuick[\s\S]+cleanup-image-selection[\s\S]+remove-background[\s\S]+extend-image/, "Quick image AI actions must route to explicit reviewable candidates");
-assert.match(js, /promptInput\.value = "Replace the selected area with ";[\s\S]+promptInput\.focus\(\)/, "Replace must request a prompt in Composer instead of guessing");
+assert.match(readme, /Quick \/ Restyle \/ Light \/ Material \/ Compose/, "README must record the generative AI edit architecture");
+assert.match(readme, /Style \/ Subject \/ Composition/, "README must record typed image references");
+assert.match(js, /const imageEditCatalog = \{[\s\S]+quick:[\s\S]+restyle:[\s\S]+light:[\s\S]+material:[\s\S]+compose:/, "Generative image edit catalog missing");
+assert.match(js, /function openImageEditStudio[\s\S]+function renderImageEditCategory|function renderImageEditCategory[\s\S]+function openImageEditStudio/, "AI image editor open and render handlers missing");
+assert.match(js, /function generateImageEditCandidates[\s\S]+\[1, 2, 3, 4\]/, "AI image editor must generate four review directions");
+assert.match(js, /function selectImageEditCandidate[\s\S]+showCandidate\([\s\S]+save as new version/i, "AI image candidates must enter protected source review");
+assert.match(js, /function toggleImageEditReference[\s\S]+function toggleImagePreserve[\s\S]+function updateImageEditStrength/, "AI image references, preservation, and strength handlers missing");
 assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text selection must open contextual actions");
 
 const officialSources = [
@@ -151,6 +166,12 @@ const officialSources = [
   "support.google.com/photos",
   "support.apple.com",
   "canva.com/features/ai-photo-editing",
+  "helpx.adobe.com/ca/firefly/web/work-with-images/generate-images/reference-images-for-styling",
+  "helpx.adobe.com/firefly/web/work-with-images/generate-images/match-image-composition-to-reference-image",
+  "docs.midjourney.com/hc/en-us/articles/32764383466893-Editor",
+  "canva.com/newsroom/news/magic-studio",
+  "blog.google/products-and-platforms/products/gemini/updated-image-editing-model",
+  "support.google.com/photos/answer/16763021",
   "help.openai.com/en/articles/11084440-images-in-chatgpt",
   "photoroom.com/tools",
   "code.visualstudio.com/docs/languages/html",
