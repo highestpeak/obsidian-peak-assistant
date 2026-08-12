@@ -11,14 +11,17 @@ This is a design-only, standalone `file://` prototype for owner review.
 - Relations arrive in later batches. The Agent can therefore place disconnected nodes first, ground only the supported subset, and remove a transient orphan without ever adding it to the semantic diff.
 - Additions appear immediately; removals remain recoverable tombstones until the run is accepted.
 - The graph stays primary and uses the full workspace by default. Agent operations live in an optional Activity drawer opened from the top bar; there is no dedicated Review rail or Added / Changed / Removed dashboard.
-- The complete graph restores the five original AI Graph content lenses without restoring the legacy React Flow renderer: `Topology`, `Thinking Tree`, `Bridges`, `Timeline`, and `Gaps` now render through the shared Cytoscape canvas.
+- One AI generation run produces a five-graph package, not one Topology graph followed by post-generation filters. `Topology`, `Thinking Tree`, `Bridges`, `Timeline`, and `Gaps` are independent graph outputs with their own nodes, relations, validation state, and layout capability; they share one frozen source set, RunEnvelope, version candidate, and acceptance boundary.
+- The five outputs remain available as lightweight tabs while the run is active. Each tab shows its own generation percentage or ready state. Switching views preserves the current operation index and run mode—it never skips to Review, stops the other generators, or silently marks the package complete.
+- Topology retains the detailed node/relation mutation animation. The other active graph outputs render against fixed Cytoscape coordinates while a generation front advances over a faint pending graph, so background generation is observable without rerunning layout or making the canvas jump. Flow views advance left to right; Constellation uses a center-out pending field.
+- The complete five-graph package restores the original AI Graph content views without restoring the legacy React Flow renderer: every output renders through the shared Cytoscape canvas.
 - Lens and layout are separate concepts, but a lens exposes only layouts that preserve its meaning. `Topology` offers `Constellation`, `Flow →`, and `Flow ↓`; `Thinking Tree` is a fixed horizontal `Flow →`; `Bridges` offers `Flow →` and `Constellation`; `Timeline` is a fixed horizontal `Flow →`; and `Gaps` uses a dedicated `Gap map`. Document-specific `Community`, `Folders`, and `Orbit` controls are deliberately absent because an AI Graph may contain arbitrary entity and concept nodes.
 - `Links` is renamed to `Flow`. A fixed layout appears as a compact status badge rather than a misleading one-option switcher.
 - Timeline keeps its semantic presentation instead of becoming a generic flowchart. Three chronological wrappers (`Foundation`, `Evidence`, and `Control`) follow the three Cytoscape chains. The previous independent decorative axis and ticks were removed: the real Cytoscape relation is now the only timeline line, so the wrapper, nodes, arrows, and dates cannot describe competing geometry.
 - Bridges is a semantic projection rather than an unexplained filtered subgraph. It shows three named source → bridge → destination paths, labels the middle concepts directly (`Retrieval`, `Global search`, and `Claim provenance`), and explains which knowledge domains each one connects.
 - Gaps no longer means “community view with faint dashed edges.” Its dedicated map shows three concrete structural-gap objects (`Missing bridge`, `Weak bridge`, and `Latent connection`) between named knowledge areas, with score and evidence status. A gap is therefore visible as a meaningful missing or fragile relationship, not as empty canvas space.
-- The lens projections are not five copies of the same edge set: Thinking Tree keeps a derivation hierarchy, Bridges exposes cross-domain concepts, Timeline creates dated evolution chains, and Gaps renders explicit diagnostic objects. Choosing a lens during replay opens the complete proposal for direct comparison; the incremental run can still be replayed.
-- A completed run leaves the final graph visible. `Accept new version` is the only action that advances `v12` to `v13`; `Pause`, `Continue`, `Stop`, `Skip to final graph`, `Discard`, and `Replay` expose the minimum control and recovery model.
+- The five outputs are not copies of the same edge set: Thinking Tree keeps a derivation hierarchy, Bridges exposes cross-domain concepts, Timeline creates dated evolution chains, and Gaps renders explicit diagnostic objects. Lens tabs are the navigation surface for these generated graphs; they are not generic layout filters.
+- A completed run leaves the selected graph visible while all five outputs remain switchable. `Accept new version` is the only action that advances the full package from `v12` to `v13`; `Pause`, `Continue`, `Stop`, `Skip to final package`, `Discard`, and `Replay` expose the minimum control and recovery model.
 - The graph is rendered through the production public `AtlasGraphCanvas` facade and therefore uses the shared Cytoscape stack. No React Flow dependency or consumer is introduced.
 - The Cytoscape base receives one stable `subgraph` reference for the entire replay. Agent changes are demonstrated in a transient working-overlay layer, so an operation cannot destroy the canvas, rerun the whole layout, or auto-fit the viewport.
 - Overlay relations share one calibrated canvas coordinate system. Paths terminate at the boundary of their source and target cards rather than at free-floating cursor coordinates; removal strokes trace the two existing relations attached to the original node.
@@ -39,6 +42,7 @@ Likely event families:
 ```text
 run.started
 source.inspected
+view.generation-started
 node.proposed
 node.updated
 node.removal-proposed
@@ -49,7 +53,10 @@ relation.removal-proposed
 validation.completed
 layout.requested
 layout.completed
+view.patch-applied
+view.ready
 diff.ready
+package.validated
 version.created
 ```
 

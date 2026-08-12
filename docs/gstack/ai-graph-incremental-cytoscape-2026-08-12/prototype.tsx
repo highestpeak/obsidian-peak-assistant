@@ -39,6 +39,7 @@ import type {
 type RunMode = 'idle' | 'running' | 'paused' | 'layouting' | 'review' | 'accepted';
 type PatchKind = 'inspect' | 'add-node' | 'focus' | 'add-relation' | 'update' | 'remove-relation' | 'remove-node' | 'validate' | 'auto-layout';
 type LensId = 'topology' | 'thinking-tree' | 'bridge' | 'timeline' | 'gap-analysis';
+type LensGenerationState = 'stable' | 'building' | 'ready' | 'refining';
 
 interface PatchEvent {
 	id: string;
@@ -150,16 +151,16 @@ const PATCHES: PatchEvent[] = [
 	{
 		id: 'validate-diff',
 		kind: 'validate',
-		title: 'Validated the working graph',
-		detail: 'All final endpoints resolve; transient nodes are excluded from the diff.',
-		object: 'diff ready · 20 changes',
+		title: 'Validated the five-view graph package',
+		detail: 'Topology, tree, bridges, timeline, and gaps resolve against the same frozen sources.',
+		object: '5 graphs · one run boundary',
 	},
 	{
 		id: 'auto-layout',
 		kind: 'auto-layout',
-		title: 'Agent chose Auto layout',
-		detail: 'All graph mutations are complete, so one intentional full refinement is safe.',
-		object: 'auto layout · 12 nodes',
+		title: 'Refined all generated views',
+		detail: 'All five graph outputs are complete, so each can perform one intentional final layout.',
+		object: '5 views · final refinement',
 	},
 ];
 
@@ -188,6 +189,28 @@ const RELATION_PATCH_DWELL_MS = 2200;
 const EDGE_DRAW_DURATION_MS = 1050;
 const EDGE_STAGGER_MS = 190;
 const NODE_CORNER_PATCH_KINDS = new Set<PatchKind>(['add-node', 'remove-node', 'focus']);
+const LENS_READY_STEPS: Record<LensId, number> = {
+	topology: 11,
+	'thinking-tree': 12,
+	bridge: 13,
+	timeline: 14,
+	'gap-analysis': 15,
+};
+
+function lensGenerationProgress(lensId: LensId, step: number, mode: RunMode): number {
+	if (mode === 'idle') return 100;
+	if (mode === 'layouting' || mode === 'review' || mode === 'accepted') return 100;
+	const readyAt = LENS_READY_STEPS[lensId];
+	if (step >= readyAt) return 100;
+	return Math.max(4, Math.round((Math.max(0, step) / readyAt) * 100));
+}
+
+function lensGenerationState(progress: number, mode: RunMode): LensGenerationState {
+	if (mode === 'idle') return 'stable';
+	if (mode === 'layouting') return 'refining';
+	if (progress >= 100) return 'ready';
+	return 'building';
+}
 
 const BASE_NODES: ResultSubgraphOutput['resultNodes'] = [
 	{ id: 'graphrag', path: 'AI Graph/Concepts/GraphRAG.md', title: 'GraphRAG', score: 1, communityId: 'core', folder: 'Concepts', preview: 'Root concept · accepted', incomingLinks: 2, outgoingLinks: 3 },
@@ -520,6 +543,57 @@ function GapBackdrop(): React.ReactElement {
 	);
 }
 
+interface LensProjectionCanvasProps {
+	lens: LensDefinition;
+	preset: AtlasGraphPreset;
+	progress?: number;
+	variant: 'stable' | 'live' | 'final';
+	onNodeTap: (nodeId: string) => void;
+}
+
+function LensProjectionCanvas({ lens, preset, progress = 100, variant, onNodeTap }: LensProjectionCanvasProps): React.ReactElement {
+	const generationState = variant === 'live' ? lensGenerationState(progress, 'running') : 'stable';
+	const projectionClass = `${lens.id === 'timeline' ? ' is-timeline-projection' : ''}${lens.id === 'bridge' && preset === 'flow-lr' ? ' is-bridge-projection' : ''}${lens.id === 'gap-analysis' ? ' is-gap-projection' : ''}`;
+	const summary = variant === 'live' ? `${progress}% · ${lens.summary}` : variant === 'stable' ? `v12 · ${lens.summary}` : lens.summary;
+	const radialGeneration = preset === 'constellation';
+	const style = {
+		'--aig-generation-progress': `${progress}%`,
+		'--aig-generation-radius': `${Math.max(10, Math.round(progress * .7))}%`,
+	} as React.CSSProperties;
+	return (
+		<div
+			className={`aig-graph-layer aig-graph-layer--${variant}${projectionClass}${variant === 'live' && progress < 100 ? ' is-building' : ''}`}
+			style={style}
+		>
+			{lens.id === 'timeline' && <TimelineBackdrop />}
+			{lens.id === 'bridge' && preset === 'flow-lr' && <BridgeBackdrop />}
+			{lens.id === 'gap-analysis' && <GapBackdrop />}
+			<AtlasGraphCanvas
+				subgraph={lens.subgraph}
+				preset={preset}
+				showSemantic
+				summary={summary}
+				emptyLabel="No graph objects"
+				buildingLabel={`Building ${lens.label}…`}
+				onNodeTap={(node) => onNodeTap(node.id)}
+			/>
+			{variant === 'live' && (
+				<>
+					<div className={`aig-projection-run-chip is-${generationState}`} role="status" aria-live="polite">
+						{generationState === 'ready' ? <Check aria-hidden /> : <span className="aig-projection-run-chip__pulse" />}
+						<span>
+							<strong>{generationState === 'ready' ? `${lens.label} draft ready` : `Generating ${lens.label} · ${progress}%`}</strong>
+							<small>{generationState === 'ready' ? 'This graph is ready; the same run continues building the other views.' : 'One run is building all 5 graphs · coordinates stay fixed while content appears.'}</small>
+						</span>
+					</div>
+					{progress < 100 && <div className={`aig-projection-pending-mask${radialGeneration ? ' is-radial' : ''}`} aria-hidden />}
+					{progress < 100 && !radialGeneration && <div className="aig-projection-front" aria-hidden><span /></div>}
+				</>
+			)}
+		</div>
+	);
+}
+
 interface WorkingOverlayProps {
 	hidden: boolean;
 	step: number;
@@ -722,13 +796,13 @@ function patchIcon(kind: PatchKind): React.ReactNode {
 	return <Search aria-hidden />;
 }
 
-function modeLabel(mode: RunMode): string {
-	if (mode === 'running') return 'Agent update in progress';
-	if (mode === 'paused') return 'Update paused';
-	if (mode === 'layouting') return 'Agent auto-layout in progress';
-	if (mode === 'review') return 'Graph update ready';
-	if (mode === 'accepted') return 'Version v13 created';
-	return 'Version v12 · ready';
+function modeLabel(mode: RunMode, readyViewCount: number): string {
+	if (mode === 'running') return `${readyViewCount}/5 graph views ready · generating`;
+	if (mode === 'paused') return `${readyViewCount}/5 graph views ready · paused`;
+	if (mode === 'layouting') return 'Refining 5 generated graph views';
+	if (mode === 'review') return '5 graph views ready for review';
+	if (mode === 'accepted') return 'Version v13 created · 5 graph views';
+	return 'Version v12 · 5 graph views';
 }
 
 function Prototype(): React.ReactElement {
@@ -752,6 +826,13 @@ function Prototype(): React.ReactElement {
 		.filter((layout): layout is (typeof LAYOUT_OPTIONS)[number] => Boolean(layout));
 	const activeLayoutLabel = activeLens.fixedViewLabel ?? activeLayout.label;
 	const visibleStep = refined ? PATCHES.length : patchIndex + 1;
+	const lensProgressById = Object.fromEntries(LENSES.map((lens) => [
+		lens.id,
+		lensGenerationProgress(lens.id, visibleStep, mode),
+	])) as Record<LensId, number>;
+	const activeLensProgress = lensProgressById[activeLens.id];
+	const readyViewCount = LENSES.filter((lens) => lensProgressById[lens.id] >= 100).length;
+	const liveRun = mode === 'running' || mode === 'paused';
 	const activePatch = patchIndex >= 0 ? PATCHES[Math.min(patchIndex, PATCHES.length - 1)] : null;
 	const anchorAgentToNodeCorner = activePatch ? NODE_CORNER_PATCH_KINDS.has(activePatch.kind) : false;
 	const cursor = CURSOR_POINTS[Math.max(0, Math.min(patchIndex, CURSOR_POINTS.length - 1))] ?? CURSOR_POINTS[0];
@@ -830,27 +911,15 @@ function Prototype(): React.ReactElement {
 		setActivityOpen(false);
 	};
 
-	const showCompleteGraph = (): void => {
-		if (refined) return;
-		if (initialRunTimerRef.current !== null) {
-			window.clearTimeout(initialRunTimerRef.current);
-			initialRunTimerRef.current = null;
-		}
-		setPatchIndex(PATCHES.length - 1);
-		setMode('review');
-	};
-
 	const selectLens = (lensId: LensId): void => {
 		setActiveLensId(lensId);
 		setLayoutOverride(null);
 		setSelectedNode(null);
-		showCompleteGraph();
 	};
 
 	const selectLayout = (preset: AtlasGraphPreset): void => {
 		setLayoutOverride(preset);
 		setSelectedNode(null);
-		showCompleteGraph();
 	};
 
 	const moveLayoutFocus = (event: React.KeyboardEvent<HTMLButtonElement>): void => {
@@ -886,7 +955,7 @@ function Prototype(): React.ReactElement {
 				</div>
 				<div className={`aig-status aig-status--${mode}`}>
 					<span className="aig-status__dot" />
-					{modeLabel(mode)}
+					{modeLabel(mode, readyViewCount)}
 				</div>
 				<div className="aig-actions">
 					<button className="aig-btn aig-btn--ghost" type="button"><History aria-hidden /> History</button>
@@ -903,10 +972,11 @@ function Prototype(): React.ReactElement {
 				<div className="aig-instruction__icon"><Sparkles aria-hidden /></div>
 				<div className="aig-instruction__copy">
 					<span className="aig-instruction__label">Update instruction</span>
-					<span>Broaden the evidence, evaluation, and control model. Keep uncertain concepts disconnected until grounded; remove unsupported candidates.</span>
+					<span>Generate Topology, Thinking Tree, Bridges, Timeline, and Gaps from the same evidence set. Keep uncertain concepts disconnected until grounded.</span>
 				</div>
 				<div className="aig-context-chip">v12 frozen base</div>
 				<div className="aig-context-chip">11 sources</div>
+				<div className="aig-context-chip">5 graph views</div>
 			</section>
 
 			<main className={`aig-workspace${activityOpen ? ' is-activity-open' : ''}`}>
@@ -925,17 +995,28 @@ function Prototype(): React.ReactElement {
 								>
 									<LensGlyph id={lens.id} />
 									{lens.label}
+									{mode !== 'idle' && (
+										<span
+											className={`aig-lens-run-state is-${lensGenerationState(lensProgressById[lens.id], mode)}`}
+											aria-label={`${lens.label} ${lensProgressById[lens.id]} percent generated`}
+										>
+											{lensProgressById[lens.id] >= 100 ? <Check aria-hidden /> : lensProgressById[lens.id]}
+										</span>
+									)}
 								</button>
 							))}
 						</div>
 						<div className="aig-canvas-toolbar__end">
-							{!refined && (
+							{!refined && activeLens.id === 'topology' && (
 								<div className="aig-live-legend">
 									<span className="aig-spatial-lock">{focusOverflow ? <><LocateFixed aria-hidden /> Following newest</> : <><ShieldCheck aria-hidden /> Spatial lock</>}</span>
 									<span><i className="is-existing" /> Existing</span>
 									<span><i className="is-added" /> Added</span>
 									<span><i className="is-removed" /> Removal</span>
 								</div>
+							)}
+							{liveRun && activeLens.id !== 'topology' && (
+								<div className="aig-active-projection-status"><Workflow aria-hidden /><span>{activeLensProgress}% generated</span></div>
 							)}
 							{availableLayouts.length > 1 ? (
 								<div className="aig-layout-switcher">
@@ -969,40 +1050,42 @@ function Prototype(): React.ReactElement {
 						</div>
 					</div>
 					<div className={`aig-canvas aig-canvas--${mode}`}>
-						<div className={`aig-working-scene${focusOverflow ? ' is-focus-overflow' : ''}${refined ? ' is-refined-away' : ''}`}>
-							<div className="aig-graph-layer aig-graph-layer--working">
-								<AtlasGraphCanvas
-									subgraph={STABLE_SUBGRAPH}
-									preset="flow-lr"
-									showSemantic
-									summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
-									emptyLabel="No graph objects"
-									buildingLabel="Preparing Cytoscape canvas…"
-									onNodeTap={(node) => setSelectedNode(node.id)}
-								/>
-							</div>
-							<WorkingOverlay hidden={false} step={visibleStep} />
-						</div>
-						{refined && (
-							<div
-								key={`${activeLens.id}:${effectivePreset}`}
-								className={`aig-graph-layer aig-graph-layer--refined${activeLens.id === 'timeline' ? ' is-timeline-projection' : ''}${activeLens.id === 'bridge' && effectivePreset === 'flow-lr' ? ' is-bridge-projection' : ''}${activeLens.id === 'gap-analysis' ? ' is-gap-projection' : ''}`}
-							>
-								{activeLens.id === 'timeline' && <TimelineBackdrop />}
-								{activeLens.id === 'bridge' && effectivePreset === 'flow-lr' && <BridgeBackdrop />}
-								{activeLens.id === 'gap-analysis' && <GapBackdrop />}
-								<AtlasGraphCanvas
-									subgraph={activeLens.subgraph}
-									preset={effectivePreset}
-									showSemantic
-									summary={activeLens.summary}
-									emptyLabel="No graph objects"
-									buildingLabel={`Building ${activeLens.label}…`}
-									onNodeTap={(node) => setSelectedNode(node.id)}
-								/>
+						{!refined && activeLens.id === 'topology' && (
+							<div className={`aig-working-scene${focusOverflow ? ' is-focus-overflow' : ''}`}>
+								<div className="aig-graph-layer aig-graph-layer--working">
+									<AtlasGraphCanvas
+										subgraph={STABLE_SUBGRAPH}
+										preset="flow-lr"
+										showSemantic
+										summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
+										emptyLabel="No graph objects"
+										buildingLabel="Preparing Cytoscape canvas…"
+										onNodeTap={(node) => setSelectedNode(node.id)}
+									/>
+								</div>
+								<WorkingOverlay hidden={false} step={visibleStep} />
 							</div>
 						)}
-						{(mode === 'running' || mode === 'paused' || mode === 'layouting') && activePatch && (
+						{!refined && activeLens.id !== 'topology' && (
+							<LensProjectionCanvas
+								key={`working:${activeLens.id}:${effectivePreset}`}
+								lens={activeLens}
+								preset={effectivePreset}
+								progress={liveRun ? activeLensProgress : 100}
+								variant={liveRun ? 'live' : 'stable'}
+								onNodeTap={setSelectedNode}
+							/>
+						)}
+						{refined && (
+							<LensProjectionCanvas
+								key={`final:${activeLens.id}:${effectivePreset}`}
+								lens={activeLens}
+								preset={effectivePreset}
+								variant="final"
+								onNodeTap={setSelectedNode}
+							/>
+						)}
+						{activeLens.id === 'topology' && (mode === 'running' || mode === 'paused' || mode === 'layouting') && activePatch && (
 							<div
 								className={`aig-agent-cursor aig-agent-cursor--${activePatch.kind}${anchorAgentToNodeCorner ? ' is-node-corner' : ''}`}
 								style={cursor}
@@ -1012,17 +1095,17 @@ function Prototype(): React.ReactElement {
 							</div>
 						)}
 						{mode === 'review' && (
-							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>Graph update ready · 20 changes</span></div>
+							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>5 graph views ready · 20 changes</span></div>
 						)}
 						{mode === 'layouting' && (
-							<div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Agent chose {activeLens.label}</strong><small>{activeLayoutLabel} · {activeLens.summary} · one intentional reflow</small></span></div>
+							<div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Refining all 5 graph views</strong><small>Showing {activeLens.label} · {activeLayoutLabel} · one intentional reflow per view</small></span></div>
 						)}
 						{mode === 'accepted' && (
-							<div className="aig-accepted-watermark"><Check aria-hidden /><span>v13 is now the canonical head</span></div>
+							<div className="aig-accepted-watermark"><Check aria-hidden /><span>v13 · 5 graph views are now canonical</span></div>
 						)}
 					</div>
 					<footer className="aig-canvas-footer">
-						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? `${activeLens.label} · ${activeLayoutLabel}` : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable version created' : refined ? ` · ${activeLens.description}` : ' · Agent changes are not saved yet'}</span></div>
+						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? `${activeLens.label} · ${activeLayoutLabel}` : liveRun && activeLens.id !== 'topology' ? `${activeLens.label} draft · ${activeLensProgress}%` : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable five-view version created' : refined ? ` · ${activeLens.description}` : liveRun && activeLens.id !== 'topology' ? ' · one run is generating all 5 graph outputs; switching views does not interrupt it' : ' · Agent changes are not saved yet'}</span></div>
 						{selectedNode && <span className="aig-selection">Selected: {selectedNode}</span>}
 					</footer>
 				</section>
@@ -1036,9 +1119,12 @@ function Prototype(): React.ReactElement {
 						<div className="aig-feed">
 							<div className="aig-feed-summary">
 								<div className="aig-agent-avatar"><Sparkles aria-hidden /></div>
-								<div><strong>Graph Update Agent</strong><span>{mode === 'idle' ? 'Ready to replay' : mode === 'accepted' ? 'Run accepted' : mode === 'layouting' ? '16 operations complete · auto-layout running' : `${Math.max(0, patchIndex + 1)} of ${PATCHES.length} operations`}</span></div>
+								<div><strong>Graph Generation Agent</strong><span>{mode === 'idle' ? 'Ready to generate 5 views' : mode === 'accepted' ? 'Five-view run accepted' : mode === 'layouting' ? `${PATCHES.length} operations complete · refining 5 views` : `${readyViewCount}/5 views ready · ${Math.max(0, patchIndex + 1)} of ${PATCHES.length} operations`}</span></div>
 							</div>
 							<div className="aig-progress"><span style={{ width: `${refined ? 100 : Math.max(3, ((patchIndex + 1) / PATCHES.length) * 100)}%` }} /></div>
+							<div className="aig-feed-view-statuses" aria-label="Generated graph views">
+								{LENSES.map((lens) => <span key={lens.id} className={lensProgressById[lens.id] >= 100 ? 'is-ready' : ''}>{lens.label}<b>{lensProgressById[lens.id] >= 100 ? <Check aria-hidden /> : `${lensProgressById[lens.id]}%`}</b></span>)}
+							</div>
 							<div className="aig-feed-list">
 								{PATCHES.map((patch, index) => {
 									const completed = accepted || index <= patchIndex;
@@ -1064,14 +1150,14 @@ function Prototype(): React.ReactElement {
 					{mode === 'review' && <ShieldCheck aria-hidden />}
 					{mode === 'accepted' && <Check aria-hidden />}
 					{mode === 'idle' && <Sparkles aria-hidden />}
-					<span><strong>{modeLabel(mode)}</strong><small>{mode === 'accepted' ? 'v12 remains available in History' : 'All mutations remain reversible until acceptance'}</small></span>
+					<span><strong>{modeLabel(mode, readyViewCount)}</strong><small>{mode === 'accepted' ? 'v12 remains available in History' : 'One run · five graphs · one reversible acceptance boundary'}</small></span>
 				</div>
 				<div className="aig-runbar__actions">
 					{(mode === 'running' || mode === 'paused') && (
 						<>
 							<button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><Square aria-hidden /> Stop</button>
 							<button className="aig-btn aig-btn--ghost" type="button" onClick={togglePause}>{mode === 'paused' ? <Play aria-hidden /> : <Pause aria-hidden />}{mode === 'paused' ? 'Continue' : 'Pause'}</button>
-							<button className="aig-btn aig-btn--soft" type="button" onClick={skipToFinalGraph}>Skip to final graph</button>
+							<button className="aig-btn aig-btn--soft" type="button" onClick={skipToFinalGraph}>Skip to final package</button>
 						</>
 					)}
 					{mode === 'review' && (
