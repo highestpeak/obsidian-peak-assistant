@@ -300,6 +300,30 @@ interface WorkingOverlayProps {
 	step: number;
 }
 
+type EdgeDelayClass = '' | 'is-delay' | 'is-delay-2' | 'is-delay-3' | 'is-delay-4';
+
+interface AddedEdgeProps {
+	d: string;
+	delayClass?: EdgeDelayClass;
+	length: number;
+}
+
+type AddedEdgeStyle = React.CSSProperties & {
+	'--aig-edge-length': string;
+};
+
+function AddedEdge({ d, delayClass = '', length }: AddedEdgeProps): React.ReactElement {
+	const classSuffix = delayClass ? ` ${delayClass}` : '';
+	const style: AddedEdgeStyle = { '--aig-edge-length': `${length}` };
+
+	return (
+		<>
+			<path className={`aig-overlay-edge is-added${classSuffix}`} d={d} style={style} />
+			<path className={`aig-overlay-edge-head${classSuffix}`} d={d} style={style} />
+		</>
+	);
+}
+
 interface ProposalNodeProps {
 	className: string;
 	connected: boolean;
@@ -344,24 +368,24 @@ function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactEleme
 				</defs>
 				{showEvidenceRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M555 332 C585 270 620 205 642 151" pathLength="1" />
-						<path className="aig-overlay-edge is-added is-delay" d="M756 124 C800 178 805 270 760 332" pathLength="1" />
+						<AddedEdge d="M555 332 C585 270 620 205 642 151" length={201} />
+						<AddedEdge d="M756 124 C800 178 805 270 760 332" delayClass="is-delay" length={223} />
 					</>
 				)}
 				{showEvaluationRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M920 305 C785 190 625 118 516 106" pathLength="1" />
-						<path className="aig-overlay-edge is-added is-delay" d="M364 106 C344 122 325 145 306 159" pathLength="1" />
-						<path className="aig-overlay-edge is-added is-delay-2" d="M232 194 C238 245 255 286 275 326" pathLength="1" />
+						<AddedEdge d="M920 305 C785 190 625 118 516 106" length={457} />
+						<AddedEdge d="M364 106 C344 122 325 145 306 159" delayClass="is-delay" length={79} />
+						<AddedEdge d="M232 194 C238 245 255 286 275 326" delayClass="is-delay-2" length={140} />
 					</>
 				)}
 				{showControlRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M555 350 C600 396 625 440 644 465" pathLength="1" />
-						<path className="aig-overlay-edge is-added is-delay" d="M720 438 C720 324 710 230 700 151" pathLength="1" />
-						<path className="aig-overlay-edge is-added is-delay-2" d="M720 151 C800 225 850 332 875 412" pathLength="1" />
-						<path className="aig-overlay-edge is-added is-delay-3" d="M956 440 C995 345 1005 250 984 190" pathLength="1" />
-						<path className="aig-overlay-edge is-added is-delay-4" d="M984 174 C835 65 330 72 92 306" pathLength="1" />
+						<AddedEdge d="M555 350 C600 396 625 440 644 465" length={146} />
+						<AddedEdge d="M720 438 C720 324 710 230 700 151" delayClass="is-delay" length={288} />
+						<AddedEdge d="M720 151 C800 225 850 332 875 412" delayClass="is-delay-2" length={307} />
+						<AddedEdge d="M956 440 C995 345 1005 250 984 190" delayClass="is-delay-3" length={257} />
+						<AddedEdge d="M984 174 C835 65 330 72 92 306" delayClass="is-delay-4" length={952} />
 					</>
 				)}
 				{removeKeyword && (
