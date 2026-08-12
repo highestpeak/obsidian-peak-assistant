@@ -24,6 +24,7 @@ function requireValues(label, source, values) {
 requireValues("Package HTML", packageHtml, [
   "当前文档",
   "能力、内容和流程 Brief",
+  "Settings 可配置能力总表",
   "Settings",
   "Onboarding",
   "Knowledge Index 运行进度",
@@ -107,6 +108,7 @@ requireValues("CSS", css, [
 requireValues("README", readme, [
   "do not require a temporary localhost server",
   "Source-of-truth order",
+  "Settings configurable capability inventory",
   "Historical evidence",
   "product feature → action group → concrete action",
   "Setup complete",

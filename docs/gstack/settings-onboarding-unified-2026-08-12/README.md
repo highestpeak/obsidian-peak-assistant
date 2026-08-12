@@ -8,6 +8,7 @@ This directory is the current review package for Peak Assistant's Settings and O
 
 - [`index.html`](./index.html) — the single entry point and document map.
 - [`2026-08-09 capability brief`](../../superpowers/specs/2026-08-09-onboarding-settings-capability-content-flow-brief.md) — the current source of truth for required capability, content, state and flow.
+- [`Settings configurable capability inventory`](../../superpowers/specs/2026-08-12-settings-configurable-capabilities-by-group.md) — every user control, automatic default, status, operation and current wiring fact, organized by the four Settings groups.
 - [`settings.html`](./settings.html) — target experience for long-term configuration and system status.
 - [`onboarding.html`](./onboarding.html) — target experience for minimum setup and the first real task.
 - [`Knowledge Index progress`](../knowledge-index-workspace-2026-08-11/index.html) — focused run view for indexing progress, order, speed, ETA, file types and per-document work.
@@ -17,9 +18,10 @@ These HTML files are self-contained local artifacts and should be opened directl
 ## Source-of-truth order
 
 1. The capability brief decides what the product must preserve and how success is verified.
-2. The current Settings and Onboarding mocks show one target interaction and visual response to that contract.
-3. The Knowledge Index mock owns the detailed feedback for an active indexing run.
-4. The 2026-08-06 redesign package and visual calibration board are historical exploration only.
+2. The Settings configurable capability inventory decides which group owns every long-term control and records current implementation truth.
+3. The current Settings and Onboarding mocks show one target interaction and visual response to that contract.
+4. The Knowledge Index mock owns the detailed feedback for an active indexing run.
+5. The 2026-08-06 redesign package and visual calibration board are historical exploration only.
 
 If the documents disagree, use this order. Historical variants must not be treated as implementation requirements.
 
@@ -60,7 +62,6 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 ### Settings
 
 - Header tab navigation inside the native Obsidian Settings context
-- Search across feature, Provider and system concepts
 - Expandable model hierarchy
 - Add-connection modal
 - Segmented index depth and contextual advanced disclosure

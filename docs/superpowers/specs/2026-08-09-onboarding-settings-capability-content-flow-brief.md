@@ -18,7 +18,7 @@
 
 它不规定页面布局、导航形式、控件形态、颜色、图标、尺寸、动效或视觉风格。设计师可以自由决定具体 UI，但不能删除这里定义的必要能力、状态、依赖关系和恢复路径。
 
-本 brief 是当前能力、内容、状态和流程的 source of truth。[2026-08-12 Settings 与 Onboarding 文档包](../../gstack/settings-onboarding-unified-2026-08-12/index.html) 提供当前目标 mock；[2026-08-06 redesign](./2026-08-06-onboarding-settings-launch-readiness-redesign.md) 与同批 HTML variants 只保留为历史探索。
+本 brief 是当前能力、内容、状态和流程的 source of truth。[Settings 可配置能力总表](./2026-08-12-settings-configurable-capabilities-by-group.md) 按 `AI & Models → Agents → Knowledge & Search → Advanced` 四组列出所有用户控制、系统默认、状态、操作和当前接线事实；[2026-08-12 Settings 与 Onboarding 文档包](../../gstack/settings-onboarding-unified-2026-08-12/index.html) 提供当前目标 mock；[2026-08-06 redesign](./2026-08-06-onboarding-settings-launch-readiness-redesign.md) 与同批 HTML variants 只保留为历史探索。
 
 ### 0.1 产品目标
 
