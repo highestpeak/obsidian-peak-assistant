@@ -187,6 +187,8 @@ requireValues("CSS", css, [
   ".inline-model-menu",
   ".inline-model-search",
   ".inline-model-filters",
+  "flex: 0 0 auto",
+  "flex: 1 1 auto",
   ".inline-model-group-heading",
   ".inline-model-capabilities",
   ".safety-picker",

@@ -427,16 +427,18 @@ function positionInlineModelMenu(target) {
   const menu = $('[data-inline-model-menu]');
   const anchor = $('.task-model-control', target) ?? target;
   const rect = anchor.getBoundingClientRect();
-  const menuWidth = Math.min(430, window.innerWidth - 24);
+  const menuWidth = Math.min(480, window.innerWidth - 24);
   const pagePadding = 12;
+  const navigationSafeTop = 82;
   const left = Math.min(window.innerWidth - menuWidth - pagePadding, Math.max(pagePadding, rect.right - menuWidth));
   menu.style.width = `${menuWidth}px`;
+  menu.style.maxHeight = `${Math.min(600, Math.max(320, window.innerHeight - navigationSafeTop - pagePadding))}px`;
   menu.style.left = `${left}px`;
   menu.style.top = `${rect.bottom + 5}px`;
   menu.hidden = false;
   const menuRect = menu.getBoundingClientRect();
   if (menuRect.bottom <= window.innerHeight - pagePadding) return;
-  menu.style.top = `${Math.max(pagePadding, rect.top - menuRect.height - 5)}px`;
+  menu.style.top = `${Math.max(navigationSafeTop, rect.top - menuRect.height - 5)}px`;
 }
 
 function modelValue(model) {
