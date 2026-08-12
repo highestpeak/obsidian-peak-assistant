@@ -61,6 +61,7 @@ assert.match(image, /panelTriggerRef/);
 assert.match(image, /if \(!copyOpen && !renameOpen && !converterOpen && !editOpen\) return/);
 
 assert.match(controls, /PEAK_CONTROL_KEY_TIP_KEYS\.composer\.workspaceBack/);
+assert.match(controls, /PEAK_CONTROL_KEY_TIP_KEYS\.composer\.contentWidth/);
 assert.match(controls, /PEAK_CONTROL_KEY_TIP_KEYS\.composer\.intelligence/);
 assert.match(controls, /intelligenceTriggerRef/);
 assert.match(segmented, /useRovingComposite\(rootRef/);

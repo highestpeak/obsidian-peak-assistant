@@ -307,6 +307,13 @@
 	min-height: 100%;
 	margin: var(--pkc-stage-pad-y-top) auto 0;
 }
+.peak-composer-root .pk-composer-workspace[data-content-width='wide'] {
+	max-width: none;
+}
+.peak-composer-root .pk-composer-workspace[data-content-width='wide'] .pk-composer-shell {
+	flex-basis: auto;
+	max-width: none;
+}
 .peak-composer-root .pk-composer-shell {
 	position: relative;
 	box-sizing: border-box;
@@ -323,6 +330,17 @@
 	border: 1px solid var(--pkc-paper-border);
 	border-radius: var(--pkc-paper-radius);
 	box-shadow: var(--pkc-paper-shadow);
+}
+.peak-composer-root .pk-composer-document-title {
+	display: block;
+	flex: none;
+	margin: 0 0 28px;
+	color: var(--pkc-text);
+	font-size: var(--pkc-h1-size);
+	font-weight: var(--pkc-h1-weight);
+	line-height: 1.25;
+	letter-spacing: -0.02em;
+	word-break: break-word;
 }
 .peak-composer-root .pk-composer-find {
 	position: sticky;
@@ -2248,38 +2266,32 @@
 }
 
 /* ── unified document controls; normal flow, never covers document content ─ */
-.pk-native-composer-affordance-host {
-	position: relative;
-}
 .peak-design-root.pk-native-composer-affordance {
-	position: absolute;
-	top: var(--pk-space-3);
-	right: calc(var(--pk-space-4) + 42px);
-	z-index: 6;
-	pointer-events: none;
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	margin-left: 4px;
 }
 .peak-design-root .pk-native-composer-affordance__button {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 5px;
 	width: auto !important;
-	height: 32px !important;
-	min-width: 32px !important;
-	min-height: 32px !important;
-	max-height: 32px !important;
-	padding: 0 10px !important;
-	border: 1px solid var(--pk-border) !important;
+	height: 28px !important;
+	min-width: 28px !important;
+	min-height: 28px !important;
+	max-height: 28px !important;
+	padding: 0 8px !important;
+	border: 0 !important;
 	border-radius: var(--pk-radius-md) !important;
-	background: var(--pk-surface-overlay) !important;
+	background: transparent !important;
 	color: var(--pk-text-secondary) !important;
-	box-shadow: var(--pk-shadow-card);
-	pointer-events: auto;
+	box-shadow: none !important;
 	white-space: nowrap;
 }
 .peak-design-root .pk-native-composer-affordance__button:hover {
-	border-color: var(--pk-accent-soft) !important;
-	background: var(--pk-accent-tint) !important;
-	color: var(--pk-accent-text) !important;
+	background: var(--background-modifier-hover) !important;
+	color: var(--text-normal) !important;
 }
 .pk-native-composer-affordance__button svg {
 	width: 15px;
@@ -2300,7 +2312,7 @@
 	max-width: none;
 	min-height: 52px;
 	margin: 0 calc(var(--pkc-stage-pad-x) * -1);
-	padding: 8px var(--pkc-stage-pad-x);
+	padding: 8px 24px;
 	border: 0;
 	border-bottom: 1px solid var(--pk-border-soft);
 	border-radius: 0;
@@ -2350,6 +2362,7 @@
 }
 .peak-composer-root .pk-composer-comment-toggle,
 .peak-composer-root .pk-composer-intelligence-toggle,
+.peak-composer-root .pk-composer-content-width-toggle,
 .peak-composer-root .pk-composer-review-all {
 	flex: none;
 	min-height: 28px !important;
@@ -2357,6 +2370,14 @@
 	gap: 5px;
 	padding: 0 7px !important;
 	border-radius: var(--pk-radius-full) !important;
+}
+.peak-composer-root .pk-composer-content-width-toggle {
+	width: auto !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	max-height: 28px !important;
+	padding: 0 7px !important;
+	white-space: nowrap;
 }
 .peak-composer-root .pk-composer-display-switch {
 	flex: none;
@@ -2393,8 +2414,17 @@
 	color: var(--pk-accent-text);
 }
 
+/* Properties belong to the document hierarchy, not to a floating card. Keep
+   field affordances local instead of applying the generic whole-block halo. */
+.peak-composer-root .pk-composer-block[data-kind='frontmatter']:hover,
+.peak-composer-root .pk-composer-block[data-kind='frontmatter']:focus-within {
+	background: transparent;
+	box-shadow: none;
+}
+
 @media (max-width: 880px) {
 	.peak-composer-root .pk-composer-comment-toggle > span:not(.pk-composer-comment-count),
+	.peak-composer-root .pk-composer-content-width-toggle > span,
 	.peak-composer-root .pk-composer-intelligence-toggle > span,
 	.peak-composer-root .pk-composer-review-all > span {
 		display: none;

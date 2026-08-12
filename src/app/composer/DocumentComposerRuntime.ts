@@ -44,6 +44,7 @@ import {
 import {
 	DEFAULT_TRANSACTION_CONFIG,
 	type ComposerCapabilityProjectionPort,
+	type ComposerContentWidth,
 	type ComposerModelSelectionPort,
 	type ComposerNativeEmbedRendererPort,
 	type ComposerTransactionConfig,
@@ -69,6 +70,11 @@ export interface DocumentComposerRuntimeAdapters {
 	intelligenceVisibilityPreference?: {
 		get(): boolean;
 		set(open: boolean): Promise<void>;
+	};
+	/** Persisted workspace preference for readable versus wide document measure. */
+	contentWidthPreference?: {
+		get(): ComposerContentWidth;
+		set(width: ComposerContentWidth): Promise<void>;
 	};
 	/** Canonical JSONL persistence for workspace scope, segments and Frozen Runs. */
 	workspaceStatePersistence?: ComposerWorkspaceStatePersistencePort;
@@ -149,6 +155,7 @@ export class DocumentComposerRuntime {
 	private readonly blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	private readonly modelSelection?: ComposerModelSelectionPort;
 	private readonly intelligenceVisibilityPreference?: DocumentComposerRuntimeAdapters['intelligenceVisibilityPreference'];
+	private readonly contentWidthPreference?: DocumentComposerRuntimeAdapters['contentWidthPreference'];
 	private readonly historyPersistence?: ComposerHistoryPersistencePort;
 	readonly navigation?: ComposerDocumentRouter;
 	readonly workspaceIntelligence: ComposerWorkspaceIntelligenceRuntime;
@@ -177,6 +184,7 @@ export class DocumentComposerRuntime {
 		this.blockDraftGeneration = adapters.blockDraftGeneration;
 		this.modelSelection = adapters.modelSelection;
 		this.intelligenceVisibilityPreference = adapters.intelligenceVisibilityPreference;
+		this.contentWidthPreference = adapters.contentWidthPreference;
 		this.historyPersistence = adapters.historyPersistence;
 		this.navigation = adapters.navigation;
 		this.workspaceIntelligence = new ComposerWorkspaceIntelligenceRuntime(
@@ -191,6 +199,14 @@ export class DocumentComposerRuntime {
 
 	async setIntelligenceManualOpen(open: boolean): Promise<void> {
 		await this.intelligenceVisibilityPreference?.set(open);
+	}
+
+	getContentWidth(): ComposerContentWidth {
+		return this.contentWidthPreference?.get() ?? 'readable';
+	}
+
+	async setContentWidth(width: ComposerContentWidth): Promise<void> {
+		await this.contentWidthPreference?.set(width);
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */

@@ -22,7 +22,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { getAIMediaFolder } from '@/core/config/folderPaths';
-import type { DefaultDocumentView } from '@/core/composer';
+import type { ComposerContentWidth, DefaultDocumentView } from '@/core/composer';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { ProduceMediaInput, ProduceMediaOutcome } from '@/service/media/MediaGenerationService';
 import {
@@ -119,6 +119,8 @@ export interface ComposeDocumentComposerRuntimeOptions {
 	legacyPluginDir?: string;
 	getDefaultDocumentView(): DefaultDocumentView;
 	setDefaultDocumentView(view: DefaultDocumentView): Promise<void>;
+	getContentWidth(): ComposerContentWidth;
+	setContentWidth(width: ComposerContentWidth): Promise<void>;
 	getIntelligenceManualOpen(): boolean;
 	setIntelligenceManualOpen(open: boolean): Promise<void>;
 }
@@ -153,6 +155,7 @@ export async function composeDocumentComposerRuntime(
 		? joinAdapterPath(legacyPluginDir, LEGACY_TELEMETRY_SUBDIR, LEGACY_TELEMETRY_FILE)
 		: undefined;
 	let fallbackDefaultView: DefaultDocumentView = 'markdown';
+	let fallbackContentWidth: ComposerContentWidth = 'readable';
 	let fallbackIntelligenceManualOpen = false;
 	const navigation = new ComposerDocumentRouter(app, {
 		getDefaultView: options?.getDefaultDocumentView ?? (() => fallbackDefaultView),
@@ -186,6 +189,12 @@ export async function composeDocumentComposerRuntime(
 	});
 	const runtime = new DocumentComposerRuntime(source, write, events, revisionService, undefined, {
 		navigation,
+		contentWidthPreference: {
+			get: options?.getContentWidth ?? (() => fallbackContentWidth),
+			set: options?.setContentWidth ?? (async (width) => {
+				fallbackContentWidth = width;
+			}),
+		},
 		intelligenceVisibilityPreference: {
 			get: options?.getIntelligenceManualOpen ?? (() => fallbackIntelligenceManualOpen),
 			set: options?.setIntelligenceManualOpen ?? (async (open) => {

@@ -20,7 +20,6 @@ export interface NativeMarkdownComposerAffordanceOptions {
 interface MountedAffordance {
 	container: HTMLElement;
 	root: Root;
-	viewContentEl: HTMLElement;
 }
 
 /**
@@ -81,16 +80,18 @@ export class NativeMarkdownComposerAffordance {
 
 	private mount(leaf: WorkspaceLeaf): void {
 		if (!(leaf.view instanceof MarkdownView)) return;
-		const contentEl = leaf.view.contentEl;
-		const container = contentEl.ownerDocument.createElement('div');
+		const navigationGroup = leaf.view.containerEl.querySelector<HTMLElement>(
+			'.view-header-nav-buttons',
+		);
+		if (!navigationGroup) return;
+		const container = navigationGroup.ownerDocument.createElement('div');
 		container.className = 'peak-design-root pk-native-composer-affordance';
-		contentEl.classList.add('pk-native-composer-affordance-host');
-		contentEl.appendChild(container);
+		navigationGroup.insertAdjacentElement('afterend', container);
 		const root = createTrackedRoot(container);
 		root.render(
 			<Button
 				className="pk-native-composer-affordance__button"
-				variant="outline"
+				variant="ghost"
 				size="sm"
 				onClick={() => {
 					void this.options.convert(leaf).catch(() => {
@@ -102,7 +103,7 @@ export class NativeMarkdownComposerAffordance {
 				<span>{this.options.label}</span>
 			</Button>,
 		);
-		this.mounts.set(leaf, { container, root, viewContentEl: contentEl });
+		this.mounts.set(leaf, { container, root });
 	}
 
 	private unmount(leaf: WorkspaceLeaf): void {
@@ -111,8 +112,5 @@ export class NativeMarkdownComposerAffordance {
 		this.mounts.delete(leaf);
 		mount.root.unmount();
 		mount.container.remove();
-		if (!mount.viewContentEl.querySelector('.pk-native-composer-affordance')) {
-			mount.viewContentEl.classList.remove('pk-native-composer-affordance-host');
-		}
 	}
 }

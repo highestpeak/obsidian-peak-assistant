@@ -14,6 +14,7 @@ import {
 	type ComposerCandidate,
 	type ComposerCandidateRuntimePort,
 	type ComposerContextSnapshot,
+	type ComposerContentWidth,
 	type ComposerDocumentSnapshot,
 	type ComposerDisplayMode,
 	type ComposerInvocationPlacement,
@@ -98,6 +99,7 @@ import { useCrossBlockTextSelection } from './chrome/useCrossBlockTextSelection'
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
 import { InlineStyleLayer } from './chrome/InlineStyleLayer';
 import { UndoRedoBar } from './chrome/UndoRedoBar';
+import { ComposerDocumentTitle } from './chrome/ComposerDocumentTitle';
 import { ComposerFindBar, type ComposerFindBarHandle } from './chrome/ComposerFindBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
 import { BlockFindingPanel } from './chrome/BlockFindingPanel';
@@ -169,6 +171,9 @@ export interface ComposerRootProps {
 	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
 	/** Convert this leaf to Obsidian's Native Markdown view. */
 	onOpenNativeMarkdown?: () => void | Promise<void>;
+	/** Workspace-level readable/wide document measure. */
+	initialContentWidth?: ComposerContentWidth;
+	onContentWidthChange?: (width: ComposerContentWidth) => void | Promise<void>;
 	/** Last explicit workspace-level Intelligence open/close preference. */
 	initialIntelligenceOpen?: boolean;
 	onIntelligenceManualOpenChange?: (open: boolean) => void | Promise<void>;
@@ -208,6 +213,8 @@ export function ComposerRoot({
 	initialDisplayMode = 'edit',
 	onDisplayModeChange,
 	onOpenNativeMarkdown,
+	initialContentWidth = 'readable',
+	onContentWidthChange,
 	initialIntelligenceOpen = false,
 	onIntelligenceManualOpenChange,
 	initialIntelligenceRunId,
@@ -431,6 +438,8 @@ export function ComposerRoot({
 							intelligenceTriggerRef={intelligenceTriggerRef}
 							onDisplayModeChange={onDisplayModeChange}
 							onOpenNativeMarkdown={onOpenNativeMarkdown}
+							initialContentWidth={initialContentWidth}
+							onContentWidthChange={onContentWidthChange}
 						/>
 					</div>
 					{intelligence && currentSnapshot && (
@@ -486,6 +495,8 @@ interface BodyProps {
 	initialDisplayMode?: ComposerDisplayMode;
 	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
 	onOpenNativeMarkdown?: () => void | Promise<void>;
+	initialContentWidth?: ComposerContentWidth;
+	onContentWidthChange?: (width: ComposerContentWidth) => void | Promise<void>;
 	intelligenceTriggerRef?: React.Ref<HTMLButtonElement>;
 }
 
@@ -594,6 +605,8 @@ function ComposerDocument({
 	initialDisplayMode = 'edit',
 	onDisplayModeChange,
 	onOpenNativeMarkdown,
+	initialContentWidth = 'readable',
+	onContentWidthChange,
 	intelligenceTriggerRef,
 }: BodyProps): React.ReactElement {
 	const chrome = useComposerChrome();
@@ -611,6 +624,7 @@ function ComposerDocument({
 	const [displayState, setDisplayState] = React.useState<ComposerDisplayState>(
 		hub ? initialDisplayMode : 'clean',
 	);
+	const [contentWidth, setContentWidth] = React.useState<ComposerContentWidth>(initialContentWidth);
 	const [panel, setPanel] = React.useState<PanelState | null>(null);
 	const [historyActivity, setHistoryActivity] = React.useState<ComposerHistoryActivity | null>(null);
 	const [historySidecarConfig, setHistorySidecarConfig] = React.useState<SidecarConfig>(
@@ -640,6 +654,10 @@ function ComposerDocument({
 		onDisplayModeChange?.(next);
 		if (next === 'clean') setCommentSurfaceOpen(false);
 	}, [onDisplayModeChange, setCommentSurfaceOpen]);
+	const setContentWidthPreference = React.useCallback((width: ComposerContentWidth) => {
+		setContentWidth(width);
+		void onContentWidthChange?.(width);
+	}, [onContentWidthChange]);
 	React.useEffect(() => {
 		if (!hasSelection) {
 			releaseDocumentSurface(selectionSurfaceId);
@@ -937,6 +955,8 @@ function ComposerDocument({
 				onDisplayState={setDisplayStateWithComments}
 				canEdit={Boolean(hub)}
 				readOnlyLabel={config.strings.readOnlyBadge}
+				contentWidth={contentWidth}
+				onContentWidth={setContentWidthPreference}
 				commentOpen={commentSurfaceVisible}
 				onCommentOpen={setCommentSurfaceOpen}
 				intelligenceAvailable={Boolean(intelligence)}
@@ -953,7 +973,11 @@ function ComposerDocument({
 				intelligenceTriggerRef={intelligenceTriggerRef}
 				commentTriggerRef={commentTriggerRef}
 			/>
-			<div ref={workspaceRef} className="pk-composer-workspace">
+			<div
+				ref={workspaceRef}
+				className="pk-composer-workspace"
+				data-content-width={contentWidth}
+			>
 			<div
 				ref={containerRef}
 				className="pk-composer-shell"
@@ -981,6 +1005,7 @@ function ComposerDocument({
 				}}
 			/>
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
+			<ComposerDocumentTitle filePath={snapshot.filePath} />
 			<AddFrontmatterEntry editing={editing} />
 			<div className="pk-composer-blocks">
 				{visibleBlocks.map((b, i) => {

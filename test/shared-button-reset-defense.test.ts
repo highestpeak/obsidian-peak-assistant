@@ -150,6 +150,12 @@ assert.match(
 );
 
 assert.match(
+	composerCss,
+	/\.peak-composer-root \.pk-composer-content-width-toggle\s*\{[\s\S]*?width:\s*auto !important;[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*0 7px !important;/,
+	'Composer content-width control must retain its native-sized hit target under the Obsidian button reset',
+);
+
+assert.match(
 	composerSidecarCss,
 	/\.peak-design-root \.pk-sidecar-tab\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?max-width:\s*100% !important;[\s\S]*?height:\s*100% !important;[\s\S]*?min-height:\s*100% !important;[\s\S]*?max-height:\s*100% !important;[\s\S]*?padding:\s*0 12px !important;/,
 	'Composer sidecar tabs must keep identical fixed geometry under the Obsidian button reset',

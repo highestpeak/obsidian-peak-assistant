@@ -3,7 +3,9 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	Layers3,
+	Maximize2,
 	MessageSquare,
+	Minimize2,
 	Redo2,
 	Sparkles,
 	Undo2,
@@ -11,6 +13,7 @@ import {
 import type {
 	ComposerWorkspaceNavigationPort,
 	ComposerWorkspaceNavigationSnapshot,
+	ComposerContentWidth,
 } from '@/core/composer';
 import { Button, Chip, IconButton } from '@/ui/components/primitives';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
@@ -47,6 +50,8 @@ export function UndoRedoBar({
 	intelligenceOpen,
 	onIntelligenceOpen,
 	onOpenNativeMarkdown,
+	contentWidth,
+	onContentWidth,
 	reviewCandidateCount = 0,
 	reviewAll = false,
 	onReviewAll,
@@ -64,6 +69,8 @@ export function UndoRedoBar({
 	intelligenceOpen: boolean;
 	onIntelligenceOpen: (open: boolean) => void;
 	onOpenNativeMarkdown?: () => void;
+	contentWidth: ComposerContentWidth;
+	onContentWidth: (width: ComposerContentWidth) => void;
 	reviewCandidateCount?: number;
 	reviewAll?: boolean;
 	onReviewAll?: (open: boolean) => void;
@@ -81,7 +88,12 @@ export function UndoRedoBar({
 	const workspaceNavigation = runtime.workspaceNavigation;
 	const workspaceNavigationState = useWorkspaceNavigation(workspaceNavigation);
 	const workspaceNavigationStrings = config.chrome.workspaceNavigation;
+	const contentWidthStrings = config.chrome.contentWidth;
 	const commentStrings = config.chrome.comment;
+	const nextContentWidth: ComposerContentWidth = contentWidth === 'wide' ? 'readable' : 'wide';
+	const contentWidthAction = contentWidth === 'wide'
+		? contentWidthStrings.switchToReadable
+		: contentWidthStrings.switchToWide;
 
 	React.useEffect(() => {
 		if (!comments) return;
@@ -166,6 +178,19 @@ export function UndoRedoBar({
 			) : (
 				<span className="pk-composer-controlbar__badge">{readOnlyLabel}</span>
 			)}
+			<Button
+				variant="ghost"
+				size="sm"
+				className="pk-composer-content-width-toggle"
+				data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.composer.contentWidth}
+				data-peak-keytip-label={contentWidthAction}
+				aria-label={contentWidthAction}
+				title={contentWidthAction}
+				onClick={() => onContentWidth(nextContentWidth)}
+			>
+				{contentWidth === 'wide' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+				<span>{nextContentWidth === 'wide' ? contentWidthStrings.wide : contentWidthStrings.readable}</span>
+			</Button>
 			{reviewCandidateCount >= 2 && onReviewAll ? (
 				<Button
 					variant={reviewAll ? 'primary' : 'ghost'}

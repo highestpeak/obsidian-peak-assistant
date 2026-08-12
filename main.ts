@@ -450,6 +450,11 @@ export default class MyPlugin extends Plugin {
 						this.settings.composer.defaultDocumentView = view;
 						await this.saveSettings();
 					},
+					getContentWidth: () => this.settings.composer.contentWidth,
+					setContentWidth: async (width) => {
+						this.settings.composer.contentWidth = width;
+						await this.saveSettings();
+					},
 					getIntelligenceManualOpen: () => this.settings.composer.intelligenceManualOpen,
 					setIntelligenceManualOpen: async (open) => {
 						this.settings.composer.intelligenceManualOpen = open;

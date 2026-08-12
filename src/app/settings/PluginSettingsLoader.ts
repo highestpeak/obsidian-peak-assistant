@@ -9,6 +9,7 @@ import type {
 	PluginCommandReview,
 	PluginCommandRisk,
 } from '@/core/types/plugin-command-gateway';
+import { normalizeComposerContentWidth } from '@/core/composer';
 import {
 	getAIAnalysisFolder,
 	getAICustomPromptsFolder,
@@ -327,6 +328,9 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 				(raw?.composer as { defaultDocumentView?: unknown } | undefined)?.defaultDocumentView === 'composer'
 					? 'composer'
 					: 'markdown',
+			contentWidth: normalizeComposerContentWidth(
+				(raw?.composer as { contentWidth?: unknown } | undefined)?.contentWidth,
+			),
 			intelligenceManualOpen:
 				(raw?.composer as { intelligenceManualOpen?: unknown } | undefined)?.intelligenceManualOpen === true,
 		},

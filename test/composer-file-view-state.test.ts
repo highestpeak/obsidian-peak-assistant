@@ -1,5 +1,6 @@
 import {
 	normalizeComposerViewState,
+	normalizeComposerContentWidth,
 	normalizeDefaultDocumentView,
 	type ComposerViewStateV2,
 } from '@/core/composer';
@@ -40,6 +41,8 @@ function main(): void {
 	check('V2 round-trip remains stable', JSON.stringify(roundTrip) === JSON.stringify(v2));
 	check('default view is fail-safe markdown', normalizeDefaultDocumentView('unknown') === 'markdown');
 	check('composer default is accepted', normalizeDefaultDocumentView('composer') === 'composer');
+	check('content width defaults readable', normalizeComposerContentWidth(undefined) === 'readable');
+	check('wide content width is accepted', normalizeComposerContentWidth('wide') === 'wide');
 
 	console.log(`composer-file-view-state: ${count - failures}/${count} checks passed`);
 	if (failures > 0) throw new Error(`${failures} check(s) failed`);

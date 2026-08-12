@@ -124,6 +124,12 @@
 			"back": "后退",
 			"forward": "前进"
 		},
+		"contentWidth": {
+			"readable": "窄屏",
+			"wide": "宽屏",
+			"switchToReadable": "切换到窄屏",
+			"switchToWide": "切换到宽屏"
+		},
 		"displayStates": {
 			"groupLabel": "文档视图",
 			"edit": "编辑视图",

@@ -8,6 +8,8 @@
 
 export type DefaultDocumentView = 'markdown' | 'composer';
 export type ComposerDisplayMode = 'edit' | 'clean';
+/** Workspace-level document measure; it never changes Markdown source. */
+export type ComposerContentWidth = 'readable' | 'wide';
 export type ComposerOpenDisposition =
 	| 'reuse-existing'
 	| 'replace-current'
@@ -95,6 +97,10 @@ export function normalizeDefaultDocumentView(value: unknown): DefaultDocumentVie
 
 export function normalizeComposerDisplayMode(value: unknown): ComposerDisplayMode {
 	return normalizeDisplayMode(value);
+}
+
+export function normalizeComposerContentWidth(value: unknown): ComposerContentWidth {
+	return value === 'wide' ? 'wide' : 'readable';
 }
 
 function normalizeDisplayMode(value: unknown): ComposerDisplayMode {

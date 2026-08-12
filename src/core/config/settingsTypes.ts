@@ -18,7 +18,7 @@ import {
 	getAIInboxFolder,
 	getAISkillsFolder,
 } from '@/core/config/folderPaths';
-import type { DefaultDocumentView } from '@/core/composer';
+import type { ComposerContentWidth, DefaultDocumentView } from '@/core/composer';
 import type { CommandCenterBoardConfig } from '@/core/command-center';
 import type { PluginCommandGatewaySettings } from '@/core/types/plugin-command-gateway';
 import { DEFAULT_PLUGIN_COMMAND_GATEWAY_SETTINGS } from '@/core/types/plugin-command-gateway';
@@ -313,6 +313,8 @@ export interface ComposerSettings {
 	 * the current leaf; current-leaf conversion is an explicit view action.
 	 */
 	defaultDocumentView: DefaultDocumentView;
+	/** Last explicit readable/wide document measure; never written into notes. */
+	contentWidth: ComposerContentWidth;
 	/**
 	 * Last explicit Intelligence open/close choice. Contextual opens from a
 	 * finding, comment or deep link never rewrite this preference.
@@ -322,6 +324,7 @@ export interface ComposerSettings {
 
 export const DEFAULT_COMPOSER_SETTINGS: ComposerSettings = {
 	defaultDocumentView: 'markdown',
+	contentWidth: 'readable',
 	intelligenceManualOpen: false,
 };
 

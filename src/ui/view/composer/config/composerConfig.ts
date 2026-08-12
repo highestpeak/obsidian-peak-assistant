@@ -138,6 +138,12 @@ export interface ComposerChromeConfig {
 		back: string;
 		forward: string;
 	};
+	contentWidth: {
+		readable: string;
+		wide: string;
+		switchToReadable: string;
+		switchToWide: string;
+	};
 	displayStates: {
 		groupLabel: string;
 		edit: string;
@@ -394,6 +400,12 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			back: '后退',
 			forward: '前进',
 		},
+		contentWidth: {
+			readable: '窄屏',
+			wide: '宽屏',
+			switchToReadable: '切换到窄屏',
+			switchToWide: '切换到宽屏',
+		},
 		displayStates: {
 			groupLabel: '文档视图',
 			edit: '编辑视图',
@@ -598,6 +610,7 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 		},
 		undo: { ...base.undo, ...parsed.undo },
 		workspaceNavigation: { ...base.workspaceNavigation, ...parsed.workspaceNavigation },
+		contentWidth: { ...base.contentWidth, ...parsed.contentWidth },
 		displayStates: { ...base.displayStates, ...parsed.displayStates },
 		selection: {
 			...base.selection,

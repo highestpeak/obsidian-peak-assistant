@@ -95,7 +95,7 @@ assert.match(nativeAffordance, /<Button/);
 assert.match(nativeAffordance, /convert\(leaf\)/);
 assert.match(
 	composerCss,
-	/\.peak-design-root \.pk-native-composer-affordance__button[\s\S]*?height:\s*32px !important;[\s\S]*?min-height:\s*32px !important;[\s\S]*?max-height:\s*32px !important;[\s\S]*?padding:\s*0 10px !important;/,
+	/\.peak-design-root \.pk-native-composer-affordance__button[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*0 8px !important;/,
 	'native Markdown affordance defends its fixed hit target from the Obsidian reset',
 );
 assert.match(

@@ -11,7 +11,7 @@
 
 .peak-composer-root {
 	--pkc-fm-line: rgb(220, 227, 238);
-	--pkc-fm-panel-bg: #fbfcff;
+	--pkc-fm-panel-bg: transparent;
 	--pkc-fm-key: #95a1b2;
 	--pkc-fm-value: #344055;
 	--pkc-fm-tag-border: #cfe0ff;
@@ -30,7 +30,7 @@
 
 .theme-dark .peak-composer-root {
 	--pkc-fm-line: var(--pk-border);
-	--pkc-fm-panel-bg: var(--pk-bg-secondary);
+	--pkc-fm-panel-bg: transparent;
 	--pkc-fm-key: var(--pk-text-muted);
 	--pkc-fm-value: var(--pk-text-primary);
 	--pkc-fm-tag-border: var(--pk-border-accent);
@@ -128,9 +128,11 @@
 	display: grid;
 	grid-template-columns: minmax(132px, 176px) minmax(0, 1fr);
 	gap: 9px 18px;
-	padding: 12px 14px;
-	border: 1px solid var(--pkc-fm-line);
-	border-radius: 8px;
+	padding: 10px 0 12px;
+	border: 0;
+	border-top: 1px solid var(--pkc-fm-line);
+	border-bottom: 1px solid var(--pkc-fm-line);
+	border-radius: 0;
 	background: var(--pkc-fm-panel-bg);
 }
 

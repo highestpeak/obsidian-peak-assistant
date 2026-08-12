@@ -126,6 +126,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 		workspaceBack: 'B',
 		workspaceForward: 'F',
 		display: { edit: 'E', clean: 'V', markdown: 'M' },
+		contentWidth: 'L',
 		reviewAll: 'R',
 		comments: 'C',
 		intelligence: 'I',

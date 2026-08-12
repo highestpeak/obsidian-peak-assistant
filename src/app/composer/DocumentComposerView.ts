@@ -234,6 +234,12 @@ export class DocumentComposerView extends ReactFileViewHost {
 					if (!this.viewState || this.viewState.displayMode === displayMode) return;
 					this.viewState = { ...this.viewState, displayMode };
 				},
+				initialContentWidth: runtime?.getContentWidth() ?? 'readable',
+				onContentWidthChange: runtime
+					? async (width) => {
+						await runtime.setContentWidth(width);
+					}
+					: undefined,
 				onOpenNativeMarkdown: runtime?.navigation
 					? async () => {
 						try {
