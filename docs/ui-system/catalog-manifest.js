@@ -172,7 +172,7 @@
           "../src/ui/view/usage-dashboard/UsageDashboard.tsx",
           "../src/ui/view/usage-dashboard/screens/ProviderModel.tsx"
         ],
-        designs: ["gstack/onboarding-settings-redesign-2026-08-06/settings-native.html"],
+        designs: ["gstack/settings-onboarding-unified-2026-08-12/settings.html"],
         references: [
           { second: 132, label: "Settings · Overview", image: "ui-system/evidence/recording-2026-08-10/settings-overview.jpg" },
           { second: 134, label: "Settings · AI Setup", image: "ui-system/evidence/recording-2026-08-10/settings-ai-setup.jpg" },

@@ -7,6 +7,7 @@ const read = (file) => fs.readFileSync(path.join(directory, file), "utf8");
 const html = read("index.html");
 const css = read("mock.css");
 const js = read("mock.js");
+const readme = read("README.md");
 
 const requiredHtml = [
   "data-overall-progress",
@@ -26,6 +27,7 @@ const requiredHtml = [
   "file-types-donut",
   "data-type-segment=\"markdown\"",
   "data-type-row=\"markdown\"",
+  "Settings &amp; Onboarding package",
 ];
 
 const requiredJs = [
@@ -47,6 +49,7 @@ const requiredCss = [
   ".file-type-row",
   ".donut-segment",
   ".file-types-overview",
+  ".package-link",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",
 ];
@@ -65,6 +68,9 @@ for (const value of requiredCss) {
 const forbidden = ["data-view-target", "data-view=\"problems\"", "data-view=\"history\""];
 for (const value of forbidden) {
   if (html.includes(value)) missing.push(`forbidden multi-page control: ${value}`);
+}
+if (readme.includes("http://127.0.0.1") || readme.includes("localhost:")) {
+  missing.push("README: temporary localhost instructions are not allowed");
 }
 
 if (missing.length > 0) {

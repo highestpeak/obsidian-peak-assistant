@@ -88,13 +88,15 @@ svg {
 }
 
 .quiet-button {
-  margin-left: auto;
   padding: 2px 0;
   border: 0;
   background: transparent;
   color: var(--text-secondary);
   font-size: 11px;
 }
+
+.package-link { margin-left: auto; margin-right: 16px; color: var(--text-secondary); text-decoration: none; }
+.package-link:hover { color: var(--accent); }
 
 .quiet-button:hover,
 .text-button:hover {

@@ -1,13 +1,27 @@
-# Unified Settings and Onboarding Mock
+# Settings and Onboarding Design Package
 
-Design-only HTML mocks for Peak Assistant's launch preparation. These files do not change production plugin code.
+Status: current product contract and target mocks · production implementation not started · interaction not verified in Obsidian.
 
-## Open directly
+This directory is the current review package for Peak Assistant's Settings and Onboarding work. It replaces the 2026-08-06 visual variants as the design reference.
 
-- `settings.html` — long-term configuration and system status
-- `onboarding.html` — minimum setup followed by a real first-task handoff
+## Start here
 
-Both files are self-contained local HTML artifacts and should be opened directly. They do not require a temporary localhost server.
+- [`index.html`](./index.html) — the single entry point and document map.
+- [`2026-08-09 capability brief`](../../superpowers/specs/2026-08-09-onboarding-settings-capability-content-flow-brief.md) — the current source of truth for required capability, content, state and flow.
+- [`settings.html`](./settings.html) — target experience for long-term configuration and system status.
+- [`onboarding.html`](./onboarding.html) — target experience for minimum setup and the first real task.
+- [`Knowledge Index progress`](../knowledge-index-workspace-2026-08-11/index.html) — focused run view for indexing progress, order, speed, ETA, file types and per-document work.
+
+These HTML files are self-contained local artifacts and should be opened directly. They do not require a temporary localhost server.
+
+## Source-of-truth order
+
+1. The capability brief decides what the product must preserve and how success is verified.
+2. The current Settings and Onboarding mocks show one target interaction and visual response to that contract.
+3. The Knowledge Index mock owns the detailed feedback for an active indexing run.
+4. The 2026-08-06 redesign package and visual calibration board are historical exploration only.
+
+If the documents disagree, use this order. Historical variants must not be treated as implementation requirements.
 
 ## Shared product model
 
@@ -61,3 +75,11 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 ## Truth boundary
 
 This is a target design. Current or partially implemented capabilities must still be verified against production source before implementation. In particular, Codex and Claude Code ordinary-generation and Agent capabilities require separate verification; OpenRouter and Ollama model lists must use fresh runtime/catalog evidence; Knowledge Index readiness must not be inferred from a static preference.
+
+## Historical evidence
+
+- [`2026-08-06 redesign exploration`](../onboarding-settings-redesign-2026-08-06/index.html) — early flow, shell and Provider/model chooser variants.
+- [`Visual calibration board`](../onboarding-settings-redesign-2026-08-06/visual-calibration/index.html) — Raycast, Linear, macOS, ChatGPT and VS Code references.
+- [`2026-08-06 redesign brief`](../../superpowers/specs/2026-08-06-onboarding-settings-launch-readiness-redesign.md) — recording diagnosis and first-round design decisions.
+
+These files remain for traceability. They are superseded by this package for current design review.

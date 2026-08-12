@@ -73,6 +73,84 @@ svg {
 .artifact-bar a { padding: 4px 8px; border-radius: 5px; color: var(--text-secondary); }
 .artifact-bar a:hover, .artifact-bar a.is-current { background: var(--surface); color: var(--text); }
 
+/* Document package index */
+
+.package-artifact { min-height: 100vh; }
+
+.package-frame {
+  width: min(980px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 58px 0 72px;
+}
+
+.package-hero { max-width: 780px; }
+.package-status { display: inline-flex; padding: 5px 8px; border: 1px solid var(--accent-line); border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 650; }
+.package-hero h1 { max-width: 100%; margin: 16px 0 0; font-size: 36px; line-height: 1.12; letter-spacing: -.035em; }
+.package-hero > p { max-width: 680px; margin: 12px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; }
+
+.package-boundary {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  max-width: 720px;
+  margin-top: 23px;
+  padding: 13px 15px;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.package-boundary strong { color: var(--text); }
+.package-boundary span { color: var(--text-secondary); }
+.package-section { margin-top: 54px; }
+
+.package-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+.package-section-heading h2 { margin: 0; font-size: 17px; letter-spacing: -.015em; }
+.package-section-heading p { max-width: 650px; margin: 6px 0 0; color: var(--text-secondary); font-size: 10.5px; line-height: 1.55; }
+
+.package-document-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+.package-document-card {
+  display: flex;
+  min-height: 174px;
+  padding: 19px;
+  flex-direction: column;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(24,24,30,.04);
+}
+
+.package-document-card:hover { border-color: var(--accent-line); background: #fdfdff; box-shadow: 0 5px 18px rgba(24,24,30,.06); }
+.package-document-card.contract { border-color: var(--accent-line); background: linear-gradient(180deg, #f8f8ff 0%, #fff 65%); }
+.document-kind { color: var(--text-muted); font-size: 8.5px; font-weight: 650; }
+.package-document-card > strong { margin-top: 10px; font-size: 14px; }
+.package-document-card > p { margin: 7px 0 0; color: var(--text-secondary); font-size: 10.5px; line-height: 1.55; }
+.document-action { display: flex; margin-top: auto; padding-top: 16px; align-items: center; gap: 6px; color: var(--accent); font-size: 10px; font-weight: 620; }
+.document-action i { font-size: 13px; font-style: normal; }
+
+.package-reading-path { display: grid; margin: 0; padding: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.package-reading-path li { display: flex; min-height: 148px; padding: 17px 15px; gap: 10px; border-right: 1px solid var(--line); }
+.package-reading-path li:last-child { border-right: 0; }
+.package-reading-path li > span { display: grid; flex: 0 0 auto; width: 22px; height: 22px; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--text-muted); font-size: 8px; font-weight: 700; }
+.package-reading-path div { display: flex; min-width: 0; flex-direction: column; }
+.package-reading-path strong { font-size: 10.5px; line-height: 1.35; }
+.package-reading-path p { margin: 7px 0 0; color: var(--text-muted); font-size: 9px; line-height: 1.55; }
+
+.package-section.historical { padding-top: 30px; border-top: 1px solid var(--line); }
+.historical-label { flex: 0 0 auto; padding: 4px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-soft); color: var(--text-muted); font-size: 8px; }
+.historical-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.historical-links a { display: flex; min-height: 90px; padding: 13px 14px; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
+.historical-links a:hover { border-color: var(--line-strong); background: var(--surface); }
+.historical-links strong { font-size: 10px; }
+.historical-links span { margin-top: 5px; color: var(--text-muted); font-size: 8.5px; line-height: 1.5; }
+
+.package-footer { display: flex; margin-top: 46px; padding: 15px 0 0; flex-direction: column; gap: 5px; border-top: 1px solid var(--line); }
+.package-footer strong { font-size: 10.5px; }
+.package-footer span { color: var(--text-muted); font-size: 9px; line-height: 1.5; }
+
 .primary-button,
 .secondary-button,
 .icon-button,
@@ -773,6 +851,12 @@ svg {
 }
 
 @media (max-width: 760px) {
+  .package-frame { width: calc(100% - 30px); padding-top: 42px; }
+  .package-document-grid { grid-template-columns: 1fr; }
+  .package-reading-path { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .package-reading-path li:nth-child(2) { border-right: 0; }
+  .package-reading-path li:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+  .historical-links { grid-template-columns: 1fr; }
   .obsidian-settings-shell { grid-template-columns: 164px minmax(0, 1fr); }
   .obsidian-settings-sidebar { padding-right: 8px; padding-left: 8px; }
   .peak-settings-header { grid-template-columns: minmax(0, 1fr) auto; min-height: 96px; padding: 8px 14px 9px; gap: 6px 10px; }
@@ -824,6 +908,13 @@ svg {
 @media (max-width: 520px) {
   .artifact-bar > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .artifact-bar a { padding-right: 5px; padding-left: 5px; }
+  .package-frame { width: calc(100% - 24px); padding-top: 32px; }
+  .package-hero h1 { font-size: 29px; }
+  .package-boundary { grid-template-columns: 1fr; }
+  .package-reading-path { grid-template-columns: 1fr; }
+  .package-reading-path li, .package-reading-path li:nth-child(2) { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .package-reading-path li:last-child { border-bottom: 0; }
+  .package-section-heading { align-items: flex-start; flex-direction: column; }
   .settings-frame { width: 100%; min-height: calc(100vh - 32px); margin: 0; border-right: 0; border-left: 0; border-radius: 0; }
   .obsidian-settings-shell { grid-template-columns: 54px minmax(0, 1fr); }
   .obsidian-settings-sidebar { padding: 10px 7px; }

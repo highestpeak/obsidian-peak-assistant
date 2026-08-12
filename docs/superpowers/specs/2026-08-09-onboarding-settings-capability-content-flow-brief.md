@@ -1,6 +1,6 @@
 # Peak Assistant Onboarding 与 Settings 能力、内容和流程 Brief
 
-> 状态：UI-independent product requirements · design handoff · implementation not started
+> 状态：当前产品要求 · target UI mock available · production implementation not started · interaction not verified
 > 日期：2026-08-09
 > 面向读者：产品设计师、交互设计师、产品负责人、后续实现与验收人员
 > 适用范围：Peak Assistant 首次配置、重新配置、日常设置、修复与首次成功体验
@@ -18,7 +18,7 @@
 
 它不规定页面布局、导航形式、控件形态、颜色、图标、尺寸、动效或视觉风格。设计师可以自由决定具体 UI，但不能删除这里定义的必要能力、状态、依赖关系和恢复路径。
 
-本 brief 是 [2026-08-06 Onboarding 与 Settings 上线准备 redesign](./2026-08-06-onboarding-settings-launch-readiness-redesign.md) 的 UI-independent 行为层。之前的 HTML mock 只用于探索，不是最终界面约束。
+本 brief 是当前能力、内容、状态和流程的 source of truth。[2026-08-12 Settings 与 Onboarding 文档包](../../gstack/settings-onboarding-unified-2026-08-12/index.html) 提供当前目标 mock；[2026-08-06 redesign](./2026-08-06-onboarding-settings-launch-readiness-redesign.md) 与同批 HTML variants 只保留为历史探索。
 
 ### 0.1 产品目标
 
@@ -37,7 +37,7 @@ Settings 的唯一目标是：
 - 不以“看起来更简洁”为理由删除原来有真实作用的设置；
 - 不把普通用户和高级用户分成两套互相切换的 Settings；
 - 不把静态文案、API key 是否非空或 mock 数据当成真实可用状态；
-- 不把 Codex、Claude Code 伪装成普通聊天模型 Provider；
+- 不把 Codex、Claude Code 限定成只做 Agent 的 runtime；它们的普通对话能力与 Agent 执行能力需要分别表达和验证；
 - 不为 18 个任务机械制造 18 份互不相关的重复配置；
 - 不把关闭 Onboarding 或看到完成文案当作第一次成功。
 
@@ -79,7 +79,7 @@ Settings 的唯一目标是：
 
 - **Direct API**：OpenAI、Anthropic、OpenRouter；
 - **Local model service**：Ollama；
-- **Agent runtime**：Codex、Claude Code；
+- **普通对话 + Agent runtime**：Codex、Claude Code；同一连接可以提供两类能力，但验证结果不能互相代替；
 - **Media service**：OpenAI native media、fal.ai；
 - **Advanced gateway / compatible endpoint**：LiteLLM、自定义 OpenAI-compatible endpoint；
 - **其他直接服务**：Google、Perplexity，保留为 Settings 中的扩展连接。
@@ -107,10 +107,12 @@ Onboarding 不需要逐项讲解这张地图，但设计师必须知道首次任
 
 ### 3.3 委派与执行
 
-- **Peak Agent / Wizard**：运行多步任务、使用工具、管理确认、展示过程和结果；
-- **Codex / Claude Code runtime**：在明确工作目录、权限、预算和中断语义下运行外部 Agent；
+- **Peak Hermes / Agent / Wizard**：Peak 自己的 Agent harness，负责多步流程、工具循环、确认、停止、receipt 和结果呈现；
+- **Codex / Claude Code connection**：既可以承担普通对话，也可以在明确工作目录、权限、预算和中断语义下提供 Agent 执行能力；
 - **Skills**：为特定任务提供步骤、允许工具和产出规则；
 - **MCP 与 Obsidian commands**：为 Agent 提供经过审批的工具。
+
+Peak Hermes 不是 Provider 或模型。它可以使用普通模型连接完成 Agent loop，也可以选择 Codex、Claude Code 等具有 Agent 能力的执行路线。
 
 ### 3.4 文件与媒体
 
@@ -456,8 +458,8 @@ Onboarding 是一条目标驱动、可分支的流程，不等于固定页数。
 - Anthropic direct API；
 - OpenRouter gateway；
 - Ollama local service；
-- Codex Agent runtime；
-- Claude Code Agent runtime。
+- Codex conversation 与 Agent runtime；
+- Claude Code conversation 与 Agent runtime。
 
 #### P1 / 条件连接
 
@@ -488,6 +490,8 @@ Onboarding 是一条目标驱动、可分支的流程，不等于固定页数。
 
 #### Agent runtime 额外能力
 
+下面这些状态只适用于连接的 Agent 能力；普通对话能力需要单独做 conversation probe。
+
 - 安装 / 可执行文件检测；
 - 版本检测；
 - 登录 / 认证状态；
@@ -499,6 +503,17 @@ Onboarding 是一条目标驱动、可分支的流程，不等于固定页数。
 - runtime 更新或不兼容提示。
 
 当前源码已支持 Anthropic、OpenAI、Google、Perplexity、Ollama、OpenRouter、LiteLLM、custom 和 Simulator 类型的 Provider profile；Codex 与 Claude Code adapter 仍是 `REQUIRED`，设计不得写成当前已经 ready。
+
+#### OpenRouter 模型目录
+
+插件不应要求每个版本手工内置完整模型列表。目标方案是追踪一份由项目维护的在线 JSON，可以放在项目文件或 GitHub Gist，并保留本地可恢复副本。
+
+- 在线 JSON 包含 schema version、生成时间、模型 ID、显示名、能力和下架状态；
+- 请求优先使用 `ETag` 或 `Last-Modified`，内容未变化时不重复下载；
+- 更新成功后保留 last-known-good cache，不用空响应覆盖有效目录；
+- 网络失败时先使用带时间戳的有效缓存，再降级到随插件发布的 bundled fallback；
+- Settings 显示目录来源、最后检查时间、最后成功更新时间和 stale 状态；
+- 在线目录只决定候选信息，连接是否可调用仍需要独立的真实验证。
 
 ### 8.3 Models 与任务路由（P0/P1 · PARTIAL）
 
@@ -1096,7 +1111,7 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 - 默认路径只要求一个首次目标和完成它所需的最低配置；
 - 已有可用连接、Index 和本地 runtime 会被正确复用；
 - OpenAI、Anthropic、OpenRouter、Ollama 的连接可以真实验证；
-- Codex、Claude Code 在 adapter 完成后能够验证安装、认证、权限和工作目录；
+- Codex、Claude Code 在 adapter 完成后能够分别验证普通对话，以及 Agent 所需的安装、认证、权限和工作目录；
 - OpenRouter / Ollama 候选来自带新鲜度的动态目录或明确标记的 fallback cache；
 - 连接错误、Index 错误和媒体错误能在流程中修复；
 - 已有 Index 显示真实数量、覆盖率和新鲜度；
@@ -1161,7 +1176,7 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 
 本次交付只定义能力、内容和流程：
 
-> DESIGN REQUIREMENTS READY · UI NOT DESIGNED · IMPLEMENTATION NOT STARTED · INTERACTION NOT VERIFIED
+> DESIGN REQUIREMENTS READY · TARGET UI MOCK AVAILABLE · PRODUCTION IMPLEMENTATION NOT STARTED · INTERACTION NOT VERIFIED
 
 后续 UI 设计应以本 brief 为能力 source of truth。后续工程实施还需要单独完成：
 

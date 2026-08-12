@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peak Assistant · Settings 与 Onboarding 文档入口</title>
+    <link rel="stylesheet" href="./mock.css" />
+  </head>
+  <body class="package-artifact">
+    <div class="artifact-bar">
+      <span class="artifact-mark"></span>
+      <span>Settings 与 Onboarding · 设计文档包</span>
+      <nav>
+        <a class="is-current" href="./index.html">文档入口</a>
+        <a href="./settings.html">Settings</a>
+        <a href="./onboarding.html">Onboarding</a>
+      </nav>
+    </div>
+
+    <main class="package-frame">
+      <header class="package-hero">
+        <span class="package-status">当前设计入口 · 2026-08-12</span>
+        <h1>Settings 与 Onboarding 文档入口</h1>
+        <p>这页是本轮设计的唯一入口。先看产品要求，再分别 review Settings、Onboarding 和 Knowledge Index 的目标体验。</p>
+        <div class="package-boundary">
+          <strong>当前边界</strong>
+          <span>产品要求和目标 mock 已整理；生产实现尚未开始，真实 Obsidian 交互仍未验证。</span>
+        </div>
+      </header>
+
+      <section class="package-section" aria-labelledby="current-documents">
+        <div class="package-section-heading">
+          <div>
+            <h2 id="current-documents">当前文档</h2>
+            <p>四份材料各自只承担一个职责，避免把产品要求、页面方案和运行过程混在一起。</p>
+          </div>
+        </div>
+
+        <div class="package-document-grid">
+          <a class="package-document-card contract" href="../../superpowers/specs/2026-08-09-onboarding-settings-capability-content-flow-brief.md">
+            <span class="document-kind">产品要求 · 当前 source of truth</span>
+            <strong>能力、内容和流程 Brief</strong>
+            <p>规定必须保留的能力、状态、依赖、失败恢复与验收边界；不规定具体 UI。</p>
+            <span class="document-action">先读这份 <i>→</i></span>
+          </a>
+
+          <a class="package-document-card" href="./settings.html">
+            <span class="document-kind">当前目标 mock</span>
+            <strong>Settings</strong>
+            <p>在 Obsidian 原生 Settings panel 内，查看顶部分类、连接、按功能选择模型和长期控制。</p>
+            <span class="document-action">打开 Settings <i>→</i></span>
+          </a>
+
+          <a class="package-document-card" href="./onboarding.html">
+            <span class="document-kind">当前目标 mock</span>
+            <strong>Onboarding</strong>
+            <p>完成最低必要配置，验证真实依赖，并把用户送入第一次真实任务。</p>
+            <span class="document-action">打开 Onboarding <i>→</i></span>
+          </a>
+
+          <a class="package-document-card" href="../knowledge-index-workspace-2026-08-11/index.html">
+            <span class="document-kind">专项交互 mock</span>
+            <strong>Knowledge Index 运行进度</strong>
+            <p>承载批量索引的进度、速度、预计时间、文档顺序、文件类型和单文档子步骤。</p>
+            <span class="document-action">打开索引进度 <i>→</i></span>
+          </a>
+        </div>
+      </section>
+
+      <section class="package-section" aria-labelledby="responsibilities">
+        <div class="package-section-heading">
+          <div>
+            <h2 id="responsibilities">它们怎么分工</h2>
+            <p>评审时按下面的顺序判断，后面的文档不能推翻前面的产品边界。</p>
+          </div>
+        </div>
+
+        <ol class="package-reading-path">
+          <li><span>1</span><div><strong>Brief 决定必须有什么</strong><p>能力、状态、依赖、恢复和验收以 Brief 为准。</p></div></li>
+          <li><span>2</span><div><strong>Settings mock 决定长期怎么掌控</strong><p>连接、模型、索引范围、工具、权限和高级控制在这里持续维护。</p></div></li>
+          <li><span>3</span><div><strong>Onboarding mock 决定第一次怎么成功</strong><p>只暴露当前任务真正需要的最小配置，并保留失败后的恢复路径。</p></div></li>
+          <li><span>4</span><div><strong>Index mock 决定长任务怎么反馈</strong><p>它是 Settings 和 Onboarding 可打开的运行视图，不是另一套配置中心。</p></div></li>
+        </ol>
+      </section>
+
+      <section class="package-section historical" aria-labelledby="historical-documents">
+        <div class="package-section-heading">
+          <div>
+            <h2 id="historical-documents">历史探索</h2>
+            <p>这些材料保留设计过程与研究证据，但已经不是当前实现或视觉依据。</p>
+          </div>
+          <span class="historical-label">Superseded</span>
+        </div>
+
+        <div class="historical-links">
+          <a href="../onboarding-settings-redesign-2026-08-06/index.html"><strong>2026-08-06 设计探索</strong><span>早期 Onboarding、Provider picker 和 Settings variants</span></a>
+          <a href="../onboarding-settings-redesign-2026-08-06/visual-calibration/index.html"><strong>视觉校准板</strong><span>Raycast、Linear、macOS、ChatGPT 和 VS Code 参考</span></a>
+          <a href="../../superpowers/specs/2026-08-06-onboarding-settings-launch-readiness-redesign.md"><strong>第一轮 redesign 说明</strong><span>录像问题、源码诊断和早期设计判断</span></a>
+        </div>
+      </section>
+
+      <footer class="package-footer">
+        <strong>不要从历史 variants 开始实现。</strong>
+        <span>实现前应先核对当前 Brief，再以 Settings、Onboarding 和 Knowledge Index 三个目标 mock 作为交互参考。</span>
+      </footer>
+    </main>
+  </body>
+</html>

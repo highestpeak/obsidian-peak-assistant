@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const read = (name) => fs.readFileSync(path.join(directory, name), "utf8");
 
+const packageHtml = read("index.html");
 const settingsHtml = read("settings.html");
 const onboardingHtml = read("onboarding.html");
 const css = read("mock.css");
@@ -19,6 +20,16 @@ function requireValues(label, source, values) {
     if (!source.includes(value)) missing.push(`${label}: ${value}`);
   }
 }
+
+requireValues("Package HTML", packageHtml, [
+  "当前文档",
+  "能力、内容和流程 Brief",
+  "Settings",
+  "Onboarding",
+  "Knowledge Index 运行进度",
+  "历史探索",
+  "Superseded",
+]);
 
 requireValues("Settings HTML", settingsHtml, [
   "Models by feature",
@@ -72,6 +83,8 @@ requireValues("Onboarding JS", onboardingJs, [
 ]);
 
 requireValues("CSS", css, [
+  ".package-frame",
+  ".package-document-grid",
   ".settings-frame",
   ".obsidian-settings-shell",
   ".peak-settings-tabs",
@@ -84,6 +97,8 @@ requireValues("CSS", css, [
 
 requireValues("README", readme, [
   "do not require a temporary localhost server",
+  "Source-of-truth order",
+  "Historical evidence",
   "product feature → action group → concrete action",
   "Setup complete",
   "First success",
@@ -128,10 +143,12 @@ function checkDuplicateIds(label, html) {
 
 checkSymbols("Settings HTML", settingsHtml);
 checkSymbols("Onboarding HTML", onboardingHtml);
+checkLocalAssets("Package HTML", packageHtml, "index.html");
 checkLocalAssets("Settings HTML", settingsHtml, "settings.html");
 checkLocalAssets("Onboarding HTML", onboardingHtml, "onboarding.html");
 checkDuplicateIds("Settings HTML", settingsHtml);
 checkDuplicateIds("Onboarding HTML", onboardingHtml);
+checkDuplicateIds("Package HTML", packageHtml);
 
 if (missing.length > 0) {
   console.error("Unified Settings / Onboarding mock validation failed:");

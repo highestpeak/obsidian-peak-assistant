@@ -2,6 +2,8 @@
 
 Design-only mock for Peak Assistant's first-run and manual knowledge indexing experience.
 
+This is a supporting run view in the current [Settings and Onboarding design package](../settings-onboarding-unified-2026-08-12/index.html). Settings owns long-term index configuration; this page owns the state of one active indexing run.
+
 ## Direction
 
 The indexing job is intentionally carried by one page. It is not an index administration dashboard and it does not split progress, errors, history, file types, or folder scope into separate destinations.
@@ -30,8 +32,6 @@ The default run includes Markdown, PDF, images, and Excalidraw. DOCX, PPTX, Canv
 
 ## Review
 
-Serve from the repository root and open:
-
-`http://127.0.0.1:<port>/docs/gstack/knowledge-index-workspace-2026-08-11/index.html`
+Open [`index.html`](./index.html) directly from its local file path. A temporary localhost server is not required.
 
 This artifact changes documentation only. It is not a production implementation commitment.

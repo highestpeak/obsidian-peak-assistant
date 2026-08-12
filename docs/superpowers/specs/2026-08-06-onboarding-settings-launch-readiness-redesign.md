@@ -1,6 +1,6 @@
 # Peak Assistant Onboarding 与 Settings 上线准备设计
 
-> 状态：第二轮设计纠偏与可点击 mock 已完成，production implementation pending。
+> 状态：历史设计与诊断记录。当前产品要求以 [2026-08-09 能力、内容和流程 Brief](./2026-08-09-onboarding-settings-capability-content-flow-brief.md) 为准；当前交互参考从 [2026-08-12 文档入口](../../gstack/settings-onboarding-unified-2026-08-12/index.html) 打开。
 >
 > 范围：只重新定义首次成功路径、Settings 信息架构、连接与模型选择体验；本轮没有修改 Onboarding、Settings、Provider 或索引生产代码。
 >

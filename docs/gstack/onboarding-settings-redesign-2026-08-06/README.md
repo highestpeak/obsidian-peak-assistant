@@ -1,8 +1,10 @@
-# Onboarding 与 Settings 上线准备 mock
+# Onboarding 与 Settings 历史设计探索
 
-状态：design only · production unchanged · interaction not verified in Obsidian。
+状态：superseded historical exploration · design only · production unchanged。
 
-入口：
+当前评审与后续实现请从 [`2026-08-12 Settings and Onboarding design package`](../settings-onboarding-unified-2026-08-12/index.html) 开始。这里保留早期流程、Provider picker、Settings variants 和视觉校准证据，但不再是当前设计依据。
+
+历史入口：
 
 - `index.html`：视觉 review board；
 - `start-variants.html`：Onboarding 第一步的三种结构候选；

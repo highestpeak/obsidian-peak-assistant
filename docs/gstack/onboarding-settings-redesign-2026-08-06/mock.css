@@ -47,6 +47,22 @@ body {
   min-height: 100vh;
 }
 
+.superseded-banner {
+  display: flex;
+  min-height: 42px;
+  padding: 8px 18px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--warning-soft);
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+.superseded-banner strong { color: var(--ink); }
+.superseded-banner a { color: var(--accent-strong); font-weight: 650; text-decoration: none; }
+
 button,
 input,
 select {
