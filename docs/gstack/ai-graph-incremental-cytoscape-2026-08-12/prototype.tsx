@@ -8,13 +8,11 @@ import {
 	CirclePause,
 	CirclePlay,
 	Clock3,
-	Folders,
 	GitBranch,
 	History,
 	LayoutGrid,
 	LocateFixed,
 	Network,
-	Orbit,
 	Pause,
 	Play,
 	Plus,
@@ -370,15 +368,19 @@ const THINKING_TREE_SUBGRAPH = buildLensSubgraph([
 
 const BRIDGE_SUBGRAPH = buildLensSubgraph([
 	{ from: 'graphrag', to: 'retrieval', kind: 'reference', directionality: 'directed' },
+	{ from: 'retrieval', to: 'evidence', kind: 'semantic', directionality: 'directed', weight: .84 },
 	{ from: 'community', to: 'global-search', kind: 'reference', directionality: 'directed' },
-	{ from: 'evidence', to: 'provenance', kind: 'reference', directionality: 'directed' },
-	{ from: 'benchmark', to: 'global-search', kind: 'semantic', directionality: 'directed', weight: .68 },
-	{ from: 'retrieval', to: 'human-review', kind: 'semantic', directionality: 'directed', weight: .74 },
-	{ from: 'global-search', to: 'human-review', kind: 'semantic', directionality: 'directed', weight: .63 },
+	{ from: 'global-search', to: 'benchmark', kind: 'semantic', directionality: 'directed', weight: .68 },
+	{ from: 'source-lineage', to: 'provenance', kind: 'reference', directionality: 'directed' },
 	{ from: 'provenance', to: 'human-review', kind: 'semantic', directionality: 'directed', weight: .79 },
 	{ from: 'human-review', to: 'agent-observability', kind: 'reference', directionality: 'directed' },
 ], {
-	nodeIds: ['graphrag', 'community', 'evidence', 'benchmark', 'retrieval', 'global-search', 'provenance', 'human-review', 'agent-observability'],
+	nodeIds: ['graphrag', 'retrieval', 'evidence', 'community', 'global-search', 'benchmark', 'source-lineage', 'provenance', 'human-review', 'agent-observability'],
+	titlePrefixById: {
+		'global-search': 'Bridge · ',
+		provenance: 'Bridge · ',
+		retrieval: 'Bridge · ',
+	},
 	previewById: {
 		'global-search': 'Bridge · Methods → Evaluation',
 		provenance: 'Bridge · Evidence → Control',
@@ -404,45 +406,55 @@ const TIMELINE_SUBGRAPH = buildLensSubgraph([
 	},
 });
 
-const GAP_SUBGRAPH = buildLensSubgraph([
-	{ from: 'graphrag', to: 'retrieval', kind: 'reference', directionality: 'directed' },
-	{ from: 'community', to: 'global-search', kind: 'reference', directionality: 'directed' },
-	{ from: 'evidence', to: 'provenance', kind: 'reference', directionality: 'directed' },
-	{ from: 'evidence', to: 'source-lineage', kind: 'reference', directionality: 'directed' },
-	{ from: 'provenance', to: 'citations', kind: 'reference', directionality: 'directed' },
-	{ from: 'benchmark', to: 'contradiction', kind: 'reference', directionality: 'directed' },
-	{ from: 'human-review', to: 'agent-observability', kind: 'reference', directionality: 'directed' },
-	{ from: 'retrieval', to: 'community', kind: 'semantic', directionality: 'undirected', weight: .72 },
-	{ from: 'retrieval', to: 'evidence', kind: 'semantic', directionality: 'undirected', weight: .84 },
-	{ from: 'global-search', to: 'benchmark', kind: 'semantic', directionality: 'undirected', weight: .48 },
-	{ from: 'provenance', to: 'human-review', kind: 'semantic', directionality: 'undirected', weight: .77 },
-	{ from: 'contradiction', to: 'retrieval', kind: 'semantic', directionality: 'undirected', weight: .31 },
-]);
+const GAP_SUBGRAPH: ResultSubgraphOutput = {
+	resultNodes: [
+		{ id: 'gap-core', path: 'ai-graph://community/core', title: 'Core model · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Source community' },
+		{ id: 'gap-core-evaluation', path: 'ai-graph://gap/core-evaluation', title: 'Missing bridge · 0.82', score: 1, communityId: null, folder: '', preview: 'No direct relation despite strong semantic potential' },
+		{ id: 'gap-evaluation', path: 'ai-graph://community/evaluation', title: 'Evaluation · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Target community' },
+		{ id: 'gap-evidence', path: 'ai-graph://community/evidence', title: 'Evidence system · 4 concepts', score: .66, communityId: null, folder: '', preview: 'Source community' },
+		{ id: 'gap-evidence-control', path: 'ai-graph://gap/evidence-control', title: 'Weak bridge · 0.67', score: .82, communityId: null, folder: '', preview: 'One fragile relation needs stronger evidence' },
+		{ id: 'gap-control', path: 'ai-graph://community/control', title: 'Human control · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Target community' },
+		{ id: 'gap-methods', path: 'ai-graph://community/methods', title: 'Search methods · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Source community' },
+		{ id: 'gap-methods-evidence', path: 'ai-graph://gap/methods-evidence', title: 'Latent connection · 0.58', score: .71, communityId: null, folder: '', preview: 'Related evidence exists but no relationship is modeled' },
+		{ id: 'gap-evidence-target', path: 'ai-graph://community/evidence', title: 'Evidence system · 4 concepts', score: .66, communityId: null, folder: '', preview: 'Target community' },
+	],
+	hubAnchors: [],
+	edges: [
+		{ from: 'gap-core', to: 'gap-core-evaluation', kind: 'semantic', directionality: 'undirected', weight: .82 },
+		{ from: 'gap-core-evaluation', to: 'gap-evaluation', kind: 'semantic', directionality: 'undirected', weight: .82 },
+		{ from: 'gap-evidence', to: 'gap-evidence-control', kind: 'semantic', directionality: 'undirected', weight: .67 },
+		{ from: 'gap-evidence-control', to: 'gap-control', kind: 'semantic', directionality: 'undirected', weight: .67 },
+		{ from: 'gap-methods', to: 'gap-methods-evidence', kind: 'semantic', directionality: 'undirected', weight: .58 },
+		{ from: 'gap-methods-evidence', to: 'gap-evidence-target', kind: 'semantic', directionality: 'undirected', weight: .58 },
+	],
+	isolatedDocIds: [],
+	overflowCount: 0,
+};
 
 interface LensDefinition {
 	id: LensId;
 	label: string;
 	defaultPreset: AtlasGraphPreset;
+	layouts: AtlasGraphPreset[];
+	fixedViewLabel?: string;
+	summary: string;
 	description: string;
 	question: string;
 	subgraph: ResultSubgraphOutput;
 }
 
 const LENSES: LensDefinition[] = [
-	{ id: 'topology', label: 'Topology', defaultPreset: 'constellation', description: 'Complete relation structure · force-directed by default, with six switchable arrangements', question: 'How is this knowledge connected?', subgraph: TOPOLOGY_SUBGRAPH },
-	{ id: 'thinking-tree', label: 'Thinking Tree', defaultPreset: 'flow-tb', description: 'Derivation hierarchy · roots above, dependent ideas below', question: 'How did the reasoning branch?', subgraph: THINKING_TREE_SUBGRAPH },
-	{ id: 'bridge', label: 'Bridges', defaultPreset: 'flow-lr', description: 'Cross-domain paths · bridge concepts sit between knowledge areas', question: 'Which concepts connect otherwise separate domains?', subgraph: BRIDGE_SUBGRAPH },
-	{ id: 'timeline', label: 'Timeline', defaultPreset: 'flow-lr', description: 'Evolution lanes · dated ideas progress left to right across three themes', question: 'How did the model evolve over time?', subgraph: TIMELINE_SUBGRAPH },
-	{ id: 'gap-analysis', label: 'Gaps', defaultPreset: 'community', description: 'Community structure · weak cross-cluster links expose structural holes', question: 'Where is knowledge missing or weakly connected?', subgraph: GAP_SUBGRAPH },
+	{ id: 'topology', label: 'Topology', defaultPreset: 'constellation', layouts: ['constellation', 'flow-lr', 'flow-tb'], summary: '12 nodes · 15 relations', description: 'Complete relation structure · switch between spatial and directional readings', question: 'How is this knowledge connected?', subgraph: TOPOLOGY_SUBGRAPH },
+	{ id: 'thinking-tree', label: 'Thinking Tree', defaultPreset: 'flow-lr', layouts: ['flow-lr'], summary: '12 concepts · 11 branches', description: 'Derivation hierarchy · one horizontal reasoning tree', question: 'How did the reasoning branch?', subgraph: THINKING_TREE_SUBGRAPH },
+	{ id: 'bridge', label: 'Bridges', defaultPreset: 'flow-lr', layouts: ['flow-lr', 'constellation'], summary: '3 bridges · 7 relations', description: 'Cross-domain paths · every highlighted concept joins two named knowledge areas', question: 'Which concepts connect otherwise separate domains?', subgraph: BRIDGE_SUBGRAPH },
+	{ id: 'timeline', label: 'Timeline', defaultPreset: 'flow-lr', layouts: ['flow-lr'], summary: '3 lanes · 12 dated concepts', description: 'Chronological wrappers follow three left-to-right Cytoscape chains', question: 'How did the model evolve over time?', subgraph: TIMELINE_SUBGRAPH },
+	{ id: 'gap-analysis', label: 'Gaps', defaultPreset: 'flow-lr', layouts: ['flow-lr'], fixedViewLabel: 'Gap map', summary: '3 structural gaps', description: 'Missing or fragile relationships with enough semantic potential to investigate', question: 'Where is knowledge missing or weakly connected?', subgraph: GAP_SUBGRAPH },
 ];
 
 const LAYOUT_OPTIONS: Array<{ id: AtlasGraphPreset; label: string; detail: string }> = [
 	{ id: 'constellation', label: 'Constellation', detail: 'Force cluster' },
-	{ id: 'community', label: 'Community', detail: 'Compound groups' },
-	{ id: 'flow-lr', label: 'Links →', detail: 'Left to right' },
-	{ id: 'flow-tb', label: 'Links ↓', detail: 'Top to bottom' },
-	{ id: 'folder', label: 'Folders', detail: 'Path hierarchy' },
-	{ id: 'orbit', label: 'Orbit', detail: 'Degree rings' },
+	{ id: 'flow-lr', label: 'Flow →', detail: 'Left to right' },
+	{ id: 'flow-tb', label: 'Flow ↓', detail: 'Top to bottom' },
 ];
 
 function LensGlyph({ id }: { id: LensId }): React.ReactElement {
@@ -456,9 +468,6 @@ function LensGlyph({ id }: { id: LensId }): React.ReactElement {
 function LayoutGlyph({ id }: { id: AtlasGraphPreset }): React.ReactElement {
 	if (id === 'flow-tb') return <ArrowDown aria-hidden />;
 	if (id === 'flow-lr') return <ArrowRight aria-hidden />;
-	if (id === 'folder') return <Folders aria-hidden />;
-	if (id === 'orbit') return <Orbit aria-hidden />;
-	if (id === 'community') return <CircleDotDashed aria-hidden />;
 	return <LayoutGrid aria-hidden />;
 }
 
@@ -471,13 +480,42 @@ const TIMELINE_LANES = [
 function TimelineBackdrop(): React.ReactElement {
 	return (
 		<div className="aig-timeline-backdrop" aria-hidden>
-			<div className="aig-timeline-year"><Clock3 /><span>2026 · knowledge evolution</span></div>
+			<div className="aig-projection-note"><Clock3 /><span><strong>2026 · knowledge evolution</strong><small>The graph edge is the timeline; each wrapper follows one dated chain.</small></span></div>
 			{TIMELINE_LANES.map((lane) => (
 				<div key={lane.label} className={`aig-timeline-lane is-${lane.tone}`}>
 					<div className="aig-timeline-lane__label"><strong>{lane.label}</strong><span>{lane.range}</span></div>
-					<div className="aig-timeline-lane__axis"><i /><i /><i /><i /><b /></div>
 				</div>
 			))}
+		</div>
+	);
+}
+
+const BRIDGE_LANES = [
+	{ label: 'Core → Evidence', detail: 'Retrieval carries the model into grounded evidence' },
+	{ label: 'Methods → Evaluation', detail: 'Global search connects a method to its benchmark' },
+	{ label: 'Evidence → Control', detail: 'Claim provenance creates a reviewable control path' },
+] as const;
+
+function BridgeBackdrop(): React.ReactElement {
+	return (
+		<div className="aig-bridge-backdrop" aria-hidden>
+			<div className="aig-projection-note"><Waypoints /><span><strong>3 bridge concepts</strong><small>A bridge is the middle concept that joins two otherwise separate domains.</small></span></div>
+			{BRIDGE_LANES.map((lane) => <div key={lane.label} className="aig-bridge-lane"><strong>{lane.label}</strong><span>{lane.detail}</span></div>)}
+		</div>
+	);
+}
+
+const GAP_LANES = [
+	{ label: 'Missing bridge', detail: '0 direct links · semantic potential 0.82', tone: 'missing' },
+	{ label: 'Weak bridge', detail: '1 fragile link · confidence 0.67', tone: 'weak' },
+	{ label: 'Latent connection', detail: 'Related evidence exists · score 0.58', tone: 'latent' },
+] as const;
+
+function GapBackdrop(): React.ReactElement {
+	return (
+		<div className="aig-gap-backdrop" aria-hidden>
+			<div className="aig-projection-note"><CircleDotDashed /><span><strong>3 structural gaps</strong><small>A gap is a meaningful missing or fragile relationship—not empty canvas space.</small></span></div>
+			{GAP_LANES.map((lane) => <div key={lane.label} className={`aig-gap-lane is-${lane.tone}`}><strong>{lane.label}</strong><span>{lane.detail}</span></div>)}
 		</div>
 	);
 }
@@ -709,6 +747,10 @@ function Prototype(): React.ReactElement {
 	const activeLens = LENSES.find((lens) => lens.id === activeLensId) ?? LENSES[0];
 	const effectivePreset = layoutOverride ?? activeLens.defaultPreset;
 	const activeLayout = LAYOUT_OPTIONS.find((layout) => layout.id === effectivePreset) ?? LAYOUT_OPTIONS[0];
+	const availableLayouts = activeLens.layouts
+		.map((preset) => LAYOUT_OPTIONS.find((layout) => layout.id === preset))
+		.filter((layout): layout is (typeof LAYOUT_OPTIONS)[number] => Boolean(layout));
+	const activeLayoutLabel = activeLens.fixedViewLabel ?? activeLayout.label;
 	const visibleStep = refined ? PATCHES.length : patchIndex + 1;
 	const activePatch = patchIndex >= 0 ? PATCHES[Math.min(patchIndex, PATCHES.length - 1)] : null;
 	const anchorAgentToNodeCorner = activePatch ? NODE_CORNER_PATCH_KINDS.has(activePatch.kind) : false;
@@ -895,28 +937,35 @@ function Prototype(): React.ReactElement {
 									<span><i className="is-removed" /> Removal</span>
 								</div>
 							)}
-							<div className="aig-layout-switcher">
-								<span className="aig-layout-label">Layout</span>
-								<div className="aig-layout-segments" role="tablist" aria-label="Graph layout">
-									{LAYOUT_OPTIONS.map((layout) => (
-										<button
-											key={layout.id}
-											className={`aig-layout-segment${effectivePreset === layout.id ? ' is-active' : ''}`}
-											type="button"
-											role="tab"
-											aria-selected={effectivePreset === layout.id}
-											tabIndex={effectivePreset === layout.id ? 0 : -1}
-											data-layout-id={layout.id}
-											title={`${layout.label} · ${layout.detail}`}
-											onClick={() => selectLayout(layout.id)}
-											onKeyDown={moveLayoutFocus}
-										>
-											<LayoutGlyph id={layout.id} />
-											<span>{layout.label}</span>
-										</button>
-									))}
+							{availableLayouts.length > 1 ? (
+								<div className="aig-layout-switcher">
+									<span className="aig-layout-label">Layout</span>
+									<div className="aig-layout-segments" role="tablist" aria-label={`${activeLens.label} layout`}>
+										{availableLayouts.map((layout) => (
+											<button
+												key={layout.id}
+												className={`aig-layout-segment${effectivePreset === layout.id ? ' is-active' : ''}`}
+												type="button"
+												role="tab"
+												aria-selected={effectivePreset === layout.id}
+												tabIndex={effectivePreset === layout.id ? 0 : -1}
+												data-layout-id={layout.id}
+												title={`${layout.label} · ${layout.detail}`}
+												onClick={() => selectLayout(layout.id)}
+												onKeyDown={moveLayoutFocus}
+											>
+												<LayoutGlyph id={layout.id} />
+												<span>{layout.label}</span>
+											</button>
+										))}
+									</div>
 								</div>
-							</div>
+							) : (
+								<div className="aig-layout-fixed" aria-label={`${activeLens.label} fixed view: ${activeLayoutLabel}`}>
+									{activeLens.id === 'gap-analysis' ? <CircleDotDashed aria-hidden /> : <LayoutGlyph id={effectivePreset} />}
+									<span>{activeLayoutLabel}</span>
+								</div>
+							)}
 						</div>
 					</div>
 					<div className={`aig-canvas aig-canvas--${mode}`}>
@@ -935,13 +984,18 @@ function Prototype(): React.ReactElement {
 							<WorkingOverlay hidden={false} step={visibleStep} />
 						</div>
 						{refined && (
-							<div key={`${activeLens.id}:${effectivePreset}`} className={`aig-graph-layer aig-graph-layer--refined${activeLens.id === 'timeline' && effectivePreset === 'flow-lr' ? ' is-timeline-default' : ''}`}>
-								{activeLens.id === 'timeline' && effectivePreset === 'flow-lr' && <TimelineBackdrop />}
+							<div
+								key={`${activeLens.id}:${effectivePreset}`}
+								className={`aig-graph-layer aig-graph-layer--refined${activeLens.id === 'timeline' ? ' is-timeline-projection' : ''}${activeLens.id === 'bridge' && effectivePreset === 'flow-lr' ? ' is-bridge-projection' : ''}${activeLens.id === 'gap-analysis' ? ' is-gap-projection' : ''}`}
+							>
+								{activeLens.id === 'timeline' && <TimelineBackdrop />}
+								{activeLens.id === 'bridge' && effectivePreset === 'flow-lr' && <BridgeBackdrop />}
+								{activeLens.id === 'gap-analysis' && <GapBackdrop />}
 								<AtlasGraphCanvas
 									subgraph={activeLens.subgraph}
 									preset={effectivePreset}
 									showSemantic
-									summary={`${activeLens.subgraph.resultNodes.length} nodes · ${activeLens.subgraph.edges.length} relations`}
+									summary={activeLens.summary}
 									emptyLabel="No graph objects"
 									buildingLabel={`Building ${activeLens.label}…`}
 									onNodeTap={(node) => setSelectedNode(node.id)}
@@ -961,14 +1015,14 @@ function Prototype(): React.ReactElement {
 							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>Graph update ready · 20 changes</span></div>
 						)}
 						{mode === 'layouting' && (
-							<div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Agent chose {activeLens.label}</strong><small>{activeLayout.label} · {activeLens.subgraph.resultNodes.length} nodes · one intentional reflow</small></span></div>
+							<div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Agent chose {activeLens.label}</strong><small>{activeLayoutLabel} · {activeLens.summary} · one intentional reflow</small></span></div>
 						)}
 						{mode === 'accepted' && (
 							<div className="aig-accepted-watermark"><Check aria-hidden /><span>v13 is now the canonical head</span></div>
 						)}
 					</div>
 					<footer className="aig-canvas-footer">
-						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? `${activeLens.label} · ${activeLayout.label}` : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable version created' : refined ? ' · switch lens or layout without changing graph data' : ' · Agent changes are not saved yet'}</span></div>
+						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? `${activeLens.label} · ${activeLayoutLabel}` : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable version created' : refined ? ` · ${activeLens.description}` : ' · Agent changes are not saved yet'}</span></div>
 						{selectedNode && <span className="aig-selection">Selected: {selectedNode}</span>}
 					</footer>
 				</section>
