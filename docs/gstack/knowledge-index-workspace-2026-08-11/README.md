@@ -29,8 +29,9 @@ Index products such as full-text records, embeddings, summaries, tags, and relat
 - `4 file types` opens a compact run summary. A restrained donut chart makes the distribution visible at a glance, while the detailed rows retain exact counts, percentages, indexing behavior, and status. Hovering or focusing a chart segment highlights its corresponding detail row.
 - The same summary separates types included in this run, readable types currently turned off, and Peak product data that is intentionally handled outside the ordinary document index.
 - Index setup is an expandable region above the progress card, not a drawer. A Vault with no index opens this region first.
-- The region contains only per-run choices: run depth, file types, folder scope and optional run exclusions.
-- Run depth is chosen from three large outcomes. Only the selected outcome explains its result, included capabilities and typical duration, avoiding three paragraphs of small text at once.
+- The region contains only per-run choices: index outputs, file types, folder scope and optional run exclusions.
+- Index outputs use the product's real terms: Full-text, Embeddings, Summaries, Tags and Relationships. Full-text is required; the other layers can be selected independently. Relationships automatically keeps its Embeddings dependency enabled.
+- `Use recommended` restores Full-text + Embeddings. It is a shortcut, not a preset that hides or locks the underlying choices. The summary updates the selected combination, estimated duration and AI usage.
 - Starting a run animates the region closed and transitions the same page into live progress. The completed state replaces the processing workspace with search and rerun actions.
 - Completion distinguishes processed files from successfully indexed files. Failed and skipped documents remain visible in an expandable attention list with reason and recovery actions; they never disappear behind a nominal `100%` state.
 - Automatic refresh, startup catch-up, large-change behavior, batching, retries, embedding model, summary lengths and chunking are durable controls in `Settings → Knowledge & Search`.

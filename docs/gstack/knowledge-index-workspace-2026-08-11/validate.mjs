@@ -34,12 +34,14 @@ const requiredHtml = [
   "data-preview-state=\"complete\"",
   "data-completion-panel",
   "Start indexing",
-  "What should be ready?",
+  "Index layers",
   "Run exclusions",
   "Plain text",
   "Canvas",
-  "data-index-depth=\"Full knowledge\"",
-  "data-depth-outcome",
+  "data-index-layer=\"fulltext\"",
+  "data-index-layer=\"relationships\"",
+  "data-restore-index-layers",
+  "data-index-build-summary",
   "data-completion-attention",
   "2 files need attention",
   "data-retry-failed",
@@ -59,9 +61,9 @@ const requiredJs = [
   "state.mode",
   "dataset.previewState",
   "Your knowledge index is ready",
-  "selectedIndexDepth",
-  "indexDepthPresets",
-  "function updateDepthOutcome",
+  "indexLayerDefinitions",
+  "function activeIndexLayerKeys",
+  "function updateIndexLayerSummary",
 ];
 
 const requiredCss = [
@@ -78,8 +80,9 @@ const requiredCss = [
   ".inline-setup-clip",
   ".completion-panel",
   "body[data-index-state=\"complete\"]",
-  ".run-depth-list",
-  ".depth-outcome",
+  ".index-layer-list",
+  ".index-layer-row",
+  ".index-build-summary",
   ".completion-attention",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",
@@ -105,6 +108,9 @@ for (const value of ["DOCX", "PPTX", "XLSX"]) {
 }
 for (const value of ["setup-drawer", "setup-backdrop", "Keep the index current", "Models &amp; generated knowledge", "Advanced chunking"]) {
   if (html.includes(value)) missing.push(`Index workspace must not own long-term setting: ${value}`);
+}
+for (const value of ["Find words", "Find meaning", "Build knowledge", "data-index-depth"]) {
+  if (html.includes(value)) missing.push(`abstract index preset must not replace direct layer controls: ${value}`);
 }
 if (html.indexOf("data-index-setup") > html.indexOf("progress-hero")) {
   missing.push("HTML: inline setup must appear above the progress hero");

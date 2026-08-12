@@ -397,45 +397,37 @@ $("[data-order-select]").addEventListener("change", (event) => {
   renderAll();
 });
 
-let selectedIndexDepth = "Semantic";
-
-const indexDepthPresets = {
-  Fast: {
-    kicker: "FAST INDEX",
-    title: "Find exact words and phrases quickly",
-    description: "Peak builds full-text search and skips AI processing.",
-    estimate: "About 5 min",
-    recommendation: "Fastest",
-    capabilities: [["Text", true], ["Meaning", false], ["Summaries", false], ["Relations", false]],
-  },
-  Semantic: {
-    kicker: "SEMANTIC INDEX",
-    title: "Search by meaning, not only exact words",
-    description: "Peak adds embeddings to full-text search.",
-    estimate: "About 18 min",
-    recommendation: "Recommended",
-    capabilities: [["Text", true], ["Meaning", true], ["Summaries", false], ["Relations", false]],
-  },
-  "Full knowledge": {
-    kicker: "FULL KNOWLEDGE",
-    title: "Connect documents into reusable knowledge",
-    description: "Peak also generates summaries, tags and relationship signals.",
-    estimate: "About 31 min",
-    recommendation: "Most complete",
-    capabilities: [["Text", true], ["Meaning", true], ["Summaries", true], ["Relations", true]],
-  },
+const indexLayerDefinitions = {
+  fulltext: { label: "Full-text", minutes: 5, ai: false },
+  embeddings: { label: "Embeddings", minutes: 13, ai: true },
+  summaries: { label: "Summaries", minutes: 6, ai: true },
+  tags: { label: "Tags", minutes: 3, ai: true },
+  relationships: { label: "Relationships", minutes: 4, ai: true },
 };
 
-function updateDepthOutcome(depth) {
-  const preset = indexDepthPresets[depth];
-  $("[data-depth-kicker]").textContent = preset.kicker;
-  $("[data-depth-title]").textContent = preset.title;
-  $("[data-depth-description]").textContent = preset.description;
-  $("[data-depth-estimate]").textContent = preset.estimate;
-  $("[data-depth-recommendation]").textContent = preset.recommendation;
-  $("[data-depth-capabilities]").innerHTML = preset.capabilities
-    .map(([label, enabled]) => `<span class="${enabled ? "is-on" : ""}">${label}</span>`)
-    .join("");
+function activeIndexLayerKeys() {
+  return $$('[data-index-layer]')
+    .filter((input) => input.checked)
+    .map((input) => input.dataset.indexLayer);
+}
+
+function indexLayerRunLabel() {
+  const layers = activeIndexLayerKeys();
+  if (layers.length <= 2) return layers.map((key) => indexLayerDefinitions[key].label).join(" + ");
+  return `${indexLayerDefinitions[layers[0]].label} + ${indexLayerDefinitions[layers[1]].label} + ${layers.length - 2} more`;
+}
+
+function updateIndexLayerSummary() {
+  const layers = activeIndexLayerKeys();
+  const minutes = layers.reduce((total, key) => total + indexLayerDefinitions[key].minutes, 0);
+  const modelLayers = layers.filter((key) => indexLayerDefinitions[key].ai).length;
+  const aiUsage = modelLayers >= 3 ? "Moderate" : modelLayers > 0 ? "Low" : "None";
+  const label = indexLayerRunLabel();
+  $("[data-index-layer-summary]").textContent = label;
+  $("[data-index-layer-count]").textContent = `${layers.length} of 5 layers`;
+  $("[data-index-layer-time]").textContent = `About ${minutes} min`;
+  $("[data-index-layer-ai]").textContent = aiUsage;
+  $("[data-next-run-summary]").textContent = `Ready to start · ${label}`;
 }
 
 function toggleIndexSetup(open) {
@@ -447,10 +439,11 @@ function toggleIndexSetup(open) {
   content.setAttribute("aria-hidden", String(!open));
   $(".setup-summary", setup).setAttribute("aria-expanded", String(open));
   $("[data-setup-summary-action]").textContent = open ? "Collapse" : state.mode === "complete" ? "Run again" : state.mode === "setup" ? "Setup required" : "Configure next run";
-  $("[data-setup-summary-title]").textContent = state.mode === "complete" ? "Last run complete · Semantic" : state.mode === "setup" ? "Set up your first index" : "Current run · Semantic";
+  const layerCount = activeIndexLayerKeys().length;
+  $("[data-setup-summary-title]").textContent = state.mode === "complete" ? `Last run complete · ${layerCount} layers` : state.mode === "setup" ? "Set up your first index" : `Current run · ${layerCount} layers`;
   $("[data-setup-summary-detail]").textContent = state.mode === "setup"
-    ? "Choose a run depth and confirm what Peak may scan"
-    : "4 file types · whole Vault · run choices can change without changing long-term Settings";
+    ? "Choose index layers and confirm what Peak may scan"
+    : "4 file types · whole Vault · layer choices can change without changing long-term Settings";
   if (open) toggleFileTypes(false);
 }
 
@@ -466,14 +459,21 @@ $$('[data-close-index-setup]').forEach((button) => {
   button.addEventListener("click", () => toggleIndexSetup(false));
 });
 
-$$('[data-index-depth]').forEach((button) => {
-  button.addEventListener("click", () => {
-    $$('[data-index-depth]').forEach((candidate) => candidate.classList.remove("is-selected"));
-    button.classList.add("is-selected");
-    selectedIndexDepth = button.dataset.indexDepth;
-    $("[data-next-run-summary]").textContent = `Ready to start · ${selectedIndexDepth}`;
-    updateDepthOutcome(selectedIndexDepth);
+$$('[data-index-layer]').forEach((input) => {
+  input.addEventListener("change", () => {
+    const embeddings = $('[data-index-layer="embeddings"]');
+    const relationships = $('[data-index-layer="relationships"]');
+    if (input.dataset.indexLayer === "relationships" && input.checked) embeddings.checked = true;
+    if (input.dataset.indexLayer === "embeddings" && !input.checked) relationships.checked = false;
+    updateIndexLayerSummary();
   });
+});
+
+$("[data-restore-index-layers]").addEventListener("click", () => {
+  $$('[data-index-layer]').forEach((input) => {
+    input.checked = ["fulltext", "embeddings"].includes(input.dataset.indexLayer);
+  });
+  updateIndexLayerSummary();
 });
 
 $$('.document-type-chips button:not(:disabled)').forEach((button) => {
@@ -522,6 +522,6 @@ $("[data-open-file-scope]").addEventListener("click", () => {
 });
 
 startSimulation();
-updateDepthOutcome(selectedIndexDepth);
+updateIndexLayerSummary();
 setIndexMode(window.location.hash === "#complete" ? "complete" : "running");
 if (window.location.hash === "#setup") toggleIndexSetup(true);

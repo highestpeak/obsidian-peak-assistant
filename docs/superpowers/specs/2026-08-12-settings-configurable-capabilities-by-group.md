@@ -488,7 +488,7 @@ Knowledge & Search 管理长期知识状态：
 | 设置能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
 | 自动更新索引 | 普通设置 | 文件变化后增量维护；默认当前为关闭 | `CURRENT` |
-| 索引深度 | 普通设置 | `基础 / 标准 / 深度` 等用户语义映射到解析、向量和 AI enrichment | `CURRENT` 字段为 fast 等内部值，用户语义需收口 |
+| 每次索引生成什么 | 在 Index workspace 配置 | Full-text 固定开启；Embeddings、Summaries、Tags、Relationships 独立选择；Recommended 只恢复推荐组合 | `TARGET`：替代 fast / indexLevel 等抽象套餐 |
 | 包含的文档类型 | 普通设置 | 按真实能力矩阵选择，不只按扩展名 | `CURRENT` |
 | 包含 / 排除文件夹 | 普通设置 | 支持 Vault 路径范围；与 ignore pattern 合并解释 | `PARTIAL` |
 | Ignore patterns | 高级设置 | 排除生成目录、缓存或用户指定 pattern | `CURRENT` |
@@ -536,12 +536,12 @@ Knowledge & Search 管理长期知识状态：
 | 短摘要长度 | 高级设置 | 当前默认 150；影响列表与轻量上下文 | `CURRENT` |
 | 完整摘要长度 | 高级设置 | 当前默认 2000；影响文档理解 | `CURRENT` |
 | AI Analysis 会话摘要长度 | 高级设置 | 当前默认 3000；只影响分析产物 | `CURRENT` |
-| 生成标签 | 普通设置或深度 preset | 由索引深度统一控制，避免多个冲突开关 | `PARTIAL` |
-| 生成摘要 | 普通设置或深度 preset | 由索引深度统一控制，允许局部展开查看细节 | `CURRENT` / 路径依 index level |
-| 生成向量 | 普通设置或深度 preset | 语义检索所需；需显示模型和重建影响 | `CURRENT` |
-| 生成语义边 / Hub | 高级或深度 preset | 影响 Atlas、Graph 和 Vault Intelligence | `PARTIAL` |
+| 生成标签 | 每次运行独立选择 | 直接显示为 Tags；依赖 AI 模型，并显示预计用量 | `PARTIAL` |
+| 生成摘要 | 每次运行独立选择 | 直接显示为 Summaries；详细长度仍由长期设置管理 | `CURRENT` / 路径依 index level，所有权需迁移 |
+| 生成向量 | 每次运行独立选择 | 直接显示为 Embeddings；语义检索和 Relationships 依赖它，需显示模型和重建影响 | `CURRENT` |
+| 生成语义边 / Hub | 每次运行独立选择 | 直接显示为 Relationships；开启时自动保证 Embeddings 可用 | `PARTIAL` |
 
-普通用户优先选择“处理深度”，高级展开才显示具体产物。产品必须显示该深度会产生什么、需要什么连接、预计花费和哪些步骤可以稍后补做。
+Index workspace 直接展示真实产物，不再要求用户先理解“快速 / 语义 / 完整”等套餐名。Full-text 是每次运行的基础层；Embeddings、Summaries、Tags、Relationships 都可以独立选择。`Recommended` 只是恢复推荐组合的快捷操作，不能隐藏或锁住具体选择。界面同时说明依赖关系、所用模型、预计时间、AI 用量，以及哪些产物可以稍后补做；长期参数仍留在 Settings，避免同一配置出现两个 owner。
 
 ### 5.4 Search 与 AI Analysis
 
