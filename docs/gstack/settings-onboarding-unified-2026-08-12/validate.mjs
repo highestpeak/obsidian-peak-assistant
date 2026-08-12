@@ -206,37 +206,58 @@ if (featureChildrenTags.length === 0 || featureChildrenTags.some((tag) => !/\shi
 
 requireValues("Onboarding HTML", onboardingHtml, [
   "Connect AI",
-  "Check your vault",
+  "Core models",
+  "Prepare vault",
+  "System check",
   "Try Peak",
-  "Only the essentials",
-  "Connect one AI service",
-  "Your vault is ready enough to use",
-  "Safe defaults are ready",
-  "Try Peak on something real",
+  "Not configured",
+  "Existing setup",
+  "No AI connection yet",
+  "Connect AI to Peak",
+  "Use safe models for the core jobs",
+  "Agent models must support tools, structured output and at least 64K context",
+  "Make this vault searchable quickly",
+  "Fast local index",
+  "Semantic search and generated knowledge can be added later",
+  "Check the parts Peak depends on",
+  "Peak Hermes",
+  "Where do you want to start?",
   "wizard-progress-header",
-  "try-task-grid",
+  "feature-launch-grid",
+  "data-preview-state=\"fresh\"",
+  "data-preview-state=\"existing\"",
+  "data-connection-empty",
+  "data-connection-ready",
+  "data-role-picker",
   "data-connection-banner-title",
-  "data-ready-provider",
-  "data-automatic-default-copy",
+  "data-vault-empty",
+  "data-vault-progress",
+  "data-vault-ready",
+  "data-run-system-check",
   "Ask my vault",
-  "Work on this note",
-  "Open Chat Studio",
+  "Work on a note",
+  "Chat Studio",
+  "Vault Search",
+  "AI Search",
   "Open File Atlas",
+  "Open AI Graph",
+  "Start Agent &amp; Wizard",
+  "Create media",
   "SETUP COMPLETE",
-  "first useful result completes onboarding",
+  "workspace owns the first useful result",
   "data-wizard-panel=\"0\"",
-  "data-wizard-panel=\"2\"",
+  "data-wizard-panel=\"4\"",
 ]);
 
 if (onboardingHtml.includes('<aside class="wizard-steps">')) {
   missing.push("Onboarding HTML: the setup steps must remain in the horizontal header rather than a sidebar");
 }
-if (onboardingHtml.includes('data-wizard-panel="3"')) {
-  missing.push("Onboarding HTML: the default flow must remain the three-step minimum setup");
-}
 const onboardingStepCount = onboardingHtml.match(/data-step-nav="[0-9]+"/g)?.length ?? 0;
-if (onboardingStepCount !== 3) {
-  missing.push("Onboarding HTML: exactly three primary steps are required");
+if (onboardingStepCount !== 5) {
+  missing.push("Onboarding HTML: exactly five necessary primary steps are required");
+}
+if (onboardingHtml.includes("data-first-prompt") || onboardingHtml.includes("data-launch-primary")) {
+  missing.push("Onboarding HTML: the final launchpad must open features directly without another prompt form");
 }
 
 requireValues("Settings JS", settingsJs, [
@@ -271,10 +292,15 @@ requireValues("Settings JS", settingsJs, [
 
 requireValues("Onboarding JS", onboardingJs, [
   "function showStep",
-  "function selectGoal",
-  "function selectProvider",
-  "function updateIndexDemo",
-  "data-launch-primary",
+  "function setPreview",
+  "function openConnectionForm",
+  "function updateConnectionReadyState",
+  "function applyRecommendedModels",
+  "function renderRolePicker",
+  "function openRolePicker",
+  "function startFastIndex",
+  "function runSystemCheck",
+  "data-launch-target",
 ]);
 
 requireValues("CSS", css, [
@@ -315,7 +341,13 @@ requireValues("CSS", css, [
   ".wizard-progress-header",
   ".wizard-step-meta",
   ".readiness-strip",
-  ".try-task-grid",
+  ".artifact-preview-switch",
+  ".onboarding-provider-grid",
+  ".core-role-list",
+  ".onboarding-model-picker",
+  ".index-path-list",
+  ".system-check-groups",
+  ".feature-launch-grid",
   ".wizard-footer",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",

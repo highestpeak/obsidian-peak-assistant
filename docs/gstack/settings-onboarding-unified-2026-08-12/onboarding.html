@@ -22,11 +22,21 @@
       <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
       <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6Z" /><path d="m8.5 12 2.2 2.2 4.8-5" /></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.3 8a7 7 0 0 1 11.2-1L20 12M4 12l2.5 5a7 7 0 0 0 11.2-1" /></symbol>
+      <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="m11 12 8-8M16 7l2 2M13 10l2 2" /></symbol>
+      <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3" /></symbol>
+      <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="2" /><rect x="3" y="14" width="18" height="6" rx="2" /><path d="M7 7h.01M7 17h.01" /></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.3 4.2L17 9l-3.7 1.8L12 15l-1.3-4.2L7 9l3.7-1.8ZM5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8Z" /></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3Z" /></symbol>
     </svg>
 
     <div class="artifact-bar">
       <span class="artifact-mark"></span>
-      <span>Unified Settings + Onboarding mock · design only</span>
+      <span>Onboarding mock · design only</span>
+      <div class="artifact-preview-switch" aria-label="Preview onboarding state">
+        <span>Preview</span>
+        <button class="is-active" data-preview-state="fresh">Not configured</button>
+        <button data-preview-state="existing">Existing setup</button>
+      </div>
       <nav><a href="./index.html">Package</a><a href="./settings.html">Settings</a><a class="is-current" href="./onboarding.html">Onboarding</a></nav>
     </div>
 
@@ -41,67 +51,137 @@
         <div class="wizard-layout">
           <header class="wizard-progress-header">
             <nav class="wizard-steps" aria-label="Setup progress">
-              <button class="is-current" data-step-nav="0"><i>1</i><span><strong>Connect AI</strong><small>One working service</small></span></button>
+              <button class="is-current" data-step-nav="0"><i>1</i><span><strong>Connect AI</strong><small>One verified service</small></span></button>
               <span class="wizard-step-line" aria-hidden="true"></span>
-              <button data-step-nav="1"><i>2</i><span><strong>Check your vault</strong><small>Reuse what is ready</small></span></button>
+              <button data-step-nav="1"><i>2</i><span><strong>Core models</strong><small>Safe role defaults</small></span></button>
               <span class="wizard-step-line" aria-hidden="true"></span>
-              <button data-step-nav="2"><i>3</i><span><strong>Try Peak</strong><small>Get a real result</small></span></button>
+              <button data-step-nav="2"><i>3</i><span><strong>Prepare vault</strong><small>Fast local search</small></span></button>
+              <span class="wizard-step-line" aria-hidden="true"></span>
+              <button data-step-nav="3"><i>4</i><span><strong>System check</strong><small>Verify dependencies</small></span></button>
+              <span class="wizard-step-line" aria-hidden="true"></span>
+              <button data-step-nav="4"><i>5</i><span><strong>Try Peak</strong><small>Open a real feature</small></span></button>
             </nav>
-            <div class="wizard-step-meta"><strong data-step-summary>Step 1 of 3 · Connect AI</strong><span>Only the essentials · about 2 minutes</span></div>
+            <div class="wizard-step-meta"><strong data-step-summary>Step 1 of 5 · Connect AI</strong><span>Only setup that affects first use</span></div>
           </header>
 
           <section class="wizard-main">
             <div class="wizard-panel is-active" data-wizard-panel="0">
-              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 1 OF 3</span><h1>Connect one AI service</h1><p>That is all Peak needs to start. Models and task defaults will be chosen automatically.</p></header>
-              <div class="detected-banner"><span class="scan-icon"><svg><use href="#i-plug" /></svg></span><span><strong data-connection-banner-title>OpenAI is already connected</strong><small data-connection-banner-copy>Peak found a working service and can use it for Chat, Copilot and AI Search.</small></span></div>
-              <button class="provider-choice is-selected" data-provider="OpenAI"><span class="provider-monogram">OA</span><span><strong>OpenAI</strong><small>Broadest first setup · cloud connection</small></span><span class="provider-state" data-provider-state>Use this connection</span><i><svg><use href="#i-check" /></svg></i></button>
-              <button class="other-provider-trigger" data-other-providers><span>Choose another connection</span><svg><use href="#i-chevron" /></svg></button>
-              <div class="provider-options" data-provider-options hidden>
-                <button class="provider-choice compact" data-provider="Anthropic"><span class="provider-monogram">AN</span><span><strong>Anthropic</strong><small>Conversation, tools and long context</small></span><i><svg><use href="#i-check" /></svg></i></button>
-                <button class="provider-choice compact" data-provider="OpenRouter"><span class="provider-monogram">OR</span><span><strong>OpenRouter</strong><small>Compatible models through one account</small></span><i><svg><use href="#i-check" /></svg></i></button>
-                <button class="provider-choice compact" data-provider="Ollama"><span class="provider-monogram">OL</span><span><strong>Ollama</strong><small>Use models installed on this computer</small></span><i><svg><use href="#i-check" /></svg></i></button>
-                <button class="provider-choice compact" data-provider="Codex"><span class="provider-monogram">CX</span><span><strong>Codex</strong><small>Conversation and Agent capability checked separately</small></span><i><svg><use href="#i-check" /></svg></i></button>
-                <button class="provider-choice compact" data-provider="Claude Code"><span class="provider-monogram">CC</span><span><strong>Claude Code</strong><small>Conversation and Agent capability checked separately</small></span><i><svg><use href="#i-check" /></svg></i></button>
-              </div>
-              <div class="connection-check" data-connection-check>
-                <div><span class="check-line"><i class="status-dot ready" data-check-dot="auth"></i><strong>Authentication</strong><em data-check-value="auth">Ready</em></span><span class="check-line"><i class="status-dot ready" data-check-dot="model"></i><strong>Compatible model</strong><em data-check-value="model">GPT-5</em></span><span class="check-line"><i class="status-dot ready" data-check-dot="probe"></i><strong>Minimum test</strong><em data-check-value="probe">Verified just now</em></span></div>
-                <span class="check-receipt" data-check-receipt>No Vault content was sent during this check.</span>
-              </div>
+              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 1 OF 5</span><h1 data-connect-title>Connect AI to Peak</h1><p data-connect-description>Choose one service. Peak will test it before anything else depends on it.</p></header>
+
+              <section class="connection-empty-state" data-connection-empty>
+                <div class="setup-state-message"><span><svg><use href="#i-plug" /></svg></span><div><strong>No AI connection yet</strong><small>Nothing is broken. Pick one service below and Peak will guide the rest.</small></div></div>
+                <div class="connection-section-title"><strong>Choose a connection</strong><span>You only need one to continue</span></div>
+                <div class="onboarding-provider-grid">
+                  <button data-connect-provider="OpenAI"><span class="provider-monogram">OA</span><span><strong>OpenAI</strong><small>Recommended first setup</small></span><em>Recommended</em></button>
+                  <button data-connect-provider="Anthropic"><span class="provider-monogram">AN</span><span><strong>Anthropic</strong><small>Conversation, tools, long context</small></span></button>
+                  <button data-connect-provider="OpenRouter"><span class="provider-monogram">OR</span><span><strong>OpenRouter</strong><small>Many compatible models</small></span></button>
+                  <button data-connect-provider="Ollama"><span class="provider-monogram">OL</span><span><strong>Ollama</strong><small>Models on this computer</small></span></button>
+                  <button data-connect-provider="Codex"><span class="provider-monogram">CX</span><span><strong>Codex</strong><small>Local authenticated connection</small></span></button>
+                  <button data-connect-provider="Claude Code"><span class="provider-monogram">CC</span><span><strong>Claude Code</strong><small>Local authenticated connection</small></span></button>
+                </div>
+              </section>
+
+              <section class="connection-setup-card" data-connection-form hidden>
+                <header><button class="icon-text-button" data-cancel-connection>‹ Back</button><span class="provider-monogram" data-form-monogram>OA</span><div><strong data-form-title>Connect OpenAI</strong><small data-form-description>Paste an API key. It stays in Obsidian's local secret storage.</small></div></header>
+                <label class="connection-field" data-api-field><span>API key</span><input type="password" value="sk-••••••••••••••••••••••" aria-label="API key" /></label>
+                <div class="connection-local-note" data-local-note hidden><svg><use href="#i-server" /></svg><span><strong data-local-title>Local service detected</strong><small data-local-copy>Peak will verify the local authenticated adapter.</small></span></div>
+                <footer><span>No Vault content is used by this test.</span><button class="primary-button" data-test-connection>Test and use</button></footer>
+              </section>
+
+              <section class="connection-ready-state" data-connection-ready hidden>
+                <div class="detected-banner"><span class="scan-icon"><svg><use href="#i-check" /></svg></span><span><strong data-connection-banner-title>OpenAI is connected</strong><small data-connection-banner-copy>Peak found a working service and selected compatible starter models.</small></span><button class="text-button" data-change-connection>Change</button></div>
+                <div class="verified-provider-row"><span class="provider-monogram" data-ready-monogram>OA</span><span><strong data-ready-provider-name>OpenAI</strong><small data-ready-provider-copy>Cloud connection · verified just now</small></span><em>Ready</em></div>
+                <div class="connection-check" data-connection-check>
+                  <div><span class="check-line"><i class="status-dot ready"></i><strong>Authentication</strong><em>Ready</em></span><span class="check-line"><i class="status-dot ready"></i><strong>Compatible models</strong><em data-compatible-model-count>8 found</em></span><span class="check-line"><i class="status-dot ready"></i><strong>Minimum request</strong><em>Passed</em></span></div>
+                  <span class="check-receipt">Credentials and Vault content were not included in the model test.</span>
+                </div>
+              </section>
             </div>
 
             <div class="wizard-panel" data-wizard-panel="1" hidden>
-              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 2 OF 3</span><h1>Your vault is ready enough to use</h1><p>Peak reused your existing search index. Nothing needs to be rebuilt before you continue.</p></header>
-              <div class="readiness-strip"><span><svg><use href="#i-check" /></svg><strong>AI connected</strong><small data-ready-provider>OpenAI · verified</small></span><span><svg><use href="#i-check" /></svg><strong>Text search ready</strong><small>4,860 documents</small></span><span><svg><use href="#i-clock" /></svg><strong>Semantic search</strong><small>Finishing in background</small></span></div>
-              <div class="vault-readiness-card">
-                <div class="vault-readiness-head"><span><i class="live-dot"></i><strong>Updating changed documents</strong></span><em data-onboarding-index-percent>84.4%</em></div>
-                <div class="onboarding-index-count"><strong data-onboarding-index-count>4,102</strong><span>of 4,860 documents</span></div>
-                <div class="mini-progress"><span data-onboarding-index-bar style="width:84.4%"></span></div>
-                <div class="vault-readiness-facts"><span><svg><use href="#i-check" /></svg><strong>You can continue now</strong><small>Search works while enrichment finishes</small></span><span><svg><use href="#i-clock" /></svg><strong>About 13 min left</strong><small>Runs safely in the background</small></span><span><svg><use href="#i-file" /></svg><strong>4 file types</strong><small>Using your saved index scope</small></span></div>
+              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 2 OF 5</span><h1>Use safe models for the core jobs</h1><p>Peak has already filtered out models that cannot perform each job reliably. Keep the defaults or change a role from its short compatible list.</p></header>
+              <div class="capability-filter-note"><svg><use href="#i-shield" /></svg><span><strong>Compatibility first</strong><small data-model-filter-summary>28 catalog models → 6 suitable choices. Agent models must support tools, structured output and at least 64K context.</small></span></div>
+              <div class="core-role-list">
+                <div class="core-role-row"><span class="role-icon"><svg><use href="#i-chat" /></svg></span><span class="role-copy"><strong>Chat &amp; writing</strong><small>Conversation, drafting and Copilot</small></span><button class="role-model-button" data-role-model="chat"><span data-role-provider="chat">OpenAI</span><strong data-role-model-value="chat">GPT-5 mini</strong><svg><use href="#i-chevron" /></svg></button></div>
+                <div class="core-role-row"><span class="role-icon"><svg><use href="#i-search" /></svg></span><span class="role-copy"><strong>Search &amp; analysis</strong><small>Vault questions, synthesis and evidence</small></span><button class="role-model-button" data-role-model="knowledge"><span data-role-provider="knowledge">OpenAI</span><strong data-role-model-value="knowledge">GPT-5</strong><svg><use href="#i-chevron" /></svg></button></div>
+                <div class="core-role-row"><span class="role-icon"><svg><use href="#i-agent" /></svg></span><span class="role-copy"><strong>Agent &amp; tools</strong><small>Peak Hermes planning and tool calls</small></span><button class="role-model-button" data-role-model="agent"><span data-role-provider="agent">OpenAI</span><strong data-role-model-value="agent">GPT-5</strong><svg><use href="#i-chevron" /></svg></button></div>
               </div>
-              <div class="vault-actions"><a href="../knowledge-index-workspace-2026-08-11/index.html">View full indexing progress</a><button class="text-button" data-refresh-vault><svg><use href="#i-refresh" /></svg>Check again</button></div>
-              <div class="automatic-defaults"><span class="automatic-icon"><svg><use href="#i-route" /></svg></span><span><strong>Safe defaults are ready</strong><small data-automatic-default-copy>Peak will use the local index, a compatible OpenAI model and review-first actions. You can change any of these later in Settings.</small></span></div>
+              <div class="role-default-summary"><svg><use href="#i-check" /></svg><span><strong>All three roles have compatible defaults</strong><small>Image, video, audio and specialist routes appear later only when a feature needs them.</small></span></div>
+              <section class="onboarding-model-picker" data-role-picker hidden>
+                <header><span><strong data-role-picker-title>Choose Chat &amp; writing model</strong><small data-role-picker-requirement>Showing models that support conversation and long context</small></span><button class="model-picker-close" data-role-picker-close aria-label="Close">×</button></header>
+                <label class="onboarding-model-search"><svg><use href="#i-search" /></svg><input data-role-picker-search placeholder="Search compatible models" /></label>
+                <div class="role-requirements" data-role-requirements><span>Compatible</span><span>Long context</span></div>
+                <div class="onboarding-model-results" data-role-picker-results></div>
+                <footer>Incompatible models are omitted from onboarding. Manage the full catalog later in Settings.</footer>
+              </section>
             </div>
 
             <div class="wizard-panel" data-wizard-panel="2" hidden>
-              <header class="wizard-panel-header final-header"><span class="success-mark"><svg><use href="#i-check" /></svg></span><span class="content-eyebrow">SETUP COMPLETE</span><h1>Try Peak on something real</h1><p>Choose where to begin. Peak will open the actual workspace with an editable starter task.</p></header>
-              <div class="try-task-grid" aria-label="Choose a first task">
-                <button class="try-task is-selected" data-goal="search"><svg><use href="#i-search" /></svg><span><strong>Ask my vault</strong><small>Find answers across notes</small></span><i><svg><use href="#i-check" /></svg></i></button>
-                <button class="try-task" data-goal="composer"><svg><use href="#i-file" /></svg><span><strong>Work on this note</strong><small>Use Copilot in a document</small></span><i><svg><use href="#i-check" /></svg></i></button>
-                <button class="try-task" data-goal="chat"><svg><use href="#i-chat" /></svg><span><strong>Open Chat Studio</strong><small>Ask, plan or draft</small></span><i><svg><use href="#i-check" /></svg></i></button>
-                <button class="try-task" data-goal="atlas"><svg><use href="#i-graph" /></svg><span><strong>Open File Atlas</strong><small>Explore note connections</small></span><i><svg><use href="#i-check" /></svg></i></button>
+              <header class="wizard-panel-header"><span class="content-eyebrow">STEP 3 OF 5</span><h1 data-vault-title>Make this vault searchable quickly</h1><p data-vault-description>Peak recommends a fast local full-text index first. Semantic search and generated knowledge can be added later without blocking setup.</p></header>
+
+              <section class="vault-setup-empty" data-vault-empty>
+                <div class="vault-scan-summary"><span class="scan-icon"><svg><use href="#i-folder" /></svg></span><span><strong>4,860 supported documents found</strong><small>Markdown, PDF, images and Excalidraw · your source files will not be changed</small></span><button class="text-button">Review scope</button></div>
+                <div class="index-path-list">
+                  <button class="is-selected"><span><strong>Fast local index</strong><small>Full-text search across filenames and extracted text</small></span><em><b>Recommended</b><small>About 45 seconds · no AI usage</small></em><i><svg><use href="#i-check" /></svg></i></button>
+                  <button disabled><span><strong>Semantic search</strong><small>Add embeddings for meaning-based results</small></span><em><small>Set up later in Knowledge &amp; Search</small></em></button>
+                  <button disabled><span><strong>Generated knowledge</strong><small>Summaries, tags, entities and relationships</small></span><em><small>Choose per run later</small></em></button>
+                </div>
+                <div class="index-scope-facts"><span><strong>Whole vault</strong><small>Saved scope</small></span><span><strong>Local only</strong><small>Index storage</small></span><span><strong>4 file types</strong><small>Supported now</small></span></div>
+              </section>
+
+              <section class="vault-index-progress" data-vault-progress hidden>
+                <div class="vault-readiness-card">
+                  <div class="vault-readiness-head"><span><i class="live-dot"></i><strong data-index-status>Building the fast local index</strong></span><em data-onboarding-index-percent>0%</em></div>
+                  <div class="onboarding-index-count"><strong data-onboarding-index-count>0</strong><span>of 4,860 documents</span></div>
+                  <div class="mini-progress"><span data-onboarding-index-bar style="width:0%"></span></div>
+                  <div class="vault-readiness-facts"><span><svg><use href="#i-file" /></svg><strong>Full-text search</strong><small>Names and extracted text</small></span><span><svg><use href="#i-clock" /></svg><strong data-index-eta>About 45 sec</strong><small>Estimated remaining</small></span><span><svg><use href="#i-database" /></svg><strong>Local index</strong><small>No AI request</small></span></div>
+                </div>
+              </section>
+
+              <section class="vault-index-ready" data-vault-ready hidden>
+                <div class="setup-state-message success"><span><svg><use href="#i-check" /></svg></span><div><strong>Fast local search is ready</strong><small data-index-ready-copy>4,860 documents can be searched now. Richer knowledge can continue later.</small></div><a href="../knowledge-index-workspace-2026-08-11/index.html">Open index details</a></div>
+                <div class="readiness-strip"><span><svg><use href="#i-check" /></svg><strong>Text search</strong><small>Ready now</small></span><span><svg><use href="#i-clock" /></svg><strong>Semantic search</strong><small>Optional · not started</small></span><span><svg><use href="#i-sparkles" /></svg><strong>Generated knowledge</strong><small>Choose later</small></span></div>
+              </section>
+            </div>
+
+            <div class="wizard-panel" data-wizard-panel="3" hidden>
+              <header class="wizard-panel-header system-check-heading"><span><span class="content-eyebrow">STEP 4 OF 5</span><h1>Check the parts Peak depends on</h1><p>This is a real pre-flight check, not a settings summary. Blocking problems can be repaired here.</p></span><button class="secondary-button" data-run-system-check><svg><use href="#i-refresh" /></svg>Run again</button></header>
+              <div class="system-check-summary"><span><svg><use href="#i-check" /></svg></span><div><strong data-system-summary-title>6 required checks passed</strong><small data-system-summary-copy>Peak is ready for Chat, Search, Composer and Agent work. Two optional capabilities are not configured.</small></div><em>Ready</em></div>
+              <div class="system-check-groups">
+                <section><header><strong>Required for first use</strong><span>All must pass</span></header>
+                  <div class="system-check-row" data-system-row><span><svg><use href="#i-plug" /></svg></span><div><strong>AI connection</strong><small data-system-provider>OpenAI · authentication, catalog and minimum request passed</small></div><em>Ready</em></div>
+                  <div class="system-check-row" data-system-row><span><svg><use href="#i-route" /></svg></span><div><strong>Core model roles</strong><small>Chat, knowledge and tool-capable Agent routes are valid</small></div><em>Ready</em></div>
+                  <div class="system-check-row" data-system-row><span><svg><use href="#i-agent" /></svg></span><div><strong>Peak Hermes</strong><small>Runtime, tool registry, receipts and recovery are available</small></div><em>Ready</em></div>
+                  <div class="system-check-row" data-system-row><span><svg><use href="#i-database" /></svg></span><div><strong>Vault search</strong><small>Local full-text index can answer searches now</small></div><em>Ready</em></div>
+                  <div class="system-check-row" data-system-row><span><svg><use href="#i-folder" /></svg></span><div><strong>Local storage</strong><small>Data root is writable and remains Peak-managed</small></div><em>Ready</em></div>
+                  <div class="system-check-row" data-system-row><span><svg><use href="#i-shield" /></svg></span><div><strong>Safety defaults</strong><small>Review-first writes and confirmation for risky actions</small></div><em>Ready</em></div>
+                </section>
+                <section class="optional-checks"><header><strong>Optional capabilities</strong><span>Do not block setup</span></header>
+                  <div class="system-check-row"><span><svg><use href="#i-search" /></svg></span><div><strong>Live web access</strong><small>Not connected · add it when a task needs current information</small></div><em>Later</em></div>
+                  <div class="system-check-row"><span><svg><use href="#i-image" /></svg></span><div><strong>Media generation</strong><small data-media-check>Available only when the chosen connection exposes a compatible route</small></div><em>Conditional</em></div>
+                </section>
               </div>
-              <div class="first-task-card">
-                <div class="first-task-heading"><span class="goal-icon"><svg data-final-icon><use href="#i-search" /></svg></span><span><strong data-final-title>Ask your vault</strong><small data-final-subtitle>This opens AI Search with an editable question.</small></span></div>
-                <label class="starter-prompt"><span>Your first question</span><textarea data-first-prompt>What am I currently working on, and which notes support it?</textarea></label>
-                <button class="launch-button" data-launch-primary><span data-launch-label>Open AI Search</span><svg><use href="#i-chevron" /></svg></button>
+            </div>
+
+            <div class="wizard-panel" data-wizard-panel="4" hidden>
+              <header class="wizard-panel-header final-header"><span class="success-mark"><svg><use href="#i-check" /></svg></span><span class="content-eyebrow">SETUP COMPLETE</span><h1>Where do you want to start?</h1><p>Each option opens the real Peak workspace immediately. There is no extra prompt or confirmation step here.</p></header>
+              <div class="feature-launch-grid" aria-label="Open a Peak feature">
+                <button data-launch-target="Chat Studio"><svg><use href="#i-chat" /></svg><span><strong>Ask my vault</strong><small>Open Chat Studio and start a Vault-aware conversation</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
+                <button data-launch-target="Composer"><svg><use href="#i-file" /></svg><span><strong>Work on a note</strong><small>Use the current note, or open your most recently used note</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
+                <button data-launch-target="Vault Search"><svg><use href="#i-search" /></svg><span><strong>Search the vault</strong><small>Find files and text with the fast local index</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
+                <button data-launch-target="AI Search"><svg><use href="#i-sparkles" /></svg><span><strong>Open AI Search</strong><small>Ask for an answer with sources from your notes</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
+                <button data-launch-target="File Atlas"><svg><use href="#i-graph" /></svg><span><strong>Open File Atlas</strong><small>Explore the neighborhood around a real note</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
+                <button data-launch-target="AI Graph"><svg><use href="#i-route" /></svg><span><strong>Open AI Graph</strong><small>Review generated relationships and graph artifacts</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
+                <button data-launch-target="Agent & Wizard"><svg><use href="#i-agent" /></svg><span><strong>Start Agent &amp; Wizard</strong><small>Let Peak Hermes plan a multi-step task with review</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
+                <button data-launch-target="Create media" data-media-launch><svg><use href="#i-image" /></svg><span><strong>Create media</strong><small data-media-launch-copy>Generate an image with the compatible route found during setup</small></span><i><svg><use href="#i-chevron" /></svg></i></button>
               </div>
-              <span class="first-success-note"><svg><use href="#i-check" /></svg><span><strong>Setup is complete.</strong> Your first useful result completes onboarding.</span></span>
+              <span class="first-success-note"><svg><use href="#i-check" /></svg><span><strong>Setup is complete.</strong> Onboarding finishes after the selected workspace opens; the workspace owns the first useful result.</span></span>
             </div>
 
             <footer class="wizard-footer">
               <button class="secondary-button" data-back disabled>Back</button>
-              <span data-footer-note>Step 1 of 3 · One verified connection is enough.</span>
-              <button class="primary-button" data-next>Continue</button>
+              <span data-footer-note>Step 1 of 5 · Connect and verify one service.</span>
+              <button class="primary-button" data-next disabled>Continue</button>
             </footer>
           </section>
         </div>

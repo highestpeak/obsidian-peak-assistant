@@ -170,14 +170,17 @@ Peak Hermes 不是 Provider 或模型。它可以使用普通模型连接完成 
 
 Onboarding 是一条结果驱动、可分支的流程，不等于固定页数。默认首次路径不要求用户先理解产品功能或预先选择 Agent / Media 等特殊目标：如果一个通用 AI 连接和现有 Vault 状态已经足够，先完成最小验证，再在最后的 launchpad 选择第一次真实任务。只有 deep link 已带入目标，或用户主动选择 Agent、Media 等具有额外阻塞依赖的能力时，才提前进入对应分支。
 
+当前目标 mock 将默认路径明确收口为五个有标签的主步骤：`Connect AI → Core models → Prepare vault → System check → Try Peak`。这里的“五步”不是要求用户完成五轮复杂决策：已有连接与索引可以直接复用；三个核心模型角色有可靠默认值；只有连接缺失或快速全文索引不存在时才要求输入或执行。保留独立 System Check，是为了在进入真实产品前集中暴露阻塞依赖，而不是把错误留到第一次任务里。
+
 ```text
 检测当前环境
   → 复用或建立一个通用可用连接
-  → 应用并验证可靠默认值
-  → 复用并检查当前 Vault / Index 基线
+  → 为 Chat、Knowledge、Agent 三个核心角色应用并验证可靠默认模型
+  → 复用已有全文索引；没有时先建立最快的本地全文索引
+  → 执行连接、模型、Peak Hermes、索引、存储和安全的 System Check
   → 在 launchpad 选择第一次真实任务
   → 如该任务有额外依赖，再做就地补充验证
-  → 打开真实工作入口并带入任务
+  → 直接打开真实工作入口
   → 观察第一次成功或给出可恢复失败
 ```
 
@@ -231,6 +234,9 @@ Onboarding 是一条结果驱动、可分支的流程，不等于固定页数。
 - 明确该目标是否需要云端连接、本地模型、索引或写权限；
 - 用户更改目标后，保留已经完成且仍适用的配置；
 - 不把完整功能介绍塞进这一阶段。
+- launchpad 不再包含第二个 prompt 表单或确认卡；点击目标即打开真实功能；
+- “Ask my vault” 直接打开 Chat Studio，而不是在 Onboarding 内再次收集问题；
+- Composer 优先使用当前文档；没有当前文档时打开最近使用且可处理的文档；
 - Chat、Composer、Vault / AI Search 和 File Atlas 共享通用最小路径；Agent 与 Media 的额外连接、权限或输出条件采用选择后的 just-in-time setup，不扩大所有新用户的默认流程。
 
 ### 5.3 阶段 C：建立一个可用连接
@@ -299,9 +305,28 @@ Onboarding 是一条结果驱动、可分支的流程，不等于固定页数。
 
 首次流程不要求用户逐项选择 18 个 assignment。
 
+当前首次流程只把下面三个用户能理解的核心角色显示出来，并自动选好默认模型：
+
+1. **Chat & Writing**：Chat Studio、起草和 Composer / Copilot；
+2. **Search & Analysis**：Vault 问答、综合分析和证据整理；
+3. **Agent & Tools**：Peak Hermes 的规划、工具调用和结构化结果。
+
+用户可以原地更换某个角色的模型，但 Onboarding 只显示通过该角色能力门槛的短列表。尤其是 Agent 角色，候选必须验证工具调用、结构化输出和最低上下文长度；已知不支持工具或经常破坏工具协议的模型不能出现在可选列表中。完整模型目录、隐藏模型、别名和高级参数仍由 Settings / AI Control Center 管理。
+
 ### 5.5 阶段 E：验证任务依赖
 
 不同首次目标只验证自己的阻塞依赖。
+
+独立 **System Check** 至少汇总并验证：
+
+- AI 连接认证、模型目录和最小真实 probe；
+- Chat、Knowledge、Agent 三个核心角色的模型兼容性；
+- Peak Hermes 单一 runtime、工具注册、receipt 和恢复能力；
+- 本地全文索引的真实可用性；
+- Data root 可写与本地 store 状态；
+- review-first 写入和高风险操作确认规则。
+
+Web access 与 media generation 在该页显示为 optional / conditional，不得因为没有配置而阻塞普通首次使用。任何 required check 失败时必须在原地给出修复和重试入口。
 
 #### Chat Studio / Composer
 
@@ -344,12 +369,12 @@ Onboarding 是一条结果驱动、可分支的流程，不等于固定页数。
 
 | 目标 | 必须完成的 handoff | 第一次成功事件 |
 | --- | --- | --- |
-| Chat Studio | 打开真实 Chat Studio，并带入一个可编辑的 Vault 相关问题 | 得到一次有效回复，或得到清楚、可恢复的失败原因 |
-| Composer / Copilot | 打开当前文档；没有当前文档时选择最近文档 | 生成一次预览、建议或安全的 Copilot 结果，不自动写入用户内容 |
-| Vault / AI Search | 打开真实搜索入口，并带入一个可编辑 query | 返回至少一组结果，或明确告诉用户 Vault 为空 / 索引缺失及修复方式 |
-| File Atlas | 打开真实 File Atlas 上下文 | 成功加载当前或推荐文档的可浏览关系数据 |
-| Agent / Wizard | 打开真实任务入口并带入一个安全的入门任务 | 产生计划、结果或 receipt；需要写操作时先请求确认 |
-| Image generation | 打开真实生成流程并带入一个可编辑 prompt | 生成并保存一份可定位的图片，或返回可恢复失败 |
+| Chat Studio | 点击 “Ask my vault” 后直接打开真实 Chat Studio | 用户在 Chat Studio 中发送问题并得到有效回复，或得到清楚、可恢复的失败原因 |
+| Composer / Copilot | 打开当前文档；没有当前文档时自动打开最近使用且可处理的文档 | 生成一次预览、建议或安全的 Copilot 结果，不自动写入用户内容 |
+| Vault / AI Search | 点击后直接打开真实 Vault Search 或 AI Search 入口 | 返回至少一组结果，或明确告诉用户 Vault 为空 / 索引缺失及修复方式 |
+| File Atlas / AI Graph | 打开当前文档；没有当前文档时使用最近可处理文档作为上下文 | 成功加载可浏览的关系数据或已生成的 graph artifact |
+| Agent / Wizard | 直接打开真实 Agent 任务入口；额外权限在任务内按需确认 | 产生计划、结果或 receipt；需要写操作时先请求确认 |
+| Image generation | 直接打开真实生成流程；没有 media route 时在该流程中补充连接 | 生成并保存一份可定位的图片，或返回可恢复失败 |
 
 需要区分两个事件：
 
@@ -1134,8 +1159,11 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 ### 14.1 Onboarding
 
 - 未阅读外部文档的新用户可以完成主要流程；
-- 默认路径只要求一个可用连接和可复用的 Vault 基线；首次目标在 launchpad 选择，不形成额外的功能介绍步骤；
+- 默认路径只要求一个可用连接、三个自动配置且兼容的核心模型角色、可用的本地全文索引与通过的 System Check；首次目标在 launchpad 选择，不形成额外的功能介绍步骤；
 - 已有可用连接、Index 和本地 runtime 会被正确复用；
+- 新用户无连接和已有连接两种状态都必须有独立可验证的 UI；
+- 新 Vault 默认先建立最快的本地全文索引，不要求 semantic、summary、tag、entity 或 relationship enrichment 完成后才能使用；
+- Agent 模型候选必须经过 tools、structured output 和上下文门槛过滤；
 - OpenAI、Anthropic、OpenRouter、Ollama 的连接可以真实验证；
 - Codex、Claude Code 在 adapter 完成后能够分别验证普通对话，以及 Agent 所需的安装、认证、权限和工作目录；
 - OpenRouter / Ollama 候选来自带新鲜度的动态目录或明确标记的 fallback cache；
@@ -1144,7 +1172,7 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 - text search 可用但 semantic 不可用时，整体状态为 degraded 而不是 failed；
 - 任意中断后进度可恢复；
 - 关键操作在所有支持的可用空间中始终可到达；
-- Onboarding 必须打开真实工作入口并带入任务；
+- Onboarding 必须直接打开用户选择的真实工作入口，不再在完成页增加第二个 prompt 表单；
 - 产品能区分 setup complete 与 first success；
 - 第一次任务失败不会清空配置进度。
 
@@ -1183,6 +1211,8 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 以下是 2026-08-09 源码核对结果，用于防止设计 overclaim：
 
 - Onboarding 当前是 7 个 primary steps，并保留 bootstrap model、budget、speed / quality 和 Curator recommendation；目标流程要求将这些从默认首次决定中移出；
+- 当前 Provider step 会在恰好一个 credentialed Profile 时自动选择它，但新用户没有 Profile 时只会展开通用 Add Provider form；因此设计验收必须同时覆盖“无连接”和“已有连接可复用”两种首屏，不能只展示 ready 状态；
+- 当前 BootstrapModelStep 主要按 `modelType=llm`、Provider 名称正则和本地模型名称启发式筛选，尚未证明 Agent 候选具备 tools、structured output 和最低上下文能力；新的核心角色选择必须依赖 capability evidence，而不是“看起来像推荐模型”的正则；
 - Onboarding 的 Knowledge Index 与 System Check 当前仍读取静态配置 rows；它们不是 live readiness；
 - 当前 `Ready to try` 的主操作只把 wizard 标为完成并关闭，没有可靠地打开并预填真实工作入口；
 - Settings 当前主要分为 Overview、AI Setup、Knowledge Index、Tools、Media Generation、Advanced；这只是当前实现，不是本 brief 规定的最终结构；
