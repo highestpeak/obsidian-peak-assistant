@@ -30,16 +30,24 @@ assert.match(renderer, /applyFolderTreeHover\(cy, folderProjection, n\.id\(\)\)/
 assert.match(renderer, /applyFolderTreeHover\(cy, folderProjection, null\)/);
 assert.match(renderer, /node\.folderTreeNode\.folderHoverAnchor/);
 assert.match(renderer, /node\.folderTreeNode\.folderHoverConnected/);
+assert.match(renderer, /edge\.folderRelation\.folderHoverMuted/);
 assert.match(renderer, /edge\.folderRelation\.folderHoverIncoming/);
 assert.match(renderer, /'target-arrow-shape': 'vee'/);
 assert.match(renderer, /edge\.folderRelation\.folderHoverOutgoing/);
 assert.match(renderer, /'target-arrow-shape': 'triangle'/);
+assert.match(renderer, /const relationAnchorIds = new Set/);
+assert.match(renderer, /relationAnchorIds\.add\(hoveredNodeId\)/);
+assert.match(renderer, /folderTrafficNorm/);
+assert.match(renderer, /width: 'data\(folderRestingWidth\)'/);
+assert.match(renderer, /opacity: 'data\(folderRestingOpacity\)'/);
+assert.match(renderer, /width: 'data\(folderHoverWidth\)'/);
 assert.match(renderer, /requestAnimationFrame\(clearHoverState\)/);
 assert.match(renderer, /edge\.folderRelation\.semantic/);
 assert.match(renderer, /line-dash-offset/);
 assert.match(renderer, /prefers-reduced-motion: reduce/);
 assert.doesNotMatch(renderer, /buildVisibleFolderGroups/);
 assert.doesNotMatch(renderer, /folderHoverHidden|folderHoverDimmed/);
+assert.doesNotMatch(renderer, /edge\.folderRelation\.folderHoverMuted[^\n]*opacity:\s*0(?:\D|$)/);
 assert.doesNotMatch(renderer, /row\.depth \* 155/);
 assert.doesNotMatch(renderer, /index \* 46/);
 

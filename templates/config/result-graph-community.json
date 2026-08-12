@@ -50,7 +50,15 @@
     "detachedHorizontalGap": 34,
     "detachedVerticalGap": 26,
     "detachedRegionGap": 112,
-    "detachedMinimumRegionWidth": 720
+    "detachedMinimumRegionWidth": 720,
+    "folderTreeTrafficDegreeCap": 8,
+    "folderTreeEdgeWidthMin": 1.05,
+    "folderTreeEdgeWidthMax": 2.0,
+    "folderTreeEdgeOpacityMin": 0.42,
+    "folderTreeEdgeOpacityMax": 0.86,
+    "folderTreeHoverEdgeWidthMin": 2.5,
+    "folderTreeHoverEdgeWidthMax": 3.2,
+    "folderTreeMutedEdgeOpacity": 0.14
   },
   "nodeExplanation": {
     "summaryCharacterLimit": 1600,

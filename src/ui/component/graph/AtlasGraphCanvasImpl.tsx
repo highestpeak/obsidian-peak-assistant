@@ -55,6 +55,7 @@ import {
 } from './folderTreeLayoutModel';
 import { buildFolderTreeRelationRoutes } from './folderTreeRelationRoutingModel';
 import { buildFolderTreeHubLayout } from './folderTreeHubLayoutModel';
+import { buildFolderTreeEdgeTrafficNorm } from './folderTreeEdgeEmphasis';
 import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
@@ -111,6 +112,8 @@ const PRESETS: Record<AtlasGraphPreset, PresetBundle> = {
 	orbit:         { layout: 'concentric-hub', folderTree: false, community: false },
 };
 
+type ResultGraphLayoutConfig = ResultGraphCommunityConfig['graphLayout'];
+
 const COMMUNITY_PALETTE = [
 	{ border: '#7c3aed', hull: '#ede9fe', high: '#c4b5fd', low: '#f5f3ff', text: '#3b2a63' },
 	{ border: '#0f8f87', hull: '#dff6f3', high: '#9edbd5', low: '#effaf8', text: '#185e5a' },
@@ -125,7 +128,12 @@ const COMMUNITY_PALETTE = [
  */
 function buildElements(
 	sub: ResultSubgraphOutput,
-	opts: { showSemantic: boolean; folderTree: boolean; community: boolean },
+	opts: {
+		showSemantic: boolean;
+		folderTree: boolean;
+		community: boolean;
+		graphLayout: ResultGraphLayoutConfig;
+	},
 ): ElementDefinition[] {
 	const els: ElementDefinition[] = [];
 	const allRelationEdges = coalesceGraphEdges(
@@ -140,6 +148,14 @@ function buildElements(
 	];
 	const topology = buildActiveGraphTopology(graphNodeIds, allRelationEdges, opts.showSemantic);
 	const degreeMap = topology.activeDegreeById;
+	const folderTreeTrafficByEdgeId = opts.folderTree
+		? buildFolderTreeEdgeTrafficNorm(visibleEdges.map((edge) => ({
+			id: `${edge.kind}|${edge.directionality}|${edge.from}|${edge.to}`,
+			from: edge.from,
+			to: edge.to,
+			directionality: edge.directionality,
+		})), opts.graphLayout.folderTreeTrafficDegreeCap)
+		: new Map<string, number>();
 	const semanticWeightByPair = new Map<string, number>();
 	for (const edge of sub.edges) {
 		if (edge.kind !== 'semantic') continue;
@@ -398,6 +414,7 @@ function buildElements(
 			? -arcDepth
 			: arcDepth;
 		const relationRoute = folderTreeRelationRoutes.get(key);
+		const folderTrafficNorm = folderTreeTrafficByEdgeId.get(key) ?? 0;
 		els.push({
 			group: 'edges',
 			data: {
@@ -409,6 +426,23 @@ function buildElements(
 				layoutWeight: e.kind === 'semantic'
 					? semanticWeightByPair.get([e.from, e.to].sort().join('\u0000')) ?? 1
 					: 1,
+				folderTrafficNorm,
+				folderRestingWidth: interpolateRange(
+					opts.graphLayout.folderTreeEdgeWidthMin,
+					opts.graphLayout.folderTreeEdgeWidthMax,
+					folderTrafficNorm,
+				),
+				folderRestingOpacity: interpolateRange(
+					opts.graphLayout.folderTreeEdgeOpacityMin,
+					opts.graphLayout.folderTreeEdgeOpacityMax,
+					folderTrafficNorm,
+				),
+				folderHoverWidth: interpolateRange(
+					opts.graphLayout.folderTreeHoverEdgeWidthMin,
+					opts.graphLayout.folderTreeHoverEdgeWidthMax,
+					folderTrafficNorm,
+				),
+				folderMutedOpacity: opts.graphLayout.folderTreeMutedEdgeOpacity,
 				controlPointDistances: relationRoute
 					? relationRoute.controlPointDistances.join(' ')
 					: String(curveDistance),
@@ -424,6 +458,10 @@ function buildElements(
 	});
 
 	return els;
+}
+
+function interpolateRange(minimum: number, maximum: number, ratio: number): number {
+	return minimum + (maximum - minimum) * Math.max(0, Math.min(1, ratio));
 }
 
 function graphIconDataUri(paths: string, color: string): string {
@@ -510,14 +548,15 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.folderTreeCountBadge', style: { width: 'data(badgeWidth)', height: 17, padding: 0, shape: 'round-rectangle', 'background-color': '#f1e9fb', label: 'data(label)', color: '#8450c4', 'font-size': 9.5, 'font-weight': 740, 'text-valign': 'center', 'text-halign': 'center' } as never },
 	{ selector: 'node.folderTreeRootBadge', style: { 'background-color': '#7c3aed', color: '#ffffff' } as never },
 	{ selector: 'node.folderTreeLinkBadge', style: { width: 'data(badgeWidth)', height: 17, padding: 0, shape: 'round-rectangle', 'background-color': '#f7f6f8', 'background-image': LINK_ICON_NEUTRAL, 'background-fit': 'none', 'background-width': '9px', 'background-height': '9px', 'background-repeat': 'no-repeat', 'background-position-x': '5px', 'background-position-y': '50%', label: 'data(label)', color: '#88818e', 'font-size': 9, 'font-weight': 700, 'text-margin-x': 5, 'text-valign': 'center', 'text-halign': 'center' } as never },
-	{ selector: 'edge.folderRelation', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(controlPointDistances)', 'control-point-weights': 'data(controlPointWeights)', 'edge-distances': 'data(edgeDistances)', 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65, opacity: 0.82, 'arrow-scale': 0.9, 'z-index': 3 } as never },
-	{ selector: 'edge.folderRelation.reference', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65 } as never },
-	{ selector: 'edge.folderRelation.hub_constituent', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', 'line-style': 'dotted', width: 1.7, opacity: 0.82 } as never },
-	{ selector: 'edge.folderRelation.semantic', style: { 'line-color': '#0f9d83', 'source-arrow-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'line-style': 'dashed', 'line-dash-pattern': [8, 7], width: 1.7, opacity: 0.88 } as never },
+	{ selector: 'edge.folderRelation', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(controlPointDistances)', 'control-point-weights': 'data(controlPointWeights)', 'edge-distances': 'data(edgeDistances)', 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 'data(folderRestingWidth)', opacity: 'data(folderRestingOpacity)', 'arrow-scale': 0.9, 'z-index': 3, 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width, opacity' } as never },
+	{ selector: 'edge.folderRelation.reference', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 'data(folderRestingWidth)', opacity: 'data(folderRestingOpacity)' } as never },
+	{ selector: 'edge.folderRelation.hub_constituent', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', 'line-style': 'dotted', width: 'data(folderRestingWidth)', opacity: 'data(folderRestingOpacity)' } as never },
+	{ selector: 'edge.folderRelation.semantic', style: { 'line-color': '#0f9d83', 'source-arrow-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'line-style': 'dashed', 'line-dash-pattern': [8, 7], width: 'data(folderRestingWidth)', opacity: 'data(folderRestingOpacity)' } as never },
 	{ selector: 'node.folderHoverAnchor', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1000 } as never },
 	{ selector: 'node.folderHoverScope', style: { 'background-color': '#eee3fb', color: '#5b2d96', 'border-width': 0, opacity: 1, 'z-index': 800 } as never },
 	{ selector: 'node.folderHoverConnected', style: { 'background-color': '#f7f1fd', color: '#51475e', opacity: 1, 'z-index': 700 } as never },
-	{ selector: 'edge.folderHoverActive', style: { opacity: 1, width: 2.05, 'arrow-scale': 1.08, 'z-index': 900 } as never },
+	{ selector: 'edge.folderRelation.folderHoverMuted', style: { opacity: 'data(folderMutedOpacity)', 'z-index': 2 } as never },
+	{ selector: 'edge.folderHoverActive', style: { opacity: 1, width: 'data(folderHoverWidth)', 'arrow-scale': 1.08, 'z-index': 900 } as never },
 	{ selector: 'edge.folderHoverIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
 	{ selector: 'edge.folderHoverOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'source-arrow-color': '#0f9d83' } as never },
 	{ selector: 'edge.folderHoverInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
@@ -549,8 +588,6 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 ];
 
 // ─── Layout config picker ──────────────────────────────────────────────────
-type ResultGraphLayoutConfig = ResultGraphCommunityConfig['graphLayout'];
-
 function semanticLayoutStrength(edge: EdgeSingular, config: ResultGraphLayoutConfig): number {
 	if (edge.data('kind') !== 'semantic') return 1;
 	const weight = Number(edge.data('layoutWeight'));
@@ -671,7 +708,7 @@ function fitReadableGraphViewport(cy: Core, folderTree: boolean): void {
 }
 
 const FOLDER_HOVER_NODE_CLASSES = 'folderHoverAnchor folderHoverScope folderHoverConnected';
-const FOLDER_HOVER_EDGE_CLASSES = 'folderHoverActive folderHoverIncoming folderHoverOutgoing folderHoverInternal folderHierarchyActive';
+const FOLDER_HOVER_EDGE_CLASSES = 'folderHoverActive folderHoverMuted folderHoverIncoming folderHoverOutgoing folderHoverInternal folderHierarchyActive';
 
 function mirrorFolderTreeHoverToDecorations(cy: Core): void {
 	cy.nodes('.folderTreeDecoration').forEach((decoration) => {
@@ -715,6 +752,8 @@ function applyFolderTreeHover(
 		if (!hoveredNode || hoveredNode.empty()) return;
 		const scope = folderTreeSelectionScope(projection, hoveredNodeId);
 		const ancestorFolderIds = folderAncestorIds(projection, hoveredNodeId);
+		const relationAnchorIds = new Set(scope.documentIds);
+		if (!hoveredNode.hasClass('folderGroup')) relationAnchorIds.add(hoveredNodeId);
 		const readableNodeIds = new Set<string>([
 			hoveredNodeId,
 			...scope.documentIds,
@@ -728,12 +767,13 @@ function applyFolderTreeHover(
 			cy.getElementById(id).addClass('folderHoverScope');
 		}
 
+		cy.edges('.folderRelation').addClass('folderHoverMuted');
 		cy.edges('.folderRelation').forEach((edge) => {
-			const sourceInScope = scope.documentIds.has(edge.source().id());
-			const targetInScope = scope.documentIds.has(edge.target().id());
+			const sourceInScope = relationAnchorIds.has(edge.source().id());
+			const targetInScope = relationAnchorIds.has(edge.target().id());
 			if (!sourceInScope && !targetInScope) return;
 
-			edge.addClass('folderHoverActive');
+			edge.removeClass('folderHoverMuted').addClass('folderHoverActive');
 			readableNodeIds.add(edge.source().id());
 			readableNodeIds.add(edge.target().id());
 			if (edge.data('directionality') === 'undirected') return;
@@ -1362,6 +1402,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			showSemantic,
 			folderTree: bundle.folderTree,
 			community: bundle.community,
+			graphLayout,
 		});
 		if (animRef.current) cancelAnimationFrame(animRef.current);
 		animRef.current = null;

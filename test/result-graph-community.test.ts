@@ -61,6 +61,21 @@ assert.equal(
 	'large vaults degrade expensive metrics instead of skipping community analysis',
 );
 
+assert.ok(
+	DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout.folderTreeEdgeWidthMax
+		> DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout.folderTreeEdgeWidthMin,
+	'Tree edge width uses a configured resting gradient',
+);
+assert.ok(
+	DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout.folderTreeHoverEdgeWidthMax
+		> DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout.folderTreeEdgeWidthMax,
+	'Tree hover remains visibly stronger than the busiest resting edge',
+);
+assert.ok(
+	DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout.folderTreeMutedEdgeOpacity > 0,
+	'Tree hover weakens unrelated edges without hiding them',
+);
+
 assert.deepEqual(parseCommunityExplanation(
 	'Suggested label: Graph retrieval\nExplanation: These notes share indexing links and retrieval terms.',
 ), {

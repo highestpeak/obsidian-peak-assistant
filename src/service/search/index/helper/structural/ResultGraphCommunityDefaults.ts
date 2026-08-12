@@ -53,6 +53,14 @@ export interface ResultGraphCommunityConfig {
 		detachedVerticalGap: number;
 		detachedRegionGap: number;
 		detachedMinimumRegionWidth: number;
+		folderTreeTrafficDegreeCap: number;
+		folderTreeEdgeWidthMin: number;
+		folderTreeEdgeWidthMax: number;
+		folderTreeEdgeOpacityMin: number;
+		folderTreeEdgeOpacityMax: number;
+		folderTreeHoverEdgeWidthMin: number;
+		folderTreeHoverEdgeWidthMax: number;
+		folderTreeMutedEdgeOpacity: number;
 	};
 	nodeExplanation: {
 		summaryCharacterLimit: number;
@@ -124,6 +132,14 @@ export const DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG: ResultGraphCommunityConfig =
 		detachedVerticalGap: 26,
 		detachedRegionGap: 112,
 		detachedMinimumRegionWidth: 720,
+		folderTreeTrafficDegreeCap: 8,
+		folderTreeEdgeWidthMin: 1.05,
+		folderTreeEdgeWidthMax: 2,
+		folderTreeEdgeOpacityMin: 0.42,
+		folderTreeEdgeOpacityMax: 0.86,
+		folderTreeHoverEdgeWidthMin: 2.5,
+		folderTreeHoverEdgeWidthMax: 3.2,
+		folderTreeMutedEdgeOpacity: 0.14,
 	}),
 	nodeExplanation: Object.freeze({
 		summaryCharacterLimit: 1600,
@@ -175,6 +191,24 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 	const graphLayout = loaded.graphLayout ?? fallback.graphLayout;
 	const nodeExplanation = loaded.nodeExplanation ?? fallback.nodeExplanation;
 	const nodeExplanationUi = nodeExplanation.ui ?? fallback.nodeExplanation.ui;
+	const folderTreeEdgeWidthMin = positive(graphLayout.folderTreeEdgeWidthMin, fallback.graphLayout.folderTreeEdgeWidthMin);
+	const folderTreeEdgeWidthMax = Math.max(
+		folderTreeEdgeWidthMin,
+		positive(graphLayout.folderTreeEdgeWidthMax, fallback.graphLayout.folderTreeEdgeWidthMax),
+	);
+	const folderTreeEdgeOpacityMin = ratio(graphLayout.folderTreeEdgeOpacityMin, fallback.graphLayout.folderTreeEdgeOpacityMin);
+	const folderTreeEdgeOpacityMax = Math.max(
+		folderTreeEdgeOpacityMin,
+		ratio(graphLayout.folderTreeEdgeOpacityMax, fallback.graphLayout.folderTreeEdgeOpacityMax),
+	);
+	const folderTreeHoverEdgeWidthMin = Math.max(
+		folderTreeEdgeWidthMax,
+		positive(graphLayout.folderTreeHoverEdgeWidthMin, fallback.graphLayout.folderTreeHoverEdgeWidthMin),
+	);
+	const folderTreeHoverEdgeWidthMax = Math.max(
+		folderTreeHoverEdgeWidthMin,
+		positive(graphLayout.folderTreeHoverEdgeWidthMax, fallback.graphLayout.folderTreeHoverEdgeWidthMax),
+	);
 	return {
 		analysisVersion: Math.floor(positive(loaded.analysisVersion, fallback.analysisVersion)),
 		weights: {
@@ -227,6 +261,14 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 			detachedVerticalGap: positive(graphLayout.detachedVerticalGap, fallback.graphLayout.detachedVerticalGap),
 			detachedRegionGap: positive(graphLayout.detachedRegionGap, fallback.graphLayout.detachedRegionGap),
 			detachedMinimumRegionWidth: positive(graphLayout.detachedMinimumRegionWidth, fallback.graphLayout.detachedMinimumRegionWidth),
+			folderTreeTrafficDegreeCap: Math.floor(positive(graphLayout.folderTreeTrafficDegreeCap, fallback.graphLayout.folderTreeTrafficDegreeCap)),
+			folderTreeEdgeWidthMin,
+			folderTreeEdgeWidthMax,
+			folderTreeEdgeOpacityMin,
+			folderTreeEdgeOpacityMax,
+			folderTreeHoverEdgeWidthMin,
+			folderTreeHoverEdgeWidthMax,
+			folderTreeMutedEdgeOpacity: ratio(graphLayout.folderTreeMutedEdgeOpacity, fallback.graphLayout.folderTreeMutedEdgeOpacity),
 		},
 		nodeExplanation: {
 			summaryCharacterLimit: Math.floor(positive(nodeExplanation.summaryCharacterLimit, fallback.nodeExplanation.summaryCharacterLimit)),
