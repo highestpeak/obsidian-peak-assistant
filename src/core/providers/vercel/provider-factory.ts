@@ -101,6 +101,8 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
             const provider = createOllama({ baseURL: baseUrl || undefined });
             return provider(resolvedModelId);
         }
+        case 'codex':
+        case 'claude-code':
         case 'litellm':
         case 'custom': {
             // LiteLLM and custom use OpenAI-compatible API

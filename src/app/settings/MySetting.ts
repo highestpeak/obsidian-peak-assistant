@@ -47,6 +47,14 @@ export class MySettings extends PluginSettingTab {
 					(this.app as AppWithSettingsHost).setting.close();
 					await this.appContext.viewManager.activatePluginCommandGatewayView();
 				},
+				onOpenAIControlCenter: async () => {
+					(this.app as AppWithSettingsHost).setting.close();
+					await this.appContext.viewManager.activateAIControlCenterView();
+				},
+				onOpenIndexWorkspace: async () => {
+					(this.app as AppWithSettingsHost).setting.close();
+					await this.appContext.viewManager.activateKnowledgeIndexWorkspace();
+				},
 			}, this.appContext)
 		);
 	}

@@ -44,7 +44,7 @@ export class AIQueryRewriteModal extends ReactModalHost {
 				// Land the user directly on the AI Setup tab so Fast Lookup
 				// is the first thing they see instead of Overview.
 				this.close();
-				new SettingsModal(this.appContext, 'aiSetup').open();
+				new SettingsModal(this.appContext, 'aiModels').open();
 			},
 		});
 	}

@@ -18,7 +18,7 @@ export type PermissionMode =
     /** Skip user prompts; deny rules still enforced. */
     | 'bypassPermissions';
 
-export const DEFAULT_PERMISSION_MODE: PermissionMode = 'acceptEdits';
+export const DEFAULT_PERMISSION_MODE: PermissionMode = 'ask';
 
 /**
  * A tool may declare its kind so PermissionGuard can decide quickly.

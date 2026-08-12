@@ -41,6 +41,8 @@ function normalizeModelKey(modelId: string): string {
 const PROVIDER_ID_ALIASES: Record<string, string> = {
 	anthropic: 'claude',
 	gemini: 'google',
+	codex: 'openai',
+	'claude-code': 'claude',
 };
 
 function normalizeProviderId(providerId: string): string {

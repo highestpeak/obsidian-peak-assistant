@@ -191,12 +191,12 @@ function testValidateNeverPerformsNetworkCall() {
 // ─── configureAction → tab ────────────────────────────────────────────────
 
 function testResolveConfigureTab() {
-	assert.strictEqual(resolveConfigureTab('media'), 'mediaGeneration');
-	assert.strictEqual(resolveConfigureTab('profiles'), 'aiSetup');
-	assert.strictEqual(resolveConfigureTab('mcp'), 'tools');
-	assert.strictEqual(resolveConfigureTab('permissions'), 'aiSetup');
-	assert.strictEqual(resolveConfigureTab(undefined), 'mediaGeneration', 'undefined falls back to media tab');
-	assert.strictEqual(resolveConfigureTab('unknown'), 'mediaGeneration', 'unknown falls back to media tab');
+	assert.strictEqual(resolveConfigureTab('media'), 'aiModels');
+	assert.strictEqual(resolveConfigureTab('profiles'), 'aiModels');
+	assert.strictEqual(resolveConfigureTab('mcp'), 'agents');
+	assert.strictEqual(resolveConfigureTab('permissions'), 'agents');
+	assert.strictEqual(resolveConfigureTab(undefined), 'aiModels', 'undefined falls back to AI & Models');
+	assert.strictEqual(resolveConfigureTab('unknown'), 'aiModels', 'unknown falls back to AI & Models');
 	console.log('  ✓ resolveConfigureTab covers all documented actions');
 }
 

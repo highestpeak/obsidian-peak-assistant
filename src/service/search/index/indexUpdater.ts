@@ -143,8 +143,12 @@ export class SearchUpdateListener {
 
 	private enqueueUpsert(file: TAbstractFile): void {
 		if (!(file instanceof TFile)) return;
-		// Check if we have a loader for this file type
-		if (!this.loaderManager.getLoaderForPath(file.path)) return;
+		const type = this.loaderManager.getTypeForPath(file.path);
+		if (!type) return;
+		if (!this.loaderManager.shouldIndexDocument({
+			type,
+			sourceFileInfo: { path: file.path },
+		} as any)) return;
 		if (this.shouldSkipListenerIndexing(file.path)) return;
 		this.upsertPaths.add(file.path);
 		this.schedule();
@@ -314,4 +318,3 @@ export class SearchUpdateListener {
 		this.start();
 	}
 }
-

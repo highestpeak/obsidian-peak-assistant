@@ -91,14 +91,14 @@ function testPrivateOpenPipelineNoticeHelperIsRemoved(): void {
 function testReporterShowReplacedAllNoticeCallSites(): void {
 	const source = readSource();
 	const showCount = (source.match(/this\.reporter\.show\(/g) ?? []).length;
-	// 17 one-shot replacements + 3 long-running pipeline replacements
-	// (Mobius maintenance, Step 2/4 vector pipeline, Step 2/2 fast-path
-	// graph maintenance) = 20 reporter.show calls. The exact count is the
+	// 18 one-shot replacements + 3 long-running pipeline replacements
+	// (Mobius maintenance and the two staged indexing progress surfaces) =
+	// 21 reporter.show calls. The exact count is the
 	// closest cheap proxy for "all sites were ported and none were missed".
 	assert.strictEqual(
 		showCount,
-		20,
-		`expected 20 this.reporter.show(...) calls in indexInitializer.ts after T2B, found ${showCount}`,
+		21,
+		`expected 21 this.reporter.show(...) calls in indexInitializer.ts after T2B, found ${showCount}`,
 	);
 	console.log('PASS: reporterShowReplacedAllNoticeCallSites');
 }

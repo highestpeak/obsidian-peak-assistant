@@ -24,4 +24,6 @@ export interface ProgressReporterPort {
 	 * `hide()` is called explicitly (matches `new Notice(msg, 0)`).
 	 */
 	show(message: string, timeoutMs?: number): ProgressHandle;
+	/** Optional structured failure channel used by durable progress workspaces. */
+	recordFailure?(failure: { stage: string; path?: string; message: string }): void;
 }

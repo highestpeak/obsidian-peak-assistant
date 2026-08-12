@@ -1,4 +1,19 @@
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_DEBUG_TRACE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, DebugTraceSettings, HarnessSettings, MyPluginSettings, SearchSettings, normalizeCodeBlockTheme } from '@/core/config/settingsTypes';
+import {
+	AIServiceSettings,
+	DEFAULT_AI_SERVICE_SETTINGS,
+	DEFAULT_DEBUG_TRACE_SETTINGS,
+	DEFAULT_HARNESS_SETTINGS,
+	DEFAULT_INDEX_MAINTENANCE_SETTINGS,
+	DEFAULT_MODEL_CATALOG_SETTINGS,
+	DEFAULT_PRODUCT_MODEL_ROUTING,
+	DEFAULT_SEARCH_SETTINGS,
+	DEFAULT_SETTINGS,
+	DebugTraceSettings,
+	HarnessSettings,
+	MyPluginSettings,
+	SearchSettings,
+	normalizeCodeBlockTheme,
+} from '@/core/config/settingsTypes';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/core/types/ambient';
 import type { ProfileSettings } from '@/core/profiles/types';
@@ -74,6 +89,9 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 
 	// Profile settings
 	settings.profileEnabled = getBoolean(rawAI.profileEnabled, settings.profileEnabled ?? true);
+	if (rawAI.attachmentHandlingDefault === 'direct' || rawAI.attachmentHandlingDefault === 'degrade_to_text') {
+		settings.attachmentHandlingDefault = rawAI.attachmentHandlingDefault;
+	}
 
 	// Default output control settings
 	if (rawAI.defaultOutputControl && typeof rawAI.defaultOutputControl === 'object') {
@@ -90,7 +108,7 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 		settings.mediaAttachmentFolder = rawAI.mediaAttachmentFolder;
 	}
 	if (rawAI.mediaDefaults && typeof rawAI.mediaDefaults === 'object') {
-		settings.mediaDefaults = normalizeMediaOverride(rawAI.mediaDefaults);
+		settings.mediaDefaults = normalizeMediaOverride(rawAI.mediaDefaults as Record<string, unknown>);
 	}
 
 	return settings;
@@ -176,6 +194,9 @@ function normalizeSearchSettings(raw: Record<string, unknown>, rootFolder: strin
 	// Ignore patterns
 	if (Array.isArray(rawSearch.ignorePatterns)) {
 		settings.ignorePatterns = rawSearch.ignorePatterns as string[];
+	}
+	if (Array.isArray(rawSearch.includeFolders)) {
+		settings.includeFolders = rawSearch.includeFolders.filter((value): value is string => typeof value === 'string');
 	}
 
 	// Chunking settings
@@ -290,12 +311,142 @@ function normalizeSearchSettings(raw: Record<string, unknown>, rootFolder: strin
 		settings.searchUpgradePromptDismissedAt = rawDismissed;
 	}
 
-	// enablePPR: restore persisted value or keep default
-	settings.enablePPR = getBoolean((rawSearch as any).enablePPR, settings.enablePPR);
+	// Personalized PageRank reranking was retired. Do not revive a legacy
+	// persisted toggle during migration.
+	settings.enablePPR = false;
+
+	const rawMaintenance = rawSearch.maintenance;
+	if (rawMaintenance && typeof rawMaintenance === 'object') {
+		const source = rawMaintenance as Partial<typeof DEFAULT_INDEX_MAINTENANCE_SETTINGS>;
+		settings.maintenance = {
+			changeDebounceMs: typeof source.changeDebounceMs === 'number'
+				? Math.max(0, Math.min(60_000, source.changeDebounceMs))
+				: typeof (rawSearch as any).indexRefreshInterval === 'number'
+					? Math.max(0, Math.min(60_000, (rawSearch as any).indexRefreshInterval))
+					: DEFAULT_INDEX_MAINTENANCE_SETTINGS.changeDebounceMs,
+			onStartup: source.onStartup === 'prompt' || source.onStartup === 'nothing'
+				? source.onStartup
+				: 'changed-files',
+			largeChangeSetThreshold: typeof source.largeChangeSetThreshold === 'number'
+				? Math.max(1, Math.floor(source.largeChangeSetThreshold))
+				: DEFAULT_INDEX_MAINTENANCE_SETTINGS.largeChangeSetThreshold,
+			batchSize: typeof source.batchSize === 'number'
+				? Math.max(1, Math.min(500, Math.floor(source.batchSize)))
+				: DEFAULT_INDEX_MAINTENANCE_SETTINGS.batchSize,
+			retryAttempts: typeof source.retryAttempts === 'number'
+				? Math.max(0, Math.min(10, Math.floor(source.retryAttempts)))
+				: DEFAULT_INDEX_MAINTENANCE_SETTINGS.retryAttempts,
+		};
+	}
 
 	settings.ignorePatterns = ensureIgnoredFolder(settings.ignorePatterns, dataStorageFolder);
 
 	return settings;
+}
+
+function normalizeModelRouting(raw: unknown): MyPluginSettings['modelRouting'] {
+	const defaults = DEFAULT_PRODUCT_MODEL_ROUTING;
+	if (!raw || typeof raw !== 'object') {
+		return {
+			...defaults,
+			automatic: { ...defaults.automatic },
+			assignments: {},
+			advancedControls: {},
+		};
+	}
+	const source = raw as Record<string, unknown>;
+	const automaticSource = source.automatic && typeof source.automatic === 'object'
+		? source.automatic as Record<string, unknown>
+		: {};
+	const optimizeFor = automaticSource.optimizeFor === 'lower-cost' || automaticSource.optimizeFor === 'higher-quality'
+		? automaticSource.optimizeFor
+		: 'recommended';
+	const processingLocation = automaticSource.processingLocation === 'prefer-local' || automaticSource.processingLocation === 'local-only'
+		? automaticSource.processingLocation
+		: 'cloud-and-local';
+	const assignments: MyPluginSettings['modelRouting']['assignments'] = {};
+	if (source.assignments && typeof source.assignments === 'object') {
+		for (const [key, value] of Object.entries(source.assignments as Record<string, unknown>)) {
+			if (!value || typeof value !== 'object') continue;
+			const assignment = value as Record<string, unknown>;
+			if (assignment.mode === 'automatic') assignments[key] = { mode: 'automatic' };
+			if (assignment.mode !== 'fixed' || !assignment.config || typeof assignment.config !== 'object') continue;
+			const config = assignment.config as Record<string, unknown>;
+			if (typeof config.profileId !== 'string' || typeof config.modelId !== 'string') continue;
+			assignments[key] = { mode: 'fixed', config: { profileId: config.profileId, modelId: config.modelId } };
+		}
+	}
+	const advancedControls = source.advancedControls && typeof source.advancedControls === 'object'
+		? source.advancedControls as MyPluginSettings['modelRouting']['advancedControls']
+		: {};
+	return {
+		automatic: { optimizeFor, processingLocation },
+		assignments,
+		advancedControls,
+	};
+}
+
+function normalizeModelCatalog(raw: unknown): MyPluginSettings['modelCatalog'] {
+	if (!raw || typeof raw !== 'object') {
+		return { ...DEFAULT_MODEL_CATALOG_SETTINGS, hiddenModels: [], aliases: {} };
+	}
+	const source = raw as Record<string, unknown>;
+	const aliases: Record<string, string> = {};
+	if (source.aliases && typeof source.aliases === 'object') {
+		for (const [key, value] of Object.entries(source.aliases as Record<string, unknown>)) {
+			if (typeof value === 'string' && value.trim()) aliases[key] = value.trim();
+		}
+	}
+	return {
+		hiddenModels: Array.isArray(source.hiddenModels)
+			? source.hiddenModels.filter((value): value is string => typeof value === 'string')
+			: [],
+		aliases,
+		openRouterCatalogUrl: typeof source.openRouterCatalogUrl === 'string' ? source.openRouterCatalogUrl : '',
+		lastCheckedAt: typeof source.lastCheckedAt === 'number' ? source.lastCheckedAt : null,
+		lastModified: typeof source.lastModified === 'string' ? source.lastModified : null,
+		etag: typeof source.etag === 'string' ? source.etag : null,
+		lastError: typeof source.lastError === 'string' ? source.lastError : null,
+		cachedOpenRouterCatalog: normalizeCachedOpenRouterCatalog(source.cachedOpenRouterCatalog),
+	};
+}
+
+function normalizeCachedOpenRouterCatalog(raw: unknown): MyPluginSettings['modelCatalog']['cachedOpenRouterCatalog'] {
+	if (!raw || typeof raw !== 'object') return null;
+	const source = raw as Record<string, unknown>;
+	if (source.schemaVersion !== 1 || source.provider !== 'openrouter' || !source.models || typeof source.models !== 'object' || Array.isArray(source.models)) return null;
+	return {
+		schemaVersion: 1,
+		provider: 'openrouter',
+		models: source.models as Record<string, unknown>,
+		catalogVersion: typeof source.catalogVersion === 'string' ? source.catalogVersion : undefined,
+	};
+}
+
+function normalizeOnboarding(raw: unknown): MyPluginSettings['onboarding'] {
+	const fallback = DEFAULT_SETTINGS.onboarding;
+	if (!raw || typeof raw !== 'object') return { ...fallback, models: { ...fallback.models } };
+	const source = raw as Record<string, unknown>;
+	const validSteps = new Set(['connect-ai', 'core-models', 'prepare-vault', 'system-check', 'try-peak']);
+	const models = source.models && typeof source.models === 'object' ? source.models as Record<string, unknown> : {};
+	const role = (value: unknown) => {
+		if (!value || typeof value !== 'object') return null;
+		const candidate = value as Record<string, unknown>;
+		return typeof candidate.profileId === 'string' && typeof candidate.modelId === 'string'
+			? { profileId: candidate.profileId, modelId: candidate.modelId }
+			: null;
+	};
+	return {
+		step: validSteps.has(String(source.step)) ? source.step as MyPluginSettings['onboarding']['step'] : fallback.step,
+		selectedProfileId: typeof source.selectedProfileId === 'string' ? source.selectedProfileId : null,
+		models: {
+			conversation: role(models.conversation),
+			knowledge: role(models.knowledge),
+			agent: role(models.agent),
+		},
+		updatedAt: typeof source.updatedAt === 'number' ? source.updatedAt : 0,
+		completedAt: typeof source.completedAt === 'number' ? source.completedAt : null,
+	};
 }
 
 /**
@@ -323,6 +474,9 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		usageDetailRetentionDays: DEFAULT_SETTINGS.usageDetailRetentionDays,
 		usagePreviewEnabled: DEFAULT_SETTINGS.usagePreviewEnabled,
 		codeBlockTheme: normalizeCodeBlockTheme(raw?.codeBlockTheme),
+		modelRouting: normalizeModelRouting(raw?.modelRouting),
+		modelCatalog: normalizeModelCatalog(raw?.modelCatalog),
+		onboarding: normalizeOnboarding(raw?.onboarding),
 		composer: {
 			defaultDocumentView:
 				(raw?.composer as { defaultDocumentView?: unknown } | undefined)?.defaultDocumentView === 'composer'
@@ -457,9 +611,26 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 				? Math.max(0, Math.min(1, rawHarness.autoEscalateScoreBelow))
 				: d.autoEscalateScoreBelow,
 			hooksEnabled: typeof rawHarness.hooksEnabled === 'boolean' ? rawHarness.hooksEnabled : d.hooksEnabled,
-			defaultPermissionMode: (rawHarness.defaultPermissionMode === 'read' || rawHarness.defaultPermissionMode === 'acceptEdits' || rawHarness.defaultPermissionMode === 'bypassPermissions')
+			defaultPermissionMode: (rawHarness.defaultPermissionMode === 'read' || rawHarness.defaultPermissionMode === 'ask' || rawHarness.defaultPermissionMode === 'acceptEdits' || rawHarness.defaultPermissionMode === 'bypassPermissions')
 				? rawHarness.defaultPermissionMode
 				: d.defaultPermissionMode,
+			executionModel: rawHarness.executionModel && typeof rawHarness.executionModel === 'object'
+				? rawHarness.executionModel
+				: d.executionModel,
+			tools: {
+				webAccess: getBoolean(rawHarness.tools?.webAccess, d.tools.webAccess),
+				mcp: getBoolean(rawHarness.tools?.mcp, d.tools.mcp),
+				skills: getBoolean(rawHarness.tools?.skills, d.tools.skills),
+				obsidianCommands: getBoolean(rawHarness.tools?.obsidianCommands, d.tools.obsidianCommands),
+				externalPluginCommands: getBoolean(rawHarness.tools?.externalPluginCommands, d.tools.externalPluginCommands),
+			},
+			permissions: {
+				readVault: getBoolean(rawHarness.permissions?.readVault, d.permissions.readVault),
+				writeVault: getBoolean(rawHarness.permissions?.writeVault, d.permissions.writeVault),
+				localCommands: normalizePermissionScope(rawHarness.permissions?.localCommands, d.permissions.localCommands),
+				networkAccess: normalizePermissionScope(rawHarness.permissions?.networkAccess, d.permissions.networkAccess),
+				rememberedApprovals: getBoolean(rawHarness.permissions?.rememberedApprovals, d.permissions.rememberedApprovals),
+			},
 			budget: sanitizeBudget((rawHarness as { budget?: unknown }).budget),
 		};
 	} else {
@@ -475,6 +646,11 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	settings.debugTrace = sanitizeDebugTrace(raw?.debugTrace);
 
 	return settings;
+}
+
+function normalizePermissionScope(value: unknown, fallback: 'deny' | 'ask' | 'allow'): 'deny' | 'ask' | 'allow' {
+	if (value === 'deny' || value === 'ask' || value === 'allow') return value;
+	return fallback;
 }
 
 const PLUGIN_COMMAND_RISKS = new Set<PluginCommandRisk>([

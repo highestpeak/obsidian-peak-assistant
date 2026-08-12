@@ -254,7 +254,7 @@ export function MediaGenerationTab({ settings, settingsUpdates, onSwitchTab }: M
 							title={strings.native.sectionTitle}
 							desc={strings.native.noProfilesHint}
 							right={
-								<Button variant="secondary" size="sm" onClick={() => onSwitchTab?.('aiSetup')}>
+								<Button variant="secondary" size="sm" onClick={() => onSwitchTab?.('aiModels')}>
 									{strings.native.gotoProfilesLabel}
 								</Button>
 							}

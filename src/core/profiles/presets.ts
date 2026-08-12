@@ -134,6 +134,22 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     ...overrides,
   }),
 
+  codex: (overrides) => ({
+		id: generateId(), name: 'Codex', kind: 'codex', enabled: true, createdAt: Date.now(),
+		baseUrl: 'http://127.0.0.1:8787/v1', apiKey: null,
+		primaryModel: 'gpt-5', fastModel: 'gpt-5-mini', customHeaders: {},
+		embeddingEndpoint: null, embeddingApiKey: null, embeddingModel: null,
+		icon: null, description: 'Codex through the Peak execution gateway', ...overrides,
+	}),
+
+  'claude-code': (overrides) => ({
+		id: generateId(), name: 'Claude Code', kind: 'claude-code', enabled: true, createdAt: Date.now(),
+		baseUrl: 'http://127.0.0.1:8787/v1', apiKey: null,
+		primaryModel: 'claude-sonnet-4-6', fastModel: 'claude-haiku-4-5', customHeaders: {},
+		embeddingEndpoint: null, embeddingApiKey: null, embeddingModel: null,
+		icon: null, description: 'Claude Code through the Peak execution gateway', ...overrides,
+	}),
+
   litellm: (overrides) => ({
     id: generateId(),
     name: 'LiteLLM Proxy',

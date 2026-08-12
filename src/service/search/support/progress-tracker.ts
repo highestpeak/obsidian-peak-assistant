@@ -36,7 +36,7 @@ export class IndexProgressTracker {
 		if (this.handle) { this.handle.hide(); this.handle = null; }
 	}
 
-	updateProgress(currentCount: number): void {
+	updateProgress(currentCount: number, currentPath?: string): void {
 		if (!this.handle) return;
 		const elapsedMs = this.startTime ? Date.now() - this.startTime : 0;
 		const elapsed = this.formatDuration(elapsedMs);
@@ -52,7 +52,11 @@ export class IndexProgressTracker {
 		} else {
 			message = `Indexing: ${currentCount} files processed... - ${elapsed} elapsed`;
 		}
-		this.handle.setMessage(message);
+		this.handle.setMessage(currentPath ? `${message}\n${currentPath}` : message);
+	}
+
+	recordFailure(stage: string, message: string, path?: string): void {
+		this.reporter.recordFailure?.({ stage, path, message });
 	}
 
 	showComplete(stats: Record<string, any>): void {

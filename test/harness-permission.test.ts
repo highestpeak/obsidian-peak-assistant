@@ -40,6 +40,15 @@ function mkTool(name: string, kind: ToolDef['kind'], executed: { count: number }
 
 async function run(): Promise<void> {
     const tests: Array<{ name: string; fn: () => void | Promise<void> }> = [
+		{
+			name: 'default permission mode asks before mutating tools',
+			fn: () => {
+				const guard = new PermissionGuard();
+				assert.strictEqual(guard.getMode(), 'ask');
+				assert.strictEqual(guard.check({ name: 'vault.read', kind: 'read' }, {}).decision, 'allow');
+				assert.strictEqual(guard.check({ name: 'vault.write', kind: 'edit' }, {}).decision, 'ask');
+			},
+		},
         {
             name: 'pure check: deny rule wins over allow rule',
             fn: () => {

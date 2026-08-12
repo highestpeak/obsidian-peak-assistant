@@ -1,6 +1,6 @@
 # Peak Assistant Settings 可配置能力总表（按功能组）
 
-> - 状态：产品配置清单与实现审计 · 目标能力已定义 · 生产接线部分完成
+> - 状态：产品配置清单与实现审计 · 首发核心路径已接线 · P1 与真实宿主验收继续开放
 > - 日期：2026-08-12
 > - 面向读者：产品负责人、产品设计师、交互设计师、实现与验收人员
 > - Settings 一级功能组：`AI & Models → Agents → Knowledge & Search → Advanced`
@@ -60,21 +60,21 @@
 | 能力 | 当前判决 | 结论 |
 | --- | --- | --- |
 | OpenRouter 连接 | `CURRENT` | API key、Base URL、Profile / adapter 和静态模型候选已经存在。 |
-| OpenRouter 在线动态目录 | `PARTIAL / NOT WIRED` | `ModelRegistry.syncFromServer()` 已有远端拉取骨架，但没有任何生产调用者，也没有条件请求、持久缓存、新鲜度、严格 schema 或 last-known-good 回滚；不能视为已可用。 |
-| 模型隐藏、别名、目录级能力覆盖 | `REQUIRED` | 当前统一 Settings mock 和生产 Settings 都没有完整入口；应合并成一个“模型目录管理”界面。 |
-| 自动选择策略 | `TARGET` | 以当前 mock 的 `Automatic rule → feature default → action override` 为目标；只改仍处于 Automatic 的动作，手动绑定不被覆盖。生产路由尚未实现这套完整继承。 |
+| OpenRouter 在线动态目录 | `CURRENT SOURCE / HOST QA PENDING` | 项目控制 JSON、`schemaVersion: 1`、条件请求、持久 last-known-good、bundled fallback、source / freshness 和后台刷新均已接线；正式 URL、网络失败注入和发布运维仍待完成。 |
+| 模型隐藏、别名、目录级能力覆盖 | `CURRENT / PARTIAL` | 模型目录管理已提供隐藏与别名；owner-confirmed capability override 仍待 Capability Evidence Service。 |
+| 自动选择策略 | `CURRENT / PARTIAL RUNTIME` | 新 Settings 已保存 `Automatic → feature default → action override`，恢复 Automatic 会移除覆盖；部分 legacy runtime 仍需完成 action 级消费和 receipt。 |
 | Chat Studio 默认附件处理 | `PARTIAL / BLOCKED` | 设置字段和优先级解析存在，但 direct attachment 组装分支没有完成，降级分支也没有把生成摘要真正注入消息。修复前不能宣称附件策略已生效。 |
 | Vault Search / AI Search 模型 rerank | `RETIRED` | 不再提供模型绑定或用户开关。RRF、图信号等确定性排序如果保留，属于内部检索实现。 |
-| Knowledge Index 摘要与 AI tags | `PARTIAL` | Markdown full-index 路径可生成；PDF、图片、Canvas / Excalidraw 的 enrichment 仍是本需求内待实现项。 |
-| 语义相似边、社区和 Hub signals | `CURRENT / TARGET UI` | 核心计算已有本地确定性实现；每次 run 的细粒度选择、进度和失败状态仍需接入 Index workspace。它们不是额外的“推理模型任务”。 |
+| Knowledge Index 摘要与 AI tags | `CURRENT MARKDOWN / P1 OTHER TYPES` | Markdown summaries 与 AI tags 已可在单次 run 中分别选择；PDF、图片、Canvas / Excalidraw enrichment 继续标为 `In development`。 |
+| 语义相似边、社区和 Hub signals | `CURRENT` | 核心确定性实现和单次 run 的 graph maintenance 选择、进度及失败状态已接入；它们不是额外的“推理模型任务”。 |
 | Hub curation / materialization | `PARTIAL` | Agent 与持久化路径存在，但 Settings 恢复、调度、状态、失败恢复和真实宿主验收不完整。 |
 | Ambient / Vault Intelligence 设置 | `DEFERRED` | 产品能力和信息架构正在重做；本轮只保留 owner 与安全边界，不冻结旧字段清单或旧模型绑定。 |
-| Peak Hermes | `ONLY RUNTIME / PARTIAL` | 现有 Agent loop、Harness、工具和 receipt 能力存在，但尚未统一成一条产品级 runtime 和完整 Settings。 |
+| Peak Hermes | `ONLY RUNTIME / CORE WIRED` | Agent loop、Harness、执行模型、Settings 安全模式和工具过滤已收进唯一 runtime；恢复、完整 receipt 及所有 legacy 入口 audit 仍待后续。 |
 | Hermes 模型兼容筛选 | `PARTIAL` | 路由已有 `toolsNeeded` 等硬筛选；能力证据仍依赖可能陈旧的布尔目录，缺少 probe、来源、新鲜度和 fail-closed 验证。 |
-| 安全模式与权限 | `PARTIAL` | Runtime guard 有 read / ask / acceptEdits / bypass 语义，但持久化枚举、所有 Agent 路径、细粒度 scope 和 Settings 尚未统一。 |
+| 安全模式与权限 | `CURRENT / PARTIAL COVERAGE` | 默认 Ask、四种安全模式、持久设置、Hermes guard 和主要工具 scope 已统一；全部外部命令与 remembered approvals 仍需真实覆盖审计。 |
 | MCP | `PARTIAL` | stdio、旧 SSE、工具发现与调用存在；Streamable HTTP、完整 schema、Resources / Prompts、认证、健康恢复和逐工具信任尚未完成。 |
 | Skills | `PARTIAL / NON-STANDARD` | 当前是 Peak 自定义 skill frontmatter 和编译器，不等于 Agent Skills 标准。需要兼容标准 `SKILL.md`、渐进披露及 scripts / references / assets。 |
-| Knowledge 文件夹范围 | `PARTIAL` | ignore patterns 已参与扫描；真正的 include-folder allowlist 数据模型和生产 UI 尚未完成。 |
+| Knowledge 文件夹范围 | `CURRENT CORE` | include-folder allowlist、ignore patterns 和文件类型已被 full scan、增量扫描及 Index workspace preview 共同消费；结构分析等遗留旁路仍需 consumer audit。 |
 
 ## 1. 如何阅读这份总表
 

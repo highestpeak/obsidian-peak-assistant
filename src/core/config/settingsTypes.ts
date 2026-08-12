@@ -51,6 +51,8 @@ export interface SearchSettings {
 	chunking: ChunkingSettings;
 	/** File/directory ignore patterns (.gitignore style). */
 	ignorePatterns: string[];
+	/** Empty means the whole Vault; otherwise only these Vault-relative folders are scanned. */
+	includeFolders: string[];
 	aiAnalysisModel?: {
 		thoughtAgentModel?: { provider: string; modelId: string };
 		searchAgentModel?: { provider: string; modelId: string };
@@ -81,7 +83,25 @@ export interface SearchSettings {
 	hubCurationSchedulerEnabled: boolean;
 	/** Interval (days) between scheduled Hub Curation runs. Default: 7. */
 	hubCurationIntervalDays: number;
+	/** Long-term background behaviour. Per-run output choices live in the Index Workspace. */
+	maintenance: IndexMaintenanceSettings;
 }
+
+export interface IndexMaintenanceSettings {
+	changeDebounceMs: number;
+	onStartup: 'changed-files' | 'prompt' | 'nothing';
+	largeChangeSetThreshold: number;
+	batchSize: number;
+	retryAttempts: number;
+}
+
+export const DEFAULT_INDEX_MAINTENANCE_SETTINGS: IndexMaintenanceSettings = {
+	changeDebounceMs: 5000,
+	onStartup: 'changed-files',
+	largeChangeSetThreshold: 50,
+	batchSize: 25,
+	retryAttempts: 3,
+};
 
 export interface InspectorLinksSettings {
 	keywordTopN: number;
@@ -116,6 +136,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		`${getAIDataStoreFolder(DEFAULT_AI_ROOT_FOLDER)}/`,
 		'*.tmp', '*.temp', '*.log', '.DS_Store', 'Thumbs.db',
 	],
+	includeFolders: [],
 	aiAnalysisModel: {
 		thoughtAgentModel: { provider: 'openai', modelId: 'gpt-4o-mini' },
 		searchAgentModel: { provider: 'openai', modelId: 'gpt-4o-mini' },
@@ -131,9 +152,11 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,
 	indexLevel: 'fast' as IndexLevel,
 	searchUpgradePromptDismissedAt: null,
-	enablePPR: true,
+	// Personalized PageRank reranking is retired from the product surface.
+	enablePPR: false,
 	hubCurationSchedulerEnabled: false,
 	hubCurationIntervalDays: 7,
+	maintenance: { ...DEFAULT_INDEX_MAINTENANCE_SETTINGS },
 };
 
 export interface AIServiceSettings {
@@ -274,6 +297,82 @@ export const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
 	],
 };
 
+export type ModelAssignment =
+	| { mode: 'automatic' }
+	| { mode: 'fixed'; config: RoleConfig };
+
+export interface AutomaticModelPolicy {
+	optimizeFor: 'recommended' | 'lower-cost' | 'higher-quality';
+	processingLocation: 'cloud-and-local' | 'prefer-local' | 'local-only';
+}
+
+export interface ProductModelRoutingSettings {
+	automatic: AutomaticModelPolicy;
+	/** Feature ids and feature/action ids share this map. */
+	assignments: Record<string, ModelAssignment>;
+	/** Missing fields inherit the product-level output controls. */
+	advancedControls: Record<string, Partial<LLMOutputControlSettings>>;
+}
+
+export const DEFAULT_PRODUCT_MODEL_ROUTING: ProductModelRoutingSettings = {
+	automatic: {
+		optimizeFor: 'recommended',
+		processingLocation: 'cloud-and-local',
+	},
+	assignments: {},
+	advancedControls: {},
+};
+
+export interface ModelCatalogSettings {
+	hiddenModels: string[];
+	aliases: Record<string, string>;
+	openRouterCatalogUrl: string;
+	lastCheckedAt: number | null;
+	lastModified: string | null;
+	etag: string | null;
+	lastError: string | null;
+	cachedOpenRouterCatalog: { schemaVersion: 1; provider: 'openrouter'; models: Record<string, unknown>; catalogVersion?: string } | null;
+}
+
+export const DEFAULT_MODEL_CATALOG_SETTINGS: ModelCatalogSettings = {
+	hiddenModels: [],
+	aliases: {},
+	openRouterCatalogUrl: '',
+	lastCheckedAt: null,
+	lastModified: null,
+	etag: null,
+	lastError: null,
+	cachedOpenRouterCatalog: null,
+};
+
+export interface OnboardingProgressSettings {
+	step: 'connect-ai' | 'core-models' | 'prepare-vault' | 'system-check' | 'try-peak';
+	selectedProfileId: string | null;
+	models: {
+		conversation: RoleConfig | null;
+		knowledge: RoleConfig | null;
+		agent: RoleConfig | null;
+	};
+	updatedAt: number;
+	completedAt: number | null;
+}
+
+export interface AgentToolSettings {
+	webAccess: boolean;
+	mcp: boolean;
+	skills: boolean;
+	obsidianCommands: boolean;
+	externalPluginCommands: boolean;
+}
+
+export interface AgentPermissionSettings {
+	readVault: boolean;
+	writeVault: boolean;
+	localCommands: 'deny' | 'ask' | 'allow';
+	networkAccess: 'deny' | 'ask' | 'allow';
+	rememberedApprovals: boolean;
+}
+
 export interface HarnessSettings {
 	/** local-fast tier profile+model (e.g. Ollama Qwen3-14B). null = disabled. */
 	localFastConfig: RoleConfig | null;
@@ -289,8 +388,12 @@ export interface HarnessSettings {
 	autoEscalateScoreBelow: number;
 	/** Enable user-defined hooks (pre_tool_use / post_tool_use etc.). Default false. */
 	hooksEnabled: boolean;
-	/** Default permission mode for agent actions. Default 'acceptEdits'. */
-	defaultPermissionMode: 'read' | 'acceptEdits' | 'bypassPermissions';
+	/** Default permission mode for agent actions. Default 'ask'. */
+	defaultPermissionMode: 'read' | 'ask' | 'acceptEdits' | 'bypassPermissions';
+	/** Peak Hermes is the sole runtime; this model executes its steps. */
+	executionModel: RoleConfig | null;
+	tools: AgentToolSettings;
+	permissions: AgentPermissionSettings;
 	/** Monthly budget + alert rule guardrails driving the Budget & Alerts dashboard surface. */
 	budget: BudgetSettings;
 }
@@ -303,7 +406,22 @@ export const DEFAULT_HARNESS_SETTINGS: HarnessSettings = {
 	maxEscalationsPerLoop: 3,
 	autoEscalateScoreBelow: 0.4,
 	hooksEnabled: false,
-	defaultPermissionMode: 'acceptEdits',
+	defaultPermissionMode: 'ask',
+	executionModel: null,
+	tools: {
+		webAccess: true,
+		mcp: true,
+		skills: true,
+		obsidianCommands: false,
+		externalPluginCommands: false,
+	},
+	permissions: {
+		readVault: true,
+		writeVault: true,
+		localCommands: 'ask',
+		networkAccess: 'ask',
+		rememberedApprovals: true,
+	},
 	budget: { ...DEFAULT_BUDGET_SETTINGS, alertRules: DEFAULT_BUDGET_SETTINGS.alertRules.map((r) => ({ ...r })) },
 };
 
@@ -343,6 +461,12 @@ export interface MyPluginSettings {
 		mstLeafWidthScale?: number;
 	};
 	profileSettings?: ProfileSettings;
+	/** Product/task model choices; all unset entries remain Automatic. */
+	modelRouting: ProductModelRoutingSettings;
+	/** User customisation of the shared provider/model catalog. */
+	modelCatalog: ModelCatalogSettings;
+	/** Resume point for the minimal first-use setup. */
+	onboarding: OnboardingProgressSettings;
 	ambientPush?: AmbientPushSettings;
 	usageTrackingEnabled: boolean;
 	usageDetailRetentionDays: number;
@@ -440,6 +564,24 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	sqliteBackend: 'auto',
 	enableDevTools: false,
 	codeBlockTheme: DEFAULT_CODE_BLOCK_THEME,
+	modelRouting: {
+		...DEFAULT_PRODUCT_MODEL_ROUTING,
+		automatic: { ...DEFAULT_PRODUCT_MODEL_ROUTING.automatic },
+		assignments: {},
+		advancedControls: {},
+	},
+	modelCatalog: {
+		...DEFAULT_MODEL_CATALOG_SETTINGS,
+		hiddenModels: [],
+		aliases: {},
+	},
+	onboarding: {
+		step: 'connect-ai',
+		selectedProfileId: null,
+		models: { conversation: null, knowledge: null, agent: null },
+		updatedAt: 0,
+		completedAt: null,
+	},
 	ambientPush: undefined,
 	harnessSettings: { ...DEFAULT_HARNESS_SETTINGS },
 	debugTrace: { ...DEFAULT_DEBUG_TRACE_SETTINGS },

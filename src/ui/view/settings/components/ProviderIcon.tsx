@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Bot, Settings2 } from 'lucide-react';
+import { Bot, Settings2, TerminalSquare } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import type { ProfileKind } from '@/core/profiles/types';
 import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator';
@@ -61,6 +61,10 @@ const SimulatorIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Bot {...(props as React.ComponentProps<typeof Bot>)} />
 );
 
+const TerminalIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+	<TerminalSquare {...(props as React.ComponentProps<typeof TerminalSquare>)} />
+);
+
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
@@ -72,21 +76,25 @@ export const ICON_SVGS: Record<ProfileKind, React.FC<React.SVGProps<SVGSVGElemen
     perplexity: PerplexityIcon,
     ollama: OllamaIcon,
     openrouter: OpenRouterIcon,
+	codex: TerminalIcon,
+	'claude-code': TerminalIcon,
     litellm: LiteLLMIcon,
     custom: CustomIcon,
     simulator: SimulatorIcon,
 };
 
 export const ICON_GRADIENTS: Record<ProfileKind, string> = {
-    anthropic: 'pktw-bg-gradient-to-br pktw-from-[#d4a574] pktw-to-[#c4956a]',
-    openai: 'pktw-bg-gradient-to-br pktw-from-[#10a37f] pktw-to-[#1a7f5a]',
-    google: 'pktw-bg-gradient-to-br pktw-from-[#4285f4] pktw-to-[#34a853]',
-    perplexity: 'pktw-bg-gradient-to-br pktw-from-[#20b2aa] pktw-to-[#2dd4bf]',
-    ollama: 'pktw-bg-gradient-to-br pktw-from-[#333333] pktw-to-[#555555]',
-    openrouter: 'pktw-bg-gradient-to-br pktw-from-[#6366f1] pktw-to-[#818cf8]',
-    litellm: 'pktw-bg-gradient-to-br pktw-from-[#059669] pktw-to-[#34d399]',
-    custom: 'pktw-bg-gradient-to-br pktw-from-[#3a3a3a] pktw-to-[#4a4a4a]',
-    simulator: 'pktw-bg-[#7c3aed]',
+    anthropic: 'pktw-bg-[#c99a6b]',
+    openai: 'pktw-bg-[#168c72]',
+    google: 'pktw-bg-[#4f77cc]',
+    perplexity: 'pktw-bg-[#378c91]',
+    ollama: 'pktw-bg-[#4a4a4a]',
+    openrouter: 'pktw-bg-[#6266b8]',
+	codex: 'pktw-bg-[#2f6f9f]',
+	'claude-code': 'pktw-bg-[#a66f48]',
+    litellm: 'pktw-bg-[#398263]',
+    custom: 'pktw-bg-[#55575e]',
+    simulator: 'pktw-bg-[#7557aa]',
 };
 
 export const PROVIDER_LABELS: Record<ProfileKind, { label: string; desc: string }> = {
@@ -96,6 +104,8 @@ export const PROVIDER_LABELS: Record<ProfileKind, { label: string; desc: string 
     perplexity: { label: 'Perplexity', desc: 'Search-first AI' },
     ollama: { label: 'Ollama', desc: 'Local models' },
     openrouter: { label: 'OpenRouter', desc: 'All providers' },
+	codex: { label: 'Codex', desc: 'Peak gateway' },
+	'claude-code': { label: 'Claude Code', desc: 'Peak gateway' },
     litellm: { label: 'LiteLLM', desc: 'Proxy gateway' },
     custom: { label: 'Custom', desc: 'Any OpenAI-compatible' },
     simulator: {

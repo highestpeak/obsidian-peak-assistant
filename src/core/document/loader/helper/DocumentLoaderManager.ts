@@ -22,6 +22,21 @@ import { CanvasDocumentLoader } from '../CanvasDocumentLoader';
 import { UrlDocumentLoader } from '../UrlDocumentLoader';
 
 /**
+ * Resolve the user-owned include-folder boundary before any loader work starts.
+ * Empty includes mean the whole Vault. Paths are Vault-relative and folder
+ * matches are segment-aware (`Notes` must not also match `Notes-old`).
+ */
+export function isPathInKnowledgeScope(path: string, includeFolders: readonly string[]): boolean {
+	if (includeFolders.length === 0) return true;
+	const normalizedPath = path.replace(/^\/+|\/+$/g, '');
+	return includeFolders.some((folder) => {
+		const normalizedFolder = folder.trim().replace(/^\/+|\/+$/g, '');
+		if (!normalizedFolder) return true;
+		return normalizedPath === normalizedFolder || normalizedPath.startsWith(`${normalizedFolder}/`);
+	});
+}
+
+/**
  * Global singleton manager for document loaders.
  * Manages multiple document loaders for different file types using strategy pattern.
  *
@@ -272,8 +287,10 @@ export class DocumentLoaderManager {
 			return false;
 		}
 
-		// Then check if path is ignored (skip if sourceFileInfo is not available)
+		// Then apply the canonical folder scope and ignore rules. The same method
+		// is used by first scan, rebuilds and incremental indexing.
 		if (doc.sourceFileInfo?.path) {
+			if (!isPathInKnowledgeScope(doc.sourceFileInfo.path, this.settings.includeFolders)) return false;
 			return !this.ignoreMatcher.shouldIgnore(doc.sourceFileInfo.path);
 		}
 

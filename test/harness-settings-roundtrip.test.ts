@@ -20,14 +20,14 @@ function testDefaults() {
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.maxEscalationsPerLoop, 3, 'maxEscalationsPerLoop default');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.autoEscalateScoreBelow, 0.4, 'autoEscalateScoreBelow default');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.hooksEnabled, false, 'hooksEnabled default');
-    assert.strictEqual(DEFAULT_HARNESS_SETTINGS.defaultPermissionMode, 'acceptEdits', 'defaultPermissionMode default');
+	assert.strictEqual(DEFAULT_HARNESS_SETTINGS.defaultPermissionMode, 'ask', 'defaultPermissionMode default');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.localFastConfig, null, 'localFastConfig default null');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.localDeepConfig, null, 'localDeepConfig default null');
     assert.strictEqual(DEFAULT_HARNESS_SETTINGS.onlineConfig, null, 'onlineConfig default null');
 
     // DEFAULT_SETTINGS must include harness section
     assert.ok(DEFAULT_SETTINGS.harnessSettings, 'DEFAULT_SETTINGS has harnessSettings');
-    assert.strictEqual(DEFAULT_SETTINGS.harnessSettings!.defaultPermissionMode, 'acceptEdits', 'DEFAULT_SETTINGS harness mode');
+	assert.strictEqual(DEFAULT_SETTINGS.harnessSettings!.defaultPermissionMode, 'ask', 'DEFAULT_SETTINGS harness mode');
     console.log('[harness-settings-roundtrip] defaults: PASS');
 }
 
@@ -70,7 +70,7 @@ function testMissingSection() {
     assert.ok(h, 'harnessSettings present even without saved data');
     assert.strictEqual(h.allowEscalation, true, 'fallback allowEscalation');
     assert.strictEqual(h.maxEscalationsPerLoop, 3, 'fallback maxEscalationsPerLoop');
-    assert.strictEqual(h.defaultPermissionMode, 'acceptEdits', 'fallback defaultPermissionMode');
+	assert.strictEqual(h.defaultPermissionMode, 'ask', 'fallback defaultPermissionMode');
     assert.strictEqual(h.localFastConfig, null, 'fallback localFastConfig null');
     console.log('[harness-settings-roundtrip] missing section fallback: PASS');
 }
@@ -108,14 +108,14 @@ function testInvalidPermissionMode() {
             defaultPermissionMode: 'invalid-mode',
         },
     });
-    assert.strictEqual(result.harnessSettings!.defaultPermissionMode, 'acceptEdits', 'invalid mode → default');
+	assert.strictEqual(result.harnessSettings!.defaultPermissionMode, 'ask', 'invalid mode → default');
     console.log('[harness-settings-roundtrip] invalid permission mode: PASS');
 }
 
 // ─── 6. All three valid permission modes accepted ─────────────────────────────
 
 function testValidPermissionModes() {
-    for (const mode of ['read', 'acceptEdits', 'bypassPermissions'] as const) {
+	for (const mode of ['read', 'ask', 'acceptEdits', 'bypassPermissions'] as const) {
         const result = normalizePluginSettings({ harnessSettings: { defaultPermissionMode: mode } });
         assert.strictEqual(result.harnessSettings!.defaultPermissionMode, mode, `mode ${mode} preserved`);
     }

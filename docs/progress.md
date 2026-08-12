@@ -8,6 +8,16 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-13 · Settings、Onboarding 与 Knowledge Index 首发核心路径
+
+- [x] **四组 Settings 生产结构**：Settings 固定为 `AI & Models → Agents → Knowledge & Search → Advanced`，保留 Obsidian 原生侧栏；连接、模型目录、功能/动作默认、Hermes、安全、Knowledge 长期策略和低频控制拥有明确 owner。
+- [x] **统一模型选择与 OpenRouter 目录**：所有新模型入口复用 searchable Provider → Model picker；模型隐藏/别名进入 Catalog 管理；OpenRouter JSON 支持严格 schema、ETag / Last-Modified、持久 last-known-good、后台刷新和 bundled fallback。
+- [x] **Peak Hermes 与安全默认**：Peak Hermes 保持唯一 Agent runtime；execution model、工具开关和 permission settings 接入 Harness；即使调用方漏传 guard，AgentLoop 仍默认 Ask，避免无确认写入。
+- [x] **Knowledge scope 与单页 Index Workspace**：include folders、ignore patterns 和首发文件类型被 full/incremental scan 一致消费；run setup 可控制 Embedding、Markdown summary、AI tags 和图维护；进度显示速度、ETA、顺序、类型分布和失败详情。
+- [x] **五步 Onboarding**：`Connect AI → Core models → Prepare vault → System check → Try Peak` 支持草稿恢复、真实连接测试、Better SQLite 硬门槛、Fast FTS 和直接打开真实产品 surface。
+- [x] **自动验证**：12 个 focused suites 与 production build / bundle / simulator boundary 通过；全量为 `485/489`，4 个失败均来自本轮未触碰的 code theme、Frontmatter tag candidate、generated-output registry 与 inline prompt 基线。本任务路径的 TypeScript 错误筛选无诊断；仓库全量 TypeScript 仍受既有依赖声明和历史基线错误阻塞。
+- [ ] **完整发布门槛未完成**：仓库 TypeScript 存在既有基线债务；真实 Obsidian fresh/existing/repair、长 picker、SQLite failure、large Vault progress 与 launchpad 保持 `INTERACTION NOT VERIFIED`。Capability Evidence、附件真实注入、完整 MCP / 标准 Skills、failed-only retry 和非 Markdown enrichment 仍在计划内。详见 [`实施记录`](./superpowers/plans/2026-08-13-onboarding-settings-knowledge-index-implementation-note.md)。
+
 ## 2026-08-18 · Composer 长文档 CppHeap 根因收束
 
 - [x] **最终根因**：早期虚拟化只约束同时挂载行数，后续方案分别修复 viewport 空洞、布局抖动和 `contenteditable` 数量，但快速滚动仍反复创建完整 `ComposerBlockRow`。累计分配率而非某一时刻的 DOM 数量最终触发 Chromium CppHeap fatal。

@@ -294,6 +294,8 @@ export class IndexService
 		IndexGraphPort
 {
 	private static isIndexingCancelled = false;
+	private static isIndexingPaused = false;
+	private static pauseWaiters: Array<() => void> = [];
 
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
@@ -333,16 +335,36 @@ export class IndexService
 	/** Cancel ongoing indexing operations. */
 	static cancelIndexing(): void {
 		IndexService.isIndexingCancelled = true;
+		IndexService.resumeIndexing();
 	}
 
 	/** Reset the cancellation flag. */
 	static resetCancellation(): void {
 		IndexService.isIndexingCancelled = false;
+		IndexService.resumeIndexing();
 	}
 
 	/** Check if indexing has been cancelled. */
 	static isCancelled(): boolean {
 		return IndexService.isIndexingCancelled;
+	}
+
+	static pauseIndexing(): void {
+		IndexService.isIndexingPaused = true;
+	}
+
+	static resumeIndexing(): void {
+		IndexService.isIndexingPaused = false;
+		for (const resolve of IndexService.pauseWaiters.splice(0)) resolve();
+	}
+
+	static isPaused(): boolean {
+		return IndexService.isIndexingPaused;
+	}
+
+	static async waitIfPaused(): Promise<void> {
+		if (!IndexService.isIndexingPaused) return;
+		await new Promise<void>((resolve) => IndexService.pauseWaiters.push(resolve));
 	}
 
 	// --- Index lifecycle (formerly IndexCrudService) ---
@@ -2165,6 +2187,8 @@ export class IndexService
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
 			shouldContinue?: () => boolean;
 			paths?: readonly string[];
+			includeTags?: boolean;
+			includeSummary?: boolean;
 		},
 	): Promise<LlmIndexEnrichmentResult> {
 		if (!sqliteStoreManager.isInitialized()) {
@@ -2176,7 +2200,11 @@ export class IndexService
 		}
 
 		const indexSvc = this;
-		const baseOpts = defaultIndexDocumentOptions('llm_enrich_only');
+		const baseOpts = {
+			...defaultIndexDocumentOptions('llm_enrich_only'),
+			includeLlmTags: options?.includeTags ?? true,
+			includeLlmSummary: options?.includeSummary ?? true,
+		};
 		const tenants: IndexTenant[] = ['vault', 'chat'];
 		let processed = 0;
 		let skippedWrongTenant = 0;

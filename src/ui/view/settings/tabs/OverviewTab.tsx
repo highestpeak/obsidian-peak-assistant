@@ -63,27 +63,27 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
             icon: Plug, title: readinessCopy.providers.title, desc: readinessCopy.providers.desc,
             status: providers.ready ? 'ready' : 'needs-attention',
             meta: providers.count === 1 ? '1 connected' : `${providers.count} connected`,
-            pill: readinessCopy.providers.manage, onPill: () => onSwitchTab('aiSetup'),
+			pill: readinessCopy.providers.manage, onPill: () => onSwitchTab('aiModels'),
         },
         {
             icon: Sparkles, title: readinessCopy.aiBehavior.title, desc: readinessCopy.aiBehavior.desc,
             status: aiBehavior.status, meta: aiBehavior.reason,
-            pill: readinessCopy.aiBehavior.manage, onPill: () => onSwitchTab('aiSetup'),
+			pill: readinessCopy.aiBehavior.manage, onPill: () => onSwitchTab('aiModels'),
         },
         {
             icon: Database, title: readinessCopy.knowledgeIndex.title, desc: readinessCopy.knowledgeIndex.desc,
             status: indexStatus, meta: formatCoverage(indexCoverage),
-            pill: readinessCopy.knowledgeIndex.check, onPill: () => onSwitchTab('knowledgeIndex'),
+			pill: readinessCopy.knowledgeIndex.check, onPill: () => onSwitchTab('knowledgeSearch'),
         },
         {
             icon: Globe, title: readinessCopy.webAccess.title, desc: readinessCopy.webAccess.desc,
             status: 'optional', meta: 'Not configured',
-            pill: readinessCopy.webAccess.setup, onPill: () => onSwitchTab('tools'),
+			pill: readinessCopy.webAccess.setup, onPill: () => onSwitchTab('agents'),
         },
         {
             icon: Shield, title: readinessCopy.safety.title, desc: readinessCopy.safety.desc,
             status: 'ready', meta: SAFETY_LABEL[safety],
-            pill: readinessCopy.safety.review, onPill: () => onSwitchTab('aiSetup'),
+			pill: readinessCopy.safety.review, onPill: () => onSwitchTab('agents'),
         },
     ];
 
@@ -96,8 +96,8 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
 
     const actionButtons: Array<{ icon: LucideIcon; label: string; onClick: () => void; primary?: boolean }> = [
         { icon: Wrench, label: actionsCopy.runSetup, onClick: settingsActions.setup.openHarnessWizard },
-        { icon: Plug, label: actionsCopy.testProviders, onClick: () => onSwitchTab('aiSetup') },
-        { icon: Database, label: actionsCopy.checkIndex, onClick: () => onSwitchTab('knowledgeIndex') },
+		{ icon: Plug, label: actionsCopy.testProviders, onClick: () => onSwitchTab('aiModels') },
+		{ icon: Database, label: actionsCopy.checkIndex, onClick: () => onSwitchTab('knowledgeSearch') },
         { icon: MessageSquare, label: actionsCopy.tryChat, onClick: settingsActions.openAssistant, primary: true },
     ];
 
@@ -122,7 +122,7 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
             <SettingsSection title={summaryCopy.sectionTitle} sub={summaryCopy.sectionSub}>
                 <div className="pkset-row-list">
                     {summaryRows.map((r) => (
-                        <Row key={r.title} onClick={() => onSwitchTab('aiSetup')} data-clickable="true">
+						<Row key={r.title} onClick={() => onSwitchTab('aiModels')} data-clickable="true">
                             <Row.Icon><r.icon size={16} /></Row.Icon>
                             <Row.Body>
                                 <Row.Title>{r.title}</Row.Title>

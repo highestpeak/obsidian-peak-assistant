@@ -359,16 +359,16 @@ export type ConfigureActionId = 'media' | 'profiles' | 'mcp' | 'permissions';
  */
 export function resolveConfigureTab(action: string | undefined): SettingsTabForConfigure {
 	switch (action) {
-		case 'media':
-			return 'mediaGeneration';
+	case 'media':
+			return 'aiModels';
 		case 'profiles':
-			return 'aiSetup';
+			return 'aiModels';
 		case 'mcp':
-			return 'tools';
+			return 'agents';
 		case 'permissions':
-			return 'aiSetup';
+			return 'agents';
 		default:
-			return 'mediaGeneration';
+			return 'aiModels';
 	}
 }
 
@@ -376,12 +376,11 @@ export function resolveConfigureTab(action: string | undefined): SettingsTabForC
  * union here to keep this module free of a UI-layer import — the
  * settings/types re-exports the same literal set. */
 export type SettingsTabForConfigure =
-	| 'overview'
-	| 'aiSetup'
-	| 'knowledgeIndex'
-	| 'tools'
+	| 'aiModels'
+	| 'agents'
+	| 'knowledgeSearch'
 	| 'advanced'
-	| 'mediaGeneration';
+	;
 
 /**
  * When a receipt has multiple preflight problems, the aggregate

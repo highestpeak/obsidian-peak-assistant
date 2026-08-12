@@ -1,11 +1,12 @@
 # Peak Assistant Onboarding、Settings 与 Knowledge Index 最终设计
 
-> - 状态：整合后的目标设计基线 · 待 Owner 终审 · 生产实现未开始
+> - 状态：Owner 讨论已收束 · 首发核心路径已实现 · 真实 Obsidian QA 与 P1 enrichment 待完成
 > - 日期：2026-08-13
 > - 面向读者：产品负责人、产品设计师、交互设计师、实现工程师、QA
 > - 预计阅读：15–20 分钟
-> - 交互证据：目标 HTML mock 已完成；真实 Obsidian 交互尚未验证
+> - 交互证据：目标 HTML mock 与生产源码已更新；真实 Obsidian 交互仍为 `INTERACTION NOT VERIFIED`
 > - 实施任务：[实现任务与验收计划](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md)
+> - 实施记录：[首发核心路径实施记录](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation-note.md)
 
 ## 0. 这份文档解决什么问题
 
@@ -636,29 +637,31 @@ Composer 优先使用当前合格文档；没有当前文档时打开最近使�
 
 ## 8. 当前实现真相与目标差距
 
-以下结论来自 2026-08-13 对当前文档和关键源码入口的复核：
+以下结论来自 2026-08-13 对本 worktree 生产源码的复核。`已接线` 只表示源码、配置和自动测试形成闭环，不等于真实 Obsidian 交互已验收：
 
 | 范围 | 当前事实 | 目标差距 |
 | --- | --- | --- |
-| Onboarding | 生产状态机仍是七个主步骤，并复用 Curator 子流程 | 迁移为五步流程、真实 readiness 和首次成功记录 |
-| Better SQLite | `auto` 和 `better-sqlite3` 最终都使用 Better SQLite；已有自动下载和 ABI 处理 | 失败不能只靠 Notice；需要可查询 gate、probe、Retry 和 receipt |
-| OpenRouter | 连接、adapter、bundled catalog 和通用远端 fetch 骨架存在 | 没有生产调用、条件请求、严格 schema、持久 last-known-good 和 UI 新鲜度 |
-| Model routing | 多个 picker 与推荐/角色机制存在 | 统一目录、共享 picker、继承、Automatic 预览和 capability evidence |
-| Peak Hermes | Agent loop、Harness、工具和部分 receipt 存在 | 统一唯一 runtime、权限、恢复与执行模型 gate |
+| Onboarding | 五步状态机、草稿恢复、真实 connection test、Better SQLite gate、Fast FTS 和真实 launchpad 已接线 | fresh/existing/repair 的真实宿主交互、失败注入与完成指标待验收 |
+| Better SQLite | 自动检查、修复、ABI 处理和 onboarding 硬门槛已接线；不提供 backend 选择 | 下载失败、ABI mismatch 和恢复仍需真实宿主失败注入与 receipt |
+| OpenRouter | 严格 `schemaVersion: 1`、ETag / Last-Modified、持久 last-known-good、后台刷新和 UI 新鲜度已接线 | 项目正式 catalog URL、发布运维和真实网络失败注入待完成 |
+| Model routing | 四组 Settings、统一 searchable Provider → Model picker、功能/动作绑定、隐藏/别名和 Automatic 配置已接线 | capability probe 证据仍不完整；部分 legacy runtime 尚未全部消费细粒度 action override |
+| Peak Hermes | 继续作为唯一 runtime；默认 PermissionGuard、Settings 安全模式、工具过滤和 execution model 接线已完成 | 断点恢复、完整 receipt、MCP/Skills 标准化与所有旧 Agent 入口收口仍待后续 |
 | MCP / Skills | 有较窄 MCP 工具链和 Peak 自定义 Skill 格式 | 完整协议边界、逐工具信任、标准 Agent Skills 和迁移 |
-| Knowledge scope | ignore patterns 已参与部分扫描 | include-folder allowlist 和所有消费者的一致 scope 未完成 |
-| Index enrichment | Markdown 与部分确定性产物存在 | PDF/image/Canvas summaries、OCR/vision 和逐动作进度/失败未完成 |
+| Knowledge scope | include folders、ignore patterns、文件类型已被 full scan、incremental update 与 workspace preview 一致消费 | structural / hub 等遗留旁路仍需长期 consumer audit |
+| Index workspace | 页面顶部可折叠 run setup、Fast/Embedding/AI tags/summary/graph maintenance 真实控制、进度/速度/ETA/顺序/类型/失败已接线 | 失败项定点重试、持久 run history 和真实大 Vault ETA 校准待完成 |
+| Index enrichment | Markdown summary 与 AI tags 已可分别选择；本地 FTS、关键词、引用关系和图维护明确区分自动/可选 | PDF/image/Canvas summaries、OCR/vision、实体和更细产物仍为 P1 `In development` |
 | Ambient / Vault Intelligence | 能力与信息架构正在重做 | 先完成新产品模型，再决定长期 Settings 字段 |
 
 `CURRENT` 不代表真实 Obsidian 交互已验收。mock 中的 `Ready` 也不能作为生产证据。
 
 主要证据入口：
 
-- [当前七步 Onboarding 状态机](../../../src/ui/view/onboarding/OnboardingStateMachine.ts)
+- [五步 Onboarding 状态机](../../../src/ui/view/onboarding/OnboardingStateMachine.ts)
 - [当前 Onboarding 组合 UI](../../../src/ui/view/onboarding/HarnessOnboardingWizard.tsx)
 - [SQLite 单一 runtime 选择](../../../src/core/storage/sqlite/SqliteStoreManager.ts)
 - [Better SQLite native component 管理](../../../src/core/storage/sqlite/NativeModuleManager.ts)
-- [模型目录与未接线远端同步骨架](../../../src/core/providers/model-registry.ts)
+- [本地模型目录](../../../src/core/providers/model-registry.ts)
+- [OpenRouter 动态目录与 last-known-good](../../../src/core/providers/openrouter-catalog.ts)
 - [字段级实现审计](./2026-08-12-settings-configurable-capabilities-by-group.md#04-2026-08-12-owner-review-后的实现判决)
 
 ## 9. 上线验收标准
@@ -718,12 +721,13 @@ Composer 优先使用当前合格文档；没有当前文档时打开最近使�
 ## 11. 文档与 mock 的最终阅读顺序
 
 1. **本文**：最终职责、流程、交互和产品判决。
-2. **[实现任务与验收计划](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md)**：工程依赖、任务顺序和完成门槛。
-3. **[Settings 可配置能力总表](./2026-08-12-settings-configurable-capabilities-by-group.md)**：字段级能力、状态和当前实现审计。
-4. **[Settings mock](../../gstack/settings-onboarding-unified-2026-08-12/settings.html)**：长期配置目标交互。
-5. **[Onboarding mock](../../gstack/settings-onboarding-unified-2026-08-12/onboarding.html)**：五步首次流程与 review states。
-6. **[Knowledge Index mock](../../gstack/knowledge-index-workspace-2026-08-11/index.html)**：单次 run 的配置、进度和恢复。
-7. **[完整能力 brief](./2026-08-09-onboarding-settings-capability-content-flow-brief.md)**：本轮讨论的详细背景、分支和历史证据。
+2. **[首发核心路径实施记录](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation-note.md)**：当前真实实现、验证、限制和下一步。
+3. **[实现任务与验收计划](../plans/2026-08-13-onboarding-settings-knowledge-index-implementation.md)**：工程依赖、任务顺序和完成门槛。
+4. **[Settings 可配置能力总表](./2026-08-12-settings-configurable-capabilities-by-group.md)**：字段级能力、状态和当前实现审计。
+5. **[Settings mock](../../gstack/settings-onboarding-unified-2026-08-12/settings.html)**：长期配置目标交互。
+6. **[Onboarding mock](../../gstack/settings-onboarding-unified-2026-08-12/onboarding.html)**：五步首次流程与 review states。
+7. **[Knowledge Index mock](../../gstack/knowledge-index-workspace-2026-08-11/index.html)**：单次 run 的配置、进度和恢复。
+8. **[完整能力 brief](./2026-08-09-onboarding-settings-capability-content-flow-brief.md)**：本轮讨论的详细背景、分支和历史证据。
 
 2026-08-06 的 variants 和视觉校准材料只保留为探索证据，不再作为实现 source of truth。
 

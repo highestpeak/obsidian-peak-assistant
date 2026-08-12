@@ -36,11 +36,13 @@ export interface ProviderOption {
 }
 
 export const PROVIDER_OPTIONS: ProviderOption[] = [
-    { kind: 'anthropic', label: 'Anthropic', desc: 'Direct API access', Icon: Shield, keyUrl: 'https://console.anthropic.com/settings/keys', keyUrlLabel: 'Get API Key' },
     { kind: 'openai', label: 'OpenAI', desc: 'GPT models', Icon: Zap, keyUrl: 'https://platform.openai.com/api-keys', keyUrlLabel: 'Get API Key' },
-    { kind: 'google', label: 'Google AI', desc: 'Gemini + web grounding', Icon: Globe, keyUrl: 'https://aistudio.google.com/apikey', keyUrlLabel: 'Get API Key' },
+    { kind: 'anthropic', label: 'Anthropic', desc: 'Direct API access', Icon: Shield, keyUrl: 'https://console.anthropic.com/settings/keys', keyUrlLabel: 'Get API Key' },
     { kind: 'openrouter', label: 'OpenRouter', desc: 'Multi-provider + web search', Icon: Globe, keyUrl: 'https://openrouter.ai/keys', keyUrlLabel: 'Get API Key' },
     { kind: 'ollama', label: 'Ollama', desc: 'Local models', Icon: Settings2, keyUrl: 'https://ollama.com/', keyUrlLabel: 'Documentation' },
+	{ kind: 'codex', label: 'Codex', desc: 'Via Peak execution gateway', Icon: Zap, keyUrl: null, keyUrlLabel: '' },
+	{ kind: 'claude-code', label: 'Claude Code', desc: 'Via Peak execution gateway', Icon: Shield, keyUrl: null, keyUrlLabel: '' },
+	{ kind: 'google', label: 'Google AI', desc: 'Gemini + web grounding', Icon: Globe, keyUrl: 'https://aistudio.google.com/apikey', keyUrlLabel: 'Get API Key' },
     { kind: 'perplexity', label: 'Perplexity', desc: 'Search-augmented AI', Icon: Globe, keyUrl: 'https://www.perplexity.ai/settings/api', keyUrlLabel: 'Get API Key' },
     { kind: 'litellm', label: 'LiteLLM', desc: 'Self-hosted proxy', Icon: Zap, keyUrl: 'https://docs.litellm.ai/docs/', keyUrlLabel: 'Documentation' },
     { kind: 'custom', label: 'Custom', desc: 'OpenAI-compatible endpoint', Icon: Settings2, keyUrl: null, keyUrlLabel: '' },
@@ -55,6 +57,8 @@ export interface AddProviderFormProps {
     setActiveOnFirst?: boolean;
     /** When true, auto-assign web search role for capable providers. */
     autoAssignWebSearch?: boolean;
+	/** Limit the first-use chooser without removing additional providers from Settings. */
+	allowedKinds?: ProfileKind[];
 }
 
 /** Inline form for adding a single provider profile. */
@@ -63,27 +67,34 @@ export function AddProviderForm({
     onCancel: _onCancel,
     setActiveOnFirst = true,
     autoAssignWebSearch = true,
+	allowedKinds,
 }: AddProviderFormProps) {
     const [selectedKind, setSelectedKind] = useState<ProfileKind>('anthropic');
     const [apiKey, setApiKey] = useState('');
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
 
-    const selectedOption = PROVIDER_OPTIONS.find((p) => p.kind === selectedKind)!;
-    const requiresKey = selectedKind !== 'ollama' && selectedKind !== 'custom' && selectedKind !== 'litellm';
+	const visibleOptions = allowedKinds
+		? PROVIDER_OPTIONS.filter((option) => allowedKinds.includes(option.kind))
+		: PROVIDER_OPTIONS;
+	const effectiveKind = visibleOptions.some((option) => option.kind === selectedKind)
+		? selectedKind
+		: visibleOptions[0]?.kind ?? 'openai';
+    const selectedOption = PROVIDER_OPTIONS.find((p) => p.kind === effectiveKind)!;
+    const requiresKey = !['ollama', 'custom', 'litellm', 'codex', 'claude-code'].includes(effectiveKind);
 
     const handleTest = useCallback(async () => {
         setTesting(true);
         setTestResult(null);
-        const ok = await testProviderConnection(uiHttpClient, selectedKind, apiKey);
+        const ok = await testProviderConnection(uiHttpClient, effectiveKind, apiKey);
         setTestResult(ok ? 'success' : 'fail');
         setTesting(false);
-    }, [apiKey, selectedKind]);
+    }, [apiKey, effectiveKind]);
 
     const handleSave = useCallback(() => {
         if (requiresKey && !apiKey.trim()) return;
         const registry = ProfileRegistry.getInstance();
-        const profile = createPresetProfile(selectedKind, { apiKey });
+        const profile = createPresetProfile(effectiveKind, { apiKey });
         registry.addProfile(profile);
         if (setActiveOnFirst && !registry.getActiveAgentProfile()) {
             registry.setActiveAgentProfile(profile.id);
@@ -91,7 +102,7 @@ export function AddProviderForm({
         if (
             autoAssignWebSearch
             && !registry.getActiveWebSearchProfile()
-            && (selectedKind === 'perplexity' || selectedKind === 'openrouter' || selectedKind === 'google')
+            && (effectiveKind === 'perplexity' || effectiveKind === 'openrouter' || effectiveKind === 'google')
         ) {
             registry.setActiveWebSearchProfile(profile.id);
         }
@@ -99,19 +110,19 @@ export function AddProviderForm({
         setApiKey('');
         setTestResult(null);
         onAdded(profile.id);
-    }, [apiKey, selectedKind, onAdded, setActiveOnFirst, autoAssignWebSearch, requiresKey]);
+    }, [apiKey, effectiveKind, onAdded, setActiveOnFirst, autoAssignWebSearch, requiresKey]);
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-3 pktw-p-3 pktw-rounded-lg pktw-border pktw-border-[--background-modifier-border] pktw-bg-[--background-primary-alt]">
             {/* Provider kind selector */}
             <div className="pktw-grid pktw-grid-cols-2 pktw-gap-1.5">
-                {PROVIDER_OPTIONS.map(({ kind, label, Icon }) => (
+                {visibleOptions.map(({ kind, label, Icon }) => (
                     <div
                         key={kind}
                         onClick={() => { setSelectedKind(kind); setTestResult(null); }}
                         className={cn(
                             'pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors pktw-text-sm',
-                            selectedKind === kind
+                            effectiveKind === kind
                                 ? 'pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent]'
                                 : 'pktw-text-[--text-normal] hover:pktw-bg-[--background-modifier-hover]',
                         )}

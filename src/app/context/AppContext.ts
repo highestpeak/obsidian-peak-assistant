@@ -38,7 +38,6 @@ import { composeChatVaultWriter } from '@/app/chat/composeChatVaultWriter';
 import { AppVaultStatsAdapter } from '@/app/platform/vault/AppVaultStatsAdapter';
 import { composeCopilotReviewHistory } from '@/app/copilot/composeCopilotReviewHistory';
 import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
-import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 import { ObsidianProgressReporter } from '@/app/platform/ObsidianProgressReporter';
 import { FileAtlasSessionStore } from '@/app/file-atlas/FileAtlasSessionStore';
 import { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
@@ -64,7 +63,7 @@ export class AppContext {
 	public readonly fileAtlasSessionStore: FileAtlasSessionStore;
 
 	/** App-owned progress notification reporter. Passed to service consumers via constructor injection. */
-	public readonly progressReporter: ProgressReporterPort;
+	public readonly progressReporter: ObsidianProgressReporter;
 
 	/**
 	 * T11N: app-composed ports for the streamdown/chat-attachment preview

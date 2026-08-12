@@ -19,7 +19,11 @@ import {
 	compareSearchResults,
 	deleteIndexData,
 	openAssistant,
+	openChatStudio,
+	openDocumentComposer,
+	openFileAtlas,
 	openHarnessSetupWizard,
+	openQuickSearch,
 	recomputeGapAnalysis,
 	refreshHubSummaries,
 	runFullIndexPipeline,
@@ -31,6 +35,10 @@ import {
 } from '@/app/commands/PeakCommandActions';
 import { SettingsModal } from '@/app/ui-host/modals/SettingsModal';
 import { detectEnvironment } from '@/service/agents/harness/curator';
+import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
+import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
+import { SettingsUpdatedEvent } from '@/core/eventBus';
+import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import type {
 	IndexLevel,
 	SettingsActions,
@@ -60,11 +68,51 @@ async function startStagedFullIndexing(
 
 export function composeSettingsActions(appContext: AppContext): SettingsActions {
 	const app = appContext.app;
+	async function updateSettings(updates: Partial<MyPluginSettings>): Promise<void> {
+		const plugin = appContext.plugin;
+		plugin.settings = { ...plugin.settings, ...updates };
+		if (updates.ai) {
+			plugin.aiServiceManager?.updateSettings(plugin.settings.ai);
+			plugin.aiServiceManager?.refreshDefaultServices();
+			await plugin.aiServiceManager?.init();
+		}
+		if (updates.search) DocumentLoaderManager.getInstance().updateSettings(plugin.settings.search);
+		await plugin.saveSettings();
+		appContext.eventBus.dispatch(new SettingsUpdatedEvent(plugin.settings));
+	}
 	return {
 		openSettings: (options) => new SettingsModal(appContext, options?.tab).open(),
 		openAssistant: () => openAssistant(),
+		settings: {
+			current: () => appContext.plugin.settings,
+			update: (key, value) => updateSettings({ [key]: value } as Partial<MyPluginSettings>),
+			updateSearch: (key, value) => updateSettings({
+				search: { ...appContext.plugin.settings.search, [key]: value },
+			}),
+		},
+		launch: {
+			openChatStudio: () => openChatStudio(),
+			openVaultSearch: () => openQuickSearch(),
+			openFileAtlas: () => openFileAtlas(),
+			openComposer: () => openDocumentComposer(),
+			openRecentNote: async () => {
+				const active = app.workspace.getActiveFile();
+				const recent = active?.extension.toLowerCase() === 'md'
+					? active
+					: app.vault.getMarkdownFiles().sort((a, b) => b.stat.mtime - a.stat.mtime)[0];
+				if (!recent) return;
+				const leaf = app.workspace.getLeaf('tab');
+				await leaf.openFile(recent);
+				app.workspace.revealLeaf(leaf);
+			},
+		},
 		setup: {
 			openHarnessWizard: () => openHarnessSetupWizard(),
+			repairBetterSqlite: async () => {
+				const manager = NativeModuleManager.getInstance();
+				await manager.ensureCompatible();
+				return manager.getReadiness();
+			},
 			detectHarnessEnvironment: (opts) => detectEnvironment({ app, ...opts }),
 		},
 		maintenance: {

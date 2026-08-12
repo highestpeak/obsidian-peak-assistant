@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ProfileKind } from '@/core/profiles/types';
+import type { ProfileKind } from '@/core/profiles/types';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 
-const KINDS: ProfileKind[] = ['simulator', 'anthropic', 'openai', 'google', 'openrouter', 'perplexity', 'ollama', 'litellm', 'custom'];
+const KINDS: ProfileKind[] = ['openai', 'anthropic', 'openrouter', 'ollama', 'codex', 'claude-code', 'google', 'perplexity', 'litellm', 'custom', 'simulator'];
 
 interface AddProfileGridProps {
     onSelect: (kind: ProfileKind) => void;

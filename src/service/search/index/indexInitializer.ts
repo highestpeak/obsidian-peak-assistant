@@ -37,6 +37,13 @@ export type IndexErrorHandler = (error: {
 	error: Error;
 }) => Promise<IndexErrorAction>;
 
+export interface StagedIndexOutputs {
+	includeEmbeddings: boolean;
+	includeLlmTags: boolean;
+	includeLlmSummary: boolean;
+	includeGraphMaintenance: boolean;
+}
+
 const PHASE_LABELS: Record<string, string> = {
 	semantic_pagerank_edges: 'semantic PR edges',
 	semantic_pagerank_persist: 'semantic PR persist',
@@ -93,6 +100,11 @@ export class IndexInitializer {
 	/** Check index status and perform incremental indexing for new/modified files. */
 	async checkAndUpdateIndex(): Promise<void> {
 		try {
+			if (this.settings.maintenance.onStartup === 'nothing') return;
+			if (this.settings.maintenance.onStartup === 'prompt') {
+				this.reporter.show('Peak did not scan for changed files. Run an index update when you are ready.', 5000);
+				return;
+			}
 			const indexStatus = await this.indexService.getIndexStatus();
 			const hasIndex = indexStatus.isReady && indexStatus.indexBuiltAt !== null;
 
@@ -161,7 +173,7 @@ export class IndexInitializer {
 	private async collectAllIndexableFilePaths(): Promise<string[]> {
 		const loaderManager = DocumentLoaderManager.getInstance();
 		const filesToIndex: string[] = [];
-		for await (const batch of loaderManager.scanDocuments()) {
+		for await (const batch of loaderManager.scanDocuments({ batchSize: this.settings.maintenance.batchSize })) {
 			for (const docMeta of batch) {
 				const partialDoc = {
 					type: docMeta.type,
@@ -172,7 +184,7 @@ export class IndexInitializer {
 				}
 			}
 		}
-		return filesToIndex;
+		return filesToIndex.sort((a, b) => a.localeCompare(b));
 	}
 
 	/** Full pipeline: FTS → vector embeddings → LLM tags/summaries → Mobius maintenance. */
@@ -180,6 +192,7 @@ export class IndexInitializer {
 		showNotification: boolean = true,
 		level: IndexLevel = 'full',
 		onError?: IndexErrorHandler,
+		outputs?: StagedIndexOutputs,
 	): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) {
 			this.reporter.show('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
@@ -192,6 +205,7 @@ export class IndexInitializer {
 
 		const progressTracker = new IndexProgressTracker(this.reporter, filesToIndex.length);
 		let indexedCount = 0;
+		let failureCount = 0;
 		try {
 			progressTracker.showStart('Peak: Step 1/4 — Full-text (FTS), no embeddings…');
 
@@ -199,18 +213,34 @@ export class IndexInitializer {
 			const PROGRESS_INTERVAL_MS = 2000;
 
 			for (const path of filesToIndex) {
+				await IndexService.waitIfPaused();
 				if (IndexService.isCancelled() || progressTracker.isCancelled()) {
 					progressTracker.dismiss();
 					return;
 				}
-				await this.indexService.indexDocument(
-					path,
-					this.settings,
-					defaultIndexDocumentOptions('listener_fast'),
-				);
-				indexedCount++;
-				if (Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS) {
-					progressTracker.updateProgress(indexedCount);
+				let indexed = false;
+				let lastError: unknown = null;
+				for (let attempt = 0; attempt <= this.settings.maintenance.retryAttempts; attempt++) {
+					try {
+						await this.indexService.indexDocument(
+							path,
+							this.settings,
+							defaultIndexDocumentOptions('listener_fast'),
+						);
+						indexed = true;
+						break;
+					} catch (error) {
+						lastError = error;
+					}
+				}
+				if (indexed) indexedCount++;
+				else {
+					failureCount++;
+					progressTracker.recordFailure('Full-text indexing', lastError instanceof Error ? lastError.message : String(lastError), path);
+				}
+				const processedCount = indexedCount + failureCount;
+				if (processedCount === 1 || Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS || processedCount === filesToIndex.length) {
+					progressTracker.updateProgress(processedCount, path);
 					lastProgressUpdate = Date.now();
 				}
 			}
@@ -232,9 +262,15 @@ export class IndexInitializer {
 			this.reporter.show(`Peak: Step 1/4 done — FTS indexed ${indexedCount} file(s). DB ~${mb} MB.`, 5000);
 		}
 
-		if (level === 'semantic' || level === 'full') {
+		const includeEmbeddings = outputs?.includeEmbeddings ?? (level === 'semantic' || level === 'full');
+		const includeLlmTags = outputs?.includeLlmTags ?? level === 'full';
+		const includeLlmSummary = outputs?.includeLlmSummary ?? level === 'full';
+		const includeGeneratedKnowledge = includeLlmTags || includeLlmSummary;
+		const includeGraphMaintenance = outputs?.includeGraphMaintenance ?? (level === 'semantic' || level === 'full');
+
+		if (includeEmbeddings || includeGeneratedKnowledge || includeGraphMaintenance) {
 			const pipelineUi = this.reporter.show('Peak: Step 2/4 — Vector embeddings…', 0);
-			try {
+			if (includeEmbeddings) try {
 				await this.indexService.runPendingVectorIndexEnrichment(this.settings, {
 					onProgress: ({ processed, total, path }) => {
 						const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
@@ -259,20 +295,29 @@ export class IndexInitializer {
 						} catch (retryErr) {
 							pipelineUi.hide();
 							console.error('[IndexInitializer] Step 2 retry failed:', retryErr);
+							failureCount++;
+							this.reporter.recordFailure?.({ stage: 'Embedding generation', message: retryErr instanceof Error ? retryErr.message : String(retryErr) });
 						}
+					} else {
+						failureCount++;
+						this.reporter.recordFailure?.({ stage: 'Embedding generation', message: e instanceof Error ? e.message : String(e) });
 					}
 					// 'continue' → proceed to next step
 				} else {
 					pipelineUi.hide();
 					console.error('[IndexInitializer] Step 2 failed:', e);
+					failureCount++;
+					this.reporter.recordFailure?.({ stage: 'Embedding generation', message: e instanceof Error ? e.message : String(e) });
 					this.reporter.show(`Peak: Step 2/4 failed — ${(e as Error).message}`, 8000);
 				}
 			}
 
-			if (level === 'full') {
+			if (includeGeneratedKnowledge) {
 				pipelineUi.setMessage('Peak: Step 3/4 — LLM tags & summaries…');
 				try {
 					await this.indexService.runPendingLlmIndexEnrichment(this.settings, {
+						includeTags: includeLlmTags,
+						includeSummary: includeLlmSummary,
 						onProgress: (ev) => {
 							const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
 							pipelineUi.setMessage(
@@ -290,6 +335,8 @@ export class IndexInitializer {
 						if (action === 'retry') {
 							try {
 								await this.indexService.runPendingLlmIndexEnrichment(this.settings, {
+									includeTags: includeLlmTags,
+									includeSummary: includeLlmSummary,
 									onProgress: (ev) => {
 										const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
 										pipelineUi.setMessage(
@@ -299,43 +346,47 @@ export class IndexInitializer {
 								});
 							} catch (retryErr) {
 								console.error('[IndexInitializer] Step 3 retry failed:', retryErr);
+								failureCount++;
+								this.reporter.recordFailure?.({ stage: 'Generated knowledge', message: retryErr instanceof Error ? retryErr.message : String(retryErr) });
 							}
+						} else {
+							failureCount++;
+							this.reporter.recordFailure?.({ stage: 'Generated knowledge', message: e instanceof Error ? e.message : String(e) });
 						}
 						// 'continue' → proceed to next step
 					} else {
 						console.error('[IndexInitializer] Step 3 failed:', e);
+						failureCount++;
+						this.reporter.recordFailure?.({ stage: 'Generated knowledge', message: e instanceof Error ? e.message : String(e) });
 					}
 				}
 			}
 
-			pipelineUi.setMessage('Peak: Step 4/4 — Graph maintenance…');
-			try {
-				await this.indexService.runMobiusGlobalMaintenance(['vault', 'chat'], {
-					onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 4/4', ev)),
-				});
-			} catch (e) {
-				console.error('[IndexInitializer] Step 4 (maintenance) failed:', e);
+			if (includeGraphMaintenance) {
+				pipelineUi.setMessage('Peak: Step 4/4 — Graph maintenance…');
+				try {
+					await this.indexService.runMobiusGlobalMaintenance(['vault', 'chat'], {
+						onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 4/4', ev)),
+					});
+				} catch (e) {
+					console.error('[IndexInitializer] Step 4 (maintenance) failed:', e);
+					failureCount++;
+					this.reporter.recordFailure?.({ stage: 'Graph maintenance', message: e instanceof Error ? e.message : String(e) });
+				}
 			}
 			pipelineUi.hide();
 			if (showNotification) {
-				this.reporter.show(
-					'Peak: Full pipeline finished (FTS → vector → LLM → maintenance).',
-					8000,
-				);
+				this.reporter.show(failureCount > 0
+					? `Indexing completed with ${failureCount} failure(s). Open the Index Workspace for details.`
+					: 'Indexing complete! Full text, vectors, generated knowledge and maintenance are ready.', 8000);
 			}
 		} else {
-			// level === 'fast': only FTS done, run maintenance step
-			const pipelineUi = this.reporter.show('Peak: Step 2/2 — Graph maintenance…', 0);
-			try {
-				await this.indexService.runMobiusGlobalMaintenance(['vault', 'chat'], {
-					onProgress: (ev) => pipelineUi.setMessage(maintenanceProgressMsg('Peak: Step 2/2', ev)),
-				});
-			} catch (e) {
-				console.error('[IndexInitializer] Graph maintenance failed:', e);
-			}
-			pipelineUi.hide();
+			// First-use fast mode deliberately stops after local full-text search.
+			// Graph maintenance is a later run output, not a hidden onboarding cost.
 			if (showNotification) {
-				this.reporter.show('Peak: Fast indexing finished (FTS + graph maintenance).', 5000);
+				this.reporter.show(failureCount > 0
+					? `Indexing completed with ${failureCount} failure(s). Open the Index Workspace for details.`
+					: 'Indexing complete! Full-text search is ready.', 5000);
 			}
 		}
 	}
@@ -404,7 +455,7 @@ export class IndexInitializer {
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 
 		const vaultFiles = new Set<string>();
-		for await (const docBatch of loaderManager.scanDocuments({ batchSize: INDEX_CHECK_BATCH_SIZE })) {
+		for await (const docBatch of loaderManager.scanDocuments({ batchSize: this.settings.maintenance.batchSize })) {
 			for (const docItem of docBatch) {
 				if (loaderManager.shouldIndexDocument({ type: docItem.type, sourceFileInfo: { path: docItem.path } } as any)) {
 					vaultFiles.add(docItem.path);
@@ -443,16 +494,33 @@ export class IndexInitializer {
 		const PROGRESS_INTERVAL_MS = 2000;
 		const opts = typeof reasonOrOpts === 'string' ? defaultIndexDocumentOptions(reasonOrOpts) : reasonOrOpts;
 
+		let failureCount = 0;
 		for (const path of filesToIndexPaths) {
+			await IndexService.waitIfPaused();
 			if (IndexService.isCancelled() || progressTracker?.isCancelled()) {
 				break;
 			}
 
-			await this.indexService.indexDocument(path, this.settings, opts);
-			indexedCount += 1;
+			let indexed = false;
+			let lastError: unknown = null;
+			for (let attempt = 0; attempt <= this.settings.maintenance.retryAttempts; attempt++) {
+				try {
+					await this.indexService.indexDocument(path, this.settings, opts);
+					indexed = true;
+					break;
+				} catch (error) {
+					lastError = error;
+				}
+			}
+			if (indexed) indexedCount += 1;
+			else {
+				failureCount += 1;
+				progressTracker.recordFailure('Document indexing', lastError instanceof Error ? lastError.message : String(lastError), path);
+			}
 
-			if (Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS) {
-				progressTracker.updateProgress(indexedCount);
+			const processedCount = indexedCount + failureCount;
+			if (processedCount === 1 || Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS || processedCount === filesToIndexPaths.length) {
+				progressTracker.updateProgress(processedCount, path);
 				lastProgressUpdate = Date.now();
 			}
 		}
@@ -462,10 +530,15 @@ export class IndexInitializer {
 			: VAULT_DB_FILENAME;
 		const storageSize = await readFileSize(this.app, dbFilePath);
 
-		progressTracker.showComplete({
-			totalIndexed: indexedCount,
-			storageSize,
-		});
+		if (failureCount > 0) {
+			progressTracker.dismiss();
+			this.reporter.show(`Indexing completed with ${failureCount} failure(s). Open the Index Workspace for details.`, 8000);
+		} else {
+			progressTracker.showComplete({
+				totalIndexed: indexedCount,
+				storageSize,
+			});
+		}
 	}
 
 	private async indexNewAndModifiedFiles(filesToIndexPaths: string[]): Promise<void> {
@@ -502,7 +575,7 @@ export class IndexInitializer {
 		const filesToIndex: string[] = [];
 
 		let batchLoopMark = performance.now();
-		for await (const docBatch of loaderManager.scanDocuments({ batchSize: INDEX_CHECK_BATCH_SIZE })) {
+		for await (const docBatch of loaderManager.scanDocuments({ batchSize: this.settings.maintenance.batchSize })) {
 			diag.msScanDocuments += performance.now() - batchLoopMark;
 
 			diag.batches += 1;

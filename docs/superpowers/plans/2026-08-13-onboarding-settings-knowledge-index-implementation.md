@@ -1,10 +1,31 @@
 # Peak Assistant Onboarding、Settings 与 Knowledge Index 实现任务与验收计划
 
-> - 状态：目标实现计划 · 等待 Final Design 终审后执行
+> - 状态：首发核心路径实现完成 · P1 完整能力与真实宿主验收继续开放
 > - 日期：2026-08-13
 > - 产品契约：[最终设计](../specs/2026-08-13-onboarding-settings-knowledge-index-final-design.md)
 > - 字段清单：[Settings 可配置能力总表](../specs/2026-08-12-settings-configurable-capabilities-by-group.md)
 > - 交付原则：完整实现，不以静态 mock 或无消费者字段冒充完成
+> - 当前证据：[首发核心路径实施记录](./2026-08-13-onboarding-settings-knowledge-index-implementation-note.md)
+
+## 0.1 2026-08-13 执行状态
+
+本轮已经完成 Settings、Onboarding 和 Knowledge Index 的主信息架构切换，并接通最关键的生产消费者。它达到“首发核心路径源码完成”，但没有越过本文定义的完整发布门槛：真实 Obsidian QA、失败注入、标准 Skills / 完整 MCP、capability evidence，以及非 Markdown enrichment 仍是开放任务。
+
+已完成的主路径：
+
+- 四个 Settings 一级页和唯一模型 picker；
+- 连接、目录偏好、功能/动作绑定及 OpenRouter last-known-good 动态目录；
+- Peak Hermes 单 runtime、默认 Ask、工具和权限入口；
+- Knowledge include folders / ignore patterns 的扫描与增量消费；
+- 单页 Index setup、真实 run output 控制、速度/ETA/顺序/类型/失败状态；
+- 五步可恢复 Onboarding、真实连接验证、Better SQLite 硬门槛、Fast FTS 与真实任务跳转。
+
+仍需继续的完整范围：
+
+- W1.4 capability probe、W1.7 Provider-specific advanced controls、W1.8 附件消息真实注入；
+- W2.4 完整 MCP、W2.5 标准 Agent Skills、W2.6 Command Gateway 深度接线、W2.7 recovery；
+- W3 的 PDF / image / Canvas summaries、OCR / vision、实体和精细失败恢复；
+- W6 的迁移演练、失败注入、真实 Obsidian QA、dogfood、指标与 rollback。
 
 ## 0. Impact Contract
 
@@ -528,8 +549,8 @@ P1：workspace behavior、appearance/accessibility、export/clear、maintenance 
 
 ### 发布证据
 
-- [ ] focused tests 通过；
-- [ ] production build 通过；
+- [x] focused tests 通过；
+- [x] production build 通过；
 - [ ] migration / rollback 通过；
 - [ ] failure injection 通过；
 - [ ] 真实 Obsidian QA 通过；

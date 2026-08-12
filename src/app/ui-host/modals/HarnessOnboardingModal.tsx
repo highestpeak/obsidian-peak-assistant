@@ -33,8 +33,9 @@ export class HarnessOnboardingModal extends ReactModalHost {
 		modalClasses: ['pkonb-modal-shell'],
 		// Mock's "modal--wide" = 680px; we use a comparable width that still
 		// fits the 92vw safety. The pk-modal-shell tokens cover narrower views.
-		width: '720px',
-		maxWidth: '92vw',
+		width: '1080px',
+		maxWidth: '94vw',
+		maxHeight: 'calc(100vh - 48px)',
 	};
 
 	constructor(

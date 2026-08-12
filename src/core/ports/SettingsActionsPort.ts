@@ -15,11 +15,14 @@
 
 import type { EnvironmentSnapshot } from '@/service/agents/harness/curator/types';
 import type { IndexLevel } from '@/core/search/indexTypes';
+import type { MyPluginSettings } from '@/core/config/settingsTypes';
 
 export type { IndexLevel };
 
 export interface SettingsSetupActions {
 	openHarnessWizard(): void;
+	/** Ensure the required native SQLite component matches the current Electron ABI. */
+	repairBetterSqlite(): Promise<{ ready: boolean; message: string }>;
 	/**
 	 * Probe the user's environment for the Curator (RAM, profiles, vault
 	 * language ratio, Ollama). The adapter binds `app` from `AppContext`;
@@ -77,6 +80,24 @@ export interface SettingsKnowledgeIndexActions {
 	compareSearchResults(): Promise<void>;
 }
 
+export interface SettingsLaunchActions {
+	openChatStudio(): void;
+	openVaultSearch(): void;
+	openFileAtlas(): Promise<void>;
+	openComposer(): void;
+	openRecentNote(): Promise<void>;
+}
+
+/** Narrow, app-owned persistence surface for settings UIs and onboarding. */
+export interface SettingsPersistenceActions {
+	current(): MyPluginSettings;
+	update<K extends keyof MyPluginSettings>(key: K, value: MyPluginSettings[K]): Promise<void>;
+	updateSearch<K extends keyof MyPluginSettings['search']>(
+		key: K,
+		value: MyPluginSettings['search'][K],
+	): Promise<void>;
+}
+
 /**
  * Optional deep-link into a specific settings tab. Passed from callers
  * that resolved a `configureAction` (ArtifactReceiptCard, ComposerPlusMenu)
@@ -84,7 +105,7 @@ export interface SettingsKnowledgeIndexActions {
  * default (Overview) tab.
  */
 export interface OpenSettingsOptions {
-	tab?: 'overview' | 'aiSetup' | 'knowledgeIndex' | 'tools' | 'mediaGeneration' | 'advanced';
+	tab?: 'aiModels' | 'agents' | 'knowledgeSearch' | 'advanced';
 }
 
 export interface SettingsActions {
@@ -94,6 +115,8 @@ export interface SettingsActions {
 	openSettings(options?: OpenSettingsOptions): void;
 	/** Activate the chat assistant view. */
 	openAssistant(): void;
+	settings: SettingsPersistenceActions;
+	launch?: SettingsLaunchActions;
 	setup: SettingsSetupActions;
 	maintenance: SettingsMaintenanceActions;
 	knowledgeIndex: SettingsKnowledgeIndexActions;

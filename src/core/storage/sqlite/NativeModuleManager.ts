@@ -166,6 +166,19 @@ export class NativeModuleManager {
 		);
 	}
 
+	/** User-facing readiness probe used by Setup and Advanced Settings. */
+	getReadiness(): { ready: boolean; message: string } {
+		if (this.isCompatible()) {
+			const runtime = this.detectRuntime();
+			return { ready: true, message: `Managed better-sqlite3 is ready for ABI ${runtime.abi}.` };
+		}
+		if (this.isNodeModulesBinaryWorking()) {
+			return { ready: true, message: 'Bundled better-sqlite3 loaded and passed an in-memory read/write check.' };
+		}
+		const runtime = this.detectRuntime();
+		return { ready: false, message: `better-sqlite3 is missing or incompatible with ABI ${runtime.abi}.` };
+	}
+
 	/**
 	 * Main entry point.  Ensures a compatible better-sqlite3 binary is available.
 	 *

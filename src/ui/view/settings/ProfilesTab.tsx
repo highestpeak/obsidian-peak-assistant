@@ -42,19 +42,24 @@ interface ProfilesTabProps {
      * Web Search) that violate the user-facing vocab contract.
      */
     hideStatusBar?: boolean;
+	hideAdvancedControls?: boolean;
+	onProfilesChange?: () => void;
 }
 
 // ---------------------------------------------------------------------------
 // ProfilesTab
 // ---------------------------------------------------------------------------
 
-export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }: ProfilesTabProps) {
+export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, hideAdvancedControls = false, onProfilesChange }: ProfilesTabProps) {
     const registry = ProfileRegistry.getInstance();
     const [showAddGrid, setShowAddGrid] = useState(false);
     const [tick, setTick] = useState(0);
     const [advancedOpen, setAdvancedOpen] = useState(false);
 
-    const bump = () => setTick((t) => t + 1);
+    const bump = () => {
+		setTick((t) => t + 1);
+		onProfilesChange?.();
+	};
 
     // Derived from registry (tick forces re-read)
     void tick;
@@ -160,7 +165,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                 service-manager runtime; only the dedicated UI block is gone. */}
 
             {/* Advanced model controls disclosure */}
-            <div className="pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
+            {!hideAdvancedControls && <div className="pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
                 <div
                     className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
                     onClick={() => setAdvancedOpen((v) => !v)}
@@ -318,7 +323,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                             remains the only agent-runtime configuration here. */}
                     </div>
                 )}
-            </div>
+            </div>}
 
         </div>
     );

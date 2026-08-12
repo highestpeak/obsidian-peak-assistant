@@ -43,6 +43,7 @@ import type {
 } from './types';
 import { evaluateStopConditions, hasFinalAnswer } from './stopConditions';
 import { SubAgentDispatcher } from '../subagent/SubAgentDispatcher';
+import { PermissionGuard } from '../permission/PermissionGuard';
 import { buildSubagentTool } from '../subagent/subagentTool';
 import type { MemoryBlock } from '../memory/types';
 import { renderMemoryBlocks } from '../memory/MemoryBlock';
@@ -77,6 +78,7 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
     const budget: AgentLoopBudget = { ...DEFAULT_BUDGET, ...cfg.budget };
     const trace = cfg.trace ?? new TraceBus();
     const startedAt = Date.now();
+    const permissionGuard = cfg.permission ?? new PermissionGuard();
 
     // Fan-out helper: TraceBus event + unified stream event, in one call.
     // Chat subscribes to `onStreamEvent` alone; debug adapters keep using
@@ -207,7 +209,7 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         );
         const toolSet: ToolSet = {};
         for (const t of allowedTools) {
-            toolSet[t.name] = wrapTool(t, cfg, tier.tier, stepIndex, trace, captured, fanOut);
+			toolSet[t.name] = wrapTool(t, cfg, permissionGuard, tier.tier, stepIndex, trace, captured, fanOut);
         }
         toolSet[ESCALATE_TOOL_NAME] = cfg.tierController.escalateTool();
 
@@ -627,6 +629,7 @@ function nextPermissionRequestId(loopId: string): string {
 function wrapTool(
     def: ToolDef,
     cfg: AgentLoopConfig,
+    permissionGuard: PermissionGuard,
     tier: ModelTier,
     stepIndex: number,
     trace: TraceBus,
@@ -678,8 +681,8 @@ function wrapTool(
 
             // (1) Permission check FIRST — deny-first invariant. Even if a
             // pre_tool_use hook would allow, an explicit deny rule wins.
-            if (cfg.permission) {
-                const decision = cfg.permission.check(
+			{
+				const decision = permissionGuard.check(
                     { name: def.name, kind: def.kind },
                     args,
                 );
@@ -697,7 +700,7 @@ function wrapTool(
                         error: `permission denied: ${decision.reason}`,
                         recoverable: false,
                     });
-                }
+				}
 
                 if (decision.decision === 'ask') {
                     // Resolve out-of-band. Trace + fan-out the request so UI
@@ -897,7 +900,7 @@ async function runPermissionAsk(input: {
             loopId: cfg.loopId,
             stepIndex,
             requestId,
-            decision: resolution.decision,
+            decision: resolution.decision === 'allow-for-run' ? 'allow' : resolution.decision,
             reason: resolution.reason,
         });
         fanOut({
@@ -905,7 +908,7 @@ async function runPermissionAsk(input: {
             loopId: cfg.loopId,
             stepIndex,
             requestId,
-            decision: resolution.decision,
+            decision: resolution.decision === 'allow-for-run' ? 'allow' : resolution.decision,
             reason: resolution.reason,
         });
         // Return to running state after each ask, so downstream observers
