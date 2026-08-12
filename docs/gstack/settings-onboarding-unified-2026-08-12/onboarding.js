@@ -3,52 +3,32 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 
 const goalContent = {
   search: {
-    name: "Ask my vault",
-    impact: "Peak will verify one AI connection and the existing local search index. It will not ask you to configure every model.",
     title: "Ask your vault",
     subtitle: "This opens AI Search with an editable question.",
     launch: "Open AI Search",
     prompt: "What am I currently working on, and which notes support it?",
+    icon: "#i-search",
   },
   composer: {
-    name: "Work on this note",
-    impact: "Peak will verify one conversation model, the current document and safe Copilot preview behavior.",
     title: "Work on a real note",
     subtitle: "This opens Composer with a safe Copilot prompt.",
     launch: "Open Composer",
     prompt: "Summarize the argument in this note and suggest the next section without changing the document.",
-  },
-  atlas: {
-    name: "Explore connections",
-    impact: "Peak will verify the local index and open File Atlas on a current or recently used document.",
-    title: "Explore your note connections",
-    subtitle: "This opens File Atlas on a real document context.",
-    launch: "Open File Atlas",
-    prompt: "Show the closest related notes and explain the strongest connection.",
+    icon: "#i-file",
   },
   chat: {
-    name: "Start a conversation",
-    impact: "Peak will verify one conversation model. Vault indexing is useful but does not block this task.",
     title: "Start a conversation",
     subtitle: "This opens Chat Studio with an editable starter prompt.",
     launch: "Open Chat Studio",
     prompt: "Help me decide what to work on next based on the context I provide.",
+    icon: "#i-chat",
   },
-  agent: {
-    name: "Run an Agent task",
-    impact: "Peak will verify Hermes, one compatible execution route, the working directory and safe default permissions.",
-    title: "Run a safe Agent task",
-    subtitle: "This opens Wizard with a review-first starter task.",
-    launch: "Open Agent Wizard",
-    prompt: "Review this project folder and propose a short plan. Do not edit anything yet.",
-  },
-  image: {
-    name: "Create an image",
-    impact: "Peak will verify one image generation route and a valid output folder. Vault indexing is not required.",
-    title: "Create your first image",
-    subtitle: "This opens Image Flow with an editable prompt.",
-    launch: "Open Image Flow",
-    prompt: "A quiet editorial illustration of connected ideas forming a knowledge map, restrained indigo and graphite palette.",
+  atlas: {
+    title: "Explore your note connections",
+    subtitle: "This opens File Atlas on a real document context.",
+    launch: "Open File Atlas",
+    prompt: "Show the closest related notes and explain the strongest connection.",
+    icon: "#i-graph",
   },
 };
 
@@ -75,7 +55,7 @@ function showToast(message) {
 }
 
 function showStep(step) {
-  state.step = Math.max(0, Math.min(3, step));
+  state.step = Math.max(0, Math.min(2, step));
   state.highestStep = Math.max(state.highestStep, state.step);
   $$('[data-wizard-panel]').forEach((panel) => {
     const active = Number(panel.dataset.wizardPanel) === state.step;
@@ -88,15 +68,15 @@ function showStep(step) {
     button.classList.toggle("is-complete", buttonStep < state.step || buttonStep < state.highestStep);
     button.disabled = buttonStep > state.highestStep;
   });
-  $("[data-step-progress]").style.width = `${(state.step + 1) * 25}%`;
   $("[data-back]").disabled = state.step === 0;
   const nextButton = $("[data-next]");
-  nextButton.hidden = state.step === 3;
-  nextButton.disabled = state.step === 1 && !state.providerReady;
+  nextButton.hidden = state.step === 2;
+  nextButton.disabled = state.step === 0 && !state.providerReady;
+  const stepNames = ["Connect AI", "Check your vault", "Try Peak"];
+  $("[data-step-summary]").textContent = `Step ${state.step + 1} of 3 · ${stepNames[state.step]}`;
   const notes = [
-    "Step 1 of 4 · Your choice only guides this setup.",
-    `Step 2 of 4 · ${state.provider} will be verified before continuing.`,
-    "Step 3 of 4 · Search is ready while enrichment continues.",
+    `Step 1 of 3 · ${state.provider} will be verified before continuing.`,
+    "Step 2 of 3 · Search is ready while enrichment continues.",
     "Setup complete · First success happens in the real workspace.",
   ];
   $("[data-footer-note]").textContent = notes[state.step];
@@ -106,22 +86,15 @@ function selectGoal(goal) {
   state.goal = goal;
   $$('[data-goal]').forEach((button) => button.classList.toggle("is-selected", button.dataset.goal === goal));
   const content = goalContent[goal];
-  $("[data-goal-impact-title]").textContent = `For “${content.name}”`;
-  $("[data-goal-impact-copy]").textContent = content.impact;
   $("[data-final-title]").textContent = content.title;
   $("[data-final-subtitle]").textContent = content.subtitle;
   $("[data-launch-label]").textContent = content.launch;
   $("[data-first-prompt]").value = content.prompt;
+  $("[data-final-icon] use").setAttribute("href", content.icon);
 }
 
 $$('[data-goal]').forEach((button) => {
   button.addEventListener("click", () => selectGoal(button.dataset.goal));
-});
-
-$("[data-more-goals]").addEventListener("click", () => {
-  const panel = $("[data-more-goals-panel]");
-  panel.hidden = !panel.hidden;
-  $("[data-more-goals]").classList.toggle("is-open", !panel.hidden);
 });
 
 function selectProvider(provider) {
@@ -129,8 +102,16 @@ function selectProvider(provider) {
   const unavailable = provider === "Codex" || provider === "Claude Code";
   state.providerReady = !unavailable;
   $$('[data-provider]').forEach((button) => button.classList.toggle("is-selected", button.dataset.provider === provider));
-  const stateLabel = $("[data-provider-state]");
-  stateLabel.textContent = provider === "OpenAI" ? "Verified just now" : "Ready";
+  $("[data-provider-state]").textContent = provider === "OpenAI" ? "Verified just now" : "Available";
+  const banner = unavailable
+    ? { title: `${provider} needs its adapter`, copy: "This connection cannot pass the minimum capability check in the current build." }
+    : provider === "Ollama"
+      ? { title: "Ollama is available on this computer", copy: "Peak found the local service and six installed models. No API key is needed." }
+      : provider === "OpenAI"
+        ? { title: "OpenAI is already connected", copy: "Peak found a working service and can use it for Chat, Copilot and AI Search." }
+        : { title: `${provider} is ready`, copy: "Peak found a compatible model and passed the minimum connection check." };
+  $("[data-connection-banner-title]").textContent = banner.title;
+  $("[data-connection-banner-copy]").textContent = banner.copy;
   const checkValues = unavailable
     ? { auth: "Not checked", model: "Adapter required", probe: "Unavailable in this build" }
     : provider === "Ollama"
@@ -143,10 +124,14 @@ function selectProvider(provider) {
   $("[data-check-receipt]").textContent = unavailable
     ? `${provider} remains visible as a launch connection, but its dedicated adapter cannot be verified in the current build.`
     : "No Vault content was sent during this check.";
-  $("[data-next]").disabled = state.step === 1 && unavailable;
+  $("[data-ready-provider]").textContent = `${provider} · ${unavailable ? "action required" : "verified"}`;
+  $("[data-automatic-default-copy]").textContent = unavailable
+    ? `Peak cannot apply a working AI default until ${provider} is ready.`
+    : `Peak will use the local index, a compatible ${provider} model and review-first actions. You can change any of these later in Settings.`;
+  $("[data-next]").disabled = state.step === 0 && unavailable;
   $("[data-footer-note]").textContent = unavailable
-    ? `Step 2 of 4 · ${provider} needs its dedicated adapter before this task can continue.`
-    : `Step 2 of 4 · ${provider} passed the minimum capability check.`;
+    ? `Step 1 of 3 · ${provider} needs its dedicated adapter before this task can continue.`
+    : `Step 1 of 3 · ${provider} passed the minimum capability check.`;
 }
 
 $$('[data-provider]').forEach((button) => {
@@ -157,14 +142,6 @@ $("[data-other-providers]").addEventListener("click", () => {
   const panel = $("[data-provider-options]");
   panel.hidden = !panel.hidden;
   $("[data-other-providers]").classList.toggle("is-open", !panel.hidden);
-});
-
-$$('.readiness-option').forEach((option) => {
-  option.addEventListener("click", () => {
-    $$('.readiness-option').forEach((candidate) => candidate.classList.remove("is-selected"));
-    option.classList.add("is-selected");
-    option.querySelector("input").checked = true;
-  });
 });
 
 function updateIndexDemo() {
@@ -195,10 +172,6 @@ $$('[data-step-nav]').forEach((button) => {
 
 $("[data-launch-primary]").addEventListener("click", () => {
   showToast(`${goalContent[state.goal].launch} · starter task carried into the real workspace`);
-});
-
-$$('[data-launch]').forEach((button) => {
-  button.addEventListener("click", () => showToast(`Would open ${button.dataset.launch} · setup progress remains saved`));
 });
 
 $("[data-skip-setup]").addEventListener("click", () => showToast("Setup progress saved · you can continue from Settings"));

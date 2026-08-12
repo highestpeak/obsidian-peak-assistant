@@ -205,20 +205,39 @@ if (featureChildrenTags.length === 0 || featureChildrenTags.some((tag) => !/\shi
 }
 
 requireValues("Onboarding HTML", onboardingHtml, [
-  "Choose a first task",
   "Connect AI",
   "Check your vault",
-  "Start a real task",
+  "Try Peak",
+  "Only the essentials",
+  "Connect one AI service",
+  "Your vault is ready enough to use",
+  "Safe defaults are ready",
+  "Try Peak on something real",
+  "wizard-progress-header",
+  "try-task-grid",
+  "data-connection-banner-title",
+  "data-ready-provider",
+  "data-automatic-default-copy",
   "Ask my vault",
   "Work on this note",
-  "Explore connections",
-  "Run an Agent task",
-  "Create an image",
+  "Open Chat Studio",
+  "Open File Atlas",
   "SETUP COMPLETE",
-  "First success happens",
+  "first useful result completes onboarding",
   "data-wizard-panel=\"0\"",
-  "data-wizard-panel=\"3\"",
+  "data-wizard-panel=\"2\"",
 ]);
+
+if (onboardingHtml.includes('<aside class="wizard-steps">')) {
+  missing.push("Onboarding HTML: the setup steps must remain in the horizontal header rather than a sidebar");
+}
+if (onboardingHtml.includes('data-wizard-panel="3"')) {
+  missing.push("Onboarding HTML: the default flow must remain the three-step minimum setup");
+}
+const onboardingStepCount = onboardingHtml.match(/data-step-nav="[0-9]+"/g)?.length ?? 0;
+if (onboardingStepCount !== 3) {
+  missing.push("Onboarding HTML: exactly three primary steps are required");
+}
 
 requireValues("Settings JS", settingsJs, [
   "function showPanel",
@@ -293,6 +312,10 @@ requireValues("CSS", css, [
   ".managed-model-row",
   ".action-setting-row",
   ".wizard-shell",
+  ".wizard-progress-header",
+  ".wizard-step-meta",
+  ".readiness-strip",
+  ".try-task-grid",
   ".wizard-footer",
   "@media (max-width: 760px)",
   "@media (prefers-reduced-motion: reduce)",

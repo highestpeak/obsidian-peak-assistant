@@ -50,12 +50,11 @@ The two mocks use the same nouns and responsibility boundaries:
 
 ## Onboarding direction
 
-1. Choose one first outcome.
-2. Verify one connection that can complete it.
-3. Reuse and check the existing Vault / Index state.
-4. Open the real product workspace with a safe editable starter task.
+1. Verify or reuse one working AI connection.
+2. Reuse and check the existing Vault / Index state while Peak applies safe automatic defaults.
+3. Choose a first task and open the real product workspace with a safe editable starter task.
 
-The flow distinguishes `Setup complete` from `First success`, saves progress, keeps the primary action visible, and provides direct next destinations instead of ending on an empty success page.
+The default path is a three-step horizontal flow with no secondary step sidebar. It does not require a feature tour, model strategy, budget, safety taxonomy or advanced index decision before the product can be used. Agent and media setup remain just-in-time branches when the user actually chooses those capabilities. The flow distinguishes `Setup complete` from `First success`, saves progress, keeps the primary action visible, and provides direct next destinations instead of ending on an empty success page.
 
 ## Mocked interactions
 
@@ -82,12 +81,13 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 
 ### Onboarding
 
-- Goal selection with task-specific dependency explanation
-- Progressive disclosure of connection choices
+- Three labeled horizontal steps: Connect AI → Check your vault → Try Peak
+- Progressive disclosure of connection choices; one verified connection is sufficient
 - Provider selection and verification state
-- Existing index reuse and accelerated status refresh
+- Existing index reuse, accelerated status refresh and explicit permission to continue while semantic enrichment finishes
+- Safe automatic model, search and review defaults without a separate configuration step
 - Back/continue with preserved choices
-- Final first-task launchpad
+- Final first-task launchpad where the user chooses AI Search, Composer, Chat Studio or File Atlas and carries an editable starter task into the real workspace
 
 ## Truth boundary
 
