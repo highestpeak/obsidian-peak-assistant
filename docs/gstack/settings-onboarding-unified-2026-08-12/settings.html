@@ -77,9 +77,9 @@
               <kbd>⌘ K</kbd>
               <div class="search-popover" data-search-popover hidden>
                 <span class="search-heading">SETTINGS</span>
-                <button data-search-result data-panel="connections" data-query="openai provider api connection"><span>OpenAI connection</span><small>Connections</small></button>
-                <button data-search-result data-panel="connections" data-query="openrouter models catalog"><span>OpenRouter catalog</span><small>Connections</small></button>
-                <button data-search-result data-panel="models" data-query="composer copilot block prompt model"><span>Composer Copilot models</span><small>Models by feature</small></button>
+                <button data-search-result data-panel="ai" data-query="openai provider api connection"><span>OpenAI connection</span><small>AI &amp; Models</small></button>
+                <button data-search-result data-panel="ai" data-query="openrouter models catalog"><span>OpenRouter catalog</span><small>AI &amp; Models</small></button>
+                <button data-search-result data-panel="ai" data-query="composer copilot block prompt model task defaults"><span>Composer Copilot models</span><small>AI &amp; Models</small></button>
                 <button data-search-result data-panel="knowledge" data-query="index embedding file types search"><span>Knowledge Index</span><small>Knowledge & Search</small></button>
                 <button data-search-result data-panel="agent" data-query="hermes codex claude code permission agent"><span>Agent & permissions</span><small>Agent & Tools</small></button>
                 <span class="search-empty" data-search-empty hidden>No matching setting</span>
@@ -93,8 +93,7 @@
 
           <nav class="peak-settings-tabs" aria-label="Peak settings sections">
             <button data-panel-target="overview">Overview</button>
-            <button data-panel-target="connections">Connections</button>
-            <button class="is-active" data-panel-target="models">Models by feature</button>
+            <button class="is-active" data-panel-target="ai">AI &amp; Models</button>
             <button data-panel-target="knowledge">Knowledge & Search</button>
             <button data-panel-target="agent">Agent & Tools</button>
             <button data-panel-target="features">Features</button>
@@ -108,16 +107,23 @@
             <header class="content-header"><div><span class="content-eyebrow">SYSTEM STATUS</span><h1>Peak is ready for everyday work</h1><p>See what works now and fix only the things that need attention.</p></div><button class="secondary-button" data-run-check>Check again</button></header>
             <div class="readiness-hero ready"><span class="readiness-icon"><svg><use href="#i-check" /></svg></span><div><strong>Core features are ready</strong><span>Chat, Composer, Search and local indexing were checked 12 minutes ago.</span></div><button class="text-button">View check details</button></div>
             <div class="status-grid">
-              <button class="status-card" data-panel-jump="connections"><span><svg><use href="#i-chat" /></svg>AI conversations</span><strong>Ready</strong><small>4 verified connections</small></button>
+              <button class="status-card" data-panel-jump="ai"><span><svg><use href="#i-chat" /></svg>AI &amp; models</span><strong>Ready</strong><small>4 connections · automatic defaults</small></button>
               <button class="status-card" data-panel-jump="knowledge"><span><svg><use href="#i-database" /></svg>Knowledge Index</span><strong>Updating</strong><small>84.4% · Search available</small></button>
               <button class="status-card" data-panel-jump="agent"><span><svg><use href="#i-agent" /></svg>Agent work</span><strong>Ready</strong><small>Hermes + 1 execution route</small></button>
               <button class="status-card" data-panel-jump="features"><span><svg><use href="#i-image" /></svg>Media creation</span><strong>Needs setup</strong><small>Image route available</small></button>
             </div>
-            <section class="settings-section"><div class="section-heading"><div><h2>Common changes</h2><p>Frequently used controls, linked to their owning section.</p></div></div><div class="setting-group compact-links"><button data-panel-jump="models"><span>Choose models for Composer or AI Search</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="knowledge"><span>Change indexed file types and folders</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="agent"><span>Review Agent write permissions</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="data"><span>Change generated content locations</span><svg><use href="#i-chevron" /></svg></button></div></section>
+            <section class="settings-section"><div class="section-heading"><div><h2>Common changes</h2><p>Frequently used controls, linked to their owning section.</p></div></div><div class="setting-group compact-links"><button data-panel-jump="ai"><span>Manage connections, models and task defaults</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="knowledge"><span>Change indexed file types and folders</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="agent"><span>Review Agent write permissions</span><svg><use href="#i-chevron" /></svg></button><button data-panel-jump="data"><span>Change generated content locations</span><svg><use href="#i-chevron" /></svg></button></div></section>
           </div>
 
-          <div class="settings-panel" data-settings-panel="connections" hidden>
-            <header class="content-header"><div><span class="content-eyebrow">AVAILABLE AI</span><h1>Connections</h1><p>Connect accounts and local runtimes. Model choices live with the features that use them.</p></div><button class="primary-button" data-add-connection><svg><use href="#i-plug" /></svg>Add connection</button></header>
+          <div class="settings-panel is-active" data-settings-panel="ai">
+            <header class="content-header"><div><span class="content-eyebrow">AI SETUP</span><h1>AI &amp; Models</h1><p>Connect a service, see the models it provides, then decide which models Peak should use for each task.</p></div><button class="primary-button" data-add-connection><svg><use href="#i-plug" /></svg>Add connection</button></header>
+            <div class="ai-relationship-strip" aria-label="AI configuration relationship">
+              <span><i>1</i><strong>Connections</strong><small>Who Peak can call</small></span>
+              <b>→</b>
+              <span><i>2</i><strong>Available models</strong><small>What each connection provides</small></span>
+              <b>→</b>
+              <span><i>3</i><strong>Task defaults</strong><small>What each feature uses</small></span>
+            </div>
             <div class="connection-summary"><span><strong>4 ready</strong><small>Verified in the last hour</small></span><span><strong>2 need setup</strong><small>Codex and Claude Code adapters</small></span><button class="text-button" data-run-check>Verify all</button></div>
             <section class="settings-section"><div class="section-heading"><div><h2>Primary connections</h2><p>The six connection types supported by the launch design.</p></div></div><div class="connection-grid">
               <button class="connection-card"><span class="provider-monogram">OA</span><span class="connection-copy"><strong>OpenAI</strong><small>Conversation, files, embeddings, images</small></span><span class="state-pill ready"><i></i>Ready</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
@@ -128,11 +134,8 @@
               <button class="connection-card"><span class="provider-monogram">CC</span><span class="connection-copy"><strong>Claude Code</strong><small>Conversation + Agent capability checked separately</small></span><span class="state-pill action"><i></i>Setup</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
             </div></section>
             <section class="settings-section"><div class="section-heading"><div><h2>Additional connections</h2><p>Media services, compatible endpoints and lower-frequency providers.</p></div></div><div class="setting-group"><button class="setting-row-button"><span><strong>Media generation services</strong><small>OpenAI native media and fal.ai</small></span><em>1 connected</em><svg><use href="#i-chevron" /></svg></button><button class="setting-row-button"><span><strong>Compatible endpoints</strong><small>LiteLLM, LM Studio, vLLM or custom OpenAI-compatible APIs</small></span><em>Advanced</em><svg><use href="#i-chevron" /></svg></button></div></section>
-          </div>
-
-          <div class="settings-panel is-active" data-settings-panel="models">
-            <header class="content-header"><div><span class="content-eyebrow">TASK DEFAULTS</span><h1>Models by feature</h1><p>Start with the product you recognize. Drill down only when one action needs a different model.</p></div><button class="secondary-button" data-reset-models>Restore automatic choices</button></header>
-            <div class="readiness-strip"><svg><use href="#i-check" /></svg><span><strong>Peak automatic selection is active</strong> · 4 verified connections · model catalog checked 18 minutes ago</span><button class="text-button" data-panel-jump="connections">Connections</button></div>
+            <header class="settings-subsection-header"><div><span class="content-eyebrow">TASK DEFAULTS</span><h2>Choose models by feature</h2><p>Start with the product you recognize. Drill down only when one action needs a different model.</p></div><button class="secondary-button" data-reset-models>Restore automatic choices</button></header>
+            <div class="readiness-strip"><svg><use href="#i-check" /></svg><span><strong>Peak automatic selection is active</strong> · 4 verified connections · model catalogs checked 18 minutes ago</span></div>
             <section class="settings-section model-tree-section">
               <div class="section-heading"><div><h2>Product features</h2><p>Each feature inherits a compatible task default unless you fix a different choice.</p></div><span class="legend-note"><i></i>Inherited</span></div>
               <div class="model-tree">

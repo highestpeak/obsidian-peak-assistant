@@ -27,8 +27,8 @@ If the documents disagree, use this order. Historical variants must not be treat
 
 The two mocks use the same nouns and responsibility boundaries:
 
-- **Connections** answer which services and local runtimes Peak can use.
-- **Models by feature** answers which model a recognizable product surface actually uses.
+- **AI & Models** keeps one continuous configuration chain together: connection → available models → task defaults.
+- Connections, models and task defaults remain distinct levels inside that page; an account is not a model, and a model is not a product feature.
 - **Peak Hermes** owns Agent workflow, permissions and receipts; Codex, Claude Code and model connections supply compatible execution capability.
 - **Knowledge settings** own long-term scope and quality. The Knowledge Index workspace owns a current run's progress, errors and history.
 - **Onboarding** verifies only the dependencies needed for one first task. It does not duplicate full Settings.
@@ -38,9 +38,9 @@ The two mocks use the same nouns and responsibility boundaries:
 - Obsidian's own Settings sidebar stays visible. Peak does not add a competing second sidebar.
 - Peak categories live in a compact header tab row, with search, save state and setup status kept nearby.
 - No global `Standard / Advanced` mode. Low-frequency controls expand inside the section they affect; diagnostics remain a distinct destination.
-- The default page is `Models by feature`, demonstrating the hierarchy `product feature → action group → concrete action`.
+- The default page is `AI & Models`: connections and model catalogs appear first, followed by task defaults using the hierarchy `product feature → action group → concrete action`.
 - Product actions that do not use a generative model say so explicitly.
-- Connections, task defaults, readiness, privacy and maintenance keep separate owners.
+- Readiness, privacy and maintenance remain separate destinations; connection, model catalog and task defaults share one owner.
 - Provider and capability status uses clear states rather than assuming that saved credentials imply readiness.
 
 ## Onboarding direction

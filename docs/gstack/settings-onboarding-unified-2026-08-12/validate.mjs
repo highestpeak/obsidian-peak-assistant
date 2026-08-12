@@ -32,8 +32,10 @@ requireValues("Package HTML", packageHtml, [
 ]);
 
 requireValues("Settings HTML", settingsHtml, [
-  "Models by feature",
+  "AI &amp; Models",
   "Connections",
+  "Available models",
+  "Task defaults",
   "Knowledge & Search",
   "Agent & Tools",
   "Feature settings",
@@ -45,6 +47,7 @@ requireValues("Settings HTML", settingsHtml, [
   "data-settings-search",
   "data-tree-toggle=\"composer\"",
   "data-add-connection",
+  "data-settings-panel=\"ai\"",
   "obsidian-settings-sidebar",
   "peak-settings-tabs",
   "aria-current=\"page\"",
@@ -113,6 +116,10 @@ for (const value of forbidden) {
 
 for (const value of ['<aside class="settings-sidebar">', '<nav class="settings-nav">']) {
   if (settingsHtml.includes(value)) missing.push(`Removed Peak sidebar returned: ${value}`);
+}
+
+for (const value of ['data-settings-panel="connections"', 'data-settings-panel="models"', 'data-panel-target="connections"', 'data-panel-target="models"']) {
+  if (settingsHtml.includes(value)) missing.push(`Split AI configuration destination returned: ${value}`);
 }
 
 function checkSymbols(label, html) {
