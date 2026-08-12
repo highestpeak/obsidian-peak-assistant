@@ -87,9 +87,16 @@ requireValues("Settings HTML", settingsHtml, [
   "file-type-icon markdown",
   "file-type-icon pdf",
   "file-type-icon drawing",
-  "file-type-icon presentation",
-  "file-type-icon peak-sheet",
-  "file-type-icon graph",
+  "file-type-icon text",
+  "file-type-icon csv",
+  "file-type-icon code",
+  "file-type-icon canvas",
+  "Plain text",
+  "CSV",
+  "JSON",
+  "HTML",
+  "Canvas",
+  "Handled separately",
   "data-folder-rules-modal",
   "data-external-tool-modal",
   "Peak Sheet",
@@ -135,6 +142,9 @@ if (settingsJs.includes("openModelPicker(button)")) {
 }
 if (settingsHtml.includes("file-type-badge")) {
   missing.push("Settings HTML: file-type abbreviation badges must stay replaced by semantic icons");
+}
+if (/\b(?:DOCX|PPTX|XLSX)\b/.test(settingsHtml)) {
+  missing.push("Settings HTML: Office formats must not appear as supported Knowledge Index file types");
 }
 if (settingsJs.includes("const textModels =")) {
   missing.push("Settings JS: one-representative-model-per-provider list must stay removed");
@@ -190,6 +200,7 @@ requireValues("Settings JS", settingsJs, [
   "function matchesInlineModel",
   "function updateModelTarget",
   "function toggleFocusedModal",
+  "function updateFileTypeSummary",
   "const modelCatalog =",
   "gpt-5-mini",
   "claude-opus-4-7",
@@ -230,7 +241,7 @@ requireValues("CSS", css, [
   ".inline-model-capabilities",
   ".file-type-icon",
   ".file-type-icon.pdf",
-  ".file-type-icon.peak-sheet",
+  ".file-type-policy-note",
   ".safety-picker",
   ".command-gateway-card",
   ".feature-settings-detail",

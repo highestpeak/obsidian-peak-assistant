@@ -72,7 +72,7 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 - Real safety modes: Read only, Ask every time, Accept reviewed edits and Bypass confirmations
 - One Peak Hermes runtime with a separate execution-provider selector; Codex and Claude Code are not presented as runtimes
 - Vertical safety-mode picker, external MCP/tool-server setup, Web Access, and an entry to the separate Command Gateway workspace
-- Clickable file-type and folder-exclusion details, plus concrete File Atlas, Ambient and Vault Intelligence controls
+- Clickable file-type and folder-exclusion details, with Office formats excluded from the product scope and Peak Sheet / AI Graph explained as separately governed formats; plus concrete File Atlas, Ambient and Vault Intelligence controls
 - Advanced exposes only the user-meaningful generated-media path; analysis, Skills, Inbox, DataStore and derived folders remain Peak-managed
 - Save/effect feedback for controls
 

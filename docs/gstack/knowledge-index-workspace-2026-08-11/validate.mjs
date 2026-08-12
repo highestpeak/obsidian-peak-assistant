@@ -36,6 +36,8 @@ const requiredHtml = [
   "Start indexing",
   "Run depth",
   "Run exclusions",
+  "Plain text",
+  "Canvas",
   "data-index-depth=\"Full knowledge\"",
   "Settings &amp; Onboarding package",
 ];
@@ -89,6 +91,9 @@ for (const value of requiredCss) {
 const forbidden = ["data-view-target", "data-view=\"problems\"", "data-view=\"history\""];
 for (const value of forbidden) {
   if (html.includes(value)) missing.push(`forbidden multi-page control: ${value}`);
+}
+for (const value of ["DOCX", "PPTX", "XLSX"]) {
+  if (html.includes(value)) missing.push(`unsupported Office format in Index workspace: ${value}`);
 }
 for (const value of ["setup-drawer", "setup-backdrop", "Keep the index current", "Models &amp; generated knowledge", "Advanced chunking"]) {
   if (html.includes(value)) missing.push(`Index workspace must not own long-term setting: ${value}`);

@@ -80,7 +80,7 @@
               <section class="setup-section content-scope-section">
                 <div class="setup-section-head"><div><h2>Content scope</h2><p>Review the inputs before scanning begins.</p></div><span class="setup-state">4 types · whole Vault</span></div>
                 <div class="setup-card">
-                  <div class="setup-row is-stacked"><span><strong>Document types</strong><small>Only types Peak can actually extract and process are available.</small></span><div class="document-type-chips"><button class="is-selected" type="button">Markdown</button><button class="is-selected" type="button">PDF</button><button class="is-selected" type="button">Images</button><button class="is-selected" type="button">Excalidraw</button><button type="button">CSV</button><button type="button">JSON</button><button type="button">HTML</button><button type="button">DOCX</button><button type="button">PPTX</button><button type="button" disabled>XLSX</button></div></div>
+                  <div class="setup-row is-stacked"><span><strong>Document types</strong><small>Only product-supported document index types are available.</small></span><div class="document-type-chips"><button class="is-selected" type="button">Markdown</button><button class="is-selected" type="button">PDF</button><button class="is-selected" type="button">Images</button><button class="is-selected" type="button">Excalidraw</button><button type="button">Plain text</button><button type="button">CSV</button><button type="button">JSON</button><button type="button">HTML</button><button type="button">Canvas</button></div></div>
                   <label class="setup-row"><span><strong>Folders to scan</strong><small>Use the saved Knowledge scope or narrow this run.</small></span><select><option>Saved scope · whole Vault</option><option>Choose folders…</option></select></label>
                   <details class="run-ignore-detail"><summary><span><strong>Run exclusions</strong><small>6 saved rules · review only when this run needs an exception</small></span><em>Review</em><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></summary><label><span>Vault-relative patterns</span><textarea>.git/
 node_modules/
@@ -214,7 +214,7 @@ Peak/AI/DataStore/
           <div class="excluded-types">
             <div class="excluded-copy">
               <strong>Not included in this run</strong>
-              <span>TXT, CSV, JSON, HTML, XML, DOCX, PPTX and Canvas</span>
+              <span>Plain text, CSV, JSON, HTML and Canvas</span>
             </div>
             <button class="text-button" type="button" data-open-index-setup>Change next run</button>
           </div>

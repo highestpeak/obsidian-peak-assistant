@@ -653,7 +653,7 @@ Settings 只拥有长期策略；独立的“知识索引工作台”拥有运�
 | 索引深度：快速 / 语义 / 完整 | 普通设置 | 知识索引设置 | 选择能完成目标的最低层级 | 快速提供全文搜索；语义增加向量；完整再增加 AI 标签和摘要 |
 | 自动增量更新 | 普通设置 | 知识索引设置 | 首次最低索引完成后说明 | 首次批量建立必须由用户明确开始；以后是否自动跟进变化仍需产品负责人确认 |
 | 多久检查一次变化 | 高级设置 | 知识索引设置 | 不询问 | 当前产品内置值为 5 秒；不应作为普通用户首要决定 |
-| 包含哪些用户内容类型 | 普通设置 | 知识索引设置 | 使用可靠的推荐集合 | DOCX、PPTX 等可以各自关闭；只对真实可读类型提供开关 |
+| 包含哪些用户内容类型 | 普通设置 | 知识索引设置 | 使用可靠的推荐集合 | 只对产品范围内且真实可读的类型提供开关；Office 格式不出现在产品设置中 |
 | 包含或排除哪些文件夹和文件规则 | 普通设置 | 知识索引设置 | 只处理明显冲突 | 默认排除系统目录、Peak 机器数据和其他已知循环污染来源 |
 | 知识向量使用哪个模型 | 自动决定 | 任务与模型 | 需要语义搜索时建立 | 只保存一份“知识向量”用途设置，不在索引页面重复保存模型 |
 | AI 标签与摘要使用哪个模型 | 自动决定 | 任务与模型 | 只有首次目标依赖完整索引时建立 | 在模型层级中归属于“知识索引 → 补充分析” |
@@ -695,8 +695,6 @@ Settings 只拥有长期策略；独立的“知识索引工作台”拥有运�
 | Excalidraw | 开启 | 普通设置 | 可以读取 `.excalidraw` / `.excalidraw.md` 中的可提取内容，也可以生成用户产物 |
 | TXT、CSV | 关闭 | 普通设置 | 已有读取入口；用户可以按需开启 |
 | JSON、HTML、XML | 关闭 | 普通设置 / 高级设置 | 可以读取，但容易包含机器数据；默认关闭并继续受目录排除规则保护 |
-| DOCX | 关闭 | 普通设置 | 当前可提取文字；用户可以单独开启或关闭 |
-| PPTX | 关闭 | 普通设置 | 当前可提取幻灯片文字；用户可以单独开启或关闭 |
 | Canvas | 关闭 | 普通设置 | 当前可提取文字节点、文件引用和边标签 |
 | URL | 关闭 | 高级设置 | 不是 Vault 文件，需要另行说明抓取、更新和隐私边界 |
 | XLSX 文件 | 关闭 | 暂不可用作通用索引类型 | Peak Sheet 已能导入 XLSX，不等于通用文档索引已能读取 XLSX；当前索引读取器会拒绝它 |
@@ -1089,7 +1087,7 @@ Ambient 的高打扰载体默认关闭是产品安全默认；用户可以逐项
 | 当前字段 | 目标结论 | 目标负责模块 | 备注 |
 | --- | --- | --- | --- |
 | `autoIndex` | 保留为普通设置 | 知识索引 | 上线默认需产品负责人确认 |
-| `includeDocumentTypes` | 迁入文件能力目录后保留用户选择 | 知识索引设置 | DOCX / PPTX 等可独立开关；只有存在真实读取与索引链路的类型才可选。Peak Sheet、AI Graph 等产品产物使用各自产物政策，不能伪装成普通扩展名 |
+| `includeDocumentTypes` | 迁入文件能力目录后保留用户选择 | 知识索引设置 | 只显示产品范围内且存在真实读取与索引链路的类型；DOC/DOCX、PPT/PPTX 即使有内部 loader 也不提供产品开关。Peak Sheet、AI Graph 等产品产物使用各自产物政策，不能伪装成普通扩展名 |
 | `ignorePatterns` | 保留为普通设置 | 知识索引 | 校验系统目录和循环污染 |
 | `chunking.maxChunkSize` | 保留为高级设置 | 知识索引 | 修改后需要重建索引 |
 | `chunking.chunkOverlap` | 保留为高级设置 | 知识索引 | 修改后需要重建索引 |
@@ -1369,7 +1367,7 @@ Settings 读取覆盖投影的简短结论；Onboarding 读取第一次目标所
 - 当前 `AIControlActionCatalog` 登记了 60 个静态 AI 动作，运行时还会加入 Copilot 动作。
 - 模板文件已经保存 Chat、模型选择、媒体生成、Composer、File Atlas 和 Vault 检查等内部产品参数。
 - 设置可以写入存储，但应用启动时还会重新整理和迁移这些字段；某些字段目前没有被正确恢复。
-- 当前文档类型目录已经包含 Markdown、PDF、图片、DOCX、PPTX、XLSX、Excalidraw、Canvas 等类型；DOCX 使用 Mammoth 提取文字，PPTX 使用 Office Parser 提取文字，Canvas 和 Excalidraw 也有专门读取器。
+- 当前内部文档类型目录仍登记 DOCX、PPTX 和 XLSX，且前两者存在文本提取 loader；这是实现事实，不是产品支持承诺。面向用户的目录只包含已定产品范围内的 Markdown、PDF、图片、TXT、CSV、JSON、HTML、Excalidraw 和 Canvas。
 - 当前完整索引实际按“全文索引 → 知识向量 → AI 标签与摘要 → 图关系维护”四步执行，已经具备逐文件进度和部分步骤重试的基础。
 - 当前大部分索引进度仍通过 `ProgressReporterPort` 映射到 Obsidian Notice；已有的 `IndexingProgressModal` 只覆盖“待处理的 LLM 补充分析”这一小段，并且状态由弹窗内存订阅拥有。
 - 当前 Settings 的维护区域同时放着更新索引、完整流程、取消、补向量、补 LLM 分析和全局维护等操作；它们尚未汇合成一项可返回的任务和历史。
@@ -1524,7 +1522,7 @@ Settings 只显示长期策略、状态摘要和“打开知识索引”；Onboa
 
 建议确定为：
 
-- DOCX、PPTX、PDF、图片、Excalidraw、Canvas 等用户文件按真实读取能力分别开关，默认集合保持保守；
+- Markdown、PDF、图片、TXT、CSV、JSON、HTML、Excalidraw、Canvas 按真实读取能力分别开关，默认集合保持保守；DOC/DOCX、PPT/PPTX 不进入产品设置；
 - “支持”拆成识别、预览、读取、全文、向量、AI 补充、编辑和生成，不能共用一个结论；
 - Peak Sheet、AI Graph 等第一方产物显示自己的内容政策，不作为普通扩展名开关；
 - Peak Sheet 底层数据由结构化工具读取，AI Graph 内部正式 JSON 由专用运行时读取，两者都不回流普通知识索引；
@@ -1619,7 +1617,7 @@ Settings 只显示长期策略、状态摘要和“打开知识索引”；Onboa
 - 删除 AI 连接前可以列出所有依赖它的功能；
 - 修改索引深度、文档分块和目录时，会正确创建相应处理操作；
 - 文件能力目录中的“可索引”必须有真实读取器和端到端搜索测试，不能只因为存在扩展名或生成器就通过；
-- DOCX、PPTX、PDF、图片、Excalidraw 和 Canvas 的开关分别验证新增、关闭、清理旧结果和重新开启；
+- PDF、图片、TXT、CSV、JSON、HTML、Excalidraw 和 Canvas 的开关分别验证新增、关闭、清理旧结果和重新开启；Office 格式不会出现在可用类型中；
 - XLSX 导入 Peak Sheet、Peak Sheet 工具读取和通用 XLSX 索引分别测试、分别报告能力状态；
 - Peak Sheet 与 AI Graph 内部正式 JSON 永远不进入普通知识索引；用户显式导出的 Markdown 可以按 Markdown 政策处理；
 - Draw.io 在通用读取器完成前不会出现可用的索引开关；
@@ -1654,7 +1652,7 @@ Settings 只显示长期策略、状态摘要和“打开知识索引”；Onboa
 - 不存在重启后丢失但 UI 仍宣称成功的设置；
 - 不存在没有真实功能使用的假开关；
 - 用户能分别看懂某种内容是“可索引”“只可导入”“由专用工具读取”还是“只可生成 / 保存”；
-- DOCX、PPTX 等非核心类型可以独立关闭，修改后能清楚看到对现有索引的影响；
+- DOC/DOCX、PPT/PPTX 不出现在产品文件类型设置中；内部 loader 的存在不会改变这一产品边界；
 - 首次批量索引不依赖右上角 Notice，用户可以离开并再次打开查看同一任务；
 - 用户能分别看出全文、向量、标签、摘要和图关系的覆盖与更新时间；
 - 基础搜索可用后，Onboarding 不会为了等待完整 AI 补充分析而阻塞第一次真实任务；
@@ -1690,7 +1688,7 @@ Settings 只显示长期策略、状态摘要和“打开知识索引”；Onboa
 - `src/app/ui-host/modals/IndexingProgressModal.tsx` 与 `src/ui/view/modals/IndexingProgressContent.tsx`：当前仅覆盖 LLM 补充分析的内存进度 Modal；
 - `src/ui/view/settings/MaintenanceTab.tsx`：当前分散在 Settings 中的索引与全局维护动作；
 - `src/core/document/types.ts` 与 `src/core/document/loader/helper/DocumentLoaderManager.ts`：当前文档类型和读取器注册；
-- `src/core/document/loader/DocxDocumentLoader.ts`、`PptxDocumentLoader.ts`、`ExcalidrawDocumentLoader.ts` 与 `CanvasDocumentLoader.ts`：DOCX、PPTX、Excalidraw 和 Canvas 的当前读取能力；
+- `src/core/document/loader/DocxDocumentLoader.ts`、`PptxDocumentLoader.ts`：仅用于记录内部历史实现，不构成产品支持；`ExcalidrawDocumentLoader.ts` 与 `CanvasDocumentLoader.ts` 是产品范围内读取能力的当前证据；
 - `src/core/document/loader/TableDocumentLoader.ts`：CSV 当前可读、通用 XLSX 索引当前不支持；
 - `src/service/sheet/import/PeakSheetXlsxImporter.ts` 与 `src/app/ui-host/views/PeakSheetView.tsx`：Peak Sheet 的 XLSX 导入和独立产品 View；
 - `src/core/storage/generated-output/catalog/peakSheetOutputs.ts` 与 `graphOutputs.ts`：Peak Sheet / AI Graph canonical 产物的 Peak index 排除政策；

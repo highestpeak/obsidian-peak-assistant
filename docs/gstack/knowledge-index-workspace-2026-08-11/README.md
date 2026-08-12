@@ -33,7 +33,7 @@ Index products such as full-text records, embeddings, summaries, tags, and relat
 - Starting a run animates the region closed and transitions the same page into live progress. The completed state replaces the processing workspace with search and rerun actions.
 - Automatic refresh, startup catch-up, large-change behavior, batching, retries, embedding model, summary lengths and chunking are durable controls in `Settings → Knowledge & Search`.
 
-The default run includes Markdown, PDF, images, and Excalidraw. DOCX, PPTX, Canvas, TXT/CSV, and machine-oriented text formats remain visible as excluded choices rather than silently disappearing. XLSX, Peak Sheet, and AI Graph are not presented as ordinary indexable document types.
+The default run includes Markdown, PDF, images, and Excalidraw. Plain text, CSV, JSON, HTML, and Canvas remain available but off by default. DOC/DOCX and PPT/PPTX are outside Peak's product support scope; XLSX belongs to Peak Sheet interoperability rather than ordinary document indexing. Peak Sheet and AI Graph keep separate content policies.
 
 ## Review
 

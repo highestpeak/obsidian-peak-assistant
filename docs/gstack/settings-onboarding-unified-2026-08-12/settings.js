@@ -185,7 +185,20 @@ $$('[data-close-file-types]').forEach((button) => {
   button.addEventListener("click", () => toggleFocusedModal("[data-file-types-modal]", false));
 });
 
+function updateFileTypeSummary() {
+  const selectedTypes = $$('[data-file-types-modal] .file-type-list input:checked').map((input) => {
+    return input.closest("label").querySelector("strong").textContent.trim();
+  });
+  const visibleTypes = selectedTypes.slice(0, 4);
+  const moreCount = selectedTypes.length - visibleTypes.length;
+  const visibleSummary = visibleTypes.length > 0 ? visibleTypes.join(", ") : "No document types";
+  const suffix = moreCount > 0 ? ` and ${moreCount} more` : "";
+  $('[data-file-type-summary]').textContent = `${visibleSummary}${suffix} included · Peak Sheet and AI Graph use their own policies`;
+  $('[data-file-type-count]').textContent = `${selectedTypes.length} included`;
+}
+
 $('[data-save-file-types]').addEventListener("click", () => {
+  updateFileTypeSummary();
   toggleFocusedModal("[data-file-types-modal]", false);
   showSaved("Saved · new and changed files use this scope");
 });

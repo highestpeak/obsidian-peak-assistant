@@ -627,7 +627,7 @@ Onboarding 是一条目标驱动、可分支的流程，不等于固定页数。
 
 - 自动索引策略；
 - 刷新间隔；
-- Markdown、PDF、image、Excalidraw、CSV、JSON、HTML、DOCX、XLSX、PPTX、Canvas、URL 等文档类型；
+- Markdown、PDF、image、Excalidraw、TXT、CSV、JSON、HTML、Canvas 等可索引文档类型；DOC/DOCX、PPT/PPTX 不属于产品支持范围，XLSX 只属于 Peak Sheet 互操作路线；
 - ignore patterns；
 - 数据文件夹或生成内容的默认排除；
 - 空 Vault 和不可读取文件的说明。
