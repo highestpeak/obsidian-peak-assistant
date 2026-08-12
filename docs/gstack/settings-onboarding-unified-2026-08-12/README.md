@@ -31,7 +31,7 @@ The two mocks use the same nouns and responsibility boundaries:
 - Connections, models and task defaults remain distinct levels inside that page; an account is not a model, and a model is not a product feature.
 - **Tools & Safety** keeps the second control chain together: available tools → permissions → confirmations.
 - Tools and safety remain distinct levels inside that page; enabling a capability never silently grants unrestricted access.
-- There is no generic **Features** destination. Each option lives with the thing it changes: models and generation routes in AI & Models; Search, Atlas and Ambient behavior in Knowledge & Search; access rules in Tools & Safety; outputs and history in Data & Privacy.
+- There is no generic **Features** destination. Each option lives with the thing it changes: models and generation routes in AI & Models; Search, Atlas and Ambient behavior in Knowledge & Search; access rules in Tools & Safety; outputs, retention and appearance in Advanced.
 - **Peak Hermes** owns Agent workflow, permissions and receipts; Codex, Claude Code and model connections supply compatible execution capability.
 - **Knowledge settings** own long-term scope and quality. The Knowledge Index workspace owns a current run's progress, errors and history.
 - **Onboarding** verifies only the dependencies needed for one first task. It does not duplicate full Settings.
@@ -40,10 +40,10 @@ The two mocks use the same nouns and responsibility boundaries:
 
 - Obsidian's own Settings sidebar stays visible. Peak does not add a competing second sidebar.
 - Peak categories live in a compact header tab row, with search, save state and setup status kept nearby.
-- No global `Standard / Advanced` mode. Low-frequency controls expand inside the section they affect; diagnostics remain a distinct destination.
+- No global `Standard / Advanced` mode. `Advanced` is one low-frequency destination containing clearly separated Files & Data, Privacy & Retention, Appearance, and Diagnostics & Maintenance sections.
 - The default page is `AI & Models`: connections and model catalogs appear first, followed by task defaults using the hierarchy `product feature → action group → concrete action`.
 - Product actions that do not use a generative model say so explicitly.
-- Readiness, privacy and maintenance remain separate destinations. Connection, model catalog and task defaults share one owner; tools, permissions and confirmations share another.
+- Connection, model catalog and task defaults share one owner; tools, permissions and confirmations share another. Important privacy status remains visible from Overview, search and Tools & Safety even though detailed privacy controls live in Advanced.
 - Provider and capability status uses clear states rather than assuming that saved credentials imply readiness.
 
 ## Onboarding direction

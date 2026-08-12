@@ -41,7 +41,11 @@ requireValues("Settings HTML", settingsHtml, [
   "Available tools",
   "Permissions &amp; confirmations",
   "Agent execution",
-  "Advanced & diagnostics",
+  "Advanced settings",
+  "Files &amp; data",
+  "Privacy & retention",
+  "Appearance",
+  "Diagnostics &amp; maintenance",
   "Composer & Copilot",
   "Vault Search & AI Search",
   "File Atlas & AI Graph",
@@ -131,6 +135,10 @@ for (const value of ['data-settings-panel="agent"', 'data-panel-target="agent"']
 
 for (const value of ['data-settings-panel="features"', 'data-panel-target="features"', 'data-panel-jump="features"']) {
   if (settingsHtml.includes(value)) missing.push(`Generic Features destination returned: ${value}`);
+}
+
+for (const value of ['data-settings-panel="data"', 'data-panel-target="data"', 'data-panel-jump="data"', 'data-settings-panel="appearance"', 'data-panel-target="appearance"', 'data-panel-jump="appearance"']) {
+  if (settingsHtml.includes(value)) missing.push(`Low-frequency top-level destination returned: ${value}`);
 }
 
 function checkSymbols(label, html) {

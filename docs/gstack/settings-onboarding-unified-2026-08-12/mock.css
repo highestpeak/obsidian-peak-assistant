@@ -698,6 +698,7 @@ svg {
 .maintenance-warning { padding: 12px 14px; align-items: flex-start; gap: 10px; border-color: #eddcc4; background: var(--warning-soft); color: var(--text-secondary); font-size: 10px; line-height: 1.45; }
 .maintenance-warning svg { flex: 0 0 auto; width: 16px; height: 16px; color: var(--warning); }
 .maintenance-warning strong { color: var(--text); }
+.advanced-maintenance-group { margin-top: 9px; }
 
 .modal-backdrop { position: fixed; z-index: 80; inset: 0; display: grid; padding: 30px; place-items: center; background: rgba(25,25,30,.28); backdrop-filter: blur(3px); }
 .modal-card { width: min(560px, 100%); overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 24px 70px rgba(24,24,30,.24); }
