@@ -39,11 +39,11 @@ The two mocks use the same nouns and responsibility boundaries:
 ## Settings direction
 
 - Obsidian's own Settings sidebar stays visible. Peak does not add a competing second sidebar.
-- Peak categories are the only persistent header structure and stay centered in the plugin content area. Search collapses to one icon in that row, save feedback uses a temporary toast, and setup progress appears only on Overview.
+- Peak categories are the only persistent header structure and stay centered in the plugin content area. There is no Settings search: the five destinations and their internal grouping must be clear enough to navigate directly. Save feedback uses a temporary toast, and setup progress appears only on Overview.
 - No global `Standard / Advanced` mode. `Advanced` is one low-frequency destination containing clearly separated Files & Data, Privacy & Retention, Appearance, and Diagnostics & Maintenance sections.
 - The default page is `AI & Models`: connections and model catalogs appear first, followed by task defaults using the hierarchy `product feature → action group → concrete action`.
 - Product actions that do not use a generative model say so explicitly.
-- Connection, model catalog and task defaults share one owner; tools, permissions and confirmations share another. Important privacy status remains visible from Overview, search and Tools & Safety even though detailed privacy controls live in Advanced.
+- Connection, model catalog and task defaults share one owner; tools, permissions and confirmations share another. Important privacy status remains visible from Overview and Tools & Safety even though detailed privacy controls live in Advanced.
 - Provider and capability status uses clear states rather than assuming that saved credentials imply readiness.
 
 ## Onboarding direction

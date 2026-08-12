@@ -69,52 +69,8 @@ $$('select').forEach((select) => {
   select.addEventListener("change", () => showSaved());
 });
 
-const searchInput = $("[data-settings-search]");
-const searchPopover = $("[data-search-popover]");
-const searchTrigger = $("[data-search-trigger]");
-
-function updateSearch() {
-  const query = searchInput.value.trim().toLowerCase();
-  let visibleCount = 0;
-  $$('[data-search-result]').forEach((result) => {
-    const matches = query.length === 0 || result.dataset.query.includes(query) || result.textContent.toLowerCase().includes(query);
-    result.hidden = !matches;
-    if (matches) visibleCount += 1;
-  });
-  $("[data-search-empty]").hidden = visibleCount > 0;
-}
-
-searchInput.addEventListener("focus", () => {
-  searchPopover.hidden = false;
-  updateSearch();
-});
-
-searchInput.addEventListener("input", updateSearch);
-
-searchTrigger.addEventListener("click", () => {
-  searchPopover.hidden = false;
-  searchInput.focus();
-});
-
-$$('[data-search-result]').forEach((result) => {
-  result.addEventListener("click", () => {
-    showPanel(result.dataset.panel);
-    searchInput.value = "";
-    searchPopover.hidden = true;
-  });
-});
-
-document.addEventListener("click", (event) => {
-  if (!event.target.closest(".settings-search")) searchPopover.hidden = true;
-});
-
 document.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-    event.preventDefault();
-    searchInput.focus();
-  }
   if (event.key === "Escape") {
-    searchPopover.hidden = true;
     $("[data-connection-modal]").hidden = true;
   }
 });

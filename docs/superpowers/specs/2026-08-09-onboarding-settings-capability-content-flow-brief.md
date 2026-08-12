@@ -418,8 +418,8 @@ Onboarding 是一条目标驱动、可分支的流程，不等于固定页数。
 - 高频且影响明确的内容优先；
 - 低频但有真实 consumer 的设置仍然保留；
 - 高级程度由影响范围、风险和理解成本决定，不由“普通 / 专业用户”身份决定；
-- 同一项设置只有一个权威位置，但可以被搜索、状态入口和错误修复链接到；
-- 用户可以搜索自然语言、旧名称、Provider 名和功能名，定位到具体设置；
+- 同一项设置只有一个权威位置，但可以被状态入口和错误修复链接到；
+- 五个一级入口和页面内分组必须让用户直接找到设置，不依赖猜关键词或维护搜索别名；
 - 内部参数只有在确实改变用户可观察行为时才暴露；
 - 无真实 execution consumer 的字段不得伪装成已生效；
 - 所有设置都说明影响对象、默认值、保存状态和生效条件；
@@ -775,13 +775,13 @@ MCP 是工具来源，Skill 是工作手册，Provider 是模型来源。Setting
 - Search、File Atlas、AI Graph 和 Ambient 的知识行为归 `Knowledge & Search`；
 - Web、工具、写入权限、确认和 Agent 执行归 `Tools & Safety`；
 - 历史、输出位置、数据保留、隐私详情和展示偏好归 `Advanced` 内各自独立分组；
-- 低频 runtime 与维护行为留在所属模块的展开项，或由 Settings 搜索直接到达。
+- 低频 runtime 与维护行为留在所属模块的展开项，或由明确的状态与修复入口到达。
 
 移除 `Features` 入口不等于移除这些设置。每个现有字段仍必须在迁移审计中标记新的 owner，并保留真实 consumer、保存反馈、恢复默认和生效说明。
 
-`Data & Privacy` 与 `Appearance` 也不作为一级入口。它们都是低频、全局性的长期控制，放入 `Advanced` 的独立分组；但隐私的当前状态、Provider 数据去向和风险修复入口必须继续出现在 Overview、Settings 搜索与 `Tools & Safety`，不能因为详细设置被收纳而变得不可见。
+`Data & Privacy` 与 `Appearance` 也不作为一级入口。它们都是低频、全局性的长期控制，放入 `Advanced` 的独立分组；但隐私的当前状态、Provider 数据去向和风险修复入口必须继续出现在 Overview 与 `Tools & Safety`，不能因为详细设置被收纳而变得不可见。
 
-Settings 不再增加一条重复的 Peak 标题工具栏。Obsidian 左侧已经说明当前插件，Peak 内容区顶部只保留居中的一级分类导航；搜索收为导航右侧的紧凑入口，保存采用短暂反馈，未完成的 setup 只在 Overview 出现。
+Settings 不再增加一条重复的 Peak 标题工具栏。Obsidian 左侧已经说明当前插件，Peak 内容区顶部只保留居中的一级分类导航；不提供 Settings 搜索，保存采用短暂反馈，未完成的 setup 只在 Overview 出现。
 
 #### Chat Studio
 
@@ -1148,7 +1148,7 @@ Onboarding、Settings、错误修复和运行前检查必须消费同一份状�
 
 - 用户能快速判断 AI、Search、Index、Agent、Media 和 Tools 是否正常；
 - 所有 Ready 都有验证证据；
-- 用户能用自然语言搜索到具体设置；
+- 用户不使用搜索也能通过五个一级入口和页面分组找到具体设置；
 - 六个任务组和 18 个 assignment 的继承关系清楚；
 - 当前 113 个 bundled LLM entries 不会被误解为只有少数模型，也不会无筛选倾倒给用户；
 - 模型或连接不兼容时能解释原因和修复；

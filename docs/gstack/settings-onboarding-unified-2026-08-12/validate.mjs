@@ -50,8 +50,6 @@ requireValues("Settings HTML", settingsHtml, [
   "Vault Search & AI Search",
   "File Atlas & AI Graph",
   "Peak Hermes",
-  "data-settings-search",
-  "data-search-trigger",
   "data-tree-toggle=\"composer\"",
   "data-add-connection",
   "data-settings-panel=\"ai\"",
@@ -144,6 +142,10 @@ for (const value of ['data-settings-panel="data"', 'data-panel-target="data"', '
 
 for (const value of ['peak-settings-header', 'peak-heading', 'peak-header-actions', 'setup-header-button']) {
   if (settingsHtml.includes(value)) missing.push(`Redundant Settings toolbar returned: ${value}`);
+}
+
+for (const value of ['data-settings-search', 'data-search-trigger', 'data-search-popover', 'data-search-result']) {
+  if (settingsHtml.includes(value)) missing.push(`Unnecessary Settings search returned: ${value}`);
 }
 
 function checkSymbols(label, html) {

@@ -257,44 +257,6 @@ svg {
   background: var(--surface-soft);
 }
 
-.settings-search { position: absolute; z-index: 20; top: 6px; right: 18px; }
-.nav-search-button { display: grid; width: 31px; height: 31px; padding: 0; place-items: center; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-muted); }
-.nav-search-button:hover { border-color: var(--line); background: var(--surface-hover); color: var(--text); }
-.nav-search-button svg { width: 14px; height: 14px; }
-.search-input-row { position: relative; display: flex; align-items: center; }
-.search-input-row > svg { position: absolute; left: 10px; width: 15px; height: 15px; color: var(--text-muted); }
-.search-input-row input {
-  width: 100%;
-  height: 31px;
-  padding: 0 52px 0 31px;
-  border: 1px solid var(--line-strong);
-  border-radius: 7px;
-  outline: 0;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 11px;
-}
-.search-input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-.search-input-row kbd { position: absolute; right: 8px; padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-soft); color: var(--text-muted); font-size: 9px; font-family: inherit; }
-
-.search-popover {
-  position: absolute;
-  z-index: 30;
-  top: 36px;
-  right: 0;
-  width: min(340px, calc(100vw - 56px));
-  padding: 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 14px 34px rgba(24, 24, 30, 0.14);
-}
-.search-heading { display: block; padding: 5px 7px 4px; color: var(--text-muted); font-size: 8px; font-weight: 700; letter-spacing: .1em; }
-.search-popover button { display: flex; width: 100%; min-height: 35px; padding: 6px 8px; align-items: center; justify-content: space-between; border: 0; border-radius: 5px; background: transparent; text-align: left; font-size: 11px; }
-.search-popover button:hover { background: var(--surface-hover); }
-.search-popover small { color: var(--text-muted); font-size: 9px; }
-.search-empty { display: block; padding: 16px 8px; color: var(--text-muted); text-align: center; font-size: 10px; }
-
 .topbar-meta { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 .saved-state { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 10px; }
 .saved-state svg { width: 13px; height: 13px; color: var(--success); }
@@ -432,7 +394,7 @@ svg {
   display: flex;
   width: 100%;
   min-height: 43px;
-  padding: 0 62px;
+  padding: 0 20px;
   align-items: stretch;
   justify-content: center;
   gap: 24px;
@@ -855,8 +817,7 @@ svg {
   .historical-links { grid-template-columns: 1fr; }
   .obsidian-settings-shell { grid-template-columns: 164px minmax(0, 1fr); }
   .obsidian-settings-sidebar { padding-right: 8px; padding-left: 8px; }
-  .peak-settings-tabs { padding: 0 54px; gap: 16px; }
-  .settings-search { right: 10px; }
+  .peak-settings-tabs { padding: 0 14px; gap: 16px; }
   .settings-topbar { grid-template-columns: 1fr auto; }
   .settings-topbar > .peak-wordmark { display: none; }
   .settings-body { grid-template-columns: 60px minmax(0, 1fr); }
@@ -917,7 +878,7 @@ svg {
   .obsidian-sidebar-title, .obsidian-nav-group, .obsidian-nav button > span:last-child { display: none; }
   .obsidian-nav { gap: 2px; }
   .obsidian-nav button { display: grid; grid-template-columns: 1fr; min-height: 33px; padding: 0; place-items: center; }
-  .peak-settings-tabs { justify-content: flex-start; padding: 0 48px 0 10px; gap: 14px; }
+  .peak-settings-tabs { justify-content: flex-start; padding: 0 10px; gap: 14px; }
   .settings-topbar { padding-right: 8px; padding-left: 8px; }
   .settings-topbar .saved-state { display: none; }
   .settings-panel { width: calc(100% - 24px); padding-top: 27px; }
