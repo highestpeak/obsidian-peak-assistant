@@ -354,6 +354,12 @@
               <!-- Chat 内富生成能力 2026-07-03 shipped as commit 459aa5ba (Mermaid + Bases) — see #done -->
               <!-- Multimodal Media Ring 2026-07-03 shipped骨架 as commit 459aa5ba — see #done for scope. Excalidraw / Dataview / 视频 / 音乐 / 播客 未做,仍在 backlog。-->
               <tr>
+                <td>2026-08-12</td>
+                <td><strong>Peak External Intelligence Protocol</strong>（Codex / Claude Code 订阅计算通道，暂定名）</td>
+                <td><strong>远期研究候选，不是上线事项或当前实现承诺。</strong>把 Vault Intelligence、Composer、Hub / AI Graph 等智能能力表达为版本化 capability contract，让用户在自有 Codex / Claude Code 客户端中使用已有订阅或账户额度完成批量任务，再由 Peak 接收结果。建议从 Skill / plugin 规范 + export / import run package 起步，长期可演进为本地 MCP server；外部 Agent 提交带 vault / run / scope / source hash / schema / provenance / status 的 JSON / JSONL 结果或 proposal，Peak 负责校验、canonical persistence、stale / quarantine 与 SQLite projection rebuild。正式边界：不允许把 raw SQLite write 作为公开协议；确定性 lint、FTS、chunk、PageRank 继续由 Peak 本地计算；embedding 不视为 Codex / Claude Code 通用能力；Markdown 变更必须经过 proposal、revision guard 与显式 Apply。该方向不替代插件内 Harness / AI Capability Gateway：外部客户端拥有本次 run，Peak 仍拥有结果接收、权限和数据完整性。</td>
+                <td><span class="pill gold">future research · not launch scope</span></td>
+              </tr>
+              <tr>
                 <td>2026-07-28</td>
                 <td><strong>AI 协作工作流效率诊断</strong>（过程调研，非产品功能）</td>
                 <td>两轮实证诊断（61 个 Claude 转录 + 285 个 Codex 会话 + git 历史 + 实测测试红绿）。首轮七问题模式；二轮对抗评审后修订为 12 条排序建议——测试零红灯、checkpoint commit 预授权 + worktree 隔离、视觉验收"裁判独立 + 首屏先行"、QA 环境预检、progress.md NOW 节修复等。元结论：病根不是缺规则，是规则停留在散文层——需下沉为授权行 / guard test / 独立裁判 / 二值信号。</td>
