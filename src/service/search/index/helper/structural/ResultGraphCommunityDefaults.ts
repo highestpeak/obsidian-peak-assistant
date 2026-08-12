@@ -34,6 +34,7 @@ export interface ResultGraphCommunityConfig {
 		};
 	};
 	graphLayout: {
+		minimumRenderedEdgeWidth: number;
 		semanticWeightExponent: number;
 		semanticIdealLengthMin: number;
 		semanticIdealLengthMax: number;
@@ -105,6 +106,7 @@ export const DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG: ResultGraphCommunityConfig =
 		}),
 	}),
 	graphLayout: Object.freeze({
+		minimumRenderedEdgeWidth: 1.25,
 		semanticWeightExponent: 2,
 		semanticIdealLengthMin: 72,
 		semanticIdealLengthMax: 156,
@@ -208,6 +210,7 @@ function mergeConfig(loaded: Partial<ResultGraphCommunityConfig>): ResultGraphCo
 			},
 		},
 		graphLayout: {
+			minimumRenderedEdgeWidth: positive(graphLayout.minimumRenderedEdgeWidth, fallback.graphLayout.minimumRenderedEdgeWidth),
 			semanticWeightExponent: positive(graphLayout.semanticWeightExponent, fallback.graphLayout.semanticWeightExponent),
 			semanticIdealLengthMin: positive(graphLayout.semanticIdealLengthMin, fallback.graphLayout.semanticIdealLengthMin),
 			semanticIdealLengthMax: positive(graphLayout.semanticIdealLengthMax, fallback.graphLayout.semanticIdealLengthMax),

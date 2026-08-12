@@ -40,5 +40,12 @@ assert.match(
 	/selector: 'edge', style: \{[^}]*opacity: 1/,
 	'the resting graph explicitly keeps its base edges fully visible',
 );
+assert.match(canvas, /'display': 'element'/, 'the resting graph explicitly renders edge elements');
+assert.match(canvas, /'visibility': 'visible'/, 'the resting graph explicitly exposes edge elements');
+assert.match(
+	canvas,
+	/applyReadableEdgeWidths\(cy, graphLayout\.minimumRenderedEdgeWidth\)/,
+	'fit and zoom preserve a minimum screen-space edge width',
+);
 
 console.log('graph-shared-surface-contract: passed');

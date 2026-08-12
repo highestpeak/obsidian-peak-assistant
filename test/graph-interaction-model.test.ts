@@ -1,11 +1,23 @@
 import assert from 'node:assert/strict';
 import {
 	centerViewportOnSameModelPoint,
+	minimumReadableEdgeWidth,
 	placeGraphInspectCard,
 	resolveGraphEscapeAction,
 	retainGraphSelection,
 	updateGraphSelection,
 } from '@/ui/component/graph/graphInteractionModel';
+
+assert.equal(
+	minimumReadableEdgeWidth(1.4, 0.2, 1.25),
+	6.25,
+	'fit-all zoom keeps a structural edge at the configured screen-space width',
+);
+assert.equal(
+	minimumReadableEdgeWidth(1.4, 1, 1.25),
+	1.4,
+	'normal zoom preserves the authored edge width',
+);
 
 assert.deepEqual(
 	updateGraphSelection([], 'a', false),

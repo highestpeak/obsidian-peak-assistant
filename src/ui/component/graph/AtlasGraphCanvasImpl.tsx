@@ -77,6 +77,7 @@ import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
 import { portalHostForDocument } from '@/ui/react/ReactRenderer';
 import {
 	centerViewportOnSameModelPoint,
+	minimumReadableEdgeWidth,
 	placeGraphInspectCard,
 	resolveGraphEscapeAction,
 	retainGraphSelection,
@@ -471,7 +472,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.doc.communityDoc', style: { 'background-color': 'data(nodeColor)', 'border-color': 'data(nodeBorderColor)', color: 'data(nodeTextColor)', 'border-width': 1.4, opacity: 1 } as never },
 	{ selector: 'node.doc.communityDoc.isolated', style: { opacity: 1, 'border-style': 'solid' } as never },
 	{ selector: 'node.folderGroup', style: { 'background-color': '#f7f2fc', 'background-opacity': 1, 'border-width': 0, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '11px', 'padding-right': '11px', 'padding-top': '6px', 'padding-bottom': '6px', label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#51475e', 'text-valign': 'center', 'text-halign': 'center', 'min-width': '120px', 'z-index': 4 } as never },
-	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, opacity: 1, 'arrow-scale': 0.7 } as never },
+	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, opacity: 1, 'display': 'element', 'visibility': 'visible', 'arrow-scale': 0.7 } as never },
 	{ selector: 'edge[directionality = "directed"]', style: { 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "bidirectional"]', style: { 'source-arrow-shape': 'triangle', 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "undirected"]', style: { 'source-arrow-shape': 'none', 'target-arrow-shape': 'none' } as never },
@@ -658,6 +659,17 @@ const FOLDER_TREE_MIN_INITIAL_ZOOM = 1;
 
 function fitAllGraphViewport(cy: Core): void {
 	cy.fit(undefined, 40);
+}
+
+function applyReadableEdgeWidths(cy: Core, minimumRenderedWidth: number): void {
+	const zoom = cy.zoom();
+	cy.edges().forEach((edge) => {
+		edge.removeStyle('width');
+		const authoredWidth = Number(edge.numericStyle('width'));
+		const readableWidth = minimumReadableEdgeWidth(authoredWidth, zoom, minimumRenderedWidth);
+		if (readableWidth <= authoredWidth) return;
+		edge.style('width', readableWidth);
+	});
 }
 
 function fitReadableGraphViewport(cy: Core, folderTree: boolean): void {
@@ -1435,9 +1447,13 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			setZoomPercent(Math.round(cy.zoom() * 100));
 			positionCacheRef.current.set(layoutKey, captureGraphNodePositions(cy));
 			applyGraphSelection(cy, selectedNodeIdsRef.current);
+			applyReadableEdgeWidths(cy, graphLayout.minimumRenderedEdgeWidth);
 			setLayoutReadyState({ subgraph, preset, showSemantic });
 		});
 		layoutObj.run();
+		cy.on('zoom', () => {
+			applyReadableEdgeWidths(cy, graphLayout.minimumRenderedEdgeWidth);
+		});
 		cy.on('pan zoom', () => {
 			const viewport = { zoom: cy.zoom(), pan: cy.pan() };
 			lastViewportRef.current = viewport;
