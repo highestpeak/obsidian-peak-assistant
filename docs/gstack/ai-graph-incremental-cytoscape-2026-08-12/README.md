@@ -11,6 +11,8 @@ This is a design-only, standalone `file://` prototype for owner review.
 - `Pause`, `Continue`, `Stop`, `Skip to review`, `Discard`, and `Replay` expose the minimum control and recovery model.
 - The graph is rendered through the production public `AtlasGraphCanvas` facade and therefore uses the shared Cytoscape stack. No React Flow dependency or consumer is introduced.
 - The Cytoscape base receives one stable `subgraph` reference for the entire replay. Agent changes are demonstrated in a transient working-overlay layer, so an operation cannot destroy the canvas, rerun the whole layout, or auto-fit the viewport.
+- Overlay relations share one calibrated canvas coordinate system. Paths terminate at the boundary of their source and target cards rather than at free-floating cursor coordinates; removal strokes trace the two existing relations attached to the original node.
+- After all eight Agent operations complete, the mock enters one explicit `Refine layout` stage. A second shared `AtlasGraphCanvas` renders the complete proposed graph once, cross-fades it over the spatially locked working view, and only then opens semantic-diff review.
 
 The graph content and run events are illustrative mock data. This prototype does not call an AI provider, write an AI Graph version, or modify production source.
 

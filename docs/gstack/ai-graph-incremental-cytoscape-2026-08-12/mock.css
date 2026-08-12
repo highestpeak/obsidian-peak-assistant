@@ -87,8 +87,10 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 }
 .aig-status__dot { width: 7px; height: 7px; border-radius: 50%; background: #98929f; }
 .aig-status--running, .aig-status--paused { color: var(--aig-accent-dark); background: var(--aig-accent-soft); border-color: #ddd4ff; }
+.aig-status--refining { color: var(--aig-accent-dark); background: #f5f2ff; border-color: #d9d0fb; }
 .aig-status--running .aig-status__dot { background: var(--aig-accent); box-shadow: 0 0 0 5px rgba(108, 85, 217, .12); animation: status-pulse 1.5s ease-out infinite; }
 .aig-status--paused .aig-status__dot { background: var(--aig-amber); }
+.aig-status--refining .aig-status__dot { background: var(--aig-accent); animation: status-pulse 1.1s ease-out infinite; }
 .aig-status--review { color: var(--aig-amber); background: var(--aig-amber-soft); border-color: #ecd8b4; }
 .aig-status--review .aig-status__dot { background: var(--aig-amber); }
 .aig-status--accepted { color: var(--aig-green); background: var(--aig-green-soft); border-color: #cde9de; }
@@ -161,8 +163,12 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 .aig-spatial-lock svg { width: 11px; height: 11px; }
 
 .aig-canvas { position: relative; min-height: 0; overflow: hidden; background: #fbfbfc; }
-.aig-canvas > .pk-graph-surface { min-height: 100%; }
-.aig-canvas .pk-graph-inline-slot { min-height: 100%; }
+.aig-graph-layer { position: absolute; inset: 0; min-height: 0; transition: opacity 360ms ease, filter 360ms ease; }
+.aig-graph-layer > .pk-graph-surface { min-height: 100%; }
+.aig-graph-layer .pk-graph-inline-slot { min-height: 100%; }
+.aig-graph-layer--working { z-index: 1; opacity: 1; }
+.aig-graph-layer--working.is-refined-away { opacity: 0; filter: blur(2px); pointer-events: none; }
+.aig-graph-layer--refined { z-index: 4; opacity: 0; animation: refined-graph-in 1.15s cubic-bezier(.2, .8, .2, 1) 180ms forwards; }
 .aig-canvas--running::after {
 	position: absolute;
 	inset: 0;
@@ -177,7 +183,9 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	z-index: 24;
 	overflow: hidden;
 	pointer-events: none;
+	transition: opacity 300ms ease, filter 300ms ease;
 }
+.aig-working-overlay.is-refined-away { opacity: 0; filter: blur(2px); }
 .aig-overlay-edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .aig-overlay-edge {
 	fill: none;
@@ -241,12 +249,30 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 .aig-relation-update svg { width: 11px; height: 11px; }
 .aig-relation-update span { color: #9d9386; text-decoration: line-through; }
 .aig-relation-update b { font-weight: 760; }
+.aig-detach-badge {
+	position: absolute;
+	left: 51%;
+	top: 43.5%;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 5px 7px;
+	color: var(--aig-red);
+	border: 1px solid #edc7cd;
+	border-radius: 6px;
+	background: rgba(255, 247, 248, .97);
+	box-shadow: 0 5px 15px rgba(117, 39, 54, .08);
+	font-size: 8px;
+	transform: translate(-50%, -50%);
+	animation: tombstone-in 360ms ease-out both;
+}
+.aig-detach-badge svg { width: 11px; height: 11px; }
 .aig-tombstone {
 	position: absolute;
-	left: 18%;
-	top: 75%;
-	width: 170px;
-	min-height: 48px;
+	left: 51%;
+	top: 48%;
+	width: 154px;
+	min-height: 43px;
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -265,23 +291,6 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 .aig-tombstone > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .aig-tombstone strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .aig-tombstone small { color: #a46f79; font-size: 7px; }
-.aig-removal-marker {
-	position: absolute;
-	left: 18%;
-	top: 75%;
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	padding: 5px 7px;
-	color: var(--aig-green);
-	border: 1px solid #c7e5d9;
-	border-radius: 6px;
-	background: rgba(242, 251, 247, .97);
-	font-size: 8px;
-	transform: translate(-50%, -50%);
-	animation: removal-marker-in 320ms ease-out both;
-}
-.aig-removal-marker svg { width: 11px; height: 11px; }
 .aig-agent-cursor {
 	position: absolute;
 	z-index: 40;
@@ -328,6 +337,29 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 .aig-review-watermark { color: var(--aig-amber); border: 1px solid #ead3aa; background: rgba(255, 249, 239, .96); }
 .aig-accepted-watermark { color: var(--aig-green); border: 1px solid #c7e5d9; background: rgba(242, 251, 247, .96); }
 .aig-review-watermark svg, .aig-accepted-watermark svg { width: 14px; height: 14px; }
+.aig-refine-stage {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	z-index: 45;
+	min-width: 210px;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 10px 12px;
+	color: var(--aig-accent-dark);
+	border: 1px solid #d5ccfb;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, .94);
+	box-shadow: 0 12px 34px rgba(48, 35, 108, .16);
+	transform: translate(-50%, -50%);
+	animation: refine-stage 1.35s ease both;
+	pointer-events: none;
+}
+.aig-refine-stage > svg { width: 17px; height: 17px; animation: refine-spin 1.1s ease-in-out infinite; }
+.aig-refine-stage > span { display: flex; flex-direction: column; gap: 2px; }
+.aig-refine-stage strong { font-size: 10px; }
+.aig-refine-stage small { color: var(--aig-ink-3); font-size: 8px; }
 
 .aig-canvas-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border-top: 1px solid var(--aig-line); background: #fcfcfd; }
 .aig-base-lock { min-width: 0; gap: 7px; color: var(--aig-ink-3); font-size: 10px; }
@@ -432,17 +464,26 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	from { opacity: .78; stroke-dashoffset: 0; }
 	to { opacity: .34; stroke-dashoffset: -34; }
 }
+@keyframes refined-graph-in {
+	from { opacity: 0; filter: blur(3px); transform: scale(.985); }
+	to { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+@keyframes refine-stage {
+	0% { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(.98); }
+	18%, 70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+	100% { opacity: 0; transform: translate(-50%, calc(-50% - 5px)) scale(.98); }
+}
+@keyframes refine-spin {
+	0%, 100% { transform: rotate(-8deg) scale(.94); }
+	50% { transform: rotate(10deg) scale(1.08); }
+}
 @keyframes tombstone-in {
 	from { opacity: 0; transform: translate(-50%, -50%) scale(.94); }
 	to { opacity: .9; transform: translate(-50%, -50%) scale(1); }
 }
-@keyframes removal-marker-in {
-	from { opacity: 0; transform: translate(-50%, calc(-50% + 7px)); }
-	to { opacity: 1; transform: translate(-50%, -50%); }
-}
-
 @media (prefers-reduced-motion: reduce) {
 	.aig-status__dot, .aig-canvas--running::after, .aig-agent-cursor > span, .aig-review-watermark, .aig-accepted-watermark,
-	.aig-overlay-edge, .aig-overlay-node, .aig-relation-update, .aig-tombstone, .aig-removal-marker { animation: none; }
-	.aig-agent-cursor, .aig-progress span { transition: none; }
+	.aig-overlay-edge, .aig-overlay-node, .aig-relation-update, .aig-detach-badge, .aig-tombstone, .aig-graph-layer--refined,
+	.aig-refine-stage, .aig-refine-stage > svg { animation: none; }
+	.aig-agent-cursor, .aig-progress span, .aig-graph-layer, .aig-working-overlay { transition: none; }
 }

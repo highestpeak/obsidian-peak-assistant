@@ -27,7 +27,7 @@ import type {
 	ResultSubgraphOutput,
 } from '../../../src/service/search/graph/resultSubgraph';
 
-type RunMode = 'idle' | 'running' | 'paused' | 'review' | 'accepted';
+type RunMode = 'idle' | 'running' | 'paused' | 'refining' | 'review' | 'accepted';
 type PatchKind = 'inspect' | 'add-node' | 'add-relation' | 'update' | 'remove-relation' | 'remove-node' | 'validate';
 
 interface PatchEvent {
@@ -56,7 +56,7 @@ const PATCHES: PatchEvent[] = [
 	{
 		id: 'connect-provenance',
 		kind: 'add-relation',
-		title: 'Connected provenance to retrieval',
+		title: 'Connected provenance to evidence chain',
 		detail: 'Two directed relations were drawn after endpoint validation.',
 		object: '+ 2 relations · evidence linked',
 	},
@@ -93,19 +93,19 @@ const PATCHES: PatchEvent[] = [
 		kind: 'validate',
 		title: 'Validated working graph',
 		detail: 'All relations resolve, evidence exists, and the base revision is still v12.',
-		object: 'diff ready · 8 changes',
+		object: 'diff ready · 10 changes',
 	},
 ];
 
 const CURSOR_POINTS = [
 	{ left: '24%', top: '32%' },
-	{ left: '51%', top: '24%' },
-	{ left: '58%', top: '40%' },
-	{ left: '71%', top: '63%' },
-	{ left: '43%', top: '53%' },
-	{ left: '27%', top: '71%' },
-	{ left: '18%', top: '73%' },
-	{ left: '78%', top: '19%' },
+	{ left: '69%', top: '29%' },
+	{ left: '62%', top: '42%' },
+	{ left: '72%', top: '71%' },
+	{ left: '50%', top: '54%' },
+	{ left: '51%', top: '48%' },
+	{ left: '51%', top: '48%' },
+	{ left: '82%', top: '19%' },
 ];
 
 const BASE_NODES: ResultSubgraphOutput['resultNodes'] = [
@@ -136,21 +136,59 @@ const STABLE_SUBGRAPH: ResultSubgraphOutput = {
 	overflowCount: 0,
 };
 
+const FINAL_SUBGRAPH: ResultSubgraphOutput = {
+	resultNodes: [
+		...BASE_NODES.filter((node) => node.id !== 'keyword').map((node) => ({ ...node })),
+		{
+			id: 'provenance',
+			path: 'ai-graph://graphrag/provenance',
+			title: 'Claim provenance',
+			score: .92,
+			communityId: null,
+			folder: 'Evidence',
+			preview: 'Accepted evidence concept',
+			incomingLinks: 1,
+			outgoingLinks: 2,
+		},
+		{
+			id: 'human-review',
+			path: 'ai-graph://graphrag/human-review',
+			title: 'Human review loop',
+			score: .86,
+			communityId: null,
+			folder: 'Controls',
+			preview: 'Accepted review control',
+			incomingLinks: 1,
+			outgoingLinks: 1,
+		},
+	],
+	hubAnchors: [],
+	edges: [
+		...BASE_EDGES.filter((edge) => edge.from !== 'keyword' && edge.to !== 'keyword').map((edge) => ({ ...edge })),
+		{ from: 'evidence', to: 'provenance', kind: 'reference', directionality: 'directed' },
+		{ from: 'provenance', to: 'citations', kind: 'reference', directionality: 'directed' },
+		{ from: 'provenance', to: 'human-review', kind: 'reference', directionality: 'directed' },
+		{ from: 'human-review', to: 'graphrag', kind: 'reference', directionality: 'directed' },
+	],
+	isolatedDocIds: [],
+	overflowCount: 0,
+};
+
 interface WorkingOverlayProps {
-	accepted: boolean;
+	hidden: boolean;
 	step: number;
 }
 
-function WorkingOverlay({ accepted, step }: WorkingOverlayProps): React.ReactElement {
-	const showProvenance = step >= 2 || accepted;
-	const showProvenanceRelations = step >= 3 || accepted;
-	const showReviewLoop = step >= 4 || accepted;
-	const showRelationUpdate = step >= 5 || accepted;
-	const showDetachedPath = step >= 6 || accepted;
-	const showTombstone = step >= 7 && !accepted;
+function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactElement {
+	const showProvenance = step >= 2;
+	const showProvenanceRelations = step >= 3;
+	const showReviewLoop = step >= 4;
+	const showRelationUpdate = step >= 5;
+	const showDetachedPath = step >= 6;
+	const showTombstone = step >= 7;
 
 	return (
-		<div className={`aig-working-overlay${accepted ? ' is-accepted' : ''}`} aria-hidden="true">
+		<div className={`aig-working-overlay${hidden ? ' is-refined-away' : ''}`} aria-hidden="true">
 			<svg className="aig-overlay-edges" viewBox="0 0 1000 620" preserveAspectRatio="none">
 				<defs>
 					<marker id="aig-arrow-added" markerHeight="7" markerWidth="7" orient="auto" refX="6" refY="3.5">
@@ -159,18 +197,21 @@ function WorkingOverlay({ accepted, step }: WorkingOverlayProps): React.ReactEle
 				</defs>
 				{showProvenanceRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M520 318 C575 270 610 230 676 188" />
-						<path className="aig-overlay-edge is-added is-delay" d="M700 198 C760 218 800 264 848 312" />
+						<path className="aig-overlay-edge is-added" d="M555 332 C585 286 602 246 635 208" />
+						<path className="aig-overlay-edge is-added is-delay" d="M745 208 C790 248 785 298 730 332" />
 					</>
 				)}
 				{showReviewLoop && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M704 215 C733 292 744 365 722 430" />
-						<path className="aig-overlay-edge is-added is-delay" d="M690 458 C550 526 300 500 154 350" />
+						<path className="aig-overlay-edge is-added" d="M705 208 C735 272 744 356 720 423" />
+						<path className="aig-overlay-edge is-added is-delay" d="M645 440 C500 535 230 520 86 306" />
 					</>
 				)}
-				{showDetachedPath && !accepted && (
-					<path className="aig-overlay-edge is-removing" d="M162 474 C248 520 356 502 438 414" />
+				{showDetachedPath && (
+					<>
+						<path className="aig-overlay-edge is-removing" d="M360 318 C400 316 430 306 460 300" />
+						<path className="aig-overlay-edge is-removing is-delay" d="M555 299 C595 298 630 291 655 286" />
+					</>
 				)}
 			</svg>
 
@@ -191,14 +232,14 @@ function WorkingOverlay({ accepted, step }: WorkingOverlayProps): React.ReactEle
 			{showRelationUpdate && (
 				<div className="aig-relation-update"><GitBranch aria-hidden /><span>supports</span><b>grounds</b></div>
 			)}
-			{showDetachedPath && !accepted && (
-				<div className={`aig-tombstone${showTombstone ? ' is-node-removal' : ''}`}>
-					<Trash2 aria-hidden />
-					<span><strong>{showTombstone ? 'Keyword-only clustering' : 'Legacy path detached'}</strong><small>{showTombstone ? 'Removal proposed · position retained' : '2 relations · reversible'}</small></span>
-				</div>
+			{showDetachedPath && !showTombstone && (
+				<div className="aig-detach-badge"><Trash2 aria-hidden /><span>2 relations detaching</span></div>
 			)}
-			{accepted && (
-				<div className="aig-removal-marker"><Check aria-hidden /><span>Legacy branch removed</span></div>
+			{showTombstone && (
+				<div className="aig-tombstone is-node-removal">
+					<Trash2 aria-hidden />
+					<span><strong>Keyword-only clustering</strong><small>Removal proposed · original position retained</small></span>
+				</div>
 			)}
 		</div>
 	);
@@ -215,6 +256,7 @@ function patchIcon(kind: PatchKind): React.ReactNode {
 function modeLabel(mode: RunMode): string {
 	if (mode === 'running') return 'Agent update in progress';
 	if (mode === 'paused') return 'Update paused';
+	if (mode === 'refining') return 'Refining complete graph';
 	if (mode === 'review') return 'Review working diff';
 	if (mode === 'accepted') return 'Version v13 created';
 	return 'Version v12 · ready';
@@ -228,7 +270,8 @@ function Prototype(): React.ReactElement {
 	const startedOnce = useRef(false);
 
 	const accepted = mode === 'accepted';
-	const visibleStep = accepted ? PATCHES.length : patchIndex + 1;
+	const refined = mode === 'refining' || mode === 'review' || accepted;
+	const visibleStep = refined ? PATCHES.length : patchIndex + 1;
 	const activePatch = patchIndex >= 0 ? PATCHES[Math.min(patchIndex, PATCHES.length - 1)] : null;
 	const cursor = CURSOR_POINTS[Math.max(0, Math.min(patchIndex, CURSOR_POINTS.length - 1))] ?? CURSOR_POINTS[0];
 	const visibleNodeCount = BASE_NODES.length + (visibleStep >= 2 ? 1 : 0) + (visibleStep >= 4 ? 1 : 0) - (accepted ? 1 : 0);
@@ -251,15 +294,21 @@ function Prototype(): React.ReactElement {
 	useEffect(() => {
 		if (mode !== 'running') return;
 		if (patchIndex >= PATCHES.length - 1) {
-			const reviewTimer = window.setTimeout(() => {
-				setMode('review');
-				setActivityTab('review');
-			}, 900);
-			return () => window.clearTimeout(reviewTimer);
+			const refineTimer = window.setTimeout(() => setMode('refining'), 700);
+			return () => window.clearTimeout(refineTimer);
 		}
 		const timer = window.setTimeout(() => setPatchIndex((current) => current + 1), patchIndex < 0 ? 650 : 1350);
 		return () => window.clearTimeout(timer);
 	}, [mode, patchIndex]);
+
+	useEffect(() => {
+		if (mode !== 'refining') return;
+		const reviewTimer = window.setTimeout(() => {
+			setMode('review');
+			setActivityTab('review');
+		}, 1500);
+		return () => window.clearTimeout(reviewTimer);
+	}, [mode]);
 
 	const togglePause = (): void => {
 		setMode((current) => current === 'paused' ? 'running' : 'paused');
@@ -267,8 +316,8 @@ function Prototype(): React.ReactElement {
 
 	const skipToReview = (): void => {
 		setPatchIndex(PATCHES.length - 1);
-		setMode('review');
-		setActivityTab('review');
+		setMode('refining');
+		setActivityTab('live');
 	};
 
 	const discard = (): void => {
@@ -295,7 +344,7 @@ function Prototype(): React.ReactElement {
 				<div className="aig-actions">
 					<button className="aig-btn aig-btn--ghost" type="button"><History aria-hidden /> History</button>
 					<button className="aig-btn aig-btn--ghost" type="button">Topology <ChevronDown aria-hidden /></button>
-					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running'}>
+					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'refining'}>
 						<RotateCcw aria-hidden /> Replay run
 					</button>
 				</div>
@@ -316,26 +365,41 @@ function Prototype(): React.ReactElement {
 					<div className="aig-canvas-head">
 						<div>
 							<span className="aig-section-title">Working graph</span>
-							<span className="aig-section-subtitle">Canonical v12 + reversible Agent overlay</span>
+							<span className="aig-section-subtitle">{refined ? 'Complete proposed graph · one intentional reflow' : 'Canonical v12 + reversible Agent overlay'}</span>
 						</div>
 						<div className="aig-legend">
-							<span className="aig-spatial-lock"><ShieldCheck aria-hidden /> Spatial lock</span>
+							<span className="aig-spatial-lock">{refined ? <><Sparkles aria-hidden /> Refined once</> : <><ShieldCheck aria-hidden /> Spatial lock</>}</span>
 							<span><i className="is-existing" /> Existing</span>
 							<span><i className="is-added" /> Added</span>
 							<span><i className="is-removed" /> Removal</span>
 						</div>
 					</div>
 					<div className={`aig-canvas aig-canvas--${mode}`}>
-						<AtlasGraphCanvas
-							subgraph={STABLE_SUBGRAPH}
-							preset="flow-lr"
-							showSemantic
-							summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
-							emptyLabel="No graph objects"
-							buildingLabel="Preparing Cytoscape canvas…"
-							onNodeTap={(node) => setSelectedNode(node.id)}
-						/>
-						<WorkingOverlay accepted={accepted} step={visibleStep} />
+						<div className={`aig-graph-layer aig-graph-layer--working${refined ? ' is-refined-away' : ''}`}>
+							<AtlasGraphCanvas
+								subgraph={STABLE_SUBGRAPH}
+								preset="flow-lr"
+								showSemantic
+								summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
+								emptyLabel="No graph objects"
+								buildingLabel="Preparing Cytoscape canvas…"
+								onNodeTap={(node) => setSelectedNode(node.id)}
+							/>
+						</div>
+						{refined && (
+							<div className="aig-graph-layer aig-graph-layer--refined">
+								<AtlasGraphCanvas
+									subgraph={FINAL_SUBGRAPH}
+									preset="flow-lr"
+									showSemantic
+									summary={`${FINAL_SUBGRAPH.resultNodes.length} nodes · ${FINAL_SUBGRAPH.edges.length} relations`}
+									emptyLabel="No graph objects"
+									buildingLabel="Refining complete graph…"
+									onNodeTap={(node) => setSelectedNode(node.id)}
+								/>
+							</div>
+						)}
+						<WorkingOverlay hidden={refined} step={visibleStep} />
 						{(mode === 'running' || mode === 'paused') && activePatch && (
 							<div
 								className={`aig-agent-cursor aig-agent-cursor--${activePatch.kind}`}
@@ -348,12 +412,15 @@ function Prototype(): React.ReactElement {
 						{mode === 'review' && (
 							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>Working diff ready</span></div>
 						)}
+						{mode === 'refining' && (
+							<div className="aig-refine-stage"><Sparkles aria-hidden /><span><strong>Refining complete graph</strong><small>One intentional reflow after all 8 operations</small></span></div>
+						)}
 						{mode === 'accepted' && (
 							<div className="aig-accepted-watermark"><Check aria-hidden /><span>v13 is now the canonical head</span></div>
 						)}
 					</div>
 					<footer className="aig-canvas-footer">
-						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : 'v12 unchanged · positions locked'}</b>{accepted ? ' · immutable version created' : ' · Agent changes are not saved yet'}</span></div>
+						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? 'Refined working graph · v12 unchanged' : 'v12 unchanged · positions locked'}</b>{accepted ? ' · immutable version created' : refined ? ' · ready for semantic diff review' : ' · Agent changes are not saved yet'}</span></div>
 						{selectedNode && <span className="aig-selection">Selected: {selectedNode}</span>}
 					</footer>
 				</section>
@@ -361,14 +428,14 @@ function Prototype(): React.ReactElement {
 				<aside className="aig-rail">
 					<div className="aig-rail-tabs">
 						<button className={activityTab === 'live' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('live')}>Live activity</button>
-						<button className={activityTab === 'review' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('review')}>Review <span>8</span></button>
+						<button className={activityTab === 'review' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('review')}>Review <span>10</span></button>
 					</div>
 
 					{activityTab === 'live' ? (
 						<div className="aig-feed">
 							<div className="aig-feed-summary">
 								<div className="aig-agent-avatar"><Sparkles aria-hidden /></div>
-								<div><strong>Graph Update Agent</strong><span>{mode === 'idle' ? 'Ready to replay' : mode === 'accepted' ? 'Run accepted' : `${Math.max(0, patchIndex + 1)} of ${PATCHES.length} operations`}</span></div>
+								<div><strong>Graph Update Agent</strong><span>{mode === 'idle' ? 'Ready to replay' : mode === 'accepted' ? 'Run accepted' : mode === 'refining' ? '8 operations complete · refining layout' : `${Math.max(0, patchIndex + 1)} of ${PATCHES.length} operations`}</span></div>
 							</div>
 							<div className="aig-progress"><span style={{ width: `${accepted ? 100 : Math.max(3, ((patchIndex + 1) / PATCHES.length) * 100)}%` }} /></div>
 							<div className="aig-feed-list">
@@ -386,12 +453,13 @@ function Prototype(): React.ReactElement {
 						</div>
 					) : (
 						<div className="aig-review">
-							<div className="aig-review-head"><span>Semantic diff</span><strong>8 changes</strong></div>
+							<div className="aig-review-head"><span>Semantic diff</span><strong>10 changes</strong></div>
 							<div className="aig-review-group is-add">
-								<div><Plus aria-hidden /><strong>Added</strong><span>4</span></div>
+								<div><Plus aria-hidden /><strong>Added</strong><span>6</span></div>
 								<button type="button">Claim provenance <small>node</small></button>
 								<button type="button">Human review loop <small>node</small></button>
 								<button type="button">Evidence relations <small>2 relations</small></button>
+								<button type="button">Review-loop relations <small>2 relations</small></button>
 							</div>
 							<div className="aig-review-group is-change">
 								<div><GitBranch aria-hidden /><strong>Changed</strong><span>1</span></div>
@@ -412,6 +480,7 @@ function Prototype(): React.ReactElement {
 				<div className="aig-runbar__state">
 					{mode === 'running' && <CirclePlay aria-hidden />}
 					{mode === 'paused' && <CirclePause aria-hidden />}
+					{mode === 'refining' && <Sparkles aria-hidden />}
 					{mode === 'review' && <ShieldCheck aria-hidden />}
 					{mode === 'accepted' && <Check aria-hidden />}
 					{mode === 'idle' && <Sparkles aria-hidden />}
