@@ -81,6 +81,16 @@ assert.match(html, /class="[^"]*canvas-selection-tools[^"]*follows-selection/, "
 assert.match(html, /class="canvas-create-toolbar"/, "native-like Canvas create toolbar missing");
 assert.match(html, /class="excalidraw-tools"/, "Excalidraw tool palette missing");
 assert.match(html, /class="excalidraw-properties"/, "Excalidraw properties missing");
+assert.equal((html.match(/data-agent-draw-open="canvas"/g) || []).length, 2, "Canvas Live Build needs selection-local and create-toolbar entry points");
+assert.equal((html.match(/data-agent-draw-open="excalidraw"/g) || []).length, 2, "Excalidraw Live Build needs selection-local and native-toolbar entry points");
+assert.match(html, /id="canvasAgentZone" data-agent-zone="canvas"[^>]+hidden[\s\S]+id="excalidrawAgentZone" data-agent-zone="excalidraw"[^>]+hidden/, "Both native surfaces need a manually placed build area");
+assert.equal((html.match(/data-agent-zone-handle=/g) || []).length, 8, "Canvas and Excalidraw build areas each need four resize handles");
+assert.match(html, /id="agentDrawStudio"[^>]+hidden[\s\S]+data-agent-draw-intent="expand"[\s\S]+data-agent-draw-intent="diagram"[\s\S]+data-agent-draw-intent="relayout"/, "Shared Live Build Intelligence studio missing");
+assert.match(html, /id="agentDrawVisibleOps"[^>]+checked[\s\S]+id="agentDrawRespectMoves"[^>]+checked/, "Live Build must expose visible-operation and manual-anchor contracts");
+assert.match(html, /id="agentDrawRun"[^>]+hidden[\s\S]+data-agent-draw-pause[\s\S]+id="agentDrawProgressBar"[\s\S]+id="agentDrawLog"/, "Live Build progress, pause, and operation log missing");
+assert.equal((html.match(/data-agent-build="canvas"/g) || []).length, 5, "Canvas Live Build must preview three cards and two native edges");
+assert.equal((html.match(/data-agent-build="excalidraw"/g) || []).length, 5, "Excalidraw Live Build must preview three shapes and two bound arrows");
+assert.match(html, /class="agent-build-object rough-box excal-agent-object"[\s\S]+class="agent-build-object rough-diamond excal-agent-object"[\s\S]+class="agent-build-object rough-arrow excal-agent-object"/, "Excalidraw Live Build must use rough editable elements instead of a flat image");
 for (const format of ["image", "html", "pdf", "code", "canvas", "excalidraw"]) {
   assert.match(html, new RegExp(`data-add-composer="${format}"`), `${format} selection-to-Composer action missing`);
 }
@@ -145,6 +155,10 @@ assert.match(css, /\.image-edit-presets\{display:grid;grid-template-columns:repe
 assert.match(css, /\.image-reference-slots\{display:grid;grid-template-columns:repeat\(3,1fr\)/, "Reference roles need a compact three-slot layout");
 assert.match(css, /\.image-candidate-grid\{display:grid;grid-template-columns:repeat\(2,1fr\)/, "Generated directions need a comparable candidate grid");
 assert.match(css, /\.image-frame\[data-ai-preview="editorial"\]>img/, "Chosen AI candidate must preview on the source surface");
+assert.match(css, /\.agent-placement-zone\{position:absolute[^}]+cursor:move/, "Live Build area must be directly movable on the native surface");
+assert.match(css, /\.agent-build-object\{opacity:0[^}]+transition:opacity/, "Native objects need progressive visible insertion states");
+assert.match(css, /\.canvas-agent-node\{[^}]+cursor:grab/, "Generated Canvas cards must remain manually movable");
+assert.match(css, /\.agent-draw-progress i\{width:0[^}]+transition:width/, "Live Build needs visible operation progress");
 assert.doesNotMatch(css, /\.image-scope-switch|\.crop-studio/, "The rejected persistent scope group and Crop-only panel must not remain");
 assert.doesNotMatch(css, /\.crop-mode-switch|\.crop-presets|\.crop-angle|\.crop-rectangle-controls/, "Retired nested Crop hierarchy must not remain in CSS");
 assert.doesNotMatch(css, /\.image-context-toolbar:has\(/, "Opening Crop must not resize or move the image dock");
@@ -156,6 +170,12 @@ assert.match(js, /function openImageEditStudio[\s\S]+function renderImageEditCat
 assert.match(js, /function generateImageEditCandidates[\s\S]+\[1, 2, 3, 4\]/, "AI image editor must generate four review directions");
 assert.match(js, /function selectImageEditCandidate[\s\S]+showCandidate\([\s\S]+save as new version/i, "AI image candidates must enter protected source review");
 assert.match(js, /function toggleImageEditReference[\s\S]+function toggleImagePreserve[\s\S]+function updateImageEditStrength/, "AI image references, preservation, and strength handlers missing");
+assert.match(js, /const agentDrawConfig = \{[\s\S]+canvas:[\s\S]+excalidraw:/, "Canvas and Excalidraw need one shared Live Build configuration contract");
+assert.match(js, /function scheduleAgentDrawStep[\s\S]+function startAgentDrawBuild[\s\S]+function openAgentDrawStudio/, "Live Build ordered operation, run, and open handlers missing");
+assert.match(js, /document\.querySelectorAll\("\[data-agent-zone\]"\)[\s\S]+startRectDrag\([\s\S]+handle\.dataset\.agentZoneHandle/, "Live Build area move and resize behavior missing");
+assert.match(js, /function handleAgentManualMove[\s\S]+Manual move detected · remaining layout re-anchored/, "Manual Canvas placement must become a new AI layout anchor");
+assert.match(js, /function finishAgentDrawBuild[\s\S]+Layout self-check passed[\s\S]+showCandidate/, "Live Build must self-check before candidate review");
+assert.match(js, /pendingCandidateAction\.startsWith\("agent-draw:"\)[\s\S]+is-committed[\s\S]+resetAgentDrawObjects/, "Live Build needs one Accept or Restore transaction");
 assert.match(js, /#pdfPage"\)\.addEventListener\("mouseup"/, "PDF native text selection must open contextual actions");
 
 const officialSources = [
@@ -200,6 +220,9 @@ for (const source of publicDemandSources) {
 assert.match(research, /定性抽样，不是市场份额或需求量统计/, "Public demand research must keep its qualitative evidence boundary");
 
 assert.match(research, /production implementation pending/i, "design-only status missing");
+assert.match(research, /Codex × draw\.io MCP demo[\s\S]+ordered native operations \+ visible cursor \+ self-check/, "User-provided live drawing reference and design consequence missing");
+assert.match(research, /一次性生成扁平图片[\s\S]+逐步调用 native element operations/, "Canvas and Excalidraw must reject flat output in favor of editable native operations");
+assert.match(readme, /Their generative\s+path is `Live Build`[\s\S]+manual move becomes a new layout\s+anchor/, "README must record visible native generation and manual placement semantics");
 assert.match(research, /Rejected V1/, "rejected predecessor not identified");
 assert.match(readme, /Design-only successor/, "README status boundary missing");
 

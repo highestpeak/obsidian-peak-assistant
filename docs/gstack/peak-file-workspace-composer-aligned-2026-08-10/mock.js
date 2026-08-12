@@ -76,14 +76,14 @@ const surfaces = {
     state: "Native Canvas · Autosaved",
     contextTitle: "I can see the native Canvas selection",
     contextDetail: "3 cards · 2 edges · workflow card selected",
-    headline: "Canvas stays native. Peak follows the selected card.",
-    description: "Native node controls remain separate. A small Peak capsule moves with the selected card; the whole canvas is also available as context.",
+    headline: "Let AI build the Canvas the same way a person would.",
+    description: "Reserve an area, choose an anchor, then watch Peak place native cards and edges one operation at a time. Move any draft card mid-run and the remaining layout respects the new anchor.",
     scope: "Selected media card + neighbors",
     placeholder: "Ask about this card or propose a connection…",
     actions: [
       ["Explain this neighborhood", "Use the selected card and connected context", "explain-canvas"],
       ["Suggest a missing connection", "Preview one edge before accepting it", "connect-canvas"],
-      ["Create cards from a note", "Draft native Canvas cards in this group", "create-canvas-cards"],
+      ["Build a native flow here", "Place cards and edges visibly inside a chosen area", "open-canvas-live-build"],
       ["Create a brief from this group", "Materialize a linked Markdown document", "brief-canvas"],
     ],
   },
@@ -94,13 +94,13 @@ const surfaces = {
     state: "Native Excalidraw · Autosaved",
     contextTitle: "I can see the Excalidraw scene",
     contextDetail: "4 elements · Peak diamond selected",
-    headline: "Excalidraw owns selection. Peak stays attached to it.",
-    description: "Click another scene element and the Peak capsule follows. Use selected elements or the whole scene without replacing Excalidraw's native editor language.",
+    headline: "Watch AI draw with Excalidraw's own tools.",
+    description: "Anchor the build to selected shapes, reserve open space, and watch Peak create rough shapes, labels, and bound arrows step by step before an editable draft is accepted.",
     scope: "Selected diamond + connected arrows",
     placeholder: "Ask about the diagram or propose a scene change…",
     actions: [
       ["Explain the diagram", "Summarize the flow and missing assumptions", "explain-diagram"],
-      ["Generate from a prompt", "Add native shapes and bound arrows", "generate-diagram"],
+      ["Build from this selection", "Place native shapes and bound arrows visibly", "open-excalidraw-live-build"],
       ["Rewrite selected labels", "Clarify wording inside existing elements", "rewrite-labels"],
       ["Tidy the selection", "Preview alignment and spacing changes", "tidy-diagram"],
     ],
@@ -172,6 +172,33 @@ const imageEditCatalog = {
 
 const imageSourcePath = "../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png";
 
+const agentDrawConfig = {
+  canvas: {
+    title: "Build native Canvas elements",
+    nativeTypes: "Cards · files · groups · edges",
+    scope: "Selected workflow card → reserved build area",
+    prompts: {
+      expand: "Expand the selected workflow into an audience → release gate → owner decision flow.",
+      diagram: "Turn the selected notes into a native Canvas diagram with sourced cards and labeled edges.",
+      relayout: "Re-layout the selected Canvas neighborhood without changing card content or links.",
+    },
+    totalSteps: 4,
+    result: "3 native cards · 2 labeled edges · 1 manual anchor preserved",
+  },
+  excalidraw: {
+    title: "Build native Excalidraw elements",
+    nativeTypes: "Shapes · text · bound arrows",
+    scope: "Selected Peak diamond → reserved build area",
+    prompts: {
+      expand: "Continue the selected workflow with Review → Ready? → Publish using rough shapes and bound arrows.",
+      diagram: "Turn the selected idea into a hand-drawn workflow using native Excalidraw elements.",
+      relayout: "Re-layout the selected Excalidraw flow while preserving labels, styles, and arrow bindings.",
+    },
+    totalSteps: 5,
+    result: "3 native shapes · 2 bound arrows · editable labels preserved",
+  },
+};
+
 const appShell = document.querySelector(".app-shell");
 const documentName = document.querySelector("#documentName");
 const documentPath = document.querySelector("#documentPath");
@@ -198,6 +225,8 @@ const imageEditStudio = document.querySelector("#imageEditStudio");
 const imageEditPresets = document.querySelector("#imageEditPresets");
 const imageEditCandidates = document.querySelector("#imageEditCandidates");
 const imageFrame = document.querySelector("#imageFrame");
+const agentDrawStudio = document.querySelector("#agentDrawStudio");
+const agentDrawRun = document.querySelector("#agentDrawRun");
 
 let currentSurface = "image";
 let pendingCandidateAction = "";
@@ -218,6 +247,11 @@ let imageMethodTimer;
 let imageEditCategory = "restyle";
 let imageEditPreset = null;
 let imageEditVariation = 1;
+let agentDrawKind = null;
+let agentDrawStep = 0;
+let agentDrawPaused = false;
+let agentDrawRunning = false;
+let agentDrawTimer;
 let activeLasso = null;
 let surfaceDragState = null;
 const lassoSelections = { image: null, pdf: null };
@@ -258,6 +292,7 @@ function selectSurface(surface, updateHash = true) {
   if (!config) return;
 
   if (surface !== "image") closeImageEditStudio(true);
+  if (agentDrawKind && surface !== agentDrawKind) closeAgentDrawStudio(true);
 
   currentSurface = surface;
   appShell.dataset.currentSurface = surface;
@@ -590,6 +625,7 @@ function renderImageEditCategory(category, preferredPreset = "") {
 
 function openImageEditStudio(category = "restyle", preferredPreset = "") {
   if (imageTask === "crop") closeImageWorkflow(false, true);
+  closeAgentDrawStudio(true);
   closeExport();
   defaultIntelligenceContent.hidden = true;
   imageEditStudio.hidden = false;
@@ -618,6 +654,306 @@ function closeImageEditStudio(silent = false) {
   promptInput.placeholder = surfaces[currentSurface].placeholder;
   resetImageEditPreview();
   if (!silent) showToast("AI image editor closed · source unchanged");
+}
+
+function agentDrawElements(kind = agentDrawKind) {
+  if (!kind) return [];
+  return [...document.querySelectorAll(`[data-agent-build="${kind}"]`)].filter((element) => element.classList.contains("agent-build-object"));
+}
+
+function agentDrawZone(kind = agentDrawKind) {
+  return document.querySelector(`[data-agent-zone="${kind}"]`);
+}
+
+function resetAgentDrawObjects(kind, preserveCommitted = false) {
+  agentDrawElements(kind).forEach((element) => {
+    if (preserveCommitted && element.classList.contains("is-committed")) return;
+    element.classList.remove("is-visible", "is-current", "is-committed", "is-user-adjusted", "is-scene-selected");
+  });
+}
+
+function updateCanvasAgentEdges() {
+  const board = document.querySelector(".canvas-board");
+  const nodes = ["audience", "release-gate", "owner"].map((id) => document.querySelector(`[data-canvas-node="${id}"]`));
+  if (nodes.some((node) => !node)) return;
+  const scaleX = 1200 / board.clientWidth;
+  const scaleY = 760 / board.clientHeight;
+  const geometry = nodes.map((node) => ({
+    left: Number.parseFloat(node.style.left || "0"),
+    top: Number.parseFloat(node.style.top || "0"),
+    width: node.getBoundingClientRect().width,
+    height: node.getBoundingClientRect().height,
+  }));
+  const connect = (from, to, pathId, startId, endId) => {
+    const start = { x: (from.left + from.width) * scaleX, y: (from.top + from.height / 2) * scaleY };
+    const end = { x: to.left * scaleX, y: (to.top + to.height / 2) * scaleY };
+    const bend = Math.max(28, (end.x - start.x) * .48);
+    document.querySelector(`#${pathId}`).setAttribute("d", `M${start.x} ${start.y} C${start.x + bend} ${start.y} ${end.x - bend} ${end.y} ${end.x} ${end.y}`);
+    document.querySelector(`#${startId}`).setAttribute("cx", start.x);
+    document.querySelector(`#${startId}`).setAttribute("cy", start.y);
+    document.querySelector(`#${endId}`).setAttribute("cx", end.x);
+    document.querySelector(`#${endId}`).setAttribute("cy", end.y);
+  };
+  connect(geometry[0], geometry[1], "canvasAgentEdgeOne", "canvasAgentPortOne", "canvasAgentPortTwo");
+  connect(geometry[1], geometry[2], "canvasAgentEdgeTwo", "canvasAgentPortThree", "canvasAgentPortFour");
+}
+
+function layoutCanvasAgentDraft() {
+  const board = document.querySelector(".canvas-board");
+  const zone = document.querySelector("#canvasAgentZone");
+  const boardRect = board.getBoundingClientRect();
+  const zoneRect = zone.getBoundingClientRect();
+  const nodes = ["audience", "release-gate", "owner"].map((id) => document.querySelector(`[data-canvas-node="${id}"]`));
+  const gap = 18;
+  const width = Math.max(126, Math.min(168, (zoneRect.width - 36 - gap * 2) / 3));
+  const height = 104;
+  const startX = zoneRect.left - boardRect.left + 18;
+  const top = zoneRect.top - boardRect.top + Math.max(12, (zoneRect.height - height) / 2);
+  nodes.forEach((node, index) => {
+    node.style.left = `${startX + index * (width + gap)}px`;
+    node.style.top = `${top}px`;
+    node.style.width = `${width}px`;
+  });
+  updateCanvasAgentEdges();
+}
+
+function layoutExcalidrawAgentDraft() {
+  const zone = document.querySelector("#excalidrawAgentZone");
+  const scene = document.querySelector(".excalidraw-scene");
+  const zoneRect = zone.getBoundingClientRect();
+  const sceneRect = scene.getBoundingClientRect();
+  const objects = [...scene.querySelectorAll('[data-agent-build="excalidraw"]')];
+  const widths = [180, 106, 187, 102, 171];
+  const heights = [110, 110, 160, 110, 110];
+  const gap = 24;
+  const zoneX = (zoneRect.left - sceneRect.left) / sceneRect.width * 1100;
+  const zoneY = (zoneRect.top - sceneRect.top) / sceneRect.height * 690;
+  const zoneWidth = zoneRect.width / sceneRect.width * 1100;
+  const zoneHeight = zoneRect.height / sceneRect.height * 690;
+  const naturalWidth = widths.reduce((sum, value) => sum + value, 0) + gap * (objects.length - 1);
+  const scale = Math.max(.42, Math.min(.82, zoneWidth / naturalWidth, zoneHeight / 176));
+  let left = zoneX + Math.max(0, (zoneWidth - naturalWidth * scale) / 2);
+  const baseTop = zoneY + Math.max(0, (zoneHeight - 160 * scale) / 2);
+  objects.forEach((element, index) => {
+    const top = baseTop + (160 - heights[index]) * scale / 2;
+    element.setAttribute("transform", `translate(${left.toFixed(1)} ${top.toFixed(1)}) scale(${scale.toFixed(3)})`);
+    left += (widths[index] + gap) * scale;
+  });
+}
+
+function layoutAgentDrawDraft(kind = agentDrawKind) {
+  if (kind === "canvas") layoutCanvasAgentDraft();
+  if (kind === "excalidraw") layoutExcalidrawAgentDraft();
+}
+
+function resetAgentDrawZone(kind = agentDrawKind) {
+  const zone = agentDrawZone(kind);
+  if (!zone) return;
+  zone.removeAttribute("style");
+  zone.hidden = false;
+  zone.classList.remove("is-running", "is-accepted");
+  window.requestAnimationFrame(() => layoutAgentDrawDraft(kind));
+}
+
+function moveAgentDrawCursor(target, kind = agentDrawKind) {
+  const board = document.querySelector(kind === "canvas" ? ".canvas-board" : ".excalidraw-board");
+  const cursor = document.querySelector(`#${kind === "canvas" ? "canvasAgentCursor" : "excalidrawAgentCursor"}`);
+  const targetRect = target.getBoundingClientRect();
+  const boardRect = board.getBoundingClientRect();
+  cursor.hidden = false;
+  cursor.style.left = `${Math.min(board.clientWidth - 170, targetRect.right - boardRect.left + 9)}px`;
+  cursor.style.top = `${Math.max(12, targetRect.top - boardRect.top - 18)}px`;
+  cursor.querySelector("span").textContent = kind === "canvas" ? "Peak is placing a native card" : "Peak is drawing a native element";
+}
+
+function updateAgentDrawProgress(step, isFinishing = false) {
+  const config = agentDrawConfig[agentDrawKind];
+  const percent = isFinishing ? 100 : Math.round(step / (config.totalSteps + 1) * 100);
+  document.querySelector("#agentDrawProgressBar").style.width = `${percent}%`;
+  document.querySelector("#agentDrawProgressTitle").textContent = isFinishing ? "Self-checking the native draft" : `Placing operation ${step} of ${config.totalSteps}`;
+  const currentPlan = isFinishing ? 4 : step === 1 ? 2 : 3;
+  document.querySelectorAll("[data-agent-plan-step]").forEach((item) => {
+    const itemStep = Number(item.dataset.agentPlanStep);
+    item.classList.toggle("is-active", itemStep === currentPlan);
+    item.classList.toggle("is-done", itemStep < currentPlan);
+  });
+  document.querySelectorAll("[data-agent-log-step]").forEach((item) => {
+    const itemStep = Number(item.dataset.agentLogStep);
+    const activeStep = isFinishing ? 5 : Math.min(4, step + 1);
+    item.classList.toggle("is-active", itemStep === activeStep);
+    item.classList.toggle("is-done", itemStep < activeStep);
+  });
+}
+
+function finishAgentDrawBuild() {
+  agentDrawRunning = false;
+  agentDrawPaused = false;
+  updateAgentDrawProgress(agentDrawStep, true);
+  document.querySelectorAll("[data-agent-plan-step],[data-agent-log-step]").forEach((item) => {
+    item.classList.remove("is-active");
+    item.classList.add("is-done");
+  });
+  const state = document.querySelector("#agentDrawState");
+  state.textContent = "Checked";
+  state.classList.remove("is-running");
+  state.classList.add("is-done");
+  document.querySelector("#agentDrawProgressTitle").textContent = "Layout self-check passed";
+  document.querySelector("#agentDrawProgressDetail").textContent = agentDrawConfig[agentDrawKind].result;
+  document.querySelector("#agentDrawProgressBar").style.width = "100%";
+  document.querySelector("[data-agent-draw-pause]").textContent = "Replay";
+  document.querySelector("#sendPromptLabel").textContent = "Build again";
+  agentDrawZone().classList.remove("is-running");
+  document.querySelector(`#${agentDrawKind === "canvas" ? "canvasAgentCursor" : "excalidrawAgentCursor"}`).hidden = true;
+  agentDrawElements().forEach((element) => element.classList.remove("is-current"));
+  showCandidate(
+    `agent-draw:${agentDrawKind}`,
+    `${agentDrawKind === "canvas" ? "Canvas" : "Excalidraw"} native draft ready`,
+    `${agentDrawConfig[agentDrawKind].result} · accept all or restore the untouched source`,
+  );
+  showToast("Live Build finished · native draft ready for manual review");
+}
+
+function scheduleAgentDrawStep(delay = 680) {
+  window.clearTimeout(agentDrawTimer);
+  if (agentDrawPaused || !agentDrawRunning) return;
+  agentDrawTimer = window.setTimeout(() => {
+    agentDrawStep += 1;
+    const config = agentDrawConfig[agentDrawKind];
+    agentDrawElements().forEach((element) => element.classList.remove("is-current"));
+    const current = agentDrawElements().filter((element) => Number(element.dataset.buildStep) === agentDrawStep);
+    current.forEach((element) => element.classList.add("is-visible", "is-current"));
+    updateAgentDrawProgress(agentDrawStep);
+    window.requestAnimationFrame(() => {
+      if (current[0]) moveAgentDrawCursor(current[0]);
+    });
+    if (agentDrawStep >= config.totalSteps) {
+      agentDrawTimer = window.setTimeout(finishAgentDrawBuild, document.querySelector("#agentDrawVisibleOps").checked ? 760 : 140);
+      return;
+    }
+    scheduleAgentDrawStep(document.querySelector("#agentDrawVisibleOps").checked ? 680 : 120);
+  }, delay);
+}
+
+function startAgentDrawBuild() {
+  if (!agentDrawKind) return;
+  const prompt = promptInput.value.trim();
+  if (!prompt) {
+    promptInput.focus();
+    showToast("Describe what Peak should build in the reserved area");
+    return;
+  }
+  candidateReview.hidden = true;
+  pendingCandidateAction = "";
+  resetAgentDrawObjects(agentDrawKind);
+  layoutAgentDrawDraft(agentDrawKind);
+  agentDrawStep = 0;
+  agentDrawPaused = false;
+  agentDrawRunning = true;
+  agentDrawRun.hidden = false;
+  agentDrawZone().classList.add("is-running");
+  const state = document.querySelector("#agentDrawState");
+  state.textContent = "Building";
+  state.classList.add("is-running");
+  state.classList.remove("is-done");
+  document.querySelector("#agentDrawProgressTitle").textContent = "Reading anchors and open space";
+  document.querySelector("#agentDrawProgressDetail").textContent = "Native draft · source not written yet";
+  document.querySelector("#agentDrawProgressBar").style.width = "4%";
+  document.querySelector("[data-agent-draw-pause]").textContent = "Pause";
+  document.querySelector("#sendPromptLabel").textContent = "Building…";
+  document.querySelectorAll("[data-agent-plan-step],[data-agent-log-step]").forEach((item) => item.classList.remove("is-active", "is-done"));
+  document.querySelector('[data-agent-plan-step="1"]').classList.add("is-active");
+  document.querySelector('[data-agent-log-step="1"]').classList.add("is-active");
+  const zone = agentDrawZone();
+  moveAgentDrawCursor(zone);
+  scheduleAgentDrawStep(document.querySelector("#agentDrawVisibleOps").checked ? 620 : 100);
+}
+
+function openAgentDrawStudio(kind) {
+  const config = agentDrawConfig[kind];
+  if (!config) return;
+  closeImageEditStudio(true);
+  if (agentDrawKind && agentDrawKind !== kind) closeAgentDrawStudio(true);
+  agentDrawKind = kind;
+  defaultIntelligenceContent.hidden = true;
+  imageEditStudio.hidden = true;
+  agentDrawStudio.hidden = false;
+  intelligencePanel.classList.remove("is-image-editing");
+  intelligencePanel.classList.add("is-agent-drawing");
+  document.querySelector("#agentDrawTitle").textContent = config.title;
+  document.querySelector("#agentDrawScope").textContent = config.scope;
+  document.querySelector("#agentDrawNativeTypes").textContent = config.nativeTypes;
+  document.querySelector("#agentDrawState").textContent = "Draft";
+  document.querySelector("#agentDrawState").classList.remove("is-running", "is-done");
+  promptFile.textContent = `${surfaces[kind].name} · Live Build`;
+  promptInput.value = config.prompts.expand;
+  promptInput.placeholder = "Describe the native elements and relationships to build…";
+  document.querySelector("#promptModeLabel").textContent = `${config.totalSteps} visible native operations · review before write`;
+  document.querySelector("#sendPromptLabel").hidden = false;
+  document.querySelector("#sendPromptLabel").textContent = "Start build";
+  agentDrawRun.hidden = true;
+  candidateReview.hidden = true;
+  resetAgentDrawObjects(kind, true);
+  resetAgentDrawZone(kind);
+}
+
+function closeAgentDrawStudio(silent = false) {
+  if (agentDrawStudio.hidden) return;
+  const closingKind = agentDrawKind;
+  window.clearTimeout(agentDrawTimer);
+  agentDrawRunning = false;
+  agentDrawPaused = false;
+  if (pendingCandidateAction.startsWith("agent-draw:")) {
+    candidateReview.hidden = true;
+    pendingCandidateAction = "";
+  }
+  const hasCommitted = agentDrawElements(closingKind).some((element) => element.classList.contains("is-committed"));
+  if (!hasCommitted) resetAgentDrawObjects(closingKind);
+  const zone = agentDrawZone(closingKind);
+  if (zone) zone.hidden = true;
+  const cursor = document.querySelector(`#${closingKind === "canvas" ? "canvasAgentCursor" : "excalidrawAgentCursor"}`);
+  if (cursor) cursor.hidden = true;
+  agentDrawStudio.hidden = true;
+  defaultIntelligenceContent.hidden = false;
+  intelligencePanel.classList.remove("is-agent-drawing");
+  document.querySelector("#sendPromptLabel").hidden = true;
+  document.querySelector("#sendPromptLabel").textContent = "Generate 4";
+  document.querySelector("#promptModeLabel").textContent = "Source stays unchanged until accepted";
+  promptFile.textContent = surfaces[currentSurface].name;
+  promptInput.value = "";
+  promptInput.placeholder = surfaces[currentSurface].placeholder;
+  agentDrawKind = null;
+  if (!silent) showToast("Live Build closed · unaccepted native operations restored");
+}
+
+function selectAgentDrawIntent(button) {
+  document.querySelectorAll("[data-agent-draw-intent]").forEach((item) => item.classList.toggle("is-active", item === button));
+  promptInput.value = agentDrawConfig[agentDrawKind].prompts[button.dataset.agentDrawIntent];
+  promptInput.focus();
+}
+
+function toggleAgentDrawPause(button) {
+  if (!agentDrawRunning) {
+    startAgentDrawBuild();
+    return;
+  }
+  agentDrawPaused = !agentDrawPaused;
+  button.textContent = agentDrawPaused ? "Resume" : "Pause";
+  document.querySelector("#agentDrawState").textContent = agentDrawPaused ? "Paused" : "Building";
+  if (agentDrawPaused) {
+    window.clearTimeout(agentDrawTimer);
+    showToast("Live Build paused · manual edits remain available");
+    return;
+  }
+  scheduleAgentDrawStep(120);
+}
+
+function handleAgentManualMove(node) {
+  node.classList.add("is-user-adjusted");
+  updateCanvasAgentEdges();
+  if (document.querySelector("#agentDrawRespectMoves").checked) {
+    document.querySelector("#agentDrawProgressDetail").textContent = "Manual move detected · remaining layout re-anchored";
+  }
+  showToast("Manual placement captured as a new layout anchor");
 }
 
 function toggleImageEditReference(button) {
@@ -1218,7 +1554,7 @@ function handleExcalStyle(button) {
   const kind = button.dataset.excalStyle;
   const value = button.dataset.value;
   button.parentElement.querySelectorAll("button").forEach((item) => item.classList.toggle("is-active", item === button));
-  const paths = document.querySelectorAll(".selected-shape > path");
+  const paths = document.querySelectorAll('.excalidraw-scene [data-excal-element].is-scene-selected > path:not(.agent-generated-bound)');
   paths.forEach((path) => {
     if (kind === "stroke") path.style.stroke = value;
     if (kind === "fill") path.style.fill = value;
@@ -1228,6 +1564,14 @@ function handleExcalStyle(button) {
 }
 
 function handleAiAction(action) {
+  if (action === "open-canvas-live-build") {
+    openAgentDrawStudio("canvas");
+    return;
+  }
+  if (action === "open-excalidraw-live-build") {
+    openAgentDrawStudio("excalidraw");
+    return;
+  }
   if (action === "ask-pdf" || action === "summarize-pdf") {
     const scopeLabel = pdfMode === "document" ? "all 18 pages" : pdfMode === "page" ? `page ${document.querySelector("#pdfToolbarPage").textContent}` : pdfMode === "text" ? "selected text" : `lasso on page ${document.querySelector("#pdfToolbarPage").textContent}`;
     showAnswer(`Answer from ${scopeLabel}`, [
@@ -1317,6 +1661,27 @@ function handleAiAction(action) {
 function completeCandidate(action) {
   const accepted = action === "accept";
   candidateReview.hidden = true;
+  if (pendingCandidateAction.startsWith("agent-draw:")) {
+    const kind = pendingCandidateAction.split(":")[1];
+    const zone = agentDrawZone(kind);
+    if (accepted) {
+      agentDrawElements(kind).forEach((element) => element.classList.add("is-visible", "is-committed"));
+      zone.classList.add("is-accepted");
+      document.querySelector("#agentDrawState").textContent = "Accepted";
+      setClean(`${kind === "canvas" ? "Canvas" : "Excalidraw"} Live Build accepted · native elements saved`);
+      showToast("Native elements accepted · continue editing with the original tools");
+    } else {
+      resetAgentDrawObjects(kind);
+      zone.classList.remove("is-running", "is-accepted");
+      document.querySelector("#agentDrawState").textContent = "Draft";
+      document.querySelector("#agentDrawState").classList.remove("is-running", "is-done");
+      agentDrawRun.hidden = true;
+      setClean(surfaces[kind].state);
+      showToast("Live Build restored · source scene unchanged");
+    }
+    pendingCandidateAction = "";
+    return;
+  }
   if (pendingCandidateAction.startsWith("image-edit:")) {
     if (accepted) {
       setClean(`${imageEditPreset?.[0] || "AI edit"} accepted · saved as a new image version`);
@@ -1401,6 +1766,37 @@ document.addEventListener("click", (event) => {
   const imageEditCandidate = event.target.closest("[data-image-edit-candidate]");
   if (imageEditCandidate) {
     selectImageEditCandidate(imageEditCandidate);
+    return;
+  }
+
+  const agentDrawOpen = event.target.closest("[data-agent-draw-open]");
+  if (agentDrawOpen) {
+    openAgentDrawStudio(agentDrawOpen.dataset.agentDrawOpen);
+    return;
+  }
+
+  const agentDrawClose = event.target.closest("[data-agent-draw-close]");
+  if (agentDrawClose) {
+    closeAgentDrawStudio();
+    return;
+  }
+
+  const agentDrawIntent = event.target.closest("[data-agent-draw-intent]");
+  if (agentDrawIntent) {
+    selectAgentDrawIntent(agentDrawIntent);
+    return;
+  }
+
+  const agentZoneReset = event.target.closest("[data-agent-zone-reset]");
+  if (agentZoneReset) {
+    resetAgentDrawZone();
+    showToast("Live Build area reset around the selected anchor");
+    return;
+  }
+
+  const agentDrawPause = event.target.closest("[data-agent-draw-pause]");
+  if (agentDrawPause) {
+    toggleAgentDrawPause(agentDrawPause);
     return;
   }
 
@@ -1621,6 +2017,7 @@ document.addEventListener("click", (event) => {
     const action = candidateAction.dataset.candidate;
     if (action === "retry") {
       if (pendingCandidateAction.startsWith("image-edit:")) generateImageEditCandidates();
+      else if (pendingCandidateAction.startsWith("agent-draw:")) startAgentDrawBuild();
       else showToast("Generating another suggestion…");
       return;
     }
@@ -1668,6 +2065,38 @@ imageRegion.querySelectorAll("[data-region-handle]").forEach((handle) => {
 imageRegion.addEventListener("pointerdown", (event) => {
   if (event.target.closest("[data-region-handle]")) return;
   startRectDrag(event, imageRegion, document.querySelector("#imageFrame"), "move", updateImageRegionLabel, updateImageRegionLabel);
+});
+
+document.querySelectorAll("[data-agent-zone]").forEach((zone) => {
+  const kind = zone.dataset.agentZone;
+  const board = document.querySelector(kind === "canvas" ? ".canvas-board" : ".excalidraw-board");
+  zone.querySelectorAll("[data-agent-zone-handle]").forEach((handle) => {
+    handle.addEventListener("pointerdown", (event) => startRectDrag(
+      event,
+      zone,
+      board,
+      handle.dataset.agentZoneHandle,
+      () => layoutAgentDrawDraft(kind),
+      () => {
+        layoutAgentDrawDraft(kind);
+        showToast("Live Build area resized · generation will respect these bounds");
+      },
+    ));
+  });
+  zone.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("[data-agent-zone-handle]")) return;
+    startRectDrag(event, zone, board, "move", () => layoutAgentDrawDraft(kind), () => {
+      layoutAgentDrawDraft(kind);
+      showToast("Live Build area moved · spatial intent updated");
+    });
+  });
+});
+
+document.querySelectorAll('.canvas-agent-node[data-agent-build="canvas"]').forEach((node) => {
+  node.addEventListener("pointerdown", (event) => {
+    if (!node.classList.contains("is-visible")) return;
+    startRectDrag(event, node, document.querySelector(".canvas-board"), "move", updateCanvasAgentEdges, () => handleAgentManualMove(node));
+  });
 });
 
 document.querySelector("#pdfPage").addEventListener("mouseup", () => {
@@ -1749,6 +2178,10 @@ codeEditor.addEventListener("keydown", (event) => {
 });
 
 document.querySelector("#sendPrompt").addEventListener("click", () => {
+  if (!agentDrawStudio.hidden) {
+    startAgentDrawBuild();
+    return;
+  }
   if (!imageEditStudio.hidden) {
     generateImageEditCandidates();
     return;
@@ -1774,6 +2207,11 @@ promptInput.addEventListener("keydown", (event) => {
 window.addEventListener("hashchange", () => {
   const surface = window.location.hash.slice(1);
   if (surfaces[surface]) selectSurface(surface, false);
+});
+
+window.addEventListener("resize", () => {
+  if (!agentDrawKind || agentDrawZone()?.hidden) return;
+  layoutAgentDrawDraft(agentDrawKind);
 });
 
 const initialSurface = window.location.hash.slice(1);

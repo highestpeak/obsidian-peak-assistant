@@ -293,6 +293,8 @@
                 <circle cx="345" cy="230" r="5"/><circle cx="495" cy="335" r="5"/><circle cx="735" cy="335" r="5"/><circle cx="875" cy="220" r="5"/>
                 <rect x="404" y="261" width="68" height="22" rx="11"/><text x="438" y="276">informs</text>
                 <rect x="782" y="259" width="58" height="22" rx="11"/><text x="811" y="274">ships</text>
+                <g class="agent-build-object canvas-agent-edge" data-agent-build="canvas" data-build-step="2"><path id="canvasAgentEdgeOne"/><circle id="canvasAgentPortOne" r="5"/><circle id="canvasAgentPortTwo" r="5"/></g>
+                <g class="agent-build-object canvas-agent-edge" data-agent-build="canvas" data-build-step="4"><path id="canvasAgentEdgeTwo"/><circle id="canvasAgentPortThree" r="5"/><circle id="canvasAgentPortFour" r="5"/></g>
               </svg>
               <div class="canvas-group"><span>Peak launch system</span></div>
               <article class="canvas-card note-card" data-canvas-node="research">
@@ -303,11 +305,16 @@
                 <span>ai-knowledge-workflow.png</span>
               </article>
               <article class="canvas-card text-card" data-canvas-node="launch"><span class="card-type">Outcome</span><strong>Launch brief</strong><ul><li>Evidence-backed claims</li><li>Focused workflows</li><li>Owner review</li></ul></article>
+              <article class="canvas-card canvas-agent-node agent-build-object" data-agent-build="canvas" data-build-step="1" data-canvas-node="audience"><span class="card-type">Audience</span><strong>Developer teams</strong><p>Need source-aware answers and visible review boundaries.</p><i class="canvas-port left"></i><i class="canvas-port right"></i></article>
+              <article class="canvas-card canvas-agent-node agent-build-object" data-agent-build="canvas" data-build-step="3" data-canvas-node="release-gate"><span class="card-type">Decision</span><strong>Release gate</strong><p>Claims verified · owner review complete.</p><i class="canvas-port left"></i><i class="canvas-port right"></i></article>
+              <article class="canvas-card canvas-agent-node agent-build-object" data-agent-build="canvas" data-build-step="4" data-canvas-node="owner"><span class="card-type">Owner</span><strong>Launch owner</strong><p>Accept, revise, or return the candidate.</p><i class="canvas-port left"></i><i class="canvas-port right"></i></article>
+              <div class="agent-placement-zone" id="canvasAgentZone" data-agent-zone="canvas" hidden><span><svg><use href="#i-sparkles"/></svg><b>AI build area</b><small>Drag or resize before starting</small></span><i data-agent-zone-handle="nw"></i><i data-agent-zone-handle="ne"></i><i data-agent-zone-handle="se"></i><i data-agent-zone-handle="sw"></i></div>
+              <div class="agent-build-cursor" id="canvasAgentCursor" hidden><svg><use href="#i-sparkles"/></svg><span>Peak is placing a native card</span></div>
               <div class="canvas-native-node-menu" id="canvasNativeNodeMenu"><button aria-label="Change color" data-canvas-action="color"><i class="color-dot"></i></button><button aria-label="More" data-demo-action="Canvas card actions opened"><svg><use href="#i-more"/></svg></button></div>
-              <div class="selection-context-bar canvas-selection-tools follows-selection" id="canvasSelectionToolbar"><span><small>Canvas selection</small><strong id="canvasSelectionLabel">Workflow card + 2 neighbors</strong></span><button class="canvas-ask" data-ai-action="explain-canvas"><svg><use href="#i-sparkles"/></svg>Ask</button><button class="add-composer" data-add-composer="canvas" data-context-scope="selection">Add to Composer</button></div>
+              <div class="selection-context-bar canvas-selection-tools follows-selection" id="canvasSelectionToolbar"><span><small>Canvas selection</small><strong id="canvasSelectionLabel">Workflow card + 2 neighbors</strong></span><button class="canvas-ask" data-ai-action="explain-canvas"><svg><use href="#i-sparkles"/></svg>Ask</button><button class="agent-build-trigger" data-agent-draw-open="canvas"><svg><use href="#i-edit"/></svg>Build here</button><button class="add-composer" data-add-composer="canvas" data-context-scope="selection">Add to Composer</button></div>
               <div class="surface-scope-chip canvas-scope-chip"><span>Whole canvas</span><button data-ai-action="explain-canvas">Ask</button><button class="add-composer" data-add-composer="canvas" data-context-scope="all">Add</button></div>
               <div class="canvas-zoom"><button data-canvas-zoom="out"><svg><use href="#i-minus"/></svg></button><span id="canvasZoomLabel">84%</span><button data-canvas-zoom="in"><svg><use href="#i-plus"/></svg></button><button data-canvas-action="fit"><svg><use href="#i-maximize"/></svg></button></div>
-              <div class="canvas-create-toolbar"><button class="is-active" aria-label="Select" data-canvas-tool="Select"><svg><use href="#i-edit"/></svg></button><button aria-label="Add card" data-canvas-tool="Card"><svg><use href="#i-file"/></svg></button><button aria-label="Add media" data-canvas-tool="Media"><svg><use href="#i-image"/></svg></button><button aria-label="Add group" data-canvas-tool="Group"><svg><use href="#i-layout"/></svg></button></div>
+              <div class="canvas-create-toolbar"><button class="is-active" aria-label="Select" data-canvas-tool="Select"><svg><use href="#i-edit"/></svg></button><button aria-label="Add card" data-canvas-tool="Card"><svg><use href="#i-file"/></svg></button><button aria-label="Add media" data-canvas-tool="Media"><svg><use href="#i-image"/></svg></button><button aria-label="Add group" data-canvas-tool="Group"><svg><use href="#i-layout"/></svg></button><button class="native-ai-tool" aria-label="Build native Canvas elements with AI" data-agent-draw-open="canvas"><svg><use href="#i-sparkles"/></svg></button></div>
             </div>
           </section>
 
@@ -315,7 +322,7 @@
             <div class="excalidraw-board">
               <div class="excalidraw-menu"><button aria-label="Menu" data-demo-action="Excalidraw menu opened">☰</button><button aria-label="Library" data-demo-action="Excalidraw library opened"><svg><use href="#i-layout"/></svg></button></div>
               <div class="excalidraw-tools" aria-label="Excalidraw tools">
-                <button class="is-active" title="Selection" data-excal-tool="Selection">↖</button><button title="Rectangle" data-excal-tool="Rectangle">▭</button><button title="Diamond" data-excal-tool="Diamond">◇</button><button title="Ellipse" data-excal-tool="Ellipse">○</button><button title="Arrow" data-excal-tool="Arrow">→</button><button title="Draw" data-excal-tool="Draw"><svg><use href="#i-pen"/></svg></button><button title="Text" data-excal-tool="Text">T</button><button title="Image" data-excal-tool="Image"><svg><use href="#i-image"/></svg></button>
+                <button class="is-active" title="Selection" data-excal-tool="Selection">↖</button><button title="Rectangle" data-excal-tool="Rectangle">▭</button><button title="Diamond" data-excal-tool="Diamond">◇</button><button title="Ellipse" data-excal-tool="Ellipse">○</button><button title="Arrow" data-excal-tool="Arrow">→</button><button title="Draw" data-excal-tool="Draw"><svg><use href="#i-pen"/></svg></button><button title="Text" data-excal-tool="Text">T</button><button title="Image" data-excal-tool="Image"><svg><use href="#i-image"/></svg></button><button class="native-ai-tool" title="Build native Excalidraw elements with AI" data-agent-draw-open="excalidraw"><svg><use href="#i-sparkles"/></svg></button>
               </div>
               <div class="excalidraw-properties">
                 <span>Stroke</span><div><button class="stroke-black is-active" data-excal-style="stroke" data-value="#303037"></button><button class="stroke-purple" data-excal-style="stroke" data-value="#846fd3"></button><button class="stroke-blue" data-excal-style="stroke" data-value="#4f85be"></button><button class="stroke-red" data-excal-style="stroke" data-value="#c75d55"></button></div>
@@ -329,8 +336,15 @@
                 <g class="rough-arrow"><path d="M724 254Q802 247 839 193"/><path d="m826 200 17-12-1 21"/></g>
                 <g class="rough-box" data-excal-element="Candidate block"><path d="M848 130Q944 125 1031 135Q1038 182 1029 228Q935 235 847 224Q842 178 848 130Z"/><path d="M852 135Q943 130 1027 139Q1032 180 1025 223Q938 228 852 220Q848 178 852 135Z"/><text x="939" y="174">Candidate</text><text class="scene-note" x="939" y="201">accept · restore</text></g>
                 <text class="hand-note" x="501" y="407">keep every change reviewable ↑</text>
+                <g class="agent-build-object rough-box excal-agent-object" data-agent-build="excalidraw" data-build-step="1" data-excal-element="Review shape"><path d="M0 8Q88 0 178 7Q184 58 176 108Q88 115 4 106Q-3 58 0 8Z"/><path d="M5 12Q89 6 173 11Q178 57 172 103Q89 109 8 102Q2 57 5 12Z"/><text x="89" y="49">Review</text><text class="scene-note" x="89" y="75">owner checks evidence</text><rect class="agent-generated-bound" x="-8" y="-2" width="196" height="122"/><circle class="agent-generated-handle" cx="-8" cy="-2" r="5"/><circle class="agent-generated-handle" cx="188" cy="120" r="5"/></g>
+                <g class="agent-build-object rough-arrow excal-agent-object" data-agent-build="excalidraw" data-build-step="2"><path d="M0 55Q55 38 106 53"/><path d="m92 44 18 10-18 8"/></g>
+                <g class="agent-build-object rough-diamond excal-agent-object" data-agent-build="excalidraw" data-build-step="3" data-excal-element="Decision diamond"><path d="M93 0Q142 40 187 81Q140 124 92 160Q47 121 0 81Q47 39 93 0Z"/><path d="M93 6Q138 42 181 81Q138 119 92 154Q49 118 7 81Q49 43 93 6Z"/><text x="93" y="78">Ready?</text><text class="scene-note" x="93" y="103">accept or revise</text><rect class="agent-generated-bound" x="-8" y="-8" width="203" height="176"/><circle class="agent-generated-handle" cx="-8" cy="-8" r="5"/><circle class="agent-generated-handle" cx="195" cy="168" r="5"/></g>
+                <g class="agent-build-object rough-arrow excal-agent-object" data-agent-build="excalidraw" data-build-step="4"><path d="M0 54Q52 38 102 54"/><path d="m88 45 18 10-18 8"/></g>
+                <g class="agent-build-object rough-box excal-agent-object" data-agent-build="excalidraw" data-build-step="5" data-excal-element="Publish shape"><path d="M0 8Q86 1 171 8Q177 56 170 104Q86 111 3 103Q-3 56 0 8Z"/><path d="M5 12Q86 6 166 12Q172 55 166 99Q86 105 8 99Q2 55 5 12Z"/><text x="86" y="47">Publish</text><text class="scene-note" x="86" y="73">new linked artifact</text><rect class="agent-generated-bound" x="-8" y="-2" width="189" height="118"/><circle class="agent-generated-handle" cx="-8" cy="-2" r="5"/><circle class="agent-generated-handle" cx="181" cy="116" r="5"/></g>
               </svg>
-              <div class="selection-context-bar excalidraw-selection-bar follows-selection"><span><small>Excalidraw selection</small><strong id="excalSelectionLabel">Peak diamond + 2 bound arrows</strong></span><button data-ai-action="tidy-diagram"><svg><use href="#i-sparkles"/></svg>Ask</button><button class="add-composer" data-add-composer="excalidraw" data-context-scope="selection">Add to Composer</button></div>
+              <div class="agent-placement-zone" id="excalidrawAgentZone" data-agent-zone="excalidraw" hidden><span><svg><use href="#i-sparkles"/></svg><b>AI build area</b><small>Drag or resize before starting</small></span><i data-agent-zone-handle="nw"></i><i data-agent-zone-handle="ne"></i><i data-agent-zone-handle="se"></i><i data-agent-zone-handle="sw"></i></div>
+              <div class="agent-build-cursor" id="excalidrawAgentCursor" hidden><svg><use href="#i-sparkles"/></svg><span>Peak is binding a native arrow</span></div>
+              <div class="selection-context-bar excalidraw-selection-bar follows-selection"><span><small>Excalidraw selection</small><strong id="excalSelectionLabel">Peak diamond + 2 bound arrows</strong></span><button data-ai-action="tidy-diagram"><svg><use href="#i-sparkles"/></svg>Ask</button><button class="agent-build-trigger" data-agent-draw-open="excalidraw"><svg><use href="#i-edit"/></svg>Build from this</button><button class="add-composer" data-add-composer="excalidraw" data-context-scope="selection">Add to Composer</button></div>
               <div class="surface-scope-chip excalidraw-scope-chip"><span>Whole scene</span><button data-ai-action="explain-diagram">Ask</button><button class="add-composer" data-add-composer="excalidraw" data-context-scope="all">Add</button></div>
               <div class="excalidraw-bottom"><button data-excal-zoom="out"><svg><use href="#i-minus"/></svg></button><span id="excalZoomLabel">72%</span><button data-excal-zoom="in"><svg><use href="#i-plus"/></svg></button><button data-demo-action="Last Excalidraw action undone"><svg><use href="#i-undo"/></svg></button></div>
             </div>
@@ -408,6 +422,48 @@
               <section class="image-edit-candidates" id="imageEditCandidates" hidden>
                 <header><span><strong>4 generated directions</strong><small>Choose one to preview against the source.</small></span><button data-image-editor-generate>Regenerate</button></header>
                 <div class="image-candidate-grid" id="imageCandidateGrid"></div>
+              </section>
+            </section>
+
+            <section class="agent-draw-studio" id="agentDrawStudio" hidden>
+              <header class="agent-draw-header">
+                <button data-agent-draw-close aria-label="Back to Intelligence"><svg><use href="#i-chevron"/></svg></button>
+                <span><small>LIVE BUILD</small><strong id="agentDrawTitle">Build native Canvas elements</strong></span>
+                <i id="agentDrawState">Draft</i>
+              </header>
+              <div class="agent-draw-scope">
+                <span><svg><use href="#i-eye"/></svg><b id="agentDrawScope">Workflow card → build area</b></span>
+                <small id="agentDrawNativeTypes">Cards · groups · edges</small>
+              </div>
+              <div class="agent-draw-intents" aria-label="Live Build intent">
+                <button class="is-active" data-agent-draw-intent="expand">Expand flow</button>
+                <button data-agent-draw-intent="diagram">Turn into diagram</button>
+                <button data-agent-draw-intent="relayout">Re-layout</button>
+              </div>
+              <section class="agent-draw-brief">
+                <span><strong>Place it like a person would</strong><small>Peak issues visible native operations instead of replacing the file with one generated image.</small></span>
+                <button data-agent-zone-reset>Reset area</button>
+              </section>
+              <ol class="agent-draw-plan" id="agentDrawPlan">
+                <li data-agent-plan-step="1"><i>1</i><span><strong>Read anchors</strong><small>Selection, nearby elements, open space</small></span></li>
+                <li data-agent-plan-step="2"><i>2</i><span><strong>Place elements</strong><small>One native object at a time</small></span></li>
+                <li data-agent-plan-step="3"><i>3</i><span><strong>Bind relationships</strong><small>Edges or bound arrows</small></span></li>
+                <li data-agent-plan-step="4"><i>4</i><span><strong>Self-check layout</strong><small>Overlap, hierarchy, labels, alignment</small></span></li>
+              </ol>
+              <div class="agent-draw-options">
+                <label><input type="checkbox" id="agentDrawVisibleOps" checked/><span><strong>Show every operation</strong><small>Watch elements appear and connect</small></span></label>
+                <label><input type="checkbox" id="agentDrawRespectMoves" checked/><span><strong>Respect my moves</strong><small>Manual placement becomes a new anchor</small></span></label>
+              </div>
+              <section class="agent-draw-run" id="agentDrawRun" hidden>
+                <header><span><strong id="agentDrawProgressTitle">Placing element 1 of 5</strong><small id="agentDrawProgressDetail">Native draft · source not written yet</small></span><button data-agent-draw-pause>Pause</button></header>
+                <div class="agent-draw-progress"><i id="agentDrawProgressBar"></i></div>
+                <ul id="agentDrawLog">
+                  <li data-agent-log-step="1"><i></i><span>Read selected anchor and reserved build area</span></li>
+                  <li data-agent-log-step="2"><i></i><span>Create native elements with stable IDs</span></li>
+                  <li data-agent-log-step="3"><i></i><span>Bind relationships to visible ports</span></li>
+                  <li data-agent-log-step="4"><i></i><span>Reflow around the user-adjusted anchor</span></li>
+                  <li data-agent-log-step="5"><i></i><span>Self-check overlap, hierarchy, and labels</span></li>
+                </ul>
               </section>
             </section>
           </div>

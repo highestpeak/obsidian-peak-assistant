@@ -19,7 +19,14 @@ Design-only successor to the rejected six-surface prototype in
 1. Use one direct-manipulation shell: the file surface and the always-visible,
    equal-height Intelligence sidecar share the full workspace.
 2. Keep native Canvas and Excalidraw renderer/editor language. Peak adds
-   context and candidates; it does not replace those editors.
+   context and candidates; it does not replace those editors. Their generative
+   path is `Live Build`: the user reserves and resizes a build area, anchors it
+   to an existing selection, then watches Peak place native objects and bind
+   relationships one operation at a time. A manual move becomes a new layout
+   anchor instead of being overwritten by the next AI step. The run ends with a
+   layout self-check and one Accept / Restore boundary. Canvas operations create
+   cards, files, groups, and edges; Excalidraw operations create rough shapes,
+   editable text, and bound arrows.
 3. Remove global View / Edit / Compare / Changes controls. Editing is a native
    file affordance; review appears only after an AI suggestion exists.
 4. Keep HTML as a live page with element selection and one local source-edit
@@ -79,6 +86,11 @@ Design-only successor to the rejected six-surface prototype in
   selection kind, page, normalized points/bounds, selected text/OCR, and preview
   snapshot. Selection and crop may share the contour input engine without
   sharing product state or commit semantics.
+- For Canvas and Excalidraw, keep a renderer-specific native-operation adapter
+  behind one Live Build envelope: source revision, anchor element IDs, reserved
+  bounds, ordered operations, stable created IDs, user-move receipts, self-check
+  result, and one candidate transaction. Never generate a flat screenshot as
+  the editable result, and never write a complete unreviewed scene in one jump.
 
 Every visible primary control in the mock must either change the file surface,
 change the current selection, or open a concrete Intelligence result. Decorative

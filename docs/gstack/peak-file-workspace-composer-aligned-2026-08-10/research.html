@@ -44,8 +44,8 @@
           <article class="format"><header><h3>HTML</h3><span>Live annotation</span></header><dl><dt>Core</dt><dd>页面始终可见；局部展开可编辑源码，修改状态即时反馈。</dd><dt>Selection</dt><dd>Whole page 或连续 Pick element；胶囊随 DOM 选区移动，并携带 selector、可见文本与源码位置。</dd><dt>AI</dt><dd>解释、修改、修复布局，并把页面或元素上下文加入 Composer。</dd><dt>不要做</dt><dd class="exclude">把 Preview / Edit / Split 做成所有文件共用的模式条。</dd></dl></article>
           <article class="format"><header><h3>PDF</h3><span>Explicit scope</span></header><dl><dt>Scope</dt><dd>All pages、This page、Text、Lasso 四种显式范围；Lasso 可以自由圈选文字、表格或图片。</dd><dt>AI</dt><dd>摘要、问答、解释、翻译、OCR/结构提取；局部动作贴选区，引用精确回跳。</dd><dt>Composer</dt><dd>必须写清 PDF 文件、页码、normalized point mask、bounds、选中文本/OCR 与 source revision。</dd><dt>不要做</dt><dd class="exclude">用矩形冒充 Free，Ask this PDF 却不说明范围，或让回答与 PDF 页面割裂。</dd></dl></article>
           <article class="format"><header><h3>Code Source</h3><span>Native selection</span></header><dl><dt>Core</dt><dd>语法高亮、行号、直接输入、保存反馈；不需要先切换编辑状态。</dd><dt>Selection</dt><dd>每次文本选中后，Ask / Add to Composer 胶囊立即出现在选区旁；Whole file 保留在 tab bar。</dd><dt>Boundary</dt><dd>运行、测试、构建是独立授权与环境，不混进文件编辑器。</dd><dt>不要做</dt><dd class="exclude">Code Suggest Change、选区动作固定底栏、Symbols、项目树或调试器。</dd></dl></article>
-          <article class="format"><header><h3>Obsidian Canvas</h3><span>Native + attached</span></header><dl><dt>Core</dt><dd>保留原生卡片、media、group、edge、node controls、zoom 和 create toolbar。</dd><dt>AI</dt><dd>Peak 胶囊跟随当前卡片；选区邻域或 Whole canvas 都可以进入 Composer。</dd><dt>Write</dt><dd>新节点或边先以候选状态预览，再写回开放的 Canvas 文件。</dd><dt>不要做</dt><dd class="exclude">把 Peak 动作混进伪造的 Canvas 原生工具，或重画节点图产品。</dd></dl></article>
-          <article class="format"><header><h3>Excalidraw</h3><span>Native + attached</span></header><dl><dt>Core</dt><dd>原生选择、shape、属性、library、zoom/pan、arrow binding 和导出。</dd><dt>AI</dt><dd>Peak 胶囊跟随被点选的 scene element；selected elements 与 Whole scene 都可进入 Composer。</dd><dt>Integration</dt><dd>Peak Intelligence 是宿主侧栏；场景编辑仍由 Excalidraw 完成。</dd><dt>不要做</dt><dd class="exclude">把 Peak 自己的画布/属性面板当成 Excalidraw，或把 AI 菜单固定在远端。</dd></dl></article>
+          <article class="format"><header><h3>Obsidian Canvas</h3><span>Native Live Build</span></header><dl><dt>Core</dt><dd>保留原生卡片、media、group、edge、node controls、zoom 和 create toolbar。</dd><dt>Spatial intent</dt><dd>用户从选中卡片或 AI create tool 进入 Live Build，先拖动/缩放生成区域。选中元素 ID、邻域和区域 bounds 共同成为布局约束。</dd><dt>Generation</dt><dd>Peak 像人手动编辑一样，逐项创建有 stable ID 的 native card、file、group 与 edge；当前操作保持选中并显示进度。用户中途移动 draft card 后，后续布局以新位置重新锚定。</dd><dt>Review</dt><dd>最后检查 overlap、层级、标签与连线，再以一个 transaction Accept / Restore；接受后仍由 Canvas 原生工具继续编辑。</dd><dt>不要做</dt><dd class="exclude">一次性生成扁平图片、静默覆盖完整 JSON Canvas、AI 与用户同时争抢节点位置，或重画一套伪 Canvas。</dd></dl></article>
+          <article class="format"><header><h3>Excalidraw</h3><span>Native Live Build</span></header><dl><dt>Core</dt><dd>原生选择、shape、属性、library、zoom/pan、arrow binding 和导出。</dd><dt>Spatial intent</dt><dd>从当前 scene selection 出发，在空白处放置可移动/缩放的 build area；它只定义生成空间，不替代 Excalidraw selection。</dd><dt>Generation</dt><dd>Peak 逐步调用 native element operations，依次画 rough shape、editable text 和 bound arrow；当前 element 显示原生 selection bounds，用户能暂停、改样式或继续摆放。</dd><dt>Review</dt><dd>自检 arrow binding、重叠与阅读顺序后整体接受；接受结果仍是普通 Excalidraw elements。</dd><dt>不要做</dt><dd class="exclude">把最终结果烘焙成 PNG/SVG、远端 AI 菜单脱离当前选择、跳过中间布局反馈，或用 Peak 属性面板冒充 Excalidraw。</dd></dl></article>
         </div>
       </section>
 
@@ -66,7 +66,7 @@
 
       <section class="section">
         <h2>外部产品调研依据</h2>
-        <p>只使用官方产品与官方文档做能力边界参考；不照搬其完整产品复杂度。</p>
+        <p>产品能力边界以官方产品与官方文档为主；用户明确提供的 draw.io 演示只用于提炼“过程可见、人工微调、自我检查”的交互价值，不作为实现依赖或普遍市场证据。</p>
         <div class="sources">
           <article class="source"><strong>Goodnotes Lasso</strong><span>Freehand 的核心手势是围绕内容画 loop；完成后立即高亮选中对象并在选区上方出现 Object Menu。Peak 因此在绘制中只显示用户已经经过的虚线轨迹，不提前从当前位置连回起点；松开后再闭合为一个区域，并从区域轮廓生成最终外边界，内部交叉或重叠的输入线不继续显示。</span><a href="https://support.goodnotes.com/hc/en-us/articles/10779390143247-Select-content-with-the-Lasso-Tool">Lasso Tool</a></article>
           <article class="source"><strong>Goodnotes Image Crop</strong><span>官方把 Rectangle 手柄裁剪与 Freehand contour 明确分开，并以 Done 作为提交边界；这支持 Peak 复用同一指针采样机制，同时维持选择和裁剪两套独立状态。</span><a href="https://support.goodnotes.com/hc/en-us/articles/7353727617295-Insert-images-into-Goodnotes">Image Crop</a></article>
@@ -93,6 +93,7 @@
           <article class="source"><strong>Obsidian Canvas</strong><span>原生无限画布支持 notes、attachments、web pages、groups 与 edges，并使用开放 JSON Canvas 格式。</span><a href="https://obsidian.md/help/Plugins/Canvas">Official Canvas help</a></article>
           <article class="source"><strong>Excalidraw</strong><span>原生编辑器已经拥有无限画布、手绘风格、arrow binding、library、export、zoom/pan 和开放格式。</span><a href="https://github.com/excalidraw/excalidraw/blob/master/README.md">Official README</a></article>
           <article class="source"><strong>Excalidraw Sidebar API</strong><span>官方右侧 sidebar 可承载 library 或自定义内容，Peak 应以宿主集成方式加入，而不是取代编辑器。</span><a href="https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/children-components/sidebar">Sidebar API</a></article>
+          <article class="source"><strong>Codex × draw.io MCP demo</strong><span>用户提供的视频与公开说明展示了 AI 实时控制 draw.io：绘图过程完全可见，元素按步骤出现，结束后像改 PPT 一样人工微调。作者在评论中把“一步步看到怎么画”与“中间自我检查”视为主要优势，并指出直接生成完整 XML 容易导致复杂图布局混乱。Peak 因而采用 ordered native operations + visible cursor + self-check，而不是一次性场景替换。该页面是定性产品参考，不代表 Peak 的技术依赖。</span><a href="https://xhslink.com/o/8yIkTI2uipr">User-provided reference</a></article>
         </div>
       </section>
 
