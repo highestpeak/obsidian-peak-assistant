@@ -18,6 +18,11 @@
 	--aig-amber: #9a661e;
 	--aig-amber-soft: #fff5e7;
 	--aig-shadow: 0 18px 50px rgba(35, 31, 47, .12), 0 2px 8px rgba(35, 31, 47, .05);
+	--aig-edge-draw-duration: 1050ms;
+	--aig-edge-stagger: 190ms;
+	--aig-edge-stagger-2: 380ms;
+	--aig-edge-stagger-3: 570ms;
+	--aig-edge-stagger-4: 760ms;
 }
 
 * { box-sizing: border-box; }
@@ -204,14 +209,15 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	stroke-linecap: round;
 	vector-effect: non-scaling-stroke;
 	marker-end: url(#aig-arrow-added);
-	stroke-dasharray: 1000;
-	stroke-dashoffset: 1000;
-	animation: edge-draw 640ms cubic-bezier(.2, .8, .2, 1) forwards;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	will-change: stroke-dashoffset, opacity;
+	animation: edge-draw var(--aig-edge-draw-duration) cubic-bezier(.36, 0, .18, 1) forwards;
 }
-.aig-overlay-edge.is-delay { animation-delay: 130ms; }
-.aig-overlay-edge.is-delay-2 { animation-delay: 260ms; }
-.aig-overlay-edge.is-delay-3 { animation-delay: 390ms; }
-.aig-overlay-edge.is-delay-4 { animation-delay: 520ms; }
+.aig-overlay-edge.is-delay { animation-delay: var(--aig-edge-stagger); }
+.aig-overlay-edge.is-delay-2 { animation-delay: var(--aig-edge-stagger-2); }
+.aig-overlay-edge.is-delay-3 { animation-delay: var(--aig-edge-stagger-3); }
+.aig-overlay-edge.is-delay-4 { animation-delay: var(--aig-edge-stagger-4); }
 .aig-overlay-edge.is-removing {
 	stroke: var(--aig-red);
 	stroke-width: 2.25;
@@ -520,7 +526,9 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 @keyframes edge-draw {
-	to { stroke-dashoffset: 0; }
+	0% { opacity: .22; stroke-dashoffset: 1; }
+	16% { opacity: 1; }
+	100% { opacity: 1; stroke-dashoffset: 0; }
 }
 @keyframes edge-remove {
 	from { opacity: .78; stroke-dashoffset: 0; }

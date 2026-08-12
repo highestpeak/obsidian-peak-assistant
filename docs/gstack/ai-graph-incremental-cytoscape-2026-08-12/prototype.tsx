@@ -174,6 +174,10 @@ const CURSOR_POINTS = [
 	{ left: '50%', top: '50%' },
 ];
 
+const RUN_START_DELAY_MS = 650;
+const DEFAULT_PATCH_DWELL_MS = 1100;
+const RELATION_PATCH_DWELL_MS = 2200;
+
 const BASE_NODES: ResultSubgraphOutput['resultNodes'] = [
 	{ id: 'graphrag', path: 'ai-graph://graphrag/root', title: 'GraphRAG', score: 1, communityId: null, folder: 'Concepts', preview: 'Root concept · accepted', incomingLinks: 2, outgoingLinks: 3 },
 	{ id: 'retrieval', path: 'ai-graph://graphrag/retrieval', title: 'Retrieval-augmented generation', score: .9, communityId: null, folder: 'Concepts', preview: 'Foundation · accepted', incomingLinks: 1, outgoingLinks: 2 },
@@ -339,24 +343,24 @@ function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactEleme
 				</defs>
 				{showEvidenceRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M555 332 C585 270 620 205 642 151" />
-						<path className="aig-overlay-edge is-added is-delay" d="M756 124 C800 178 805 270 760 332" />
+						<path className="aig-overlay-edge is-added" d="M555 332 C585 270 620 205 642 151" pathLength="1" />
+						<path className="aig-overlay-edge is-added is-delay" d="M756 124 C800 178 805 270 760 332" pathLength="1" />
 					</>
 				)}
 				{showEvaluationRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M920 305 C785 190 625 118 516 106" />
-						<path className="aig-overlay-edge is-added is-delay" d="M364 106 C344 122 325 145 306 159" />
-						<path className="aig-overlay-edge is-added is-delay-2" d="M232 194 C238 245 255 286 275 326" />
+						<path className="aig-overlay-edge is-added" d="M920 305 C785 190 625 118 516 106" pathLength="1" />
+						<path className="aig-overlay-edge is-added is-delay" d="M364 106 C344 122 325 145 306 159" pathLength="1" />
+						<path className="aig-overlay-edge is-added is-delay-2" d="M232 194 C238 245 255 286 275 326" pathLength="1" />
 					</>
 				)}
 				{showControlRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M555 350 C600 396 625 440 644 465" />
-						<path className="aig-overlay-edge is-added is-delay" d="M720 438 C720 324 710 230 700 151" />
-						<path className="aig-overlay-edge is-added is-delay-2" d="M720 151 C800 225 850 332 875 412" />
-						<path className="aig-overlay-edge is-added is-delay-3" d="M956 440 C995 345 1005 250 984 190" />
-						<path className="aig-overlay-edge is-added is-delay-4" d="M984 174 C835 65 330 72 92 306" />
+						<path className="aig-overlay-edge is-added" d="M555 350 C600 396 625 440 644 465" pathLength="1" />
+						<path className="aig-overlay-edge is-added is-delay" d="M720 438 C720 324 710 230 700 151" pathLength="1" />
+						<path className="aig-overlay-edge is-added is-delay-2" d="M720 151 C800 225 850 332 875 412" pathLength="1" />
+						<path className="aig-overlay-edge is-added is-delay-3" d="M956 440 C995 345 1005 250 984 190" pathLength="1" />
+						<path className="aig-overlay-edge is-added is-delay-4" d="M984 174 C835 65 330 72 92 306" pathLength="1" />
 					</>
 				)}
 				{removeKeyword && (
@@ -465,7 +469,7 @@ function Prototype(): React.ReactElement {
 	useEffect(() => {
 		if (startedOnce.current) return;
 		startedOnce.current = true;
-		const timer = window.setTimeout(startRun, 650);
+		const timer = window.setTimeout(startRun, RUN_START_DELAY_MS);
 		return () => window.clearTimeout(timer);
 	}, []);
 
@@ -475,7 +479,10 @@ function Prototype(): React.ReactElement {
 			const layoutTimer = window.setTimeout(() => setMode('layouting'), 700);
 			return () => window.clearTimeout(layoutTimer);
 		}
-		const timer = window.setTimeout(() => setPatchIndex((current) => current + 1), patchIndex < 0 ? 650 : 1100);
+		let dwellMs = DEFAULT_PATCH_DWELL_MS;
+		if (patchIndex < 0) dwellMs = RUN_START_DELAY_MS;
+		if (activePatch?.kind === 'add-relation') dwellMs = RELATION_PATCH_DWELL_MS;
+		const timer = window.setTimeout(() => setPatchIndex((current) => current + 1), dwellMs);
 		return () => window.clearTimeout(timer);
 	}, [mode, patchIndex]);
 
