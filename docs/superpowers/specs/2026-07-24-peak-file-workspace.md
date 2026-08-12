@@ -1,5 +1,7 @@
 # Peak File Workspace：多文件预览、编辑与 AI 协作方案
 
+> 2026-08-13 source-of-truth update：最终产品交互、当前能力状态与实施任务以 [Peak File Workspace 最终产品设计](./2026-08-13-peak-file-workspace-final-product-design.md) 和 [配套实施计划](../plans/2026-08-13-peak-file-workspace-implementation-plan.md) 为准。本文保留为早期架构推理，不再作为最终 UI 合同。
+
 日期：2026-07-24  
 产品方向：**Decided**  
 技术细节：**Review-ready design proposal**  

@@ -3,6 +3,17 @@
 Design-only successor to the rejected six-surface prototype in
 `../peak-file-workspace-interactive-2026-08-10/`.
 
+## Authoritative handoff
+
+- [Final product design](../../superpowers/specs/2026-08-13-peak-file-workspace-final-product-design.md) — current owner-aligned product and interaction contract.
+- [Implementation plan](../../superpowers/plans/2026-08-13-peak-file-workspace-implementation-plan.md) — dependency DAG, task breakdown, verification and rollout.
+- [File-format capability audit](../../research/2026-07-31-file-format-capability-audit/index.html) — current evidence and marketing boundaries.
+
+The prototype remains a design reference. It does not upgrade Image, HTML,
+PDF, Code Source, Canvas Live Build, or Excalidraw Live Build to shipped
+status. Peak Sheet has separate production evidence and is reconciled in the
+final product design.
+
 ## Open
 
 - `index.html#image` — Image

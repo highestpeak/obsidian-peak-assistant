@@ -1,5 +1,7 @@
 # Peak 文件表面与 AI 能力模型
 
+> 2026-08-13 source-of-truth update：最终交互、XLSX/Peak Sheet 当前状态与实施顺序以 [Peak File Workspace 最终产品设计](./2026-08-13-peak-file-workspace-final-product-design.md) 和 [配套实施计划](../plans/2026-08-13-peak-file-workspace-implementation-plan.md) 为准。本文继续保留跨格式能力模型与历史边界。
+
 > 状态：Product / architecture capability model · owner direction captured · implementation pending
 >
 > 日期：2026-08-09
