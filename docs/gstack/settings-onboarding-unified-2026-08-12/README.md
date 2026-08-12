@@ -33,7 +33,7 @@ The two mocks use the same nouns and responsibility boundaries:
 - Connections, models and task defaults remain distinct levels inside that page; an account is not a model, and a model is not a product feature.
 - **Agents** keeps the second control chain together: Peak Hermes → external capabilities → permissions → confirmations.
 - Agent capability and safety remain distinct levels inside that page; enabling a capability never silently grants unrestricted access.
-- There is no generic **Features** destination. Each option lives with the thing it changes: models and generation routes in AI & Models; Agent execution, tools and access rules in Agents; Search, Atlas and Ambient behavior in Knowledge & Search; outputs, retention and appearance in Advanced.
+- There is no generic **Features** destination. Each option lives with the thing it changes: models and generation routes in AI & Models; Agent execution, tools and access rules in Agents; Search and Atlas behavior in Knowledge & Search; outputs, retention and appearance in Advanced. Vault Intelligence remains deferred while its new workspace contract is still changing.
 - **Peak Hermes** is the single Agent runtime and owns workflow, permissions and receipts. Codex, Claude Code and model connections are execution providers selected through the Provider Registry / Capability Gateway after capability verification; they are not parallel runtimes.
 - **Knowledge & Search** owns durable index scope, background refresh, batching/retries, embedding, summary and chunking defaults. The Knowledge Index workspace owns first-run setup, per-run depth and scope review, live progress, completion and rerun.
 - **Onboarding** verifies only the dependencies needed for one first task. It does not duplicate full Settings.
@@ -64,17 +64,19 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 - Header tab navigation inside the native Obsidian Settings context
 - A low-frequency `AI Control Center` entry at the end of AI & Models, after ordinary connection and feature-model controls
 - A compact Automatic-model rule that explains what it affects, uses understandable outcome and processing-location language, and never overwrites manual choices
-- Primary and additional connection groups, with an OpenRouter detail that separates connection health from online catalog, cache and bundled fallback state
+- Primary and additional connection groups, with an honest OpenRouter detail: the connection and bundled catalog are current; remote JSON updates and a persistent last-known-good cache remain target work
+- One model-catalog management surface for source freshness, search, hidden models, aliases and capability evidence; these are catalog preferences, not three unrelated Settings pages
 - Searchable in-place model pickers on every product feature and configurable child action; the feature tree starts fully collapsed, then reveals child actions only when the user asks for them; results come from the configured connection catalog, group many models under each Profile / Provider, expose capability and context hints, and support keyboard selection without opening a modal
 - The picker follows the production `ComposerModelSelector` / `RoleModelPicker` contract: search Profile, Provider, model ID or capability; keep Automatic visible; group by enabled Profile; show the selected model; reserve `Advanced model settings…` for parameters, fallback and limits
-- Chat Studio and Composer include explicit image-understanding and image-generation routes instead of hiding media behind a generic feature default
+- Chat Studio and Composer include explicit image-understanding and image-generation routes instead of hiding media behind a generic feature default; Chat Studio also exposes its default attachment-handling policy in the expanded feature
+- Provider-native media routes are conditional: a media control appears only when the selected connection or model advertises and passes the required media capability
 - Add-connection modal presents every supported connection as one equal provider list; there is no miniature secondary tier inside the modal
 - Real safety modes: Read only, Ask every time, Accept reviewed edits and Bypass confirmations
 - One Peak Hermes runtime with a separate execution-provider selector; Codex and Claude Code are not presented as runtimes
-- Vertical safety-mode picker, external MCP/tool-server setup, Web Access, and an entry to the separate Command Gateway workspace
-- Clickable file-type and folder-exclusion details, with Office formats excluded from the product scope and Peak Sheet / AI Graph explained as separately governed formats; plus concrete File Atlas, Ambient and Vault Intelligence controls
+- Vertical safety-mode picker, external MCP/tool-server setup, Web Access, standard Agent Skills migration state, and an entry to the separate Command Gateway workspace
+- Clickable file-type and folder-scope details, including a Whole Vault / include-folder choice and ignore patterns, with Office formats excluded from the product scope and Peak Sheet / AI Graph explained as separately governed formats; plus concrete File Atlas controls
 - Advanced exposes exactly two storage boundaries: `Data root` for Peak-managed records and rebuildable data, and `Media root` for large generated media. Every internal subfolder remains derived rather than independently configurable.
-- Knowledge rows show the setting name and current value at rest; longer explanations move to hover/focus help. Search quality includes Personalized PageRank and a folded Inspector-links group, while analysis history remains in the AI Analysis workspace rather than becoming a setting.
+- Knowledge rows show the setting name and current value at rest; longer explanations move to hover/focus help. Search quality keeps a folded Inspector-links group, while user-facing PPR / model-rerank switches are retired and analysis history remains in the AI Analysis workspace rather than becoming a setting.
 - Save/effect feedback for controls
 
 ### Onboarding
@@ -88,7 +90,7 @@ The flow distinguishes `Setup complete` from `First success`, saves progress, ke
 
 ## Truth boundary
 
-This is a target design. Current or partially implemented capabilities must still be verified against production source before implementation. The source currently exposes `hermes-harness` and `provider-direct` backend kinds; Codex and Claude Code provider adapters still require separate verification before they may appear as ready execution providers. OpenRouter and Ollama model lists must use fresh runtime/catalog evidence, and Knowledge Index readiness must not be inferred from a static preference.
+This is a target design. Current or partially implemented capabilities must still be verified against production source before implementation. Peak Hermes is the only target Agent runtime; Codex, Claude Code and ordinary model connections are execution providers and must pass the same Hermes capability gate before use. OpenRouter remote catalog sync, freshness validation and persistent fallback are not production-ready; Ollama remains runtime-discovered. MCP currently covers a narrower tools path than the full protocol, and Peak's legacy skill format still requires a standard Agent Skills compatibility layer. Knowledge Index readiness must never be inferred from a static preference.
 
 ## Historical evidence
 

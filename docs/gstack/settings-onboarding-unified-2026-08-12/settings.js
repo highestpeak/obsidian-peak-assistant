@@ -184,6 +184,7 @@ document.addEventListener("keydown", (event) => {
     closeInlineModelMenu();
     $("[data-connection-modal]").hidden = true;
     $("[data-provider-detail-modal]").hidden = true;
+    $("[data-model-catalog-modal]").hidden = true;
     $("[data-file-types-modal]").hidden = true;
     $("[data-folder-rules-modal]").hidden = true;
     $("[data-external-tool-modal]").hidden = true;
@@ -221,6 +222,60 @@ $$('[data-close-provider-detail]').forEach((button) => {
 
 $('[data-provider-detail-modal]').addEventListener("click", (event) => {
   if (event.target === $('[data-provider-detail-modal]')) toggleFocusedModal("[data-provider-detail-modal]", false);
+});
+
+function openModelCatalog() {
+  toggleFocusedModal("[data-provider-detail-modal]", false);
+  toggleFocusedModal("[data-model-catalog-modal]", true);
+  filterManagedCatalog();
+  window.setTimeout(() => $('[data-managed-catalog-search]').focus(), 0);
+}
+
+$$('[data-open-model-catalog]').forEach((button) => {
+  button.addEventListener("click", openModelCatalog);
+});
+
+$$('[data-close-model-catalog]').forEach((button) => {
+  button.addEventListener("click", () => toggleFocusedModal("[data-model-catalog-modal]", false));
+});
+
+$('[data-model-catalog-modal]').addEventListener("click", (event) => {
+  if (event.target === $('[data-model-catalog-modal]')) toggleFocusedModal("[data-model-catalog-modal]", false);
+});
+
+function filterManagedCatalog() {
+  const query = $('[data-managed-catalog-search]').value.trim().toLowerCase();
+  const capability = $('[data-managed-catalog-filter]').value;
+  let visible = 0;
+  $$('[data-managed-model]').forEach((row) => {
+    const searchable = `${row.textContent} ${row.dataset.managedModel}`.toLowerCase();
+    const matchesQuery = !query || searchable.includes(query);
+    const matchesCapability = capability === "all" || row.dataset.managedModel.includes(capability);
+    row.hidden = !(matchesQuery && matchesCapability);
+    if (!row.hidden) visible += 1;
+  });
+  $('[data-managed-catalog-count]').textContent = `${visible} models shown`;
+  $('[data-managed-model-empty]').hidden = visible !== 0;
+}
+
+$('[data-managed-catalog-search]').addEventListener("input", filterManagedCatalog);
+$('[data-managed-catalog-filter]').addEventListener("change", filterManagedCatalog);
+
+$$('[data-model-alias]').forEach((input) => {
+  input.addEventListener("change", () => showSaved("Alias saved in this design preview"));
+});
+
+$$('[data-managed-model] [data-switch]').forEach((input) => {
+  input.addEventListener("change", () => {
+    const label = input.closest('.catalog-visibility').querySelector('span');
+    label.textContent = input.checked ? "Shown" : "Hidden";
+    showSaved(input.checked ? "Model shown in pickers" : "Model hidden from ordinary pickers");
+  });
+});
+
+$('[data-save-model-catalog]').addEventListener("click", () => {
+  toggleFocusedModal("[data-model-catalog-modal]", false);
+  showSaved("Saved · model visibility and aliases updated");
 });
 
 $('[data-file-types]').addEventListener("click", () => toggleFocusedModal("[data-file-types-modal]", true));
@@ -296,42 +351,6 @@ $('[data-external-tool-modal]').addEventListener("click", (event) => {
 $('[data-open-command-gateway]').addEventListener("click", () => {
   showSaved("Command Gateway opens as a separate Obsidian workspace");
 });
-
-let activeCatalogFilter = "recommended";
-
-function filterCatalog() {
-  const query = $('[data-catalog-search]').value.trim().toLowerCase();
-  let visible = 0;
-  $$('[data-model-tags]').forEach((row) => {
-    const searchable = `${row.textContent} ${row.dataset.modelTags}`.toLowerCase();
-    const matchesQuery = !query || searchable.includes(query);
-    const matchesFilter = row.dataset.modelTags.includes(activeCatalogFilter);
-    row.hidden = !(matchesQuery && matchesFilter);
-    if (!row.hidden) visible += 1;
-  });
-  $('[data-catalog-count]').textContent = `${visible} matching models shown`;
-}
-
-$$('.model-filter-chips button').forEach((button) => {
-  button.addEventListener("click", () => {
-    $$('.model-filter-chips button').forEach((candidate) => candidate.classList.remove("is-selected"));
-    button.classList.add("is-selected");
-    activeCatalogFilter = button.textContent.trim().toLowerCase();
-    filterCatalog();
-    showSaved(`Catalog filter · ${button.textContent}`);
-  });
-});
-
-$('[data-open-catalog]').addEventListener("click", () => {
-  const browser = $('[data-catalog-browser]');
-  browser.hidden = !browser.hidden;
-  $('[data-open-catalog]').textContent = browser.hidden ? "Review 113 models" : "Hide model list";
-  if (!browser.hidden) filterCatalog();
-});
-
-$('[data-catalog-search]').addEventListener("input", filterCatalog);
-
-$('.catalog-footer-note .text-button').addEventListener("click", () => showSaved("Full catalog · 113 models grouped by capability and provider"));
 
 $$('.modal-provider-list button').forEach((button) => {
   button.addEventListener("click", () => {
@@ -739,7 +758,7 @@ $("[data-reset-models]").addEventListener("click", () => {
 
 $$('.setting-row-button, .connection-card').forEach((button) => {
   button.addEventListener("click", () => {
-    if (button.dataset.panelJump || button.dataset.connectionDetail || button.dataset.fileTypes !== undefined || button.dataset.folderRules !== undefined || button.dataset.addExternalTool !== undefined || button.dataset.openCommandGateway !== undefined) return;
+    if (button.dataset.panelJump || button.dataset.connectionDetail || button.dataset.fileTypes !== undefined || button.dataset.folderRules !== undefined || button.dataset.addExternalTool !== undefined || button.dataset.openCommandGateway !== undefined || button.dataset.openModelCatalog !== undefined) return;
     showSaved("This row would open its focused detail view");
   });
 });

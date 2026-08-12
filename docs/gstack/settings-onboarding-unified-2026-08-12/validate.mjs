@@ -79,8 +79,12 @@ requireValues("Settings HTML", settingsHtml, [
   "Accept reviewed edits",
   "Bypass confirmations",
   "Google, Perplexity, gateways and media",
-  "online JSON",
-  "Review 113 models",
+  "Manage model catalog",
+  "Remote updates not connected",
+  "data-model-catalog-modal",
+  "Search model, provider, alias or capability",
+  "data-model-alias",
+  "Hermes eligibility is stricter than visibility",
   "data-provider-detail-modal",
   "data-model-picker-modal",
   "data-file-types-modal",
@@ -113,8 +117,10 @@ requireValues("Settings HTML", settingsHtml, [
   "Data root",
   "Media root",
   "Auto-save AI analysis",
-  "Personalized PageRank",
   "Inspector links",
+  "Default attachment handling",
+  "Agent Skills",
+  "Remote URL (Streamable HTTP)",
   "data-settings-help-tooltip",
   "Advanced controls for this action",
   "Total request timeout",
@@ -202,7 +208,8 @@ requireValues("Settings JS", settingsJs, [
   "function showPanel",
   "function showSaved",
   "function updateStrategySummary",
-  "function filterCatalog",
+  "function filterManagedCatalog",
+  "function openModelCatalog",
   "function restoreActionAutomatic",
   "function openInlineModelMenu",
   "function toggleInlineModelMenu",
@@ -261,7 +268,10 @@ requireValues("CSS", css, [
   ".settings-help-tooltip",
   ".root-path-input",
   ".model-picker-modal",
-  ".catalog-browser",
+  ".model-catalog-entry",
+  ".model-catalog-modal",
+  ".managed-model-row",
+  ".action-setting-row",
   ".wizard-shell",
   ".wizard-footer",
   "@media (max-width: 760px)",
@@ -328,6 +338,10 @@ for (const value of ['peak-settings-header', 'peak-heading', 'peak-header-action
 
 for (const value of ['AI result reranking', '<h2>Index depth</h2>', 'class="execution-grid"', '<strong>AI Analysis reports</strong>', '<strong>Skills, Inbox &amp; custom prompts</strong>', '<strong>DataStore location</strong>', '<strong>Derived folders</strong>']) {
   if (settingsHtml.includes(value)) missing.push(`Retired or relocated Settings control returned: ${value}`);
+}
+
+for (const value of ['Personalized PageRank', 'data-tree-toggle="ambient-models"', '<strong>Ambient suggestions</strong>', '<strong>Vault Intelligence</strong>']) {
+  if (settingsHtml.includes(value)) missing.push(`Deferred or internal Knowledge control returned: ${value}`);
 }
 
 for (const value of ['data-settings-search', 'data-search-trigger', 'data-search-popover', 'data-search-result']) {

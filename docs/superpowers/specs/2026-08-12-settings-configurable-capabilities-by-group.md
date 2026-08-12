@@ -24,7 +24,7 @@
 
 - **先做产品判断**：看第 0–2 节，确认哪些内容才算设置，以及四个功能组的边界；
 - **逐组确认能力**：看第 3–6 节，重点检查是否缺少真实使用能力，或把状态 / 操作误当成设置；
-- **从产品功能反查**：看第 7 节，确认 Chat Studio、Composer、Search、Atlas、Ambient、Agents 和媒体生成都能找到归属；
+- **从产品功能反查**：看第 7 节，确认 Chat Studio、Composer、Search、Atlas、Agents 和媒体生成都能找到归属；Ambient / Vault Intelligence 当前明确标为 deferred；
 - **安排实现**：看第 8–9 节，先处理假设置、错误语义、持久化缺口和未接线消费者；
 - **检查 Onboarding 边界**：看第 10–11 节，确保首次流程没有复制整套 Settings。
 
@@ -35,6 +35,7 @@
 - **一个意图只能有一个修改位置。** 其他功能可以显示当前值并跳转，但不能保存第二份冲突配置。
 - **AI 配置是一条连续关系。** 用户先连接服务，再确认可用模型，最后按自己认识的产品功能设置任务默认；连接、模型和任务默认不能混为一项。
 - **Agent 配置不等于模型配置。** Agents 管理执行方式、工具、权限和确认；使用哪个模型仍由 AI & Models 管理。
+- **Peak Hermes 是唯一 Agent runtime。** Codex、Claude Code、OpenAI、Anthropic、OpenRouter 和 Ollama 都只能作为 Hermes 下面的模型 / 执行连接；Settings 不提供“切换到另一个 Agent runtime”。
 - **Knowledge 长期策略与 Index 当前任务分开。** Settings 决定索引范围和质量；Knowledge Index 工作区显示扫描进度、速度、预计时间、顺序、错误和历史。
 - **系统默认、自动选择和用户选择必须能区分。** 恢复自动应删除用户覆盖，让产品重新计算，而不是把某个旧默认值永久写死。
 - **保存成功不等于生效成功。** 对连接、模型、索引、权限和路径等设置，产品还需要显示验证、重连、重建、重启或重新处理结果。
@@ -47,7 +48,30 @@
 - 不把运行中的进度、错误数量、成本和覆盖率写成可编辑字段；
 - 不把“清理缓存”“重建索引”“导出诊断”写成开关；
 - 不把目标设计中的 `REQUIRED` 能力描述成当前已经可用；
-- 不把 Codex、Claude Code 只定义成 Agent runtime，它们的普通对话与 Agent 能力需要分别检测。
+- 不把 Codex、Claude Code 画成与 Peak Hermes 并列的 Agent runtime；它们作为连接时仍需分别检测普通生成、工具调用和 Hermes 执行适配能力。
+
+### 0.4 2026-08-12 Owner review 后的实现判决
+
+本节是本轮源码复核后的最高优先级结论；若后文仍有旧表述与本节冲突，以本节和对应修订小节为准。
+
+| 能力 | 当前判决 | 结论 |
+| --- | --- | --- |
+| OpenRouter 连接 | `CURRENT` | API key、Base URL、Profile / adapter 和静态模型候选已经存在。 |
+| OpenRouter 在线动态目录 | `PARTIAL / NOT WIRED` | `ModelRegistry.syncFromServer()` 已有远端拉取骨架，但没有任何生产调用者，也没有条件请求、持久缓存、新鲜度、严格 schema 或 last-known-good 回滚；不能视为已可用。 |
+| 模型隐藏、别名、目录级能力覆盖 | `REQUIRED` | 当前统一 Settings mock 和生产 Settings 都没有完整入口；应合并成一个“模型目录管理”界面。 |
+| 自动选择策略 | `TARGET` | 以当前 mock 的 `Automatic rule → feature default → action override` 为目标；只改仍处于 Automatic 的动作，手动绑定不被覆盖。生产路由尚未实现这套完整继承。 |
+| Chat Studio 默认附件处理 | `PARTIAL / BLOCKED` | 设置字段和优先级解析存在，但 direct attachment 组装分支没有完成，降级分支也没有把生成摘要真正注入消息。修复前不能宣称附件策略已生效。 |
+| Vault Search / AI Search 模型 rerank | `RETIRED` | 不再提供模型绑定或用户开关。RRF、图信号等确定性排序如果保留，属于内部检索实现。 |
+| Knowledge Index 摘要与 AI tags | `PARTIAL` | Markdown full-index 路径可生成；PDF、图片、Canvas / Excalidraw 的 enrichment 仍是本需求内待实现项。 |
+| 语义相似边、社区和 Hub signals | `CURRENT / TARGET UI` | 核心计算已有本地确定性实现；每次 run 的细粒度选择、进度和失败状态仍需接入 Index workspace。它们不是额外的“推理模型任务”。 |
+| Hub curation / materialization | `PARTIAL` | Agent 与持久化路径存在，但 Settings 恢复、调度、状态、失败恢复和真实宿主验收不完整。 |
+| Ambient / Vault Intelligence 设置 | `DEFERRED` | 产品能力和信息架构正在重做；本轮只保留 owner 与安全边界，不冻结旧字段清单或旧模型绑定。 |
+| Peak Hermes | `ONLY RUNTIME / PARTIAL` | 现有 Agent loop、Harness、工具和 receipt 能力存在，但尚未统一成一条产品级 runtime 和完整 Settings。 |
+| Hermes 模型兼容筛选 | `PARTIAL` | 路由已有 `toolsNeeded` 等硬筛选；能力证据仍依赖可能陈旧的布尔目录，缺少 probe、来源、新鲜度和 fail-closed 验证。 |
+| 安全模式与权限 | `PARTIAL` | Runtime guard 有 read / ask / acceptEdits / bypass 语义，但持久化枚举、所有 Agent 路径、细粒度 scope 和 Settings 尚未统一。 |
+| MCP | `PARTIAL` | stdio、旧 SSE、工具发现与调用存在；Streamable HTTP、完整 schema、Resources / Prompts、认证、健康恢复和逐工具信任尚未完成。 |
+| Skills | `PARTIAL / NON-STANDARD` | 当前是 Peak 自定义 skill frontmatter 和编译器，不等于 Agent Skills 标准。需要兼容标准 `SKILL.md`、渐进披露及 scripts / references / assets。 |
+| Knowledge 文件夹范围 | `PARTIAL` | ignore patterns 已参与扫描；真正的 include-folder allowlist 数据模型和生产 UI 尚未完成。 |
 
 ## 1. 如何阅读这份总表
 
@@ -138,10 +162,10 @@ AI & Models 只管理一条主线：
 | --- | --- | --- | --- |
 | OpenAI | 配置 API key、可选 Base URL、启用状态 | 支持对话、Embedding、图片及兼容能力；保存后必须测试真实请求 | `CURRENT` |
 | Anthropic | 配置 API key、可选 Base URL、启用状态 | 支持对话、工具调用与长上下文 | `CURRENT` |
-| OpenRouter | 配置 API key、可选 Base URL、启用状态 | 提供多服务商在线模型目录；必须显示目录新鲜度和缓存来源 | `PARTIAL`：连接已有，动态目录仍需收口 |
+| OpenRouter | 配置 API key、可选 Base URL、启用状态 | 连接多个上游模型；目录来源、能力和 Provider 增强能力必须分别显示 | 连接 `CURRENT`；通用远端同步骨架 `PARTIAL / NOT WIRED`；完整在线动态目录 `REQUIRED` |
 | Ollama | 配置本地地址、启用状态 | 自动探测本地模型；无 API key；离线时保留上次结果并显示不可达 | `CURRENT`，目录依赖运行时探测 |
-| Codex | 连接本地或账号能力；分别检测普通对话和 Agent 执行 | 不能用“Agent 可用”推断“普通对话可用” | `REQUIRED` |
-| Claude Code | 连接本地或账号能力；分别检测普通对话和 Agent 执行 | 与 Anthropic API 连接不是同一个连接意图 | `REQUIRED` |
+| Codex | 作为 Hermes 可选执行连接；分别检测普通生成、工具调用和适配能力 | 不能用“客户端已安装”推断模型或 Agent 能力可用 | `REQUIRED`，不是独立 runtime |
+| Claude Code | 作为 Hermes 可选执行连接；分别检测普通生成、工具调用和适配能力 | 与 Anthropic API 连接不是同一个连接意图 | `REQUIRED`，不是独立 runtime |
 
 #### 更多连接
 
@@ -161,6 +185,8 @@ AI & Models 只管理一条主线：
 | OpenAI 媒体能力 | 复用 OpenAI 连接，选择允许的媒体 Profile | 图片及兼容视频能力按模型目录验证 | `CURRENT` / 能力依模型而定 |
 | fal.ai | 单独 API key | 用于图片、视频、音频或音乐路由；不应混进普通语言模型列表 | `CURRENT` |
 | Provider 原生媒体路由 | 在具体媒体类型中选择 | 只有连接和模型都满足能力时才可选 | `CONDITIONAL` |
+
+媒体连接不需要额外占据一个始终可见的“Provider 原生”卡片。图片、视频、音频或音乐的设置先读取当前连接能力：有可用原生路线时，才在对应媒体类型的 route picker 中出现；没有能力时整个选项不渲染。`conditional` 指的就是这一点，不代表用户还要配置一个新的 Provider。
 
 #### 连接详情中允许设置
 
@@ -183,37 +209,54 @@ AI & Models 只管理一条主线：
 
 “API key 已填写”只能表示已配置，不能表示连接已经可用。
 
+#### OpenRouter 的 `PARTIAL` 到底是什么意思
+
+旧表中的 `PARTIAL` 容易让人误以为在线目录已经存在，只差一点 UI。源码事实不是这样：
+
+- 已有：OpenRouter Profile / adapter、API key 与 Base URL、随插件发布的模型 JSON，以及通用模型注册表的合并能力；
+- 已有但未接通：`ModelRegistry.syncFromServer()` 可以逐 Provider 请求一个订阅服务器 endpoint，并把返回值合并进内存目录；当前没有生产调用者，重启后也不会保留结果；
+- 没有：项目托管的远端 catalog URL 契约、`ETag` / `Last-Modified` 条件请求、下载内容严格 schema 校验、持久化 last-known-good cache、原子替换 / 失败回滚、目录来源 / 新鲜度状态；
+- 没有：目录级隐藏、用户别名和统一的 capability override 持久化；
+- 没有：把 OpenRouter 的 Provider 增强能力真正接入请求，例如当前官方的 `openrouter:web_search` server tool 和 PDF parsing / native pass-through；
+- 风险：现有 `tools / vision / pdfInput / webSearch / reasoning` 等布尔能力无法表达“模型原生、Provider 增强、本地转换、外部工具、人工覆盖”这些不同来源，不能直接当成 Hermes 的可靠执行证据。
+
+因此正式状态应拆成三项：**OpenRouter 连接是 `CURRENT`；通用远端同步只有未接线的代码骨架；用户要求的在线动态目录、目录治理和 OpenRouter Provider 能力接线是 `REQUIRED`。**
+
 ### 3.2 模型目录：这个连接中有哪些可用模型
 
 | 设置或能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
-| Provider 模型目录 | 主要为只读状态 | 来自内置目录、在线目录或本地探测；需要记录来源和更新时间 | `CURRENT` / Provider 覆盖不同 |
-| 手动刷新目录 | 操作 | 不改变任务绑定；只更新可选模型与能力证据 | `PARTIAL` |
+| Provider 模型目录 | 主要为只读状态 | 当前来自 bundled JSON、Provider 局部覆盖或 Ollama 运行时探测 | `CURRENT`，但不是统一在线真值 |
+| 在线目录更新 | 系统自动 + 手动刷新操作 | 条件请求远端版本化 JSON；不改变任务绑定，只更新候选与能力证据 | `PARTIAL / NOT WIRED`：有无调用者、无持久缓存的 fetch 骨架；完整契约 `REQUIRED` |
 | 手动添加自定义模型 ID | 高级设置 | 只对兼容网关开放；必须声明上下文和能力 | `CURRENT` / 校验需加强 |
-| 隐藏不想使用的模型 | 高级设置 | 从 picker 和自动路由候选中排除，不删除 Provider 目录 | `REQUIRED` |
-| 模型别名 | 高级设置 | 仅改善用户识别，不改变真实 model ID | `REQUIRED` |
-| 模型能力覆盖 | 高级设置 | 只在自动发现不可靠时使用；需提示错误声明会导致运行失败 | `PARTIAL` |
+| 隐藏不想使用的模型 | 模型目录管理 | 从 picker 和自动路由候选中排除，不删除 Provider 目录 | `REQUIRED`：当前没有正式持久化 / UI |
+| 模型别名 | 模型目录管理 | 仅改善用户识别，不改变真实 model ID | `REQUIRED`：当前没有正式持久化 / UI |
+| 模型能力覆盖 | 模型目录管理中的高级项 | 只在自动发现不可靠时使用；需提示错误声明会导致运行失败 | 自定义 endpoint 局部 `CURRENT`；统一目录 `REQUIRED` |
 | 目录缓存 | 系统自动 | 在线失败时使用最近成功缓存，再降级到 bundled fallback | `REQUIRED` |
 
 模型目录至少需要表达：文本输入、图像输入、音频输入、视频输入、工具调用、结构化输出、推理、Embedding、图片生成 / 编辑、视频生成和上下文长度。
 
-OpenRouter 的目标不是把固定长列表硬编码进插件。插件应追踪一个有版本与 `Last-Modified` / `ETag` 的在线 JSON，保留本地缓存和随插件发布的最小 fallback；用户看到的必须是目录新鲜度，而不是假装静态列表永远正确。
+“动态目录”不是执行远端代码，也不是每次打开 picker 都直接请求 OpenRouter。它是一个项目控制、只含数据、带 schemaVersion / catalogVersion 的在线 JSON：插件使用 `ETag` / `Last-Modified` 做条件请求，校验通过才原子替换 last-known-good cache；远端失败时先用缓存，再用随插件发布的最小 fallback。用户可以看到来源和新鲜度，但不需要理解更新协议。
+
+模型隐藏、别名、能力覆盖、来源与新鲜度必须集中在同一个 **Manage model catalog** 界面，不应分散在 Provider 详情、Advanced 和每个 model picker 里。当前统一 mock 已补这个入口；生产实现仍是 `REQUIRED`。
 
 ### 3.3 自动选择策略：降低首次选择压力
 
-策略是批量设置任务默认的起点，不应成为五张只有文案、不会真正改配置的装饰卡。
+策略是 Automatic 路由的一个可折叠规则，不是五张大卡，也不是把所有模型绑定重新写一遍。目标继承与当前 mock 一致：
+
+> Automatic rule → feature default → action override → current-run override
 
 | 策略维度 | 用户控制 | 系统行为 | 当前事实 |
 | --- | --- | --- | --- |
-| 均衡 | 普通设置 | 在质量、速度和日常成本之间平衡 | `REQUIRED`：旧 Settings 卡片当前不实际改绑定 |
-| 节省成本 | 普通设置 | 优先便宜或本地模型，能力不足时才升级 | `REQUIRED` |
-| 最佳质量 | 普通设置 | 允许更强模型承担复杂推理与研究 | `REQUIRED` |
-| 允许云端 | 普通设置 | 本地与云端都可参与自动选择 | `REQUIRED` |
-| 优先本地 | 普通设置 | 日常任务先本地，必要时提示是否升级云端 | `REQUIRED` |
-| 仅限本地 | 普通设置 | 自动排除云端候选；能力不足时明确失败，不静默上传 | `REQUIRED` |
-| 已自定义 | 只读派生状态 | 当用户修改某些任务默认后显示，不是可点击的预设 | `REQUIRED` |
+| Recommended | Automatic 规则 | 在可靠能力、质量、速度和日常成本之间取产品推荐值 | `TARGET`：mock 已表达，生产未完整接线 |
+| Lower cost | Automatic 规则 | 优先低价或本地模型；能力门不满足时不强行使用 | `TARGET` |
+| Higher quality | Automatic 规则 | 复杂写作、研究和 Agent 任务优先更强候选 | `TARGET` |
+| Cloud and this computer | 数据位置规则 | 云端和本地候选都可参与 | `TARGET` |
+| Prefer this computer | 数据位置规则 | 先本地；只有能力不足时再选择允许的云端候选 | `TARGET` |
+| This computer only | 数据位置规则 | 排除云端候选；无兼容模型时明确失败 | `TARGET` |
+| Manual choices | 动作覆盖 | 用户手动选择的 feature / action model 永远优先 | 覆盖语义 `TARGET` |
 
-应用策略前应预览将改变哪些“自动”任务。已有明确用户覆盖默认保留；只有用户主动选择“同时替换我的自定义”时才覆盖。
+应用规则前应预览哪些 Automatic 动作的“解析结果”会变化。已有明确用户覆盖必须保留；删除自定义 Automatic rule 只恢复产品推荐，不删除 feature / action 的手动模型。当前生产代码尚未形成这套完整的持久化与解释链，因此不能把 mock 的交互标成 `CURRENT`。
 
 ### 3.4 任务默认：按用户认识的功能逐层选择
 
@@ -231,7 +274,9 @@ OpenRouter 的目标不是把固定长列表硬编码进插件。插件应追踪
 | 快速回答 | 自动，可覆盖 | 短回答与轻量操作，可偏向速度和成本 | `CURRENT`：依赖 Fast Agent / 路由 |
 | 深度研究 | 自动，可覆盖 | 多步检索、综合、工具调用和长输出 | `CURRENT` / Agent 路径有差异 |
 | 当前对话模型 | 功能内、本次会话覆盖 | 不修改全局 Chat 默认 | `CURRENT` |
-| 默认附件处理 | 普通设置 | 决定文件按全文、摘要或能力路线进入上下文 | `PARTIAL`：当前字段未完整恢复 |
+| 默认附件处理 | 普通设置 | `Automatic`：模型能读原件时直接发送，否则本地抽取；也可固定为 `Send original when supported` 或 `Extract locally` | `PARTIAL / BLOCKED`：字段与覆盖顺序存在，但 direct 分支没有完成，降级摘要未真正注入消息 |
+
+默认附件处理属于 Chat Studio 的功能级长期默认，必须在 Chat Studio 展开区中直接可见；单次对话仍可覆盖。模型 picker 需要同时过滤附件 MIME、原生输入、Provider 文件解析、本地 loader 与隐私路线，不能只检查一个 `vision` 布尔值。
 
 #### Composer 与 Copilot
 
@@ -254,17 +299,21 @@ Composer block 的具体 prompt、模板内容和某次指令属于功能内配�
 | 查询理解 | 自动，可覆盖 | 解析自然语言查询和条件 | `CURRENT` / 具体链路依 mode |
 | 结果总结 | 自动，可覆盖 | 对已检索证据做简短回答 | `CURRENT` |
 | 深度 AI Search | 自动，可覆盖 | 规划、调用 Vault / Web 工具并生成报告 | `CURRENT` / 多条 Agent 路径 |
-| Rerank | 自动，可覆盖或关闭 | 只在启用模型重排时需要 | `PARTIAL` |
 | 当前搜索运行模型 | 功能内、本次覆盖 | 只影响当前 AI Search run | `CURRENT` / 入口依 mode |
+
+模型 Rerank 路由和设置在本轮正式废弃。现有代码中的 LLM / Cohere / Jina rerank 配置应停止暴露并进入兼容清理；RRF、FTS、向量、图信号等确定性排序可以继续作为内部检索实现，但不再要求用户选择“Rerank 模型”。
 
 #### Knowledge Index
 
 | 动作组 / 动作 | 默认模型控制 | 说明 | 当前事实 |
 | --- | --- | --- | --- |
 | Embedding | 自动，可覆盖 | 生成向量；更换后通常需要重建相关向量 | `CURRENT` |
-| 文档摘要 | 自动，可覆盖 | 生成短摘要和完整摘要 | `CURRENT` / 触发链路依 index level |
-| 标签与主题 | 自动，可覆盖 | 生成知识标签和主题候选 | `PARTIAL` |
-| 语义边与 Hub 分析 | 自动，可覆盖 | 为关系、Hub 和结构分析提供模型能力 | `PARTIAL` |
+| Markdown 摘要 | 自动，可覆盖 | full-index 路径生成短摘要和完整摘要 | `CURRENT` / 运行状态仍需完善 |
+| PDF、图片、Canvas / Excalidraw 摘要 | 自动，可覆盖 | 只在对应提取 / OCR / vision 产物已就绪时出现 | `REQUIRED`，属于已记录的六项 Later 能力 |
+| AI tags / 主题 / 实体 | 自动，可覆盖 | Markdown full-index 路径使用文本模型生成候选 | `PARTIAL`：生成路径有，逐项选择、状态和非 Markdown 覆盖不完整 |
+| 语义相似关系 | 不再单独选文本模型 | 使用已经生成的 Embeddings 做本地 KNN / 边重建 | `CURRENT` 核心计算；run 级选择与状态 `TARGET` |
+| Communities / Hub signals | 不再单独选文本模型 | Louvain、中心性、constraint 等本地结构分析 | `CURRENT` 核心计算；run 级选择与状态 `TARGET` |
+| Hub curation / materialization | 自动，可覆盖 | Hermes 根据本地信号生成可审核的 Hub 候选或物化结果 | `PARTIAL` |
 | 全文索引 | 不使用生成模型 | 解析、分块和 FTS 不应显示模型选择 | `CURRENT` |
 
 Embedding 模型的唯一修改位置在 AI & Models。Knowledge & Search 显示当前绑定、健康状态和“更改模型”跳转，但不保存第二份值。
@@ -274,19 +323,21 @@ Embedding 模型的唯一修改位置在 AI & Models。Knowledge & Search 显示
 | 动作组 / 动作 | 默认模型控制 | 说明 | 当前事实 |
 | --- | --- | --- | --- |
 | 文件浏览与本地关系 | 不使用生成模型 | 文件树、链接、邻域关系和历史统计 | `CURRENT` |
-| 文档理解 | 自动，可覆盖 | 摘要、主题、关键实体和关系解释 | `PARTIAL` |
+| 来源准备与 enrichment | 不在 Atlas 选模型 | 正文抽取、摘要、主题、实体和语义关系由 Knowledge Index / loader 提供 | 复用 Knowledge Index 状态 |
+| 解释文档邻域或 cluster | 自动，可覆盖 | 对已经选定的文档与关系证据生成可读解释 | `PARTIAL`，这是旧“文档理解”中真正属于 Atlas 的 AI 动作 |
 | 生成 AI Graph | 自动，可覆盖 | 从明确来源生成图结构和说明 | `CURRENT` / artifact 路径已有 |
 | 更新 / 比较 AI Graph | 自动，可覆盖 | 生成候选 diff，接受后才写入新版本 | `CURRENT` / 依工作流而定 |
 | 图布局 | 不使用生成模型 | 可视化布局属于功能算法，不是模型任务 | `CURRENT` |
 
 #### Ambient 与 Vault Intelligence
 
-| 动作组 / 动作 | 默认模型控制 | 说明 | 当前事实 |
-| --- | --- | --- | --- |
-| 触发检测 | 不使用生成模型 | 文档切换、停顿、字符变化等本地规则 | `CURRENT` |
-| 发现解释 | 自动，可覆盖 | 为相关发现生成一句可读解释 | `CURRENT`，默认关闭 LLM 解释 |
-| Vault 分析 | 自动，可覆盖 | 结构、主题、异常、建议和维护任务 | `PARTIAL` |
-| 建议变更 | 自动，可覆盖 | 只能产生候选、证据和 diff，不静默写 Vault | `PARTIAL` |
+本节暂不冻结动作列表、模型绑定或 Settings 字段。Vault Intelligence 正在从旧 Ambient 触发器和散落字段重构为独立的维护工作区，能力、owner 和信息架构变化很大；继续沿用“发现解释 / Vault 分析 / 建议变更”三行会误导后续实现。
+
+本轮只保留三个不会变化的边界：
+
+1. 本地检测、索引 enrichment 和需要模型的解释 / 诊断必须分别标注；
+2. 任何会修改 Vault 的结果都先成为带证据和 diff 的 proposal；
+3. 新 Vault Intelligence 设计稳定后，再把真正需要长期设置的项目登记回本文和 Settings mock。
 
 #### Agents、Wizard 与 Peak Hermes
 
@@ -295,10 +346,11 @@ Embedding 模型的唯一修改位置在 AI & Models。Knowledge & Search 显示
 | 快速 Agent | 自动，可覆盖 | 轻量工具调用与短任务 | `CURRENT`：Fast Agent role |
 | 通用 Agent | 自动，可覆盖 | 多步任务与工具调用 | `CURRENT`：Agent role |
 | 深度 Agent / Research | 自动，可覆盖 | 长流程、升级和综合 | `PARTIAL`：路由不完全统一 |
-| Peak Hermes 主模型 | 自动，可覆盖 | Hermes workflow 的默认推理模型 | `REQUIRED`：需和现有 harness 统一 |
-| Codex / Claude Code Agent | 选择执行连接或自动 | 需要同时验证 runtime、工作目录和权限 | `REQUIRED` |
+| Peak Hermes 主模型 | 自动，可覆盖 | Hermes workflow 的默认推理 / 工具调用模型 | `REQUIRED`：需和现有 harness 统一 |
+| Hermes 快速 / 通用 / 深度任务模型 | 自动，可覆盖 | 都由同一个 Hermes runtime 执行，只是模型与预算不同 | `TARGET` |
+| Codex / Claude Code 执行连接 | 选择连接或自动 | 作为 Hermes 的底层执行 Provider；需要验证普通生成、工具、工作目录和权限适配 | `REQUIRED`，不是 Agent runtime |
 
-Agent 使用哪个模型在 AI & Models 设置；Agent 是否能读写、调用哪些工具和何时确认在 Agents 设置。
+Agent 使用哪个模型在 AI & Models 设置；Agent 是否能读写、调用哪些工具和何时确认在 Agents 设置。Hermes 的主循环只能选择通过 Agent capability gate 的模型：至少验证工具调用、工具结果续接、结构化输出或可解析协议、上下文容量和流式稳定性。模型不支持工具时，可以被 Hermes 明确用于纯生成子任务，但不能成为需要工具的主执行模型；无可靠证据时必须 fail closed，而不是“试试看”。
 
 #### 媒体生成
 
@@ -321,16 +373,29 @@ Agent 使用哪个模型在 AI & Models 设置；Agent 是否能读写、调用�
 
 | 参数 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
-| Temperature | 高级；全局默认 + 动作覆盖 | 影响输出随机性；模型不支持时隐藏 | `CURRENT` |
-| Top-p | 高级；全局默认 + 动作覆盖 | 与 Temperature 同时修改时提示组合影响 | `CURRENT` |
-| Top-k | 高级；仅支持的模型 | 不应对不支持的 Provider 强行发送 | `CURRENT` / Provider 依赖 |
-| Presence penalty | 高级；仅支持的模型 | 影响重复主题 | `CURRENT` |
-| Frequency penalty | 高级；仅支持的模型 | 影响重复词句 | `CURRENT` |
+| Temperature | 高级；动作覆盖 | 影响采样；很多新推理模型建议使用模型默认，不应强制显示 | 类型与请求转发 `CURRENT` |
+| Top-p | 高级；动作覆盖 | 与 Temperature 通常二选一调整；模型不支持时隐藏 | 类型与请求转发 `CURRENT` |
+| Top-k | 高级；仅支持的模型 | Gemini 等模型需以模型元数据判断；不应对所有 Provider 发送 | 类型与请求转发 `CURRENT` / 能力元数据不完整 |
+| Presence penalty | 高级；仅支持的模型 | 影响已经出现主题的重复概率 | 类型与请求转发 `CURRENT` |
+| Frequency penalty | 高级；仅支持的模型 | 按出现次数影响重复词句 | 类型与请求转发 `CURRENT` |
 | Reasoning effort | 高级；仅推理模型 | 目标支持 low / medium / high 或 Provider 映射 | `PARTIAL`：字段有，主要请求链路未统一转发 |
 | Output verbosity | 高级；仅支持的模型 | 控制输出详略，不替代 prompt | `PARTIAL` |
-| 最大输出 | 高级；全局或动作覆盖 | 必须受模型和任务上限共同约束 | `CURRENT` |
-| 总超时 | 高级；更接近任务执行控制 | 控制完整请求或任务等待时间 | `CURRENT` / 应与 Agent 超时区分 |
-| 单步超时 | 高级；Agent 动作适用 | 对普通一次性生成不显示 | `CURRENT` / 应归 Agents 展示 |
+| 最大输出 | 高级；动作覆盖 | 必须受模型、任务和 reasoning token 预算共同约束 | 类型与请求转发 `CURRENT` |
+| Stop sequences | Provider / action 条件项 | 只有明确任务需要时才显示，不做全局普通默认 | `REQUIRED` / 当前统一设置缺失 |
+| Seed | Provider / action 条件项 | 仅用于支持该参数、且需要可重复采样的任务 | `REQUIRED` / 当前统一设置缺失 |
+| Structured output / response format | 任务要求，不是普通风格旋钮 | 由动作 schema 决定；用户只在高级诊断中看见是否满足 | `PARTIAL`：部分任务已使用，能力目录未统一 |
+| Tool choice / allowed tools | Hermes 任务要求 | 归 Agents 的工具暴露与任务 envelope，不归通用生成参数 | `PARTIAL` |
+| Provider-specific reasoning | 条件项 | 可能是 effort、thinking budget / level、reasoning mode 或其他 Provider 字段 | `REQUIRED`：使用 schema-driven adapter，不能硬编码成一个通用枚举 |
+| 媒体参数 | 媒体动作 / preset | aspect ratio、size、duration、voice、resolution 等按模型能力显示 | `PARTIAL` / 各 route 不一致 |
+
+当前 `LLMOutputControlSettings` 已定义 temperature、topP、topK、presencePenalty、frequencyPenalty、maxOutputTokens、reasoningEffort、textVerbosity、total / step timeout。生产 Profiles UI 只展示其中一部分；Harness 请求转换会发送 sampling、penalty 和 max-output，但没有统一发送 reasoning effort / verbosity。也就是说，**字段存在不等于所有 Provider 已生效**。
+
+新的模型 API 也不再共享一套固定参数：OpenAI 新模型增加了更细的 reasoning effort、reasoning mode / context 和 verbosity；Gemini 按模型暴露 thinking level / budget、seed、response modalities 与媒体参数，并明确不是所有模型都支持 top-k；其他 Provider 也有自己的 thinking、cache、tool 和 structured-output 选项。Peak 不应把所有参数永久画成九个全局控件，而应维护：
+
+1. 小而稳定的 common controls；
+2. 由 catalog / adapter 声明的 Provider-specific controls；
+3. 由任务强制的 structured output、tool choice、timeout、retry 和 step limit；
+4. 每个控件的 supported / ignored / rejected 真实状态。
 
 高级模型参数的推荐默认由产品提供。普通用户不需要为了完成 Onboarding 修改任何一项。
 
@@ -368,16 +433,15 @@ Agents 管理第二条主线：
 
 | 设置能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
-| Peak Hermes | 普通设置，启用 / 停用 | Peak 自有 Agent harness 和工作流；默认执行方式 | `PARTIAL`：现有 harness 需统一为产品概念 |
-| Codex Agent | 条件性执行连接 | 使用 Codex runtime；需要单独健康和权限检测 | `REQUIRED` |
-| Claude Code Agent | 条件性执行连接 | 使用 Claude Code runtime；需要单独健康和权限检测 | `REQUIRED` |
-| 其他模型 Agent | 自动，可覆盖 | 使用支持工具调用的普通模型连接运行 Peak Agent loop | `CURRENT` |
-| 默认 Agent 执行方式 | 自动，可覆盖 | 根据可用 runtime、任务、隐私与权限决定 | `REQUIRED` |
+| Peak Hermes | 系统唯一 runtime；不提供切换 | 拥有规划、循环、工具、权限、receipt、恢复和最终结果 | `PARTIAL`：现有 Agent loop / Harness 需统一为一个产品 runtime |
+| Hermes 默认执行连接 | 自动，可覆盖 | 从已验证连接中选择兼容模型；Codex / Claude Code 只是候选连接 | `REQUIRED` |
+| 工具任务的模型能力门 | 系统强制 | 要求真实工具调用、结果续接、结构化协议、上下文与流式稳定性 | `PARTIAL`：有 `toolsNeeded` 筛选，能力证据和 probe 不足 |
+| 非工具子任务模型 | 自动，可覆盖 | Hermes 可把纯总结、改写等子任务交给不支持 tools 的模型 | `TARGET`，必须明确隔离出主 Agent loop |
 | 允许自动升级 | 普通设置 | 快速 Agent 能力不足时是否请求更强路线 | `CURRENT` / 覆盖范围不统一 |
 | 最大升级次数 | 高级设置 | 防止循环升级和不可预测成本 | `CURRENT` |
 | 升级阈值 | 高级设置 | 应保持产品默认，只有高级用户调整 | `CURRENT` |
 
-Hermes 是 Agent 流程拥有者；Codex、Claude Code 和普通模型连接提供执行能力。它们不能被当成同一层的“模型名称”。
+Hermes 是 Agent 流程拥有者。Codex、Claude Code 和普通模型连接只提供执行能力；切换底层连接不能改变 Peak 的权限语义、工具注册、receipt、恢复或审核流程。如果某连接只能由自己的外部 runtime 完成任务而无法遵守 Hermes envelope，就不应进入首发执行候选。
 
 ### 4.2 默认安全模式
 
@@ -385,10 +449,10 @@ Hermes 是 Agent 流程拥有者；Codex、Claude Code 和普通模型连接提�
 
 | 模式 | 用户看到的含义 | 允许行为 | 当前事实 |
 | --- | --- | --- | --- |
-| 只读 | Agent 可以分析，但不能修改 Vault 或执行写入工具 | 读文件、搜索、生成候选和报告 | `CURRENT` / 需要全链路一致 |
+| 只读 | Agent 可以分析，但不能修改 Vault 或执行写入工具 | 读文件、搜索、生成候选和报告 | `PARTIAL`：guard 有语义，尚未证明所有工具路径一致 |
 | 每次询问 | 每次产生外部影响前都询问 | 用户逐次允许或拒绝写文件、命令或外部动作 | `PARTIAL`：runtime 有 `ask`，持久化类型未正式支持 |
-| 自动接受文件修改 | 当前 run 内自动允许受控编辑，其他风险仍按规则确认 | 仅限明确工作范围和可恢复写入 | `CURRENT` runtime 名为 `acceptEdits`，旧 UI 曾错误标成 Ask |
-| 绕过确认 | 不询问直接执行允许范围内的动作 | 只面向明确理解风险的高级用户；必须强警告和可见状态 | `CURRENT` runtime 名为 `bypassPermissions` |
+| 自动接受文件修改 | 当前 run 内自动允许受控编辑，其他风险仍按规则确认 | 仅限明确工作范围和可恢复写入 | runtime `CURRENT`；统一 Settings / scope `PARTIAL` |
+| 绕过确认 | 不询问直接执行允许范围内的动作 | 只面向明确理解风险的高级用户；必须强警告和可见状态 | runtime `CURRENT`；全链路审计 `PARTIAL` |
 
 上线前必须完成两件事：
 
@@ -399,11 +463,11 @@ Hermes 是 Agent 流程拥有者；Codex、Claude Code 和普通模型连接提�
 
 | 设置能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
-| 读取 Vault | 普通设置或能力状态 | Agent 完成 Vault 任务的最低权限 | `CURRENT` / 不同工具需统一 |
-| 修改 Vault 文件 | 普通设置 | 受安全模式和 run 范围共同约束 | `CURRENT` |
-| 创建新文件 | 普通设置 | 默认询问；写入路径受约束 | `CURRENT` |
+| 读取 Vault | 普通设置或能力状态 | Agent 完成 Vault 任务的最低权限 | `PARTIAL`：不同工具需统一 scope |
+| 修改 Vault 文件 | 普通设置 | 受安全模式、当前 run scope 和 revision guard 共同约束 | `PARTIAL` |
+| 创建新文件 | 普通设置 | 默认询问；写入路径受约束 | `PARTIAL` |
 | 删除 / 移动文件 | 高风险设置 | 默认每次询问；不能被普通自动接受静默覆盖 | `PARTIAL` |
-| 执行 Obsidian command | 普通设置 + 命令级审核 | 稳定命令可授权，高风险命令逐项确认 | `CURRENT` / gateway 体系 |
+| 执行 Obsidian command | 普通设置 + 命令级审核 | 稳定命令可授权，高风险命令逐项确认 | Command Gateway `CURRENT`；Hermes 统一接线 `PARTIAL` |
 | 执行本地命令 | 高级设置 | 必须限制工作目录、命令类型和环境 | `REQUIRED` / runtime 依赖 |
 | 访问工作区外文件 | 高风险设置 | 默认禁止；一次授权不得变成永久全盘访问 | `REQUIRED` |
 | 访问网络 | 普通设置 | 默认按工具和域名确认，不等于 Web Search 开关 | `PARTIAL` |
@@ -415,24 +479,44 @@ Hermes 是 Agent 流程拥有者；Codex、Claude Code 和普通模型连接提�
 
 | 工具能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
-| Vault 读取与搜索工具 | 普通设置 / 默认启用 | Agent 查找和引用用户内容 | `CURRENT` |
-| Vault 编辑工具 | 普通设置 / 默认受限 | 仍受默认安全模式和 run 审核约束 | `CURRENT` |
-| Web Search / Web fetch | 普通设置 | 外部联网，需说明发送的查询和内容 | `CURRENT` / Provider 依赖 |
-| Obsidian commands | 命令级设置 | 通过 Command Gateway 审核，不与模型混排 | `CURRENT` |
-| MCP servers | 高级设置 | 管理第三方工具连接、启用状态和能力 | `PARTIAL`：字段与 UI 有，保存和运行时接线不完整 |
-| Skills | 高级设置 | 决定 Agent 可发现的本地技能来源；不等同于自动授权执行 | `CURRENT` / 目录与运行时需分别核对 |
+| Vault 读取与搜索工具 | 普通设置 / 默认启用 | Agent 查找和引用用户内容 | `CURRENT` 核心工具；统一权限状态 `PARTIAL` |
+| Vault 编辑工具 | 普通设置 / 默认受限 | 仍受默认安全模式和 run 审核约束 | `CURRENT` 核心工具；统一权限状态 `PARTIAL` |
+| Web Search / Web fetch | 普通设置 | 外部联网，需说明查询、内容、执行来源和额外费用 | `PARTIAL`：多条 Provider / fallback 路径未统一 |
+| Obsidian commands | 命令级设置 | 通过 Command Gateway 审核，不与模型混排 | Gateway `CURRENT`；Hermes 接线 `PARTIAL` |
+| MCP servers | 高级设置 | 管理第三方能力连接、状态、逐工具启用和权限 | `PARTIAL`：基础工具发现 / 调用有，规范覆盖不足 |
+| Skills | 高级设置 | 管理可发现的 Agent Skills；启用 skill 不自动授予其中工具权限 | `PARTIAL / NON-STANDARD` |
 | 自定义工具 | 高级设置 | 必须声明输入、输出、风险和权限 | `REQUIRED` |
 
 #### MCP Server 允许设置
 
 - 名称与启用状态；
-- 传输方式：`stdio` 或远端连接；
+- 传输方式：`stdio` 或标准 Streamable HTTP；旧 HTTP+SSE 仅作兼容；
 - 本地命令、参数和必要环境变量；
 - 远端 URL 与 Headers；
 - 能力检测、最后连接时间和错误状态；
 - 删除、停用、重新测试。
 
 环境变量和 Headers 可能包含敏感信息，诊断与 receipt 中必须脱敏。MCP Server 的工具被检测到，不代表用户已经授予写入权限。
+
+当前 `MCPClientManager` 能连接 stdio 和旧 SSE，并完成 `tools/list` / `tools/call`；这是真实的基础实现。但首发若声称“支持 MCP”，还必须补齐或明确收窄：
+
+- Streamable HTTP、协议版本 / capability negotiation、session 恢复和连接健康；
+- JSON Schema 的 `$ref`、union、nested object、约束和 structured content，不能降级成大量 `any`；
+- Tools 之外的 Resources / Prompts 是否支持，以及不支持时的清楚状态；
+- 远端认证、secret 存储、分页与 `listChanged`；
+- 每个 tool 的来源、风险、读写分类和人工授权，不能把所有 MCP tool 一律当成 edit。
+
+#### Skills 必须对齐 Agent Skills 标准
+
+当前 `SkillParser` 要求 Peak 自定义的 `id / name / type / phases / tools / model / inputs` 和 `## System Prompt`，它可以驱动现有编译器，但不等于 Agent Skills 标准。目标实现应以标准 skill directory 为输入：
+
+- 至少包含带 YAML frontmatter 的 `SKILL.md`，使用标准 `name` 和 `description`；
+- 支持可选 `scripts/`、`references/`、`assets/`，并按需加载而不是启动时全部塞进 context；
+- 启动时只发现 metadata，Hermes 根据当前任务选择 skill，再渐进加载正文和关联资源；
+- skill 可以声明需要的工具和环境，但权限仍由 Agents policy 与当前 run 决定；
+- 内置、用户 Vault 和外部来源都要显示来源、版本 / hash、验证和冲突状态。
+
+Peak 可以保留旧格式迁移 adapter，但不能把自定义格式继续对外称为“标准 Skills”。
 
 ### 4.5 确认策略与受信任范围
 
@@ -451,7 +535,7 @@ Hermes 是 Agent 流程拥有者；Codex、Claude Code 和普通模型连接提�
 | --- | --- | --- | --- |
 | 单步超时 | 高级设置 | 某一步超时后允许重试、跳过或停止 | `CURRENT` |
 | 总任务超时 | 高级设置 | 防止 Agent 无限运行；不得静默丢失已有结果 | `CURRENT` |
-| 最大步骤 / 循环保护 | 系统默认，必要时高级 | 保护成本与稳定性 | `CURRENT` / 多 runtime 需统一 |
+| 最大步骤 / 循环保护 | 系统默认，必要时高级 | 保护成本与稳定性 | `CURRENT` / 现有多条 Agent 入口需收口到 Hermes |
 | 月度 Agent 预算 | 高级设置 | 当前数据结构归 harness；是否升级为全产品预算需产品决定 | `PARTIAL` |
 | 预算重置日 | 高级设置 | 只在预算启用时显示 | `CURRENT` / Agent scope |
 | 预算预警阈值 | 高级设置 | 达到阈值后提醒，不静默阻断当前任务 | `CURRENT` |
@@ -472,8 +556,8 @@ Hermes 是 Agent 流程拥有者；Codex、Claude Code 和普通模型连接提�
 
 ### 4.7 Agents 中只显示的状态与操作
 
-- **状态**：Hermes / Codex / Claude Code 是否可用，当前执行方式，工具数量，MCP 健康，权限摘要，正在运行的任务，最近失败；
-- **操作**：测试 runtime、重新检测工具、打开当前 Agent run、查看 receipt、撤销授权、停止任务；
+- **状态**：Peak Hermes runtime 是否可用、当前执行连接和模型是否通过 capability gate、工具数量、MCP 健康、Skills 兼容状态、权限摘要、正在运行的任务和最近失败；
+- **操作**：测试 Hermes 与执行连接、重新检测工具 / Skills、打开当前 Agent run、查看 receipt、撤销授权、停止任务；
 - **一次性确认**：工作目录外访问、高风险写入、删除、命令执行、绕过确认；
 - **导航**：使用模型跳转到 AI & Models；数据保留跳转到 Advanced。
 
@@ -481,7 +565,7 @@ Hermes 是 Agent 流程拥有者；Codex、Claude Code 和普通模型连接提�
 
 Knowledge & Search 管理长期知识状态：
 
-> 哪些内容进入系统 → 处理到什么深度 → 怎样检索与分析 → 怎样维护 Atlas、Graph、Ambient 和 Vault Intelligence
+> 哪些内容进入系统 → 生成哪些可搜索产物 → 怎样检索与分析 → 怎样向 Atlas、AI Graph 和后续知识工作区提供可信状态
 
 ### 5.1 索引范围与自动更新
 
@@ -490,7 +574,8 @@ Knowledge & Search 管理长期知识状态：
 | 自动更新索引 | 普通设置 | 文件变化后增量维护；默认当前为关闭 | `CURRENT` |
 | 每次索引生成什么 | 在 Index workspace 配置 | Core search 显示 Full-text 与 Embeddings；Generated knowledge 再按摘要、标签与实体、关系、内容理解展开到具体动作；Recommended 只恢复推荐组合 | `TARGET`：替代 fast / indexLevel 等抽象套餐 |
 | 包含的文档类型 | 普通设置 | 按真实能力矩阵选择，不只按扩展名 | `CURRENT` |
-| 包含 / 排除文件夹 | 普通设置 | 支持 Vault 路径范围；与 ignore pattern 合并解释 | `PARTIAL` |
+| 包含文件夹 | 普通设置 | Whole Vault 或明确的 Vault-relative allowlist；空列表不能产生含混语义 | `REQUIRED`：当前 `SearchSettings` 没有 include-folder 数据模型 |
+| 排除文件夹 / Ignore patterns | 普通 + 高级 | 预设目录可用可读列表管理，复杂 glob 在高级展开；对扫描、增量更新和结构分析一致生效 | `CURRENT` 核心匹配与恢复；新 mock / 生产编辑体验仍需收口 |
 | Ignore patterns | 高级设置 | 排除生成目录、缓存或用户指定 pattern | `CURRENT` |
 | 索引刷新间隔 | 高级设置 | 只在自动更新时适用 | `CURRENT` |
 | 更换 Embedding 模型 | 跳转到 AI & Models | 这里显示影响和重建要求，但不保存第二份值 | `CURRENT` |
@@ -511,8 +596,8 @@ Knowledge & Search 管理长期知识状态：
 | 文档类型 | 默认进入索引 | 需要的设置语义 | 当前事实 |
 | --- | --- | --- | --- |
 | Markdown | 开 | 全文、链接、标签、摘要和向量 | `CURRENT` |
-| PDF | 开 | 文本提取；扫描件需明确 OCR 状态 | `CURRENT` / OCR 依文件 |
-| 图片 | 开 | OCR / 视觉描述是否启用，成本和隐私提示 | `CURRENT` / enrichment 依连接 |
+| PDF | 开 | 文本型 PDF 可抽取；扫描件需单独启用真实 OCR 并显示逐页状态 | 文本抽取 `CURRENT`；OCR / PDF enrichment `REQUIRED` |
+| 图片 | 开 | 文件登记与 bytes 读取不等于理解；OCR / 视觉描述需分别启用、计费和显示隐私路线 | 基础 loader `CURRENT`；索引 OCR / vision / summary `REQUIRED` |
 | Excalidraw | 开 | 文本标签、引用和画布关系 | `CURRENT` |
 | TXT | 关 | 是否纳入全文与向量 | `CURRENT` 类型存在 |
 | CSV / JSON / HTML | 关 | 结构化或文本抽取边界；避免把机器数据误作笔记 | `CURRENT` 类型存在 |
@@ -534,7 +619,7 @@ Knowledge & Search 管理长期知识状态：
 | 代码块替代文字 | 高级设置 | 跳过代码时插入的说明文字；空值需要安全 fallback | `CURRENT` 字段，普通用户通常无需修改 |
 | 最大代码字符数 | 高级设置 | 防止巨大代码块占满上下文 | `CURRENT` |
 | 短摘要长度 | 高级设置 | 当前默认 150；影响列表与轻量上下文 | `CURRENT` |
-| 完整摘要长度 | 高级设置 | 当前默认 2000；影响文档理解 | `CURRENT` |
+| 完整摘要长度 | 高级设置 | 当前默认 2000；影响生成摘要的目标长度 | `CURRENT` |
 | AI Analysis 会话摘要长度 | 高级设置 | 当前默认 3000；只影响分析产物 | `CURRENT` |
 | 生成向量 | 每次运行独立选择 | Core search 中直接显示为 Embeddings；语义检索和语义关系依赖它，需显示模型和重建影响 | `CURRENT` |
 | Markdown 摘要 | 每次运行独立选择 | 从笔记正文生成短摘要和完整摘要；长度由长期设置管理 | `CURRENT` |
@@ -542,10 +627,10 @@ Knowledge & Search 管理长期知识状态：
 | 图片描述与摘要 | 每次运行独立选择 | 必须把真实图像内容交给视觉模型，并说明成本与隐私 | `REQUIRED · IMPLEMENTATION PENDING`：当前索引路径没有传递图像内容 |
 | Canvas / Excalidraw 摘要 | 每次运行独立选择 | 基于可读文字、引用和结构生成，不把内部 JSON 当摘要 | `REQUIRED · IMPLEMENTATION PENDING` |
 | 本地关键词与关键句 | 系统自动 | 使用确定性本地分析，不产生模型调用 | `CURRENT` |
-| AI topic tags | 每次运行独立选择 | 生成用于发现和聚类的主题概念，并显示预计用量 | `CURRENT` / Markdown 路径 |
-| Functional tags | 每次运行独立选择 | 识别 decision、plan、reference 等文档作用 | `CURRENT` / Markdown 路径 |
-| 人物、地点、日期 | 每次运行独立选择 | 抽取可复用的上下文实体 | `CURRENT` / Markdown 路径 |
-| 推断文档日期 | 每次运行独立选择 | 只有来源足够明确时才写入索引产物 | `CURRENT` / Markdown 路径 |
+| AI topic tags | 每次运行独立选择 | 生成用于发现和聚类的主题概念，并显示预计用量 | `PARTIAL`：Markdown full-index 有 tags 生成；独立动作、状态和跨类型覆盖未完成 |
+| Functional tags | 每次运行独立选择 | 识别 decision、plan、reference 等文档作用 | `TARGET`：不能从通用 LLM tags 推断已存在独立消费者 |
+| 人物、地点、日期 | 每次运行独立选择 | 抽取可复用的上下文实体 | `TARGET`：需独立 schema、持久化和检索消费者 |
+| 推断文档日期 | 每次运行独立选择 | 只有来源足够明确时才写入索引产物 | `TARGET`：需 provenance 与置信度，不等于现有 metadata date |
 | 显式链接、标签与文件夹关系 | 系统自动 | 保留 Vault 已经存在的关系事实 | `CURRENT` |
 | 语义相似关系 | 每次运行独立选择 | 开启时自动保证 Embeddings 可用 | `CURRENT` |
 | Communities / Hub signals | 每次运行独立选择 | 生成聚类、中心性与结构缺口信号 | `CURRENT` 处理存在 / 用户级开关是 `TARGET` |
@@ -634,14 +719,14 @@ Index workspace 中的 `Later` 是对**当前产品事实**的诚实标记，不
 | 设置能力 | 用户控制 | 默认与影响 | 当前事实 |
 | --- | --- | --- | --- |
 | 语义检索 | 普通设置 | 需要 Embedding 和向量状态；不可用时自动降级并说明 | `CURRENT` |
-| Personalized PageRank | 高级设置 | 当前默认开启；影响关系型排序 | `CURRENT` |
-| Rerank | 高级设置 | 依赖可用模型；失败时保留原排序 | `PARTIAL` |
 | AI 查询分析模型 | 跳转 / 引用任务默认 | AI & Models 是唯一模型 owner | `CURRENT` 字段存在，所有权需迁移统一 |
 | AI Analysis 自动保存 | 普通设置 | 当前默认开启；影响是否产生持久分析记录 | `CURRENT` |
 | 分析历史查看、重试和删除 | 不作为设置 | 属于 AI Analysis 运行结果 / 历史工作区 | `CURRENT` 能力，入口需统一 |
 | 排除已保存分析以避免反馈循环 | 系统自动 | 属于检索安全策略，不要求普通用户维护一个含混开关 | `CURRENT` 内部行为 |
 | 分析输出位置 | 跟随 Data root | 不再单独暴露目录覆盖 | `TARGET` |
 | Inspector links | 高级设置 | 决定结果检查器显示哪些跳转 | `PARTIAL`：当前恢复和消费者不完整 |
+
+用户可配置的 `enablePPR` 与模型 Rerank 在目标 Settings 中一起退役。源码仍有 PPR、Reranker 和兼容字段，这表示需要迁移 / 清理，**不表示应继续暴露开关**。FTS、向量、RRF、图信号、PageRank 或其他确定性排序由 Search 内部按可用证据运行，并在 debug receipt 中解释；它们不是普通用户的模型或算法设置。
 
 Inspector links 当前还拆成五个底层字段：关键词数量默认 8、标签数量默认 8、文件夹分组默认开启、分组最小数量默认 6、最大目录深度默认 4。目标 Settings 可以把它们放在同一处高级展开，但必须先补齐持久化恢复和真实消费者，不能因为控件能修改就标成已生效。
 
@@ -657,25 +742,15 @@ Inspector links 当前还拆成五个底层字段：关键词数量默认 8、�
 | AI Graph 来源范围 | 功能内设置 | 绑定当前图任务，不是全局索引范围 | `CURRENT` |
 | 版本保留与 materialize | Advanced / 功能内操作 | 由 artifact 治理决定，不做简单开关 | `CURRENT` / 路径依工作流 |
 
-### 5.6 Ambient 与 Vault Intelligence
+### 5.6 Ambient 与 Vault Intelligence：暂不冻结字段
 
-| 设置能力 | 用户控制 | 默认与影响 | 当前事实 |
-| --- | --- | --- | --- |
-| Ambient suggestions | 普通设置 | 当前默认开启；控制是否生成轻量发现 | `CURRENT` |
-| 文档切换触发 | 高级设置 | 当前默认等待 5 秒 | `CURRENT` |
-| 写作停顿触发 | 高级设置 | 当前默认等待 5 秒 | `CURRENT` |
-| 最小字符变化 | 高级设置 | 当前默认 30 字符，减少噪音 | `CURRENT` |
-| 冷却时间 | 高级设置 | 当前默认 30 秒 | `CURRENT` |
-| 每次最多建议 | 高级设置 | 当前默认 5 条 | `CURRENT` |
-| 关系图跳数 | 高级设置 | 当前默认 2 跳 | `CURRENT` |
-| 反馈控件 | 普通设置 | 当前默认开启，用于改进用户自己的建议质量 | `CURRENT` |
-| LLM 解释 | 普通设置 | 当前默认关闭；打开前说明连接、成本和内容发送范围 | `CURRENT` |
-| LLM 解释冷却 | 高级设置 | 当前默认 120 秒 | `CURRENT` |
-| 状态栏提示 | 普通设置 | 当前默认关闭 | `CURRENT` |
-| Serendipity gutter | 实验性设置 | 当前默认关闭，明确标记实验 | `CURRENT` |
-| Morning briefing | 实验性设置 | 当前默认关闭，明确说明生成时机和来源 | `CURRENT` |
-| Vault Intelligence 自动扫描 | 普通设置 | 只生成状态与发现，不静默改文件 | `REQUIRED` / 当前多条能力在演进 |
-| 自动建议修复 | 普通设置 | 产生候选、证据和 diff；应用仍需用户审核 | `REQUIRED` |
+`codex://threads/019fea22-195f-7003-9cde-d2083867e848` 中的新版 Vault Intelligence 已经把产品从旧 Ambient 小开关集合，推进为 Overview、Contents、Search & AI、Activity、Work queue、Scan & runs 等工作区，并继续调整知识图与交互。因此本轮不把旧的 5 秒、30 字符、2 hops、Morning briefing 等字段写成未来 Settings 合同，也从统一 Settings mock 移除这些详细控件。
+
+本轮只保留三个稳定边界：
+
+1. 读和发现可以自动运行；任何写入都生成证据、候选与 diff，并遵守 Agents 权限；
+2. 新产品设计稳定后，只把真正长期、跨 run、用户能理解的默认登记回 Settings；当前 scan、视图、过滤、selection 和 review 选择留在 Vault Intelligence 工作区；
+3. 旧字段仍需作为迁移 / 退役审计对象，但不得因为源码中存在就继续出现在新 mock。
 
 ### 5.7 Hub curation 与知识维护
 
@@ -683,7 +758,6 @@ Inspector links 当前还拆成五个底层字段：关键词数量默认 8、�
 | --- | --- | --- | --- |
 | 定时 Hub curation | 高级设置 | 当前默认关闭；开启后按周期生成维护候选 | `PARTIAL`：Service 会读，Settings 恢复不完整 |
 | Curation 间隔 | 高级设置 | 当前默认 7 天；仅在 scheduler 开启时显示 | `PARTIAL` |
-| Pinned / ignored findings | 功能内设置 | 用户在 Vault Intelligence 或 review surface 管理 | `CURRENT` / 依具体 finding |
 | 自动应用维护 | 不提供普通开关 | Vault 写入必须经过候选、证据、diff 和 Apply | `INTERNAL` / 安全边界 |
 
 ### 5.8 Knowledge & Search 中只显示的状态与操作
@@ -765,7 +839,7 @@ Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompt
 | SQLite backend override | 系统内部或故障诊断 | 当前支持 `auto / better-sqlite3`；普通用户没有稳定选择意图，不进入常规 Settings | `CURRENT` runtime / `INTERNAL` UI 决策 |
 | 导出诊断包 | 操作 | 默认脱敏；列出将包含的文件和字段 | `REQUIRED` |
 | 重新检测全部连接 | 操作 | 更新健康与能力状态，不改凭证 | `REQUIRED` |
-| 重新加载模型目录 | 操作 | 更新目录、缓存和新鲜度 | `REQUIRED` |
+| 打开模型目录诊断 | 导航到 AI & Models | 目录刷新、隐藏、别名、能力证据和新鲜度只有一个 owner；Advanced 只提供诊断跳转 | `REQUIRED` |
 | 重建本地索引 | 高影响操作 | 打开 Knowledge Index 工作区显示全过程 | `CURRENT` / 运行视图需统一 |
 | 重建 SQLite projection | 维护操作 | 只重建 read model，不删除 canonical 数据 | `CURRENT` / 应隐藏在维护区 |
 | 清理缓存 | 操作 | 先说明可重新生成内容和预计影响 | `CURRENT` / 多缓存需统一 |
@@ -797,13 +871,13 @@ Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompt
 | 产品功能 | AI & Models | Agents | Knowledge & Search | Advanced / 功能内 |
 | --- | --- | --- | --- | --- |
 | Chat Studio | 对话、快速、研究模型与参数 | 使用 Agent 时的工具和权限 | Vault / Web 检索依赖状态 | 历史保留在 Advanced；当前对话覆盖在 Chat 内 |
-| Composer / Copilot | 对话、改写、结构、多文件模型 | 写入权限、命令和工具确认 | 当前文档知识与 Ambient 来源 | 默认文档视图在 Advanced；当前文档选项在 Composer 内 |
-| Vault Search / AI Search | 查询理解、总结、研究模型 | 多步 AI Search 的工具与网络权限 | 索引、语义、rerank、分析保存策略 | 输出目录与保留在 Advanced；当前 run 在 Search 内 |
-| Knowledge Index | Embedding、摘要、标签和关系模型 | enrichment Agent 需要的工具权限 | 范围、类型、深度、自动更新、分块 | 数据位置在 Advanced；当前进度在 Index 工作区 |
-| File Atlas | 文档理解和 AI Graph 模型 | 生成 / 更新 Graph 时的权限 | Atlas 范围、关系和知识策略 | 视觉布局功能内；数据保留在 Advanced |
+| Composer / Copilot | 对话、改写、结构、多文件模型 | 写入权限、命令和工具确认 | 使用当前文档与已索引知识的状态 | 默认文档视图在 Advanced；当前文档选项在 Composer 内 |
+| Vault Search / AI Search | 查询理解、总结、研究模型 | 多步 AI Search 的工具与网络权限 | 范围、全文 / 向量 readiness、分析自动保存；不再暴露 rerank 算法开关 | 数据保留在 Advanced；当前 run 在 Search 内 |
+| Knowledge Index | Embedding、摘要、AI tags 与 Hub curation 模型；本地关系计算不选文本模型 | enrichment Agent 需要的工具权限 | 文件夹 / 类型范围、后台更新、分块与产物默认 | 数据位置在 Advanced；当前 run 产物与进度在 Index 工作区 |
+| File Atlas | 只为“解释当前邻域 / cluster”等真实生成动作选模型 | 生成 / 更新 Graph 时的权限 | 读取 Index 提供的正文、摘要、关系和 readiness，不重复拥有 enrichment | 视觉布局功能内；数据保留在 Advanced |
 | AI Graph | 生成、更新和比较模型 | 写入 artifact 和工具确认 | 来源知识和关系质量 | 版本 / materialize 在功能内或 Advanced |
-| Ambient | 解释模型 | 自动建议涉及动作时的权限 | 触发、冷却、数量和 Vault Intelligence 策略 | 显示位置部分在功能内 |
-| Peak Hermes / Wizard | Agent / Research 默认模型 | runtime、工具、安全、升级和成本 | 使用 Vault 时读取索引状态 | receipt 保留和诊断在 Advanced |
+| Ambient / Vault Intelligence | `DEFERRED`，新设计稳定后再登记真实模型动作 | 所有写入候选继续遵守 Agents 权限 | 不在本轮冻结旧触发器或旧设置 | 当前 scan、视图、selection 与 review 留在功能工作区 |
+| Peak Hermes / Wizard | 快速 / 通用 / 深度任务模型与 capability gate | 唯一 runtime、执行连接、工具、安全、升级和成本 | 使用 Vault 时读取索引状态 | receipt 保留和诊断在 Advanced |
 | 图片 / 视频 / 音频 / 音乐 | 路由、连接、模型和 preset | 只有 Agent 自动生成时使用权限 | 不属于知识设置，除非产物被索引 | 保存目录、隐私和条款记录在 Advanced |
 | Command Center | 不拥有模型 | 由入口触发 Agent 时使用 Agents 规则 | 显示知识状态但不改索引 | 启动行为在 Advanced；布局在功能内 |
 
@@ -813,15 +887,18 @@ Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompt
 
 ### 8.1 P0：上线前必须解决
 
-1. **安全模式语义错误。** runtime 有真正的 `ask`，但持久化类型没有正式包含；旧 UI 将 `acceptEdits` 标成 Ask。必须统一枚举、文案、保存和运行时读取。
-2. **默认安全模式是否真正生效不清楚。** 当前有保存与 bridge 传递，但不能证明所有 Agent 路径都执行同一权限门。
-3. **推荐策略存在假交互。** 当前 Settings 的 recommendation cards 明确是 cosmetic；点击不会真正改变任务绑定。上线 UI 不能保留这种行为。
-4. **部分字段重启后丢失。** `attachmentHandlingDefault`、音乐条款确认、Inspector links、Hub scheduler、MCP servers 和 graph visualization 等字段存在不同程度的恢复缺口。
-5. **Codex / Claude Code 双能力未完整接入。** 普通对话和 Agent 执行必须分别检查并显示，不能先画成 Ready。
-6. **模型目录新鲜度没有统一契约。** OpenRouter 在线 JSON、缓存、fallback、`ETag` / `Last-Modified` 和更新时间需要正式实现；Ollama 需要本地探测失败语义。
-7. **Knowledge readiness 不完整。** 当前状态不能完整表达 changed、missing、semantic readiness、freshness 和 repair result。
-8. **模型参数并非全部被请求链路使用。** reasoning effort 与 output verbosity 已有字段，但不能当成所有 Provider 和功能都已生效。
-9. **最小分块阈值的 UI 字段名不一致。** 运行时字段是 `minDocumentSizeForChunking`，当前 Settings 使用 `minDocSizeToChunk`；修复前用户控制应标为未生效，而不是 `CURRENT`。
+1. **Hermes runtime 必须真正唯一。** 统一现有 Agent loop、Harness、权限、tool registry、receipt 与恢复；Codex / Claude Code 只能作为经过验证的执行连接，不能绕过 Hermes 拥有流程。
+2. **安全模式和权限必须统一。** runtime 有真正的 `ask`，持久化类型没有正式包含；旧 UI 将 `acceptEdits` 标成 Ask。枚举、默认、scope、保存、运行时读取和所有工具路径必须一致。
+3. **模型 capability gate 必须 fail closed。** 需要工具的 Hermes 主循环只能选择通过真实工具调用 / 续接、结构化协议、上下文和稳定性 probe 的模型；静态布尔值未知或过期时不能试运行后才失败。
+4. **自动选择策略必须接真。** 当前 mock 的 `Automatic rule → feature default → action override` 需要真实持久化、预览、解释与恢复；旧 recommendation cards 的 cosmetic 行为必须删除。
+5. **Chat Studio 附件策略必须补全。** `attachmentHandlingDefault` 当前藏在 Advanced；direct 只输出 attachment 占位文本，degrade 生成的 summary 也没有作为正文进入当前消息。完成前不能把任何模式标成 Ready。
+6. **模型目录治理必须完成。** 现有 server fetch 骨架没有调用者、缓存和条件请求；需完成在线 JSON、schema、last-known-good、`ETag` / `Last-Modified`、隐藏、别名、能力覆盖、新鲜度及 Ollama 离线状态，并只提供一个 AI & Models 入口。
+7. **Knowledge 文件夹范围必须完成。** ignore patterns 已生效，但 include-folder allowlist 不存在；同一范围必须被扫描、增量更新、结构分析和 run preview 一致消费。
+8. **MCP 与 Skills 不能过度宣传。** MCP 需补 Streamable HTTP、schema、认证、Resources / Prompts 决策和逐工具信任；Skills 需迁移到 Agent Skills `SKILL.md` 与渐进披露，并由 Hermes 自主发现 / 选择而不越权。
+9. **Knowledge enrichment 与 readiness 必须诚实。** PDF / 图片 / Canvas / Excalidraw 的摘要与 OCR / vision 仍待实现；AI tags、关系、community、Hub 的每项 run 状态、失败、重试和产物 freshness 需完整显示。
+10. **废弃 Search 用户算法设置。** 移除模型 rerank、`enablePPR` 等用户入口和旧 mock；内部确定性排序保留为实现细节并通过 receipt 解释。
+11. **模型参数并非全部被请求链路使用。** reasoning effort、verbosity 及 Provider-specific controls 必须按 adapter 能力发送并显示 ignored / rejected，不能把“字段存在”写成“已生效”。
+12. **最小分块阈值的 UI 字段名不一致。** 运行时字段是 `minDocumentSizeForChunking`，当前 Settings 使用 `minDocSizeToChunk`；修复前用户控制应标为未生效，而不是 `CURRENT`。
 
 ### 8.2 P1：需要明确产品所有权
 
@@ -831,7 +908,8 @@ Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompt
 4. Prompt、preset 和 task override 的编辑边界；
 5. MCP、Skills 和 Command Gateway 的统一能力 / 权限摘要；
 6. 多个相同 Provider 连接删除、禁用和改名后的引用迁移；
-7. Peak Sheet、Peak AI Graph 和后续原生文件类型的索引能力登记。
+7. Peak Sheet、Peak AI Graph 和后续原生文件类型的索引能力登记；
+8. Ambient / Vault Intelligence 新信息架构稳定后，哪些长期默认真正回到 Settings；旧 Ambient 字段如何迁移或退役。
 
 ### 8.3 不应继续公开的“假设置”
 
@@ -909,7 +987,7 @@ Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompt
 ### 内容覆盖
 
 - [ ] 四个功能组都有清楚职责和唯一 owner；
-- [ ] Chat Studio、Composer / Copilot、Vault Search / AI Search、Knowledge Index、File Atlas / AI Graph、Ambient / Vault Intelligence、Agents / Hermes、媒体生成都能反查设置；
+- [ ] Chat Studio、Composer / Copilot、Vault Search / AI Search、Knowledge Index、File Atlas / AI Graph、Agents / Hermes、媒体生成都能反查设置；Ambient / Vault Intelligence 明确标为 deferred 而不是伪造完成项；
 - [ ] 主要 Provider、更多 Provider、媒体连接和开发 Simulator 分层完整；
 - [ ] 模型目录、自动策略、任务默认和高级参数没有混成一个 picker；
 - [ ] 旧设置中有真实作用的能力没有因为页面简化而消失。
@@ -944,7 +1022,16 @@ Settings 只开放这两个根目录。Analysis、Skills、Inbox、Custom prompt
 - Knowledge / Search / Index：`src/service/search/`
 - Ambient：`src/service/ambient/`
 - MCP 与 Command Gateway：`src/service/mcp/`、`src/service/command-gateway/`
+- Skills：`src/service/skills/SkillParser.ts`、`src/service/skills/SkillRegistry.ts`
+- 模型目录：`src/core/providers/model-registry.ts`、`templates/config/models/`
 - 当前设置 mock：`docs/gstack/settings-onboarding-unified-2026-08-12/settings.html`
 - 字段迁移与配置治理细表：[`2026-08-10 设置清单`](./2026-08-10-peak-assistant-configuration-governance-and-settings-inventory.md)
 
 源码继续变化时，应先更新“当前事实”和缺口，不要直接删除产品能力要求。真实上线结论仍需要 focused tests、生产 build、运行时证据与真实 Obsidian 交互共同验证。
+
+### 12.1 外部标准与 Provider 契约
+
+- Agent Skills 格式与渐进披露以 [Agent Skills Specification](https://agentskills.io/specification) 和 [Adding skills support](https://agentskills.io/client-implementation/adding-skills-support) 为准；Peak 自定义 frontmatter 只能作为迁移输入。
+- MCP 传输、Tools、Resources 与 Prompts 的目标边界以 [MCP 2025-06-18 Server Features](https://modelcontextprotocol.io/specification/2025-06-18/server/index) 和 [Transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports) 为准；新远端连接使用 Streamable HTTP，旧 SSE 只兼容。
+- OpenRouter 目录与增强能力分别参考 [Models API](https://openrouter.ai/docs/guides/overview/models)、[Web Search](https://openrouter.ai/docs/guides/features/server-tools/web-search) 和 [PDF Inputs](https://openrouter.ai/docs/guides/overview/multimodal/pdfs)。目录记录不能代替请求 adapter 接线。
+- 新模型控制不能假设所有 Provider 共用固定参数；应分别跟踪 [OpenAI model guidance](https://developers.openai.com/api/docs/guides/latest-model) 与 [Gemini generation configuration](https://ai.google.dev/api/generate-content) 等当前官方契约。
