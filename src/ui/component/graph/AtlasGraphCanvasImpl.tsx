@@ -1016,6 +1016,12 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const inspectPinnedRef = useRef(false);
 	const nodeListOpenRef = useRef(false);
 	const fullscreenRef = useRef<GraphFullscreenState | null>(null);
+	const communityUnavailable = preset === 'community'
+		&& subgraph !== null
+		&& !subgraph.communities?.length;
+	const hasRenderableGraph = subgraph !== null
+		&& subgraph.resultNodes.length > 0
+		&& !communityUnavailable;
 	hoveredLabelRef.current = hoveredLabel;
 	nodeListOpenRef.current = nodeListOpen;
 	fullscreenRef.current = fullscreen;
@@ -1346,7 +1352,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 
 	useEffect(() => {
 		const container = containerRef.current;
-		if (!container || !subgraph || !surfaceHost) return;
+		if (!container || !subgraph || !surfaceHost || !hasRenderableGraph) return;
 		const bundle = PRESETS[preset];
 		const layoutKey = `${preset}|${showSemantic ? 'semantic' : 'structural'}`;
 		const fallbackLayoutKey = `${preset}|${showSemantic ? 'structural' : 'semantic'}`;
@@ -1588,6 +1594,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		clearGraphSelection,
 		communityInteraction.openDelayMs,
 		graphLayout,
+		hasRenderableGraph,
 		preset,
 		scheduleCardClose,
 		selectGraphNode,
@@ -1968,15 +1975,15 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const emptyMessage = useMemo(() => {
 		if (!subgraph) return buildingLabel;
 		if (!subgraph.resultNodes.length) return emptyLabel;
-		if (preset === 'community' && !subgraph.communities?.length) {
+		if (communityUnavailable) {
 			return communityInteraction.ui.communityUnavailable;
 		}
 		return null;
 	}, [
 		buildingLabel,
 		communityInteraction.ui.communityUnavailable,
+		communityUnavailable,
 		emptyLabel,
-		preset,
 		subgraph,
 	]);
 	const nodeListLabel = nodeListOpen
@@ -2012,7 +2019,9 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			<span className="pk-keyboard-live-region" aria-live="polite">
 				{keyboardNodeLabel}
 			</span>
-			<div ref={containerRef} className="pktw-absolute pktw-inset-0" />
+			{hasRenderableGraph && (
+				<div ref={containerRef} className="pktw-absolute pktw-inset-0" />
+			)}
 			{emptyMessage && (
 				<div className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
 					{emptyMessage}

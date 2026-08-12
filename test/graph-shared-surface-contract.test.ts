@@ -20,6 +20,21 @@ assert.doesNotMatch(
 	'Result Graph does not paint the baseline before deciding whether enrichment is available',
 );
 assert.match(canvas, /communityUnavailable/, 'Community mode presents an honest unavailable state');
+assert.match(
+	canvas,
+	/const communityUnavailable = preset === 'community'[\s\S]*?!subgraph\.communities\?\.length/,
+	'Community availability is derived from current graph evidence',
+);
+assert.match(
+	canvas,
+	/\{hasRenderableGraph && \(\s*<div ref=\{containerRef\}/,
+	'an unavailable Community projection does not mount a Cytoscape canvas',
+);
+assert.match(
+	canvas,
+	/if \(!container \|\| !subgraph \|\| !surfaceHost \|\| !hasRenderableGraph\) return/,
+	'the graph renderer does not construct a fallback graph for an unavailable projection',
+);
 assert.match(canvas, /data-graph-inspect-mode/, 'the shared canvas exposes press-to-inspect state');
 assert.match(canvas, /multiSelected/, 'the shared canvas exposes persistent multi-selection styling');
 assert.doesNotMatch(
