@@ -1,4 +1,4 @@
-import { computeTimelineLayout } from '../src/ui/component/mine/multi-lens-graph/layouts/timeline-layout';
+import { computeTimelineAtlasLayout } from '../src/ui/component/graph/adapters/aiLensLayouts';
 
 function test(name: string, fn: () => void) {
     try { fn(); console.log(`  PASS: ${name}`); }
@@ -29,7 +29,7 @@ test('positions nodes left-to-right by time', () => {
     // This test originally asserted early.x < mid.x < late.x but that invariant
     // no longer holds for chain members. Skipping the x-order check; the
     // proportional-spacing, axis, edges, and ticks tests cover the real output shape.
-    const result = computeTimelineLayout({ nodes: NODES, evolutionChains: CHAINS });
+    const result = computeTimelineAtlasLayout({ nodes: NODES, evolutionChains: CHAINS });
     // Smoke-check: all nodes have positions
     for (const node of NODES) {
         assert(result.positions.has(node.path), `${node.path} must have a position`);
@@ -40,7 +40,7 @@ test('respects proportional time spacing', () => {
     // NOTE (t11y-4): x-axis = column, not time — proportional x-spacing does not apply.
     // Nodes are separated vertically (y) within a chain column; the y order follows
     // timestamp sort. Check that early.y < mid.y < late.y instead.
-    const result = computeTimelineLayout({ nodes: NODES, evolutionChains: CHAINS });
+    const result = computeTimelineAtlasLayout({ nodes: NODES, evolutionChains: CHAINS });
     const pos = result.positions;
     const earlyY = pos.get('early.md')!.y;
     const midY = pos.get('mid.md')!.y;
@@ -54,7 +54,7 @@ test('chain nodes above axis, solo nodes near axis', () => {
     // and axisY=0. The "near axis" concept doesn't apply — solo nodes are interleaved
     // by global row order just like chain nodes. We verify positions are positive and
     // solo node is in a different column (x) than chain nodes.
-    const result = computeTimelineLayout({ nodes: NODES, evolutionChains: CHAINS });
+    const result = computeTimelineAtlasLayout({ nodes: NODES, evolutionChains: CHAINS });
     const pos = result.positions;
     const chainX = pos.get('early.md')!.x;
     const soloX = pos.get('solo.md')!.x;
@@ -63,14 +63,14 @@ test('chain nodes above axis, solo nodes near axis', () => {
 });
 
 test('returns chain edges', () => {
-    const result = computeTimelineLayout({ nodes: NODES, evolutionChains: CHAINS });
+    const result = computeTimelineAtlasLayout({ nodes: NODES, evolutionChains: CHAINS });
     assert(result.chainEdges!.length === 2, '2 chain edges for 3-node chain');
     assert(result.chainEdges![0].source === 'early.md', 'first edge source');
     assert(result.chainEdges![0].target === 'mid.md', 'first edge target');
 });
 
 test('returns time ticks', () => {
-    const result = computeTimelineLayout({ nodes: NODES, evolutionChains: CHAINS });
+    const result = computeTimelineAtlasLayout({ nodes: NODES, evolutionChains: CHAINS });
     assert(result.timeTicks != null, 'ticks present');
     assert(result.timeTicks!.length > 0, 'at least one tick');
     assert(result.timeTicks![0].label != null, 'tick has label');
@@ -78,7 +78,7 @@ test('returns time ticks', () => {
 
 test('groups nodes without a timestamp in a visible unassigned lane', () => {
     const untimed = { label: 'Undated claim', path: 'undated.md' };
-    const result = computeTimelineLayout({
+    const result = computeTimelineAtlasLayout({
         nodes: [...NODES, untimed],
         evolutionChains: CHAINS,
     });

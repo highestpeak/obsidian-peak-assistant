@@ -1,0 +1,52 @@
+{
+  "motion": {
+    "viewThumbMs": 90,
+    "scopeThumbMs": 95,
+    "projectionThumbMs": 105,
+    "labelCompressMs": 75,
+    "scopeExpandMs": 105,
+    "scopeStaggerMs": 12,
+    "semanticSwitchMs": 100,
+    "easing": [0.2, 0.8, 0.2, 1]
+  },
+  "labels": {
+    "views": {
+      "list": "List",
+      "tree": "Tree",
+      "graph": "Graph"
+    },
+    "scopes": {
+      "one-hop": "One hop",
+      "two-hop": "Two hop",
+      "ai": "AI Graph"
+    },
+    "physicalProjections": {
+      "constellation": "Constellation",
+      "community": "Community",
+      "flow-lr": "Flow →",
+      "flow-tb": "↓",
+      "folder": "Folders",
+      "orbit": "Orbit"
+    },
+    "aiLenses": {
+      "topology": "Topology",
+      "thinking-tree": "Thinking tree",
+      "bridge": "Bridges",
+      "timeline": "Timeline",
+      "gap-analysis": "Gaps"
+    },
+    "timelineUnassigned": "No date / Unassigned"
+  },
+  "aiLayout": {
+    "columnGap": 220,
+    "rowGap": 96,
+    "clusterGap": 300,
+    "communityRadius": 150,
+    "canvasPadding": 40,
+    "bridgeColumnWidth": 280,
+    "bridgeColumnGap": 320,
+    "timelineFirstColumnLeft": 120,
+    "topologyWeightMin": 0.4,
+    "topologyEdgeCapRatio": 1.5
+  }
+}

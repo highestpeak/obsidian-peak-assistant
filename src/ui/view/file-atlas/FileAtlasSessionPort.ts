@@ -1,5 +1,6 @@
 import type { RawBlockKind } from '@/core/document/atlas/types';
 import type { AtlasGraphPreset, AtlasGraphViewport } from '@/ui/component/graph/AtlasGraphCanvas';
+import type { LensType } from '@/core/types/lens-graph';
 import type { TrayItem } from './components/AtlasTray';
 
 export type FileAtlasSubview = 'tree' | 'graph';
@@ -17,6 +18,7 @@ export interface FileAtlasGraphSessionState {
 	scope: FileAtlasGraphScope;
 	semantic: boolean;
 	layout: AtlasGraphPreset;
+	aiLens: LensType;
 	viewport: AtlasGraphViewport | null;
 }
 
@@ -25,6 +27,7 @@ export function defaultFileAtlasGraphSessionState(): FileAtlasGraphSessionState 
 		scope: 'one-hop',
 		semantic: false,
 		layout: 'constellation',
+		aiLens: 'topology',
 		viewport: null,
 	};
 }

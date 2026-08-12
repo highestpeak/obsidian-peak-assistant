@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData } from '@/core/types/lens-graph';
 
 export interface GraphAgentStep {
 	id: string;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/ui/react/lib/utils';
+import { useGraphWorkspaceConfig } from '@/ui/component/graph-workspace/useGraphWorkspaceConfig';
 
 export interface GraphSemanticToggleProps {
 	checked: boolean;
@@ -16,7 +17,10 @@ export const GraphSemanticToggle: React.FC<GraphSemanticToggleProps> = ({
 	keyTipKey,
 	label = 'Semantic',
 	className,
-}) => (
+}) => {
+	const config = useGraphWorkspaceConfig();
+	const motionStyle = { transitionDuration: `${config.motion.semanticSwitchMs}ms` };
+	return (
 	<label
 		className={cn(
 			'pktw-inline-flex pktw-min-h-8 pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-whitespace-nowrap pktw-text-sm pktw-text-pk-foreground-muted',
@@ -35,12 +39,14 @@ export const GraphSemanticToggle: React.FC<GraphSemanticToggleProps> = ({
 		/>
 		<span
 			aria-hidden="true"
+			style={motionStyle}
 			className={cn(
 				'pktw-relative pktw-inline-block pktw-h-4 pktw-w-[30px] pktw-rounded-full pktw-transition-colors peer-focus-visible:pktw-ring-2 peer-focus-visible:pktw-ring-pk-accent peer-focus-visible:pktw-ring-offset-2',
 				checked ? 'pktw-bg-pk-accent' : 'pktw-bg-pk-border',
 			)}
 		>
 			<span
+				style={motionStyle}
 				className={cn(
 					'pktw-absolute pktw-left-0.5 pktw-top-0.5 pktw-h-3 pktw-w-3 pktw-rounded-full pktw-bg-white pktw-shadow-pk-card pktw-transition-transform',
 					checked ? 'pktw-translate-x-[14px]' : 'pktw-translate-x-0',
@@ -49,4 +55,5 @@ export const GraphSemanticToggle: React.FC<GraphSemanticToggleProps> = ({
 		</span>
 		<span>{label}</span>
 	</label>
-);
+	);
+};

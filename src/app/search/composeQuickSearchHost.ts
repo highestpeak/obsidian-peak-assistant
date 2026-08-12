@@ -23,7 +23,7 @@ import {
 } from '@/ui/view/quick-search/callbacks/save-ai-analyze-to-md';
 import { getAIAnalysisFolder } from '@/core/config/folderPaths';
 import { composeFileAtlasHost } from '@/app/file-atlas/composeFileAtlasHost';
-import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
+import { buildSourceVaultGraph } from '@/app/file-atlas/buildSourceVaultGraph';
 import {
 	buildAIGraphChangeSet,
 	generatedLensGraphToCreateRequest,
@@ -281,65 +281,7 @@ export function composeQuickSearchHost(
 			lastOrchestrator = orch;
 			return orch;
 		},
-		buildSourceVaultGraph: async (paths, scope) => {
-			const uniquePaths = [...new Set(paths.filter(Boolean))];
-			if (uniquePaths.length === 0 || !fileAtlasHost.loadNeighborhood) {
-				return { resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 };
-			}
-			const hops = scope === 'two-hop' ? 2 : 1;
-			const neighborhoods = await Promise.all(
-				uniquePaths.map((path) => fileAtlasHost.loadNeighborhood!(path, { hops, semantic: true })),
-			);
-			const sourceSet = new Set(uniquePaths);
-			const nodes = new Map<string, {
-				id: string;
-				path: string;
-				title: string;
-				score: number;
-				communityId: null;
-				folder: string;
-			}>();
-			const edges = new Map<string, {
-				from: string;
-				to: string;
-				kind: 'reference' | 'semantic';
-			}>();
-
-			for (const graph of neighborhoods) {
-				for (const node of graph.nodes) {
-					const path = node.path ?? node.id;
-					if (scope === 'evidence' && !sourceSet.has(path)) continue;
-					const score = sourceSet.has(path) ? 1 : node.hop === 1 ? 0.6 : 0.3;
-					nodes.set(node.id, {
-						id: node.id,
-						path,
-						title: node.label,
-						score,
-						communityId: null,
-						folder: path.split('/')[0] ?? '',
-					});
-				}
-				for (const edge of graph.edges) {
-					if (edge.kind === 'hub_constituent') continue;
-					if (!nodes.has(edge.from) || !nodes.has(edge.to)) continue;
-					const key = `${edge.from}|${edge.to}|${edge.kind}`;
-					edges.set(key, { from: edge.from, to: edge.to, kind: edge.kind });
-				}
-			}
-
-			const connected = new Set<string>();
-			for (const edge of edges.values()) {
-				connected.add(edge.from);
-				connected.add(edge.to);
-			}
-			return {
-				resultNodes: [...nodes.values()],
-				hubAnchors: [],
-				edges: [...edges.values()],
-				isolatedDocIds: [...nodes.keys()].filter((id) => !connected.has(id)),
-				overflowCount: 0,
-			} satisfies ResultSubgraphOutput;
-		},
+		buildSourceVaultGraph: (paths, scope) => buildSourceVaultGraph(fileAtlasHost, paths, scope),
 		resolveAIGraphSourceContents: async (sources) => {
 			const runtime = appContext.runtimeRegistry.getAIGraphArtifactRuntime();
 			const resolved = await Promise.all(sources.map(async (source) => {

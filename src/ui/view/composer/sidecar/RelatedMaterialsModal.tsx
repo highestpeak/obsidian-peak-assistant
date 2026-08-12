@@ -5,12 +5,17 @@ import {
 	ResultBrowserDensityToggle,
 	ResultBrowserFooterHints,
 	ResultBrowserGraph,
-	ResultBrowserGraphControls,
 	ResultBrowserListRow,
 	ResultBrowserSearchInput,
 	ResultBrowserTree,
-	ResultBrowserViewToggle,
 } from '@/ui/component/result-browser';
+import {
+	GraphWorkspaceControl,
+	resolveGraphWorkspaceManifest,
+	type GraphWorkspaceScope,
+} from '@/ui/component/graph-workspace';
+import { ContextualAIGraphView } from '@/ui/component/ai-graph';
+import type { LensType } from '@/core/types/lens-graph';
 import { Button, Modal } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { usePortalContainer } from '@/ui/react/PortalContainerContext';
@@ -46,6 +51,7 @@ export function RelatedMaterialsModal({
 	const { runtime, config, onOpenSource } = useSidecar();
 	const portalContainer = usePortalContainer();
 	const s = config.strings;
+	const graphKeyTips = PEAK_CONTROL_KEY_TIP_KEYS.composer.relatedGraph;
 	const [state, setState] = React.useState<ComposerBrowserState>(() => ({
 		...initialComposerBrowserState(),
 		selectedId: snapshot.items[0]?.id ?? null,
@@ -55,6 +61,8 @@ export function RelatedMaterialsModal({
 	const [inspectorPath, setInspectorPath] = React.useState<string | null>(
 		snapshot.items[0]?.path ?? null,
 	);
+	const [graphScope, setGraphScope] = React.useState<GraphWorkspaceScope>('one-hop');
+	const [aiLens, setAILens] = React.useState<LensType>('topology');
 	const openerRef = React.useRef<HTMLElement | null>(
 		(portalContainer?.ownerDocument.activeElement as HTMLElement | null) ?? null,
 	);
@@ -87,6 +95,13 @@ export function RelatedMaterialsModal({
 	);
 	const browserSnapshot = React.useMemo(
 		() => mapRelatedSnapshotToBrowserSnapshot(snapshot),
+		[snapshot],
+	);
+	const physicalSubgraph = graphScope === 'two-hop'
+		? snapshot.graphByScope?.twoHop ?? browserSnapshot.subgraph
+		: snapshot.graphByScope?.oneHop ?? browserSnapshot.subgraph;
+	const contextPaths = React.useMemo(
+		() => [...new Set([snapshot.focus.rootNodeId, ...snapshot.items.map((item) => item.path)].filter(Boolean))],
 		[snapshot],
 	);
 	const selectedItem = items.find((item) => item.id === state.selectedId)
@@ -212,26 +227,42 @@ export function RelatedMaterialsModal({
 				</div>
 
 				<div className="pk-related-toolbar">
-					<ResultBrowserViewToggle
+					<GraphWorkspaceControl
+						manifest={resolveGraphWorkspaceManifest('composer')}
 						view={state.view}
 						onViewChange={(view) => dispatch({ kind: 'view', view })}
-					/>
-					{state.view === 'graph' ? (
-						<ResultBrowserGraphControls
-							preset={state.graphPreset}
-							onPresetChange={(preset) => dispatch({ kind: 'graphPreset', preset })}
-							semantic={state.graphShowSemantic}
-							onSemanticChange={(on) => dispatch({ kind: 'graphSemantic', on })}
-							className="pk-related-toolbar-end"
-						/>
-					) : (
+						scope={graphScope}
+						onScopeChange={setGraphScope}
+						physicalProjection={state.graphPreset}
+						onPhysicalProjectionChange={(preset) => dispatch({ kind: 'graphPreset', preset })}
+						aiLens={aiLens}
+						onAILensChange={setAILens}
+						keyTipKeys={{
+							view: graphKeyTips.view,
+							scope: {
+								'one-hop': graphKeyTips.graphScope.oneHop,
+								'two-hop': graphKeyTips.graphScope.twoHop,
+								ai: graphKeyTips.graphScope.ai,
+							},
+							physicalProjection: {
+								constellation: graphKeyTips.graphLayout.constellation,
+								community: graphKeyTips.graphLayout.community,
+								'flow-tb': graphKeyTips.graphLayout.flowTb,
+								'flow-lr': graphKeyTips.graphLayout.flowLr,
+								folder: graphKeyTips.graphLayout.folder,
+								orbit: graphKeyTips.graphLayout.orbit,
+							},
+						}}
+						className="pktw-w-full"
+						nonGraphTrailingSlot={(
 						<div className="pk-related-toolbar-end">
 							<ResultBrowserDensityToggle
 								density={state.density}
 								onDensityChange={(density) => dispatch({ kind: 'density', density })}
 							/>
 						</div>
-					)}
+						)}
+					/>
 				</div>
 
 				<div className={cn('pk-related-content', state.inspectorOpen && 'pk-related-content--inspector')}>
@@ -281,18 +312,40 @@ export function RelatedMaterialsModal({
 							/>
 						)}
 						{state.view === 'graph' && (
-							<ResultBrowserGraph
-								subgraph={browserSnapshot.subgraph}
-								preset={state.graphPreset}
-								semantic={state.graphShowSemantic}
-								nodeCap={config.graphNodeCap}
-								onNodeTap={(node) => {
-									const item = items.find((candidate) =>
-										candidate.id === node.id || candidate.path === node.path
-									);
-									if (item) selectItem(item);
-								}}
-							/>
+							graphScope === 'ai' ? (
+								<ContextualAIGraphView
+									contextRefs={[snapshot.focus.rootNodeId, snapshot.focus.anchorId]}
+									selectedVaultPaths={contextPaths}
+									createOrigin={{
+										surface: 'composer',
+										contextRef: {
+											kind: 'vault-file',
+											ref: snapshot.focus.rootNodeId,
+											label: snapshot.focus.rootNodeId.split('/').pop()?.replace(/\.md$/i, '') ?? snapshot.focus.rootNodeId,
+											locator: snapshot.focus.rootNodeId,
+										},
+									}}
+									lens={aiLens}
+									onLensChange={setAILens}
+									showWorkspaceControl={false}
+								/>
+							) : (
+								<ResultBrowserGraph
+									subgraph={physicalSubgraph}
+									preset={state.graphPreset}
+									semantic={state.graphShowSemantic}
+									onSemanticChange={(on) => dispatch({ kind: 'graphSemantic', on })}
+									semanticKeyTipKey={graphKeyTips.semantic}
+									keyTipKeys={graphKeyTips.graphCanvas}
+									nodeCap={config.graphNodeCap}
+									onNodeTap={(node) => {
+										const item = items.find((candidate) =>
+											candidate.id === node.id || candidate.path === node.path
+										);
+										if (item) selectItem(item);
+									}}
+								/>
+							)
 						)}
 					</div>
 					{state.inspectorOpen && (

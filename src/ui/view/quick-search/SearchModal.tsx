@@ -31,8 +31,10 @@ import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { resolveAnalysisSnapshotFromVault } from '@/core/storage/vault/search-docs/AiAnalysisJsonStore';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
-import { ResultPaneGraphControls, ResultDensityToggle, ViewModeToggle } from './components/ResultPaneHeader';
+import { ResultPanePinnedHubChip } from './components/ResultPanePinnedHubChip';
 import { ResultBrowserSearchInput } from '@/ui/component/result-browser';
+import { ResultBrowserDensityToggle } from '@/ui/component/result-browser/toolbar/ResultBrowserToolbar';
+import { GraphWorkspaceControl, resolveGraphWorkspaceManifest } from '@/ui/component/graph-workspace';
 import { AIInstructionComposer } from '@/ui/component/instruction-composer';
 import { VaultIntelligenceWorkspace } from './VaultIntelligenceWorkspace';
 import type { AIWorkspaceMode } from './store/sharedStore';
@@ -48,8 +50,7 @@ import {
 	isActiveAIGraphSource,
 	stableAIGraphId,
 } from '@/service/ai-graph';
-import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
-import { canonicalAIGraphData } from '@/ui/component/ai-graph';
+import { AIGraphWorkspaceCanvas, canonicalAIGraphData } from '@/ui/component/ai-graph';
 import {
 	usePeakEscapeLayer,
 	usePeakKeyboardSurface,
@@ -1100,10 +1101,8 @@ function AIGraphDetail({
 			)}
 			<div className="pk-ai-graph-detail-body">
 				<div className="pk-ai-graph-canvas">
-					<MultiLensGraph
+					<AIGraphWorkspaceCanvas
 						graphData={canonicalAIGraphData(view)}
-						defaultLens="topology"
-						showControls
 						className="pktw-h-full"
 						onNodeClick={(path) => {
 							const node = view.version.nodes.find((candidate) =>
@@ -1863,7 +1862,20 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const { vaultStats, vaultNavigation } = useServiceContext();
 	const quickSearchHost = useQuickSearchHost();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
-	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults, resultView } = useVaultSearchStore();
+	const {
+		updateParsedQuery,
+		isSearching,
+		quickSearchMode,
+		inspectorOpen,
+		lastSearchDuration,
+		lastSearchResults,
+		resultView,
+		setResultView,
+		resultDensity,
+		setResultDensity,
+		graphPreset,
+		setGraphPreset,
+	} = useVaultSearchStore();
 	useRovingComposite(inspectorZoneRef, {
 		itemSelector: 'button:not([disabled]), a[href], [tabindex="0"]',
 		enabled: inspectorOpen,
@@ -1964,25 +1976,34 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 				</div>
 			</div>
 
-			{/* View toolbar row — heading mode moved to Copilot Modal's Atlas tab.
-			    Left: 3-way ViewModeToggle (List / Tree view / Graph view).
-			    Right: graph-only controls (presets + semantic) that appear
-			    when Graph view is active. */}
-			<div
-				className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-2.5"
-				data-peak-keyboard-zone="vs-view-toolbar"
-				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-view-toolbar']}
-				data-peak-keyboard-order="3"
-			>
-				<ViewModeToggle />
-				{resultView === 'graph' ? (
-					<ResultPaneGraphControls mode={quickSearchMode} className="pktw-ml-auto" />
-				) : (
-					<div className="pktw-ml-auto pktw-flex pktw-items-center pktw-gap-2.5">
-						<ResultDensityToggle />
-					</div>
+			<GraphWorkspaceControl
+				manifest={resolveGraphWorkspaceManifest('world-search')}
+				view={resultView}
+				onViewChange={setResultView}
+				scope="one-hop"
+				onScopeChange={() => undefined}
+				physicalProjection={graphPreset}
+				onPhysicalProjectionChange={setGraphPreset}
+				aiLens="topology"
+				onAILensChange={() => undefined}
+				keyTipKeys={{
+					view: PEAK_CONTROL_KEY_TIP_KEYS.search.view,
+					physicalProjection: {
+						constellation: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.constellation,
+						community: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.community,
+						'flow-tb': PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowTb,
+						'flow-lr': PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.flowLr,
+						folder: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.folder,
+						orbit: PEAK_CONTROL_KEY_TIP_KEYS.search.graphPreset.orbit,
+					},
+				}}
+				nonGraphTrailingSlot={(
+					<ResultBrowserDensityToggle density={resultDensity} onDensityChange={setResultDensity} keyTipKeys={PEAK_CONTROL_KEY_TIP_KEYS.search.density} />
 				)}
-			</div>
+				graphTrailingSlot={<ResultPanePinnedHubChip mode={quickSearchMode} />}
+				className="pktw-flex-shrink-0"
+				data-peak-keyboard-zone="vs-view-toolbar"
+			/>
 
 			{/* Content area — side-by-side results + inspector */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-flex">

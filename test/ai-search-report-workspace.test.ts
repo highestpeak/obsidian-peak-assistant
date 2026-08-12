@@ -106,7 +106,7 @@ const sourceView = readFileSync(
 	'src/ui/view/quick-search/components/V2SourcesView.tsx',
 	'utf8',
 );
-assert(sourceView.includes('ResultBrowserViewToggle'));
+assert(sourceView.includes('GraphWorkspaceControl'));
 assert(sourceView.includes('ResultBrowserListRow'));
 assert(sourceView.includes('ResultBrowserTree'));
 assert(sourceView.includes('ResultBrowserGraph'));
@@ -117,7 +117,7 @@ assert(sourceView.includes('data-v2-sources-projection'));
 assert(sourceView.includes('<aside'));
 assert(!sourceView.includes('Shared Result Browser ·'));
 assert(!sourceView.includes('Sources · {sources.length} cited files'));
-assert(sourceView.indexOf('<ResultBrowserViewToggle') < sourceView.indexOf('<ScopeToggle'));
+assert(!sourceView.includes('<ScopeToggle'));
 assert(sourceView.includes('isSourcesDensityVisible(view)'));
 assert(sourceView.includes('resolveSourcesKeyboardIntent'));
 assert(sourceView.includes('focusSourcesProjection'));
@@ -136,9 +136,7 @@ assert(resultListRow.includes("e.key === 'ArrowRight'"));
 assert(resultListRow.includes('onInspect?.(result)'));
 assert(resultListRow.includes('if (e.defaultPrevented) return'));
 
-assert(sourceView.includes('One hop'));
-assert(sourceView.includes('Two hop'));
-assert(sourceView.includes('AI Graph'));
+assert(sourceView.includes("resolveGraphWorkspaceManifest('ai-sources')"));
 assert(!sourceView.includes('AIRelationshipMap'));
 assert(!sourceView.includes('saveGraphToVault'));
 

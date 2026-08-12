@@ -28,7 +28,6 @@
 @import "tailwindcss/utilities";
 
 /* React Flow base styles (required for graph rendering) */
-@import "@xyflow/react/dist/base.css";
 
 /* ═══════════════════════════════════════════════════════════
    Style Isolation Reset — scoped to .pktw-root

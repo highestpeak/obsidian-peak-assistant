@@ -12,7 +12,7 @@ import { useSharedStore } from '../store/sharedStore';
  * up the scoped node set on its next rebuild without an imperative call.
  *
  * Clearing the pin is the user's job — via the "Pinned to hub" chip in
- * `ResultPaneHeader` or by leaving `all` mode.
+ * `ResultPanePinnedHubChip` or by leaving `all` mode.
  */
 export function useOpenHubGraphSubview(): (hubNodeIdOrPath: string) => Promise<void> {
 	return useCallback(async (hubNodeIdOrPath: string) => {

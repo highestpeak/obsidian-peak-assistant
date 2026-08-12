@@ -84,6 +84,8 @@ import {
 	retainGraphSelection,
 	updateGraphSelection,
 } from './graphInteractionModel';
+import type { AtlasGraphModel } from './AtlasGraphModel';
+import { atlasGraphModelToResultSubgraph } from './AtlasGraphModel';
 
 // ─── One-time Cytoscape extension registration ──────────────────────────────
 let extensionsRegistered = false;
@@ -461,6 +463,59 @@ function buildElements(
 	return els;
 }
 
+function applyAtlasModelPresentation(
+	elements: ElementDefinition[],
+	model: AtlasGraphModel,
+): ElementDefinition[] {
+	const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
+	const edgeByEndpoints = new Map<string, AtlasGraphModel['edges'][number][]>()
+	for (const edge of model.edges) {
+		const key = `${edge.source}\u0000${edge.target}`;
+		edgeByEndpoints.set(key, [...(edgeByEndpoints.get(key) ?? []), edge]);
+	}
+	const edgeCursor = new Map<string, number>();
+	return elements.map((element) => {
+		if (element.group === 'nodes') {
+			const id = String(element.data.id ?? '');
+			const node = nodeById.get(id);
+			if (!node) return element;
+			const position = model.positions?.[id];
+			return {
+				...element,
+				data: {
+					...element.data,
+					atlasRole: node.role,
+					atlasMetadata: node.metadata,
+				},
+				classes: `${String(element.classes ?? '')} atlasNode atlasNode-${node.role}`.trim(),
+				...(position ? { position } : {}),
+			};
+		}
+		if (element.group !== 'edges') return element;
+		const source = String(element.data.source ?? '');
+		const target = String(element.data.target ?? '');
+		const key = `${source}\u0000${target}`;
+		const reverseKey = `${target}\u0000${source}`;
+		const matches = edgeByEndpoints.get(key) ?? edgeByEndpoints.get(reverseKey) ?? [];
+		const index = edgeCursor.get(key) ?? 0;
+		const edge = matches[index] ?? matches[0];
+		if (!edge) return element;
+		edgeCursor.set(key, index + 1);
+		return {
+			...element,
+			data: {
+				...element.data,
+				atlasRole: edge.role,
+				relationId: edge.relationId,
+				accessibleLabel: edge.accessibleLabel,
+				edgeLabel: edge.label,
+				atlasMetadata: edge.metadata,
+			},
+			classes: `${String(element.classes ?? '')} atlasEdge atlasEdge-${edge.role}`.trim(),
+		};
+	});
+}
+
 function interpolateRange(minimum: number, maximum: number, ratio: number): number {
 	return minimum + (maximum - minimum) * Math.max(0, Math.min(1, ratio));
 }
@@ -503,6 +558,9 @@ const LINK_ICON_WHITE = graphIconDataUri(
 const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.hub', style: { 'background-color': '#a78bfa', 'border-color': '#4c1d95', 'border-width': 4, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '18px', 'padding-right': '18px', 'padding-top': '12px', 'padding-bottom': '12px', label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '360px', 'font-size': 15, 'font-weight': 800, 'text-valign': 'center', 'text-halign': 'center', color: '#2e1065' } as never },
 	{ selector: 'node.doc', style: { 'background-color': 'mapData(score, 0, 1, #f5f3ff, #c4b5fd)', 'border-color': '#a78bfa', 'border-width': 1, shape: 'round-rectangle', width: 'label', height: 'label', 'padding-left': '10px', 'padding-right': '10px', 'padding-top': '5px', 'padding-bottom': '5px', label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '360px', 'font-size': 10, 'text-valign': 'center', 'text-halign': 'center', color: '#1e1b4b', 'min-width': '80px' } as never },
+	{ selector: 'node.atlasNode-root, node.atlasNode-claim', style: { 'background-color': '#c4b5fd', 'border-color': '#6d28d9', 'border-width': 3, 'font-size': 13, 'font-weight': 700, color: '#4c1d95' } as never },
+	{ selector: 'node.atlasNode-bridge', style: { 'background-color': '#dbeafe', 'border-color': '#3b82f6', 'border-width': 2.5, color: '#1e3a8a' } as never },
+	{ selector: 'node.atlasNode-orphan', style: { 'background-color': '#fafafa', 'border-color': '#cbd5e1', 'border-style': 'dashed', color: '#64748b' } as never },
 	{ selector: 'node.doc.hublike', style: { 'background-color': '#c4b5fd', 'border-color': '#6d28d9', 'border-width': 3, 'padding-left': '14px', 'padding-right': '14px', 'padding-top': '9px', 'padding-bottom': '9px', 'font-size': 13, 'font-weight': 700, color: '#4c1d95' } as never },
 	{ selector: 'node.doc.isolated', style: { opacity: 1, 'border-style': 'dashed', 'background-color': '#fafafa', 'border-color': '#cbd5e1', color: '#64748b' } as never },
 	{ selector: 'node.doc.semanticOnly', style: { opacity: 1, 'border-style': 'solid', 'border-color': '#8b5cf6', 'border-width': 1.6, 'background-color': '#f5f3ff' } as never },
@@ -517,6 +575,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.reference', style: { 'line-color': '#334155', 'source-arrow-color': '#334155', 'target-arrow-color': '#334155', width: 1.4 } as never },
 	{ selector: 'edge.hub_constituent', style: { 'line-color': '#8b5cf6', 'source-arrow-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'line-style': 'dotted', width: 1.8, opacity: 0.85 } as never },
 	{ selector: 'edge.semantic', style: { 'line-color': '#cbd5e1', 'source-arrow-color': '#cbd5e1', 'target-arrow-color': '#cbd5e1', 'line-style': 'dashed', width: 'mapData(layoutWeight, 0, 1, 0.65, 1.65)', opacity: 'mapData(layoutWeight, 0, 1, 0.42, 0.82)' } as never },
+	{ selector: 'edge.atlasEdge-gap', style: { 'line-color': '#d97706', 'source-arrow-color': '#d97706', 'target-arrow-color': '#d97706', 'line-style': 'dashed', width: 2.2, opacity: 0.9 } as never },
 	{ selector: 'edge.communityRelation', style: { 'curve-style': 'straight', 'target-distance-from-node': 5, 'source-distance-from-node': 3, opacity: 0.62 } as never },
 	{ selector: 'edge.communityRelation.reference', style: { 'line-color': '#77727f', 'target-arrow-color': '#77727f', width: 1.35, opacity: 0.72 } as never },
 	{ selector: 'edge.communityRelation.semantic', style: { 'line-color': '#aaa4b2', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'line-style': 'dashed', width: 1, opacity: 0.52 } as never },
@@ -915,7 +974,10 @@ export interface AtlasGraphKeyTipKeys {
 }
 
 export interface AtlasGraphCanvasProps {
-	subgraph: ResultSubgraphOutput | null;
+	/** Preferred renderer-neutral input used by physical and AI graph adapters. */
+	model?: AtlasGraphModel | null;
+	/** Compatibility input retained while physical hosts move to AtlasGraphModel. */
+	subgraph?: ResultSubgraphOutput | null;
 	preset: AtlasGraphPreset;
 	showSemantic: boolean;
 	/** Optional controlled layer action. When present, the canvas owns its visible placement. */
@@ -933,6 +995,12 @@ export interface AtlasGraphCanvasProps {
 	overflowLabel?: (shown: number, total: number) => string;
 	onNodeTap?: (node: AtlasGraphNodeTap) => void;
 	onNodeDblTap?: (node: { id: string; path: string }) => void;
+	onEdgeTap?: (edge: {
+		relationId: string | null;
+		source: string;
+		target: string;
+		accessibleLabel: string | null;
+	}) => void;
 	/** Immediate hover in/out on real-file nodes (null = out). For recorders. */
 	onNodeHover?: (node: { id: string; path: string } | null) => void;
 	/** Optional session-only viewport restored after layout completes. */
@@ -951,6 +1019,9 @@ export interface AtlasGraphCanvasProps {
 	communityInteraction?: ResultGraphCommunityConfig['interaction'];
 	/** Template-backed layout distances, forces, and detached-node packing. */
 	graphLayout?: ResultGraphCommunityConfig['graphLayout'];
+	/** Physical graphs say Semantic edges; AI Graphs say Evidence links. */
+	layerLabel?: string;
+	showMiniMap?: boolean;
 }
 
 interface GraphFullscreenState {
@@ -989,6 +1060,48 @@ interface NodeAiCardState {
 	error: string | null;
 }
 
+interface GraphMiniMapSnapshot {
+	nodes: Array<{ id: string; x: number; y: number; role: string }>;
+	viewport: { x: number; y: number; width: number; height: number };
+}
+
+function graphMiniMapSnapshot(cy: Core): GraphMiniMapSnapshot | null {
+	const nodes = cy.nodes().filter((node) => (
+		!node.hasClass('regionLabel')
+		&& !node.hasClass('folderTreeDecoration')
+		&& !node.hasClass('folderTreeRailNode')
+		&& !node.hasClass('communityHull')
+	));
+	if (!nodes.length) return null;
+	const bounds = nodes.boundingBox({ includeLabels: false });
+	const width = Math.max(1, bounds.w);
+	const height = Math.max(1, bounds.h);
+	const normalizeX = (x: number) => ((x - bounds.x1) / width) * 100;
+	const normalizeY = (y: number) => ((y - bounds.y1) / height) * 100;
+	const extent = cy.extent();
+	const x = Math.max(0, Math.min(100, normalizeX(extent.x1)));
+	const y = Math.max(0, Math.min(100, normalizeY(extent.y1)));
+	const x2 = Math.max(0, Math.min(100, normalizeX(extent.x2)));
+	const y2 = Math.max(0, Math.min(100, normalizeY(extent.y2)));
+	return {
+		nodes: nodes.map((node) => {
+			const position = node.position();
+			return {
+				id: node.id(),
+				x: normalizeX(position.x),
+				y: normalizeY(position.y),
+				role: String(node.data('atlasRole') ?? node.data('kind') ?? 'document'),
+			};
+		}),
+		viewport: {
+			x,
+			y,
+			width: Math.max(5, x2 - x),
+			height: Math.max(5, y2 - y),
+		},
+	};
+}
+
 function streamedExplanationBody(raw: string): string {
 	const marker = raw.match(/(?:^|\n)Explanation:\s*/i);
 	if (!marker || marker.index === undefined) return '';
@@ -996,7 +1109,8 @@ function streamedExplanationBody(raw: string): string {
 }
 
 export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
-	subgraph,
+	model,
+	subgraph: legacySubgraph,
 	preset,
 	showSemantic,
 	onShowSemanticChange,
@@ -1008,6 +1122,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	overflowLabel,
 	onNodeTap,
 	onNodeDblTap,
+	onEdgeTap,
 	onNodeHover,
 	initialViewport,
 	onViewportChange,
@@ -1017,7 +1132,14 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	nodeExplanationUi = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.nodeExplanation.ui,
 	communityInteraction = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.interaction,
 	graphLayout = DEFAULT_RESULT_GRAPH_COMMUNITY_CONFIG.graphLayout,
+	layerLabel,
+	showMiniMap = true,
 }) => {
+	const subgraph = useMemo(
+		() => model ? atlasGraphModelToResultSubgraph(model) : (legacySubgraph ?? null),
+		[legacySubgraph, model],
+	);
+	const semanticLayerLabel = layerLabel ?? (model?.layerRole === 'evidence' ? 'Evidence links' : 'Semantic edges');
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
 	const [hoverSummary, setHoverSummary] = useState<Pick<GraphHoverAnchor, 'label' | 'path'> | null>(null);
 	const [hoveredLabel, setHoveredLabel] = useState<GraphHoverAnchor | null>(null);
@@ -1031,6 +1153,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const [zoomPercent, setZoomPercent] = useState(100);
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 	const [inspectMode, setInspectMode] = useState(false);
+	const [miniMap, setMiniMap] = useState<GraphMiniMapSnapshot | null>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const surfaceRootRef = useRef<HTMLDivElement | null>(null);
 	const inlineSlotRef = useRef<HTMLDivElement | null>(null);
@@ -1110,11 +1233,13 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	// Keep the latest callbacks without re-running the (expensive) cytoscape mount.
 	const tapRef = useRef(onNodeTap);
 	const dblRef = useRef(onNodeDblTap);
+	const edgeTapRef = useRef(onEdgeTap);
 	const hoverRef = useRef(onNodeHover);
 	const initialViewportRef = useRef(initialViewport);
 	const viewportChangeRef = useRef(onViewportChange);
 	tapRef.current = onNodeTap;
 	dblRef.current = onNodeDblTap;
+	edgeTapRef.current = onEdgeTap;
 	hoverRef.current = onNodeHover;
 	initialViewportRef.current = initialViewport;
 	viewportChangeRef.current = onViewportChange;
@@ -1439,7 +1564,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		const container = containerRef.current;
 		if (!container || !subgraph || !surfaceHost || !hasRenderableGraph) return;
 		const bundle = PRESETS[preset];
-		const layoutKey = `${preset}|${showSemantic ? 'semantic' : 'structural'}`;
+		const layoutKey = `${model?.id ?? 'physical'}|${preset}|${showSemantic ? 'semantic' : 'structural'}`;
 		const fallbackLayoutKey = `${preset}|${showSemantic ? 'structural' : 'semantic'}`;
 		const previousRender = lastRenderedRef.current;
 		const preserveViewport = previousRender?.subgraph === subgraph
@@ -1447,12 +1572,14 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			? lastViewportRef.current
 			: null;
 		const folderProjection = bundle.folderTree ? buildVisibleFolderTree(subgraph.resultNodes) : null;
-		const els = buildElements(subgraph, {
+		const baseElements = buildElements(subgraph, {
 			showSemantic,
 			folderTree: bundle.folderTree,
 			community: bundle.community,
 			graphLayout,
 		});
+		const els = model ? applyAtlasModelPresentation(baseElements, model) : baseElements;
+		const explicitPositions = Boolean(model?.positions);
 		if (animRef.current) cancelAnimationFrame(animRef.current);
 		animRef.current = null;
 		cyRef.current?.destroy();
@@ -1460,7 +1587,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			container,
 			elements: els,
 			style: CYTOSCAPE_STYLES,
-			layout: bundle.folderTree ? { name: 'preset' } : undefined,
+			layout: bundle.folderTree || explicitPositions ? { name: 'preset' } : undefined,
 			minZoom: 0.15,
 			maxZoom: 3,
 			wheelSensitivity: 0.2,
@@ -1469,7 +1596,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		const cachedPositions = positionCacheRef.current.get(layoutKey)
 			?? positionCacheRef.current.get(fallbackLayoutKey);
 		let seededNodeCount = 0;
-		if (!bundle.folderTree && cachedPositions) {
+		if (!bundle.folderTree && !explicitPositions && cachedPositions) {
 			cy.nodes().forEach((node) => {
 				const position = cachedPositions.get(node.id());
 				if (!position) return;
@@ -1489,7 +1616,9 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			})
 			: cy.elements();
 
-		const layoutObj = connectedEles.layout(layoutConfig(bundle.layout, graphLayout, seededNodeCount === 0));
+		const layoutObj = explicitPositions
+			? connectedEles.layout({ name: 'preset', animate: false, fit: false })
+			: connectedEles.layout(layoutConfig(bundle.layout, graphLayout, seededNodeCount === 0));
 		layoutObj.one('layoutstop', () => {
 			if (shouldSplitIsolated) layoutDetachedNodes(cy, graphLayout);
 			const restored = initialViewportRef.current;
@@ -1506,6 +1635,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			setZoomPercent(Math.round(cy.zoom() * 100));
 			positionCacheRef.current.set(layoutKey, captureGraphNodePositions(cy));
 			applyGraphSelection(cy, selectedNodeIdsRef.current);
+			setMiniMap(graphMiniMapSnapshot(cy));
 		});
 		layoutObj.run();
 		cy.on('pan zoom', () => {
@@ -1513,6 +1643,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			lastViewportRef.current = viewport;
 			setZoomPercent(Math.round(viewport.zoom * 100));
 			viewportChangeRef.current?.(viewport);
+			setMiniMap(graphMiniMapSnapshot(cy));
 			const hoveredId = hoveredElementRef.current;
 			if (!hoveredId) return;
 			const hovered = cy.getElementById(hoveredId);
@@ -1678,6 +1809,15 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			selectGraphNode(n.id(), modKey);
 			tapRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '', isHub: n.hasClass('hub'), modKey });
 		});
+		cy.on('tap', 'edge', (evt) => {
+			const edge = evt.target as EdgeSingular;
+			edgeTapRef.current?.({
+				relationId: typeof edge.data('relationId') === 'string' ? edge.data('relationId') : null,
+				source: edge.source().id(),
+				target: edge.target().id(),
+				accessibleLabel: typeof edge.data('accessibleLabel') === 'string' ? edge.data('accessibleLabel') : null,
+			});
+		});
 		cy.on('tap', (evt) => {
 			if (evt.target !== cy) return;
 			clearGraphSelection();
@@ -1698,6 +1838,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			lastViewportRef.current = { zoom: cy.zoom(), pan: cy.pan() };
 			cy.destroy();
 			cyRef.current = null;
+			setMiniMap(null);
 		};
 	}, [
 		cancelCardClose,
@@ -1705,6 +1846,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		communityInteraction.openDelayMs,
 		graphLayout,
 		hasRenderableGraph,
+		model,
 		preset,
 		scheduleCardClose,
 		selectGraphNode,
@@ -2143,6 +2285,34 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					{communityInteraction.ui.inspectHint}
 				</span>
 			)}
+			{showMiniMap && !emptyMessage && miniMap && (
+				<div
+					className="pk-graph-minimap pktw-absolute pktw-bottom-2 pktw-right-2 pktw-z-10 pktw-h-20 pktw-w-28 pktw-overflow-hidden pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised/90 pktw-p-1.5 pktw-shadow-sm"
+					role="img"
+					aria-label="Graph mini map"
+					data-peak-graph-minimap
+				>
+					<svg viewBox="0 0 100 100" className="pktw-h-full pktw-w-full" aria-hidden="true">
+						{miniMap.nodes.map((node) => (
+							<circle
+								key={node.id}
+								cx={node.x}
+								cy={node.y}
+								r={node.role === 'hub' || node.role === 'root' ? 3.2 : 2.2}
+								className="pk-graph-minimap__node"
+							/>
+						))}
+						<rect
+							x={miniMap.viewport.x}
+							y={miniMap.viewport.y}
+							width={miniMap.viewport.width}
+							height={miniMap.viewport.height}
+							rx="2"
+							className="pk-graph-minimap__viewport"
+						/>
+					</svg>
+				</div>
+			)}
 			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20 pktw-flex pktw-items-center pktw-gap-1">
 				{summary && (
 					<>
@@ -2161,7 +2331,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 							checked={showSemantic}
 							onCheckedChange={onShowSemanticChange}
 							keyTipKey={semanticKeyTipKey}
-							label="Semantic edges"
+							label={semanticLayerLabel}
 						/>
 						<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
 					</>
@@ -2223,32 +2393,20 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 						? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
 							: <ImageIcon className="pktw-w-3.5 pktw-h-3.5" />}
 					</IconButton>
-					{fullscreen && (
-						<>
-							<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
-							<IconButton label="Zoom out" title="Zoom out" onClick={() => zoomGraph(1 / 1.2)}>
-								<Minus className="pktw-h-3.5 pktw-w-3.5" />
-							</IconButton>
-							<span className="pk-graph-zoom-readout" aria-live="polite">{zoomPercent}%</span>
-							<IconButton label="Zoom in" title="Zoom in" onClick={() => zoomGraph(1.2)}>
-								<Plus className="pktw-h-3.5 pktw-w-3.5" />
-							</IconButton>
-							<IconButton
-								label={communityInteraction.ui.fitAll}
-								title={communityInteraction.ui.fitAll}
-								onClick={fitGraph}
-							>
-								<Scan className="pktw-h-3.5 pktw-w-3.5" />
-							</IconButton>
-							<IconButton
-								label={communityInteraction.ui.readableView}
-								title={communityInteraction.ui.readableView}
-								onClick={restoreReadableGraph}
-							>
-								<Focus className="pktw-h-3.5 pktw-w-3.5" />
-							</IconButton>
-						</>
-					)}
+					<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
+					<IconButton label="Zoom out" title="Zoom out" onClick={() => zoomGraph(1 / 1.2)}>
+						<Minus className="pktw-h-3.5 pktw-w-3.5" />
+					</IconButton>
+					<span className="pk-graph-zoom-readout" aria-live="polite">{zoomPercent}%</span>
+					<IconButton label="Zoom in" title="Zoom in" onClick={() => zoomGraph(1.2)}>
+						<Plus className="pktw-h-3.5 pktw-w-3.5" />
+					</IconButton>
+					<IconButton label={communityInteraction.ui.fitAll} title={communityInteraction.ui.fitAll} onClick={fitGraph}>
+						<Scan className="pktw-h-3.5 pktw-w-3.5" />
+					</IconButton>
+					<IconButton label={communityInteraction.ui.readableView} title={communityInteraction.ui.readableView} onClick={restoreReadableGraph}>
+						<Focus className="pktw-h-3.5 pktw-w-3.5" />
+					</IconButton>
 					<span aria-hidden="true" className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border" />
 					<IconButton
 						label={fullscreen ? 'Exit graph fullscreen' : 'View graph fullscreen'}

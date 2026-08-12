@@ -126,7 +126,16 @@
         "graphs": "G",
         "refresh": "D"
       },
-      "modal": { "close": "X", "previous": "B", "next": "F", "locate": "L" }
+      "modal": { "close": "X", "previous": "B", "next": "F", "locate": "L" },
+      "relatedGraph": {
+        "view": { "list": "L", "tree": "T", "graph": "G" },
+        "graphScope": { "oneHop": "J", "twoHop": "K", "ai": "A" },
+        "graphLayout": {
+          "constellation": "1", "community": "2", "flowTb": "3", "flowLr": "4", "folder": "5", "orbit": "6"
+        },
+        "semantic": "S",
+        "graphCanvas": { "nodeList": "N", "copyMermaid": "M", "copyImage": "I", "fullscreen": "Q" }
+      }
     }
   },
   "keyTips": {

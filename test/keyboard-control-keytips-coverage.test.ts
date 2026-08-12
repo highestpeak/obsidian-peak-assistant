@@ -15,7 +15,8 @@ function assertReferences(source: string, prefix: string, references: string[]):
 const search = [
 	read('src/ui/view/quick-search/SearchModal.tsx'),
 	read('src/ui/component/result-browser/toolbar/ResultBrowserToolbar.tsx'),
-	read('src/ui/view/quick-search/components/ResultPaneHeader.tsx'),
+	read('src/ui/component/graph-workspace/GraphWorkspaceControl.tsx'),
+	read('src/ui/view/quick-search/components/ResultPanePinnedHubChip.tsx'),
 	read('src/ui/view/quick-search/components/V2Footer.tsx'),
 	read('src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx'),
 	read('src/ui/view/quick-search/components/inspector/CommandCenterPinControl.tsx'),

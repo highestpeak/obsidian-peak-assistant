@@ -2,7 +2,7 @@
  * Quick Search ⇄ shared Result Browser adapter contract (CMP-RB-04).
  *
  * The Quick Search host binds the controlled Result Browser through several
- * thin React wrappers (`ResultPaneHeader`, `VaultSearchResult`,
+ * thin React wrappers (`ResultPanePinnedHubChip`, `VaultSearchResult`,
  * `ResultTreeView`, `ResultGraphView`). This module is the *pure* core of that
  * binding: it maps the `vaultSearchStore` shape onto the browser's neutral
  * `ResultBrowserProjectionState`, maps each browser projection change back to

@@ -8,7 +8,7 @@ const renderer = fs.readFileSync(
 );
 
 assert.match(renderer, /folder:\s*\{ layout: 'folder-tree',\s*folderTree: true,\s*community: false \}/);
-assert.match(renderer, /layout: bundle\.folderTree \? \{ name: 'preset' \} : undefined/);
+assert.match(renderer, /layout: bundle\.folderTree \|\| explicitPositions \? \{ name: 'preset' \} : undefined/);
 assert.match(renderer, /buildFolderTreeLayout/);
 assert.match(renderer, /buildFolderTreeRelationRoutes/);
 assert.match(renderer, /buildFolderTreeHubLayout/);

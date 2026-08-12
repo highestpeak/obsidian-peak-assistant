@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react';
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData } from '@/core/types/lens-graph';
 import { useGraphAgentStore, type GraphAgentStep } from '../store/graphAgentStore';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { useQuickSearchHost } from './useQuickSearchHost';

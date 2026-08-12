@@ -1,11 +1,8 @@
 // T11H (2026-06-26): framework-agnostic Lens graph data types.
 //
-// Moved from `src/ui/component/mine/multi-lens-graph/types.ts` so
-// service- and core-layer code that produces or persists Lens graph
-// data (AIGraphAgent, ai-graph helpers, AiGraphDoc, etc.) does not
-// need to import from `src/ui/`. The UI types module re-exports these
-// and additionally declares the ReactFlow-coupled `LensNode` / `LensEdge`
-// aliases for the React component layer.
+// Framework-neutral data consumed by AI graph agents, persistence and the
+// shared Cytoscape graph workspace. Keeping it in core prevents graph
+// producers from depending on a renderer implementation.
 import type { GraphEdgeDirectionality } from './graph-edge';
 
 export type LensType = 'topology' | 'thinking-tree' | 'bridge' | 'timeline' | 'gap-analysis';

@@ -23,7 +23,7 @@ import React, {
 	useRef,
 	useState,
 } from 'react';
-import { Search, Network, ListTree } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
 import { RawBlockKind } from '@/core/document/atlas/types';
 import type { AtlasDocument, DocumentBlock } from '@/core/document/atlas/types';
@@ -61,7 +61,6 @@ import {
 	isProjectionRow,
 } from './atlasDisplayModel';
 import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
-import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import {
 	PEAK_CONTROL_KEY_TIP_KEYS,
 	PEAK_KEYBOARD_ZONE_LABELS,
@@ -73,6 +72,7 @@ import {
 	type FileAtlasSessionPort,
 	type FileAtlasSubview,
 } from './FileAtlasSessionPort';
+import { GraphWorkspaceControl, resolveGraphWorkspaceManifest } from '@/ui/component/graph-workspace';
 
 export interface FileAtlasPanelProps {
 	config: FileAtlasConfig;
@@ -199,20 +199,11 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	const rootRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const searchRestoreFocusRef = useRef<HTMLElement | null>(null);
-	const viewTabsRef = useRef<HTMLDivElement>(null);
 	const treeScrollRef = useRef<HTMLDivElement>(null);
 	const inspectorScrollRef = useRef<HTMLDivElement>(null);
 	const treeScrollTopRef = useRef(initialSession?.treeScrollTop ?? 0);
 	const inspectorScrollTopRef = useRef(initialSession?.inspectorScrollTop ?? 0);
 	usePeakKeyboardSurface('file-atlas', rootRef);
-	useRovingComposite(viewTabsRef, {
-		itemSelector: '[role="tab"]',
-		orientation: 'horizontal',
-		onActiveItem: (item) => {
-			if (item.dataset.peakFocusId === 'file-atlas-tree-view') setSubview('tree');
-			if (item.dataset.peakFocusId === 'file-atlas-graph-view') setSubview('graph');
-		},
-	});
 	useEffect(() => {
 		const root = rootRef.current;
 		const ownerWindow = root?.ownerDocument.defaultView;
@@ -468,53 +459,45 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 					</span>
 				</div>
 
-				{/* Tree / Graph subview tabs */}
-				<div
+				<GraphWorkspaceControl
+					manifest={resolveGraphWorkspaceManifest('file-atlas')}
+					view={subview}
+					onViewChange={(view) => setSubview(view as FileAtlasSubview)}
+					scope={graphState.scope}
+					onScopeChange={(scope) => setGraphState((state) => ({ ...state, scope, viewport: null }))}
+					physicalProjection={graphState.layout}
+					onPhysicalProjectionChange={(layout) => setGraphState((state) => ({ ...state, layout, viewport: null }))}
+					aiLens={graphState.aiLens ?? 'topology'}
+					onAILensChange={(aiLens) => setGraphState((state) => ({ ...state, aiLens, viewport: null }))}
+					keyTipKeys={{
+						view: {
+							tree: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.tree,
+							graph: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graph,
+						},
+						scope: {
+							'one-hop': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.oneHop,
+							'two-hop': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.twoHop,
+							ai: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphScope.ai,
+						},
+						physicalProjection: {
+							constellation: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.constellation,
+							community: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.community,
+							'flow-tb': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.flowTb,
+							'flow-lr': PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.flowLr,
+							folder: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.folder,
+							orbit: PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graphLayout.orbit,
+						},
+					}}
 					className="pkfa-tab-row"
 					data-peak-keyboard-zone="fa-view-filters"
 					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-view-filters']}
 					data-peak-keyboard-order="2"
-				>
-					<div ref={viewTabsRef} className="pkfa-atlas-tabs" role="tablist" aria-label="Atlas view">
-						<Button
-							variant="unstyled"
-							type="button"
-							role="tab"
-							aria-selected={subview === 'tree'}
-							tabIndex={subview === 'tree' ? 0 : -1}
-							data-peak-focus-id="file-atlas-tree-view"
-							data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.tree}
-							data-peak-keytip-label={s.viewTree}
-							className={`pkfa-atlas-tab${subview === 'tree' ? ' is-active' : ''}`}
-							onClick={() => setSubview('tree')}
-						>
-							<ListTree />
-							{s.viewTree}
-						</Button>
-						<Button
-							variant="unstyled"
-							type="button"
-							role="tab"
-							aria-selected={subview === 'graph'}
-							tabIndex={subview === 'graph' ? 0 : -1}
-							data-peak-focus-id="file-atlas-graph-view"
-							data-peak-keytip-key={PEAK_CONTROL_KEY_TIP_KEYS.fileAtlas.graph}
-							data-peak-keytip-label={s.viewGraph}
-							className={`pkfa-atlas-tab${subview === 'graph' ? ' is-active' : ''}`}
-							onClick={() => setSubview('graph')}
-						>
-							<Network />
-							{s.viewGraph}
-						</Button>
-					</div>
-					<span className="pkfa-tab-hint">{subview === 'graph' ? s.graphReadonlyHint : s.treeHint}</span>
-				</div>
+				/>
 
 				{subview === 'graph' ? (
 					<FileAtlasGraph
 						path={activePath}
 						host={host}
-						config={config}
 						onAddToTray={addToTray}
 						initialState={graphState}
 						onStateChange={updateGraphState}

@@ -40,16 +40,16 @@ const folderModel = source('src/ui/component/graph/folderTreeModel.ts');
 const folderLayoutModel = source('src/ui/component/graph/folderTreeLayoutModel.ts');
 const folderRelationRoutingModel = source('src/ui/component/graph/folderTreeRelationRoutingModel.ts');
 const folderHubLayoutModel = source('src/ui/component/graph/folderTreeHubLayoutModel.ts');
-const timelineLayout = source('src/ui/component/mine/multi-lens-graph/layouts/timeline-layout.ts');
+const timelineLayout = source('src/ui/component/graph/adapters/aiLensLayouts.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
 assert.match(vaultWorkspace, /Community overview/);
 assert.match(vaultWorkspace, /Review work starts only from explicit actions/);
 assert.doesNotMatch(vaultWorkspace, /Opening this mode never starts a scan/);
 assert.doesNotMatch(atlasPanel, /FileAtlasDocumentContext|pkfa-document-context-slot/);
-assert.match(atlasGraph, /data-graph-scope="one-hop"/);
-assert.match(atlasGraph, /data-graph-scope="two-hop"/);
-assert.match(atlasGraph, /data-graph-scope="ai"/);
+assert.match(atlasPanel, /resolveGraphWorkspaceManifest\('file-atlas'\)/);
+assert.match(atlasPanel, /onScopeChange/);
+assert.match(atlasGraph, /scope === 'ai'/);
 assert.match(searchInspector, /Open in File Atlas/);
 assert.doesNotMatch(searchInspector, /<HubSection/);
 
@@ -133,7 +133,7 @@ assert.match(graphContextArtifacts, /graphVersionId: row\.versionId/);
 assert.match(contextualAIGraph, /listAIGraphArtifacts/);
 assert.match(contextualAIGraph, /Create AI Graph/);
 assert.match(contextualAIGraph, /graphVersionId: row\.versionId/);
-assert.match(timelineLayout, /No date \/ Unassigned/);
+assert.match(timelineLayout, /config\.labels\.timelineUnassigned/);
 
 assert.match(folderModel, /buildVisibleFolderTree/);
 assert.match(folderModel, /folderTreeSelectionScope/);

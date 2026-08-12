@@ -8,7 +8,7 @@ import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 
 /**
  * Convert SearchResultItems into LensGraphData by discovering physical + semantic edges
- * via the SourcesGraph builder, then mapping to the multi-lens-graph format.
+ * via the SourcesGraph builder, then mapping to the shared LensGraphData model.
  *
  * T11J B1: caller passes the live `app` so the helper no longer reaches
  * `AppContext.getInstance().app`.

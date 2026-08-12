@@ -55,6 +55,8 @@ import { createComposerImageTextAdapter } from './capabilities/ComposerImageText
 import { NativeMarkdownIntelligenceModal } from './NativeMarkdownIntelligenceModal';
 import { joinAdapterPath } from './ObsidianComposerDataStore';
 import { loadComposerStorageConfig } from './ComposerStorageConfig';
+import { composeFileAtlasHost } from '@/app/file-atlas/composeFileAtlasHost';
+import { buildSourceVaultGraph } from '@/app/file-atlas/buildSourceVaultGraph';
 
 const LEGACY_COMMENT_STORE_SUBDIR = 'composer-comments';
 const LEGACY_TELEMETRY_SUBDIR = 'telemetry';
@@ -187,6 +189,7 @@ export async function composeDocumentComposerRuntime(
 	void loadSidecarConfig().then((loaded) => {
 		sidecarConfig = loaded;
 	});
+	const fileAtlasHost = composeFileAtlasHost(AppContext.getInstance());
 	const runtime = new DocumentComposerRuntime(source, write, events, revisionService, undefined, {
 		navigation,
 		contentWidthPreference: {
@@ -227,7 +230,11 @@ export async function composeDocumentComposerRuntime(
 		linkPort: new ObsidianComposerLinkMetadata(app),
 		// WP9 §12.4 — related materials over the existing vector search (lazy client
 		// resolution, degrades to empty before SQLite search initializes).
-		relatedMaterials: new ObsidianComposerRelatedMaterials(safeGetSearchClient),
+		relatedMaterials: new ObsidianComposerRelatedMaterials(
+			safeGetSearchClient,
+			undefined,
+			(paths, scope) => buildSourceVaultGraph(fileAtlasHost, paths, scope),
+		),
 		// WP9 §12.7 — privacy-safe, bounded evaluation telemetry under DataStore.
 		intelligenceTelemetry: new ObsidianComposerIntelligenceTelemetry(
 			app,

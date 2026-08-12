@@ -2,15 +2,19 @@ import * as React from 'react';
 import { AlertTriangle, ExternalLink, Loader2, Network, Plus } from 'lucide-react';
 import type { QuickSearchGraphCreateOrigin } from '@/core/ports/QuickSearchLauncherPort';
 import type { AIGraphArtifactView, AIGraphHistoryRow } from '@/service/ai-graph';
+import type { LensType } from '@/core/types/lens-graph';
 import { Button } from '@/ui/component/shared-ui/button';
-import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { canonicalAIGraphData } from './aiGraphPresentation';
+import { AIGraphWorkspaceCanvas } from './AIGraphWorkspaceCanvas';
 
 export interface ContextualAIGraphViewProps {
 	contextRefs: readonly string[];
 	selectedVaultPaths: readonly string[];
 	createOrigin: QuickSearchGraphCreateOrigin;
+	lens?: LensType;
+	onLensChange?: (lens: LensType) => void;
+	showWorkspaceControl?: boolean;
 }
 
 async function matchContextRows(
@@ -34,6 +38,9 @@ export function ContextualAIGraphView({
 	contextRefs,
 	selectedVaultPaths,
 	createOrigin,
+	lens,
+	onLensChange,
+	showWorkspaceControl = true,
 }: ContextualAIGraphViewProps): React.ReactElement {
 	const { quickSearchHost, quickSearchLauncher } = useServiceContext();
 	const [status, setStatus] = React.useState<'loading' | 'empty' | 'ready' | 'error'>('loading');
@@ -153,10 +160,11 @@ export function ContextualAIGraphView({
 				)}
 			</div>
 			<div className="pk-context-ai-graph-canvas">
-				<MultiLensGraph
+				<AIGraphWorkspaceCanvas
 					graphData={canonicalAIGraphData(view)}
-					defaultLens="topology"
-					showControls
+					lens={lens}
+					onLensChange={onLensChange}
+					showWorkspaceControl={showWorkspaceControl}
 					className="pktw-h-full"
 					onNodeClick={(path) => {
 						if (selectedVaultPaths.includes(path)) void quickSearchHost.openVaultPath(path);

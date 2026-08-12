@@ -74,7 +74,7 @@ assert.ok(related.includes('ResultBrowserSearchInput'), 'the material explorer r
 assert.ok(related.includes('ResultBrowserFooterHints'), 'the material explorer reuses the Search keyboard contract');
 assert.ok(related.includes("event.key === 'ArrowRight'"), 'right arrow opens the on-demand inspector');
 assert.ok(related.includes("event.key === 'ArrowLeft'"), 'left arrow closes the on-demand inspector');
-assert.ok(related.includes('ResultBrowserViewToggle'), 'the material browser preserves List / Tree / Graph views');
+assert.ok(related.includes('GraphWorkspaceControl'), 'the material browser preserves List / Tree / Graph views');
 assert.ok(related.includes('<ResultBrowserTree'), 'the material browser preserves the shared Tree projection');
 assert.ok(related.includes('<ResultBrowserGraph'), 'the material browser preserves the shared Graph projection');
 assert.ok(

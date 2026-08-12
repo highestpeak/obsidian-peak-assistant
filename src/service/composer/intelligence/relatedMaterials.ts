@@ -31,6 +31,11 @@ export interface ComposerRelatedMaterialSnapshot {
 	readonly focus: { readonly anchorId: string; readonly rootNodeId: string };
 	readonly items: readonly SearchResultItem[];
 	readonly graph: ResultSubgraphOutput;
+	/** Scope-complete physical graphs, frozen with the same snapshot revision. */
+	readonly graphByScope?: Readonly<{
+		oneHop: ResultSubgraphOutput;
+		twoHop: ResultSubgraphOutput;
+	}>;
 	/** node id → source id map (graph node ids are a subset of item source ids). */
 	readonly sourceIdByNodeId: Readonly<Record<string, string>>;
 	/** source id → app-owned relation reason (why this material is related). */
@@ -70,6 +75,10 @@ export function emptyRelatedSnapshot(focus: {
 		focus: { anchorId: focus.anchorId, rootNodeId: focus.documentId },
 		items: [],
 		graph: { resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 },
+		graphByScope: {
+			oneHop: { resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 },
+			twoHop: { resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 },
+		},
 		sourceIdByNodeId: {},
 		reasonBySourceId: {},
 		weakNodeIds: [],
@@ -85,6 +94,7 @@ export interface RelatedSnapshotMapInput {
 	readonly items: readonly SearchResultItem[];
 	/** Cap on graph node projection (sidecar config `graphNodeCap`). */
 	readonly graphNodeCap: number;
+	readonly graphByScope?: ComposerRelatedMaterialSnapshot['graphByScope'];
 	/** App-owned relation reason per source id (why related). Missing ⇒ ''. */
 	readonly reasonBySourceId?: Readonly<Record<string, string>>;
 	/** Source ids to mark weak (hidden in the local preview; app-owned overlay). */
@@ -126,6 +136,7 @@ export function buildRelatedSnapshot(input: RelatedSnapshotMapInput): ComposerRe
 			isolatedDocIds: resultNodes.map((n) => n.id),
 			overflowCount: Math.max(0, ranked.length - cap),
 		},
+		...(input.graphByScope ? { graphByScope: input.graphByScope } : {}),
 		sourceIdByNodeId,
 		reasonBySourceId,
 		weakNodeIds: [...(input.weakSourceIds ?? [])],

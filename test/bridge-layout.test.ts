@@ -1,4 +1,4 @@
-import { computeBridgeLayout } from '../src/ui/component/mine/multi-lens-graph/layouts/bridge-layout';
+import { computeBridgeAtlasLayout } from '../src/ui/component/graph/adapters/aiLensLayouts';
 
 function test(name: string, fn: () => void) {
 	try { fn(); console.log(`  PASS: ${name}`); }
@@ -26,7 +26,7 @@ const BRIDGES = [
 ];
 
 test('places bridge nodes between cluster columns', () => {
-	const result = computeBridgeLayout({
+	const result = computeBridgeAtlasLayout({
 		nodes: NODES, edges: [], clusters: CLUSTERS, bridges: BRIDGES,
 	});
 	const positions = result.positions;
@@ -38,7 +38,7 @@ test('places bridge nodes between cluster columns', () => {
 });
 
 test('groups non-bridge nodes by cluster', () => {
-	const result = computeBridgeLayout({
+	const result = computeBridgeAtlasLayout({
 		nodes: NODES, edges: [], clusters: CLUSTERS, bridges: BRIDGES,
 	});
 	const positions = result.positions;
@@ -52,7 +52,7 @@ test('groups non-bridge nodes by cluster', () => {
 });
 
 test('returns bridge edges connecting bridge to clusters', () => {
-	const result = computeBridgeLayout({
+	const result = computeBridgeAtlasLayout({
 		nodes: NODES, edges: [], clusters: CLUSTERS, bridges: BRIDGES,
 	});
 	assert(result.bridgeEdges != null, 'bridge edges returned');

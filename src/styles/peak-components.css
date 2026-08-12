@@ -12409,3 +12409,45 @@
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
+
+.pk-graph-minimap {
+  pointer-events: none;
+}
+
+.pk-graph-minimap__node {
+  fill: var(--pk-accent, var(--interactive-accent));
+  opacity: 0.72;
+}
+
+.pk-graph-minimap__viewport {
+  fill: color-mix(in srgb, var(--pk-accent, var(--interactive-accent)) 8%, transparent);
+  stroke: var(--pk-accent, var(--interactive-accent));
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.pk-graph-workspace__control {
+  border-bottom: 1px solid var(--pk-border, var(--background-modifier-border));
+  background: var(--pk-surface, var(--background-primary));
+}
+
+.pk-graph-workspace__content > .pk-graph-inline-slot,
+.pk-graph-workspace__content > .pk-graph-surface-host {
+  min-height: 100%;
+}
+
+@media (max-width: 980px) {
+  .pk-graph-workspace__control {
+    flex-wrap: wrap;
+  }
+
+  .pk-graph-workspace__projection {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .pk-graph-workspace__projection::-webkit-scrollbar {
+    display: none;
+  }
+}

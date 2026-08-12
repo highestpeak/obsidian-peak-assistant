@@ -9,7 +9,7 @@ import type { SearchResultItem } from '@/core/search/searchTypes';
 import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { buildAiGraphMarkdown } from '@/core/storage/vault/search-docs/AiGraphDoc';
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData } from '@/core/types/lens-graph';
 
 /**
  * T11M: explicit deps so this module no longer reaches for

@@ -82,8 +82,12 @@ const sources = readFileSync(
 	'src/ui/view/quick-search/components/V2SourcesView.tsx',
 	'utf8',
 );
+const graphWorkspaceControl = readFileSync(
+	'src/ui/component/graph-workspace/GraphWorkspaceControl.tsx',
+	'utf8',
+);
 assert(
-	sources.includes('geometry="toolbar"'),
+	sources.includes('GraphWorkspaceControl') && graphWorkspaceControl.includes('geometry="toolbar"'),
 	'Sources graph-kind and scope segments must align with Result Browser toolbar geometry',
 );
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LensGraphData, LensType } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData, LensType } from '@/core/types/lens-graph';
 import type { AIGraphSource } from '@/service/ai-graph';
 
 export interface AIGraphArtifactReference {

@@ -113,7 +113,7 @@ assert.match(fileAtlas, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.tree/);
 assert.match(fileAtlas, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.graph/);
 assert.match(fileAtlas, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.search/);
 assert.match(atlasBar, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.filters/);
-assert.match(fileAtlasGraph, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.graphScope\.ai/);
+assert.match(fileAtlas, /PEAK_CONTROL_KEY_TIP_KEYS\.fileAtlas\.graphScope\.ai/);
 assert.match(chatStudio, /usePeakKeyboardSurface\('chat-studio'/);
 assert.match(chatStudio, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.openLeft/);
 assert.match(projectList, /PEAK_CONTROL_KEY_TIP_KEYS\.chatStudio\.newChat/);

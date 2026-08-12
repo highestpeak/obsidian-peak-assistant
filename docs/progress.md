@@ -8,6 +8,16 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-13 · Shared Graph Workspace 生产实现
+
+- [x] **公共组件成为唯一交互壳**：新增宿主 capability manifest、统一状态与模板配置；World Search、File Atlas、AI Search Sources、Composer Relations、AI Graph Artifact 共用 `GraphWorkspaceControl`，旧 Result Browser 私有 View / Graph 控件已移除。
+- [x] **最终稿交互落地**：只有进入 Graph 才显示 Scope；List / Tree / Graph 同组压缩为图标，One hop / Two hop / AI Graph 从 Graph 后方展开；Projection 使用 `Constellation / Community / Flow → / ↓ / Folders / Orbit`，active thumb 以 75–105ms 配置化动画滑动并支持 reduced motion。
+- [x] **完整画布能力统一**：`AtlasGraphCanvas` 同一位置提供 Semantic / Evidence links、Nodes、Mermaid、Image、Zoom、Fit、Readable view、Fullscreen；工具悬浮在画布右上，Shift inspect / pin 提示在左下，Mini Map 在右下。
+- [x] **AI Graph 收归 Cytoscape**：五种 AI Lens 通过中立 `AtlasGraphModel` adapter 投影到共享画布；旧 `MultiLensGraph` React Flow 目录和 `@xyflow/react` 依赖已删除，AI Search、File Atlas、Composer 与 artifact detail 不再维护第二套 renderer。
+- [x] **宿主数据边界保持**：World Search 使用唯一隐式结果范围，不显示空 Scope；File Atlas 与 AI Sources 按 one/two hop 构图；Composer 在打开 modal 时冻结 one/two-hop snapshot，切换视图不重新查询 Vault；AI Graph 保留 topology / thinking tree / bridges / timeline / gaps 语义。
+- [x] **自动验证**：Graph-focused 9/9 通过；生产 build、bundle check、simulator boundary 通过；全量 `480/484`，4 个失败均来自本次未触碰的 code theme、Frontmatter tag candidate、generated-output registry 与 inline prompt 基线。
+- [ ] **真实 Obsidian 交互待验收**：本机没有 Obsidian CDP listener，未执行插件重载、真实 motion 采样、Shift inspect / pin、fullscreen / focus restore 和跨宿主截图；这些项目保持 `INTERACTION NOT VERIFIED`，不可用静态 HTML 或 source test 代替。
+
 ## 2026-08-12 · Shared Graph Workspace 设计收束
 
 - [x] **五个宿主单页最终稿**：World Search、File Atlas、AI Search Sources、Composer Relations 与 AI Graph Artifact 全部收进同一个可交互 HTML；最终方向锁定为宿主 capability manifest + 公共 Graph Workspace + Cytoscape 画布。

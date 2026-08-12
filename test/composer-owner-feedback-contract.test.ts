@@ -74,7 +74,7 @@ assert.ok(
 	'the shared Harness AI service executes the selected model override',
 );
 assert.ok(copilot.includes('<CapabilityIcon name={item.lucideIcon} />'), 'capability rows use their declared Lucide icons');
-assert.ok(related.includes('ResultBrowserViewToggle'), 'related-material browser preserves List / Tree / Graph controls');
+assert.ok(related.includes('GraphWorkspaceControl'), 'related-material browser preserves List / Tree / Graph controls through the shared workspace');
 assert.ok(related.includes('ResultBrowserDensityToggle'), 'related-material Compact / Detailed control remains intact');
 assert.ok(related.includes('ResultBrowserSearchInput'), 'related-material filtering shares the Quick Search input implementation');
 assert.ok(related.includes('<InspectorSidePanel'), 'related-material details use the same on-demand inspector grammar as Search');

@@ -6,10 +6,11 @@ const atlasGraph = read('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const atlasHost = read('src/app/file-atlas/composeFileAtlasHost.ts');
 const resultGraph = read('src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx');
 const canvas = read('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
+const atlasPanel = read('src/ui/view/file-atlas/FileAtlasPanel.tsx');
 
-assert.match(atlasGraph, /ResultBrowserGraphControls/, 'File Atlas reuses the shared graph preset controls');
+assert.match(atlasPanel, /GraphWorkspaceControl/, 'File Atlas reuses the shared graph workspace controls');
 assert.doesNotMatch(atlasGraph, /const LAYOUTS/, 'File Atlas does not keep a second graph preset list');
-assert.match(atlasGraph, /communityAvailable/, 'File Atlas exposes the shared Community projection');
+assert.match(atlasPanel, /resolveGraphWorkspaceManifest\('file-atlas'\)/, 'File Atlas exposes the shared projection manifest');
 assert.match(atlasGraph, /onShowSemanticChange=\{setSemantic\}/, 'Semantic edges live in the shared canvas toolbar');
 assert.match(atlasHost, /communityId:\s*row\.community_id/, 'File Atlas projects canonical node community ids');
 assert.match(atlasHost, /communities:/, 'File Atlas projects evidence-rich community summaries');
@@ -57,8 +58,8 @@ assert.doesNotMatch(canvas, /layoutReadyState/, 'the graph canvas is not hidden 
 assert.doesNotMatch(canvas, /visibility: emptyMessage/, 'the graph canvas is not hidden while layout state catches up');
 assert.match(
 	canvas,
-	/layout: bundle\.folderTree \? \{ name: 'preset' \} : undefined/,
-	'only the explicit-position Folder projection bypasses Cytoscape initial layout',
+	/layout: bundle\.folderTree \|\| explicitPositions \? \{ name: 'preset' \} : undefined/,
+	'Folder and neutral-model explicit positions bypass Cytoscape initial layout',
 );
 assert.match(canvas, /name: 'fcose',[\s\S]*?animate: true,[\s\S]*?animationDuration: 500/, 'Constellation keeps the proven layout lifecycle');
 

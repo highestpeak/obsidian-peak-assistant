@@ -33,6 +33,7 @@ import {
 import { ComposerConflictError } from '@/core/composer';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { SearchResultItem } from '@/core/search/searchTypes';
+import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import {
 	copyLegacyFileIfNeeded,
 	ensureAdapterDirectory,
@@ -253,6 +254,10 @@ export class ObsidianComposerRelatedMaterials implements ComposerRelatedMaterial
 	constructor(
 		private readonly getSearchClient: () => SearchClient | null,
 		private readonly options: ComposerRelatedMaterialsOptions = DEFAULT_RELATED_OPTIONS,
+		private readonly buildScopeGraph?: (
+			paths: readonly string[],
+			scope: 'one-hop' | 'two-hop',
+		) => Promise<ResultSubgraphOutput>,
 	) {}
 
 	async buildSnapshot(focus: {
@@ -273,12 +278,23 @@ export class ObsidianComposerRelatedMaterials implements ComposerRelatedMaterial
 			});
 			const items = (res.items ?? []).filter((it) => !isSameDocument(it, focus.documentId));
 			this.seq += 1;
-			return buildRelatedSnapshot({
+			const base = buildRelatedSnapshot({
 				focus: { anchorId: focus.anchorId, rootNodeId: focus.documentId },
 				revision: `${Date.now().toString(36)}-${this.seq.toString(36)}`,
 				items,
 				graphNodeCap: this.options.graphNodeCap,
 			});
+			if (!this.buildScopeGraph) return base;
+			try {
+				const [oneHop, twoHop] = await Promise.all([
+					this.buildScopeGraph([focus.documentId], 'one-hop'),
+					this.buildScopeGraph([focus.documentId], 'two-hop'),
+				]);
+				return { ...base, graphByScope: { oneHop, twoHop } };
+			} catch {
+				// The related search is still useful when neighborhood projection is unavailable.
+				return base;
+			}
 		} catch {
 			// Search failure must never block the Sidecar — degrade to empty.
 			return emptyRelatedSnapshot(focus);

@@ -6,10 +6,8 @@ import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph
 import {
 	ResultBrowserDensityToggle,
 	ResultBrowserGraph,
-	ResultBrowserGraphControls,
 	ResultBrowserListRow,
 	ResultBrowserTree,
-	ResultBrowserViewToggle,
 	type ResultBrowserDensity,
 	type ResultBrowserGraphPreset,
 	type ResultBrowserView,
@@ -30,83 +28,17 @@ import {
 import { sourcesToResultItems } from './sourceEvidenceAdapter';
 import { ContextualAIGraphView } from '@/ui/component/ai-graph';
 import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import { GraphWorkspaceControl, resolveGraphWorkspaceManifest } from '@/ui/component/graph-workspace';
+import type { LensType } from '@/core/types/lens-graph';
 
 export { sourcesToResultItems } from './sourceEvidenceAdapter';
 
 type GraphMode = 'one-hop' | 'two-hop' | 'ai';
 
 const SOURCE_KEY_TIPS = PEAK_CONTROL_KEY_TIP_KEYS.aiSearch.sources;
-const SOURCE_GRAPH_PRESET_KEY_TIPS: Readonly<Record<ResultBrowserGraphPreset, string>> = {
-	constellation: SOURCE_KEY_TIPS.graphPreset.constellation,
-	community: SOURCE_KEY_TIPS.graphPreset.community,
-	'flow-tb': SOURCE_KEY_TIPS.graphPreset.flowTb,
-	'flow-lr': SOURCE_KEY_TIPS.graphPreset.flowLr,
-	folder: SOURCE_KEY_TIPS.graphPreset.folder,
-	orbit: SOURCE_KEY_TIPS.graphPreset.orbit,
-};
-
 interface V2SourcesViewProps {
 	onClose?: () => void;
 }
-
-const SegmentedButton: React.FC<{
-	active: boolean;
-	onClick: () => void;
-	children: React.ReactNode;
-	title?: string;
-	keyTipKey: string;
-	keyTipLabel: string;
-}> = ({ active, onClick, children, title, keyTipKey, keyTipLabel }) => (
-	<Button
-		variant={active ? 'default' : 'ghost'}
-		size="sm"
-		geometry="toolbar"
-		title={title}
-		data-peak-keytip-key={keyTipKey}
-		data-peak-keytip-label={keyTipLabel}
-		onClick={onClick}
-		className={cn(
-			'pktw-rounded-full pktw-text-sm',
-			active ? '' : 'pktw-text-pk-foreground-muted',
-		)}
-	>
-		{children}
-	</Button>
-);
-
-const ScopeToggle: React.FC<{
-	value: GraphMode;
-	onChange: (value: GraphMode) => void;
-}> = ({ value, onChange }) => (
-	<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-		<div className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-rounded-full pktw-border pktw-border-pk-border pktw-bg-pk-surface-sunken pktw-p-0.5">
-			<SegmentedButton
-				active={value === 'one-hop'}
-				onClick={() => onChange('one-hop')}
-				keyTipKey={SOURCE_KEY_TIPS.graphScope.oneHop}
-				keyTipLabel="One-hop source graph"
-			>
-				One hop
-			</SegmentedButton>
-			<SegmentedButton
-				active={value === 'two-hop'}
-				onClick={() => onChange('two-hop')}
-				keyTipKey={SOURCE_KEY_TIPS.graphScope.twoHop}
-				keyTipLabel="Two-hop source graph"
-			>
-				Two hop
-			</SegmentedButton>
-			<SegmentedButton
-				active={value === 'ai'}
-				onClick={() => onChange('ai')}
-				keyTipKey={SOURCE_KEY_TIPS.graphScope.ai}
-				keyTipLabel="AI Graph"
-			>
-				AI Graph
-			</SegmentedButton>
-		</div>
-	</div>
-);
 
 function VaultRelationshipEmptyState({
 	sourceCount,
@@ -173,6 +105,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [graphMode, setGraphMode] = useState<GraphMode>('one-hop');
 	const [graphPreset, setGraphPreset] = useState<ResultBrowserGraphPreset>('constellation');
+	const [aiLens, setAILens] = useState<LensType>('topology');
 	const [semantic, setSemantic] = useState(false);
 	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
 	const [graphLoading, setGraphLoading] = useState(false);
@@ -346,28 +279,51 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 			exit={{ opacity: 0 }}
 			className="pktw-flex pktw-min-h-0 pktw-flex-1 pktw-flex-col pktw-gap-2 pktw-px-1 pktw-py-1"
 		>
-			<div className="pk-ai-sources-toolbar">
-				<div className="pk-ai-sources-summary">
-					<FileText aria-hidden />
-					<div>
-						<span>{sources.length} cited files</span>
-						<small>Evidence used by this analysis</small>
+			<GraphWorkspaceControl
+				manifest={resolveGraphWorkspaceManifest('ai-sources')}
+				view={view}
+				onViewChange={setView}
+				scope={graphMode}
+				onScopeChange={setGraphMode}
+				physicalProjection={graphPreset}
+				onPhysicalProjectionChange={setGraphPreset}
+				aiLens={aiLens}
+				onAILensChange={setAILens}
+				keyTipKeys={{
+					view: SOURCE_KEY_TIPS.view,
+					scope: {
+						'one-hop': SOURCE_KEY_TIPS.graphScope.oneHop,
+						'two-hop': SOURCE_KEY_TIPS.graphScope.twoHop,
+						ai: SOURCE_KEY_TIPS.graphScope.ai,
+					},
+					physicalProjection: {
+						constellation: SOURCE_KEY_TIPS.graphPreset.constellation,
+						community: SOURCE_KEY_TIPS.graphPreset.community,
+						'flow-tb': SOURCE_KEY_TIPS.graphPreset.flowTb,
+						'flow-lr': SOURCE_KEY_TIPS.graphPreset.flowLr,
+						folder: SOURCE_KEY_TIPS.graphPreset.folder,
+						orbit: SOURCE_KEY_TIPS.graphPreset.orbit,
+					},
+				}}
+				nonGraphTrailingSlot={(
+					<div className="pk-ai-sources-toolbar-controls">
+						{isSourcesDensityVisible(view) && (
+							<ResultBrowserDensityToggle density={density} onDensityChange={setDensity} keyTipKeys={SOURCE_KEY_TIPS.density} />
+						)}
+						<Button
+							variant="ghost"
+							geometry="toolbar-icon"
+							onClick={() => void copySourcePaths()}
+							title="Copy source links"
+							aria-label="Copy source links"
+							data-peak-keytip-key={SOURCE_KEY_TIPS.copyLinks}
+							data-peak-keytip-label="Copy source links"
+						>
+							<Copy />
+						</Button>
 					</div>
-				</div>
-				<div className="pk-ai-sources-toolbar-controls">
-					<ResultBrowserViewToggle
-						view={view}
-						onViewChange={setView}
-						keyTipKeys={SOURCE_KEY_TIPS.view}
-					/>
-					{view === 'graph' && <ScopeToggle value={graphMode} onChange={setGraphMode} />}
-					{isSourcesDensityVisible(view) && (
-						<ResultBrowserDensityToggle
-							density={density}
-							onDensityChange={setDensity}
-							keyTipKeys={SOURCE_KEY_TIPS.density}
-						/>
-					)}
+				)}
+				graphTrailingSlot={(
 					<Button
 						variant="ghost"
 						geometry="toolbar-icon"
@@ -379,27 +335,8 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 					>
 						<Copy />
 					</Button>
-				</div>
-			</div>
-
-			{view === 'graph' && graphMode !== 'ai' && (
-				<div className="pktw-flex pktw-flex-wrap pktw-items-center pktw-gap-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-p-2">
-					<span className="pktw-text-xs pktw-text-pk-foreground-muted">Vault links around the cited sources</span>
-					<div className="pktw-flex-1" />
-					{hasVaultRelationships && (
-						<ResultBrowserGraphControls
-							preset={graphPreset}
-							onPresetChange={setGraphPreset}
-							semantic={semantic}
-							onSemanticChange={setSemantic}
-							keyTipKeys={{
-								preset: SOURCE_GRAPH_PRESET_KEY_TIPS,
-								semantic: SOURCE_KEY_TIPS.graphSemantic,
-							}}
-						/>
-					)}
-				</div>
-			)}
+				)}
+			/>
 
 			<div
 				ref={projectionRef}
@@ -473,6 +410,8 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 									subgraph={subgraph}
 									preset={graphPreset}
 									semantic={semantic}
+									onSemanticChange={setSemantic}
+									semanticKeyTipKey={SOURCE_KEY_TIPS.graphSemantic}
 									keyTipKeys={SOURCE_KEY_TIPS.graphCanvas}
 									graphLayout={indexService?.env.communityConfig?.graphLayout}
 									onNodeTap={(node) => {
@@ -497,6 +436,9 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 									label: query || 'AI Search sources',
 								},
 							}}
+							lens={aiLens}
+							onLensChange={setAILens}
+							showWorkspaceControl={false}
 						/>
 					)}
 				</div>

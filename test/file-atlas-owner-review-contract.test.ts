@@ -102,21 +102,15 @@ assert.doesNotMatch(tree, /flatBreadcrumb|row\.ownerContext/);
 assert.doesNotMatch(treeModel, /breadcrumb: owners|ownerContext \? \{ ownerContext \}/);
 assert.match(displayModel, /companionTitle[\s\S]*githubIdentity[\s\S]*decodedSlug/);
 
-assert.match(graph, /data\.edges\.filter\(\(edge\) => semantic \|\| edge\.kind !== 'semantic'\)/);
-assert.match(graph, /summary=\{meta\}/);
+assert.match(graph, /showSemantic=\{semantic\}/);
 assert.match(graph, /preview: n\.summary/);
 assert.match(graph, /incomingLinks: n\.incomingLinks/);
 assert.match(graph, /outgoingLinks: n\.outgoingLinks/);
 assert.match(graph, /graphNodeExplanation=\{graphNodeExplanation\}/);
-assert.match(graph, /ResultBrowserGraphControls/);
-assert.match(graph, /communityAvailable/);
+assert.match(panel, /resolveGraphWorkspaceManifest\('file-atlas'\)/);
 assert.match(graph, /onShowSemanticChange=\{setSemantic\}/);
 assert.doesNotMatch(graph, /const LAYOUTS/);
-assert.match(
-	css,
-	/\.pkfa-graph-scope-tab\.is-icon-only\s*\{[\s\S]*?width:\s*24px !important;[\s\S]*?min-width:\s*24px !important;[\s\S]*?max-width:\s*24px !important;[\s\S]*?padding:\s*0 !important;/,
-	'File Atlas compact vertical Links control must retain fixed geometry under the Obsidian reset',
-);
+assert.doesNotMatch(css, /pkfa-graph-scope-tab/, 'File Atlas no longer owns a private graph scope control');
 assert.match(hostAdapter, /getMobiusNodeRepo/);
 assert.match(hostAdapter, /summary: row\.summary/);
 assert.match(hostAdapter, /incomingLinks: row\.doc_incoming_cnt/);

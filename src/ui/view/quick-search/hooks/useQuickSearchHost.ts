@@ -28,7 +28,7 @@ import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryServic
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { SaveAnalysisResultParams } from '../callbacks/save-ai-analyze-to-md';
 import type { CompletedAnalysisSnapshot } from '../store/aiAnalysisStore';
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { LensGraphData } from '@/core/types/lens-graph';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import type { CommandCenterVaultTargetMembership } from '@/core/command-center';
 import type {

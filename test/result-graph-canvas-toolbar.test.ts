@@ -3,20 +3,20 @@ import { readFileSync } from 'fs';
 
 const read = (path: string): string => readFileSync(path, 'utf8');
 
-const header = read('src/ui/view/quick-search/components/ResultPaneHeader.tsx');
 const resultGraph = read('src/ui/view/quick-search/components/result-graph/ResultGraphView.tsx');
 const canvas = read('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
-const toolbar = read('src/ui/component/result-browser/toolbar/ResultBrowserToolbar.tsx');
+const workspaceControl = read('src/ui/component/graph-workspace/GraphWorkspaceControl.tsx');
+const projectionControl = read('src/ui/component/graph-workspace/GraphProjectionControl.tsx');
+const workspaceConfig = JSON.parse(read('templates/config/graph-workspace.json')) as {
+	labels: {
+		physicalProjections: Record<string, string>;
+	};
+};
 
-assert.doesNotMatch(
-	header,
-	/semantic=\{|onSemanticChange=\{/,
-	'Vault Search outer graph header must not own the semantic-edge switch',
-);
 assert.match(
-	header,
-	/communityAvailable/,
-	'Vault Search explicitly opts into the Community projection',
+	workspaceControl,
+	/<GraphProjectionControl/,
+	'the shared workspace control must own the graph projection switch',
 );
 
 assert.match(
@@ -27,7 +27,7 @@ assert.match(
 
 assert.match(
 	canvas,
-	/label="Semantic edges"/,
+	/label=\{semanticLayerLabel\}/,
 	'the canvas must present Semantic edges as a labelled graph-layer control',
 );
 assert.match(
@@ -72,7 +72,7 @@ assert.doesNotMatch(
 	'hovering away must not permanently cancel the cached community or node explanation load',
 );
 
-const semanticIndex = canvas.indexOf('label="Semantic edges"');
+const semanticIndex = canvas.indexOf('label={semanticLayerLabel}');
 const nodesIndex = canvas.indexOf('<span>Nodes</span>');
 const mermaidIndex = canvas.indexOf('title="Copy graph as Mermaid"');
 const imageIndex = canvas.indexOf('title="Copy graph as image"');
@@ -82,21 +82,18 @@ assert.ok(
 	'canvas controls remain ordered: Semantic edges, Nodes, Copy Mermaid, Copy image, Fullscreen',
 );
 
-assert.match(
-	toolbar,
-	/typeof semantic === 'boolean' && onSemanticChange/,
-	'other Result Browser hosts retain the optional outer semantic control',
-);
-for (const label of ['Constellation', 'Community', 'Links →', 'Links ↓', 'Folders', 'Orbit']) {
-	assert.ok(toolbar.includes(label), `graph toolbar must include the ${label} control`);
+for (const label of ['Constellation', 'Community', 'Flow →', '↓', 'Folders', 'Orbit']) {
+	assert.ok(
+		Object.values(workspaceConfig.labels.physicalProjections).includes(label),
+		`graph workspace config must include the ${label} control`,
+	);
 }
-assert.match(toolbar, /iconOnly: true/, 'the vertical Links control must stay compact without repeating the Links label');
-assert.match(toolbar, /keyTip: keyTips\['flow-lr'\]/, 'horizontal Links must expose its own Key Tip');
-assert.match(toolbar, /keyTip: keyTips\['flow-tb'\]/, 'vertical Links must expose its own Key Tip');
 assert.match(
-	toolbar,
-	/communityAvailable \? communityControls : standardControls/,
-	'shared graph hosts without community evidence retain their standard layout controls',
+	projectionControl,
+	/config\.labels\.physicalProjections\[option as AtlasGraphPreset\]/,
+	'projection labels must come from the shared template-backed workspace config',
 );
+assert.match(workspaceControl, /data-graph-workspace-scope-extension/, 'graph scopes must expand from the shared primary control');
+assert.match(workspaceControl, /graphActive && 'pktw-w-8 pktw-px-0'/, 'Graph activation must compact List, Tree and Graph to icons');
 
 console.log('result-graph-canvas-toolbar: passed');
