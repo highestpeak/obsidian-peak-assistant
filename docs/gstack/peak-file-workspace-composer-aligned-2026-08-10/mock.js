@@ -7,7 +7,7 @@ const surfaces = {
     contextTitle: "I can see this image",
     contextDetail: "Pixels · dimensions · visible text",
     headline: "Select precisely, crop directly, and keep AI attached to the source.",
-    description: "Use the whole image, a resizable rectangle, or a freehand selection as context. Crop opens above the dock and provides independent rectangle and freehand methods without moving the toolbar.",
+    description: "Select and Crop are the two stable tasks. Each reveals Rectangle or Freehand above the dock; Rectangle starts with the whole image, while Freehand replaces it with a drawn mask.",
     scope: "Whole image",
     placeholder: "Ask about this image or propose a change…",
     actions: [
@@ -134,7 +134,8 @@ let htmlSourceOpen = false;
 let htmlPicking = false;
 let imageQuarterRotation = 0;
 let imageScale = 1;
-let imageScope = "all";
+let imageTask = null;
+let imageScope = "region";
 let pdfZoom = 112;
 let pdfMode = "document";
 let pdfSelection = null;
@@ -142,6 +143,7 @@ let codeSelectionText = "";
 let canvasZoom = 84;
 let excalZoom = 72;
 let toastTimer;
+let imageMethodTimer;
 let activeLasso = null;
 let surfaceDragState = null;
 const lassoSelections = { image: null, pdf: null };
@@ -246,32 +248,11 @@ function updateImageTransform() {
 }
 
 function handleImageTool(tool, button) {
-  const cropOverlay = document.querySelector("#cropOverlay");
-  const cropStudio = document.querySelector("#cropStudio");
   const exportSheet = document.querySelector("#imageExportSheet");
-  if (tool === "crop") {
-    const opening = cropStudio.hidden;
-    if (!opening) {
-      closeCrop(false);
-      return;
-    }
-    if (imageScope === "lasso" && !lassoSelections.image) {
-      showToast("Draw a freehand selection first, then crop it");
-      return;
-    }
-    prepareCropOverlay();
-    document.querySelector("#imageSelectionToolbar").hidden = true;
-    cropStudio.hidden = false;
-    exportSheet.hidden = true;
-    button.classList.add("is-active");
-    document.querySelector('[data-image-tool="export"]').classList.remove("is-active");
-    showToast(imageScope === "lasso" ? "Crop will use the current freehand selection" : "Drag the crop frame directly on the image");
-    return;
-  }
   if (tool !== "export") return;
 
   const opening = exportSheet.hidden;
-  closeCrop(false, true);
+  closeImageWorkflow(false, true);
   exportSheet.hidden = !opening;
   button.classList.toggle("is-active", opening);
 }
@@ -288,44 +269,92 @@ function showImageSelectionLens(kind, label, target) {
   const frame = document.querySelector("#imageFrame");
   document.querySelector("#imageSelectionKind").textContent = kind;
   document.querySelector("#imageSelectionLabel").textContent = label;
-  positionSelectionLens(toolbar, target, frame, "above", document.querySelector("#imageContextDock"));
+  positionSelectionLens(toolbar, target, frame, "above", [
+    document.querySelector("#imageMethodPanel"),
+    document.querySelector("#imageContextDock"),
+  ]);
 }
 
-function setImageScope(scope, button, preserveTool = false) {
-  imageScope = scope;
-  document.querySelectorAll("[data-image-scope]").forEach((item) => item.classList.toggle("is-active", item === button));
-  if (!preserveTool) closeCrop(false, true);
+function fillImageRectangle(element) {
+  element.removeAttribute("style");
+  element.style.inset = "0";
+  element.style.width = "auto";
+  element.style.height = "auto";
+}
+
+function restartImageMethodAnimation() {
+  const panel = document.querySelector("#imageMethodPanel");
+  window.clearTimeout(imageMethodTimer);
+  panel.hidden = false;
+  panel.classList.remove("is-entering", "is-leaving");
+  window.requestAnimationFrame(() => panel.classList.add("is-entering"));
+}
+
+function openImageWorkflow(task, button) {
+  const panel = document.querySelector("#imageMethodPanel");
+  if (imageTask === task && !panel.hidden) {
+    closeImageWorkflow(false);
+    return;
+  }
+
+  closeImageWorkflow(false, true);
+  closeExport();
+  imageTask = task;
+  document.querySelectorAll("[data-image-workflow]").forEach((item) => item.classList.toggle("is-active", item === button));
+  panel.dataset.task = task;
+  document.querySelector("#imageMethodTitle").textContent = task === "crop" ? "Crop area" : "Select area";
+  document.querySelector("#imageMethodIcon use").setAttribute("href", task === "crop" ? "#i-crop" : "#i-pointer");
+  document.querySelector("#cropCommit").hidden = task !== "crop";
+  restartImageMethodAnimation();
+  setImageMethod("rectangle", document.querySelector('[data-image-method="rectangle"]'), true);
+  showToast(`${task === "crop" ? "Crop" : "Select"} · Rectangle starts with the whole image`);
+}
+
+function setImageMethod(method, button, silent = false) {
+  imageScope = method === "freehand" ? "lasso" : "region";
+  document.querySelectorAll("[data-image-method]").forEach((item) => item.classList.toggle("is-active", item === button));
   hideImageSelections();
-  if (scope !== "lasso") clearLassoSelection("image", false);
+  document.querySelector("#cropOverlay").hidden = true;
+  clearLassoSelection("image", false);
   document.querySelector("#imageExportSheet").hidden = true;
-  if (!preserveTool) document.querySelectorAll("[data-image-tool]").forEach((item) => item.classList.remove("is-active"));
 
   const layer = document.querySelector("#imageLassoLayer");
   const hint = document.querySelector("#imageLassoHint");
-  if (scope === "lasso") {
+  if (method === "freehand") {
     layer.toggleAttribute("hidden", false);
-    hint.hidden = Boolean(lassoSelections.image);
-    contextTitle.textContent = "Draw a freehand image region";
-    contextDetail.textContent = "Irregular mask · Ask · Composer · AI edit";
-    selectionScope.textContent = "Waiting for freehand mask";
-    showToast("Draw around any irregular subject with the pen");
+    hint.hidden = false;
+    document.querySelector("#imageMethodDetail").textContent = "Draw one closed region on the image";
+    contextTitle.textContent = imageTask === "crop" ? "Draw the crop boundary" : "Draw a freehand image region";
+    contextDetail.textContent = imageTask === "crop" ? "Closed mask · review before applying" : "Irregular mask · Ask · Composer · AI edit";
+    selectionScope.textContent = imageTask === "crop" ? "Waiting for freehand crop" : "Waiting for freehand selection";
+    if (!silent) showToast("Rectangle removed · draw a freehand region");
     return;
   }
-  if (scope === "region") {
+
+  document.querySelector("#imageMethodDetail").textContent = "Rectangle starts with the whole image";
+  if (imageTask === "crop") {
+    const overlay = document.querySelector("#cropOverlay");
+    fillImageRectangle(overlay);
+    overlay.hidden = false;
+    updateCropLabel(overlay);
+    contextTitle.textContent = "Crop the whole image or resize the frame";
+    contextDetail.textContent = "Eight handles · original protected";
+    selectionScope.textContent = "Full-image crop rectangle";
+    if (!silent) showToast("Full-image crop selected · drag any edge to refine it");
+    return;
+  }
+
+  if (imageTask === "select") {
     const region = document.querySelector("#imageRegionSelection");
+    fillImageRectangle(region);
     region.hidden = false;
     updateImageRegionLabel(region);
     contextTitle.textContent = "I can see the rectangular image selection";
     contextDetail.textContent = "Pixels · coordinates · visible text inside selection";
-    selectionScope.textContent = "Resizable rectangle";
-    showToast("Drag the rectangle or any of its eight handles");
+    selectionScope.textContent = "Whole image · resizable rectangle";
+    if (!silent) showToast("Whole image selected · drag the rectangle to refine it");
     return;
   }
-
-  contextTitle.textContent = "I can see the whole image";
-  contextDetail.textContent = "All pixels · dimensions · visible text";
-  selectionScope.textContent = "Whole image";
-  showToast("Whole image is the active context");
 }
 
 function updateImageZoom(direction) {
@@ -334,37 +363,6 @@ function updateImageZoom(direction) {
   if (direction === "out") imageScale = Math.max(0.5, imageScale - 0.1);
   updateImageTransform();
   refreshImageLassoForZoom();
-}
-
-function prepareCropOverlay() {
-  const overlay = document.querySelector("#cropOverlay");
-  const frame = document.querySelector("#imageFrame");
-  const resetButton = document.querySelector('[data-crop-action="reset"]');
-  const label = document.querySelector("#cropScopeLabel");
-  overlay.removeAttribute("style");
-  if (imageScope === "lasso") {
-    overlay.hidden = true;
-    resetButton.hidden = true;
-    label.textContent = "Uses current freehand selection";
-    return;
-  }
-
-  overlay.hidden = false;
-  resetButton.hidden = false;
-  if (imageScope !== "region") {
-    document.querySelector(".crop-drag-label").textContent = "Drag edges or frame";
-    label.textContent = "Drag edges or frame";
-    return;
-  }
-
-  const frameRect = frame.getBoundingClientRect();
-  const regionRect = document.querySelector("#imageRegionSelection").getBoundingClientRect();
-  overlay.style.inset = "auto";
-  overlay.style.left = `${regionRect.left - frameRect.left}px`;
-  overlay.style.top = `${regionRect.top - frameRect.top}px`;
-  overlay.style.width = `${regionRect.width}px`;
-  overlay.style.height = `${regionRect.height}px`;
-  updateCropLabel(overlay);
 }
 
 function startRectDrag(event, element, container, handle, onMove, onEnd) {
@@ -439,7 +437,8 @@ function updateCropLabel(overlay) {
   const width = Math.round(2048 * overlayRect.width / frameRect.width);
   const height = Math.round(1365 * overlayRect.height / frameRect.height);
   document.querySelector(".crop-drag-label").textContent = `${width} × ${height}`;
-  document.querySelector("#cropScopeLabel").textContent = `${width} × ${height} px`;
+  document.querySelector("#imageMethodDetail").textContent = `${width} × ${height} px · drag edges or frame`;
+  showImageSelectionLens("Crop rectangle", `${width} × ${height} px`, overlay);
 }
 
 function updateImageRegionLabel(region) {
@@ -447,22 +446,12 @@ function updateImageRegionLabel(region) {
   const frameRect = frame.getBoundingClientRect();
   const regionRect = region.getBoundingClientRect();
   const percent = Math.round(regionRect.width * regionRect.height / (frameRect.width * frameRect.height) * 100);
-  showImageSelectionLens("Rectangle", `${percent}% of image · drag to adjust`, region);
-}
-
-function restoreImageSelectionLens() {
-  if (imageScope === "region") {
-    updateImageRegionLabel(document.querySelector("#imageRegionSelection"));
-    return;
-  }
-  if (imageScope !== "lasso" || !lassoSelections.image) return;
-  const selection = lassoSelections.image;
-  const percent = Math.round(selection.normalizedBounds.width * selection.normalizedBounds.height * 100);
-  showImageSelectionLens("Freehand mask", `1 closed mask · ${percent}% bounding area`, selection.viewportBounds);
+  const coversWholeImage = Math.abs(regionRect.width - frameRect.width) < 3 && Math.abs(regionRect.height - frameRect.height) < 3;
+  showImageSelectionLens("Rectangle", coversWholeImage ? "Whole image · drag to refine" : `${percent}% of image · drag to adjust`, region);
 }
 
 function rotateImage(direction) {
-  closeCrop(false, true);
+  closeImageWorkflow(false, true);
   closeExport();
   imageQuarterRotation += direction === "right" ? 90 : -90;
   updateImageTransform();
@@ -471,31 +460,50 @@ function rotateImage(direction) {
 }
 
 function resetCrop(silent = false) {
-  prepareCropOverlay();
-  if (!silent) showToast(imageScope === "region" ? "Crop restored to the current rectangle" : "Crop frame reset");
+  if (imageTask !== "crop") return;
+  setImageMethod(imageScope === "lasso" ? "freehand" : "rectangle", document.querySelector(`[data-image-method="${imageScope === "lasso" ? "freehand" : "rectangle"}"]`), true);
+  if (!silent) showToast(imageScope === "lasso" ? "Freehand crop cleared · draw again" : "Crop reset to the whole image");
 }
 
-function closeCrop(commit, silent = false) {
+function closeImageWorkflow(commit, silent = false) {
   const overlay = document.querySelector("#cropOverlay");
-  const studio = document.querySelector("#cropStudio");
-  const wasOpen = !studio.hidden;
-  if (commit && imageScope === "lasso" && !lassoSelections.image) {
+  const panel = document.querySelector("#imageMethodPanel");
+  const wasOpen = !panel.hidden;
+  if (commit && imageTask === "crop" && imageScope === "lasso" && !lassoSelections.image) {
     showToast("Draw a freehand selection before applying Crop");
     return;
   }
+  const closingTask = imageTask;
   overlay.hidden = true;
-  studio.hidden = true;
-  document.querySelector('[data-image-tool="crop"]').classList.remove("is-active");
+  window.clearTimeout(imageMethodTimer);
+  panel.classList.remove("is-entering");
+  const skipMotion = silent || !wasOpen || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (skipMotion) {
+    panel.hidden = true;
+    panel.classList.remove("is-leaving");
+  } else {
+    panel.classList.add("is-leaving");
+    imageMethodTimer = window.setTimeout(() => {
+      if (!panel.classList.contains("is-leaving")) return;
+      panel.hidden = true;
+      panel.classList.remove("is-leaving");
+    }, 120);
+  }
+  imageTask = null;
+  hideImageSelections();
+  clearLassoSelection("image", false);
+  document.querySelectorAll("[data-image-workflow]").forEach((item) => item.classList.remove("is-active"));
+  contextTitle.textContent = "I can see this image";
+  contextDetail.textContent = "Pixels · dimensions · visible text";
+  selectionScope.textContent = "Whole image";
   if (!wasOpen) return;
-  if (commit) {
+  if (commit && closingTask === "crop") {
     setDirty(`${imageScope === "lasso" ? "Freehand" : "Rectangle"} crop applied to a new image version · not saved`);
-    restoreImageSelectionLens();
     if (!silent) showToast("Crop applied to the working copy; original remains protected");
     return;
   }
   overlay.removeAttribute("style");
-  restoreImageSelectionLens();
-  if (!silent) showToast("Crop cancelled; original framing restored");
+  if (!silent) showToast(closingTask === "crop" ? "Crop cancelled; original framing restored" : "Selection cleared");
 }
 
 function pointFromEvent(event, container) {
@@ -613,12 +621,12 @@ function clearLassoSelection(kind, resetContext = true) {
   const hint = document.querySelector(isImage ? "#imageLassoHint" : "#pdfLassoHint");
   path?.setAttribute("d", "");
   if (toolbar) toolbar.hidden = true;
-  if (hint) hint.hidden = isImage ? !document.querySelector('[data-image-scope="lasso"]').classList.contains("is-active") : pdfMode !== "lasso";
+  if (hint) hint.hidden = isImage ? imageScope !== "lasso" || !imageTask : pdfMode !== "lasso";
   if (!resetContext) return;
   if (isImage) {
-    contextTitle.textContent = "Draw a freehand image region";
-    contextDetail.textContent = "One mask will power Ask, Composer, and crop";
-    selectionScope.textContent = "Waiting for freehand mask";
+    contextTitle.textContent = imageTask === "crop" ? "Draw the crop boundary" : "Draw a freehand image region";
+    contextDetail.textContent = imageTask === "crop" ? "Closed mask · review before applying" : "One mask will power Ask, Composer, and AI edits";
+    selectionScope.textContent = imageTask === "crop" ? "Waiting for freehand crop" : "Waiting for freehand selection";
     return;
   }
   pdfSelection = null;
@@ -631,11 +639,13 @@ function clearLassoSelection(kind, resetContext = true) {
 function completeImageLasso(selection) {
   document.querySelector("#imageLassoHint").hidden = true;
   const percent = Math.round(selection.normalizedBounds.width * selection.normalizedBounds.height * 100);
-  showImageSelectionLens("Freehand mask", `1 closed mask · ${percent}% bounding area`, selection.viewportBounds);
-  contextTitle.textContent = "I can see the freehand image selection";
+  const kind = imageTask === "crop" ? "Freehand crop" : "Freehand selection";
+  showImageSelectionLens(kind, `1 closed mask · ${percent}% bounding area`, selection.viewportBounds);
+  document.querySelector("#imageMethodDetail").textContent = `Closed mask · ${percent}% bounding area`;
+  contextTitle.textContent = imageTask === "crop" ? "Freehand crop ready" : "I can see the freehand image selection";
   contextDetail.textContent = "Normalized mask · source pixels · OCR · original path";
-  selectionScope.textContent = "Freehand image mask · 1 region";
-  showToast("Selection ready for Ask, Add to Composer, or AI edit");
+  selectionScope.textContent = `${kind} · 1 region`;
+  showToast(imageTask === "crop" ? "Freehand crop ready · review or apply" : "Selection ready for Ask, Add to Composer, or AI edit");
 }
 
 function refreshImageLassoForZoom() {
@@ -667,14 +677,13 @@ function refreshImageLassoForZoom() {
     viewportBounds,
     frame,
     "above",
-    document.querySelector("#imageContextDock"),
+    [document.querySelector("#imageMethodPanel"), document.querySelector("#imageContextDock")],
   );
 }
 
 function handleImageSelectionAction(action) {
   if (action === "clear") {
-    setImageScope("all", document.querySelector('[data-image-scope="all"]'));
-    showToast("Image selection cleared");
+    closeImageWorkflow(false);
   }
 }
 
@@ -726,7 +735,7 @@ function useWholeHtmlPage() {
   selectionScope.textContent = "Whole rendered page + source";
 }
 
-function positionSelectionLens(bar, target, container, preferredPlacement = "above", avoidElement = null) {
+function positionSelectionLens(bar, target, container, preferredPlacement = "above", avoidElements = []) {
   const targetRect = typeof target.getBoundingClientRect === "function" ? target.getBoundingClientRect() : target;
   const containerRect = container.getBoundingClientRect();
   bar.hidden = false;
@@ -735,10 +744,11 @@ function positionSelectionLens(bar, target, container, preferredPlacement = "abo
   const scrollTop = container.scrollTop || 0;
   const safeTop = scrollTop + 6;
   let safeBottom = scrollTop + container.clientHeight - 6;
-  if (avoidElement && !avoidElement.hidden) {
-    const avoidRect = avoidElement.getBoundingClientRect();
+  const collisionElements = Array.isArray(avoidElements) ? avoidElements : [avoidElements];
+  collisionElements.filter((element) => element && !element.hidden).forEach((element) => {
+    const avoidRect = element.getBoundingClientRect();
     safeBottom = Math.min(safeBottom, avoidRect.top - containerRect.top + scrollTop - 8);
-  }
+  });
 
   const targetTop = targetRect.top - containerRect.top + scrollTop;
   const targetBottom = targetRect.bottom - containerRect.top + scrollTop;
@@ -1108,9 +1118,15 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const imageScopeButton = event.target.closest("[data-image-scope]");
-  if (imageScopeButton) {
-    setImageScope(imageScopeButton.dataset.imageScope, imageScopeButton);
+  const imageWorkflowButton = event.target.closest("[data-image-workflow]");
+  if (imageWorkflowButton) {
+    openImageWorkflow(imageWorkflowButton.dataset.imageWorkflow, imageWorkflowButton);
+    return;
+  }
+
+  const imageMethodButton = event.target.closest("[data-image-method]");
+  if (imageMethodButton) {
+    setImageMethod(imageMethodButton.dataset.imageMethod, imageMethodButton);
     return;
   }
 
@@ -1135,8 +1151,8 @@ document.addEventListener("click", (event) => {
   const cropAction = event.target.closest("[data-crop-action]");
   if (cropAction) {
     if (cropAction.dataset.cropAction === "reset") resetCrop();
-    if (cropAction.dataset.cropAction === "cancel") closeCrop(false);
-    if (cropAction.dataset.cropAction === "done") closeCrop(true);
+    if (cropAction.dataset.cropAction === "cancel") closeImageWorkflow(false);
+    if (cropAction.dataset.cropAction === "done") closeImageWorkflow(true);
     return;
   }
 
@@ -1404,7 +1420,7 @@ document.addEventListener("pointercancel", finishLasso);
 document.addEventListener("pointercancel", endSurfaceRectDrag);
 
 document.querySelector("#imageFrame").addEventListener("wheel", (event) => {
-  if (!document.querySelector("#cropStudio").hidden) return;
+  if (imageTask === "crop") return;
   event.preventDefault();
   updateImageZoom(event.deltaY < 0 ? "in" : "out");
 }, { passive: false });

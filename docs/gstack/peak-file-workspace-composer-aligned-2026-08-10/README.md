@@ -29,19 +29,18 @@ Design-only successor to the rejected six-surface prototype in
 5. Keep Code Source always editable with syntax highlight, save feedback,
    selection Ask, and Add to Composer. Do not expose a separate Code Suggest
    Change path, project tree, or symbol UI.
-6. Keep Image canvas-first, but do not collapse every task into Lasso. Whole,
-   Rectangle, and Freehand are three direct buttons in the dock—there is no
-   Select dropdown or Object-detect mode. All three scopes can feed Ask /
-   Composer, while Rectangle and Freehand can also feed contextual AI edits.
-   Selection owns the geometry; Crop consumes that active scope instead of
-   asking for Rectangle / Freehand a second time. Whole starts a direct movable
-   eight-handle crop frame, Rectangle reuses the current rectangle, and
-   Freehand reuses the current closed mask. Crop only adds a compact
-   Reset / Cancel / Done row above the stable dock—there are no ratio presets,
-   straighten slider, or nested rotation controls. Left/right rotation are
+6. Keep Image canvas-first. The stable dock has two explicit tasks: Select and
+   Crop. Opening either one fades a compact Rectangle / Freehand method bar in
+   directly above its source controls—there is no persistent Whole / Rectangle /
+   Freehand segment, Select dropdown, or Object-detect mode. Rectangle is the
+   default and starts as an eight-handle full-image rectangle, so a valid local
+   context and its Ask / Composer lens exist immediately; dragging refines it.
+   Freehand removes the rectangle and shows the closed-mask lens only after the
+   user finishes drawing. Crop uses the same two method names but keeps its own
+   Reset / Cancel / Done commit semantics. There are no ratio presets,
+   straighten slider, or nested rotation controls. Left/right rotation remain
    independent first-level image actions. Format, dimensions, quality, and live
-   size estimates remain in Export rather than an opaque Compress action; its
-   primary dock trigger is icon-only with an accessible label.
+   size estimates stay in icon-triggered Export rather than an opaque Compress.
 7. Treat Add to Composer as the shared handoff for an HTML element, PDF
    passage/region, code selection, Canvas subgraph, or Excalidraw selection.
    The handoff keeps the native source locator, not just copied text.
@@ -49,10 +48,10 @@ Design-only successor to the rejected six-surface prototype in
    an explicit whole-file scope and a local selection scope. Ask / Add follows
    the active selection; format-owned write actions appear only where they make
    sense.
-9. Keep Image selection, Crop, Export, rotation, Ask, Add, and zoom anchored to
-   one compact dock. Selection methods are always one click away. Crop and
-   Export float upward from the dock without changing its geometry; rotation
-   never hides inside Crop.
+9. Keep Select, Crop, Export, rotation, Ask, Add, and zoom anchored to one
+   compact dock. Rectangle / Freehand appear only while Select or Crop is
+   active. The method bar and Export float upward without changing the dock's
+   geometry; rotation never hides inside Crop.
 10. Make PDF scope explicit (`All pages / This page / Text / Lasso`). The lasso
     carries file identity, page, normalized point mask, bounds, selected text or
     OCR, and source revision into Composer. Code text selection immediately
