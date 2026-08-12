@@ -9,15 +9,15 @@ This is a design-only, standalone `file://` prototype for owner review.
 - New nodes use separate open placement slots and do not cover prior nodes. Seven candidates are placed before the Agent creates any relation, including one deliberately disconnected hypothesis.
 - When the newest node lands beyond the right edge, a dedicated focus operation pans the working scene to that node without changing any graph coordinates or triggering layout.
 - Relations arrive in later batches. The Agent can therefore place disconnected nodes first, ground only the supported subset, and remove a transient orphan without ever adding it to the semantic diff.
-- Additions appear immediately; removals remain recoverable tombstones until review.
-- A completed run becomes a semantic diff. `Accept new version` is the only action that advances `v12` to `v13`.
-- `Pause`, `Continue`, `Stop`, `Skip to review`, `Discard`, and `Replay` expose the minimum control and recovery model.
+- Additions appear immediately; removals remain recoverable tombstones until the run is accepted.
+- The graph stays primary and uses the full workspace by default. Agent operations live in an optional Activity drawer opened from the top bar; there is no dedicated Review rail or Added / Changed / Removed dashboard.
+- A completed run leaves the final graph visible. `Accept new version` is the only action that advances `v12` to `v13`; `Pause`, `Continue`, `Stop`, `Skip to final graph`, `Discard`, and `Replay` expose the minimum control and recovery model.
 - The graph is rendered through the production public `AtlasGraphCanvas` facade and therefore uses the shared Cytoscape stack. No React Flow dependency or consumer is introduced.
 - The Cytoscape base receives one stable `subgraph` reference for the entire replay. Agent changes are demonstrated in a transient working-overlay layer, so an operation cannot destroy the canvas, rerun the whole layout, or auto-fit the viewport.
 - Overlay relations share one calibrated canvas coordinate system. Paths terminate at the boundary of their source and target cards rather than at free-floating cursor coordinates; removal strokes trace the two existing relations attached to the original node.
 - Added relations no longer animate dash values. Each mounted curve is sampled with `getTotalLength()` / `getPointAtLength()`, and `requestAnimationFrame` grows one continuous path geometry for 1.05 seconds with a 190 ms per-edge stagger. This avoids the coordinate mismatch created by `preserveAspectRatio="none"` plus non-scaling strokes. The exact original Bézier and arrowhead replace the sampled path only after the body reaches its endpoint; relation operations dwell for 2.2 seconds before the Agent advances.
 - Node-targeted Agent markers sit on the lower-right card corner, with their object label opening below and outside the card. Relation markers remain near their paths, so activity feedback never masks node content.
-- After all 16 Agent operations complete, the Agent explicitly chooses `Auto layout`. A second shared `AtlasGraphCanvas` renders the complete 12-node / 15-relation proposal once, cross-fades it over the spatially locked working view, and only then opens the 20-change semantic-diff review.
+- After all 16 Agent operations complete, the Agent explicitly chooses `Auto layout`. A second shared `AtlasGraphCanvas` renders the complete 12-node / 15-relation proposal once and cross-fades it over the spatially locked working view. The finished graph remains the primary result; Activity stays optional.
 
 The graph content and run events are illustrative mock data. This prototype does not call an AI provider, write an AI Graph version, or modify production source.
 

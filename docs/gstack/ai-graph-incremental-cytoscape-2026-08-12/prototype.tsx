@@ -18,7 +18,6 @@ import {
 	Sparkles,
 	Square,
 	Trash2,
-	Undo2,
 	Workflow,
 	X,
 } from 'lucide-react';
@@ -503,7 +502,7 @@ function modeLabel(mode: RunMode): string {
 	if (mode === 'running') return 'Agent update in progress';
 	if (mode === 'paused') return 'Update paused';
 	if (mode === 'layouting') return 'Agent auto-layout in progress';
-	if (mode === 'review') return 'Review working diff';
+	if (mode === 'review') return 'Graph update ready';
 	if (mode === 'accepted') return 'Version v13 created';
 	return 'Version v12 · ready';
 }
@@ -511,7 +510,7 @@ function modeLabel(mode: RunMode): string {
 function Prototype(): React.ReactElement {
 	const [mode, setMode] = useState<RunMode>('idle');
 	const [patchIndex, setPatchIndex] = useState(-1);
-	const [activityTab, setActivityTab] = useState<'live' | 'review'>('live');
+	const [activityOpen, setActivityOpen] = useState(false);
 	const [selectedNode, setSelectedNode] = useState<string | null>(null);
 	const startedOnce = useRef(false);
 	const currentPatchRef = useRef<HTMLDivElement | null>(null);
@@ -541,7 +540,7 @@ function Prototype(): React.ReactElement {
 	const startRun = (): void => {
 		setMode('running');
 		setPatchIndex(-1);
-		setActivityTab('live');
+		setActivityOpen(false);
 		setSelectedNode(null);
 	};
 
@@ -569,29 +568,27 @@ function Prototype(): React.ReactElement {
 		if (mode !== 'layouting') return;
 		const reviewTimer = window.setTimeout(() => {
 			setMode('review');
-			setActivityTab('review');
 		}, 1650);
 		return () => window.clearTimeout(reviewTimer);
 	}, [mode]);
 
 	useEffect(() => {
 		currentPatchRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-	}, [mode, patchIndex]);
+	}, [activityOpen, mode, patchIndex]);
 
 	const togglePause = (): void => {
 		setMode((current) => current === 'paused' ? 'running' : 'paused');
 	};
 
-	const skipToReview = (): void => {
+	const skipToFinalGraph = (): void => {
 		setPatchIndex(PATCHES.length - 1);
 		setMode('layouting');
-		setActivityTab('live');
 	};
 
 	const discard = (): void => {
 		setMode('idle');
 		setPatchIndex(-1);
-		setActivityTab('live');
+		setActivityOpen(false);
 	};
 
 	return (
@@ -612,6 +609,9 @@ function Prototype(): React.ReactElement {
 				<div className="aig-actions">
 					<button className="aig-btn aig-btn--ghost" type="button"><History aria-hidden /> History</button>
 					<button className="aig-btn aig-btn--ghost" type="button">Topology <ChevronDown aria-hidden /></button>
+					<button className={`aig-btn aig-btn--ghost aig-activity-trigger${activityOpen ? ' is-active' : ''}`} type="button" onClick={() => setActivityOpen((current) => !current)}>
+						<Workflow aria-hidden /> Activity <span>{Math.max(0, patchIndex + 1)}</span>
+					</button>
 					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'layouting'}>
 						<RotateCcw aria-hidden /> Replay run
 					</button>
@@ -628,7 +628,7 @@ function Prototype(): React.ReactElement {
 				<div className="aig-context-chip">11 sources</div>
 			</section>
 
-			<main className="aig-workspace">
+			<main className={`aig-workspace${activityOpen ? ' is-activity-open' : ''}`}>
 				<section className="aig-canvas-card">
 					<div className="aig-canvas-head">
 						<div>
@@ -680,7 +680,7 @@ function Prototype(): React.ReactElement {
 							</div>
 						)}
 						{mode === 'review' && (
-							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>Working diff ready</span></div>
+							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>Graph update ready · 20 changes</span></div>
 						)}
 						{mode === 'layouting' && (
 							<div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Agent chose Auto layout</strong><small>12 nodes · 15 relations · one intentional reflow</small></span></div>
@@ -690,18 +690,17 @@ function Prototype(): React.ReactElement {
 						)}
 					</div>
 					<footer className="aig-canvas-footer">
-						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? 'Auto-layout complete · v12 unchanged' : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable version created' : refined ? ' · ready for semantic diff review' : ' · Agent changes are not saved yet'}</span></div>
+						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? 'Auto-layout complete · v12 unchanged' : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable version created' : refined ? ' · ready to accept as a new version' : ' · Agent changes are not saved yet'}</span></div>
 						{selectedNode && <span className="aig-selection">Selected: {selectedNode}</span>}
 					</footer>
 				</section>
 
-				<aside className="aig-rail">
-					<div className="aig-rail-tabs">
-						<button className={activityTab === 'live' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('live')}>Live activity</button>
-						<button className={activityTab === 'review' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('review')}>Review <span>20</span></button>
-					</div>
-
-					{activityTab === 'live' ? (
+				{activityOpen && (
+					<aside className="aig-activity-drawer">
+						<div className="aig-activity-drawer__head">
+							<div><strong>Agent activity</strong><span>{Math.max(0, patchIndex + 1)} of {PATCHES.length} operations</span></div>
+							<button type="button" onClick={() => setActivityOpen(false)} aria-label="Close activity"><X aria-hidden /></button>
+						</div>
 						<div className="aig-feed">
 							<div className="aig-feed-summary">
 								<div className="aig-agent-avatar"><Sparkles aria-hidden /></div>
@@ -721,28 +720,8 @@ function Prototype(): React.ReactElement {
 								})}
 							</div>
 						</div>
-					) : (
-						<div className="aig-review">
-							<div className="aig-review-head"><span>Semantic diff</span><strong>20 changes</strong></div>
-							<div className="aig-review-group is-add">
-								<div><Plus aria-hidden /><strong>Added</strong><span>16</span></div>
-								<button type="button">Evidence expansion <small>2 nodes · 4 relations</small></button>
-								<button type="button">Evaluation checks <small>2 nodes · 3 relations</small></button>
-								<button type="button">Control + observability <small>2 nodes · 3 relations</small></button>
-							</div>
-							<div className="aig-review-group is-change">
-								<div><GitBranch aria-hidden /><strong>Changed</strong><span>1</span></div>
-								<button type="button">supports → grounds <small>relation</small></button>
-							</div>
-							<div className="aig-review-group is-remove">
-								<div><Trash2 aria-hidden /><strong>Removed</strong><span>3</span></div>
-								<button type="button">Keyword-only clustering <small>node</small></button>
-								<button type="button">Legacy semantic path <small>2 relations</small></button>
-							</div>
-							<div className="aig-evidence-note"><ShieldCheck aria-hidden /><span><strong>Validation passed</strong>All endpoints resolve · 11 evidence anchors · transient orphan excluded · base head is still v12</span></div>
-						</div>
-					)}
-				</aside>
+					</aside>
+				)}
 			</main>
 
 			<footer className="aig-runbar">
@@ -760,13 +739,12 @@ function Prototype(): React.ReactElement {
 						<>
 							<button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><Square aria-hidden /> Stop</button>
 							<button className="aig-btn aig-btn--ghost" type="button" onClick={togglePause}>{mode === 'paused' ? <Play aria-hidden /> : <Pause aria-hidden />}{mode === 'paused' ? 'Continue' : 'Pause'}</button>
-							<button className="aig-btn aig-btn--soft" type="button" onClick={skipToReview}>Skip to review</button>
+							<button className="aig-btn aig-btn--soft" type="button" onClick={skipToFinalGraph}>Skip to final graph</button>
 						</>
 					)}
 					{mode === 'review' && (
 						<>
 							<button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><X aria-hidden /> Discard</button>
-							<button className="aig-btn aig-btn--ghost" type="button"><Undo2 aria-hidden /> Exclude selected</button>
 							<button className="aig-btn aig-btn--primary" type="button" onClick={() => setMode('accepted')}><Check aria-hidden /> Accept new version</button>
 						</>
 					)}
