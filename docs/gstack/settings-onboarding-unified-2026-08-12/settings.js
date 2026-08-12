@@ -421,6 +421,7 @@ function closeInlineModelMenu() {
   const menu = $('[data-inline-model-menu]');
   menu.hidden = true;
   menu.removeAttribute("data-scope");
+  $$('[data-model-trigger]').forEach((button) => button.setAttribute("aria-expanded", "false"));
 }
 
 function positionInlineModelMenu(target) {
@@ -549,9 +550,21 @@ function openInlineModelMenu(target) {
   search.value = "";
   const menu = $('[data-inline-model-menu]');
   menu.dataset.scope = target.dataset.modelScope ?? "text";
+  $$('[data-model-trigger]').forEach((button) => button.setAttribute("aria-expanded", "false"));
+  target.setAttribute("aria-expanded", "true");
   renderInlineModelOptions();
   positionInlineModelMenu(target);
   window.requestAnimationFrame(() => search.focus());
+}
+
+function toggleInlineModelMenu(target) {
+  const menu = $('[data-inline-model-menu]');
+  const isCurrentMenuOpen = !menu.hidden && currentModelTarget === target;
+  if (isCurrentMenuOpen) {
+    closeInlineModelMenu();
+    return;
+  }
+  openInlineModelMenu(target);
 }
 
 function openModelPicker(target) {
@@ -571,9 +584,11 @@ function openModelPicker(target) {
 }
 
 $$('[data-model-trigger]').forEach((button) => {
+  button.setAttribute("aria-haspopup", "dialog");
+  button.setAttribute("aria-expanded", "false");
   button.addEventListener("click", (event) => {
     event.stopPropagation();
-    openInlineModelMenu(button);
+    toggleInlineModelMenu(button);
   });
 });
 

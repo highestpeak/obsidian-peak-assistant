@@ -150,6 +150,7 @@ requireValues("Settings JS", settingsJs, [
   "function filterCatalog",
   "function restoreActionAutomatic",
   "function openInlineModelMenu",
+  "function toggleInlineModelMenu",
   "function renderInlineModelOptions",
   "function modelsForScope",
   "function matchesInlineModel",
@@ -163,6 +164,7 @@ requireValues("Settings JS", settingsJs, [
   "data-panel-target",
   "data-tree-toggle",
   "data-connection-modal",
+  "aria-expanded",
 ]);
 
 requireValues("Onboarding JS", onboardingJs, [
