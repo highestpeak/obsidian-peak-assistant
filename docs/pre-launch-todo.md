@@ -67,6 +67,9 @@
 - [ ] **P1 · Graph 重点宣传任务** · [21 · Graph 多视图能力宣传与切换演示](pre-launch/21-graph-multi-view-launch-showcase.md)
   - 把 Graph 作为核心能力展示，并解释不同视图各自帮助用户看见什么。
   - 用真实产品视频展示 scope、layout、lens 和 semantic relation 的切换效果，不用单张静态截图代替。
+- [ ] **P1 · 原生画布宣传任务** · [23 · Canvas 与 Excalidraw AI 原生编辑宣传与演示](pre-launch/23-canvas-excalidraw-native-ai-editing-showcase.md)
+  - 展示 AI 对 Canvas 节点/连线和 Excalidraw 元素执行可审阅的原生结构修改，而不只是生成图片或描述画布。
+  - 通过真实指令、typed candidate、accept 和原文件重开证明修改成立；只宣传当前实际支持的操作。
 - [ ] **P0/P1 · 最终产品叙事** · [22 · Final Demo 与 One Continuous Context 场景](pre-launch/22-final-demo-continuous-context-story.md)
   - 用一个自然的真实任务贯穿几乎所有公开核心操作，而不是制作互不相干的功能巡礼。
   - 重点证明同一上下文能从 AI Search 延续到 Graph、File Atlas 和 Composer，并最终形成可审阅的成果。

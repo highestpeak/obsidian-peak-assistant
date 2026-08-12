@@ -51,6 +51,7 @@
 - [ ] Markdown + HTML：仅在 HTML Workspace 已真实交付时执行。
 - [ ] Markdown + code source：仅在对应源码类型的 Code Source Workspace 已真实交付时执行。
 - [ ] Markdown + image：文本修改与 image candidate/save-as-new 必须走各自合法路径。
+- [ ] Markdown + Canvas/Excalidraw：仅在 native typed patch、候选审阅和原文件写回均通过[专项验收](23-canvas-excalidraw-native-ai-editing-showcase.md)时执行。
 - [ ] Markdown + Peak Sheet 或结构化数据：仅在 typed patch、持久化和恢复均已交付时执行。
 - [ ] Markdown + PDF 或其他只读类型：验证它可以作为 context，但不会被误授予文本写入能力。
 

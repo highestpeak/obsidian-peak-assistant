@@ -6,7 +6,7 @@
 >
 > 状态：待 Release Candidate 与公开主张冻结后制作
 >
-> 前置任务：[Owner Dogfood](05-owner-dogfood.md)、[Composer 多文件 Session 验收](20-composer-multi-file-mixed-file-session-qa.md)、[Graph 多视图演示](21-graph-multi-view-launch-showcase.md)
+> 前置任务：[Owner Dogfood](05-owner-dogfood.md)、[Composer 多文件 Session 验收](20-composer-multi-file-mixed-file-session-qa.md)、[Graph 多视图演示](21-graph-multi-view-launch-showcase.md)、[Canvas/Excalidraw AI 编辑演示](23-canvas-excalidraw-native-ai-editing-showcase.md)
 >
 > 下游任务：[网站内容与首页演示视频](06-website-and-demo-videos.md)、[朋友试用与外部内容检查](07-external-beta.md)
 
@@ -92,6 +92,7 @@ Demo 的核心主张是 **one continuous context**：用户在 AI Search 中建�
 - [ ] Composer 针对真实文档产生 anchored candidate/diff。
 - [ ] 若[多文件 Session 验收](20-composer-multi-file-mixed-file-session-qa.md)完整通过，同一个 run 修改两个或更多文件。
 - [ ] 若 mixed-file editing 通过，加入一个自然的跨类型修改；否则明确只演示已验证类型。
+- [ ] 若[Canvas/Excalidraw 专项验收](23-canvas-excalidraw-native-ai-editing-showcase.md)通过，让同一任务基于前面的 Graph 发现更新项目画布或草图。
 
 ### Scene 5 · 审阅、调整与恢复
 
@@ -147,6 +148,7 @@ Demo 的核心主张是 **one continuous context**：用户在 AI Search 中建�
 - [ ] Chat Studio：只有当它承担场景中的讨论或结果解释时加入。
 - [ ] Peak Sheet：只有当结构化材料和 typed edit 对任务自然有用时加入。
 - [ ] HTML/Image Workspace：只有当场景本身包含这些材料且能力通过验收时加入。
+- [ ] Canvas/Excalidraw：使用[任务 23](23-canvas-excalidraw-native-ai-editing-showcase.md)中已经通过的原生 typed operations。
 - [ ] Vault Intelligence：只有当它自然发现本次需要处理的问题时加入。
 - [ ] 多文件与混合文件编辑：严格跟随[任务 20](20-composer-multi-file-mixed-file-session-qa.md)的能力分级。
 
@@ -176,6 +178,7 @@ Demo 的核心主张是 **one continuous context**：用户在 AI Search 中建�
 - [ ] 新材料与旧项目之间存在一个真实冲突或变化。
 - [ ] 至少存在一个 bridge 或 gap，确保 Graph 不是装饰。
 - [ ] 核心文档在修改前后都有可读版本。
+- [ ] 准备与主任务直接相关的 Canvas 或 Excalidraw fixture，避免为了炫技插入无关画布。
 - [ ] 所有文件类型与写回方式匹配首发 capability matrix。
 - [ ] 固定版本、commit、主题、窗口、模型和网络条件。
 - [ ] 为所有关键节点保存 source SHA、截图和必要视频证据。
@@ -199,7 +202,7 @@ Demo 的核心主张是 **one continuous context**：用户在 AI Search 中建�
 - [ ] Demo 在一个连续故事中覆盖 AI Search、Graph、File Atlas 和 Composer。
 - [ ] `one continuous context` 具有可见、可追踪的产品证据。
 - [ ] 所有进入成片的功能均来自同一个冻结 Release Candidate。
-- [ ] 多文件、混合类型和 Graph 视图主张与各自专项验收一致。
+- [ ] 多文件、混合类型、Graph 视图和 Canvas/Excalidraw 原生编辑主张与各自专项验收一致。
 - [ ] 朋友试用者能理解故事、关键发现和最终结果。
 - [ ] 完整版、首页短版和社区切片之间不存在能力矛盾。
 
