@@ -426,8 +426,6 @@ svg {
 .content-header h1 { margin: 5px 0 0; font-size: 24px; line-height: 1.18; letter-spacing: -.026em; }
 .content-header p { max-width: 660px; margin: 7px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
 .content-header > button, .content-header > a { flex: 0 0 auto; }
-.content-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
-.content-header-actions a { color: var(--text-secondary); text-decoration: none; white-space: nowrap; }
 
 .readiness-strip,
 .readiness-hero,
@@ -486,6 +484,12 @@ svg {
 .setting-row-button small, .setting-row-control small { margin-top: 3px; color: var(--text-muted); font-size: 9px; line-height: 1.35; }
 .setting-row-button em { color: var(--text-secondary); font-size: 10px; font-style: normal; }
 .setting-row-button > svg { width: 13px; height: 13px; color: var(--text-muted); }
+
+.ai-control-center-entry { margin-top: 16px; }
+.ai-control-center-entry .setting-group { background: var(--surface-soft); }
+.ai-control-center-entry .setting-row-button { color: inherit; text-decoration: none; }
+.ai-control-center-entry .setting-row-button strong { font-weight: 580; }
+.ai-control-center-entry .setting-row-button em { color: var(--text-muted); font-size: 9px; }
 
 .setting-row-control { position: relative; grid-template-columns: minmax(0, 1fr) auto; cursor: pointer; }
 .setting-row-control input[type="checkbox"] { position: absolute; opacity: 0; pointer-events: none; }
@@ -987,7 +991,6 @@ svg {
   .sidebar-bottom > button { display: grid; grid-template-columns: 1fr; padding: 7px 0; place-items: center; }
   .content-header { display: block; }
   .content-header > button, .content-header > a { margin-top: 13px; }
-  .content-header-actions { margin-top: 13px; justify-content: flex-start; }
   .settings-subsection-header { display: block; }
   .settings-subsection-header > button { margin-top: 13px; }
   .connection-grid { grid-template-columns: 1fr; }

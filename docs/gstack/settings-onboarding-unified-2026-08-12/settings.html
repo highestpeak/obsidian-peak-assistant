@@ -80,7 +80,7 @@
 
           <section class="settings-content">
           <div class="settings-panel is-active" data-settings-panel="ai">
-            <header class="content-header"><div><span class="content-eyebrow">AI SETUP</span><h1>AI &amp; Models</h1><p>Connect a service, see the models it provides, then decide which models Peak should use for each task.</p></div><div class="content-header-actions"><a class="secondary-button" href="../ai-control-center-2026-07-30/index.html"><svg><use href="#i-grid" /></svg>Open AI Control Center</a><button class="primary-button" data-add-connection><svg><use href="#i-plug" /></svg>Add connection</button></div></header>
+            <header class="content-header"><div><span class="content-eyebrow">AI SETUP</span><h1>AI &amp; Models</h1><p>Connect a service, see the models it provides, then decide which models Peak should use for each task.</p></div></header>
             <div class="settings-relationship-strip" aria-label="AI configuration relationship">
               <span><i>1</i><strong>Connections</strong><small>Who Peak can call</small></span>
               <b>→</b>
@@ -89,7 +89,7 @@
               <span><i>3</i><strong>Task defaults</strong><small>What each feature uses</small></span>
             </div>
             <div class="connection-summary"><span><strong>4 ready</strong><small>Verified in the last hour</small></span><span><strong>2 need setup</strong><small>Codex and Claude Code adapters</small></span><button class="text-button" data-run-check>Verify all</button></div>
-            <section class="settings-section"><div class="section-heading"><div><h2>Primary connections</h2><p>The six connection types supported by the launch design.</p></div></div><div class="connection-grid">
+            <section class="settings-section"><div class="section-heading connection-section-heading"><div><h2>Primary connections</h2><p>The six connection types supported by the launch design.</p></div><button class="secondary-button" data-add-connection><svg><use href="#i-plug" /></svg>Add connection</button></div><div class="connection-grid">
               <button class="connection-card"><span class="provider-monogram">OA</span><span class="connection-copy"><strong>OpenAI</strong><small>Conversation, files, embeddings, images</small></span><span class="state-pill ready"><i></i>Ready</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
               <button class="connection-card"><span class="provider-monogram">AN</span><span class="connection-copy"><strong>Anthropic</strong><small>Conversation, tools and long context</small></span><span class="state-pill ready"><i></i>Ready</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
               <button class="connection-card" data-connection-detail="OpenRouter"><span class="provider-monogram">OR</span><span class="connection-copy"><strong>OpenRouter</strong><small>Online JSON · cache ready · checked 18 min ago</small></span><span class="state-pill ready"><i></i>Ready</span><svg class="row-chevron"><use href="#i-chevron" /></svg></button>
@@ -185,6 +185,15 @@
               </div>
               <p class="control-note"><strong>Capability-aware:</strong> Peak sends only controls supported by the selected model. Agent step timeout lives in Agents, not here.</p>
             </details>
+            <section class="settings-section ai-control-center-entry" aria-label="Detailed AI controls">
+              <div class="setting-group">
+                <a class="setting-row-button" href="../ai-control-center-2026-07-30/index.html">
+                  <span><strong>AI Control Center</strong><small>Advanced controls for individual actions, prompts, Custom Prompts and Chat Assistants.</small></span>
+                  <em>Open detailed controls</em>
+                  <svg><use href="#i-chevron" /></svg>
+                </a>
+              </div>
+            </section>
           </div>
 
           <div class="settings-panel" data-settings-panel="knowledge" hidden>

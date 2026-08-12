@@ -34,8 +34,10 @@ requireValues("Package HTML", packageHtml, [
 
 requireValues("Settings HTML", settingsHtml, [
   "AI &amp; Models",
-  "Open AI Control Center",
+  "AI Control Center",
   "../ai-control-center-2026-07-30/index.html",
+  "connection-section-heading",
+  "ai-control-center-entry",
   "Connections",
   "Available models",
   "Task defaults",
@@ -88,6 +90,21 @@ requireValues("Settings HTML", settingsHtml, [
   "peak-settings-tabs",
   "aria-current=\"page\"",
 ]);
+
+if (settingsHtml.includes("content-header-actions")) {
+  missing.push("Settings HTML: AI actions must not be placed in the page header");
+}
+
+const connectionsHeadingPosition = settingsHtml.indexOf("connection-section-heading");
+const addConnectionPosition = settingsHtml.indexOf("data-add-connection");
+const modelControlsPosition = settingsHtml.indexOf("model-controls-disclosure");
+const controlCenterPosition = settingsHtml.indexOf("ai-control-center-entry");
+if (addConnectionPosition < connectionsHeadingPosition) {
+  missing.push("Settings HTML: Add connection must live in the Connections section");
+}
+if (controlCenterPosition < modelControlsPosition) {
+  missing.push("Settings HTML: AI Control Center must follow the ordinary model controls");
+}
 
 requireValues("Onboarding HTML", onboardingHtml, [
   "Choose a first task",
