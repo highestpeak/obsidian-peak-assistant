@@ -259,6 +259,15 @@ if (onboardingStepCount !== 5) {
 if (onboardingHtml.includes("data-first-prompt") || onboardingHtml.includes("data-launch-primary")) {
   missing.push("Onboarding HTML: the final launchpad must open features directly without another prompt form");
 }
+if (/\.wizard-steps\s+(?:strong|small)\s*\{[^}]*text-overflow:\s*ellipsis/s.test(css)) {
+  missing.push("Onboarding CSS: desktop step labels must remain readable instead of truncating with ellipses");
+}
+if (!/\.wizard-steps\s*>\s*button\s*\{[^}]*flex:\s*1\s+1\s+0/s.test(css)) {
+  missing.push("Onboarding CSS: desktop steps must share the available width equally");
+}
+if (!/\.wizard-step-line\s*\{[^}]*flex:\s*0\s+0\s+26px/s.test(css)) {
+  missing.push("Onboarding CSS: connector lines must use a fixed width instead of squeezing step labels");
+}
 
 requireValues("Settings JS", settingsJs, [
   "function showPanel",
