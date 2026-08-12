@@ -1,5 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import cytoscape from 'cytoscape';
+import type { Core, ElementDefinition, NodeSingular, SingularElementReturnValue, StylesheetJson } from 'cytoscape';
+import dagre from 'cytoscape-dagre';
 import {
 	ArrowDown,
 	ArrowRight,
@@ -26,459 +29,650 @@ import {
 	Workflow,
 	X,
 } from 'lucide-react';
-import {
-	AtlasGraphCanvas,
-} from '../../../src/ui/component/graph/AtlasGraphCanvas';
-import type {
-	AtlasGraphPreset,
-} from '../../../src/ui/component/graph/AtlasGraphCanvas';
-import type {
-	ResultSubgraphOutput,
-} from '../../../src/service/search/graph/resultSubgraph';
 
-type RunMode = 'idle' | 'running' | 'paused' | 'layouting' | 'review' | 'accepted';
-type PatchKind = 'inspect' | 'add-node' | 'focus' | 'add-relation' | 'update' | 'remove-relation' | 'remove-node' | 'validate' | 'auto-layout';
+cytoscape.use(dagre as never);
+
+type RunMode = 'idle' | 'running' | 'paused' | 'refining' | 'review' | 'accepted';
 type LensId = 'topology' | 'thinking-tree' | 'bridge' | 'timeline' | 'gap-analysis';
-type LensGenerationState = 'stable' | 'building' | 'ready' | 'refining';
+type LayoutId = 'constellation' | 'flow-lr' | 'flow-tb' | 'timeline' | 'diagnostic';
+type StepKind = 'inspect' | 'add-node' | 'add-relation' | 'update' | 'remove-node' | 'validate';
 
-interface PatchEvent {
+interface AgentNode {
 	id: string;
-	kind: PatchKind;
+	label: string;
+	x: number;
+	y: number;
+	classes?: string;
+	parent?: string;
+	order?: number;
+}
+
+interface AgentEdge {
+	id: string;
+	source: string;
+	target: string;
+	label?: string;
+	classes?: string;
+}
+
+interface AgentNodeUpdate {
+	id: string;
+	label?: string;
+	addClasses?: string;
+	removeClasses?: string;
+}
+
+interface AgentEdgeUpdate {
+	id: string;
+	label?: string;
+	addClasses?: string;
+	removeClasses?: string;
+}
+
+interface AgentStep {
+	id: string;
+	kind: StepKind;
+	tool: string;
 	title: string;
 	detail: string;
 	object: string;
+	addNodes?: AgentNode[];
+	addEdges?: AgentEdge[];
+	updateNodes?: AgentNodeUpdate[];
+	updateEdges?: AgentEdgeUpdate[];
+	removeNodeIds?: string[];
+	removeEdgeIds?: string[];
+	focusNodeId?: string;
+	reflow?: 'local' | 'timeline';
 }
 
-const PATCHES: PatchEvent[] = [
-	{
-		id: 'inspect-sources',
-		kind: 'inspect',
-		title: 'Inspected changed sources',
-		detail: '11 evidence anchors resolved against the frozen v12 source set.',
-		object: '11 sources · hashes locked',
-	},
-	{
-		id: 'add-provenance',
-		kind: 'add-node',
-		title: 'Added Claim provenance',
-		detail: 'Placed in the nearest open upper-right slot without creating a relation.',
-		object: '+ node · unlinked',
-	},
-	{
-		id: 'add-benchmark',
-		kind: 'add-node',
-		title: 'Added Evaluation benchmark',
-		detail: 'Reserved a separate upper slot; the Agent is still collecting concepts.',
-		object: '+ node · unlinked',
-	},
-	{
-		id: 'add-contradiction',
-		kind: 'add-node',
-		title: 'Added Contradiction check',
-		detail: 'Placed left of the current topology, outside every occupied node box.',
-		object: '+ node · unlinked',
-	},
-	{
-		id: 'add-control-pair',
-		kind: 'add-node',
-		title: 'Placed two control nodes',
-		detail: 'Source lineage and Human review loop occupy two clear lower slots.',
-		object: '+ 2 nodes · still unlinked',
-	},
-	{
-		id: 'add-orphan-hypothesis',
-		kind: 'add-node',
-		title: 'Added Orphan hypothesis',
-		detail: 'The Agent deliberately keeps this candidate disconnected while checking evidence.',
-		object: '+ node · no relation by design',
-	},
-	{
-		id: 'add-observability',
-		kind: 'add-node',
-		title: 'Added Agent observability',
-		detail: 'The next collision-free slot lies beyond the current right viewport.',
-		object: '+ node · outside viewport',
-	},
-	{
-		id: 'focus-observability',
-		kind: 'focus',
-		title: 'Focused the off-canvas node',
-		detail: 'The camera pans without changing node coordinates or running layout.',
-		object: 'focus · Agent observability',
-	},
-	{
-		id: 'connect-evidence',
-		kind: 'add-relation',
-		title: 'Connected the evidence cluster',
-		detail: 'Only now does the Agent draw provenance relations to validated endpoints.',
-		object: '+ 2 relations',
-	},
-	{
-		id: 'connect-evaluation',
-		kind: 'add-relation',
-		title: 'Connected the evaluation cluster',
-		detail: 'Benchmark and contradiction nodes gain three directed relations.',
-		object: '+ 3 relations',
-	},
-	{
-		id: 'connect-controls',
-		kind: 'add-relation',
-		title: 'Connected control and observability',
-		detail: 'Five relations connect lineage, review, provenance, observability, and GraphRAG.',
-		object: '+ 5 relations',
-	},
-	{
-		id: 'update-relation',
-		kind: 'update',
-		title: 'Refined a relation predicate',
-		detail: '“supports” became “grounds” after comparing the source quotation.',
-		object: '~ relation · predicate changed',
-	},
-	{
-		id: 'remove-orphan',
-		kind: 'remove-node',
-		title: 'Removed the ungrounded hypothesis',
-		detail: 'The disconnected candidate never entered the semantic diff.',
-		object: '− transient node · reversible',
-	},
-	{
-		id: 'remove-stale-path',
-		kind: 'remove-relation',
-		title: 'Detached the stale keyword path',
-		detail: 'Two legacy relations and their node become a reviewable tombstone.',
-		object: '− node · − 2 relations',
-	},
-	{
-		id: 'validate-diff',
-		kind: 'validate',
-		title: 'Validated the five-view graph package',
-		detail: 'Topology, tree, bridges, timeline, and gaps resolve against the same frozen sources.',
-		object: '5 graphs · one run boundary',
-	},
-	{
-		id: 'auto-layout',
-		kind: 'auto-layout',
-		title: 'Refined all generated views',
-		detail: 'All five graph outputs are complete, so each can perform one intentional final layout.',
-		object: '5 views · final refinement',
-	},
-];
-
-const CURSOR_POINTS = [
-	{ left: '24%', top: '32%' },
-	{ left: '68%', top: '20%' },
-	{ left: '44%', top: '17%' },
-	{ left: '23%', top: '27%' },
-	{ left: '76%', top: '75%' },
-	{ left: '38%', top: '77%' },
-	{ left: '106%', top: '28%' },
-	{ left: '88%', top: '28%' },
-	{ left: '64%', top: '38%' },
-	{ left: '39%', top: '34%' },
-	{ left: '85%', top: '59%' },
-	{ left: '48%', top: '54%' },
-	{ left: '38%', top: '77%' },
-	{ left: '51%', top: '48%' },
-	{ left: '78%', top: '18%' },
-	{ left: '50%', top: '50%' },
-];
-
-const RUN_START_DELAY_MS = 650;
-const DEFAULT_PATCH_DWELL_MS = 1100;
-const RELATION_PATCH_DWELL_MS = 2200;
-const EDGE_DRAW_DURATION_MS = 1050;
-const EDGE_STAGGER_MS = 190;
-const NODE_CORNER_PATCH_KINDS = new Set<PatchKind>(['add-node', 'remove-node', 'focus']);
-const LENS_READY_STEPS: Record<LensId, number> = {
-	topology: 11,
-	'thinking-tree': 12,
-	bridge: 13,
-	timeline: 14,
-	'gap-analysis': 15,
-};
-
-function lensGenerationProgress(lensId: LensId, step: number, mode: RunMode): number {
-	if (mode === 'idle') return 100;
-	if (mode === 'layouting' || mode === 'review' || mode === 'accepted') return 100;
-	const readyAt = LENS_READY_STEPS[lensId];
-	if (step >= readyAt) return 100;
-	return Math.max(4, Math.round((Math.max(0, step) / readyAt) * 100));
+interface LensScript {
+	id: LensId;
+	label: string;
+	question: string;
+	description: string;
+	defaultLayout: LayoutId;
+	layouts: LayoutId[];
+	initialNodes: AgentNode[];
+	initialEdges: AgentEdge[];
+	steps: AgentStep[];
+	finalLayout: 'cose' | 'dagre' | 'timeline' | 'preset';
 }
 
-function lensGenerationState(progress: number, mode: RunMode): LensGenerationState {
-	if (mode === 'idle') return 'stable';
-	if (mode === 'layouting') return 'refining';
-	if (progress >= 100) return 'ready';
-	return 'building';
+interface GraphStats {
+	nodes: number;
+	edges: number;
+	diagnostics: number;
 }
 
-const BASE_NODES: ResultSubgraphOutput['resultNodes'] = [
-	{ id: 'graphrag', path: 'AI Graph/Concepts/GraphRAG.md', title: 'GraphRAG', score: 1, communityId: 'core', folder: 'Concepts', preview: 'Root concept · accepted', incomingLinks: 2, outgoingLinks: 3 },
-	{ id: 'retrieval', path: 'AI Graph/Concepts/Retrieval augmented generation.md', title: 'Retrieval-augmented generation', score: .9, communityId: 'core', folder: 'Concepts', preview: 'Foundation · accepted', incomingLinks: 1, outgoingLinks: 2 },
-	{ id: 'community', path: 'AI Graph/Methods/Community summarization.md', title: 'Community summarization', score: .82, communityId: 'methods', folder: 'Methods', preview: 'Method · accepted', incomingLinks: 1, outgoingLinks: 1 },
-	{ id: 'global-search', path: 'AI Graph/Methods/Global search.md', title: 'Global search', score: .8, communityId: 'methods', folder: 'Methods', preview: 'Capability · accepted', incomingLinks: 2, outgoingLinks: 1 },
-	{ id: 'evidence', path: 'AI Graph/Evidence/Evidence-linked graph.md', title: 'Evidence-linked graph', score: .78, communityId: 'evidence', folder: 'Evidence', preview: 'Evidence pattern · accepted', incomingLinks: 1, outgoingLinks: 2 },
-	{ id: 'citations', path: 'AI Graph/Evidence/Citation-aware retrieval.md', title: 'Citation-aware retrieval', score: .7, communityId: 'evidence', folder: 'Evidence', preview: 'Claim · accepted', incomingLinks: 1, outgoingLinks: 0 },
-	{ id: 'keyword', path: 'AI Graph/Legacy/Keyword-only clustering.md', title: 'Keyword-only clustering', score: .34, communityId: 'legacy', folder: 'Legacy', preview: 'Legacy branch · removal candidate', incomingLinks: 1, outgoingLinks: 1 },
-];
+const node = (
+	id: string,
+	label: string,
+	x: number,
+	y: number,
+	classes = '',
+	parent?: string,
+	order?: number,
+): AgentNode => ({ id, label, x, y, classes, parent, order });
 
-const BASE_EDGES: ResultSubgraphOutput['edges'] = [
-	{ from: 'graphrag', to: 'retrieval', kind: 'reference', directionality: 'directed' },
-	{ from: 'graphrag', to: 'community', kind: 'reference', directionality: 'directed' },
-	{ from: 'community', to: 'global-search', kind: 'reference', directionality: 'directed' },
-	{ from: 'retrieval', to: 'evidence', kind: 'reference', directionality: 'directed' },
-	{ from: 'evidence', to: 'citations', kind: 'reference', directionality: 'directed' },
-	{ from: 'retrieval', to: 'keyword', kind: 'semantic', directionality: 'undirected', weight: .58 },
-	{ from: 'keyword', to: 'community', kind: 'semantic', directionality: 'undirected', weight: .42 },
-];
+const edge = (
+	id: string,
+	source: string,
+	target: string,
+	label = '',
+	classes = '',
+): AgentEdge => ({ id, source, target, label, classes });
 
-const STABLE_SUBGRAPH: ResultSubgraphOutput = {
-	resultNodes: BASE_NODES.map((node) => ({ ...node })),
-	hubAnchors: [],
-	edges: BASE_EDGES.map((edge) => ({ ...edge })),
-	isolatedDocIds: [],
-	overflowCount: 0,
-};
-
-const FINAL_SUBGRAPH: ResultSubgraphOutput = {
-	resultNodes: [
-		...BASE_NODES.filter((node) => node.id !== 'keyword').map((node) => ({ ...node })),
-		{
-			id: 'provenance',
-			path: 'AI Graph/Evidence/Claim provenance.md',
-			title: 'Claim provenance',
-			score: .92,
-			communityId: 'evidence',
-			folder: 'Evidence',
-			preview: 'Accepted evidence concept',
-			incomingLinks: 1,
-			outgoingLinks: 3,
-		},
-		{
-			id: 'benchmark',
-			path: 'AI Graph/Evaluation/Evaluation benchmark.md',
-			title: 'Evaluation benchmark',
-			score: .88,
-			communityId: 'evaluation',
-			folder: 'Evaluation',
-			preview: 'Accepted evaluation concept',
-			incomingLinks: 1,
-			outgoingLinks: 1,
-		},
-		{
-			id: 'contradiction',
-			path: 'AI Graph/Evaluation/Contradiction check.md',
-			title: 'Contradiction check',
-			score: .84,
-			communityId: 'evaluation',
-			folder: 'Evaluation',
-			preview: 'Accepted validation concept',
-			incomingLinks: 1,
-			outgoingLinks: 1,
-		},
-		{
-			id: 'source-lineage',
-			path: 'AI Graph/Evidence/Source lineage.md',
-			title: 'Source lineage',
-			score: .9,
-			communityId: 'evidence',
-			folder: 'Evidence',
-			preview: 'Accepted lineage concept',
-			incomingLinks: 1,
-			outgoingLinks: 1,
-		},
-		{
-			id: 'human-review',
-			path: 'AI Graph/Controls/Human review loop.md',
-			title: 'Human review loop',
-			score: .86,
-			communityId: 'controls',
-			folder: 'Controls',
-			preview: 'Accepted review control',
-			incomingLinks: 1,
-			outgoingLinks: 1,
-		},
-		{
-			id: 'agent-observability',
-			path: 'AI Graph/Controls/Agent observability.md',
-			title: 'Agent observability',
-			score: .82,
-			communityId: 'controls',
-			folder: 'Controls',
-			preview: 'Accepted observability concept',
-			incomingLinks: 1,
-			outgoingLinks: 1,
-		},
+const TOPOLOGY_SCRIPT: LensScript = {
+	id: 'topology',
+	label: 'Topology',
+	question: 'How is this knowledge connected?',
+	description: 'The Agent expands a stable graph with reversible node and relation patches.',
+	defaultLayout: 'constellation',
+	layouts: ['constellation', 'flow-lr', 'flow-tb'],
+	finalLayout: 'cose',
+	initialNodes: [
+		node('graph-rag', 'GraphRAG', 130, 340, 'root'),
+		node('retrieval', 'Retrieval-augmented generation', 350, 245, 'core'),
+		node('community', 'Community summarization', 350, 435, 'core'),
+		node('evidence', 'Evidence-linked graph', 585, 205, 'evidence'),
+		node('global-search', 'Global search', 585, 430, 'method'),
+		node('keyword', 'Keyword-only clustering', 570, 575, 'stale'),
 	],
-	hubAnchors: [],
-	edges: [
-		...BASE_EDGES.filter((edge) => edge.from !== 'keyword' && edge.to !== 'keyword').map((edge) => ({ ...edge })),
-		{ from: 'evidence', to: 'provenance', kind: 'reference', directionality: 'directed' },
-		{ from: 'provenance', to: 'citations', kind: 'reference', directionality: 'directed' },
-		{ from: 'global-search', to: 'benchmark', kind: 'reference', directionality: 'directed' },
-		{ from: 'benchmark', to: 'contradiction', kind: 'reference', directionality: 'directed' },
-		{ from: 'contradiction', to: 'retrieval', kind: 'reference', directionality: 'directed' },
-		{ from: 'evidence', to: 'source-lineage', kind: 'reference', directionality: 'directed' },
-		{ from: 'source-lineage', to: 'provenance', kind: 'reference', directionality: 'directed' },
-		{ from: 'provenance', to: 'human-review', kind: 'reference', directionality: 'directed' },
-		{ from: 'human-review', to: 'agent-observability', kind: 'reference', directionality: 'directed' },
-		{ from: 'agent-observability', to: 'graphrag', kind: 'reference', directionality: 'directed' },
+	initialEdges: [
+		edge('t-graph-retrieval', 'graph-rag', 'retrieval'),
+		edge('t-graph-community', 'graph-rag', 'community'),
+		edge('t-retrieval-evidence', 'retrieval', 'evidence'),
+		edge('t-community-global', 'community', 'global-search'),
+		edge('t-retrieval-keyword', 'retrieval', 'keyword', 'legacy', 'semantic weak'),
 	],
-	isolatedDocIds: [],
-	overflowCount: 0,
+	steps: [
+		{ id: 'top-inspect', kind: 'inspect', tool: 'graph.inspect', title: 'Inspected the current graph', detail: 'Read 6 nodes, 5 relations, occupied regions, and the frozen v12 revision.', object: 'revision v12 · no mutation' },
+		{ id: 'top-add-provenance', kind: 'add-node', tool: 'graph.addNode', title: 'Placed Claim provenance', detail: 'Added one evidence concept in a collision-free position without inventing a relation.', object: '+ 1 node · unlinked', addNodes: [node('provenance', 'Claim provenance', 790, 155, 'evidence')] },
+		{ id: 'top-add-evaluation', kind: 'add-node', tool: 'graph.addNode', title: 'Placed an evaluation pair', detail: 'The Agent can stage several nodes before it has enough evidence to connect them.', object: '+ 2 nodes · unlinked', addNodes: [node('benchmark', 'Evaluation benchmark', 815, 340, 'evaluation'), node('contradiction', 'Contradiction check', 1010, 340, 'evaluation')] },
+		{ id: 'top-connect-evidence', kind: 'add-relation', tool: 'graph.addEdge', title: 'Grounded the evidence path', detail: 'The relation step is atomic: both endpoints already exist before either edge appears.', object: '+ 3 relations', addEdges: [edge('t-evidence-provenance', 'evidence', 'provenance', 'grounds'), edge('t-provenance-retrieval', 'provenance', 'retrieval', 'supports'), edge('t-global-benchmark', 'global-search', 'benchmark', 'evaluated by')] },
+		{ id: 'top-add-control', kind: 'add-node', tool: 'graph.addNode', title: 'Added review and observability', detail: 'New control nodes extend the model beyond the current right boundary.', object: '+ 3 nodes · focus newest', addNodes: [node('source-lineage', 'Source lineage', 775, 545, 'evidence'), node('human-review', 'Human review loop', 1010, 515, 'control'), node('observability', 'Agent observability', 1215, 430, 'control')], focusNodeId: 'observability' },
+		{ id: 'top-connect-control', kind: 'add-relation', tool: 'graph.addEdge', title: 'Connected the control loop', detail: 'Five validated relations join evidence, review, observability, and the root model.', object: '+ 5 relations', addEdges: [edge('t-evidence-lineage', 'evidence', 'source-lineage'), edge('t-lineage-provenance', 'source-lineage', 'provenance'), edge('t-provenance-review', 'provenance', 'human-review'), edge('t-review-observability', 'human-review', 'observability'), edge('t-observability-root', 'observability', 'graph-rag')] },
+		{ id: 'top-test-orphan', kind: 'add-node', tool: 'graph.addNode', title: 'Tested an ungrounded hypothesis', detail: 'A candidate may remain disconnected while the Agent checks the evidence.', object: '+ transient node', addNodes: [node('orphan', 'Orphan hypothesis', 560, 720, 'candidate')] },
+		{ id: 'top-refine', kind: 'update', tool: 'graph.updateEdge', title: 'Refined a relation predicate', detail: 'The evidence supports “grounds”, not the broader “supports” predicate.', object: '~ 1 relation', updateEdges: [{ id: 't-evidence-provenance', label: 'grounds', addClasses: 'patch-target' }] },
+		{ id: 'top-clean', kind: 'remove-node', tool: 'graph.removeNode', title: 'Removed rejected structure', detail: 'The orphan and stale keyword branch remain recoverable until the run is accepted.', object: '− 2 nodes · − legacy relations', removeNodeIds: ['orphan', 'keyword'] },
+		{ id: 'top-validate', kind: 'validate', tool: 'graph.validate', title: 'Validated the topology draft', detail: 'All remaining edges resolve to existing nodes and evidence-backed predicates.', object: '11 nodes · valid draft' },
+	],
 };
 
-const COMMUNITY_SUMMARIES: NonNullable<ResultSubgraphOutput['communities']> = [
-	{ id: 'core', displayLabel: 'Core model', fingerprint: 'mock-core', memberCount: 2, visibleMemberIds: ['graphrag', 'retrieval'], descriptors: [], internalReferenceCount: 1, analysisVersion: 1, analysisMode: 'exact', analyzedNodeCount: 2, totalNodeCount: 2, representativeNotes: [] },
-	{ id: 'methods', displayLabel: 'Search methods', fingerprint: 'mock-methods', memberCount: 2, visibleMemberIds: ['community', 'global-search'], descriptors: [], internalReferenceCount: 1, analysisVersion: 1, analysisMode: 'exact', analyzedNodeCount: 2, totalNodeCount: 2, representativeNotes: [] },
-	{ id: 'evidence', displayLabel: 'Evidence system', fingerprint: 'mock-evidence', memberCount: 4, visibleMemberIds: ['evidence', 'citations', 'provenance', 'source-lineage'], descriptors: [], internalReferenceCount: 3, analysisVersion: 1, analysisMode: 'exact', analyzedNodeCount: 4, totalNodeCount: 4, representativeNotes: [] },
-	{ id: 'evaluation', displayLabel: 'Evaluation', fingerprint: 'mock-evaluation', memberCount: 2, visibleMemberIds: ['benchmark', 'contradiction'], descriptors: [], internalReferenceCount: 1, analysisVersion: 1, analysisMode: 'exact', analyzedNodeCount: 2, totalNodeCount: 2, representativeNotes: [] },
-	{ id: 'controls', displayLabel: 'Human control', fingerprint: 'mock-controls', memberCount: 2, visibleMemberIds: ['human-review', 'agent-observability'], descriptors: [], internalReferenceCount: 1, analysisVersion: 1, analysisMode: 'exact', analyzedNodeCount: 2, totalNodeCount: 2, representativeNotes: [] },
+const TREE_SCRIPT: LensScript = {
+	id: 'thinking-tree',
+	label: 'Thinking Tree',
+	question: 'How did the explicit decision structure grow?',
+	description: 'An inspectable decision tree grows one branch at a time; future node names are never previewed.',
+	defaultLayout: 'flow-lr',
+	layouts: ['flow-lr'],
+	finalLayout: 'dagre',
+	initialNodes: [],
+	initialEdges: [],
+	steps: [
+		{ id: 'tree-root', kind: 'add-node', tool: 'graph.addNode', title: 'Established the decision root', detail: 'The run begins with the user-visible question, not a precomputed tree outline.', object: '+ root node', addNodes: [node('tree-root', 'How should Peak answer a cross-document question?', 120, 360, 'root decision')] },
+		{ id: 'tree-evidence', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Added the first decision', detail: 'The Agent asks whether enough grounded evidence exists before choosing a response path.', object: '+ child · + parent edge', addNodes: [node('tree-evidence', 'Enough grounded evidence?', 350, 360, 'decision')], addEdges: [edge('tree-root-evidence', 'tree-root', 'tree-evidence', 'evaluate')] },
+		{ id: 'tree-retrieval-branches', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Expanded two retrieval branches', detail: 'Only the newly chosen branch grows; no future descendants are placed as ghosts.', object: '+ 2 children · + 2 edges', addNodes: [node('tree-local', 'Inspect local neighborhood', 585, 225, 'action'), node('tree-global', 'Search relevant communities', 585, 495, 'action')], addEdges: [edge('tree-evidence-local', 'tree-evidence', 'tree-local', 'local'), edge('tree-evidence-global', 'tree-evidence', 'tree-global', 'broad')] },
+		{ id: 'tree-agreement', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Introduced an evidence check', detail: 'The local branch discovers a decision that was not known when the root was created.', object: '+ decision · + edge', addNodes: [node('tree-agreement', 'Do independent sources agree?', 815, 225, 'decision')], addEdges: [edge('tree-local-agreement', 'tree-local', 'tree-agreement', 'compare')] },
+		{ id: 'tree-outcomes', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Added supported and conflict outcomes', detail: 'The Agent adds both externally reviewable outcomes as one coherent graph step.', object: '+ 2 outcomes · + 2 edges', addNodes: [node('tree-answer', 'Synthesize with citations', 1045, 125, 'outcome'), node('tree-conflict', 'Flag contradiction', 1045, 315, 'warning')], addEdges: [edge('tree-agreement-answer', 'tree-agreement', 'tree-answer', 'agree'), edge('tree-agreement-conflict', 'tree-agreement', 'tree-conflict', 'conflict')] },
+		{ id: 'tree-broaden', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Expanded the coverage branch', detail: 'The broad-search result becomes a concrete action rather than an empty reserved slot.', object: '+ action · + edge', addNodes: [node('tree-broaden', 'Broaden query and collect evidence', 815, 510, 'action')], addEdges: [edge('tree-global-broaden', 'tree-global', 'tree-broaden', 'insufficient coverage')] },
+		{ id: 'tree-human', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Escalated the conflict branch', detail: 'Human review is attached only after a contradiction is actually found.', object: '+ review outcome · + edge', addNodes: [node('tree-review', 'Request human review', 1265, 315, 'control')], addEdges: [edge('tree-conflict-review', 'tree-conflict', 'tree-review', 'escalate')] },
+		{ id: 'tree-candidate', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Tested a shortcut branch', detail: 'A keyword-only shortcut is explicitly provisional and can be removed on the next step.', object: '+ provisional branch', addNodes: [node('tree-shortcut', 'Use keyword overlap only', 815, 675, 'candidate')], addEdges: [edge('tree-global-shortcut', 'tree-global', 'tree-shortcut', 'candidate', 'weak')] },
+		{ id: 'tree-prune', kind: 'remove-node', tool: 'graph.removeNode', title: 'Pruned the unsupported shortcut', detail: 'The branch disappears with its incident edge; the rest of the tree does not re-run.', object: '− branch · local reflow', removeNodeIds: ['tree-shortcut'], reflow: 'local' },
+		{ id: 'tree-validate', kind: 'validate', tool: 'graph.validate', title: 'Validated the decision tree', detail: 'Every non-root node has one parent and every visible outcome is externally reviewable.', object: '9 nodes · one-parent invariant' },
+	],
+};
+
+const BRIDGE_SCRIPT: LensScript = {
+	id: 'bridge',
+	label: 'Bridges',
+	question: 'Which concepts create real paths between disconnected domains?',
+	description: 'Bridge candidates are promoted only after they connect two previously separate components.',
+	defaultLayout: 'flow-lr',
+	layouts: ['flow-lr', 'constellation'],
+	finalLayout: 'preset',
+	initialNodes: [
+		node('bridge-group-retrieval', 'Retrieval domain', 0, 0, 'group retrieval-group'),
+		node('bridge-community', 'Community summaries', 150, 215, 'method', 'bridge-group-retrieval'),
+		node('bridge-global', 'Global search', 330, 215, 'method', 'bridge-group-retrieval'),
+		node('bridge-group-evaluation', 'Evaluation domain', 0, 0, 'group evaluation-group'),
+		node('bridge-benchmark', 'Evaluation benchmark', 760, 190, 'evaluation', 'bridge-group-evaluation'),
+		node('bridge-contradiction', 'Contradiction checks', 960, 190, 'evaluation', 'bridge-group-evaluation'),
+		node('bridge-group-control', 'Control domain', 0, 0, 'group control-group'),
+		node('bridge-human', 'Human review', 760, 505, 'control', 'bridge-group-control'),
+		node('bridge-receipt', 'Run receipts', 960, 505, 'control', 'bridge-group-control'),
+	],
+	initialEdges: [
+		edge('bridge-community-global', 'bridge-community', 'bridge-global'),
+		edge('bridge-benchmark-contradiction', 'bridge-benchmark', 'bridge-contradiction'),
+		edge('bridge-human-receipt', 'bridge-human', 'bridge-receipt'),
+	],
+	steps: [
+		{ id: 'bridge-components', kind: 'inspect', tool: 'graph.inspectComponents', title: 'Found three disconnected domains', detail: 'The Agent reads actual connected components before proposing any bridge.', object: '3 components · no mutation' },
+		{ id: 'bridge-provenance-candidate', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Staged Claim provenance', detail: 'The concept reaches the retrieval side, but it is still only a one-sided candidate.', object: '+ candidate · first side', addNodes: [node('bridge-provenance', 'Claim provenance', 540, 210, 'candidate')], addEdges: [edge('bridge-global-provenance', 'bridge-global', 'bridge-provenance', 'produces')] },
+		{ id: 'bridge-provenance-check', kind: 'inspect', tool: 'graph.inspectPath', title: 'Checked the candidate path', detail: 'No route to the Evaluation domain exists yet, so the node is not called a bridge.', object: 'path incomplete · candidate retained', updateNodes: [{ id: 'bridge-provenance', label: 'Claim provenance · checking', addClasses: 'patch-target' }] },
+		{ id: 'bridge-provenance-promote', kind: 'add-relation', tool: 'graph.addEdge + graph.updateNode', title: 'Promoted the first bridge', detail: 'The second validated edge joins two formerly disconnected components.', object: '+ second side · bridge confirmed', addEdges: [edge('bridge-provenance-benchmark', 'bridge-provenance', 'bridge-benchmark', 'evaluated by')], updateNodes: [{ id: 'bridge-provenance', label: 'Claim provenance', addClasses: 'bridge', removeClasses: 'candidate' }] },
+		{ id: 'bridge-observability-candidate', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Staged Agent observability', detail: 'A second candidate is attached to evaluation while control remains disconnected.', object: '+ candidate · first side', addNodes: [node('bridge-observability', 'Agent observability', 700, 365, 'candidate')], addEdges: [edge('bridge-contradiction-observability', 'bridge-contradiction', 'bridge-observability', 'emits')] },
+		{ id: 'bridge-observability-promote', kind: 'add-relation', tool: 'graph.addEdge + graph.updateNode', title: 'Connected evaluation to control', detail: 'The candidate becomes a bridge only when Human review is reached.', object: '+ second side · bridge confirmed', addEdges: [edge('bridge-observability-human', 'bridge-observability', 'bridge-human', 'reviewed by')], updateNodes: [{ id: 'bridge-observability', addClasses: 'bridge', removeClasses: 'candidate' }] },
+		{ id: 'bridge-shortcut', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Tested a low-evidence shortcut', detail: 'Keyword overlap touches only one component and does not satisfy bridge semantics.', object: '+ rejected candidate', addNodes: [node('bridge-keyword', 'Keyword overlap', 400, 555, 'candidate')], addEdges: [edge('bridge-community-keyword', 'bridge-community', 'bridge-keyword', 'similar', 'weak')] },
+		{ id: 'bridge-reject', kind: 'remove-node', tool: 'graph.removeNode', title: 'Rejected the false bridge', detail: 'The one-sided candidate is removed without disturbing either validated path.', object: '− candidate · local mutation', removeNodeIds: ['bridge-keyword'] },
+		{ id: 'bridge-validate', kind: 'validate', tool: 'graph.validatePaths', title: 'Validated two bridge paths', detail: 'Each highlighted concept now connects nodes from two named components.', object: '2 bridges · 3 components connected' },
+	],
+};
+
+const TIMELINE_SCRIPT: LensScript = {
+	id: 'timeline',
+	label: 'Timeline',
+	question: 'How did this GraphRAG design evolve over time?',
+	description: 'Dated evidence is discovered out of order and inserted into one real temporal graph.',
+	defaultLayout: 'timeline',
+	layouts: ['timeline'],
+	finalLayout: 'timeline',
+	initialNodes: [],
+	initialEdges: [],
+	steps: [
+		{ id: 'time-baseline', kind: 'add-node', tool: 'graph.addGroup + graph.addNode', title: 'Placed the earliest confirmed milestone', detail: 'The first evidence anchor is dated; no future months or empty named nodes are shown.', object: 'Jan 12 · foundation', addNodes: [node('time-foundation', 'Foundation · Jan–Mar', 0, 0, 'group timeline-foundation'), node('time-jan', 'Jan 12\nBaseline ingestion', 100, 340, 'milestone', 'time-foundation', 1)], reflow: 'timeline' },
+		{ id: 'time-march', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Added a later community milestone', detail: 'At this point the graph only knows January and March.', object: 'Mar 18 · + milestone', addNodes: [node('time-mar', 'Mar 18\nCommunity summaries', 300, 340, 'milestone', 'time-foundation', 3)], addEdges: [edge('time-jan-mar', 'time-jan', 'time-mar', 'next')], reflow: 'timeline' },
+		{ id: 'time-february', kind: 'update', tool: 'graph.insertBetween', title: 'Inserted newly discovered February evidence', detail: 'The Agent replaces one adjacency with two; existing nodes slide instead of rebuilding the canvas.', object: 'Feb 03 · inserted out of order', addNodes: [node('time-feb', 'Feb 03\nEntity extraction', 200, 340, 'milestone', 'time-foundation', 2)], removeEdgeIds: ['time-jan-mar'], addEdges: [edge('time-jan-feb', 'time-jan', 'time-feb', 'next'), edge('time-feb-mar', 'time-feb', 'time-mar', 'next')], reflow: 'timeline' },
+		{ id: 'time-may', kind: 'add-relation', tool: 'graph.addGroup + graph.addNode + graph.addEdge', title: 'Opened the grounding phase', detail: 'A compound phase wrapper is created with its first real child and follows that child automatically.', object: 'May 06 · new phase', addNodes: [node('time-grounding', 'Grounding · May–Jul', 0, 0, 'group timeline-grounding'), node('time-may', 'May 06\nLocal + global search', 480, 340, 'milestone', 'time-grounding', 4)], addEdges: [edge('time-mar-may', 'time-mar', 'time-may', 'next')], reflow: 'timeline' },
+		{ id: 'time-july', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Added citation auditing', detail: 'July is appended from a dated source record.', object: 'Jul 21 · + milestone', addNodes: [node('time-jul', 'Jul 21\nCitation audit', 680, 340, 'milestone', 'time-grounding', 6)], addEdges: [edge('time-may-jul', 'time-may', 'time-jul', 'next')], reflow: 'timeline' },
+		{ id: 'time-june', kind: 'update', tool: 'graph.insertBetween', title: 'Inserted provenance into the chronology', detail: 'June evidence arrives late and is placed between May and July with one atomic edge replacement.', object: 'Jun 09 · inserted out of order', addNodes: [node('time-jun', 'Jun 09\nClaim provenance', 580, 340, 'milestone', 'time-grounding', 5)], removeEdgeIds: ['time-may-jul'], addEdges: [edge('time-may-jun', 'time-may', 'time-jun', 'next'), edge('time-jun-jul', 'time-jun', 'time-jul', 'next')], reflow: 'timeline' },
+		{ id: 'time-october', kind: 'add-relation', tool: 'graph.addGroup + graph.addNode + graph.addEdge', title: 'Opened the governance phase', detail: 'The final phase begins only when an October evaluation record is found.', object: 'Oct 02 · new phase', addNodes: [node('time-governance', 'Governance · Sep–Nov', 0, 0, 'group timeline-governance'), node('time-oct', 'Oct 02\nEvaluation gate', 900, 340, 'milestone', 'time-governance', 8)], addEdges: [edge('time-jul-oct', 'time-jul', 'time-oct', 'next')], reflow: 'timeline' },
+		{ id: 'time-september', kind: 'update', tool: 'graph.insertBetween', title: 'Inserted the human-review policy', detail: 'September is inserted before the already visible October gate.', object: 'Sep 14 · inserted out of order', addNodes: [node('time-sep', 'Sep 14\nHuman review policy', 790, 340, 'milestone', 'time-governance', 7)], removeEdgeIds: ['time-jul-oct'], addEdges: [edge('time-jul-sep', 'time-jul', 'time-sep', 'next'), edge('time-sep-oct', 'time-sep', 'time-oct', 'next')], reflow: 'timeline' },
+		{ id: 'time-november', kind: 'add-relation', tool: 'graph.addNode + graph.addEdge', title: 'Appended run observability', detail: 'The chronology ends at the latest known dated event; nothing beyond it is pre-rendered.', object: 'Nov 11 · latest milestone', addNodes: [node('time-nov', 'Nov 11\nRun observability', 1030, 340, 'milestone', 'time-governance', 9)], addEdges: [edge('time-oct-nov', 'time-oct', 'time-nov', 'next')], reflow: 'timeline' },
+		{ id: 'time-validate', kind: 'validate', tool: 'graph.validateTimeline', title: 'Validated temporal ordering', detail: 'Every adjacency follows event time and every phase wrapper derives from its child milestones.', object: '9 milestones · 3 derived phases' },
+	],
+};
+
+const GAP_SCRIPT: LensScript = {
+	id: 'gap-analysis',
+	label: 'Gaps',
+	question: 'Where does this real graph lack a required path?',
+	description: 'Gaps are diagnostic overlays on an existing graph, never fake semantic nodes.',
+	defaultLayout: 'diagnostic',
+	layouts: ['diagnostic'],
+	finalLayout: 'preset',
+	initialNodes: [
+		node('gap-query', 'Query understanding', 100, 240, 'core'),
+		node('gap-community', 'Community search', 300, 180, 'method'),
+		node('gap-answer', 'Answer synthesis', 500, 180, 'core'),
+		node('gap-claim', 'Claim provenance', 500, 390, 'evidence'),
+		node('gap-citation', 'Citation audit', 710, 390, 'evidence'),
+		node('gap-eval', 'Evaluation gate', 920, 185, 'evaluation'),
+		node('gap-contradiction', 'Contradiction check', 1110, 185, 'evaluation'),
+		node('gap-human', 'Human review', 920, 500, 'control'),
+		node('gap-observability', 'Run observability', 1120, 500, 'control'),
+	],
+	initialEdges: [
+		edge('gap-query-community', 'gap-query', 'gap-community'),
+		edge('gap-community-answer', 'gap-community', 'gap-answer'),
+		edge('gap-answer-claim', 'gap-answer', 'gap-claim'),
+		edge('gap-claim-citation', 'gap-claim', 'gap-citation'),
+		edge('gap-eval-contradiction', 'gap-eval', 'gap-contradiction'),
+		edge('gap-contradiction-human', 'gap-contradiction', 'gap-human', '', 'semantic'),
+		edge('gap-human-observability', 'gap-human', 'gap-observability'),
+	],
+	steps: [
+		{ id: 'gap-components', kind: 'inspect', tool: 'graph.inspectComponents', title: 'Mapped the existing graph', detail: 'The Agent starts from nine real concepts and two connected components.', object: '9 nodes · 2 components' },
+		{ id: 'gap-path', kind: 'inspect', tool: 'graph.inspectPath', title: 'Found a missing validation handoff', detail: 'Citation audit cannot reach Evaluation gate even though both are required by the task contract.', object: 'no path · endpoints highlighted', updateNodes: [{ id: 'gap-citation', addClasses: 'gap-endpoint' }, { id: 'gap-eval', addClasses: 'gap-endpoint' }], focusNodeId: 'gap-citation' },
+		{ id: 'gap-diagnostic', kind: 'add-relation', tool: 'graph.addDiagnostic', title: 'Recorded a missing-path diagnostic', detail: 'The dashed relation is an overlay finding, not a claim that the semantic edge already exists.', object: '+ missing-path finding · score 0.86', addEdges: [edge('gap-missing-validation', 'gap-citation', 'gap-eval', 'MISSING · validation handoff · 0.86', 'diagnostic missing overlay')] },
+		{ id: 'gap-weak', kind: 'update', tool: 'graph.inspectEdge', title: 'Found a fragile review handoff', detail: 'Contradiction check reaches Human review through one unsupported relation.', object: '~ weak edge · one source', updateNodes: [{ id: 'gap-contradiction', addClasses: 'gap-endpoint' }, { id: 'gap-human', addClasses: 'gap-endpoint' }], updateEdges: [{ id: 'gap-contradiction-human', label: 'WEAK · one source · 0.61', addClasses: 'diagnostic weak' }] },
+		{ id: 'gap-false-positive', kind: 'inspect', tool: 'graph.inspectPath', title: 'Rejected a false-positive gap', detail: 'Community search already reaches Claim provenance through Answer synthesis.', object: 'existing path length 2 · no finding', updateNodes: [{ id: 'gap-community', addClasses: 'patch-target' }, { id: 'gap-claim', addClasses: 'patch-target' }] },
+		{ id: 'gap-validate', kind: 'validate', tool: 'graph.validateDiagnostics', title: 'Validated two structural findings', detail: 'The result contains one missing path and one weak path, both tied to real endpoints.', object: '2 findings · 1 candidate rejected' },
+	],
+};
+
+const SCRIPTS: LensScript[] = [TOPOLOGY_SCRIPT, TREE_SCRIPT, BRIDGE_SCRIPT, TIMELINE_SCRIPT, GAP_SCRIPT];
+const SCRIPT_BY_ID = Object.fromEntries(SCRIPTS.map((script) => [script.id, script])) as Record<LensId, LensScript>;
+const MAX_STEP_COUNT = Math.max(...SCRIPTS.map((script) => script.steps.length));
+
+function assertValidScripts(scripts: LensScript[]): void {
+	for (const script of scripts) {
+		const nodeIds = new Set<string>();
+		const edges = new Map<string, { source: string; target: string }>();
+		const addNode = (item: AgentNode): void => {
+			if (nodeIds.has(item.id)) throw new Error(`${script.id}: duplicate node ${item.id}`);
+			if (item.parent && !nodeIds.has(item.parent)) throw new Error(`${script.id}: missing parent ${item.parent}`);
+			nodeIds.add(item.id);
+		};
+		const addEdge = (item: AgentEdge): void => {
+			if (edges.has(item.id)) throw new Error(`${script.id}: duplicate edge ${item.id}`);
+			if (!nodeIds.has(item.source) || !nodeIds.has(item.target)) throw new Error(`${script.id}: unresolved edge ${item.id}`);
+			edges.set(item.id, { source: item.source, target: item.target });
+		};
+		for (const item of script.initialNodes) addNode(item);
+		for (const item of script.initialEdges) addEdge(item);
+		for (const step of script.steps) {
+			for (const edgeId of step.removeEdgeIds ?? []) {
+				if (!edges.delete(edgeId)) throw new Error(`${script.id}/${step.id}: cannot remove edge ${edgeId}`);
+			}
+			for (const nodeId of step.removeNodeIds ?? []) {
+				if (!nodeIds.delete(nodeId)) throw new Error(`${script.id}/${step.id}: cannot remove node ${nodeId}`);
+				for (const [edgeId, item] of edges) {
+					if (item.source === nodeId || item.target === nodeId) edges.delete(edgeId);
+				}
+			}
+			const parentNodes = (step.addNodes ?? []).filter((item) => item.classes?.split(' ').includes('group'));
+			const childNodes = (step.addNodes ?? []).filter((item) => !item.classes?.split(' ').includes('group'));
+			for (const item of [...parentNodes, ...childNodes]) addNode(item);
+			for (const item of step.addEdges ?? []) addEdge(item);
+			for (const item of step.updateNodes ?? []) {
+				if (!nodeIds.has(item.id)) throw new Error(`${script.id}/${step.id}: cannot update node ${item.id}`);
+			}
+			for (const item of step.updateEdges ?? []) {
+				if (!edges.has(item.id)) throw new Error(`${script.id}/${step.id}: cannot update edge ${item.id}`);
+			}
+		}
+	}
+}
+
+assertValidScripts(SCRIPTS);
+
+const LAYOUT_OPTIONS: Record<LayoutId, { label: string; detail: string }> = {
+	constellation: { label: 'Constellation', detail: 'Stable spatial graph' },
+	'flow-lr': { label: 'Flow →', detail: 'Left to right' },
+	'flow-tb': { label: 'Flow ↓', detail: 'Top to bottom' },
+	timeline: { label: 'Timeline →', detail: 'Chronological compound phases' },
+	diagnostic: { label: 'Diagnostic map', detail: 'Existing graph with gap overlays' },
+};
+
+const NODE_CHANGE_MARKER = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#7255e7" stroke="#fff" stroke-width="2"/><path d="M11 7v8M7 11h8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>')}`;
+
+const CY_STYLES: StylesheetJson = [
+	{ selector: 'node', style: { 'background-color': '#ece7ff', 'border-color': '#8c72e8', 'border-width': 1.5, color: '#332452', label: 'data(label)', 'font-size': 11, 'font-weight': 650, 'text-wrap': 'wrap', 'text-max-width': 138, 'text-valign': 'center', 'text-halign': 'center', shape: 'round-rectangle', width: 'label', height: 'label', padding: '10px', 'min-zoomed-font-size': 7, 'overlay-opacity': 0, 'transition-property': 'opacity, background-color, border-color, border-width', 'transition-duration': 320 } },
+	{ selector: 'node.root', style: { 'background-color': '#c9bcff', 'border-color': '#6d28d9', 'border-width': 3, 'font-size': 12, 'font-weight': 760 } },
+	{ selector: 'node.decision', style: { 'background-color': '#f1edff', 'border-width': 2 } },
+	{ selector: 'node.action', style: { 'background-color': '#eef3ff', 'border-color': '#7291cf' } },
+	{ selector: 'node.outcome', style: { 'background-color': '#e8f6f1', 'border-color': '#4c9a83' } },
+	{ selector: 'node.warning', style: { 'background-color': '#fff1f3', 'border-color': '#c96d7f' } },
+	{ selector: 'node.evidence', style: { 'background-color': '#eaf2ff', 'border-color': '#698cca' } },
+	{ selector: 'node.evaluation', style: { 'background-color': '#fff5e7', 'border-color': '#c58d43' } },
+	{ selector: 'node.control', style: { 'background-color': '#eaf7f2', 'border-color': '#4b9b84' } },
+	{ selector: 'node.method', style: { 'background-color': '#f1edff', 'border-color': '#8a72d8' } },
+	{ selector: 'node.candidate', style: { 'background-color': '#fff9ef', 'border-color': '#c88c3f', 'border-style': 'dashed', 'border-width': 2 } },
+	{ selector: 'node.bridge', style: { 'background-color': '#d8cbff', 'border-color': '#6d28d9', 'border-width': 4, 'font-weight': 760 } },
+	{ selector: 'node.stale', style: { 'background-color': '#fff5f6', 'border-color': '#cf8492', 'border-style': 'dashed' } },
+	{ selector: 'node.milestone', style: { 'background-color': '#eee8ff', 'border-color': '#8062df', 'font-size': 10, 'text-max-width': 120, padding: '9px' } },
+	{ selector: 'node.group', style: { 'background-color': '#faf9fd', 'background-opacity': .72, 'border-color': '#dcd5e7', 'border-width': 1.2, 'border-style': 'dashed', color: '#766d80', 'font-size': 9, 'font-weight': 720, 'text-valign': 'top', 'text-halign': 'left', 'text-margin-x': 10, 'text-margin-y': 8, padding: '25px', shape: 'round-rectangle', 'z-compound-depth': 'bottom' } },
+	{ selector: 'node.timeline-foundation', style: { 'background-color': '#f7f4ff', 'border-color': '#a891ec' } },
+	{ selector: 'node.timeline-grounding', style: { 'background-color': '#f3f7fe', 'border-color': '#8aa5d6' } },
+	{ selector: 'node.timeline-governance', style: { 'background-color': '#f1f9f6', 'border-color': '#74ad9d' } },
+	{ selector: 'node.gap-endpoint', style: { 'border-color': '#cc7836', 'border-width': 4, 'background-color': '#fff7ec' } },
+	{ selector: 'node.patch-target', style: { 'border-width': 4, 'border-color': '#7654e8', 'background-image': NODE_CHANGE_MARKER, 'background-fit': 'none', 'background-width': '18px', 'background-height': '18px', 'background-repeat': 'no-repeat', 'background-position-x': '100%', 'background-position-y': '100%', 'background-offset-x': -3, 'background-offset-y': -3 } as never },
+	{ selector: 'node.group.patch-target', style: { 'background-image': 'none' } as never },
+	{ selector: 'node.entering', style: { opacity: 0 } },
+	{ selector: 'node.retiring', style: { opacity: 0, 'border-color': '#c45f73', 'background-color': '#fff1f3' } },
+	{ selector: 'edge', style: { width: 1.6, 'line-color': '#566273', 'target-arrow-color': '#566273', 'target-arrow-shape': 'triangle', 'arrow-scale': .8, 'curve-style': 'bezier', label: 'data(label)', color: '#6d6575', 'font-size': 8, 'text-background-color': '#fbfbfc', 'text-background-opacity': .92, 'text-background-padding': '3px', 'text-rotation': 'autorotate', 'min-zoomed-font-size': 7, 'overlay-opacity': 0, 'transition-property': 'opacity, line-color, width', 'transition-duration': 820 } },
+	{ selector: 'edge.semantic', style: { 'line-style': 'dashed', 'line-color': '#9ca7b8', 'target-arrow-shape': 'none' } },
+	{ selector: 'edge.weak', style: { 'line-style': 'dashed', 'line-color': '#c49a54', 'target-arrow-color': '#c49a54' } },
+	{ selector: 'edge.diagnostic', style: { width: 2.3, 'line-style': 'dashed', 'line-color': '#ce7a38', 'target-arrow-shape': 'none', color: '#9a5c2c', 'font-weight': 720, 'text-background-color': '#fff9f1', 'text-background-opacity': 1, 'text-background-padding': '5px' } },
+	{ selector: 'edge.missing', style: { 'line-color': '#d16f31' } },
+	{ selector: 'edge.patch-target', style: { width: 3.2, 'line-color': '#7452df', 'target-arrow-color': '#7452df' } },
+	{ selector: 'edge.entering', style: { opacity: 0 } },
+	{ selector: 'edge.retiring', style: { opacity: 0, 'line-color': '#c45f73' } },
 ];
 
-const ALL_NODE_IDS = FINAL_SUBGRAPH.resultNodes.map((node) => node.id);
-
-function buildLensSubgraph(
-	edges: ResultSubgraphOutput['edges'],
-	options: {
-		nodeIds?: string[];
-		titlePrefixById?: Record<string, string>;
-		previewById?: Record<string, string>;
-	} = {},
-): ResultSubgraphOutput {
-	const nodeIds = options.nodeIds ?? ALL_NODE_IDS;
-	const visibleIds = new Set(nodeIds);
-	const visibleEdges = edges.filter((edge) => visibleIds.has(edge.from) && visibleIds.has(edge.to));
-	const connectedIds = new Set(visibleEdges.flatMap((edge) => [edge.from, edge.to]));
-	const resultNodes = FINAL_SUBGRAPH.resultNodes
-		.filter((node) => visibleIds.has(node.id))
-		.map((node) => ({
-			...node,
-			title: `${options.titlePrefixById?.[node.id] ?? ''}${node.title}`,
-			preview: options.previewById?.[node.id] ?? node.preview,
-		}));
-	const communities = COMMUNITY_SUMMARIES
-		.map((community) => ({
-			...community,
-			visibleMemberIds: community.visibleMemberIds.filter((id) => visibleIds.has(id)),
-		}))
-		.filter((community) => community.visibleMemberIds.length > 0);
+function toNodeDefinition(item: AgentNode): ElementDefinition {
 	return {
-		resultNodes,
-		hubAnchors: [],
-		edges: visibleEdges,
-		isolatedDocIds: nodeIds.filter((id) => !connectedIds.has(id)),
-		overflowCount: 0,
-		communities,
+		group: 'nodes',
+		data: { id: item.id, label: item.label, parent: item.parent, order: item.order },
+		position: { x: item.x, y: item.y },
+		classes: item.classes ?? '',
 	};
 }
 
-const TOPOLOGY_SUBGRAPH = buildLensSubgraph(FINAL_SUBGRAPH.edges);
-
-const THINKING_TREE_SUBGRAPH = buildLensSubgraph([
-	{ from: 'graphrag', to: 'retrieval', kind: 'reference', directionality: 'directed' },
-	{ from: 'graphrag', to: 'community', kind: 'reference', directionality: 'directed' },
-	{ from: 'retrieval', to: 'evidence', kind: 'reference', directionality: 'directed' },
-	{ from: 'retrieval', to: 'benchmark', kind: 'reference', directionality: 'directed' },
-	{ from: 'community', to: 'global-search', kind: 'reference', directionality: 'directed' },
-	{ from: 'evidence', to: 'provenance', kind: 'reference', directionality: 'directed' },
-	{ from: 'evidence', to: 'source-lineage', kind: 'reference', directionality: 'directed' },
-	{ from: 'provenance', to: 'citations', kind: 'reference', directionality: 'directed' },
-	{ from: 'provenance', to: 'human-review', kind: 'reference', directionality: 'directed' },
-	{ from: 'benchmark', to: 'contradiction', kind: 'reference', directionality: 'directed' },
-	{ from: 'human-review', to: 'agent-observability', kind: 'reference', directionality: 'directed' },
-]);
-
-const BRIDGE_SUBGRAPH = buildLensSubgraph([
-	{ from: 'graphrag', to: 'retrieval', kind: 'reference', directionality: 'directed' },
-	{ from: 'retrieval', to: 'evidence', kind: 'semantic', directionality: 'directed', weight: .84 },
-	{ from: 'community', to: 'global-search', kind: 'reference', directionality: 'directed' },
-	{ from: 'global-search', to: 'benchmark', kind: 'semantic', directionality: 'directed', weight: .68 },
-	{ from: 'source-lineage', to: 'provenance', kind: 'reference', directionality: 'directed' },
-	{ from: 'provenance', to: 'human-review', kind: 'semantic', directionality: 'directed', weight: .79 },
-	{ from: 'human-review', to: 'agent-observability', kind: 'reference', directionality: 'directed' },
-], {
-	nodeIds: ['graphrag', 'retrieval', 'evidence', 'community', 'global-search', 'benchmark', 'source-lineage', 'provenance', 'human-review', 'agent-observability'],
-	titlePrefixById: {
-		'global-search': 'Bridge · ',
-		provenance: 'Bridge · ',
-		retrieval: 'Bridge · ',
-	},
-	previewById: {
-		'global-search': 'Bridge · Methods → Evaluation',
-		provenance: 'Bridge · Evidence → Control',
-		'retrieval': 'Bridge · Core → Evidence',
-	},
-});
-
-const TIMELINE_SUBGRAPH = buildLensSubgraph([
-	{ from: 'graphrag', to: 'retrieval', kind: 'reference', directionality: 'directed' },
-	{ from: 'retrieval', to: 'community', kind: 'reference', directionality: 'directed' },
-	{ from: 'community', to: 'global-search', kind: 'reference', directionality: 'directed' },
-	{ from: 'evidence', to: 'citations', kind: 'reference', directionality: 'directed' },
-	{ from: 'citations', to: 'source-lineage', kind: 'reference', directionality: 'directed' },
-	{ from: 'source-lineage', to: 'provenance', kind: 'reference', directionality: 'directed' },
-	{ from: 'benchmark', to: 'contradiction', kind: 'reference', directionality: 'directed' },
-	{ from: 'contradiction', to: 'human-review', kind: 'reference', directionality: 'directed' },
-	{ from: 'human-review', to: 'agent-observability', kind: 'reference', directionality: 'directed' },
-], {
-	titlePrefixById: {
-		graphrag: 'Jan · ', retrieval: 'Feb · ', community: 'Mar · ', 'global-search': 'Apr · ',
-		evidence: 'May · ', citations: 'Jun · ', 'source-lineage': 'Jul · ', provenance: 'Aug · ',
-		benchmark: 'Sep · ', contradiction: 'Oct · ', 'human-review': 'Nov · ', 'agent-observability': 'Dec · ',
-	},
-});
-
-const GAP_SUBGRAPH: ResultSubgraphOutput = {
-	resultNodes: [
-		{ id: 'gap-core', path: 'ai-graph://community/core', title: 'Core model · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Source community' },
-		{ id: 'gap-core-evaluation', path: 'ai-graph://gap/core-evaluation', title: 'Missing bridge · 0.82', score: 1, communityId: null, folder: '', preview: 'No direct relation despite strong semantic potential' },
-		{ id: 'gap-evaluation', path: 'ai-graph://community/evaluation', title: 'Evaluation · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Target community' },
-		{ id: 'gap-evidence', path: 'ai-graph://community/evidence', title: 'Evidence system · 4 concepts', score: .66, communityId: null, folder: '', preview: 'Source community' },
-		{ id: 'gap-evidence-control', path: 'ai-graph://gap/evidence-control', title: 'Weak bridge · 0.67', score: .82, communityId: null, folder: '', preview: 'One fragile relation needs stronger evidence' },
-		{ id: 'gap-control', path: 'ai-graph://community/control', title: 'Human control · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Target community' },
-		{ id: 'gap-methods', path: 'ai-graph://community/methods', title: 'Search methods · 2 concepts', score: .66, communityId: null, folder: '', preview: 'Source community' },
-		{ id: 'gap-methods-evidence', path: 'ai-graph://gap/methods-evidence', title: 'Latent connection · 0.58', score: .71, communityId: null, folder: '', preview: 'Related evidence exists but no relationship is modeled' },
-		{ id: 'gap-evidence-target', path: 'ai-graph://community/evidence', title: 'Evidence system · 4 concepts', score: .66, communityId: null, folder: '', preview: 'Target community' },
-	],
-	hubAnchors: [],
-	edges: [
-		{ from: 'gap-core', to: 'gap-core-evaluation', kind: 'semantic', directionality: 'undirected', weight: .82 },
-		{ from: 'gap-core-evaluation', to: 'gap-evaluation', kind: 'semantic', directionality: 'undirected', weight: .82 },
-		{ from: 'gap-evidence', to: 'gap-evidence-control', kind: 'semantic', directionality: 'undirected', weight: .67 },
-		{ from: 'gap-evidence-control', to: 'gap-control', kind: 'semantic', directionality: 'undirected', weight: .67 },
-		{ from: 'gap-methods', to: 'gap-methods-evidence', kind: 'semantic', directionality: 'undirected', weight: .58 },
-		{ from: 'gap-methods-evidence', to: 'gap-evidence-target', kind: 'semantic', directionality: 'undirected', weight: .58 },
-	],
-	isolatedDocIds: [],
-	overflowCount: 0,
-};
-
-interface LensDefinition {
-	id: LensId;
-	label: string;
-	defaultPreset: AtlasGraphPreset;
-	layouts: AtlasGraphPreset[];
-	fixedViewLabel?: string;
-	summary: string;
-	description: string;
-	question: string;
-	subgraph: ResultSubgraphOutput;
+function toEdgeDefinition(item: AgentEdge): ElementDefinition {
+	return {
+		group: 'edges',
+		data: { id: item.id, source: item.source, target: item.target, label: item.label ?? '' },
+		classes: item.classes ?? '',
+	};
 }
 
-const LENSES: LensDefinition[] = [
-	{ id: 'topology', label: 'Topology', defaultPreset: 'constellation', layouts: ['constellation', 'flow-lr', 'flow-tb'], summary: '12 nodes · 15 relations', description: 'Complete relation structure · switch between spatial and directional readings', question: 'How is this knowledge connected?', subgraph: TOPOLOGY_SUBGRAPH },
-	{ id: 'thinking-tree', label: 'Thinking Tree', defaultPreset: 'flow-lr', layouts: ['flow-lr'], summary: '12 concepts · 11 branches', description: 'Derivation hierarchy · one horizontal reasoning tree', question: 'How did the reasoning branch?', subgraph: THINKING_TREE_SUBGRAPH },
-	{ id: 'bridge', label: 'Bridges', defaultPreset: 'flow-lr', layouts: ['flow-lr', 'constellation'], summary: '3 bridges · 7 relations', description: 'Cross-domain paths · every highlighted concept joins two named knowledge areas', question: 'Which concepts connect otherwise separate domains?', subgraph: BRIDGE_SUBGRAPH },
-	{ id: 'timeline', label: 'Timeline', defaultPreset: 'flow-lr', layouts: ['flow-lr'], summary: '3 lanes · 12 dated concepts', description: 'Chronological wrappers follow three left-to-right Cytoscape chains', question: 'How did the model evolve over time?', subgraph: TIMELINE_SUBGRAPH },
-	{ id: 'gap-analysis', label: 'Gaps', defaultPreset: 'flow-lr', layouts: ['flow-lr'], fixedViewLabel: 'Gap map', summary: '3 structural gaps', description: 'Missing or fragile relationships with enough semantic potential to investigate', question: 'Where is knowledge missing or weakly connected?', subgraph: GAP_SUBGRAPH },
-];
+function clearPatchTargets(cy: Core): void {
+	cy.elements().removeClass('patch-target');
+}
 
-const LAYOUT_OPTIONS: Array<{ id: AtlasGraphPreset; label: string; detail: string }> = [
-	{ id: 'constellation', label: 'Constellation', detail: 'Force cluster' },
-	{ id: 'flow-lr', label: 'Flow →', detail: 'Left to right' },
-	{ id: 'flow-tb', label: 'Flow ↓', detail: 'Top to bottom' },
-];
+function runTimelineLayout(cy: Core, animate: boolean): void {
+	const milestones = cy.nodes('.milestone').sort((left, right) => Number(left.data('order')) - Number(right.data('order')));
+	milestones.forEach((item, index) => {
+		const target = { x: 115 + (index * 175), y: 355 };
+		if (!animate) {
+			item.position(target);
+			return;
+		}
+		item.animate({ position: target, duration: 620, easing: 'ease-out-cubic' });
+	});
+}
+
+function fitGraph(cy: Core, duration = 360): void {
+	if (cy.nodes().length === 0) return;
+	cy.stop();
+	cy.animate({ fit: { eles: cy.elements(), padding: 72 }, duration, easing: 'ease-out-cubic' });
+}
+
+function runLocalReflow(cy: Core, script: LensScript): void {
+	if (script.id === 'timeline') {
+		runTimelineLayout(cy, true);
+		return;
+	}
+	if (script.id === 'thinking-tree') {
+		cy.elements().layout({ name: 'dagre', rankDir: 'LR', nodeSep: 45, rankSep: 82, fit: false, animate: true, animationDuration: 650 } as never).run();
+	}
+}
+
+function runFinalLayout(cy: Core, script: LensScript, layout: LayoutId): void {
+	if (layout === 'timeline') {
+		runTimelineLayout(cy, true);
+		window.setTimeout(() => fitGraph(cy, 720), 380);
+		return;
+	}
+	if (layout === 'flow-lr' || layout === 'flow-tb') {
+		cy.elements().layout({ name: 'dagre', rankDir: layout === 'flow-tb' ? 'TB' : 'LR', nodeSep: 48, rankSep: 92, fit: true, padding: 74, animate: true, animationDuration: 980 } as never).run();
+		return;
+	}
+	if (layout === 'constellation') {
+		cy.elements().layout({ name: 'cose', fit: true, padding: 76, animate: true, animationDuration: 980, randomize: false, nodeRepulsion: 7200, idealEdgeLength: 120 } as never).run();
+		return;
+	}
+	fitGraph(cy, 820);
+}
+
+function applyClassDelta(element: SingularElementReturnValue, addClasses?: string, removeClasses?: string): void {
+	if (removeClasses) element.removeClass(removeClasses);
+	if (addClasses) element.addClass(addClasses);
+	element.addClass('patch-target');
+}
+
+function focusNewestIfOutside(cy: Core, nodeIds: string[]): void {
+	if (nodeIds.length === 0) return;
+	const target = cy.getElementById(nodeIds[nodeIds.length - 1]);
+	if (target.empty()) return;
+	const host = cy.container();
+	if (!host) return;
+	const box = target.renderedBoundingBox();
+	const margin = 64;
+	const visible = box.x1 >= margin && box.y1 >= margin && box.x2 <= host.clientWidth - margin && box.y2 <= host.clientHeight - margin;
+	if (visible) return;
+	cy.animate({ center: { eles: target }, duration: 560, easing: 'ease-out-cubic' });
+}
+
+interface AgentGraphCanvasProps {
+	script: LensScript;
+	active: boolean;
+	stepIndex: number;
+	runNonce: number;
+	refineNonce: number;
+	layout: LayoutId;
+	onSelect: (label: string) => void;
+	onStats: (lensId: LensId, stats: GraphStats) => void;
+}
+
+function AgentGraphCanvas({ script, active, stepIndex, runNonce, refineNonce, layout, onSelect, onStats }: AgentGraphCanvasProps): React.ReactElement {
+	const hostRef = useRef<HTMLDivElement | null>(null);
+	const cyRef = useRef<Core | null>(null);
+	const appliedStepRef = useRef(-1);
+	const runNonceRef = useRef(-1);
+	const refineNonceRef = useRef(-1);
+	const layoutRef = useRef(layout);
+	const activeRef = useRef(active);
+	const initializedRef = useRef(false);
+	const pendingFocusRef = useRef<string | null>(null);
+	const hostSizeRef = useRef({ width: 0, height: 0 });
+	const resizeTimerRef = useRef<number | null>(null);
+	activeRef.current = active;
+
+	const reportStats = (cy: Core): void => {
+		const ordinaryNodes = cy.nodes().filter((item) => !item.hasClass('group')).length;
+		const diagnostics = cy.edges('.diagnostic').length;
+		const edges = cy.edges().filter((item) => !item.hasClass('overlay')).length;
+		onStats(script.id, { nodes: ordinaryNodes, edges, diagnostics });
+	};
+
+	const resetGraph = (cy: Core): void => {
+		cy.elements().remove();
+		cy.add([
+			...script.initialNodes.map(toNodeDefinition),
+			...script.initialEdges.map(toEdgeDefinition),
+		]);
+		if (script.id === 'timeline') runTimelineLayout(cy, false);
+		appliedStepRef.current = -1;
+		refineNonceRef.current = -1;
+		reportStats(cy);
+		window.setTimeout(() => fitGraph(cy, 0), 0);
+	};
+
+	const applyStep = (cy: Core, step: AgentStep, animate: boolean): void => {
+		clearPatchTargets(cy);
+		const enteringIds: string[] = [];
+		const retiring = cy.collection();
+		cy.batch(() => {
+			for (const edgeId of step.removeEdgeIds ?? []) {
+				const item = cy.getElementById(edgeId);
+				if (!item.empty()) item.remove();
+			}
+			for (const nodeId of step.removeNodeIds ?? []) {
+				const item = cy.getElementById(nodeId);
+				if (item.empty()) continue;
+				if (!animate) {
+					item.remove();
+					continue;
+				}
+				retiring.merge(item).merge(item.connectedEdges());
+			}
+			const parents = (step.addNodes ?? []).filter((item) => item.classes?.split(' ').includes('group'));
+			const children = (step.addNodes ?? []).filter((item) => !item.classes?.split(' ').includes('group'));
+			for (const item of [...parents, ...children]) {
+				const definition = toNodeDefinition(item);
+				definition.classes = `${definition.classes ?? ''}${animate ? ' entering' : ''} patch-target`.trim();
+				cy.add(definition);
+				enteringIds.push(item.id);
+			}
+			for (const item of step.addEdges ?? []) {
+				const definition = toEdgeDefinition(item);
+				definition.classes = `${definition.classes ?? ''}${animate ? ' entering' : ''} patch-target`.trim();
+				cy.add(definition);
+				enteringIds.push(item.id);
+			}
+			for (const update of step.updateNodes ?? []) {
+				const item = cy.getElementById(update.id);
+				if (item.empty()) continue;
+				if (update.label !== undefined) item.data('label', update.label);
+				applyClassDelta(item, update.addClasses, update.removeClasses);
+			}
+			for (const update of step.updateEdges ?? []) {
+				const item = cy.getElementById(update.id);
+				if (item.empty()) continue;
+				if (update.label !== undefined) item.data('label', update.label);
+				applyClassDelta(item, update.addClasses, update.removeClasses);
+			}
+		});
+		if (!retiring.empty()) {
+			retiring.addClass('retiring');
+			window.setTimeout(() => {
+				retiring.remove();
+				if (step.reflow) runLocalReflow(cy, script);
+				reportStats(cy);
+			}, 420);
+		}
+		if (animate && enteringIds.length > 0) {
+			window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+				for (const id of enteringIds) cy.getElementById(id).removeClass('entering');
+			}));
+		}
+		if (step.reflow && retiring.empty()) runLocalReflow(cy, script);
+		if (step.focusNodeId && activeRef.current) {
+			const target = cy.getElementById(step.focusNodeId);
+			if (!target.empty()) window.setTimeout(() => cy.animate({ center: { eles: target }, zoom: Math.max(.72, cy.zoom()), duration: 560 }), 160);
+		} else if (activeRef.current && step.addNodes?.length) {
+			const addedNodeIds = step.addNodes.filter((item) => !item.classes?.split(' ').includes('group')).map((item) => item.id);
+			window.setTimeout(() => focusNewestIfOutside(cy, addedNodeIds), step.reflow ? 680 : 140);
+		} else if (!activeRef.current) {
+			const addedNodeIds = step.addNodes?.filter((item) => !item.classes?.split(' ').includes('group')).map((item) => item.id) ?? [];
+			const newestNodeId = step.focusNodeId ?? addedNodeIds[addedNodeIds.length - 1];
+			if (newestNodeId) pendingFocusRef.current = newestNodeId;
+		}
+		reportStats(cy);
+	};
+
+	useLayoutEffect(() => {
+		const host = hostRef.current;
+		if (!host) return;
+		const cy = cytoscape({
+			container: host,
+			elements: [],
+			style: CY_STYLES,
+			layout: { name: 'preset' },
+			minZoom: .2,
+			maxZoom: 2.2,
+			wheelSensitivity: .18,
+		});
+		cyRef.current = cy;
+		cy.on('tap', 'node', (event) => {
+			const item = event.target as NodeSingular;
+			if (item.hasClass('group')) return;
+			onSelect(String(item.data('label')));
+		});
+		const observer = new ResizeObserver((entries) => {
+			const nextSize = entries[0]?.contentRect;
+			const previousSize = hostSizeRef.current;
+			hostSizeRef.current = { width: nextSize?.width ?? host.clientWidth, height: nextSize?.height ?? host.clientHeight };
+			cy.resize();
+			if (resizeTimerRef.current !== null) window.clearTimeout(resizeTimerRef.current);
+			resizeTimerRef.current = window.setTimeout(() => {
+				if (!initializedRef.current) {
+					initializedRef.current = true;
+					fitGraph(cy, 0);
+					return;
+				}
+				cy.panBy({
+					x: (hostSizeRef.current.width - previousSize.width) / 2,
+					y: (hostSizeRef.current.height - previousSize.height) / 2,
+				});
+			}, 90);
+		});
+		observer.observe(host);
+		resetGraph(cy);
+		return () => {
+			observer.disconnect();
+			if (resizeTimerRef.current !== null) window.clearTimeout(resizeTimerRef.current);
+			cy.destroy();
+			cyRef.current = null;
+		};
+	}, [script.id]);
+
+	useEffect(() => {
+		const cy = cyRef.current;
+		if (!cy) return;
+		if (runNonceRef.current !== runNonce || stepIndex < appliedStepRef.current) {
+			runNonceRef.current = runNonce;
+			resetGraph(cy);
+		}
+		for (let index = appliedStepRef.current + 1; index <= stepIndex; index += 1) {
+			const step = script.steps[index];
+			if (!step) break;
+			applyStep(cy, step, index === stepIndex);
+			appliedStepRef.current = index;
+		}
+	}, [runNonce, stepIndex, script.id]);
+
+	useEffect(() => {
+		const cy = cyRef.current;
+		if (!cy || refineNonce <= 0 || refineNonceRef.current === refineNonce) return;
+		refineNonceRef.current = refineNonce;
+		runFinalLayout(cy, script, layout);
+	}, [refineNonce, script.id]);
+
+	useEffect(() => {
+		const cy = cyRef.current;
+		if (!cy || layoutRef.current === layout) return;
+		layoutRef.current = layout;
+		if (active) runFinalLayout(cy, script, layout);
+	}, [active, layout, script.id]);
+
+	useEffect(() => {
+		const cy = cyRef.current;
+		if (!cy || !active) return;
+		window.setTimeout(() => {
+			cy.resize();
+			const host = cy.container();
+			if (!host || cy.nodes().length === 0) return;
+			const graphBox = cy.elements().renderedBoundingBox();
+			const entirelyOutside = graphBox.x2 < 0 || graphBox.y2 < 0 || graphBox.x1 > host.clientWidth || graphBox.y1 > host.clientHeight;
+			if (entirelyOutside) {
+				fitGraph(cy, 300);
+				pendingFocusRef.current = null;
+				return;
+			}
+			if (!pendingFocusRef.current) return;
+			focusNewestIfOutside(cy, [pendingFocusRef.current]);
+			pendingFocusRef.current = null;
+		}, 30);
+	}, [active]);
+
+	return <div className={`aig-agent-graph${active ? ' is-active' : ''}`} aria-hidden={!active}><div ref={hostRef} className="aig-cytoscape-host" /></div>;
+}
 
 function LensGlyph({ id }: { id: LensId }): React.ReactElement {
 	if (id === 'thinking-tree') return <GitBranch aria-hidden />;
@@ -488,642 +682,127 @@ function LensGlyph({ id }: { id: LensId }): React.ReactElement {
 	return <Network aria-hidden />;
 }
 
-function LayoutGlyph({ id }: { id: AtlasGraphPreset }): React.ReactElement {
+function LayoutGlyph({ id }: { id: LayoutId }): React.ReactElement {
 	if (id === 'flow-tb') return <ArrowDown aria-hidden />;
-	if (id === 'flow-lr') return <ArrowRight aria-hidden />;
+	if (id === 'flow-lr' || id === 'timeline') return <ArrowRight aria-hidden />;
+	if (id === 'diagnostic') return <CircleDotDashed aria-hidden />;
 	return <LayoutGrid aria-hidden />;
 }
 
-const TIMELINE_LANES = [
-	{ label: 'Foundation', range: 'Jan – Apr', tone: 'violet' },
-	{ label: 'Evidence', range: 'May – Aug', tone: 'blue' },
-	{ label: 'Control', range: 'Sep – Dec', tone: 'green' },
-] as const;
-
-function TimelineBackdrop(): React.ReactElement {
-	return (
-		<div className="aig-timeline-backdrop" aria-hidden>
-			<div className="aig-projection-note"><Clock3 /><span><strong>2026 · knowledge evolution</strong><small>The graph edge is the timeline; each wrapper follows one dated chain.</small></span></div>
-			{TIMELINE_LANES.map((lane) => (
-				<div key={lane.label} className={`aig-timeline-lane is-${lane.tone}`}>
-					<div className="aig-timeline-lane__label"><strong>{lane.label}</strong><span>{lane.range}</span></div>
-				</div>
-			))}
-		</div>
-	);
-}
-
-const BRIDGE_LANES = [
-	{ label: 'Core → Evidence', detail: 'Retrieval carries the model into grounded evidence' },
-	{ label: 'Methods → Evaluation', detail: 'Global search connects a method to its benchmark' },
-	{ label: 'Evidence → Control', detail: 'Claim provenance creates a reviewable control path' },
-] as const;
-
-function BridgeBackdrop(): React.ReactElement {
-	return (
-		<div className="aig-bridge-backdrop" aria-hidden>
-			<div className="aig-projection-note"><Waypoints /><span><strong>3 bridge concepts</strong><small>A bridge is the middle concept that joins two otherwise separate domains.</small></span></div>
-			{BRIDGE_LANES.map((lane) => <div key={lane.label} className="aig-bridge-lane"><strong>{lane.label}</strong><span>{lane.detail}</span></div>)}
-		</div>
-	);
-}
-
-const GAP_LANES = [
-	{ label: 'Missing bridge', detail: '0 direct links · semantic potential 0.82', tone: 'missing' },
-	{ label: 'Weak bridge', detail: '1 fragile link · confidence 0.67', tone: 'weak' },
-	{ label: 'Latent connection', detail: 'Related evidence exists · score 0.58', tone: 'latent' },
-] as const;
-
-function GapBackdrop(): React.ReactElement {
-	return (
-		<div className="aig-gap-backdrop" aria-hidden>
-			<div className="aig-projection-note"><CircleDotDashed /><span><strong>3 structural gaps</strong><small>A gap is a meaningful missing or fragile relationship—not empty canvas space.</small></span></div>
-			{GAP_LANES.map((lane) => <div key={lane.label} className={`aig-gap-lane is-${lane.tone}`}><strong>{lane.label}</strong><span>{lane.detail}</span></div>)}
-		</div>
-	);
-}
-
-interface LensProjectionCanvasProps {
-	lens: LensDefinition;
-	preset: AtlasGraphPreset;
-	variant: 'stable' | 'final';
-	onNodeTap: (nodeId: string) => void;
-}
-
-function LensProjectionCanvas({ lens, preset, variant, onNodeTap }: LensProjectionCanvasProps): React.ReactElement {
-	const projectionClass = `${lens.id === 'timeline' ? ' is-timeline-projection' : ''}${lens.id === 'bridge' && preset === 'flow-lr' ? ' is-bridge-projection' : ''}${lens.id === 'gap-analysis' ? ' is-gap-projection' : ''}`;
-	const summary = variant === 'stable' ? `v12 · ${lens.summary}` : lens.summary;
-	return (
-		<div className={`aig-graph-layer aig-graph-layer--${variant}${projectionClass}`}>
-			{lens.id === 'timeline' && <TimelineBackdrop />}
-			{lens.id === 'bridge' && preset === 'flow-lr' && <BridgeBackdrop />}
-			{lens.id === 'gap-analysis' && <GapBackdrop />}
-			<AtlasGraphCanvas
-				subgraph={lens.subgraph}
-				preset={preset}
-				showSemantic
-				summary={summary}
-				emptyLabel="No graph objects"
-				buildingLabel={`Building ${lens.label}…`}
-				onNodeTap={(node) => onNodeTap(node.id)}
-			/>
-		</div>
-	);
-}
-
-interface LiveGraphNodeProps {
-	label: string;
-	x: number;
-	y: number;
-	visible: boolean;
-	planned?: boolean;
-	tone?: 'root' | 'bridge' | 'candidate' | 'gap' | 'community' | 'removal';
-}
-
-function LiveGraphNode({ label, x, y, visible, planned = false, tone }: LiveGraphNodeProps): React.ReactElement | null {
-	if (!visible && !planned) return null;
-	return (
-		<div
-			className={`aig-live-graph-node${visible ? ' is-visible' : ' is-planned'}${tone ? ` is-${tone}` : ''}`}
-			style={{ left: `${x}%`, top: `${y}%` }}
-		>
-			{visible ? label : <><span /><small>{label}</small></>}
-		</div>
-	);
-}
-
-interface LiveGraphEdgeProps {
-	x1: number;
-	y1: number;
-	x2: number;
-	y2: number;
-	visible: boolean;
-	tone?: 'reference' | 'probe' | 'weak';
-}
-
-function LiveGraphEdge({ x1, y1, x2, y2, visible, tone = 'reference' }: LiveGraphEdgeProps): React.ReactElement | null {
-	if (!visible) return null;
-	return <line className={`aig-live-graph-edge is-${tone}`} pathLength="1" x1={x1 * 10} y1={y1 * 6} x2={x2 * 10} y2={y2 * 6} />;
-}
-
-interface GenerationFrameProps {
-	lens: LensDefinition;
-	progress: number;
-	active: boolean;
-	operation: string;
-	children: React.ReactNode;
-}
-
-function GenerationFrame({ lens, progress, active, operation, children }: GenerationFrameProps): React.ReactElement {
-	const ready = progress >= 100;
-	return (
-		<div className={`aig-lens-generation-scene is-${lens.id}${active ? ' is-active' : ''}`} aria-hidden={!active}>
-			<div className="aig-lens-generation-meta">
-				<LensGlyph id={lens.id} />
-				<span><strong>{lens.label} construction</strong><small>{ready ? 'Validated graph draft' : operation}</small></span>
-			</div>
-			<div className={`aig-projection-run-chip${ready ? ' is-ready' : ''}`} role={active ? 'status' : undefined} aria-live={active ? 'polite' : undefined}>
-				{ready ? <Check aria-hidden /> : <span className="aig-projection-run-chip__pulse" />}
-				<span><strong>{ready ? `${lens.label} draft ready` : `${progress}% · ${operation}`}</strong><small>{ready ? 'This graph is ready; the same run continues building the other views.' : 'Node and relation operations use this graph type’s own spatial rules.'}</small></span>
-			</div>
-			<div className="aig-lens-generation-content">{children}</div>
-		</div>
-	);
-}
-
-function thinkingTreeOperation(progress: number): string {
-	if (progress < 18) return 'Plan root and branch slots';
-	if (progress < 38) return 'Add first-level child nodes';
-	if (progress < 58) return 'Draw parent-child relations';
-	if (progress < 82) return 'Grow dependent branches';
-	if (progress < 100) return 'Validate ancestry and prune';
-	return 'Tree validated';
-}
-
-function ThinkingTreeGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
-	return (
-		<GenerationFrame lens={lens} progress={progress} active={active} operation={thinkingTreeOperation(progress)}>
-			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
-				<LiveGraphEdge x1={11} y1={50} x2={31} y2={34} visible={progress >= 30} />
-				<LiveGraphEdge x1={11} y1={50} x2={31} y2={66} visible={progress >= 30} />
-				<LiveGraphEdge x1={31} y1={34} x2={55} y2={21} visible={progress >= 55} />
-				<LiveGraphEdge x1={31} y1={34} x2={55} y2={43} visible={progress >= 55} />
-				<LiveGraphEdge x1={31} y1={66} x2={55} y2={69} visible={progress >= 55} />
-				<LiveGraphEdge x1={31} y1={66} x2={55} y2={86} visible={progress >= 58} tone={progress >= 82 ? 'weak' : 'reference'} />
-				<LiveGraphEdge x1={55} y1={21} x2={78} y2={13} visible={progress >= 76} />
-				<LiveGraphEdge x1={55} y1={21} x2={78} y2={29} visible={progress >= 76} />
-				<LiveGraphEdge x1={55} y1={43} x2={78} y2={46} visible={progress >= 76} />
-				<LiveGraphEdge x1={78} y1={13} x2={91} y2={26} visible={progress >= 88} />
-			</svg>
-			<LiveGraphNode label="GraphRAG" x={11} y={50} visible={progress >= 4} tone="root" />
-			<LiveGraphNode label="Retrieval-augmented generation" x={31} y={34} visible={progress >= 18} planned={progress < 18} />
-			<LiveGraphNode label="Community summarization" x={31} y={66} visible={progress >= 18} planned={progress < 18} />
-			<LiveGraphNode label="Evidence-linked graph" x={55} y={21} visible={progress >= 38} planned={progress < 38} />
-			<LiveGraphNode label="Evaluation benchmark" x={55} y={43} visible={progress >= 38} planned={progress < 38} />
-			<LiveGraphNode label="Global search" x={55} y={69} visible={progress >= 38} planned={progress < 38} />
-			<LiveGraphNode label={progress >= 82 ? 'Unsupported branch · prune' : 'Unverified branch'} x={55} y={86} visible={progress >= 44} planned={progress < 44} tone={progress >= 82 ? 'removal' : 'candidate'} />
-			<LiveGraphNode label="Claim provenance" x={78} y={13} visible={progress >= 64} planned={progress < 64} />
-			<LiveGraphNode label="Source lineage" x={78} y={29} visible={progress >= 64} planned={progress < 64} />
-			<LiveGraphNode label="Contradiction check" x={78} y={46} visible={progress >= 64} planned={progress < 64} />
-			<LiveGraphNode label="Human review loop" x={91} y={26} visible={progress >= 82} planned={progress < 82} />
-		</GenerationFrame>
-	);
-}
-
-function bridgeOperation(progress: number): string {
-	if (progress < 22) return 'Place source and destination domains';
-	if (progress < 42) return 'Stage bridge candidates';
-	if (progress < 66) return 'Test the first side';
-	if (progress < 88) return 'Connect the second side';
-	if (progress < 100) return 'Promote validated bridges';
-	return 'Bridge paths validated';
-}
-
-function BridgesGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
-	return (
-		<GenerationFrame lens={lens} progress={progress} active={active} operation={bridgeOperation(progress)}>
-			<div className="aig-live-bridge-columns"><span>Source domain</span><span>Bridge candidate</span><span>Connected domain</span></div>
-			{[28, 52, 76].map((top) => <div key={top} className="aig-live-bridge-lane" style={{ top: `${top - 8}%` }} />)}
-			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
-				<LiveGraphEdge x1={14} y1={28} x2={50} y2={28} visible={progress >= 44} />
-				<LiveGraphEdge x1={50} y1={28} x2={84} y2={28} visible={progress >= 60} />
-				<LiveGraphEdge x1={14} y1={52} x2={50} y2={52} visible={progress >= 52} />
-				<LiveGraphEdge x1={50} y1={52} x2={84} y2={52} visible={progress >= 68} />
-				<LiveGraphEdge x1={14} y1={76} x2={50} y2={76} visible={progress >= 60} />
-				<LiveGraphEdge x1={50} y1={76} x2={77} y2={76} visible={progress >= 76} />
-				<LiveGraphEdge x1={77} y1={76} x2={92} y2={76} visible={progress >= 88} />
-			</svg>
-			<LiveGraphNode label="GraphRAG" x={14} y={28} visible={progress >= 8} tone="community" />
-			<LiveGraphNode label="Community summarization" x={14} y={52} visible={progress >= 14} tone="community" />
-			<LiveGraphNode label="Source lineage" x={14} y={76} visible={progress >= 20} tone="community" />
-			<LiveGraphNode label="Retrieval" x={50} y={28} visible={progress >= 26} tone={progress >= 60 ? 'bridge' : 'candidate'} />
-			<LiveGraphNode label="Global search" x={50} y={52} visible={progress >= 32} tone={progress >= 68 ? 'bridge' : 'candidate'} />
-			<LiveGraphNode label="Claim provenance" x={50} y={76} visible={progress >= 38} tone={progress >= 76 ? 'bridge' : 'candidate'} />
-			<LiveGraphNode label="Evidence-linked graph" x={84} y={28} visible={progress >= 48} tone="community" />
-			<LiveGraphNode label="Evaluation benchmark" x={84} y={52} visible={progress >= 56} tone="community" />
-			<LiveGraphNode label="Human review loop" x={77} y={76} visible={progress >= 66} tone="community" />
-			<LiveGraphNode label="Agent observability" x={92} y={76} visible={progress >= 82} tone="community" />
-		</GenerationFrame>
-	);
-}
-
-function timelineOperation(progress: number): string {
-	if (progress < 18) return 'Plan dated lanes and wrappers';
-	if (progress < 38) return 'Place earliest dated concepts';
-	if (progress < 62) return 'Insert the next time points';
-	if (progress < 86) return 'Draw chronological relations';
-	if (progress < 100) return 'Extend wrappers to the latest nodes';
-	return 'Timeline validated';
-}
-
-function TimelineGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
-	const trackWidth = progress >= 80 ? 96 : progress >= 56 ? 74 : progress >= 32 ? 48 : progress >= 10 ? 24 : 16;
-	const rows = [
-		{ y: 29, tone: 'violet', label: 'Foundation · Jan–Apr', nodes: ['Jan · GraphRAG', 'Feb · Retrieval', 'Mar · Community', 'Apr · Global search'] },
-		{ y: 54, tone: 'blue', label: 'Evidence · May–Aug', nodes: ['May · Evidence graph', 'Jun · Citations', 'Jul · Source lineage', 'Aug · Provenance'] },
-		{ y: 79, tone: 'green', label: 'Control · Sep–Dec', nodes: ['Sep · Benchmark', 'Oct · Contradiction', 'Nov · Human review', 'Dec · Observability'] },
-	] as const;
-	const xs = [11, 38, 65, 90];
-	const nodeThresholds = [10, 32, 56, 80];
-	const edgeThresholds = [40, 64, 88];
-	return (
-		<GenerationFrame lens={lens} progress={progress} active={active} operation={timelineOperation(progress)}>
-			{rows.map((row) => <div key={row.label} className={`aig-live-timeline-track is-${row.tone}`} style={{ top: `${row.y - 9}%`, width: `${trackWidth}%` }}><strong>{row.label}</strong></div>)}
-			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
-				{rows.flatMap((row) => edgeThresholds.map((threshold, index) => <LiveGraphEdge key={`${row.label}:${index}`} x1={xs[index]} y1={row.y} x2={xs[index + 1]} y2={row.y} visible={progress >= threshold} />))}
-			</svg>
-			{rows.flatMap((row) => row.nodes.map((label, index) => <LiveGraphNode key={label} label={label} x={xs[index]} y={row.y} visible={progress >= nodeThresholds[index]} planned={progress < nodeThresholds[index] && progress >= 4} />))}
-		</GenerationFrame>
-	);
-}
-
-function gapsOperation(progress: number): string {
-	if (progress < 22) return 'Map existing knowledge regions';
-	if (progress < 42) return 'Probe missing cross-region relations';
-	if (progress < 66) return 'Score structural holes';
-	if (progress < 88) return 'Classify weak and latent links';
-	if (progress < 100) return 'Validate gap evidence';
-	return 'Gap diagnostics validated';
-}
-
-function GapsGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
-	const rows = [
-		{ y: 29, left: 'Core model', gap: 'Missing bridge · 0.82', right: 'Evaluation', threshold: 44, tone: 'missing' },
-		{ y: 54, left: 'Evidence system', gap: 'Weak bridge · 0.67', right: 'Human control', threshold: 64, tone: 'weak' },
-		{ y: 79, left: 'Search methods', gap: 'Latent connection · 0.58', right: 'Evidence system', threshold: 82, tone: 'latent' },
-	] as const;
-	return (
-		<GenerationFrame lens={lens} progress={progress} active={active} operation={gapsOperation(progress)}>
-			{rows.map((row) => <div key={row.gap} className={`aig-live-gap-lane is-${row.tone}`} style={{ top: `${row.y - 9}%` }} />)}
-			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
-				{rows.flatMap((row, index) => [
-					<LiveGraphEdge key={`${index}:left`} x1={15} y1={row.y} x2={43} y2={row.y} visible={progress >= 30 + (index * 9)} tone="probe" />,
-					<LiveGraphEdge key={`${index}:right`} x1={85} y1={row.y} x2={57} y2={row.y} visible={progress >= 36 + (index * 9)} tone="probe" />,
-				])}
-			</svg>
-			{rows.flatMap((row, index) => [
-				<LiveGraphNode key={`${row.gap}:left`} label={row.left} x={15} y={row.y} visible={progress >= 8 + (index * 4)} tone="community" />,
-				<LiveGraphNode key={`${row.gap}:gap`} label={row.gap} x={50} y={row.y} visible={progress >= row.threshold} tone="gap" />,
-				<LiveGraphNode key={`${row.gap}:right`} label={row.right} x={85} y={row.y} visible={progress >= 14 + (index * 4)} tone="community" />,
-			])}
-		</GenerationFrame>
-	);
-}
-
-function LensGenerationScene({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement | null {
-	if (lens.id === 'thinking-tree') return <ThinkingTreeGeneration lens={lens} progress={progress} active={active} />;
-	if (lens.id === 'bridge') return <BridgesGeneration lens={lens} progress={progress} active={active} />;
-	if (lens.id === 'timeline') return <TimelineGeneration lens={lens} progress={progress} active={active} />;
-	if (lens.id === 'gap-analysis') return <GapsGeneration lens={lens} progress={progress} active={active} />;
-	return null;
-}
-
-interface WorkingOverlayProps {
-	hidden: boolean;
-	step: number;
-}
-
-interface AddedEdgeProps {
-	d: string;
-	delayMs?: number;
-}
-
-function AddedEdge({ d, delayMs = 0 }: AddedEdgeProps): React.ReactElement {
-	const bodyRef = useRef<SVGPathElement | null>(null);
-	const headRef = useRef<SVGPathElement | null>(null);
-
-	useLayoutEffect(() => {
-		const body = bodyRef.current;
-		const head = headRef.current;
-		if (!body || !head) return;
-
-		const pathLength = head.getTotalLength();
-		const sampleCount = Math.max(32, Math.ceil(pathLength / 4));
-		const sampledPoints = Array.from({ length: sampleCount + 1 }, (_, index) => (
-			head.getPointAtLength((pathLength * index) / sampleCount)
-		));
-		const startPoint = sampledPoints[0];
-		body.removeAttribute('stroke-dasharray');
-		body.removeAttribute('stroke-dashoffset');
-		body.setAttribute('d', `M ${startPoint.x} ${startPoint.y}`);
-		body.style.opacity = '0';
-		head.style.opacity = '0';
-
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-			body.setAttribute('d', d);
-			body.style.opacity = '1';
-			head.style.opacity = '1';
-			return;
-		}
-
-		const startAt = performance.now() + delayMs;
-		let frameId = 0;
-		const drawFrame = (now: number): void => {
-			if (now < startAt) {
-				frameId = window.requestAnimationFrame(drawFrame);
-				return;
-			}
-
-			const progress = Math.min(1, (now - startAt) / EDGE_DRAW_DURATION_MS);
-			const easedProgress = progress * progress * (3 - (2 * progress));
-			const completedSampleCount = Math.max(1, Math.floor(easedProgress * sampleCount));
-			const partialPoints = sampledPoints.slice(0, completedSampleCount + 1);
-			const partialPath = partialPoints
-				.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-				.join(' ');
-			body.setAttribute('d', partialPath);
-			body.style.opacity = `${Math.min(1, .22 + (progress * 3))}`;
-
-			if (progress < 1) {
-				frameId = window.requestAnimationFrame(drawFrame);
-				return;
-			}
-
-			body.setAttribute('d', d);
-			body.style.opacity = '1';
-			head.style.opacity = '1';
-		};
-		frameId = window.requestAnimationFrame(drawFrame);
-
-		return () => {
-			window.cancelAnimationFrame(frameId);
-		};
-	}, [d, delayMs]);
-
-	return (
-		<>
-			<path ref={bodyRef} className="aig-overlay-edge is-added" d={d} />
-			<path ref={headRef} className="aig-overlay-edge-head" d={d} />
-		</>
-	);
-}
-
-interface ProposalNodeProps {
-	className: string;
-	connected: boolean;
-	meta: string;
-	title: string;
-	tombstone?: boolean;
-}
-
-function ProposalNode({ className, connected, meta, title, tombstone = false }: ProposalNodeProps): React.ReactElement {
-	return (
-		<div className={`aig-overlay-node ${className}${connected ? ' is-linked' : ' is-unlinked'}${tombstone ? ' is-tombstone' : ''}`}>
-			<span>{tombstone ? 'REMOVAL PROPOSED' : connected ? 'CONNECTED NODE' : 'PLACED · UNLINKED'}</span>
-			<strong>{title}</strong>
-			<small>{tombstone ? 'Transient candidate · excluded from diff' : meta}</small>
-		</div>
-	);
-}
-
-function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactElement {
-	const showProvenance = step >= 2;
-	const showBenchmark = step >= 3;
-	const showContradiction = step >= 4;
-	const showControlPair = step >= 5;
-	const showOrphan = step >= 6;
-	const showObservability = step >= 7;
-	const showFocus = step >= 8;
-	const showEvidenceRelations = step >= 9;
-	const showEvaluationRelations = step >= 10;
-	const showControlRelations = step >= 11;
-	const showRelationUpdate = step >= 12;
-	const removeOrphan = step >= 13;
-	const removeKeyword = step >= 14;
-	const stagedNodeCount = Math.min(7, Math.max(0, step - 1));
-
-	return (
-		<div className={`aig-working-overlay${hidden ? ' is-refined-away' : ''}`} aria-hidden="true">
-			<svg className="aig-overlay-edges" viewBox="0 0 1000 620" preserveAspectRatio="none">
-				<defs>
-					<marker id="aig-arrow-added" markerHeight="7" markerWidth="7" orient="auto" refX="6" refY="3.5">
-						<path d="M0,0 L7,3.5 L0,7 Z" />
-					</marker>
-				</defs>
-				{showEvidenceRelations && (
-					<>
-						<AddedEdge d="M555 332 C585 270 620 205 642 151" />
-						<AddedEdge d="M756 124 C800 178 805 270 760 332" delayMs={EDGE_STAGGER_MS} />
-					</>
-				)}
-				{showEvaluationRelations && (
-					<>
-						<AddedEdge d="M920 305 C785 190 625 118 516 106" />
-						<AddedEdge d="M364 106 C344 122 325 145 306 159" delayMs={EDGE_STAGGER_MS} />
-						<AddedEdge d="M232 194 C238 245 255 286 275 326" delayMs={EDGE_STAGGER_MS * 2} />
-					</>
-				)}
-				{showControlRelations && (
-					<>
-						<AddedEdge d="M555 350 C600 396 625 440 644 465" />
-						<AddedEdge d="M720 438 C720 324 710 230 700 151" delayMs={EDGE_STAGGER_MS} />
-						<AddedEdge d="M720 151 C800 225 850 332 875 412" delayMs={EDGE_STAGGER_MS * 2} />
-						<AddedEdge d="M956 440 C995 345 1005 250 984 190" delayMs={EDGE_STAGGER_MS * 3} />
-						<AddedEdge d="M984 174 C835 65 330 72 92 306" delayMs={EDGE_STAGGER_MS * 4} />
-					</>
-				)}
-				{removeKeyword && (
-					<>
-						<path className="aig-overlay-edge is-removing" d="M360 318 C400 316 430 306 460 300" />
-						<path className="aig-overlay-edge is-removing is-delay" d="M555 299 C595 298 630 291 655 286" />
-					</>
-				)}
-			</svg>
-
-			{showProvenance && (
-				<ProposalNode className="aig-overlay-node--provenance" connected={showEvidenceRelations} title="Claim provenance" meta="Evidence · confidence 0.92" />
-			)}
-			{showBenchmark && (
-				<ProposalNode className="aig-overlay-node--benchmark" connected={showEvaluationRelations} title="Evaluation benchmark" meta="Evaluation · confidence 0.88" />
-			)}
-			{showContradiction && (
-				<ProposalNode className="aig-overlay-node--contradiction" connected={showEvaluationRelations} title="Contradiction check" meta="Validation · confidence 0.84" />
-			)}
-			{showControlPair && (
-				<>
-					<ProposalNode className="aig-overlay-node--lineage" connected={showControlRelations} title="Source lineage" meta="Evidence · confidence 0.90" />
-					<ProposalNode className="aig-overlay-node--review" connected={showControlRelations} title="Human review loop" meta="Control · confidence 0.86" />
-				</>
-			)}
-			{showOrphan && (
-				<ProposalNode className="aig-overlay-node--orphan" connected={false} tombstone={removeOrphan} title="Orphan hypothesis" meta="Hypothesis · evidence pending" />
-			)}
-			{showObservability && (
-				<ProposalNode className="aig-overlay-node--observability" connected={showControlRelations} title="Agent observability" meta="Control · confidence 0.82" />
-			)}
-			{showRelationUpdate && (
-				<div className="aig-relation-update"><GitBranch aria-hidden /><span>supports</span><b>grounds</b></div>
-			)}
-			{showProvenance && !showEvidenceRelations && (
-				<div className="aig-placement-batch"><Plus aria-hidden /><span><strong>{stagedNodeCount} staged nodes</strong><small>0 relations · placement first</small></span></div>
-			)}
-			{showFocus && (
-				<div className="aig-focus-chip"><LocateFixed aria-hidden /><span>Focused · Agent observability</span></div>
-			)}
-			{removeKeyword && (
-				<div className="aig-tombstone is-node-removal">
-					<Trash2 aria-hidden />
-					<span><strong>Keyword-only clustering</strong><small>Node + 2 relations · original position retained</small></span>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function patchIcon(kind: PatchKind): React.ReactNode {
+function stepIcon(kind: StepKind): React.ReactNode {
 	if (kind === 'add-node' || kind === 'add-relation') return <Plus aria-hidden />;
-	if (kind === 'remove-node' || kind === 'remove-relation') return <Trash2 aria-hidden />;
-	if (kind === 'focus') return <LocateFixed aria-hidden />;
-	if (kind === 'auto-layout') return <Workflow aria-hidden />;
+	if (kind === 'remove-node') return <Trash2 aria-hidden />;
 	if (kind === 'validate') return <ShieldCheck aria-hidden />;
 	if (kind === 'update') return <GitBranch aria-hidden />;
 	return <Search aria-hidden />;
 }
 
-function modeLabel(mode: RunMode, readyViewCount: number): string {
-	if (mode === 'running') return `${readyViewCount}/5 graph views ready · generating`;
-	if (mode === 'paused') return `${readyViewCount}/5 graph views ready · paused`;
-	if (mode === 'layouting') return 'Refining 5 generated graph views';
+function visibleStepIndex(script: LensScript, globalStep: number, refined: boolean): number {
+	if (refined) return script.steps.length - 1;
+	return Math.min(globalStep, script.steps.length - 1);
+}
+
+function stepProgress(script: LensScript, stepIndex: number, refined: boolean): number {
+	if (refined) return 100;
+	if (stepIndex < 0) return 0;
+	return Math.round(((stepIndex + 1) / script.steps.length) * 100);
+}
+
+function modeLabel(mode: RunMode, readyCount: number): string {
+	if (mode === 'running') return `${readyCount}/5 graph views ready · running`;
+	if (mode === 'paused') return `${readyCount}/5 graph views ready · paused`;
+	if (mode === 'refining') return 'Refining five graph drafts';
 	if (mode === 'review') return '5 graph views ready for review';
-	if (mode === 'accepted') return 'Version v13 created · 5 graph views';
-	return 'Version v12 · 5 graph views';
+	if (mode === 'accepted') return 'Version v13 created';
+	return 'Version v12 · ready to run';
 }
 
 function Prototype(): React.ReactElement {
 	const [mode, setMode] = useState<RunMode>('idle');
-	const [patchIndex, setPatchIndex] = useState(-1);
+	const [globalStep, setGlobalStep] = useState(-1);
+	const [runNonce, setRunNonce] = useState(0);
+	const [refineNonce, setRefineNonce] = useState(0);
 	const [activityOpen, setActivityOpen] = useState(false);
-	const [selectedNode, setSelectedNode] = useState<string | null>(null);
 	const [activeLensId, setActiveLensId] = useState<LensId>('topology');
-	const [layoutOverride, setLayoutOverride] = useState<AtlasGraphPreset | null>(null);
-	const startedOnce = useRef(false);
-	const currentPatchRef = useRef<HTMLDivElement | null>(null);
-	const initialRunTimerRef = useRef<number | null>(null);
+	const [layoutByLens, setLayoutByLens] = useState<Record<LensId, LayoutId>>(() => Object.fromEntries(SCRIPTS.map((script) => [script.id, script.defaultLayout])) as Record<LensId, LayoutId>);
+	const [selectedNode, setSelectedNode] = useState<string | null>(null);
+	const [statsByLens, setStatsByLens] = useState<Record<LensId, GraphStats>>(() => Object.fromEntries(SCRIPTS.map((script) => [script.id, { nodes: script.initialNodes.filter((item) => !item.classes?.split(' ').includes('group')).length, edges: script.initialEdges.length, diagnostics: 0 }])) as Record<LensId, GraphStats>);
+	const startedRef = useRef(false);
+	const currentActivityRef = useRef<HTMLDivElement | null>(null);
 
 	const accepted = mode === 'accepted';
-	const refined = mode === 'layouting' || mode === 'review' || accepted;
-	const activeLens = LENSES.find((lens) => lens.id === activeLensId) ?? LENSES[0];
-	const effectivePreset = layoutOverride ?? activeLens.defaultPreset;
-	const activeLayout = LAYOUT_OPTIONS.find((layout) => layout.id === effectivePreset) ?? LAYOUT_OPTIONS[0];
-	const availableLayouts = activeLens.layouts
-		.map((preset) => LAYOUT_OPTIONS.find((layout) => layout.id === preset))
-		.filter((layout): layout is (typeof LAYOUT_OPTIONS)[number] => Boolean(layout));
-	const activeLayoutLabel = activeLens.fixedViewLabel ?? activeLayout.label;
-	const visibleStep = refined ? PATCHES.length : patchIndex + 1;
-	const lensProgressById = Object.fromEntries(LENSES.map((lens) => [
-		lens.id,
-		lensGenerationProgress(lens.id, visibleStep, mode),
-	])) as Record<LensId, number>;
-	const activeLensProgress = lensProgressById[activeLens.id];
-	const readyViewCount = LENSES.filter((lens) => lensProgressById[lens.id] >= 100).length;
+	const refined = mode === 'refining' || mode === 'review' || accepted;
 	const liveRun = mode === 'running' || mode === 'paused';
-	const activePatch = patchIndex >= 0 ? PATCHES[Math.min(patchIndex, PATCHES.length - 1)] : null;
-	const anchorAgentToNodeCorner = activePatch ? NODE_CORNER_PATCH_KINDS.has(activePatch.kind) : false;
-	const cursor = CURSOR_POINTS[Math.max(0, Math.min(patchIndex, CURSOR_POINTS.length - 1))] ?? CURSOR_POINTS[0];
-	const focusOverflow = visibleStep >= 8 && !refined;
-	const visibleNodeCount = BASE_NODES.length
-		+ (visibleStep >= 2 ? 1 : 0)
-		+ (visibleStep >= 3 ? 1 : 0)
-		+ (visibleStep >= 4 ? 1 : 0)
-		+ (visibleStep >= 5 ? 2 : 0)
-		+ (visibleStep >= 6 ? 1 : 0)
-		+ (visibleStep >= 7 ? 1 : 0)
-		- (visibleStep >= 13 ? 1 : 0)
-		- (visibleStep >= 14 ? 1 : 0);
-	const visibleRelationCount = BASE_EDGES.length
-		+ (visibleStep >= 9 ? 2 : 0)
-		+ (visibleStep >= 10 ? 3 : 0)
-		+ (visibleStep >= 11 ? 5 : 0)
-		- (visibleStep >= 14 ? 2 : 0);
+	const activeScript = SCRIPT_BY_ID[activeLensId];
+	const activeStepIndex = visibleStepIndex(activeScript, globalStep, refined);
+	const activeStep = activeStepIndex >= 0 ? activeScript.steps[activeStepIndex] : null;
+	const readyCount = SCRIPTS.filter((script) => refined || globalStep >= script.steps.length - 1).length;
+	const activeLayout = layoutByLens[activeLensId];
+	const activeStats = statsByLens[activeLensId];
 
 	const startRun = (): void => {
+		setRunNonce((current) => current + 1);
+		setRefineNonce(0);
+		setGlobalStep(-1);
 		setMode('running');
-		setPatchIndex(-1);
-		setActivityOpen(false);
 		setSelectedNode(null);
 	};
 
 	useEffect(() => {
-		if (startedOnce.current) return;
-		startedOnce.current = true;
-		initialRunTimerRef.current = window.setTimeout(() => {
-			initialRunTimerRef.current = null;
-			startRun();
-		}, RUN_START_DELAY_MS);
-		return () => {
-			if (initialRunTimerRef.current !== null) window.clearTimeout(initialRunTimerRef.current);
-		};
+		if (startedRef.current) return;
+		startedRef.current = true;
+		const timer = window.setTimeout(startRun, 650);
+		return () => window.clearTimeout(timer);
 	}, []);
 
 	useEffect(() => {
 		if (mode !== 'running') return;
-		if (patchIndex >= PATCHES.length - 1) {
-			const layoutTimer = window.setTimeout(() => setMode('layouting'), 700);
-			return () => window.clearTimeout(layoutTimer);
+		if (globalStep >= MAX_STEP_COUNT - 1) {
+			const timer = window.setTimeout(() => {
+				setRefineNonce((current) => current + 1);
+				setMode('refining');
+			}, 850);
+			return () => window.clearTimeout(timer);
 		}
-		let dwellMs = DEFAULT_PATCH_DWELL_MS;
-		if (patchIndex < 0) dwellMs = RUN_START_DELAY_MS;
-		if (activePatch?.kind === 'add-relation') dwellMs = RELATION_PATCH_DWELL_MS;
-		const timer = window.setTimeout(() => setPatchIndex((current) => current + 1), dwellMs);
+		const currentSteps = SCRIPTS.map((script) => script.steps[Math.min(globalStep, script.steps.length - 1)]).filter(Boolean);
+		const relationHeavy = currentSteps.some((step) => step.kind === 'add-relation');
+		const timer = window.setTimeout(() => setGlobalStep((current) => current + 1), globalStep < 0 ? 700 : relationHeavy ? 2100 : 1500);
 		return () => window.clearTimeout(timer);
-	}, [mode, patchIndex]);
+	}, [mode, globalStep]);
 
 	useEffect(() => {
-		if (mode !== 'layouting') return;
-		const reviewTimer = window.setTimeout(() => {
-			setMode('review');
-		}, 1650);
-		return () => window.clearTimeout(reviewTimer);
+		if (mode !== 'refining') return;
+		const timer = window.setTimeout(() => setMode('review'), 1400);
+		return () => window.clearTimeout(timer);
 	}, [mode]);
 
 	useEffect(() => {
-		currentPatchRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-	}, [activityOpen, mode, patchIndex]);
+		currentActivityRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+	}, [activityOpen, activeLensId, activeStepIndex]);
 
-	const togglePause = (): void => {
-		setMode((current) => current === 'paused' ? 'running' : 'paused');
-	};
-
-	const skipToFinalGraph = (): void => {
-		setPatchIndex(PATCHES.length - 1);
-		setMode('layouting');
+	const updateStats = (lensId: LensId, stats: GraphStats): void => {
+		setStatsByLens((current) => {
+			const existing = current[lensId];
+			if (existing.nodes === stats.nodes && existing.edges === stats.edges && existing.diagnostics === stats.diagnostics) return current;
+			return { ...current, [lensId]: stats };
+		});
 	};
 
 	const discard = (): void => {
+		setRunNonce((current) => current + 1);
+		setGlobalStep(-1);
+		setRefineNonce(0);
 		setMode('idle');
-		setPatchIndex(-1);
 		setActivityOpen(false);
-	};
-
-	const selectLens = (lensId: LensId): void => {
-		setActiveLensId(lensId);
-		setLayoutOverride(null);
 		setSelectedNode(null);
 	};
 
-	const selectLayout = (preset: AtlasGraphPreset): void => {
-		setLayoutOverride(preset);
-		setSelectedNode(null);
-	};
-
-	const moveLayoutFocus = (event: React.KeyboardEvent<HTMLButtonElement>): void => {
-		if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-		const segments = Array.from(
-			event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('.aig-layout-segment') ?? [],
-		);
-		if (segments.length === 0) return;
-		event.preventDefault();
-		const currentIndex = Math.max(0, segments.indexOf(event.currentTarget));
-		let nextIndex = currentIndex;
-		if (event.key === 'Home') nextIndex = 0;
-		if (event.key === 'End') nextIndex = segments.length - 1;
-		if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + segments.length) % segments.length;
-		if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % segments.length;
-		const next = segments[nextIndex];
-		const nextPreset = next?.dataset.layoutId as AtlasGraphPreset | undefined;
-		if (!next || !nextPreset) return;
-		next.focus();
-		selectLayout(nextPreset);
+	const skipToFinal = (): void => {
+		setGlobalStep(MAX_STEP_COUNT - 1);
+		window.setTimeout(() => {
+			setRefineNonce((current) => current + 1);
+			setMode('refining');
+		}, 40);
 	};
 
 	return (
@@ -1131,196 +810,80 @@ function Prototype(): React.ReactElement {
 			<header className="aig-topbar">
 				<div className="aig-brand">
 					<div className="aig-brandmark"><Sparkles aria-hidden /></div>
-					<div>
-						<span className="aig-eyebrow">PEAK AI GRAPH</span>
-						<span className="aig-title">GraphRAG research map</span>
-					</div>
+					<div><span className="aig-eyebrow">PEAK AI GRAPH</span><span className="aig-title">Evidence-grounded GraphRAG</span></div>
 					<span className="aig-version">{accepted ? 'v13' : 'v12'}</span>
 				</div>
-				<div className={`aig-status aig-status--${mode}`}>
-					<span className="aig-status__dot" />
-					{modeLabel(mode, readyViewCount)}
-				</div>
+				<div className={`aig-status aig-status--${mode}`}><span className="aig-status__dot" />{modeLabel(mode, readyCount)}</div>
 				<div className="aig-actions">
 					<button className="aig-btn aig-btn--ghost" type="button"><History aria-hidden /> History</button>
-					<button className={`aig-btn aig-btn--ghost aig-activity-trigger${activityOpen ? ' is-active' : ''}`} type="button" onClick={() => setActivityOpen((current) => !current)}>
-						<Workflow aria-hidden /> Activity <span>{Math.max(0, patchIndex + 1)}</span>
-					</button>
-					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'layouting'}>
-						<RotateCcw aria-hidden /> Replay run
-					</button>
+					<button className={`aig-btn aig-btn--ghost${activityOpen ? ' is-active' : ''}`} type="button" onClick={() => setActivityOpen((current) => !current)}><Workflow aria-hidden /> Activity</button>
+					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'refining'}><RotateCcw aria-hidden /> Replay run</button>
 				</div>
 			</header>
 
 			<section className="aig-instruction">
 				<div className="aig-instruction__icon"><Sparkles aria-hidden /></div>
-				<div className="aig-instruction__copy">
-					<span className="aig-instruction__label">Update instruction</span>
-					<span>Generate Topology, Thinking Tree, Bridges, Timeline, and Gaps from the same evidence set. Keep uncertain concepts disconnected until grounded.</span>
-				</div>
-				<div className="aig-context-chip">v12 frozen base</div>
-				<div className="aig-context-chip">11 sources</div>
-				<div className="aig-context-chip">5 graph views</div>
+				<div className="aig-instruction__copy"><span className="aig-instruction__label">Update instruction</span><span>Build five evidence-grounded graph views. Apply observable graph operations one step at a time; do not reveal nodes before they are discovered.</span></div>
+				<div className="aig-context"><span>v12 frozen base</span><span>11 sources</span><span>typed graph patches</span></div>
 			</section>
 
 			<main className={`aig-workspace${activityOpen ? ' is-activity-open' : ''}`}>
 				<section className="aig-canvas-card">
 					<div className="aig-canvas-toolbar">
-						<div className="aig-lens-tabs" role="tablist" aria-label="Graph lens">
-							{LENSES.map((lens) => (
-								<button
-									key={lens.id}
-									className={`aig-lens-tab${lens.id === activeLens.id ? ' is-active' : ''}`}
-									type="button"
-									role="tab"
-									aria-selected={lens.id === activeLens.id}
-									title={lens.question}
-									onClick={() => selectLens(lens.id)}
-								>
-									<LensGlyph id={lens.id} />
-									{lens.label}
-									{mode !== 'idle' && (
-										<span
-											className={`aig-lens-run-state is-${lensGenerationState(lensProgressById[lens.id], mode)}`}
-											aria-label={`${lens.label} ${lensProgressById[lens.id]} percent generated`}
-										>
-											{lensProgressById[lens.id] >= 100 ? <Check aria-hidden /> : lensProgressById[lens.id]}
-										</span>
-									)}
-								</button>
-							))}
+						<div className="aig-lens-tabs" role="tablist" aria-label="Generated graph views">
+							{SCRIPTS.map((script) => {
+								const scriptStep = visibleStepIndex(script, globalStep, refined);
+								const progress = stepProgress(script, scriptStep, refined);
+								return (
+									<button key={script.id} className={`aig-lens-tab${activeLensId === script.id ? ' is-active' : ''}`} type="button" role="tab" aria-selected={activeLensId === script.id} title={script.question} onClick={() => { setActiveLensId(script.id); setSelectedNode(null); }}>
+										<LensGlyph id={script.id} /><span>{script.label}</span>
+										{mode !== 'idle' && <b className={progress >= 100 ? 'is-ready' : ''}>{progress >= 100 ? <Check aria-hidden /> : `${scriptStep + 1}/${script.steps.length}`}</b>}
+									</button>
+								);
+							})}
 						</div>
-						<div className="aig-canvas-toolbar__end">
-							{!refined && activeLens.id === 'topology' && (
-								<div className="aig-live-legend">
-									<span className="aig-spatial-lock">{focusOverflow ? <><LocateFixed aria-hidden /> Following newest</> : <><ShieldCheck aria-hidden /> Spatial lock</>}</span>
-									<span><i className="is-existing" /> Existing</span>
-									<span><i className="is-added" /> Added</span>
-									<span><i className="is-removed" /> Removal</span>
+						<div className="aig-toolbar-end">
+							<div className="aig-runtime-badge"><Workflow aria-hidden /><span>{activeStep ? activeStep.tool : 'graph.inspect'}</span></div>
+							{activeScript.layouts.length > 1 ? (
+								<div className="aig-layout-switcher" role="tablist" aria-label={`${activeScript.label} layouts`}>
+									{activeScript.layouts.map((layoutId) => <button key={layoutId} className={activeLayout === layoutId ? 'is-active' : ''} type="button" role="tab" aria-selected={activeLayout === layoutId} onClick={() => setLayoutByLens((current) => ({ ...current, [activeLensId]: layoutId }))}><LayoutGlyph id={layoutId} />{LAYOUT_OPTIONS[layoutId].label}</button>)}
 								</div>
-							)}
-							{liveRun && activeLens.id !== 'topology' && (
-								<div className="aig-active-projection-status"><Workflow aria-hidden /><span>{activeLensProgress}% generated</span></div>
-							)}
-							{availableLayouts.length > 1 ? (
-								<div className="aig-layout-switcher">
-									<span className="aig-layout-label">Layout</span>
-									<div className="aig-layout-segments" role="tablist" aria-label={`${activeLens.label} layout`}>
-										{availableLayouts.map((layout) => (
-											<button
-												key={layout.id}
-												className={`aig-layout-segment${effectivePreset === layout.id ? ' is-active' : ''}`}
-												type="button"
-												role="tab"
-												aria-selected={effectivePreset === layout.id}
-												tabIndex={effectivePreset === layout.id ? 0 : -1}
-												data-layout-id={layout.id}
-												title={`${layout.label} · ${layout.detail}`}
-												onClick={() => selectLayout(layout.id)}
-												onKeyDown={moveLayoutFocus}
-											>
-												<LayoutGlyph id={layout.id} />
-												<span>{layout.label}</span>
-											</button>
-										))}
-									</div>
-								</div>
-							) : (
-								<div className="aig-layout-fixed" aria-label={`${activeLens.label} fixed view: ${activeLayoutLabel}`}>
-									{activeLens.id === 'gap-analysis' ? <CircleDotDashed aria-hidden /> : <LayoutGlyph id={effectivePreset} />}
-									<span>{activeLayoutLabel}</span>
-								</div>
-							)}
+							) : <div className="aig-layout-fixed"><LayoutGlyph id={activeLayout} />{LAYOUT_OPTIONS[activeLayout].label}</div>}
 						</div>
 					</div>
-					<div className={`aig-canvas aig-canvas--${mode}`}>
-						{!refined && (
-							<div className={`aig-working-scene${focusOverflow ? ' is-focus-overflow' : ''}${activeLens.id !== 'topology' ? ' is-hidden' : ''}`}>
-								<div className="aig-graph-layer aig-graph-layer--working">
-									<AtlasGraphCanvas
-										subgraph={STABLE_SUBGRAPH}
-										preset="flow-lr"
-										showSemantic
-										summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
-										emptyLabel="No graph objects"
-										buildingLabel="Preparing Cytoscape canvas…"
-										onNodeTap={(node) => setSelectedNode(node.id)}
-									/>
-								</div>
-								<WorkingOverlay hidden={false} step={visibleStep} />
-							</div>
-						)}
-						{liveRun && LENSES.filter((lens) => lens.id !== 'topology').map((lens) => (
-							<LensGenerationScene key={lens.id} lens={lens} progress={lensProgressById[lens.id]} active={activeLens.id === lens.id} />
-						))}
-						{!refined && !liveRun && activeLens.id !== 'topology' && (
-							<LensProjectionCanvas
-								key={`working:${activeLens.id}:${effectivePreset}`}
-								lens={activeLens}
-								preset={effectivePreset}
-								variant="stable"
-								onNodeTap={setSelectedNode}
-							/>
-						)}
-						{refined && (
-							<LensProjectionCanvas
-								key={`final:${activeLens.id}:${effectivePreset}`}
-								lens={activeLens}
-								preset={effectivePreset}
-								variant="final"
-								onNodeTap={setSelectedNode}
-							/>
-						)}
-						{activeLens.id === 'topology' && (mode === 'running' || mode === 'paused' || mode === 'layouting') && activePatch && (
-							<div
-								className={`aig-agent-cursor aig-agent-cursor--${activePatch.kind}${anchorAgentToNodeCorner ? ' is-node-corner' : ''}`}
-								style={cursor}
-							>
-								<span>{patchIcon(activePatch.kind)}</span>
-								<b>{activePatch.object}</b>
-							</div>
-						)}
-						{mode === 'review' && (
-							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>5 graph views ready · 20 changes</span></div>
-						)}
-						{mode === 'layouting' && (
-							<div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Refining all 5 graph views</strong><small>Showing {activeLens.label} · {activeLayoutLabel} · one intentional reflow per view</small></span></div>
-						)}
-						{mode === 'accepted' && (
-							<div className="aig-accepted-watermark"><Check aria-hidden /><span>v13 · 5 graph views are now canonical</span></div>
-						)}
+
+					<div className="aig-canvas">
+						<div className="aig-agent-canvas-stack">
+							{SCRIPTS.map((script) => <AgentGraphCanvas key={script.id} script={script} active={activeLensId === script.id} stepIndex={visibleStepIndex(script, globalStep, refined)} runNonce={runNonce} refineNonce={refineNonce} layout={layoutByLens[script.id]} onSelect={setSelectedNode} onStats={updateStats} />)}
+						</div>
+						<div className="aig-canvas-context">
+							<LensGlyph id={activeLensId} />
+							<span><strong>{activeScript.label}</strong><small>{activeScript.description}</small></span>
+						</div>
+						{liveRun && activeStep && <div className="aig-current-operation"><span>{stepIcon(activeStep.kind)}</span><div><b>{activeStep.tool}</b><strong>{activeStep.title}</strong><small>{activeStep.object}</small></div></div>}
+						{mode === 'refining' && <div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Refining all five graph drafts</strong><small>One intentional final layout; graph state stays unchanged.</small></span></div>}
+						{mode === 'review' && <div className="aig-review-chip"><ShieldCheck aria-hidden /> Five graph drafts ready</div>}
+						{mode === 'accepted' && <div className="aig-review-chip is-accepted"><Check aria-hidden /> v13 canonical</div>}
 					</div>
+
 					<footer className="aig-canvas-footer">
-						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? `${activeLens.label} · ${activeLayoutLabel}` : liveRun && activeLens.id !== 'topology' ? `${activeLens.label} draft · ${activeLensProgress}%` : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable five-view version created' : refined ? ` · ${activeLens.description}` : liveRun && activeLens.id !== 'topology' ? ' · one run is generating all 5 graph outputs; switching views does not interrupt it' : ' · Agent changes are not saved yet'}</span></div>
-						{selectedNode && <span className="aig-selection">Selected: {selectedNode}</span>}
+						<span><ShieldCheck aria-hidden /><b>{activeStats.nodes} nodes · {activeStats.edges} relations{activeStats.diagnostics > 0 ? ` · ${activeStats.diagnostics} diagnostics` : ''}</b> · one Cytoscape geometry model from first patch through review</span>
+						{selectedNode && <span className="aig-selection">Selected · {selectedNode}</span>}
 					</footer>
 				</section>
 
 				{activityOpen && (
 					<aside className="aig-activity-drawer">
-						<div className="aig-activity-drawer__head">
-							<div><strong>Agent activity</strong><span>{Math.max(0, patchIndex + 1)} of {PATCHES.length} operations</span></div>
-							<button type="button" onClick={() => setActivityOpen(false)} aria-label="Close activity"><X aria-hidden /></button>
-						</div>
-						<div className="aig-feed">
-							<div className="aig-feed-summary">
-								<div className="aig-agent-avatar"><Sparkles aria-hidden /></div>
-								<div><strong>Graph Generation Agent</strong><span>{mode === 'idle' ? 'Ready to generate 5 views' : mode === 'accepted' ? 'Five-view run accepted' : mode === 'layouting' ? `${PATCHES.length} operations complete · refining 5 views` : `${readyViewCount}/5 views ready · ${Math.max(0, patchIndex + 1)} of ${PATCHES.length} operations`}</span></div>
-							</div>
-							<div className="aig-progress"><span style={{ width: `${refined ? 100 : Math.max(3, ((patchIndex + 1) / PATCHES.length) * 100)}%` }} /></div>
-							<div className="aig-feed-view-statuses" aria-label="Generated graph views">
-								{LENSES.map((lens) => <span key={lens.id} className={lensProgressById[lens.id] >= 100 ? 'is-ready' : ''}>{lens.label}<b>{lensProgressById[lens.id] >= 100 ? <Check aria-hidden /> : `${lensProgressById[lens.id]}%`}</b></span>)}
-							</div>
+						<div className="aig-activity-head"><div><strong>{activeScript.label} activity</strong><span>{Math.max(0, activeStepIndex + 1)} of {activeScript.steps.length} committed steps</span></div><button type="button" aria-label="Close activity" onClick={() => setActivityOpen(false)}><X aria-hidden /></button></div>
+						<div className="aig-activity-body">
+							<div className="aig-agent-summary"><div><Sparkles aria-hidden /></div><span><strong>Graph Agent</strong><small>Each entry is one validated patch transaction, not token streaming.</small></span></div>
+							<div className="aig-progress"><span style={{ width: `${stepProgress(activeScript, activeStepIndex, refined)}%` }} /></div>
+							<div className="aig-agent-tools"><span>inspect</span><span>add</span><span>connect</span><span>update</span><span>remove</span><span>validate</span></div>
 							<div className="aig-feed-list">
-								{PATCHES.map((patch, index) => {
-									const completed = accepted || index <= patchIndex;
-									const current = !accepted && index === patchIndex && (mode === 'running' || mode === 'paused' || mode === 'layouting');
-									return (
-										<div ref={current ? currentPatchRef : undefined} key={patch.id} className={`aig-feed-item${completed ? ' is-complete' : ''}${current ? ' is-current' : ''}`}>
-											<div className={`aig-feed-item__icon is-${patch.kind}`}>{completed ? patchIcon(patch.kind) : <Clock3 aria-hidden />}</div>
-											<div><strong>{patch.title}</strong><span>{patch.detail}</span><small>{patch.object}</small></div>
-										</div>
-									);
+								{activeScript.steps.map((step, index) => {
+									const complete = refined || index <= activeStepIndex;
+									const current = liveRun && index === activeStepIndex;
+									return <div key={step.id} ref={current ? currentActivityRef : undefined} className={`aig-feed-item${complete ? ' is-complete' : ''}${current ? ' is-current' : ''}`}><div className={`aig-feed-icon is-${step.kind}`}>{complete ? stepIcon(step.kind) : <Clock3 aria-hidden />}</div><div><b>{step.tool}</b><strong>{step.title}</strong><span>{step.detail}</span><small>{step.object}</small></div></div>;
 								})}
 							</div>
 						</div>
@@ -1329,32 +892,14 @@ function Prototype(): React.ReactElement {
 			</main>
 
 			<footer className="aig-runbar">
-				<div className="aig-runbar__state">
-					{mode === 'running' && <CirclePlay aria-hidden />}
-					{mode === 'paused' && <CirclePause aria-hidden />}
-					{mode === 'layouting' && <Workflow aria-hidden />}
-					{mode === 'review' && <ShieldCheck aria-hidden />}
-					{mode === 'accepted' && <Check aria-hidden />}
-					{mode === 'idle' && <Sparkles aria-hidden />}
-					<span><strong>{modeLabel(mode, readyViewCount)}</strong><small>{mode === 'accepted' ? 'v12 remains available in History' : 'One run · five graphs · one reversible acceptance boundary'}</small></span>
+				<div className="aig-run-state">
+					{mode === 'running' && <CirclePlay aria-hidden />}{mode === 'paused' && <CirclePause aria-hidden />}{mode === 'refining' && <Workflow aria-hidden />}{mode === 'review' && <ShieldCheck aria-hidden />}{mode === 'accepted' && <Check aria-hidden />}{mode === 'idle' && <Sparkles aria-hidden />}
+					<span><strong>{modeLabel(mode, readyCount)}</strong><small>One run · five independent patch streams · one reversible acceptance boundary</small></span>
 				</div>
-				<div className="aig-runbar__actions">
-					{(mode === 'running' || mode === 'paused') && (
-						<>
-							<button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><Square aria-hidden /> Stop</button>
-							<button className="aig-btn aig-btn--ghost" type="button" onClick={togglePause}>{mode === 'paused' ? <Play aria-hidden /> : <Pause aria-hidden />}{mode === 'paused' ? 'Continue' : 'Pause'}</button>
-							<button className="aig-btn aig-btn--soft" type="button" onClick={skipToFinalGraph}>Skip to final package</button>
-						</>
-					)}
-					{mode === 'review' && (
-						<>
-							<button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><X aria-hidden /> Discard</button>
-							<button className="aig-btn aig-btn--primary" type="button" onClick={() => setMode('accepted')}><Check aria-hidden /> Accept new version</button>
-						</>
-					)}
-					{(mode === 'idle' || mode === 'accepted') && (
-						<button className="aig-btn aig-btn--primary" type="button" onClick={startRun}><RotateCcw aria-hidden /> Replay incremental run</button>
-					)}
+				<div className="aig-run-actions">
+					{liveRun && <><button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><Square aria-hidden /> Stop</button><button className="aig-btn aig-btn--ghost" type="button" onClick={() => setMode((current) => current === 'paused' ? 'running' : 'paused')}>{mode === 'paused' ? <Play aria-hidden /> : <Pause aria-hidden />}{mode === 'paused' ? 'Continue' : 'Pause'}</button><button className="aig-btn aig-btn--soft" type="button" onClick={skipToFinal}>Skip to review</button></>}
+					{mode === 'review' && <><button className="aig-btn aig-btn--ghost" type="button" onClick={discard}><X aria-hidden /> Discard</button><button className="aig-btn aig-btn--primary" type="button" onClick={() => setMode('accepted')}><Check aria-hidden /> Accept new version</button></>}
+					{accepted && <button className="aig-btn aig-btn--soft" type="button" onClick={startRun}><RotateCcw aria-hidden /> Replay incremental run</button>}
 				</div>
 			</footer>
 		</div>
