@@ -39,6 +39,7 @@
 - **Knowledge 长期策略与 Index 当前任务分开。** Settings 决定索引范围和质量；Knowledge Index 工作区显示扫描进度、速度、预计时间、顺序、错误和历史。
 - **系统默认、自动选择和用户选择必须能区分。** 恢复自动应删除用户覆盖，让产品重新计算，而不是把某个旧默认值永久写死。
 - **保存成功不等于生效成功。** 对连接、模型、索引、权限和路径等设置，产品还需要显示验证、重连、重建、重启或重新处理结果。
+- **所有“选择模型”的入口必须复用同一个 Provider → Model picker。** Picker 从已配置连接和同一模型目录读取，支持搜索、按 Provider / Profile 分组、能力筛选和不可用原因；不得在 Agents、Knowledge 或媒体等页面另做一套只列几个硬编码选项的原生下拉框。创建 / 删除连接仍归 Connections，普通枚举不强行套用模型 picker。
 
 ### 0.3 本文明确不做
 
@@ -350,7 +351,7 @@ Embedding 模型的唯一修改位置在 AI & Models。Knowledge & Search 显示
 | Hermes 快速 / 通用 / 深度任务模型 | 自动，可覆盖 | 都由同一个 Hermes runtime 执行，只是模型与预算不同 | `TARGET` |
 | Codex / Claude Code 执行连接 | 选择连接或自动 | 作为 Hermes 的底层执行 Provider；需要验证普通生成、工具、工作目录和权限适配 | `REQUIRED`，不是 Agent runtime |
 
-Agent 使用哪个模型在 AI & Models 设置；Agent 是否能读写、调用哪些工具和何时确认在 Agents 设置。Hermes 的主循环只能选择通过 Agent capability gate 的模型：至少验证工具调用、工具结果续接、结构化输出或可解析协议、上下文容量和流式稳定性。模型不支持工具时，可以被 Hermes 明确用于纯生成子任务，但不能成为需要工具的主执行模型；无可靠证据时必须 fail closed，而不是“试试看”。
+Agent 使用哪个模型的 canonical binding 在 AI & Models；Agents 页可以在“Agent execution”中提供同一 binding 的快捷入口，但两处必须读写同一值、打开同一个 Provider → Model picker，不能各自保存一套默认。Agent 是否能读写、调用哪些工具和何时确认仍在 Agents 设置。Hermes 的主循环只能选择通过 Agent capability gate 的模型：至少验证工具调用、工具结果续接、结构化输出或可解析协议、上下文容量和流式稳定性。模型不支持工具时，可在 picker 中保留并说明“不支持 / 未验证工具”，也可以被 Hermes 明确用于纯生成子任务，但不能成为需要工具的主执行模型；无可靠证据时必须 fail closed，而不是“试试看”。
 
 #### 媒体生成
 
@@ -481,7 +482,7 @@ Hermes 是 Agent 流程拥有者。Codex、Claude Code 和普通模型连接只�
 | --- | --- | --- | --- |
 | Vault 读取与搜索工具 | 普通设置 / 默认启用 | Agent 查找和引用用户内容 | `CURRENT` 核心工具；统一权限状态 `PARTIAL` |
 | Vault 编辑工具 | 普通设置 / 默认受限 | 仍受默认安全模式和 run 审核约束 | `CURRENT` 核心工具；统一权限状态 `PARTIAL` |
-| Web Search / Web fetch | 普通设置 | 外部联网，需说明查询、内容、执行来源和额外费用 | `PARTIAL`：多条 Provider / fallback 路径未统一 |
+| Web Search / Web fetch | 普通设置 | 外部联网；通过共享 Provider → Model picker 选择具备已验证 web route 的连接 / 模型，同时说明查询、内容、执行来源和额外费用 | `PARTIAL`：多条 Provider / fallback 路径未统一 |
 | Obsidian commands | 命令级设置 | 通过 Command Gateway 审核，不与模型混排 | Gateway `CURRENT`；Hermes 接线 `PARTIAL` |
 | MCP servers | 高级设置 | 管理第三方能力连接、状态、逐工具启用和权限 | `PARTIAL`：基础工具发现 / 调用有，规范覆盖不足 |
 | Skills | 高级设置 | 管理可发现的 Agent Skills；启用 skill 不自动授予其中工具权限 | `PARTIAL / NON-STANDARD` |

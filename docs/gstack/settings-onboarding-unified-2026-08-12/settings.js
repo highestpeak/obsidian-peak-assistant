@@ -359,18 +359,6 @@ $$('.modal-provider-list button').forEach((button) => {
   });
 });
 
-$$('.execution-card').forEach((button) => {
-  button.addEventListener("click", () => {
-    if (button.textContent.includes("Setup")) {
-      showSaved("Execution route needs setup before use");
-      return;
-    }
-    $$('.execution-card').forEach((candidate) => candidate.classList.remove("is-selected"));
-    button.classList.add("is-selected");
-    showSaved("Saved · new Agent tasks use this route automatically");
-  });
-});
-
 $('[data-review-safety]').addEventListener("click", () => showSaved("Effective rules · 6 remembered approvals · high-risk actions always ask"));
 
 let selectedActionModel = "Automatic";
@@ -390,10 +378,10 @@ const modelCatalog = [
   { profile: "Anthropic Direct", provider: "Anthropic", monogram: "AN", id: "claude-opus-4", name: "Claude Opus 4", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "200K", state: "Connected" },
   { profile: "Anthropic Direct", provider: "Anthropic", monogram: "AN", id: "claude-sonnet-4", name: "Claude Sonnet 4", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "200K", state: "Connected" },
 
-  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "deepseek/deepseek-r1", name: "DeepSeek R1", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], context: "128K", state: "Catalog" },
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "deepseek/deepseek-r1", name: "DeepSeek R1", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], context: "128K", state: "Catalog", agentStatus: "verified" },
   { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "deepseek/deepseek-chat-v3", name: "DeepSeek V3", scopes: ["text", "agent"], capabilities: ["tools"], context: "128K", state: "Catalog" },
   { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "qwen/qwen3-235b", name: "Qwen3 235B", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], context: "128K", state: "Catalog" },
-  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "2M", state: "Catalog" },
+  { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro", scopes: ["text", "agent", "vision"], capabilities: ["vision", "tools"], context: "2M", state: "Catalog", agentStatus: "verified" },
   { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "meta-llama/llama-4-maverick", name: "Llama 4 Maverick", scopes: ["text", "agent"], capabilities: ["tools"], context: "1M", state: "Catalog" },
   { profile: "OpenRouter", provider: "OpenRouter", monogram: "OR", id: "x-ai/grok-3", name: "Grok 3", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], context: "128K", state: "Catalog" },
 
@@ -421,12 +409,18 @@ const modelCatalog = [
   { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/minimax/speech-02-hd", name: "MiniMax Speech 02 HD", scopes: ["speech", "media"], capabilities: ["speech"], state: "Setup" },
   { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/minimax-music/v2", name: "MiniMax Music V2", scopes: ["music", "media"], capabilities: ["music"], state: "Setup" },
   { profile: "fal.ai Media", provider: "fal.ai", monogram: "FA", id: "fal-ai/ace-step", name: "ACE-Step", scopes: ["music", "media"], capabilities: ["music"], state: "Setup" },
+
+  { profile: "Perplexity", provider: "Perplexity", monogram: "PX", id: "sonar-pro", name: "Sonar Pro", scopes: ["text", "web"], capabilities: ["web"], context: "200K", state: "Setup" },
+  { profile: "Perplexity", provider: "Perplexity", monogram: "PX", id: "sonar", name: "Sonar", scopes: ["text", "web"], capabilities: ["web"], context: "128K", state: "Setup" },
+  { profile: "Codex", provider: "Codex", monogram: "CX", id: "codex/default", name: "Default Codex model", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], state: "Setup" },
+  { profile: "Claude Code", provider: "Claude Code", monogram: "CC", id: "claude-code/default", name: "Default Claude Code model", scopes: ["text", "agent"], capabilities: ["reasoning", "tools"], state: "Setup" },
 ];
 
 const capabilityLabels = {
   reasoning: "Reasoning",
   vision: "Vision",
   tools: "Tools",
+  web: "Web",
   local: "Local",
   image: "Image",
   embedding: "Embedding",
@@ -438,6 +432,7 @@ const capabilityLabels = {
 const automaticDescriptions = {
   text: "Peak chooses a compatible conversation model from your ready connections.",
   agent: "Peak chooses a tool-capable model for this Agent task.",
+  web: "Peak chooses a verified web-capable Provider and model when one is ready.",
   vision: "Peak chooses a model that can read the supplied images or documents.",
   image: "Peak chooses a ready image-generation model for this action.",
   embedding: "Peak prefers a ready local embedding model, then a connected cloud model.",
@@ -448,7 +443,25 @@ const automaticDescriptions = {
 };
 
 function modelsForScope(scope) {
-  return modelCatalog.filter((model) => model.scopes.includes(scope ?? "text"));
+  const effectiveScope = scope ?? "text";
+  if (effectiveScope === "agent") {
+    return modelCatalog.filter((model) => model.scopes.includes("agent") || model.scopes.includes("text"));
+  }
+  return modelCatalog.filter((model) => model.scopes.includes(effectiveScope));
+}
+
+function modelEligibility(model, scope) {
+  if (model.state === "Setup") return { selectable: false, label: "Set up connection" };
+  if (scope === "agent" && !model.capabilities.includes("tools")) return { selectable: false, label: "No verified tools" };
+  if (scope === "agent" && model.state === "Catalog" && model.agentStatus !== "verified") return { selectable: false, label: "Needs Hermes check" };
+  if (scope === "web" && !model.capabilities.includes("web")) return { selectable: false, label: "No web route" };
+  return { selectable: true, label: model.state };
+}
+
+function automaticDescriptionFor(target) {
+  return target.dataset.automaticDescription
+    ?? automaticDescriptions[target.dataset.modelScope]
+    ?? automaticDescriptions.text;
 }
 
 function selectModelChoice(button) {
@@ -466,15 +479,18 @@ function renderModelChoices(scope) {
       value: `${model.provider} · ${model.name}`,
       label: `${model.profile} · ${model.name}`,
       detail: `${model.id} · ${model.capabilities.map((capability) => capabilityLabels[capability]).join(" · ")}${model.context ? ` · ${model.context}` : ""}`,
-      state: model.state,
+      state: modelEligibility(model, scope).label,
+      selectable: modelEligibility(model, scope).selectable,
     })),
   ];
   for (const model of models) {
     const button = document.createElement("button");
     button.dataset.modelChoice = model.value;
     button.classList.toggle("is-selected", model.value === selectedActionModel);
+    button.classList.toggle("is-unavailable", model.selectable === false);
+    button.disabled = model.selectable === false;
     button.innerHTML = `<span><strong>${model.label}</strong><small>${model.detail}</small></span><em>${model.state}</em>`;
-    button.addEventListener("click", () => selectModelChoice(button));
+    if (model.selectable !== false) button.addEventListener("click", () => selectModelChoice(button));
     group.append(button);
   }
 }
@@ -485,10 +501,14 @@ function describeModelChoice(target) {
 }
 
 function updateModelTarget(target, modelValue) {
-  target.dataset.modelValue = modelValue;
-  const parts = modelValue.split(" · ");
-  $('.model-route-kind', target).textContent = modelValue === "Automatic" ? "Automatic" : parts.shift();
-  $('.model-route-name', target).textContent = modelValue === "Automatic" ? target.dataset.defaultModel : parts.join(" · ");
+  const binding = target.dataset.modelBinding;
+  const targets = binding ? $$(`[data-model-binding="${binding}"]`) : [target];
+  for (const boundTarget of targets) {
+    boundTarget.dataset.modelValue = modelValue;
+    const parts = modelValue.split(" · ");
+    $('.model-route-kind', boundTarget).textContent = modelValue === "Automatic" ? "Automatic" : parts.shift();
+    $('.model-route-name', boundTarget).textContent = modelValue === "Automatic" ? boundTarget.dataset.defaultModel : parts.join(" · ");
+  }
 }
 
 let activeInlineModelFilter = "all";
@@ -538,7 +558,7 @@ function wireInlineModelKeyboard(button) {
   button.addEventListener("keydown", (event) => {
     if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
     event.preventDefault();
-    const options = $$('[data-inline-model-option]', $('[data-inline-model-menu]'));
+    const options = $$('[data-inline-model-option]', $('[data-inline-model-menu]')).filter((option) => !option.disabled);
     const index = options.indexOf(button);
     const nextIndex = event.key === 'ArrowDown'
       ? Math.min(options.length - 1, index + 1)
@@ -554,7 +574,7 @@ function createInlineAutomaticOption(target, query) {
   button.className = "inline-model-auto";
   button.dataset.inlineModelOption = "automatic";
   button.classList.toggle("is-selected", selected);
-  button.innerHTML = `<span class="inline-model-monogram"><svg><use href="#i-sparkles"></use></svg></span><span class="inline-model-copy"><strong>Automatic · ${target.dataset.defaultModel}</strong><small>${automaticDescriptions[target.dataset.modelScope] ?? automaticDescriptions.text}</small></span><em>Recommended</em>${selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
+  button.innerHTML = `<span class="inline-model-monogram"><svg><use href="#i-sparkles"></use></svg></span><span class="inline-model-copy"><strong>Automatic · ${target.dataset.defaultModel}</strong><small>${automaticDescriptionFor(target)}</small></span><em>Recommended</em>${selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
   button.addEventListener("click", () => commitInlineModelChoice(target, "Automatic"));
   wireInlineModelKeyboard(button);
   return button;
@@ -571,6 +591,7 @@ function commitInlineModelChoice(target, value) {
 function createInlineModelRow(target, model) {
   const button = document.createElement("button");
   const selected = modelValue(model) === target.dataset.modelValue;
+  const eligibility = modelEligibility(model, target.dataset.modelScope);
   const capabilityTags = model.capabilities
     .slice(0, 3)
     .map((capability) => `<span>${capabilityLabels[capability] ?? capability}</span>`)
@@ -578,9 +599,14 @@ function createInlineModelRow(target, model) {
   button.dataset.inlineModelOption = model.id;
   button.dataset.modelId = model.id;
   button.classList.toggle("is-selected", selected);
-  button.innerHTML = `<span class="inline-model-monogram">${model.monogram}</span><span class="inline-model-copy"><strong>${model.name}</strong><small>${model.id}</small><span class="inline-model-capabilities">${capabilityTags}${model.context ? `<span>${model.context}</span>` : ""}</span></span>${selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
-  button.addEventListener("click", () => commitInlineModelChoice(target, modelValue(model)));
-  wireInlineModelKeyboard(button);
+  button.classList.toggle("is-unavailable", !eligibility.selectable);
+  button.disabled = !eligibility.selectable;
+  button.setAttribute("aria-disabled", String(!eligibility.selectable));
+  button.innerHTML = `<span class="inline-model-monogram">${model.monogram}</span><span class="inline-model-copy"><strong>${model.name}</strong><small>${model.id}</small><span class="inline-model-capabilities">${capabilityTags}${model.context ? `<span>${model.context}</span>` : ""}</span></span><em>${eligibility.label}</em>${eligibility.selectable && selected ? '<svg><use href="#i-check"></use></svg>' : '<i></i>'}`;
+  if (eligibility.selectable) {
+    button.addEventListener("click", () => commitInlineModelChoice(target, modelValue(model)));
+    wireInlineModelKeyboard(button);
+  }
   return button;
 }
 
@@ -595,6 +621,7 @@ function renderInlineModelOptions() {
   const models = modelsForScope(currentModelTarget.dataset.modelScope)
     .filter((model) => activeInlineModelFilter === "all" || model.capabilities.includes(activeInlineModelFilter))
     .filter((model) => matchesInlineModel(model, query));
+  const eligibleCount = models.filter((model) => modelEligibility(model, currentModelTarget.dataset.modelScope).selectable).length;
   const groups = new Map();
   for (const model of models) {
     const group = groups.get(model.profile) ?? [];
@@ -613,7 +640,10 @@ function renderInlineModelOptions() {
     options.append(group);
   }
 
-  $('[data-inline-model-result-count]').textContent = `${models.length} compatible model${models.length === 1 ? "" : "s"}`;
+  const unavailableCount = models.length - eligibleCount;
+  $('[data-inline-model-result-count]').textContent = unavailableCount > 0
+    ? `${eligibleCount} selectable · ${unavailableCount} unavailable`
+    : `${eligibleCount} compatible model${eligibleCount === 1 ? "" : "s"}`;
   $('[data-inline-model-empty]').hidden = models.length > 0 || Boolean(automaticOption);
   $('[data-inline-model-search-clear]').hidden = query.length === 0;
 }

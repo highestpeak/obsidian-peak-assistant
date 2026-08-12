@@ -54,6 +54,7 @@ requireValues("Settings HTML", settingsHtml, [
   "Tools &amp; external capabilities",
   "Permissions &amp; confirmations",
   "Agent execution",
+  "Execution model",
   "Advanced settings",
   "Files &amp; data",
   "Privacy, usage &amp; retention",
@@ -67,9 +68,13 @@ requireValues("Settings HTML", settingsHtml, [
   "data-inline-model-menu",
   "data-inline-model-search",
   "data-inline-model-filter=\"reasoning\"",
+  "data-inline-model-filter=\"web\"",
   "data-inline-model-result-count",
+  "Grouped by Provider connection",
   "Advanced model settings…",
   "data-model-scope=\"image\"",
+  "data-model-scope=\"web\"",
+  "data-model-binding=\"hermes-execution\"",
   "Generate images &amp; covers",
   "Understand images &amp; documents",
   "connection-picker-modal",
@@ -166,6 +171,17 @@ if (/\b(?:DOCX|PPTX|XLSX)\b/.test(settingsHtml)) {
 if (settingsJs.includes("const textModels =")) {
   missing.push("Settings JS: one-representative-model-per-provider list must stay removed");
 }
+if (settingsHtml.includes("data-execution-provider")) {
+  missing.push("Settings HTML: Agent execution must reuse the shared Provider-to-model picker rather than a hard-coded select");
+}
+if (settingsHtml.includes("Connected web search provider")) {
+  missing.push("Settings HTML: Web access must expose the shared capability-aware Provider-to-model picker");
+}
+
+const hermesBindingCount = settingsHtml.match(/data-model-binding="hermes-execution"/g)?.length ?? 0;
+if (hermesBindingCount !== 2) {
+  missing.push("Settings HTML: AI & Models and Agents must mirror the same Hermes execution binding");
+}
 
 const connectionsHeadingPosition = settingsHtml.indexOf("connection-section-heading");
 const addConnectionPosition = settingsHtml.indexOf("data-add-connection");
@@ -215,6 +231,8 @@ requireValues("Settings JS", settingsJs, [
   "function toggleInlineModelMenu",
   "function renderInlineModelOptions",
   "function modelsForScope",
+  "function modelEligibility",
+  "function automaticDescriptionFor",
   "function matchesInlineModel",
   "function updateModelTarget",
   "function toggleFocusedModal",
@@ -259,6 +277,8 @@ requireValues("CSS", css, [
   "flex: 1 1 auto",
   ".inline-model-group-heading",
   ".inline-model-capabilities",
+  ".inline-model-group > button.is-unavailable",
+  ".execution-model-row",
   ".file-type-icon",
   ".file-type-icon.pdf",
   ".file-type-policy-note",
