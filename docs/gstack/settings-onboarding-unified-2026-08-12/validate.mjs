@@ -147,6 +147,16 @@ if (controlCenterPosition < modelControlsPosition) {
   missing.push("Settings HTML: AI Control Center must follow the ordinary model controls");
 }
 
+const initiallyOpenFeatureRows = settingsHtml.match(/(?:feature-row-shell|feature-row|action-group-toggle|action-groups) is-open/g) ?? [];
+if (initiallyOpenFeatureRows.length > 0) {
+  missing.push("Settings HTML: model feature tree must start fully collapsed");
+}
+
+const featureChildrenTags = settingsHtml.match(/<(?:div|section)[^>]*data-tree-children="[^"]+"[^>]*>/g) ?? [];
+if (featureChildrenTags.length === 0 || featureChildrenTags.some((tag) => !/\shidden(?:\s|>)/.test(tag))) {
+  missing.push("Settings HTML: every model feature child group must be hidden initially");
+}
+
 requireValues("Onboarding HTML", onboardingHtml, [
   "Choose a first task",
   "Connect AI",
