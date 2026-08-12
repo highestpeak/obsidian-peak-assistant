@@ -55,9 +55,18 @@
 - [ ] **P0/P1** · [05 · 独立知识库完整 Dogfood](pre-launch/05-owner-dogfood.md)
   - Owner 在隔离 Vault 中批量使用全部公开功能。
   - 验证失败、恢复、持久化、升级和真实 Obsidian 交互。
+- [ ] **P0/P1 · Composer 条件式验收** · [20 · Composer 同一 Session 多文件与混合文件类型验收](pre-launch/20-composer-multi-file-mixed-file-session-qa.md)
+  - 验证同一个 Composer task session 能显式纳入、导航并编辑多个文件，而不是用多个独立 session 拼出结果。
+  - 覆盖最终公开支持的混合文件类型、逐文件授权、审阅、冲突和恢复；能力缺失时回到任务 16 收口或收窄主张。
 - [ ] **P0/P1** · [06 · 网站内容与首页演示视频](pre-launch/06-website-and-demo-videos.md)
   - 对齐网站主张与 Release Candidate。
   - 在 UI 稳定后录制顺滑、无隐私问题的功能视频。
+- [ ] **P1 · Graph 重点宣传任务** · [21 · Graph 多视图能力宣传与切换演示](pre-launch/21-graph-multi-view-launch-showcase.md)
+  - 把 Graph 作为核心能力展示，并解释不同视图各自帮助用户看见什么。
+  - 用真实产品视频展示 scope、layout、lens 和 semantic relation 的切换效果，不用单张静态截图代替。
+- [ ] **P0/P1 · 最终产品叙事** · [22 · Final Demo 与 One Continuous Context 场景](pre-launch/22-final-demo-continuous-context-story.md)
+  - 用一个自然的真实任务贯穿几乎所有公开核心操作，而不是制作互不相干的功能巡礼。
+  - 重点证明同一上下文能从 AI Search 延续到 Graph、File Atlas 和 Composer，并最终形成可审阅的成果。
 - [ ] **P0/P1** · [07 · 朋友试用与外部内容检查](pre-launch/07-external-beta.md)
   - 让未参与开发的人仅依靠公开材料完成核心任务。
   - 根据真实卡点修复产品、网站和文档。

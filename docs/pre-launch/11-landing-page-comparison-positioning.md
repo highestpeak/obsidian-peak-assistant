@@ -60,7 +60,7 @@
 - [ ] 来源、证据或相关 context 不会在 surface handoff 时静默丢失。
 - [ ] 原始 Markdown/native file 继续是 source of truth。
 - [ ] 错误、取消、stale source 和恢复路径通过真实验收。
-- [ ] 如果话术暗示 multi-file/agentic editing，对应能力必须真实可用；否则文案必须限定为 document editing。
+- [ ] 如果话术暗示 multi-file/agentic editing，必须先通过[Composer 同一 Session 多文件与混合文件类型验收](20-composer-multi-file-mixed-file-session-qa.md)；否则文案必须限定为 document editing。
 
 在能力尚未达到完整 Cursor 心智时，优先使用较窄的 `Cursor-style AI editing for your documents`，不要直接声称替代 Cursor。
 

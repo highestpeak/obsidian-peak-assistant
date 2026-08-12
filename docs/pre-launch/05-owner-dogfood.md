@@ -33,7 +33,8 @@ Owner 在与开发 Vault 隔离的知识库中，从干净安装开始完整使�
 - [ ] Vault Search 的主要模式、导航、预览和打开文件。
 - [ ] AI Search 的计划、工具调用、报告和来源。
 - [ ] AI Search 的历史和失败恢复。
-- [ ] Composer 的编辑、AI action、历史和文档切换。
+- [ ] Composer 的单文件编辑、AI action 和历史。
+- [ ] 完成[同一 Session 多文件与混合文件类型验收](20-composer-multi-file-mixed-file-session-qa.md)。
 - [ ] File Atlas 的文档关系、文件类型、过滤和跳转。
 - [ ] File Atlas 与 Composer 的 handoff。
 - [ ] Graph、Vault Intelligence、Command Center 和 Settings 中承诺公开的流程。
@@ -47,6 +48,7 @@ Owner 在与开发 Vault 隔离的知识库中，从干净安装开始完整使�
 - [ ] Provider 不可用或额度不足。
 - [ ] 取消、重试和重复点击。
 - [ ] 并发 session 和插件 reload。
+- [ ] 同一 Composer session 的跨文件导航、逐文件 accept/reject 和恢复。
 - [ ] Obsidian 重启后的数据恢复。
 - [ ] 老版本升级和 legacy 数据读取。
 - [ ] 迁移保护和数据 quarantine。

@@ -27,6 +27,8 @@
 
 ## 2. 为每个视频准备录制合同
 
+- [ ] 最终完整演示遵循[Final Demo 与 One Continuous Context 场景](22-final-demo-continuous-context-story.md)。
+- [ ] Graph 专项演示遵循[Graph 多视图能力宣传与切换演示](21-graph-multi-view-launch-showcase.md)。
 - [ ] 对应的产品主张。
 - [ ] 起始状态。
 - [ ] 操作脚本。
