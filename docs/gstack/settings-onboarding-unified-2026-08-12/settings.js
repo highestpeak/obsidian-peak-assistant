@@ -150,7 +150,7 @@ $("[data-open-setup]").addEventListener("click", () => {
   window.location.href = "./onboarding.html";
 });
 
-$$('.setting-row-button, .connection-card, .feature-settings-grid button').forEach((button) => {
+$$('.setting-row-button, .connection-card').forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.panelJump) return;
     showSaved("This row would open its focused detail view");

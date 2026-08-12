@@ -41,7 +41,6 @@ requireValues("Settings HTML", settingsHtml, [
   "Available tools",
   "Permissions &amp; confirmations",
   "Agent execution",
-  "Feature settings",
   "Advanced & diagnostics",
   "Composer & Copilot",
   "Vault Search & AI Search",
@@ -128,6 +127,10 @@ for (const value of ['data-settings-panel="connections"', 'data-settings-panel="
 
 for (const value of ['data-settings-panel="agent"', 'data-panel-target="agent"']) {
   if (settingsHtml.includes(value)) missing.push(`Split tools and safety destination returned: ${value}`);
+}
+
+for (const value of ['data-settings-panel="features"', 'data-panel-target="features"', 'data-panel-jump="features"']) {
+  if (settingsHtml.includes(value)) missing.push(`Generic Features destination returned: ${value}`);
 }
 
 function checkSymbols(label, html) {

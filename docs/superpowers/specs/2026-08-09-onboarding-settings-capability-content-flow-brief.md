@@ -769,6 +769,17 @@ MCP 是工具来源，Skill 是工作手册，Provider 是模型来源。Setting
 
 **用户问题：Peak 在我的日常工作空间中如何表现？**
 
+`Features` 不作为一级 Settings 入口。它只是产品清单，不能回答“这个设置会影响什么”。本节中的设置按照影响对象重新归属：
+
+- 模型、prompt 和生成 route 归 `AI & Models`；
+- Search、File Atlas、AI Graph 和 Ambient 的知识行为归 `Knowledge & Search`；
+- Web、工具、写入权限、确认和 Agent 执行归 `Tools & Safety`；
+- 历史、输出位置、数据保留和隐私归 `Data & Privacy`；
+- 展示偏好归 `Appearance`；
+- 低频 runtime 与维护行为留在所属模块的展开项，或由 Settings 搜索直接到达。
+
+移除 `Features` 入口不等于移除这些设置。每个现有字段仍必须在迁移审计中标记新的 owner，并保留真实 consumer、保存反馈、恢复默认和生效说明。
+
 #### Chat Studio
 
 - conversation 默认模型的继承；

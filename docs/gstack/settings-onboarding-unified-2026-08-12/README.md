@@ -31,6 +31,7 @@ The two mocks use the same nouns and responsibility boundaries:
 - Connections, models and task defaults remain distinct levels inside that page; an account is not a model, and a model is not a product feature.
 - **Tools & Safety** keeps the second control chain together: available tools → permissions → confirmations.
 - Tools and safety remain distinct levels inside that page; enabling a capability never silently grants unrestricted access.
+- There is no generic **Features** destination. Each option lives with the thing it changes: models and generation routes in AI & Models; Search, Atlas and Ambient behavior in Knowledge & Search; access rules in Tools & Safety; outputs and history in Data & Privacy.
 - **Peak Hermes** owns Agent workflow, permissions and receipts; Codex, Claude Code and model connections supply compatible execution capability.
 - **Knowledge settings** own long-term scope and quality. The Knowledge Index workspace owns a current run's progress, errors and history.
 - **Onboarding** verifies only the dependencies needed for one first task. It does not duplicate full Settings.
