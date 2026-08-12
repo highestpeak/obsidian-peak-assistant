@@ -24,15 +24,22 @@ assert.match(renderer, /folderHierarchy\$\{segment\.kind === 'rail' \? 'Rail' : 
 assert.match(renderer, /classes: `\$\{e\.kind\}\$\{folderTree \? ' folderRelation' : ''\}\$\{opts\.community \? ' communityRelation' : ''\}/);
 assert.match(renderer, /selectGraphNode\(n\.id\(\), modKey\)/);
 assert.match(renderer, /multiSelectedEdge/);
-assert.match(renderer, /folderTreeSelectionScope\(projection, selectedNodeId\)/);
-assert.match(renderer, /edge\.folderRelation\.folderFocusIncoming/);
+assert.match(renderer, /function applyFolderTreeHover\(/);
+assert.match(renderer, /folderTreeSelectionScope\(projection, hoveredNodeId\)/);
+assert.match(renderer, /applyFolderTreeHover\(cy, folderProjection, n\.id\(\)\)/);
+assert.match(renderer, /applyFolderTreeHover\(cy, folderProjection, null\)/);
+assert.match(renderer, /node\.folderTreeNode\.folderHoverAnchor/);
+assert.match(renderer, /node\.folderTreeNode\.folderHoverConnected/);
+assert.match(renderer, /edge\.folderRelation\.folderHoverIncoming/);
 assert.match(renderer, /'target-arrow-shape': 'vee'/);
-assert.match(renderer, /edge\.folderRelation\.folderFocusOutgoing/);
+assert.match(renderer, /edge\.folderRelation\.folderHoverOutgoing/);
 assert.match(renderer, /'target-arrow-shape': 'triangle'/);
+assert.match(renderer, /requestAnimationFrame\(clearHoverState\)/);
 assert.match(renderer, /edge\.folderRelation\.semantic/);
 assert.match(renderer, /line-dash-offset/);
 assert.match(renderer, /prefers-reduced-motion: reduce/);
 assert.doesNotMatch(renderer, /buildVisibleFolderGroups/);
+assert.doesNotMatch(renderer, /folderHoverHidden|folderHoverDimmed/);
 assert.doesNotMatch(renderer, /row\.depth \* 155/);
 assert.doesNotMatch(renderer, /index \* 46/);
 

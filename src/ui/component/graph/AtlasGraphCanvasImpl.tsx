@@ -514,34 +514,30 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge.folderRelation.reference', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', width: 1.65 } as never },
 	{ selector: 'edge.folderRelation.hub_constituent', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df', 'line-style': 'dotted', width: 1.7, opacity: 0.82 } as never },
 	{ selector: 'edge.folderRelation.semantic', style: { 'line-color': '#0f9d83', 'source-arrow-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'line-style': 'dashed', 'line-dash-pattern': [8, 7], width: 1.7, opacity: 0.88 } as never },
-	{ selector: 'node.folderFocusSelected', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1000 } as never },
-	{ selector: 'node.folderFocusScope', style: { 'background-color': '#eee3fb', color: '#5b2d96', 'border-width': 0, opacity: 1, 'z-index': 800 } as never },
-	{ selector: 'node.folderFocusConnected', style: { 'background-color': '#f7f1fd', color: '#51475e', opacity: 1, 'z-index': 700 } as never },
-	{ selector: 'edge.folderFocusActive', style: { opacity: 1, width: 2.05, 'arrow-scale': 1.08, 'z-index': 900 } as never },
-	{ selector: 'edge.folderFocusIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
-	{ selector: 'edge.folderFocusOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'source-arrow-color': '#0f9d83' } as never },
-	{ selector: 'edge.folderFocusInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
+	{ selector: 'node.folderHoverAnchor', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1000 } as never },
+	{ selector: 'node.folderHoverScope', style: { 'background-color': '#eee3fb', color: '#5b2d96', 'border-width': 0, opacity: 1, 'z-index': 800 } as never },
+	{ selector: 'node.folderHoverConnected', style: { 'background-color': '#f7f1fd', color: '#51475e', opacity: 1, 'z-index': 700 } as never },
+	{ selector: 'edge.folderHoverActive', style: { opacity: 1, width: 2.05, 'arrow-scale': 1.08, 'z-index': 900 } as never },
+	{ selector: 'edge.folderHoverIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
+	{ selector: 'edge.folderHoverOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'source-arrow-color': '#0f9d83' } as never },
+	{ selector: 'edge.folderHoverInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
 	{ selector: 'edge.folderHierarchy.folderHierarchyActive', style: { 'line-color': '#d6c3ec', width: 1.2, opacity: 0.95 } as never },
-	{ selector: 'node.folderTreeNode.highlighted, node.folderTreeDoc.highlighted', style: { 'background-color': '#f1e8fb', 'border-width': 0, opacity: 1 } as never },
-	{ selector: 'node.folderTreeDecoration.highlighted', style: { 'border-width': 0, opacity: 1 } as never },
-	{ selector: 'edge.folderRelation.highlighted', style: { 'line-color': '#7c3aed', 'source-arrow-color': '#7c3aed', 'target-arrow-color': '#7c3aed', opacity: 1, width: 2.2 } as never },
-	// Focus meaning stays legible while the pointer is still over the node.
-	// These more-specific rules deliberately outrank generic hover highlighting.
-	{ selector: 'node.folderTreeNode.folderFocusSelected, node.folderTreeDoc.folderFocusSelected', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1001 } as never },
-	{ selector: 'node.folderTreeDecoration.folderFocusSelected', style: { opacity: 1, 'z-index': 1002 } as never },
-	{ selector: 'node.folderTreeDecoration.folderFocusScope', style: { opacity: 1, 'z-index': 802 } as never },
-	{ selector: 'node.folderTreeDecoration.folderFocusConnected', style: { opacity: 1, 'z-index': 702 } as never },
-	{ selector: 'node.folderTreeLabel.folderFocusSelected', style: { color: '#ffffff' } as never },
-	{ selector: 'node.folderTreeIcon.folderFocusSelected', style: { 'background-image': FILE_ICON_WHITE } as never },
-	{ selector: 'node.folderTreeFolderIcon.folderFocusSelected', style: { 'background-image': FOLDER_ICON_WHITE } as never },
-	{ selector: 'node.folderTreeCountBadge.folderFocusSelected', style: { 'background-color': '#ffffff', color: '#7c3aed' } as never },
-	{ selector: 'node.folderTreeLinkBadge.folderFocusSelected', style: { 'background-color': '#9360ef', 'background-image': LINK_ICON_WHITE, color: '#ffffff' } as never },
-	{ selector: 'node.folderTreeFolderLabel.folderFocusScope', style: { color: '#6433a2' } as never },
-	{ selector: 'node.folderTreeCountBadge.folderFocusScope', style: { 'background-color': '#eadcf8', color: '#6f36af' } as never },
-	{ selector: 'node.folderTreeLinkBadge.folderFocusConnected', style: { 'background-color': '#eee5fb', 'background-image': LINK_ICON_PURPLE, color: '#6937ad' } as never },
-	{ selector: 'edge.folderRelation.folderFocusIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
-	{ selector: 'edge.folderRelation.folderFocusOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'target-arrow-shape': 'triangle', 'source-arrow-color': '#0f9d83' } as never },
-	{ selector: 'edge.folderRelation.folderFocusInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
+	{ selector: 'node.folderTreeNode.folderHoverAnchor, node.folderTreeDoc.folderHoverAnchor, node.folderTreeHub.folderHoverAnchor', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1001 } as never },
+	{ selector: 'node.folderTreeNode.folderHoverConnected, node.folderTreeDoc.folderHoverConnected, node.folderTreeHub.folderHoverConnected', style: { 'background-color': '#eee5fb', opacity: 1, 'z-index': 702 } as never },
+	{ selector: 'node.folderTreeDecoration.folderHoverAnchor', style: { opacity: 1, 'z-index': 1002 } as never },
+	{ selector: 'node.folderTreeDecoration.folderHoverScope', style: { opacity: 1, 'z-index': 802 } as never },
+	{ selector: 'node.folderTreeDecoration.folderHoverConnected', style: { opacity: 1, 'z-index': 702 } as never },
+	{ selector: 'node.folderTreeLabel.folderHoverAnchor', style: { color: '#ffffff' } as never },
+	{ selector: 'node.folderTreeIcon.folderHoverAnchor', style: { 'background-image': FILE_ICON_WHITE } as never },
+	{ selector: 'node.folderTreeFolderIcon.folderHoverAnchor', style: { 'background-image': FOLDER_ICON_WHITE } as never },
+	{ selector: 'node.folderTreeCountBadge.folderHoverAnchor', style: { 'background-color': '#ffffff', color: '#7c3aed' } as never },
+	{ selector: 'node.folderTreeLinkBadge.folderHoverAnchor', style: { 'background-color': '#9360ef', 'background-image': LINK_ICON_WHITE, color: '#ffffff' } as never },
+	{ selector: 'node.folderTreeFolderLabel.folderHoverScope', style: { color: '#6433a2' } as never },
+	{ selector: 'node.folderTreeCountBadge.folderHoverScope', style: { 'background-color': '#eadcf8', color: '#6f36af' } as never },
+	{ selector: 'node.folderTreeLinkBadge.folderHoverConnected', style: { 'background-color': '#eee5fb', 'background-image': LINK_ICON_PURPLE, color: '#6937ad' } as never },
+	{ selector: 'edge.folderRelation.folderHoverIncoming', style: { 'line-color': '#0f9d83', 'target-arrow-color': '#0f9d83', 'target-arrow-shape': 'vee', 'source-arrow-color': '#9566df' } as never },
+	{ selector: 'edge.folderRelation.folderHoverOutgoing', style: { 'line-color': '#9566df', 'target-arrow-color': '#9566df', 'target-arrow-shape': 'triangle', 'source-arrow-color': '#0f9d83' } as never },
+	{ selector: 'edge.folderRelation.folderHoverInternal', style: { 'line-color': '#9566df', 'source-arrow-color': '#9566df', 'target-arrow-color': '#9566df' } as never },
 	{ selector: 'node.folderTreeNode.multiSelected, node.folderTreeDoc.multiSelected, node.folderTreeHub.multiSelected', style: { 'background-color': '#7c3aed', color: '#ffffff', 'border-width': 0, opacity: 1, 'z-index': 1101 } as never },
 	{ selector: 'node.folderTreeDecoration.multiSelected', style: { opacity: 1, 'z-index': 1102 } as never },
 	{ selector: 'node.folderTreeDecoration.multiConnected', style: { opacity: 1, 'z-index': 852 } as never },
@@ -674,15 +670,15 @@ function fitReadableGraphViewport(cy: Core, folderTree: boolean): void {
 	});
 }
 
-const FOLDER_FOCUS_NODE_CLASSES = 'folderFocusSelected folderFocusScope folderFocusConnected';
-const FOLDER_FOCUS_EDGE_CLASSES = 'folderFocusActive folderFocusIncoming folderFocusOutgoing folderFocusInternal folderHierarchyActive';
+const FOLDER_HOVER_NODE_CLASSES = 'folderHoverAnchor folderHoverScope folderHoverConnected';
+const FOLDER_HOVER_EDGE_CLASSES = 'folderHoverActive folderHoverIncoming folderHoverOutgoing folderHoverInternal folderHierarchyActive';
 
-function mirrorFolderTreeFocusToDecorations(cy: Core): void {
+function mirrorFolderTreeHoverToDecorations(cy: Core): void {
 	cy.nodes('.folderTreeDecoration').forEach((decoration) => {
 		const ownerId = String(decoration.data('ownerId') ?? '');
 		const owner = ownerId ? cy.getElementById(ownerId) : null;
 		if (!owner || owner.empty()) return;
-		for (const className of FOLDER_FOCUS_NODE_CLASSES.split(' ')) {
+		for (const className of FOLDER_HOVER_NODE_CLASSES.split(' ')) {
 			if (owner.hasClass(className)) decoration.addClass(className);
 		}
 	});
@@ -705,53 +701,53 @@ function folderAncestorIds(
 	return ids;
 }
 
-function applyFolderTreeFocus(
+function applyFolderTreeHover(
 	cy: Core,
 	projection: VisibleFolderTreeProjection,
-	selectedNodeId: string | null,
+	hoveredNodeId: string | null,
 ): void {
 	cy.batch(() => {
-		cy.nodes().removeClass(FOLDER_FOCUS_NODE_CLASSES);
-		cy.edges().removeClass(FOLDER_FOCUS_EDGE_CLASSES);
-		if (!selectedNodeId) return;
+		cy.nodes().removeClass(FOLDER_HOVER_NODE_CLASSES);
+		cy.edges().removeClass(FOLDER_HOVER_EDGE_CLASSES);
+		if (!hoveredNodeId) return;
 
-		const selectedNode = cy.getElementById(selectedNodeId);
-		if (!selectedNode || selectedNode.empty()) return;
-		const scope = folderTreeSelectionScope(projection, selectedNodeId);
-		const ancestorFolderIds = folderAncestorIds(projection, selectedNodeId);
+		const hoveredNode = cy.getElementById(hoveredNodeId);
+		if (!hoveredNode || hoveredNode.empty()) return;
+		const scope = folderTreeSelectionScope(projection, hoveredNodeId);
+		const ancestorFolderIds = folderAncestorIds(projection, hoveredNodeId);
 		const readableNodeIds = new Set<string>([
-			selectedNodeId,
+			hoveredNodeId,
 			...scope.documentIds,
 			...scope.folderIds,
 			...ancestorFolderIds,
 		]);
 
-		selectedNode.addClass('folderFocusSelected');
+		hoveredNode.addClass('folderHoverAnchor');
 		for (const id of [...scope.documentIds, ...scope.folderIds, ...ancestorFolderIds]) {
-			if (id === selectedNodeId) continue;
-			cy.getElementById(id).addClass('folderFocusScope');
+			if (id === hoveredNodeId) continue;
+			cy.getElementById(id).addClass('folderHoverScope');
 		}
 
 		cy.edges('.folderRelation').forEach((edge) => {
-			const sourceSelected = scope.documentIds.has(edge.source().id());
-			const targetSelected = scope.documentIds.has(edge.target().id());
-			if (!sourceSelected && !targetSelected) return;
+			const sourceInScope = scope.documentIds.has(edge.source().id());
+			const targetInScope = scope.documentIds.has(edge.target().id());
+			if (!sourceInScope && !targetInScope) return;
 
-			edge.addClass('folderFocusActive');
+			edge.addClass('folderHoverActive');
 			readableNodeIds.add(edge.source().id());
 			readableNodeIds.add(edge.target().id());
 			if (edge.data('directionality') === 'undirected') return;
-			if (sourceSelected && targetSelected) {
-				edge.addClass('folderFocusInternal');
+			if (sourceInScope && targetInScope) {
+				edge.addClass('folderHoverInternal');
 				return;
 			}
-			edge.addClass(sourceSelected ? 'folderFocusOutgoing' : 'folderFocusIncoming');
+			edge.addClass(sourceInScope ? 'folderHoverOutgoing' : 'folderHoverIncoming');
 		});
 
 		cy.nodes().not('.regionLabel').forEach((node) => {
 			if (!readableNodeIds.has(node.id())) return;
-			if (node.hasClass('folderFocusSelected') || node.hasClass('folderFocusScope')) return;
-			node.addClass('folderFocusConnected');
+			if (node.hasClass('folderHoverAnchor') || node.hasClass('folderHoverScope')) return;
+			node.addClass('folderHoverConnected');
 		});
 
 		const activeHierarchyNodeIds = new Set<string>([
@@ -766,7 +762,7 @@ function applyFolderTreeFocus(
 			if (!activeHierarchyNodeIds.has(childNodeId)) return;
 			edge.addClass('folderHierarchyActive');
 		});
-		mirrorFolderTreeFocusToDecorations(cy);
+		mirrorFolderTreeHoverToDecorations(cy);
 	});
 }
 
@@ -1448,6 +1444,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		});
 
 		let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+		let hoverExitFrame: number | null = null;
+		const ownerWindow = container.ownerDocument.defaultView;
 		const prefersReducedMotion = container.ownerDocument.defaultView
 			?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 		const startEdgeAnimation = () => {
@@ -1470,6 +1468,16 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		const stopEdgeAnimation = () => {
 			if (animRef.current) cancelAnimationFrame(animRef.current);
 			animRef.current = null;
+		};
+		const clearHoverState = () => {
+			hoverExitFrame = null;
+			if (hoveredElementRef.current) return;
+			hoverRef.current?.(null);
+			hoverAnchorRef.current = null;
+			cy.elements().removeClass('highlighted');
+			if (folderProjection) applyFolderTreeHover(cy, folderProjection, null);
+			if (!bundle.folderTree) stopEdgeAnimation();
+			scheduleCardClose();
 		};
 		const resolveFolderTreeOwner = (node: NodeSingular): NodeSingular | null => {
 			if (node.hasClass('folderTreeRailNode')) return null;
@@ -1504,6 +1512,10 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			const n = resolveFolderTreeOwner(evt.target as NodeSingular);
 			if (!n) return;
 			if (n.hasClass('regionLabel')) return;
+			if (hoverExitFrame !== null) {
+				ownerWindow?.cancelAnimationFrame(hoverExitFrame);
+				hoverExitFrame = null;
+			}
 			cancelCardClose();
 			const rawPath = (n.data('path') as string | undefined) ?? '';
 			const isCommunity = n.hasClass('communityHull');
@@ -1516,6 +1528,11 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			if (!n.hasClass('folderGroup') && !isCommunity) hoverRef.current?.({ id: n.id(), path: rawPath });
 			if (hoverTimer) clearTimeout(hoverTimer);
 			hoverTimer = setTimeout(() => {
+				if (bundle.folderTree && folderProjection) {
+					applyFolderTreeHover(cy, folderProjection, n.id());
+					startEdgeAnimation();
+					return;
+				}
 				const isCompound = n.hasClass('folderGroup') || n.hasClass('communityHull');
 				let highlight;
 				if (isCompound && folderProjection) {
@@ -1550,13 +1567,11 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			}, communityInteraction.openDelayMs);
 		});
 		cy.on('mouseout', 'node', () => {
-			hoverRef.current?.(null);
 			hoveredElementRef.current = null;
-			hoverAnchorRef.current = null;
 			if (hoverTimer) clearTimeout(hoverTimer);
-			cy.elements().removeClass('highlighted');
-			if (!bundle.folderTree) stopEdgeAnimation();
-			scheduleCardClose();
+			if (hoverExitFrame !== null) ownerWindow?.cancelAnimationFrame(hoverExitFrame);
+			hoverExitFrame = ownerWindow?.requestAnimationFrame(clearHoverState) ?? null;
+			if (!ownerWindow) clearHoverState();
 		});
 
 		cy.on('tap', 'node', (evt) => {
@@ -1582,6 +1597,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		if (bundle.folderTree) startEdgeAnimation();
 		return () => {
 			if (hoverTimer) clearTimeout(hoverTimer);
+			if (hoverExitFrame !== null) ownerWindow?.cancelAnimationFrame(hoverExitFrame);
 			stopEdgeAnimation();
 			if (cyRef.current !== cy) return;
 			positionCacheRef.current.set(layoutKey, captureGraphNodePositions(cy));
