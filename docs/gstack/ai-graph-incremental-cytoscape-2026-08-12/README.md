@@ -5,14 +5,17 @@ This is a design-only, standalone `file://` prototype for owner review.
 ## What it demonstrates
 
 - The current immutable AI Graph version remains the canonical base while an Agent run is active.
-- Agent output is projected as a typed, ordered working overlay: inspect source, add node, add relation, update relation, and propose removal.
+- Agent output is projected as a typed, ordered 16-operation working overlay: inspect source, place nodes, focus the viewport, add relations, update, remove, validate, and choose auto-layout.
+- New nodes use separate open placement slots and do not cover prior nodes. Seven candidates are placed before the Agent creates any relation, including one deliberately disconnected hypothesis.
+- When the newest node lands beyond the right edge, a dedicated focus operation pans the working scene to that node without changing any graph coordinates or triggering layout.
+- Relations arrive in later batches. The Agent can therefore place disconnected nodes first, ground only the supported subset, and remove a transient orphan without ever adding it to the semantic diff.
 - Additions appear immediately; removals remain recoverable tombstones until review.
 - A completed run becomes a semantic diff. `Accept new version` is the only action that advances `v12` to `v13`.
 - `Pause`, `Continue`, `Stop`, `Skip to review`, `Discard`, and `Replay` expose the minimum control and recovery model.
 - The graph is rendered through the production public `AtlasGraphCanvas` facade and therefore uses the shared Cytoscape stack. No React Flow dependency or consumer is introduced.
 - The Cytoscape base receives one stable `subgraph` reference for the entire replay. Agent changes are demonstrated in a transient working-overlay layer, so an operation cannot destroy the canvas, rerun the whole layout, or auto-fit the viewport.
 - Overlay relations share one calibrated canvas coordinate system. Paths terminate at the boundary of their source and target cards rather than at free-floating cursor coordinates; removal strokes trace the two existing relations attached to the original node.
-- After all eight Agent operations complete, the mock enters one explicit `Refine layout` stage. A second shared `AtlasGraphCanvas` renders the complete proposed graph once, cross-fades it over the spatially locked working view, and only then opens semantic-diff review.
+- After all 16 Agent operations complete, the Agent explicitly chooses `Auto layout`. A second shared `AtlasGraphCanvas` renders the complete 12-node / 15-relation proposal once, cross-fades it over the spatially locked working view, and only then opens the 20-change semantic-diff review.
 
 The graph content and run events are illustrative mock data. This prototype does not call an AI provider, write an AI Graph version, or modify production source.
 
@@ -30,10 +33,13 @@ source.inspected
 node.proposed
 node.updated
 node.removal-proposed
+viewport.focused
 relation.proposed
 relation.updated
 relation.removal-proposed
 validation.completed
+layout.requested
+layout.completed
 diff.ready
 version.created
 ```

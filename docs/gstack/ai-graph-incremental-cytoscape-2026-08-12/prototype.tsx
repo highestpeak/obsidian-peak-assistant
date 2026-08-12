@@ -8,6 +8,7 @@ import {
 	Clock3,
 	GitBranch,
 	History,
+	LocateFixed,
 	Pause,
 	Play,
 	Plus,
@@ -18,6 +19,7 @@ import {
 	Square,
 	Trash2,
 	Undo2,
+	Workflow,
 	X,
 } from 'lucide-react';
 import {
@@ -27,8 +29,8 @@ import type {
 	ResultSubgraphOutput,
 } from '../../../src/service/search/graph/resultSubgraph';
 
-type RunMode = 'idle' | 'running' | 'paused' | 'refining' | 'review' | 'accepted';
-type PatchKind = 'inspect' | 'add-node' | 'add-relation' | 'update' | 'remove-relation' | 'remove-node' | 'validate';
+type RunMode = 'idle' | 'running' | 'paused' | 'layouting' | 'review' | 'accepted';
+type PatchKind = 'inspect' | 'add-node' | 'focus' | 'add-relation' | 'update' | 'remove-relation' | 'remove-node' | 'validate' | 'auto-layout';
 
 interface PatchEvent {
 	id: string;
@@ -43,69 +45,133 @@ const PATCHES: PatchEvent[] = [
 		id: 'inspect-sources',
 		kind: 'inspect',
 		title: 'Inspected changed sources',
-		detail: '4 evidence anchors resolved against the frozen v12 source set.',
-		object: 'GraphRAG notes · source hash locked',
+		detail: '11 evidence anchors resolved against the frozen v12 source set.',
+		object: '11 sources · hashes locked',
 	},
 	{
 		id: 'add-provenance',
 		kind: 'add-node',
 		title: 'Added Claim provenance',
-		detail: 'A new evidence-bearing concept arrived in the working overlay.',
-		object: '+ node · suggested',
+		detail: 'Placed in the nearest open upper-right slot without creating a relation.',
+		object: '+ node · unlinked',
 	},
 	{
-		id: 'connect-provenance',
-		kind: 'add-relation',
-		title: 'Connected provenance to evidence chain',
-		detail: 'Two directed relations were drawn after endpoint validation.',
-		object: '+ 2 relations · evidence linked',
-	},
-	{
-		id: 'add-review-loop',
+		id: 'add-benchmark',
 		kind: 'add-node',
-		title: 'Added Human review loop',
-		detail: 'The Agent found a missing control-plane concept and its supporting claim.',
-		object: '+ node · confidence 0.86',
+		title: 'Added Evaluation benchmark',
+		detail: 'Reserved a separate upper slot; the Agent is still collecting concepts.',
+		object: '+ node · unlinked',
+	},
+	{
+		id: 'add-contradiction',
+		kind: 'add-node',
+		title: 'Added Contradiction check',
+		detail: 'Placed left of the current topology, outside every occupied node box.',
+		object: '+ node · unlinked',
+	},
+	{
+		id: 'add-control-pair',
+		kind: 'add-node',
+		title: 'Placed two control nodes',
+		detail: 'Source lineage and Human review loop occupy two clear lower slots.',
+		object: '+ 2 nodes · still unlinked',
+	},
+	{
+		id: 'add-orphan-hypothesis',
+		kind: 'add-node',
+		title: 'Added Orphan hypothesis',
+		detail: 'The Agent deliberately keeps this candidate disconnected while checking evidence.',
+		object: '+ node · no relation by design',
+	},
+	{
+		id: 'add-observability',
+		kind: 'add-node',
+		title: 'Added Agent observability',
+		detail: 'The next collision-free slot lies beyond the current right viewport.',
+		object: '+ node · outside viewport',
+	},
+	{
+		id: 'focus-observability',
+		kind: 'focus',
+		title: 'Focused the off-canvas node',
+		detail: 'The camera pans without changing node coordinates or running layout.',
+		object: 'focus · Agent observability',
+	},
+	{
+		id: 'connect-evidence',
+		kind: 'add-relation',
+		title: 'Connected the evidence cluster',
+		detail: 'Only now does the Agent draw provenance relations to validated endpoints.',
+		object: '+ 2 relations',
+	},
+	{
+		id: 'connect-evaluation',
+		kind: 'add-relation',
+		title: 'Connected the evaluation cluster',
+		detail: 'Benchmark and contradiction nodes gain three directed relations.',
+		object: '+ 3 relations',
+	},
+	{
+		id: 'connect-controls',
+		kind: 'add-relation',
+		title: 'Connected control and observability',
+		detail: 'Five relations connect lineage, review, provenance, observability, and GraphRAG.',
+		object: '+ 5 relations',
 	},
 	{
 		id: 'update-relation',
 		kind: 'update',
-		title: 'Refined a relation',
+		title: 'Refined a relation predicate',
 		detail: '“supports” became “grounds” after comparing the source quotation.',
 		object: '~ relation · predicate changed',
 	},
 	{
-		id: 'remove-stale-path',
-		kind: 'remove-relation',
-		title: 'Detached a stale path',
-		detail: 'The old keyword-only branch is kept visible as a removal candidate.',
-		object: '− 2 relations · reversible',
+		id: 'remove-orphan',
+		kind: 'remove-node',
+		title: 'Removed the ungrounded hypothesis',
+		detail: 'The disconnected candidate never entered the semantic diff.',
+		object: '− transient node · reversible',
 	},
 	{
-		id: 'remove-stale-node',
-		kind: 'remove-node',
-		title: 'Proposed node removal',
-		detail: 'Keyword-only clustering is now a tombstone, not an immediate delete.',
-		object: '− node · pending review',
+		id: 'remove-stale-path',
+		kind: 'remove-relation',
+		title: 'Detached the stale keyword path',
+		detail: 'Two legacy relations and their node become a reviewable tombstone.',
+		object: '− node · − 2 relations',
 	},
 	{
 		id: 'validate-diff',
 		kind: 'validate',
-		title: 'Validated working graph',
-		detail: 'All relations resolve, evidence exists, and the base revision is still v12.',
-		object: 'diff ready · 10 changes',
+		title: 'Validated the working graph',
+		detail: 'All final endpoints resolve; transient nodes are excluded from the diff.',
+		object: 'diff ready · 20 changes',
+	},
+	{
+		id: 'auto-layout',
+		kind: 'auto-layout',
+		title: 'Agent chose Auto layout',
+		detail: 'All graph mutations are complete, so one intentional full refinement is safe.',
+		object: 'auto layout · 12 nodes',
 	},
 ];
 
 const CURSOR_POINTS = [
 	{ left: '24%', top: '32%' },
-	{ left: '69%', top: '29%' },
-	{ left: '62%', top: '42%' },
-	{ left: '72%', top: '71%' },
-	{ left: '50%', top: '54%' },
+	{ left: '68%', top: '20%' },
+	{ left: '44%', top: '17%' },
+	{ left: '23%', top: '27%' },
+	{ left: '76%', top: '75%' },
+	{ left: '38%', top: '77%' },
+	{ left: '106%', top: '28%' },
+	{ left: '88%', top: '28%' },
+	{ left: '64%', top: '38%' },
+	{ left: '39%', top: '34%' },
+	{ left: '85%', top: '59%' },
+	{ left: '48%', top: '54%' },
+	{ left: '38%', top: '77%' },
 	{ left: '51%', top: '48%' },
-	{ left: '51%', top: '48%' },
-	{ left: '82%', top: '19%' },
+	{ left: '78%', top: '18%' },
+	{ left: '50%', top: '50%' },
 ];
 
 const BASE_NODES: ResultSubgraphOutput['resultNodes'] = [
@@ -148,7 +214,40 @@ const FINAL_SUBGRAPH: ResultSubgraphOutput = {
 			folder: 'Evidence',
 			preview: 'Accepted evidence concept',
 			incomingLinks: 1,
-			outgoingLinks: 2,
+			outgoingLinks: 3,
+		},
+		{
+			id: 'benchmark',
+			path: 'ai-graph://graphrag/benchmark',
+			title: 'Evaluation benchmark',
+			score: .88,
+			communityId: null,
+			folder: 'Evaluation',
+			preview: 'Accepted evaluation concept',
+			incomingLinks: 1,
+			outgoingLinks: 1,
+		},
+		{
+			id: 'contradiction',
+			path: 'ai-graph://graphrag/contradiction',
+			title: 'Contradiction check',
+			score: .84,
+			communityId: null,
+			folder: 'Evaluation',
+			preview: 'Accepted validation concept',
+			incomingLinks: 1,
+			outgoingLinks: 1,
+		},
+		{
+			id: 'source-lineage',
+			path: 'ai-graph://graphrag/source-lineage',
+			title: 'Source lineage',
+			score: .9,
+			communityId: null,
+			folder: 'Evidence',
+			preview: 'Accepted lineage concept',
+			incomingLinks: 1,
+			outgoingLinks: 1,
 		},
 		{
 			id: 'human-review',
@@ -161,14 +260,31 @@ const FINAL_SUBGRAPH: ResultSubgraphOutput = {
 			incomingLinks: 1,
 			outgoingLinks: 1,
 		},
+		{
+			id: 'agent-observability',
+			path: 'ai-graph://graphrag/agent-observability',
+			title: 'Agent observability',
+			score: .82,
+			communityId: null,
+			folder: 'Controls',
+			preview: 'Accepted observability concept',
+			incomingLinks: 1,
+			outgoingLinks: 1,
+		},
 	],
 	hubAnchors: [],
 	edges: [
 		...BASE_EDGES.filter((edge) => edge.from !== 'keyword' && edge.to !== 'keyword').map((edge) => ({ ...edge })),
 		{ from: 'evidence', to: 'provenance', kind: 'reference', directionality: 'directed' },
 		{ from: 'provenance', to: 'citations', kind: 'reference', directionality: 'directed' },
+		{ from: 'global-search', to: 'benchmark', kind: 'reference', directionality: 'directed' },
+		{ from: 'benchmark', to: 'contradiction', kind: 'reference', directionality: 'directed' },
+		{ from: 'contradiction', to: 'retrieval', kind: 'reference', directionality: 'directed' },
+		{ from: 'evidence', to: 'source-lineage', kind: 'reference', directionality: 'directed' },
+		{ from: 'source-lineage', to: 'provenance', kind: 'reference', directionality: 'directed' },
 		{ from: 'provenance', to: 'human-review', kind: 'reference', directionality: 'directed' },
-		{ from: 'human-review', to: 'graphrag', kind: 'reference', directionality: 'directed' },
+		{ from: 'human-review', to: 'agent-observability', kind: 'reference', directionality: 'directed' },
+		{ from: 'agent-observability', to: 'graphrag', kind: 'reference', directionality: 'directed' },
 	],
 	isolatedDocIds: [],
 	overflowCount: 0,
@@ -179,13 +295,39 @@ interface WorkingOverlayProps {
 	step: number;
 }
 
+interface ProposalNodeProps {
+	className: string;
+	connected: boolean;
+	meta: string;
+	title: string;
+	tombstone?: boolean;
+}
+
+function ProposalNode({ className, connected, meta, title, tombstone = false }: ProposalNodeProps): React.ReactElement {
+	return (
+		<div className={`aig-overlay-node ${className}${connected ? ' is-linked' : ' is-unlinked'}${tombstone ? ' is-tombstone' : ''}`}>
+			<span>{tombstone ? 'REMOVAL PROPOSED' : connected ? 'CONNECTED NODE' : 'PLACED · UNLINKED'}</span>
+			<strong>{title}</strong>
+			<small>{tombstone ? 'Transient candidate · excluded from diff' : meta}</small>
+		</div>
+	);
+}
+
 function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactElement {
 	const showProvenance = step >= 2;
-	const showProvenanceRelations = step >= 3;
-	const showReviewLoop = step >= 4;
-	const showRelationUpdate = step >= 5;
-	const showDetachedPath = step >= 6;
-	const showTombstone = step >= 7;
+	const showBenchmark = step >= 3;
+	const showContradiction = step >= 4;
+	const showControlPair = step >= 5;
+	const showOrphan = step >= 6;
+	const showObservability = step >= 7;
+	const showFocus = step >= 8;
+	const showEvidenceRelations = step >= 9;
+	const showEvaluationRelations = step >= 10;
+	const showControlRelations = step >= 11;
+	const showRelationUpdate = step >= 12;
+	const removeOrphan = step >= 13;
+	const removeKeyword = step >= 14;
+	const stagedNodeCount = Math.min(7, Math.max(0, step - 1));
 
 	return (
 		<div className={`aig-working-overlay${hidden ? ' is-refined-away' : ''}`} aria-hidden="true">
@@ -195,19 +337,29 @@ function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactEleme
 						<path d="M0,0 L7,3.5 L0,7 Z" />
 					</marker>
 				</defs>
-				{showProvenanceRelations && (
+				{showEvidenceRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M555 332 C585 286 602 246 635 208" />
-						<path className="aig-overlay-edge is-added is-delay" d="M745 208 C790 248 785 298 730 332" />
+						<path className="aig-overlay-edge is-added" d="M555 332 C585 270 620 205 642 151" />
+						<path className="aig-overlay-edge is-added is-delay" d="M756 124 C800 178 805 270 760 332" />
 					</>
 				)}
-				{showReviewLoop && (
+				{showEvaluationRelations && (
 					<>
-						<path className="aig-overlay-edge is-added" d="M705 208 C735 272 744 356 720 423" />
-						<path className="aig-overlay-edge is-added is-delay" d="M645 440 C500 535 230 520 86 306" />
+						<path className="aig-overlay-edge is-added" d="M920 305 C785 190 625 118 516 106" />
+						<path className="aig-overlay-edge is-added is-delay" d="M364 106 C344 122 325 145 306 159" />
+						<path className="aig-overlay-edge is-added is-delay-2" d="M232 194 C238 245 255 286 275 326" />
 					</>
 				)}
-				{showDetachedPath && (
+				{showControlRelations && (
+					<>
+						<path className="aig-overlay-edge is-added" d="M555 350 C600 396 625 440 644 465" />
+						<path className="aig-overlay-edge is-added is-delay" d="M720 438 C720 324 710 230 700 151" />
+						<path className="aig-overlay-edge is-added is-delay-2" d="M720 151 C800 225 850 332 875 412" />
+						<path className="aig-overlay-edge is-added is-delay-3" d="M956 440 C995 345 1005 250 984 190" />
+						<path className="aig-overlay-edge is-added is-delay-4" d="M984 174 C835 65 330 72 92 306" />
+					</>
+				)}
+				{removeKeyword && (
 					<>
 						<path className="aig-overlay-edge is-removing" d="M360 318 C400 316 430 306 460 300" />
 						<path className="aig-overlay-edge is-removing is-delay" d="M555 299 C595 298 630 291 655 286" />
@@ -216,29 +368,39 @@ function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactEleme
 			</svg>
 
 			{showProvenance && (
-				<div className="aig-overlay-node aig-overlay-node--provenance">
-					<span>PROPOSED NODE</span>
-					<strong>Claim provenance</strong>
-					<small>Evidence · confidence 0.92</small>
-				</div>
+				<ProposalNode className="aig-overlay-node--provenance" connected={showEvidenceRelations} title="Claim provenance" meta="Evidence · confidence 0.92" />
 			)}
-			{showReviewLoop && (
-				<div className="aig-overlay-node aig-overlay-node--review">
-					<span>PROPOSED NODE</span>
-					<strong>Human review loop</strong>
-					<small>Control · confidence 0.86</small>
-				</div>
+			{showBenchmark && (
+				<ProposalNode className="aig-overlay-node--benchmark" connected={showEvaluationRelations} title="Evaluation benchmark" meta="Evaluation · confidence 0.88" />
+			)}
+			{showContradiction && (
+				<ProposalNode className="aig-overlay-node--contradiction" connected={showEvaluationRelations} title="Contradiction check" meta="Validation · confidence 0.84" />
+			)}
+			{showControlPair && (
+				<>
+					<ProposalNode className="aig-overlay-node--lineage" connected={showControlRelations} title="Source lineage" meta="Evidence · confidence 0.90" />
+					<ProposalNode className="aig-overlay-node--review" connected={showControlRelations} title="Human review loop" meta="Control · confidence 0.86" />
+				</>
+			)}
+			{showOrphan && (
+				<ProposalNode className="aig-overlay-node--orphan" connected={false} tombstone={removeOrphan} title="Orphan hypothesis" meta="Hypothesis · evidence pending" />
+			)}
+			{showObservability && (
+				<ProposalNode className="aig-overlay-node--observability" connected={showControlRelations} title="Agent observability" meta="Control · confidence 0.82" />
 			)}
 			{showRelationUpdate && (
 				<div className="aig-relation-update"><GitBranch aria-hidden /><span>supports</span><b>grounds</b></div>
 			)}
-			{showDetachedPath && !showTombstone && (
-				<div className="aig-detach-badge"><Trash2 aria-hidden /><span>2 relations detaching</span></div>
+			{showProvenance && !showEvidenceRelations && (
+				<div className="aig-placement-batch"><Plus aria-hidden /><span><strong>{stagedNodeCount} staged nodes</strong><small>0 relations · placement first</small></span></div>
 			)}
-			{showTombstone && (
+			{showFocus && (
+				<div className="aig-focus-chip"><LocateFixed aria-hidden /><span>Focused · Agent observability</span></div>
+			)}
+			{removeKeyword && (
 				<div className="aig-tombstone is-node-removal">
 					<Trash2 aria-hidden />
-					<span><strong>Keyword-only clustering</strong><small>Removal proposed · original position retained</small></span>
+					<span><strong>Keyword-only clustering</strong><small>Node + 2 relations · original position retained</small></span>
 				</div>
 			)}
 		</div>
@@ -248,6 +410,8 @@ function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactEleme
 function patchIcon(kind: PatchKind): React.ReactNode {
 	if (kind === 'add-node' || kind === 'add-relation') return <Plus aria-hidden />;
 	if (kind === 'remove-node' || kind === 'remove-relation') return <Trash2 aria-hidden />;
+	if (kind === 'focus') return <LocateFixed aria-hidden />;
+	if (kind === 'auto-layout') return <Workflow aria-hidden />;
 	if (kind === 'validate') return <ShieldCheck aria-hidden />;
 	if (kind === 'update') return <GitBranch aria-hidden />;
 	return <Search aria-hidden />;
@@ -256,7 +420,7 @@ function patchIcon(kind: PatchKind): React.ReactNode {
 function modeLabel(mode: RunMode): string {
 	if (mode === 'running') return 'Agent update in progress';
 	if (mode === 'paused') return 'Update paused';
-	if (mode === 'refining') return 'Refining complete graph';
+	if (mode === 'layouting') return 'Agent auto-layout in progress';
 	if (mode === 'review') return 'Review working diff';
 	if (mode === 'accepted') return 'Version v13 created';
 	return 'Version v12 · ready';
@@ -268,14 +432,28 @@ function Prototype(): React.ReactElement {
 	const [activityTab, setActivityTab] = useState<'live' | 'review'>('live');
 	const [selectedNode, setSelectedNode] = useState<string | null>(null);
 	const startedOnce = useRef(false);
+	const currentPatchRef = useRef<HTMLDivElement | null>(null);
 
 	const accepted = mode === 'accepted';
-	const refined = mode === 'refining' || mode === 'review' || accepted;
+	const refined = mode === 'layouting' || mode === 'review' || accepted;
 	const visibleStep = refined ? PATCHES.length : patchIndex + 1;
 	const activePatch = patchIndex >= 0 ? PATCHES[Math.min(patchIndex, PATCHES.length - 1)] : null;
 	const cursor = CURSOR_POINTS[Math.max(0, Math.min(patchIndex, CURSOR_POINTS.length - 1))] ?? CURSOR_POINTS[0];
-	const visibleNodeCount = BASE_NODES.length + (visibleStep >= 2 ? 1 : 0) + (visibleStep >= 4 ? 1 : 0) - (accepted ? 1 : 0);
-	const visibleRelationCount = BASE_EDGES.length + (visibleStep >= 3 ? 2 : 0) + (visibleStep >= 4 ? 2 : 0) - (visibleStep >= 6 ? 2 : 0);
+	const focusOverflow = visibleStep >= 8 && !refined;
+	const visibleNodeCount = BASE_NODES.length
+		+ (visibleStep >= 2 ? 1 : 0)
+		+ (visibleStep >= 3 ? 1 : 0)
+		+ (visibleStep >= 4 ? 1 : 0)
+		+ (visibleStep >= 5 ? 2 : 0)
+		+ (visibleStep >= 6 ? 1 : 0)
+		+ (visibleStep >= 7 ? 1 : 0)
+		- (visibleStep >= 13 ? 1 : 0)
+		- (visibleStep >= 14 ? 1 : 0);
+	const visibleRelationCount = BASE_EDGES.length
+		+ (visibleStep >= 9 ? 2 : 0)
+		+ (visibleStep >= 10 ? 3 : 0)
+		+ (visibleStep >= 11 ? 5 : 0)
+		- (visibleStep >= 14 ? 2 : 0);
 
 	const startRun = (): void => {
 		setMode('running');
@@ -294,21 +472,25 @@ function Prototype(): React.ReactElement {
 	useEffect(() => {
 		if (mode !== 'running') return;
 		if (patchIndex >= PATCHES.length - 1) {
-			const refineTimer = window.setTimeout(() => setMode('refining'), 700);
-			return () => window.clearTimeout(refineTimer);
+			const layoutTimer = window.setTimeout(() => setMode('layouting'), 700);
+			return () => window.clearTimeout(layoutTimer);
 		}
-		const timer = window.setTimeout(() => setPatchIndex((current) => current + 1), patchIndex < 0 ? 650 : 1350);
+		const timer = window.setTimeout(() => setPatchIndex((current) => current + 1), patchIndex < 0 ? 650 : 1100);
 		return () => window.clearTimeout(timer);
 	}, [mode, patchIndex]);
 
 	useEffect(() => {
-		if (mode !== 'refining') return;
+		if (mode !== 'layouting') return;
 		const reviewTimer = window.setTimeout(() => {
 			setMode('review');
 			setActivityTab('review');
-		}, 1500);
+		}, 1650);
 		return () => window.clearTimeout(reviewTimer);
 	}, [mode]);
+
+	useEffect(() => {
+		currentPatchRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+	}, [mode, patchIndex]);
 
 	const togglePause = (): void => {
 		setMode((current) => current === 'paused' ? 'running' : 'paused');
@@ -316,7 +498,7 @@ function Prototype(): React.ReactElement {
 
 	const skipToReview = (): void => {
 		setPatchIndex(PATCHES.length - 1);
-		setMode('refining');
+		setMode('layouting');
 		setActivityTab('live');
 	};
 
@@ -344,7 +526,7 @@ function Prototype(): React.ReactElement {
 				<div className="aig-actions">
 					<button className="aig-btn aig-btn--ghost" type="button"><History aria-hidden /> History</button>
 					<button className="aig-btn aig-btn--ghost" type="button">Topology <ChevronDown aria-hidden /></button>
-					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'refining'}>
+					<button className="aig-btn aig-btn--primary" type="button" onClick={startRun} disabled={mode === 'running' || mode === 'layouting'}>
 						<RotateCcw aria-hidden /> Replay run
 					</button>
 				</div>
@@ -354,10 +536,10 @@ function Prototype(): React.ReactElement {
 				<div className="aig-instruction__icon"><Sparkles aria-hidden /></div>
 				<div className="aig-instruction__copy">
 					<span className="aig-instruction__label">Update instruction</span>
-					<span>Add claim provenance and a human review loop. Remove the obsolete keyword-only branch when evidence no longer supports it.</span>
+					<span>Broaden the evidence, evaluation, and control model. Keep uncertain concepts disconnected until grounded; remove unsupported candidates.</span>
 				</div>
 				<div className="aig-context-chip">v12 frozen base</div>
-				<div className="aig-context-chip">4 sources</div>
+				<div className="aig-context-chip">11 sources</div>
 			</section>
 
 			<main className="aig-workspace">
@@ -365,26 +547,29 @@ function Prototype(): React.ReactElement {
 					<div className="aig-canvas-head">
 						<div>
 							<span className="aig-section-title">Working graph</span>
-							<span className="aig-section-subtitle">{refined ? 'Complete proposed graph · one intentional reflow' : 'Canonical v12 + reversible Agent overlay'}</span>
+							<span className="aig-section-subtitle">{refined ? 'Agent auto-layout · complete proposed graph' : focusOverflow ? 'Viewport follows the newest off-canvas node · coordinates remain stable' : 'Canonical v12 + collision-free Agent placement overlay'}</span>
 						</div>
 						<div className="aig-legend">
-							<span className="aig-spatial-lock">{refined ? <><Sparkles aria-hidden /> Refined once</> : <><ShieldCheck aria-hidden /> Spatial lock</>}</span>
+							<span className="aig-spatial-lock">{refined ? <><Workflow aria-hidden /> Auto-layout applied</> : focusOverflow ? <><LocateFixed aria-hidden /> Focus follows newest</> : <><ShieldCheck aria-hidden /> Spatial lock</>}</span>
 							<span><i className="is-existing" /> Existing</span>
 							<span><i className="is-added" /> Added</span>
 							<span><i className="is-removed" /> Removal</span>
 						</div>
 					</div>
 					<div className={`aig-canvas aig-canvas--${mode}`}>
-						<div className={`aig-graph-layer aig-graph-layer--working${refined ? ' is-refined-away' : ''}`}>
-							<AtlasGraphCanvas
-								subgraph={STABLE_SUBGRAPH}
-								preset="flow-lr"
-								showSemantic
-								summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
-								emptyLabel="No graph objects"
-								buildingLabel="Preparing Cytoscape canvas…"
-								onNodeTap={(node) => setSelectedNode(node.id)}
-							/>
+						<div className={`aig-working-scene${focusOverflow ? ' is-focus-overflow' : ''}${refined ? ' is-refined-away' : ''}`}>
+							<div className="aig-graph-layer aig-graph-layer--working">
+								<AtlasGraphCanvas
+									subgraph={STABLE_SUBGRAPH}
+									preset="flow-lr"
+									showSemantic
+									summary={`${visibleNodeCount} nodes · ${visibleRelationCount} relations`}
+									emptyLabel="No graph objects"
+									buildingLabel="Preparing Cytoscape canvas…"
+									onNodeTap={(node) => setSelectedNode(node.id)}
+								/>
+							</div>
+							<WorkingOverlay hidden={false} step={visibleStep} />
 						</div>
 						{refined && (
 							<div className="aig-graph-layer aig-graph-layer--refined">
@@ -399,8 +584,7 @@ function Prototype(): React.ReactElement {
 								/>
 							</div>
 						)}
-						<WorkingOverlay hidden={refined} step={visibleStep} />
-						{(mode === 'running' || mode === 'paused') && activePatch && (
+						{(mode === 'running' || mode === 'paused' || mode === 'layouting') && activePatch && (
 							<div
 								className={`aig-agent-cursor aig-agent-cursor--${activePatch.kind}`}
 								style={cursor}
@@ -412,15 +596,15 @@ function Prototype(): React.ReactElement {
 						{mode === 'review' && (
 							<div className="aig-review-watermark"><ShieldCheck aria-hidden /><span>Working diff ready</span></div>
 						)}
-						{mode === 'refining' && (
-							<div className="aig-refine-stage"><Sparkles aria-hidden /><span><strong>Refining complete graph</strong><small>One intentional reflow after all 8 operations</small></span></div>
+						{mode === 'layouting' && (
+							<div className="aig-refine-stage"><Workflow aria-hidden /><span><strong>Agent chose Auto layout</strong><small>12 nodes · 15 relations · one intentional reflow</small></span></div>
 						)}
 						{mode === 'accepted' && (
 							<div className="aig-accepted-watermark"><Check aria-hidden /><span>v13 is now the canonical head</span></div>
 						)}
 					</div>
 					<footer className="aig-canvas-footer">
-						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? 'Refined working graph · v12 unchanged' : 'v12 unchanged · positions locked'}</b>{accepted ? ' · immutable version created' : refined ? ' · ready for semantic diff review' : ' · Agent changes are not saved yet'}</span></div>
+						<div className="aig-base-lock"><ShieldCheck aria-hidden /><span><b>{accepted ? 'v13 canonical' : refined ? 'Auto-layout complete · v12 unchanged' : focusOverflow ? 'Focused newest node · graph positions unchanged' : 'v12 unchanged · occupied slots protected'}</b>{accepted ? ' · immutable version created' : refined ? ' · ready for semantic diff review' : ' · Agent changes are not saved yet'}</span></div>
 						{selectedNode && <span className="aig-selection">Selected: {selectedNode}</span>}
 					</footer>
 				</section>
@@ -428,22 +612,22 @@ function Prototype(): React.ReactElement {
 				<aside className="aig-rail">
 					<div className="aig-rail-tabs">
 						<button className={activityTab === 'live' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('live')}>Live activity</button>
-						<button className={activityTab === 'review' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('review')}>Review <span>10</span></button>
+						<button className={activityTab === 'review' ? 'is-active' : ''} type="button" onClick={() => setActivityTab('review')}>Review <span>20</span></button>
 					</div>
 
 					{activityTab === 'live' ? (
 						<div className="aig-feed">
 							<div className="aig-feed-summary">
 								<div className="aig-agent-avatar"><Sparkles aria-hidden /></div>
-								<div><strong>Graph Update Agent</strong><span>{mode === 'idle' ? 'Ready to replay' : mode === 'accepted' ? 'Run accepted' : mode === 'refining' ? '8 operations complete · refining layout' : `${Math.max(0, patchIndex + 1)} of ${PATCHES.length} operations`}</span></div>
+								<div><strong>Graph Update Agent</strong><span>{mode === 'idle' ? 'Ready to replay' : mode === 'accepted' ? 'Run accepted' : mode === 'layouting' ? '16 operations complete · auto-layout running' : `${Math.max(0, patchIndex + 1)} of ${PATCHES.length} operations`}</span></div>
 							</div>
-							<div className="aig-progress"><span style={{ width: `${accepted ? 100 : Math.max(3, ((patchIndex + 1) / PATCHES.length) * 100)}%` }} /></div>
+							<div className="aig-progress"><span style={{ width: `${refined ? 100 : Math.max(3, ((patchIndex + 1) / PATCHES.length) * 100)}%` }} /></div>
 							<div className="aig-feed-list">
 								{PATCHES.map((patch, index) => {
 									const completed = accepted || index <= patchIndex;
-									const current = !accepted && index === patchIndex && (mode === 'running' || mode === 'paused');
+									const current = !accepted && index === patchIndex && (mode === 'running' || mode === 'paused' || mode === 'layouting');
 									return (
-										<div key={patch.id} className={`aig-feed-item${completed ? ' is-complete' : ''}${current ? ' is-current' : ''}`}>
+										<div ref={current ? currentPatchRef : undefined} key={patch.id} className={`aig-feed-item${completed ? ' is-complete' : ''}${current ? ' is-current' : ''}`}>
 											<div className={`aig-feed-item__icon is-${patch.kind}`}>{completed ? patchIcon(patch.kind) : <Clock3 aria-hidden />}</div>
 											<div><strong>{patch.title}</strong><span>{patch.detail}</span><small>{patch.object}</small></div>
 										</div>
@@ -453,13 +637,12 @@ function Prototype(): React.ReactElement {
 						</div>
 					) : (
 						<div className="aig-review">
-							<div className="aig-review-head"><span>Semantic diff</span><strong>10 changes</strong></div>
+							<div className="aig-review-head"><span>Semantic diff</span><strong>20 changes</strong></div>
 							<div className="aig-review-group is-add">
-								<div><Plus aria-hidden /><strong>Added</strong><span>6</span></div>
-								<button type="button">Claim provenance <small>node</small></button>
-								<button type="button">Human review loop <small>node</small></button>
-								<button type="button">Evidence relations <small>2 relations</small></button>
-								<button type="button">Review-loop relations <small>2 relations</small></button>
+								<div><Plus aria-hidden /><strong>Added</strong><span>16</span></div>
+								<button type="button">Evidence expansion <small>2 nodes · 4 relations</small></button>
+								<button type="button">Evaluation checks <small>2 nodes · 3 relations</small></button>
+								<button type="button">Control + observability <small>2 nodes · 3 relations</small></button>
 							</div>
 							<div className="aig-review-group is-change">
 								<div><GitBranch aria-hidden /><strong>Changed</strong><span>1</span></div>
@@ -470,7 +653,7 @@ function Prototype(): React.ReactElement {
 								<button type="button">Keyword-only clustering <small>node</small></button>
 								<button type="button">Legacy semantic path <small>2 relations</small></button>
 							</div>
-							<div className="aig-evidence-note"><ShieldCheck aria-hidden /><span><strong>Validation passed</strong>All endpoints resolve · 6 evidence anchors · base head is still v12</span></div>
+							<div className="aig-evidence-note"><ShieldCheck aria-hidden /><span><strong>Validation passed</strong>All endpoints resolve · 11 evidence anchors · transient orphan excluded · base head is still v12</span></div>
 						</div>
 					)}
 				</aside>
@@ -480,7 +663,7 @@ function Prototype(): React.ReactElement {
 				<div className="aig-runbar__state">
 					{mode === 'running' && <CirclePlay aria-hidden />}
 					{mode === 'paused' && <CirclePause aria-hidden />}
-					{mode === 'refining' && <Sparkles aria-hidden />}
+					{mode === 'layouting' && <Workflow aria-hidden />}
 					{mode === 'review' && <ShieldCheck aria-hidden />}
 					{mode === 'accepted' && <Check aria-hidden />}
 					{mode === 'idle' && <Sparkles aria-hidden />}
