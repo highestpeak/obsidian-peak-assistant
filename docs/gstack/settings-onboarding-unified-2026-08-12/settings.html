@@ -30,6 +30,13 @@
       <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
       <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></symbol>
       <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6Z" /><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8Z" /></symbol>
+      <symbol id="i-markdown-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z" /><path d="M14 3v5h4M8 16v-5l2 2 2-2v5M14 13l2 2 2-2M16 11v4" /></symbol>
+      <symbol id="i-pdf-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z" /><path d="M14 3v5h4M8 16c2.5-1 4.5-3.2 5.3-6M9 12c1 2.2 2.7 3.7 5 4M8 16c2.6-1 5.2-1.1 7.5-.4" /></symbol>
+      <symbol id="i-drawing" viewBox="0 0 24 24"><circle cx="7" cy="7" r="3" /><rect x="12" y="4" width="7" height="6" rx="1" /><path d="m5 19 4-6 4 6ZM15 18l4-4M17 20l3-3" /></symbol>
+      <symbol id="i-document-text" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z" /><path d="M14 3v5h4M9 11h6M9 14h6M9 17h4" /></symbol>
+      <symbol id="i-presentation" viewBox="0 0 24 24"><path d="M4 4h16v12H4ZM8 20l4-4 4 4M12 16v4" /><path d="M8 12V9M12 12V7M16 12v-2" /></symbol>
+      <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 9v11M15 9v11M8 14h13" /></symbol>
+      <symbol id="i-peak-sheet" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 9v11M15 9v11M8 14h7" /><path d="m18 13 .7 1.8 1.8.7-1.8.7L18 18l-.7-1.8-1.8-.7 1.8-.7Z" /></symbol>
     </svg>
 
     <div class="artifact-bar">
@@ -296,15 +303,15 @@
       <section class="modal-card file-types-modal" role="dialog" aria-modal="true" aria-labelledby="file-types-title">
         <header><div><span class="content-eyebrow">KNOWLEDGE SCOPE</span><h2 id="file-types-title">File types</h2><p>Inclusion and capability are separate. Peak only promises what each loader can really do.</p></div><button class="icon-button" data-close-file-types aria-label="Close">×</button></header>
         <div class="file-type-list">
-          <label><span class="file-type-badge">MD</span><span><strong>Markdown</strong><small>Text, links, tags, summaries and embeddings</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
-          <label><span class="file-type-badge">PDF</span><span><strong>PDF</strong><small>Extracted text · OCR only when needed</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
-          <label><span class="file-type-badge">IMG</span><span><strong>Images</strong><small>OCR and visual description require a compatible model</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
-          <label><span class="file-type-badge">EX</span><span><strong>Excalidraw</strong><small>Text labels and linked references</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
-          <label><span class="file-type-badge">DOC</span><span><strong>DOCX</strong><small>Text extraction only · not native editing</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
-          <label><span class="file-type-badge">PPT</span><span><strong>PPTX</strong><small>Slide text extraction · off by default</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
-          <label class="is-limited"><span class="file-type-badge">XLS</span><span><strong>XLSX</strong><small>Preview / registration is not full parsing · keep off</small></span><input type="checkbox" disabled data-switch /><i class="switch"></i></label>
-          <label><span class="file-type-badge">PS</span><span><strong>Peak Sheet</strong><small>Uses its own structured projection and index policy</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
-          <label><span class="file-type-badge">AG</span><span><strong>Peak AI Graph</strong><small>Indexes user-readable explanation and sources, not duplicate internal graph data</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon markdown" aria-hidden="true"><svg><use href="#i-markdown-file" /></svg></span><span><strong>Markdown</strong><small>Text, links, tags, summaries and embeddings</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon pdf" aria-hidden="true"><svg><use href="#i-pdf-file" /></svg></span><span><strong>PDF</strong><small>Extracted text · OCR only when needed</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon image" aria-hidden="true"><svg><use href="#i-image" /></svg></span><span><strong>Images</strong><small>OCR and visual description require a compatible model</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon drawing" aria-hidden="true"><svg><use href="#i-drawing" /></svg></span><span><strong>Excalidraw</strong><small>Text labels and linked references</small></span><input type="checkbox" checked data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon document" aria-hidden="true"><svg><use href="#i-document-text" /></svg></span><span><strong>DOCX</strong><small>Text extraction only · not native editing</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon presentation" aria-hidden="true"><svg><use href="#i-presentation" /></svg></span><span><strong>PPTX</strong><small>Slide text extraction · off by default</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
+          <label class="is-limited"><span class="file-type-icon table" aria-hidden="true"><svg><use href="#i-table" /></svg></span><span><strong>XLSX</strong><small>Preview / registration is not full parsing · keep off</small></span><input type="checkbox" disabled data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon peak-sheet" aria-hidden="true"><svg><use href="#i-peak-sheet" /></svg></span><span><strong>Peak Sheet</strong><small>Uses its own structured projection and index policy</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
+          <label><span class="file-type-icon graph" aria-hidden="true"><svg><use href="#i-graph" /></svg></span><span><strong>Peak AI Graph</strong><small>Indexes user-readable explanation and sources, not duplicate internal graph data</small></span><input type="checkbox" data-switch /><i class="switch"></i></label>
         </div>
         <footer><button class="text-button" data-close-file-types>Cancel</button><button class="secondary-button" data-save-file-types>Save scope</button></footer>
       </section>
