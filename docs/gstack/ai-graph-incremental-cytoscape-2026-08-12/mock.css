@@ -18,11 +18,7 @@
 	--aig-amber: #9a661e;
 	--aig-amber-soft: #fff5e7;
 	--aig-shadow: 0 18px 50px rgba(35, 31, 47, .12), 0 2px 8px rgba(35, 31, 47, .05);
-	--aig-edge-draw-duration: 1050ms;
 	--aig-edge-stagger: 190ms;
-	--aig-edge-stagger-2: 380ms;
-	--aig-edge-stagger-3: 570ms;
-	--aig-edge-stagger-4: 760ms;
 }
 
 * { box-sizing: border-box; }
@@ -210,11 +206,8 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	vector-effect: non-scaling-stroke;
 }
 .aig-overlay-edge.is-added {
-	stroke-dasharray: var(--aig-edge-length) var(--aig-edge-length);
-	stroke-dashoffset: var(--aig-edge-length);
+	opacity: 0;
 	will-change: stroke-dashoffset, opacity;
-	animation: edge-draw var(--aig-edge-draw-duration) cubic-bezier(.36, 0, .18, 1) forwards;
-	animation-delay: var(--aig-edge-delay, 0ms);
 }
 .aig-overlay-edge-head {
 	fill: none;
@@ -223,13 +216,8 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	vector-effect: non-scaling-stroke;
 	marker-end: url(#aig-arrow-added);
 	opacity: 0;
-	animation: edge-head-in 170ms ease-out forwards;
-	animation-delay: calc(var(--aig-edge-draw-duration) + var(--aig-edge-delay, 0ms));
+	will-change: opacity;
 }
-.aig-overlay-edge.is-delay, .aig-overlay-edge-head.is-delay { --aig-edge-delay: var(--aig-edge-stagger); }
-.aig-overlay-edge.is-delay-2, .aig-overlay-edge-head.is-delay-2 { --aig-edge-delay: var(--aig-edge-stagger-2); }
-.aig-overlay-edge.is-delay-3, .aig-overlay-edge-head.is-delay-3 { --aig-edge-delay: var(--aig-edge-stagger-3); }
-.aig-overlay-edge.is-delay-4, .aig-overlay-edge-head.is-delay-4 { --aig-edge-delay: var(--aig-edge-stagger-4); }
 .aig-overlay-edge.is-removing {
 	stroke: var(--aig-red);
 	stroke-width: 2.25;
@@ -543,15 +531,6 @@ button:focus-visible { outline: 2px solid rgba(108, 85, 217, .4); outline-offset
 	from { opacity: 0; transform: translate(-50%, -50%) scale(.78); }
 	65% { opacity: 1; transform: translate(-50%, -50%) scale(1.035); }
 	to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-@keyframes edge-draw {
-	0% { opacity: .22; stroke-dashoffset: var(--aig-edge-length); }
-	16% { opacity: 1; }
-	100% { opacity: 1; stroke-dashoffset: 0; }
-}
-@keyframes edge-head-in {
-	from { opacity: 0; }
-	to { opacity: 1; }
 }
 @keyframes edge-remove {
 	from { opacity: .78; stroke-dashoffset: 0; }

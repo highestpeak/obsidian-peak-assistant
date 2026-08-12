@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
 	Check,
@@ -177,6 +177,9 @@ const CURSOR_POINTS = [
 const RUN_START_DELAY_MS = 650;
 const DEFAULT_PATCH_DWELL_MS = 1100;
 const RELATION_PATCH_DWELL_MS = 2200;
+const EDGE_DRAW_DURATION_MS = 1050;
+const EDGE_HEAD_DURATION_MS = 170;
+const EDGE_STAGGER_MS = 190;
 const NODE_CORNER_PATCH_KINDS = new Set<PatchKind>(['add-node', 'remove-node', 'focus']);
 
 const BASE_NODES: ResultSubgraphOutput['resultNodes'] = [
@@ -300,26 +303,65 @@ interface WorkingOverlayProps {
 	step: number;
 }
 
-type EdgeDelayClass = '' | 'is-delay' | 'is-delay-2' | 'is-delay-3' | 'is-delay-4';
-
 interface AddedEdgeProps {
 	d: string;
-	delayClass?: EdgeDelayClass;
-	length: number;
+	delayMs?: number;
 }
 
-type AddedEdgeStyle = React.CSSProperties & {
-	'--aig-edge-length': string;
-};
+function AddedEdge({ d, delayMs = 0 }: AddedEdgeProps): React.ReactElement {
+	const bodyRef = useRef<SVGPathElement | null>(null);
+	const headRef = useRef<SVGPathElement | null>(null);
 
-function AddedEdge({ d, delayClass = '', length }: AddedEdgeProps): React.ReactElement {
-	const classSuffix = delayClass ? ` ${delayClass}` : '';
-	const style: AddedEdgeStyle = { '--aig-edge-length': `${length}` };
+	useLayoutEffect(() => {
+		const body = bodyRef.current;
+		const head = headRef.current;
+		if (!body || !head) return;
+
+		const pathLength = body.getTotalLength();
+		body.style.strokeDasharray = `${pathLength} ${pathLength}`;
+		body.style.strokeDashoffset = `${pathLength}`;
+		body.style.opacity = '0';
+		head.style.opacity = '0';
+
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			body.style.strokeDashoffset = '0';
+			body.style.opacity = '1';
+			head.style.opacity = '1';
+			return;
+		}
+
+		const bodyAnimation = body.animate(
+			[
+				{ opacity: .22, strokeDashoffset: `${pathLength}` },
+				{ opacity: 1, strokeDashoffset: '0' },
+			],
+			{
+				delay: delayMs,
+				duration: EDGE_DRAW_DURATION_MS,
+				easing: 'cubic-bezier(.36, 0, .18, 1)',
+				fill: 'forwards',
+			},
+		);
+		const headAnimation = head.animate(
+			[{ opacity: 0 }, { opacity: 1 }],
+			{
+				delay: delayMs + EDGE_DRAW_DURATION_MS,
+				duration: EDGE_HEAD_DURATION_MS,
+				easing: 'ease-out',
+				fill: 'forwards',
+			},
+		);
+
+		return () => {
+			bodyAnimation.cancel();
+			headAnimation.cancel();
+		};
+	}, [d, delayMs]);
 
 	return (
 		<>
-			<path className={`aig-overlay-edge is-added${classSuffix}`} d={d} style={style} />
-			<path className={`aig-overlay-edge-head${classSuffix}`} d={d} style={style} />
+			<path ref={bodyRef} className="aig-overlay-edge is-added" d={d} />
+			<path ref={headRef} className="aig-overlay-edge-head" d={d} />
 		</>
 	);
 }
@@ -368,24 +410,24 @@ function WorkingOverlay({ hidden, step }: WorkingOverlayProps): React.ReactEleme
 				</defs>
 				{showEvidenceRelations && (
 					<>
-						<AddedEdge d="M555 332 C585 270 620 205 642 151" length={201} />
-						<AddedEdge d="M756 124 C800 178 805 270 760 332" delayClass="is-delay" length={223} />
+						<AddedEdge d="M555 332 C585 270 620 205 642 151" />
+						<AddedEdge d="M756 124 C800 178 805 270 760 332" delayMs={EDGE_STAGGER_MS} />
 					</>
 				)}
 				{showEvaluationRelations && (
 					<>
-						<AddedEdge d="M920 305 C785 190 625 118 516 106" length={457} />
-						<AddedEdge d="M364 106 C344 122 325 145 306 159" delayClass="is-delay" length={79} />
-						<AddedEdge d="M232 194 C238 245 255 286 275 326" delayClass="is-delay-2" length={140} />
+						<AddedEdge d="M920 305 C785 190 625 118 516 106" />
+						<AddedEdge d="M364 106 C344 122 325 145 306 159" delayMs={EDGE_STAGGER_MS} />
+						<AddedEdge d="M232 194 C238 245 255 286 275 326" delayMs={EDGE_STAGGER_MS * 2} />
 					</>
 				)}
 				{showControlRelations && (
 					<>
-						<AddedEdge d="M555 350 C600 396 625 440 644 465" length={146} />
-						<AddedEdge d="M720 438 C720 324 710 230 700 151" delayClass="is-delay" length={288} />
-						<AddedEdge d="M720 151 C800 225 850 332 875 412" delayClass="is-delay-2" length={307} />
-						<AddedEdge d="M956 440 C995 345 1005 250 984 190" delayClass="is-delay-3" length={257} />
-						<AddedEdge d="M984 174 C835 65 330 72 92 306" delayClass="is-delay-4" length={952} />
+						<AddedEdge d="M555 350 C600 396 625 440 644 465" />
+						<AddedEdge d="M720 438 C720 324 710 230 700 151" delayMs={EDGE_STAGGER_MS} />
+						<AddedEdge d="M720 151 C800 225 850 332 875 412" delayMs={EDGE_STAGGER_MS * 2} />
+						<AddedEdge d="M956 440 C995 345 1005 250 984 190" delayMs={EDGE_STAGGER_MS * 3} />
+						<AddedEdge d="M984 174 C835 65 330 72 92 306" delayMs={EDGE_STAGGER_MS * 4} />
 					</>
 				)}
 				{removeKeyword && (
