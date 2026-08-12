@@ -124,12 +124,12 @@
               </summary>
               <div class="automatic-policy-body">
                 <div class="policy-explainer"><strong>This rule only changes actions set to Automatic.</strong><span>Your three manually selected models stay exactly as they are.</span></div>
-                <fieldset class="policy-choice-list" data-strategy-group>
-                  <legend>What should Automatic optimize for?</legend>
+                <div class="policy-choice-list" data-strategy-group role="group" aria-labelledby="automatic-goal-label">
+                  <span class="policy-choice-heading" id="automatic-goal-label">What should Automatic optimize for?</span>
                   <button class="policy-choice is-selected" data-strategy="Recommended"><span><strong>Recommended</strong><small>A practical balance for everyday work.</small></span><em>Current</em></button>
                   <button class="policy-choice" data-strategy="Lower cost"><span><strong>Lower cost</strong><small>Prefer less expensive or local models when they can do the job.</small></span><em>12 actions</em></button>
                   <button class="policy-choice" data-strategy="Higher quality"><span><strong>Higher quality</strong><small>Prefer stronger models for research and complex writing.</small></span><em>More usage</em></button>
-                </fieldset>
+                </div>
                 <label class="policy-route-select"><span><strong>Where may task content be processed?</strong><small>This controls data location, not answer quality.</small></span><select data-route-select><option>Cloud and this computer</option><option>Prefer this computer</option><option>This computer only</option></select></label>
                 <div class="policy-inheritance"><span><b>Product rule</b><small data-strategy-summary>Recommended · cloud and local</small></span><i>→</i><span><b>Feature default</b><small>May inherit or choose a model</small></span><i>→</i><span><b>Specific action</b><small>Manual choice wins</small></span></div>
                 <div class="policy-actions"><button class="text-button" data-policy-reset>Remove my custom rule</button><button class="secondary-button" data-preview-strategy>Preview affected actions</button><button class="primary-button" data-apply-strategy>Apply to 12 Automatic actions</button></div>

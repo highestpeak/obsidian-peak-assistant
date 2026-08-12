@@ -60,6 +60,7 @@ requireValues("Settings HTML", settingsHtml, [
   "Appearance",
   "Diagnostics &amp; maintenance",
   "How Automatic chooses a model",
+  "policy-choice-heading",
   "data-strategy=\"Recommended\"",
   "data-route-select",
   "data-model-trigger",
@@ -119,6 +120,9 @@ if (settingsHtml.includes("content-header-actions")) {
 }
 if (settingsHtml.includes("connection-summary")) {
   missing.push("Settings HTML: redundant connection summary must stay removed");
+}
+if (settingsHtml.includes("<fieldset class=\"policy-choice-list\"")) {
+  missing.push("Settings HTML: Automatic choices must not use a fieldset legend that breaks the panel border");
 }
 if (settingsHtml.includes("modal-more-connections")) {
   missing.push("Settings HTML: Add connection must use one unified provider list");
@@ -213,6 +217,7 @@ requireValues("CSS", css, [
   ".peak-settings-tabs",
   ".model-tree",
   ".automatic-policy",
+  ".policy-choice-heading",
   ".model-route-button",
   ".action-model-row",
   ".task-model-control",
