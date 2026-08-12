@@ -29,6 +29,8 @@ The two mocks use the same nouns and responsibility boundaries:
 
 - **AI & Models** keeps one continuous configuration chain together: connection → available models → task defaults.
 - Connections, models and task defaults remain distinct levels inside that page; an account is not a model, and a model is not a product feature.
+- **Tools & Safety** keeps the second control chain together: available tools → permissions → confirmations.
+- Tools and safety remain distinct levels inside that page; enabling a capability never silently grants unrestricted access.
 - **Peak Hermes** owns Agent workflow, permissions and receipts; Codex, Claude Code and model connections supply compatible execution capability.
 - **Knowledge settings** own long-term scope and quality. The Knowledge Index workspace owns a current run's progress, errors and history.
 - **Onboarding** verifies only the dependencies needed for one first task. It does not duplicate full Settings.
@@ -40,7 +42,7 @@ The two mocks use the same nouns and responsibility boundaries:
 - No global `Standard / Advanced` mode. Low-frequency controls expand inside the section they affect; diagnostics remain a distinct destination.
 - The default page is `AI & Models`: connections and model catalogs appear first, followed by task defaults using the hierarchy `product feature → action group → concrete action`.
 - Product actions that do not use a generative model say so explicitly.
-- Readiness, privacy and maintenance remain separate destinations; connection, model catalog and task defaults share one owner.
+- Readiness, privacy and maintenance remain separate destinations. Connection, model catalog and task defaults share one owner; tools, permissions and confirmations share another.
 - Provider and capability status uses clear states rather than assuming that saved credentials imply readiness.
 
 ## Onboarding direction

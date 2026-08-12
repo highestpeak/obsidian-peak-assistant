@@ -37,7 +37,10 @@ requireValues("Settings HTML", settingsHtml, [
   "Available models",
   "Task defaults",
   "Knowledge & Search",
-  "Agent & Tools",
+  "Tools &amp; Safety",
+  "Available tools",
+  "Permissions &amp; confirmations",
+  "Agent execution",
   "Feature settings",
   "Advanced & diagnostics",
   "Composer & Copilot",
@@ -48,6 +51,7 @@ requireValues("Settings HTML", settingsHtml, [
   "data-tree-toggle=\"composer\"",
   "data-add-connection",
   "data-settings-panel=\"ai\"",
+  "data-settings-panel=\"tools\"",
   "obsidian-settings-sidebar",
   "peak-settings-tabs",
   "aria-current=\"page\"",
@@ -120,6 +124,10 @@ for (const value of ['<aside class="settings-sidebar">', '<nav class="settings-n
 
 for (const value of ['data-settings-panel="connections"', 'data-settings-panel="models"', 'data-panel-target="connections"', 'data-panel-target="models"']) {
   if (settingsHtml.includes(value)) missing.push(`Split AI configuration destination returned: ${value}`);
+}
+
+for (const value of ['data-settings-panel="agent"', 'data-panel-target="agent"']) {
+  if (settingsHtml.includes(value)) missing.push(`Split tools and safety destination returned: ${value}`);
 }
 
 function checkSymbols(label, html) {

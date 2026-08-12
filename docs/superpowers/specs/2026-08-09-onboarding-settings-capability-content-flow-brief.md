@@ -75,6 +75,8 @@ Settings 的唯一目标是：
 
 在 Settings 信息架构中，连接、模型和任务默认属于同一个一级入口。它们是一条连续配置链：先建立连接，再查看连接提供的模型，最后决定各产品任务默认使用什么；三者在同一页面内分层呈现，但不能合并成同一个概念或同一张无结构列表。
 
+工具和安全也属于同一个一级入口。用户先决定 Peak 可以调用哪些工具，再为这些工具设定读取、写入和外部访问权限，最后规定需要确认的动作；启用工具不能自动等于授予无限权限。
+
 ### 2.1 Connection 的内部类型
 
 这些类型可以共享一致的用户概念，但验证方式和运行语义不同：
@@ -674,6 +676,8 @@ Onboarding 是一条目标驱动、可分支的流程，不等于固定页数。
 
 **用户问题：AI 可以使用哪些外部能力，我是否信任它们？**
 
+本节与 [Safety、权限、预算与确认](#settings-safety) 在 Settings 中共用 `Tools & Safety` 一级入口。这里定义可用能力，Safety 部分定义这些能力的访问范围和确认边界。
+
 #### Web
 
 - Web provider / model；
@@ -825,6 +829,8 @@ MCP 是工具来源，Skill 是工作手册，Provider 是模型来源。Setting
 - code block theme；
 - 只有产品真正支持时才提供 language、motion、density 或其他展示偏好；
 - 不重复 Obsidian 已经统一控制且 Peak 没有独立行为的设置。
+
+<a id="settings-safety"></a>
 
 ### 8.8 Safety、权限、预算与确认（P0/P1 · CURRENT/PARTIAL）
 
