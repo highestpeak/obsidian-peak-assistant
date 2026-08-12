@@ -546,25 +546,15 @@ function GapBackdrop(): React.ReactElement {
 interface LensProjectionCanvasProps {
 	lens: LensDefinition;
 	preset: AtlasGraphPreset;
-	progress?: number;
-	variant: 'stable' | 'live' | 'final';
+	variant: 'stable' | 'final';
 	onNodeTap: (nodeId: string) => void;
 }
 
-function LensProjectionCanvas({ lens, preset, progress = 100, variant, onNodeTap }: LensProjectionCanvasProps): React.ReactElement {
-	const generationState = variant === 'live' ? lensGenerationState(progress, 'running') : 'stable';
+function LensProjectionCanvas({ lens, preset, variant, onNodeTap }: LensProjectionCanvasProps): React.ReactElement {
 	const projectionClass = `${lens.id === 'timeline' ? ' is-timeline-projection' : ''}${lens.id === 'bridge' && preset === 'flow-lr' ? ' is-bridge-projection' : ''}${lens.id === 'gap-analysis' ? ' is-gap-projection' : ''}`;
-	const summary = variant === 'live' ? `${progress}% · ${lens.summary}` : variant === 'stable' ? `v12 · ${lens.summary}` : lens.summary;
-	const radialGeneration = preset === 'constellation';
-	const style = {
-		'--aig-generation-progress': `${progress}%`,
-		'--aig-generation-radius': `${Math.max(10, Math.round(progress * .7))}%`,
-	} as React.CSSProperties;
+	const summary = variant === 'stable' ? `v12 · ${lens.summary}` : lens.summary;
 	return (
-		<div
-			className={`aig-graph-layer aig-graph-layer--${variant}${projectionClass}${variant === 'live' && progress < 100 ? ' is-building' : ''}`}
-			style={style}
-		>
+		<div className={`aig-graph-layer aig-graph-layer--${variant}${projectionClass}`}>
 			{lens.id === 'timeline' && <TimelineBackdrop />}
 			{lens.id === 'bridge' && preset === 'flow-lr' && <BridgeBackdrop />}
 			{lens.id === 'gap-analysis' && <GapBackdrop />}
@@ -577,21 +567,215 @@ function LensProjectionCanvas({ lens, preset, progress = 100, variant, onNodeTap
 				buildingLabel={`Building ${lens.label}…`}
 				onNodeTap={(node) => onNodeTap(node.id)}
 			/>
-			{variant === 'live' && (
-				<>
-					<div className={`aig-projection-run-chip is-${generationState}`} role="status" aria-live="polite">
-						{generationState === 'ready' ? <Check aria-hidden /> : <span className="aig-projection-run-chip__pulse" />}
-						<span>
-							<strong>{generationState === 'ready' ? `${lens.label} draft ready` : `Generating ${lens.label} · ${progress}%`}</strong>
-							<small>{generationState === 'ready' ? 'This graph is ready; the same run continues building the other views.' : 'One run is building all 5 graphs · coordinates stay fixed while content appears.'}</small>
-						</span>
-					</div>
-					{progress < 100 && <div className={`aig-projection-pending-mask${radialGeneration ? ' is-radial' : ''}`} aria-hidden />}
-					{progress < 100 && !radialGeneration && <div className="aig-projection-front" aria-hidden><span /></div>}
-				</>
-			)}
 		</div>
 	);
+}
+
+interface LiveGraphNodeProps {
+	label: string;
+	x: number;
+	y: number;
+	visible: boolean;
+	planned?: boolean;
+	tone?: 'root' | 'bridge' | 'candidate' | 'gap' | 'community' | 'removal';
+}
+
+function LiveGraphNode({ label, x, y, visible, planned = false, tone }: LiveGraphNodeProps): React.ReactElement | null {
+	if (!visible && !planned) return null;
+	return (
+		<div
+			className={`aig-live-graph-node${visible ? ' is-visible' : ' is-planned'}${tone ? ` is-${tone}` : ''}`}
+			style={{ left: `${x}%`, top: `${y}%` }}
+		>
+			{visible ? label : <><span /><small>{label}</small></>}
+		</div>
+	);
+}
+
+interface LiveGraphEdgeProps {
+	x1: number;
+	y1: number;
+	x2: number;
+	y2: number;
+	visible: boolean;
+	tone?: 'reference' | 'probe' | 'weak';
+}
+
+function LiveGraphEdge({ x1, y1, x2, y2, visible, tone = 'reference' }: LiveGraphEdgeProps): React.ReactElement | null {
+	if (!visible) return null;
+	return <line className={`aig-live-graph-edge is-${tone}`} pathLength="1" x1={x1 * 10} y1={y1 * 6} x2={x2 * 10} y2={y2 * 6} />;
+}
+
+interface GenerationFrameProps {
+	lens: LensDefinition;
+	progress: number;
+	active: boolean;
+	operation: string;
+	children: React.ReactNode;
+}
+
+function GenerationFrame({ lens, progress, active, operation, children }: GenerationFrameProps): React.ReactElement {
+	const ready = progress >= 100;
+	return (
+		<div className={`aig-lens-generation-scene is-${lens.id}${active ? ' is-active' : ''}`} aria-hidden={!active}>
+			<div className="aig-lens-generation-meta">
+				<LensGlyph id={lens.id} />
+				<span><strong>{lens.label} construction</strong><small>{ready ? 'Validated graph draft' : operation}</small></span>
+			</div>
+			<div className={`aig-projection-run-chip${ready ? ' is-ready' : ''}`} role={active ? 'status' : undefined} aria-live={active ? 'polite' : undefined}>
+				{ready ? <Check aria-hidden /> : <span className="aig-projection-run-chip__pulse" />}
+				<span><strong>{ready ? `${lens.label} draft ready` : `${progress}% · ${operation}`}</strong><small>{ready ? 'This graph is ready; the same run continues building the other views.' : 'Node and relation operations use this graph type’s own spatial rules.'}</small></span>
+			</div>
+			<div className="aig-lens-generation-content">{children}</div>
+		</div>
+	);
+}
+
+function thinkingTreeOperation(progress: number): string {
+	if (progress < 18) return 'Plan root and branch slots';
+	if (progress < 38) return 'Add first-level child nodes';
+	if (progress < 58) return 'Draw parent-child relations';
+	if (progress < 82) return 'Grow dependent branches';
+	if (progress < 100) return 'Validate ancestry and prune';
+	return 'Tree validated';
+}
+
+function ThinkingTreeGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
+	return (
+		<GenerationFrame lens={lens} progress={progress} active={active} operation={thinkingTreeOperation(progress)}>
+			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
+				<LiveGraphEdge x1={11} y1={50} x2={31} y2={34} visible={progress >= 30} />
+				<LiveGraphEdge x1={11} y1={50} x2={31} y2={66} visible={progress >= 30} />
+				<LiveGraphEdge x1={31} y1={34} x2={55} y2={21} visible={progress >= 55} />
+				<LiveGraphEdge x1={31} y1={34} x2={55} y2={43} visible={progress >= 55} />
+				<LiveGraphEdge x1={31} y1={66} x2={55} y2={69} visible={progress >= 55} />
+				<LiveGraphEdge x1={31} y1={66} x2={55} y2={86} visible={progress >= 58} tone={progress >= 82 ? 'weak' : 'reference'} />
+				<LiveGraphEdge x1={55} y1={21} x2={78} y2={13} visible={progress >= 76} />
+				<LiveGraphEdge x1={55} y1={21} x2={78} y2={29} visible={progress >= 76} />
+				<LiveGraphEdge x1={55} y1={43} x2={78} y2={46} visible={progress >= 76} />
+				<LiveGraphEdge x1={78} y1={13} x2={91} y2={26} visible={progress >= 88} />
+			</svg>
+			<LiveGraphNode label="GraphRAG" x={11} y={50} visible={progress >= 4} tone="root" />
+			<LiveGraphNode label="Retrieval-augmented generation" x={31} y={34} visible={progress >= 18} planned={progress < 18} />
+			<LiveGraphNode label="Community summarization" x={31} y={66} visible={progress >= 18} planned={progress < 18} />
+			<LiveGraphNode label="Evidence-linked graph" x={55} y={21} visible={progress >= 38} planned={progress < 38} />
+			<LiveGraphNode label="Evaluation benchmark" x={55} y={43} visible={progress >= 38} planned={progress < 38} />
+			<LiveGraphNode label="Global search" x={55} y={69} visible={progress >= 38} planned={progress < 38} />
+			<LiveGraphNode label={progress >= 82 ? 'Unsupported branch · prune' : 'Unverified branch'} x={55} y={86} visible={progress >= 44} planned={progress < 44} tone={progress >= 82 ? 'removal' : 'candidate'} />
+			<LiveGraphNode label="Claim provenance" x={78} y={13} visible={progress >= 64} planned={progress < 64} />
+			<LiveGraphNode label="Source lineage" x={78} y={29} visible={progress >= 64} planned={progress < 64} />
+			<LiveGraphNode label="Contradiction check" x={78} y={46} visible={progress >= 64} planned={progress < 64} />
+			<LiveGraphNode label="Human review loop" x={91} y={26} visible={progress >= 82} planned={progress < 82} />
+		</GenerationFrame>
+	);
+}
+
+function bridgeOperation(progress: number): string {
+	if (progress < 22) return 'Place source and destination domains';
+	if (progress < 42) return 'Stage bridge candidates';
+	if (progress < 66) return 'Test the first side';
+	if (progress < 88) return 'Connect the second side';
+	if (progress < 100) return 'Promote validated bridges';
+	return 'Bridge paths validated';
+}
+
+function BridgesGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
+	return (
+		<GenerationFrame lens={lens} progress={progress} active={active} operation={bridgeOperation(progress)}>
+			<div className="aig-live-bridge-columns"><span>Source domain</span><span>Bridge candidate</span><span>Connected domain</span></div>
+			{[28, 52, 76].map((top) => <div key={top} className="aig-live-bridge-lane" style={{ top: `${top - 8}%` }} />)}
+			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
+				<LiveGraphEdge x1={14} y1={28} x2={50} y2={28} visible={progress >= 44} />
+				<LiveGraphEdge x1={50} y1={28} x2={84} y2={28} visible={progress >= 60} />
+				<LiveGraphEdge x1={14} y1={52} x2={50} y2={52} visible={progress >= 52} />
+				<LiveGraphEdge x1={50} y1={52} x2={84} y2={52} visible={progress >= 68} />
+				<LiveGraphEdge x1={14} y1={76} x2={50} y2={76} visible={progress >= 60} />
+				<LiveGraphEdge x1={50} y1={76} x2={77} y2={76} visible={progress >= 76} />
+				<LiveGraphEdge x1={77} y1={76} x2={92} y2={76} visible={progress >= 88} />
+			</svg>
+			<LiveGraphNode label="GraphRAG" x={14} y={28} visible={progress >= 8} tone="community" />
+			<LiveGraphNode label="Community summarization" x={14} y={52} visible={progress >= 14} tone="community" />
+			<LiveGraphNode label="Source lineage" x={14} y={76} visible={progress >= 20} tone="community" />
+			<LiveGraphNode label="Retrieval" x={50} y={28} visible={progress >= 26} tone={progress >= 60 ? 'bridge' : 'candidate'} />
+			<LiveGraphNode label="Global search" x={50} y={52} visible={progress >= 32} tone={progress >= 68 ? 'bridge' : 'candidate'} />
+			<LiveGraphNode label="Claim provenance" x={50} y={76} visible={progress >= 38} tone={progress >= 76 ? 'bridge' : 'candidate'} />
+			<LiveGraphNode label="Evidence-linked graph" x={84} y={28} visible={progress >= 48} tone="community" />
+			<LiveGraphNode label="Evaluation benchmark" x={84} y={52} visible={progress >= 56} tone="community" />
+			<LiveGraphNode label="Human review loop" x={77} y={76} visible={progress >= 66} tone="community" />
+			<LiveGraphNode label="Agent observability" x={92} y={76} visible={progress >= 82} tone="community" />
+		</GenerationFrame>
+	);
+}
+
+function timelineOperation(progress: number): string {
+	if (progress < 18) return 'Plan dated lanes and wrappers';
+	if (progress < 38) return 'Place earliest dated concepts';
+	if (progress < 62) return 'Insert the next time points';
+	if (progress < 86) return 'Draw chronological relations';
+	if (progress < 100) return 'Extend wrappers to the latest nodes';
+	return 'Timeline validated';
+}
+
+function TimelineGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
+	const trackWidth = progress >= 80 ? 96 : progress >= 56 ? 74 : progress >= 32 ? 48 : progress >= 10 ? 24 : 16;
+	const rows = [
+		{ y: 29, tone: 'violet', label: 'Foundation · Jan–Apr', nodes: ['Jan · GraphRAG', 'Feb · Retrieval', 'Mar · Community', 'Apr · Global search'] },
+		{ y: 54, tone: 'blue', label: 'Evidence · May–Aug', nodes: ['May · Evidence graph', 'Jun · Citations', 'Jul · Source lineage', 'Aug · Provenance'] },
+		{ y: 79, tone: 'green', label: 'Control · Sep–Dec', nodes: ['Sep · Benchmark', 'Oct · Contradiction', 'Nov · Human review', 'Dec · Observability'] },
+	] as const;
+	const xs = [11, 38, 65, 90];
+	const nodeThresholds = [10, 32, 56, 80];
+	const edgeThresholds = [40, 64, 88];
+	return (
+		<GenerationFrame lens={lens} progress={progress} active={active} operation={timelineOperation(progress)}>
+			{rows.map((row) => <div key={row.label} className={`aig-live-timeline-track is-${row.tone}`} style={{ top: `${row.y - 9}%`, width: `${trackWidth}%` }}><strong>{row.label}</strong></div>)}
+			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
+				{rows.flatMap((row) => edgeThresholds.map((threshold, index) => <LiveGraphEdge key={`${row.label}:${index}`} x1={xs[index]} y1={row.y} x2={xs[index + 1]} y2={row.y} visible={progress >= threshold} />))}
+			</svg>
+			{rows.flatMap((row) => row.nodes.map((label, index) => <LiveGraphNode key={label} label={label} x={xs[index]} y={row.y} visible={progress >= nodeThresholds[index]} planned={progress < nodeThresholds[index] && progress >= 4} />))}
+		</GenerationFrame>
+	);
+}
+
+function gapsOperation(progress: number): string {
+	if (progress < 22) return 'Map existing knowledge regions';
+	if (progress < 42) return 'Probe missing cross-region relations';
+	if (progress < 66) return 'Score structural holes';
+	if (progress < 88) return 'Classify weak and latent links';
+	if (progress < 100) return 'Validate gap evidence';
+	return 'Gap diagnostics validated';
+}
+
+function GapsGeneration({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement {
+	const rows = [
+		{ y: 29, left: 'Core model', gap: 'Missing bridge · 0.82', right: 'Evaluation', threshold: 44, tone: 'missing' },
+		{ y: 54, left: 'Evidence system', gap: 'Weak bridge · 0.67', right: 'Human control', threshold: 64, tone: 'weak' },
+		{ y: 79, left: 'Search methods', gap: 'Latent connection · 0.58', right: 'Evidence system', threshold: 82, tone: 'latent' },
+	] as const;
+	return (
+		<GenerationFrame lens={lens} progress={progress} active={active} operation={gapsOperation(progress)}>
+			{rows.map((row) => <div key={row.gap} className={`aig-live-gap-lane is-${row.tone}`} style={{ top: `${row.y - 9}%` }} />)}
+			<svg className="aig-live-graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden>
+				{rows.flatMap((row, index) => [
+					<LiveGraphEdge key={`${index}:left`} x1={15} y1={row.y} x2={43} y2={row.y} visible={progress >= 30 + (index * 9)} tone="probe" />,
+					<LiveGraphEdge key={`${index}:right`} x1={85} y1={row.y} x2={57} y2={row.y} visible={progress >= 36 + (index * 9)} tone="probe" />,
+				])}
+			</svg>
+			{rows.flatMap((row, index) => [
+				<LiveGraphNode key={`${row.gap}:left`} label={row.left} x={15} y={row.y} visible={progress >= 8 + (index * 4)} tone="community" />,
+				<LiveGraphNode key={`${row.gap}:gap`} label={row.gap} x={50} y={row.y} visible={progress >= row.threshold} tone="gap" />,
+				<LiveGraphNode key={`${row.gap}:right`} label={row.right} x={85} y={row.y} visible={progress >= 14 + (index * 4)} tone="community" />,
+			])}
+		</GenerationFrame>
+	);
+}
+
+function LensGenerationScene({ lens, progress, active }: { lens: LensDefinition; progress: number; active: boolean }): React.ReactElement | null {
+	if (lens.id === 'thinking-tree') return <ThinkingTreeGeneration lens={lens} progress={progress} active={active} />;
+	if (lens.id === 'bridge') return <BridgesGeneration lens={lens} progress={progress} active={active} />;
+	if (lens.id === 'timeline') return <TimelineGeneration lens={lens} progress={progress} active={active} />;
+	if (lens.id === 'gap-analysis') return <GapsGeneration lens={lens} progress={progress} active={active} />;
+	return null;
 }
 
 interface WorkingOverlayProps {
@@ -1050,8 +1234,8 @@ function Prototype(): React.ReactElement {
 						</div>
 					</div>
 					<div className={`aig-canvas aig-canvas--${mode}`}>
-						{!refined && activeLens.id === 'topology' && (
-							<div className={`aig-working-scene${focusOverflow ? ' is-focus-overflow' : ''}`}>
+						{!refined && (
+							<div className={`aig-working-scene${focusOverflow ? ' is-focus-overflow' : ''}${activeLens.id !== 'topology' ? ' is-hidden' : ''}`}>
 								<div className="aig-graph-layer aig-graph-layer--working">
 									<AtlasGraphCanvas
 										subgraph={STABLE_SUBGRAPH}
@@ -1066,13 +1250,15 @@ function Prototype(): React.ReactElement {
 								<WorkingOverlay hidden={false} step={visibleStep} />
 							</div>
 						)}
-						{!refined && activeLens.id !== 'topology' && (
+						{liveRun && LENSES.filter((lens) => lens.id !== 'topology').map((lens) => (
+							<LensGenerationScene key={lens.id} lens={lens} progress={lensProgressById[lens.id]} active={activeLens.id === lens.id} />
+						))}
+						{!refined && !liveRun && activeLens.id !== 'topology' && (
 							<LensProjectionCanvas
 								key={`working:${activeLens.id}:${effectivePreset}`}
 								lens={activeLens}
 								preset={effectivePreset}
-								progress={liveRun ? activeLensProgress : 100}
-								variant={liveRun ? 'live' : 'stable'}
+								variant="stable"
 								onNodeTap={setSelectedNode}
 							/>
 						)}
