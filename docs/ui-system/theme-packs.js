@@ -2,7 +2,7 @@
   "use strict";
 
   global.PeakThemeSystem = Object.freeze({
-    version: 3,
+    version: 4,
     stateKey: "peak-ui-system-theme-v2",
     channel: "peak-ui-system-theme-v2",
     defaults: Object.freeze({
@@ -27,6 +27,24 @@
     composerDefaults: Object.freeze({
       preset: "peak-default",
       overrides: Object.freeze({})
+    }),
+    graphDefaults: Object.freeze({
+      nodeShape: "round-rectangle",
+      nodeScale: 1,
+      labelSizePx: 14,
+      edgeWidthPx: 2,
+      layoutSpacing: 120,
+      canvasPattern: "grid"
+    }),
+    graphOptions: Object.freeze({
+      nodeShape: ["round-rectangle", "rectangle", "ellipse"],
+      canvasPattern: ["grid", "plain"]
+    }),
+    graphRanges: Object.freeze({
+      nodeScale: [0.75, 1.5],
+      labelSizePx: [11, 18],
+      edgeWidthPx: [1, 5],
+      layoutSpacing: [80, 220]
     }),
     composerOverrideOptions: Object.freeze({
       fontPair: ["interface", "reading-serif", "hybrid"],

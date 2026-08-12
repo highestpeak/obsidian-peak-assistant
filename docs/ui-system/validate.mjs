@@ -4,6 +4,7 @@ import vm from "node:vm";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { parse } from "parse5";
+import cytoscape from "cytoscape";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const docs = path.resolve(here, "..");
@@ -21,6 +22,7 @@ const files = {
   productionCss: path.join(root, "styles.css"),
   themePacks: path.join(here, "theme-packs.js"),
   themeRuntime: path.join(here, "theme-runtime.js"),
+  graphRuntime: path.join(here, "theme-graph.js"),
   labRuntime: path.join(here, "theme-playground.js"),
   themeConceptManifest: path.join(here, "theme-concepts/manifest.json"),
   manifest: path.join(here, "catalog-manifest.js"),
@@ -148,22 +150,34 @@ const sharedReferences = [
 documents.forEach((entry) => sharedReferences.forEach((reference) => assert(entry.source.includes(reference), `${entry.label}: loads ${reference}`)));
 assert(sources.rulesHtml.includes("ui-system/design-system.css"), "Design System: loads rules presentation CSS");
 assert(sources.labHtml.includes("ui-system/theme-playground.css") && sources.labHtml.includes("ui-system/theme-playground.js"), "Theme Lab: loads specimen CSS and runtime");
+assert(sources.labHtml.includes("../node_modules/cytoscape/dist/cytoscape.min.js") && sources.labHtml.includes("ui-system/theme-graph.js"), "Theme Lab: loads Cytoscape and the Graph component runtime");
 assert(sources.inventoryHtml.includes("ui-system/catalog-manifest.js") && sources.inventoryHtml.includes("ui-system/catalog-runtime.js") && sources.inventoryHtml.includes("ui-system/ui-catalog.css"), "UI Inventory: loads evidence manifest and renderer");
 
 const axes = Object.keys(themeSystem.defaults);
 axes.forEach((axis) => assert(documents[1].doc.themeControls.includes(axis), `Theme Lab: controls ${axis}`));
 assert(new Set(documents[1].doc.themeControls).size === axes.length, "Theme Lab: control set matches Theme State axes");
-assert(themeSystem.version === 3, "Theme System: exports schema version 3");
+assert(themeSystem.version === 4, "Theme System: exports schema version 4");
 assert(themeSystem.composerDefaults && themeSystem.composerDefaults.preset === "peak-default", "Theme System: declares Composer fallback");
 assert(Object.keys(themeSystem.composerPresets || {}).length === 4, "Theme System: declares exactly 4 Composer presets");
 assert(Object.keys(themeSystem.composerOverrideOptions || {}).length === 8, "Theme System: declares 8 Composer element override enums");
 assert(Object.keys(themeSystem.composerOverrideRanges || {}).length === 6, "Theme System: declares 6 Composer numeric ranges");
+assert(themeSystem.graphDefaults && themeSystem.graphDefaults.nodeShape === "round-rectangle", "Theme System: declares Graph component fallback");
+assert(Object.keys(themeSystem.graphOptions || {}).length === 2, "Theme System: declares 2 Graph enum controls");
+assert(Object.keys(themeSystem.graphRanges || {}).length === 4, "Theme System: declares 4 Graph numeric controls");
 const themeRuntime = loadThemeRuntime();
 themeRuntime.apply({
   ...themeSystem.defaults,
   composer: {
     preset: "missing-preset",
     overrides: { bodySizePx: 99, contentMeasurePx: 1, quoteStyle: "invalid", tableDensity: "compact" }
+  },
+  graph: {
+    nodeShape: "invalid",
+    nodeScale: 8,
+    labelSizePx: 1,
+    edgeWidthPx: 3,
+    layoutSpacing: 1000,
+    canvasPattern: "plain"
   }
 });
 const runtimeState = themeRuntime.getState();
@@ -173,11 +187,42 @@ assert(!("quoteStyle" in runtimeState.composer.overrides) && runtimeState.compos
 const resolvedComposer = themeRuntime.resolveComposer(runtimeState);
 assert(resolvedComposer["--pk-doc-heading-6-size"] && resolvedComposer["--pk-doc-table-row-height"] === "32px", "Theme Runtime: resolves heading and compact table tokens");
 assert(resolvedComposer["--pk-doc-media-radius"] && resolvedComposer["--pk-doc-math-size"], "Theme Runtime: resolves media and formula tokens");
+assert(runtimeState.graph.nodeShape === "round-rectangle" && runtimeState.graph.canvasPattern === "plain", "Theme Runtime: invalid Graph enums fall back while valid enums survive");
+assert(runtimeState.graph.nodeScale === 1.5 && runtimeState.graph.labelSizePx === 11 && runtimeState.graph.layoutSpacing === 220, "Theme Runtime: Graph numeric values clamp to declared ranges");
+const resolvedGraph = themeRuntime.resolveGraph(runtimeState);
+assert(resolvedGraph["--pk-graph-node-scale"] === "1.5" && resolvedGraph["--pk-graph-edge-width"] === "3px", "Theme Runtime: resolves Graph component tokens");
+
+const graphSmoke = cytoscape({
+  headless: true,
+  styleEnabled: true,
+  elements: [
+    { data: { id: "root" } },
+    { data: { id: "left" } },
+    { data: { id: "right" } },
+    { data: { id: "root-left", source: "root", target: "left" } },
+    { data: { id: "root-right", source: "root", target: "right" } }
+  ],
+  style: [{ selector: "node", style: { shape: themeSystem.graphDefaults.nodeShape } }]
+});
+assert(graphSmoke.nodes().length === 3 && graphSmoke.edges().length === 2, "Graph Runtime: Cytoscape accepts the fixed component fixture");
+assert(graphSmoke.$id("root").style("shape") === "round-rectangle", "Graph Runtime: Cytoscape accepts the default node shape");
+[
+  { name: "cose", animate: false },
+  { name: "circle", animate: false },
+  { name: "concentric", animate: false },
+  { name: "breadthfirst", animate: false, directed: true, roots: "#root" }
+].forEach((options) => {
+  let ran = true;
+  try { graphSmoke.layout(options).run(); } catch (_) { ran = false; }
+  assert(ran, `Graph Runtime: Cytoscape runs ${options.name} layout`);
+});
+graphSmoke.destroy();
 
 [
   ["Foundations", "id=\"foundations\""],
   ["Composer theme workshop", "id=\"composer-theme\""],
   ["Component library", "id=\"primitives\""],
+  ["Graph component workbench", "id=\"graph-component\""],
   ["Product pressure boards", "id=\"coverage\""],
   ["Semantic colors", "role-swatches"],
   ["Type ladder", "type-specimen"],
@@ -216,6 +261,7 @@ assert((sources.labHtml.match(/data-composer-theme-control=/g) || []).length ===
 assert(sources.labHtml.includes("data-composer-view-option=\"edit\"") && sources.labHtml.includes("data-composer-view-option=\"clean\""), "Theme Lab: Composer compares Edit and Clean on the same document");
 assert(sources.labRuntime.includes("selectComposerView") && sources.labRuntime.includes("data-composer-view-option"), "Theme Lab: Composer Edit/Clean switch is interactive");
 assert(sources.themeRuntime.includes("sanitizeComposer") && sources.themeRuntime.includes("resolveComposer") && sources.themeRuntime.includes("exportPayload"), "Theme Runtime: validates, resolves and exports Composer config");
+assert(sources.themeRuntime.includes("sanitizeGraph") && sources.themeRuntime.includes("resolveGraph") && sources.themeRuntime.includes("graph: graph"), "Theme Runtime: validates, resolves and exports Graph config");
 assert(sources.themeRuntime.includes("--pk-doc-heading-6-size") && sources.themeRuntime.includes("--pk-doc-table-row-height"), "Theme Runtime: resolves low heading and structured content roles");
 assert(sources.labCss.includes("--pk-doc-body-font") && sources.labCss.includes("--pk-doc-heading-6-size") && sources.labCss.includes("data-composer-view=\"clean\""), "Theme Lab: Composer specimen consumes document tokens and separates clean view");
 assert(sources.labCss.includes(".composer-theme-contract__rules") && sources.labCss.includes(".composer-theme-contract__json"), "Theme Lab: inline Composer contract and JSON are styled");
@@ -226,7 +272,12 @@ assert((sources.labHtml.match(/class="metric-card(?:\s|\")/g) || []).length >= 4
 assert((sources.labHtml.match(/class="report-section(?:\s|\")/g) || []).length >= 4, "Theme Lab: report includes long-form sections");
 ["doc-frontmatter__grid", "doc-block--selected", "doc-block-action-bar", "doc-callout", "doc-block--focus", "doc-code-block", "doc-markdown-table"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Composer workshop covers ${marker}`));
 ["atlas-workspace", "atlas-file-rail", "atlas-search-band", "atlas-toolbar", "atlas-tree", "atlas-inspector", "atlas-tray"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: File Atlas covers ${marker}`));
-["graph-control-row", "graph-layout-row", "graph-system__canvas", "graph-system-node--selected", "graph-system-node--hover", "graph-system-node--muted"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Graph covers ${marker}`));
+["data-graph-workbench", "graph-control-row", "graph-layout-row", "graph-system__canvas", "data-graph-scope", "data-graph-layout", "data-graph-semantic", "data-graph-fit", "data-graph-export", "data-graph-fullscreen"].forEach((marker) => assert(sources.labHtml.includes(marker), `Theme Lab: Graph covers ${marker}`));
+assert((sources.labHtml.match(/data-graph-theme-control=/g) || []).length === 6, "Theme Lab: Graph exposes exactly 6 theme controls");
+assert(!sources.labHtml.includes("<svg class=\"graph-system__canvas\"") && !sources.labHtml.includes("graph-system-node--selected"), "Theme Lab: Graph no longer uses a hand-drawn SVG substitute");
+assert(sources.graphRuntime.includes("window.cytoscape") && sources.graphRuntime.includes("runLayout") && sources.graphRuntime.includes("applyVisibility"), "Theme Lab: Graph is rendered and relaid out by Cytoscape");
+assert(sources.graphRuntime.includes("mouseover") && sources.graphRuntime.includes("selectNode") && sources.graphRuntime.includes("toggleFullscreen") && sources.graphRuntime.includes("exportPng"), "Theme Lab: Graph implements hover, selection, fullscreen and PNG export");
+assert(!/(?:ReactFlow|@xyflow\/react)/.test(sources.graphRuntime + sources.labHtml), "Theme Lab: Graph contains no React Flow runtime or import");
 assert((sources.labHtml.match(/class="outline-row(?:\s|\")/g) || []).length >= 27, "Theme Lab: long outline includes at least 27 rows");
 assert(sources.labRuntime.includes("selectRow") && sources.labRuntime.includes("data-lab-row"), "Theme Lab: long outline rows are interactive");
 assert(sources.labCss.includes(".report-section:hover") && sources.labCss.includes(".outline-row:hover") && sources.labCss.includes(".quick-actions button:hover"), "Theme Lab: representative hover states are implemented");

@@ -129,19 +129,27 @@ interface PeakThemeState {
   accent: string;
 }
 
-interface PeakThemeFileV3 {
-  version: 3;
+interface PeakThemeFileV4 {
+  version: 4;
   theme: PeakThemeState;
   composer: {
     preset: 'peak-default' | 'research-compact' | 'longform' | 'editorial';
     overrides: Record<string, string | number>;
+  };
+  graph: {
+    nodeShape: 'round-rectangle' | 'rectangle' | 'ellipse';
+    nodeScale: number;
+    labelSizePx: number;
+    edgeWidthPx: number;
+    layoutSpacing: number;
+    canvasPattern: 'grid' | 'plain';
   };
 }
 ```
 
 Theme Pack 提供 canvas、surface、raised、sunken、text、muted、border、accent 和 semantic colors。运行时派生 hover、selected、soft border、shadow、radius、type scale 与 motion。任何 specimen 或生产组件不得根据 pack 名写视觉分支。
 
-主题导入必须验证全局枚举、accent、Composer preset 与每个 override 的枚举/数值范围；无效值安全回落。后续允许扩展完整 Light/Dark palette recipe，但 schema 必须版本化、可预览、可回退，不能把任意 CSS 当作 Theme Pack 导入。
+主题导入必须验证全局枚举、accent、Composer preset/override 与 Graph 枚举/数值范围；无效值安全回落。Graph 的 One / Two hop、AI Graph、Semantic edge、当前布局和选中节点属于预览或产品状态，不进入 Theme JSON。后续允许扩展完整 Light/Dark palette recipe，但 schema 必须版本化、可预览、可回退，不能把任意 CSS 当作 Theme Pack 导入。
 
 Theme Lab 不维护独立 Header 或“锁定/未锁定”状态。Theme State 是页面唯一的 sticky surface，并融合章节导航、Design System 和 UI Inventory 入口；折叠后完整表单从键盘 focus order 移除，但标题、7 个枚举 Theme 轴、Accent、导航和展开保持在同一行，紧凑图标区或导航空间不足时自身横向滚动而不换行。枚举轴 icon button 不允许盲目循环值：点击后必须打开共享的小型 option popover，展示轴名称、当前值、全部选项和选中勾，明确选择后才应用；Popover 支持再次点击、outside click 和 Escape 关闭并恢复触发器焦点；Accent 继续使用系统 color input。只有折叠状态使用独立 localStorage key，不能进入 Theme JSON、Theme BroadcastChannel 或生产 schema。SVG symbol sprite 必须为零尺寸并脱离文档流，避免浏览器默认 SVG intrinsic size 制造首屏空白。
 

@@ -148,8 +148,8 @@ H4–H6 必须保持可辨认，但不复制 H1–H3 的巨大比例。建议采
 
 ```ts
 // proposed
-interface PeakThemeFileV3 {
-  version: 3;
+interface PeakThemeFileV4 {
+  version: 4;
   theme: PeakThemeState;
   composer: {
     preset: 'peak-default' | 'research-compact' | 'longform' | 'editorial';
@@ -170,6 +170,14 @@ interface PeakThemeFileV3 {
       mathScale?: 'compact' | 'default' | 'large';
     };
   };
+  graph: {
+    nodeShape: 'round-rectangle' | 'rectangle' | 'ellipse';
+    nodeScale: number;          // 0.75..1.5
+    labelSizePx: number;        // 11..18
+    edgeWidthPx: number;        // 1..5
+    layoutSpacing: number;      // 80..220
+    canvasPattern: 'grid' | 'plain';
+  };
 }
 ```
 
@@ -178,6 +186,7 @@ interface PeakThemeFileV3 {
 - `preset` 先给出完整默认值，`overrides` 只保存用户改过的字段。
 - 所有数值在导入时 clamp；枚举无效则删除该 override，回退到 preset。
 - Preview state、当前滚动位置、编辑/阅读切换不进入 Theme JSON。
+- Graph 的节点/边/标签几何进入 Theme JSON；scope、layout、semantic toggle、selection 与 viewport 不进入。
 - 导入前展示差异摘要；应用后可一次回滚到导入前状态。
 - Theme JSON 不接受 CSS 字符串、selector、URL 或字体文件路径。
 

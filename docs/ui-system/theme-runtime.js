@@ -23,6 +23,7 @@
     if (!/^#[0-9a-f]{6}$/i.test(String(next.accent || ""))) next.accent = system.packs[next.pack].accent;
     next.accent = String(next.accent).toLowerCase();
     next.composer = sanitizeComposer(candidate && candidate.composer);
+    next.graph = sanitizeGraph(candidate && candidate.graph);
     return next;
   }
 
@@ -41,6 +42,20 @@
       overrides[key] = Math.max(range[0], Math.min(range[1], Number(sourceOverrides[key])));
     });
     return { preset: preset, overrides: overrides };
+  }
+
+  function sanitizeGraph(candidate) {
+    var input = candidate && typeof candidate === "object" ? candidate : {};
+    var next = Object.assign({}, system.graphDefaults);
+    Object.keys(system.graphOptions).forEach(function (key) {
+      if (system.graphOptions[key].indexOf(input[key]) !== -1) next[key] = input[key];
+    });
+    Object.keys(system.graphRanges).forEach(function (key) {
+      if (!Number.isFinite(Number(input[key]))) return;
+      var range = system.graphRanges[key];
+      next[key] = Math.max(range[0], Math.min(range[1], Number(input[key])));
+    });
+    return next;
   }
 
   function readInitialState() {
@@ -260,16 +275,29 @@
     };
   }
 
+  function resolveGraph(next) {
+    var value = sanitizeGraph(next && next.graph);
+    return {
+      "--pk-graph-node-scale": String(value.nodeScale),
+      "--pk-graph-label-size": value.labelSizePx + "px",
+      "--pk-graph-edge-width": value.edgeWidthPx + "px",
+      "--pk-graph-layout-spacing": String(value.layoutSpacing),
+      "--pk-graph-canvas-pattern": value.canvasPattern
+    };
+  }
+
   function exportPayload() {
     var theme = clone(state);
     var composer = theme.composer;
+    var graph = theme.graph;
     delete theme.composer;
-    return { version: system.version, theme: theme, composer: composer };
+    delete theme.graph;
+    return { version: system.version, theme: theme, composer: composer, graph: graph };
   }
 
   function apply(next, options) {
     state = sanitize(next);
-    var variables = Object.assign({}, resolve(state), resolveComposer(state));
+    var variables = Object.assign({}, resolve(state), resolveComposer(state), resolveGraph(state));
     document.documentElement.dataset.peakAppearance = state.appearance;
     document.documentElement.style.colorScheme = state.appearance;
     if (document.body) {
@@ -286,6 +314,8 @@
       root.dataset.elevation = state.elevation;
       root.dataset.motion = state.motion;
       root.dataset.composerPreset = state.composer.preset;
+      root.dataset.graphNodeShape = state.graph.nodeShape;
+      root.dataset.graphCanvasPattern = state.graph.canvasPattern;
       Object.keys(variables).forEach(function (name) { root.style.setProperty(name, variables[name]); });
     });
     syncControls();
@@ -321,6 +351,15 @@
       option.dataset.selected = String(selected);
       option.setAttribute("aria-pressed", String(selected));
     });
+    document.querySelectorAll("[data-graph-theme-control]").forEach(function (control) {
+      var key = control.dataset.graphThemeControl;
+      if (!(key in state.graph)) return;
+      control.value = state.graph[key];
+    });
+    document.querySelectorAll("[data-graph-theme-value]").forEach(function (node) {
+      var key = node.dataset.graphThemeValue;
+      node.textContent = String(state.graph[key]);
+    });
   }
 
   function renderState() {
@@ -334,6 +373,9 @@
     document.querySelectorAll("[data-composer-theme-summary]").forEach(function (node) {
       var preset = system.composerPresets[state.composer.preset];
       node.textContent = preset.label + (Object.keys(state.composer.overrides).length ? " · Custom" : " · Preset");
+    });
+    document.querySelectorAll("[data-graph-theme-summary]").forEach(function (node) {
+      node.textContent = state.graph.nodeShape + " · " + state.graph.labelSizePx + "px label · " + state.graph.edgeWidthPx + "px edge";
     });
   }
 
@@ -366,6 +408,16 @@
 
   function bindControls() {
     document.addEventListener("input", function (event) {
+      var graphControl = event.target.closest && event.target.closest("[data-graph-theme-control]");
+      if (graphControl) {
+        var graphKey = graphControl.dataset.graphThemeControl;
+        var graphNext = clone(state);
+        graphNext.graph[graphKey] = graphControl.type === "number" || graphControl.type === "range"
+          ? Number(graphControl.value)
+          : graphControl.value;
+        apply(graphNext);
+        return;
+      }
       var composerControl = event.target.closest && event.target.closest("[data-composer-theme-control]");
       if (composerControl) {
         var composerKey = composerControl.dataset.composerThemeControl;
@@ -407,6 +459,15 @@
         return;
       }
 
+      var graphReset = event.target.closest && event.target.closest("[data-graph-theme-reset]");
+      if (graphReset) {
+        var graphResetNext = clone(state);
+        graphResetNext.graph = clone(system.graphDefaults);
+        apply(graphResetNext);
+        announce("Graph 组件样式已恢复");
+        return;
+      }
+
       var option = event.target.closest && event.target.closest("[data-theme-option]");
       if (option) {
         var key = option.dataset.themeOption;
@@ -435,6 +496,7 @@
           var parsed = JSON.parse(input);
           var imported = Object.assign({}, parsed.theme || parsed);
           if (parsed.composer) imported.composer = parsed.composer;
+          if (parsed.graph) imported.graph = parsed.graph;
           apply(imported);
           announce("Theme JSON 已应用");
         } catch (_) { announce("Theme JSON 无效"); }
@@ -483,7 +545,8 @@
     getState: function () { return clone(state); },
     apply: function (next) { apply(next); },
     resolve: resolve,
-    resolveComposer: resolveComposer
+    resolveComposer: resolveComposer,
+    resolveGraph: resolveGraph
   });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
