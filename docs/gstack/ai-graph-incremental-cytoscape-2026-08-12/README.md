@@ -2,9 +2,16 @@
 
 This is a design-only, standalone `file://` prototype for owner review. It does not modify the production AI Graph runtime or write a graph artifact.
 
+Final documentation:
+
+- [Final product and interaction design](../../superpowers/specs/2026-08-13-ai-graph-agent-incremental-final-design.md)
+- [Production implementation plan](../../superpowers/plans/2026-08-13-ai-graph-agent-incremental-production-plan.md)
+
+The documents above are the implementation source of truth. This mock remains a motion and interaction reference; it is not production evidence.
+
 ## Product model demonstrated
 
-One AI run can produce five related graph views: `Topology`, `Thinking Tree`, `Bridges`, `Timeline`, and `Gaps`. They share the same frozen source revision and one final acceptance boundary, but each view has its own graph state and its own meaningful Agent operation sequence.
+One AI run can produce five related graph views: `Topology`, `Thinking Tree`, `Bridges`, `Timeline`, and `Gaps`. They share the same frozen source revision, canonical semantic graph identity, and one final acceptance boundary. Each view owns a projection, scene state, explanation, and meaningful Agent operation sequence rather than a separate artifact or renderer.
 
 The run is step-streamed rather than token-streamed. Each visible Activity entry represents one validated graph transaction:
 
