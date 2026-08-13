@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1.0.0",
+  "recordType": "run-manifest",
+  "contractId": "peak.vault-ai-batch-generation",
+  "contractVersion": "1.0.0",
+  "runId": "replace-with-run-id",
+  "createdAt": "2026-08-13T00:00:00.000Z",
+  "mode": "external-batch",
+  "externalImportStatus": "not-implemented",
+  "sourceRoot": "${VAULT_ROOT}",
+  "sourceSelection": {
+    "includeGlobs": [
+      "**/*.md",
+      "**/*.txt",
+      "**/*.html",
+      "**/*.pdf",
+      "**/*.docx",
+      "**/*.pptx"
+    ],
+    "excludeGlobs": [
+      ".git/**",
+      ".trash/**",
+      ".obsidian/plugins/obsidian-peak-assistant/DataStore/**",
+      ".obsidian/plugins/obsidian-peak-assistant/node_modules/**",
+      ".obsidian/plugins/obsidian-peak-assistant/.dev/**",
+      "**/.peak-external-results/**"
+    ],
+    "scopes": [
+      "document",
+      "resource",
+      "community",
+      "hub",
+      "graph",
+      "vault"
+    ],
+    "sensitiveSourceAllowlist": []
+  },
+  "sourceInventory": {
+    "status": "pending",
+    "path": "source-inventory.jsonl",
+    "hashAlgorithm": "sha256"
+  },
+  "execution": {
+    "runner": "codex",
+    "sourceMode": "read-only",
+    "resume": true,
+    "failFast": false,
+    "maxConcurrency": 8,
+    "onSourceChange": "mark-stale-and-skip-apply",
+    "modelRouting": {
+      "document": "replace-with-model",
+      "resource": "replace-with-model",
+      "community": "replace-with-model",
+      "hub": "replace-with-model",
+      "graph": "replace-with-model",
+      "vault": "replace-with-model"
+    }
+  },
+  "enabledCapabilities": [
+    "document.summary.short.v1",
+    "document.summary.full.v1",
+    "document.tags-and-role.v1",
+    "document.review-remarks.v1",
+    "document.auto-review-proposals.v1",
+    "document.link-proposals.v1",
+    "document.frontmatter-proposals.v1",
+    "document.concepts.v1",
+    "document.split-proposal.v1",
+    "document.correction-proposals.v1",
+    "graph.node-explanation.v1",
+    "resource.summary.v1",
+    "community.explanation.v1",
+    "vault.knowledge-intuition.v1",
+    "vault.review-proposals.v1",
+    "vault.activity-summary.v1",
+    "vault.hub-curation-plan.v1",
+    "hub.draft-and-critique.v1",
+    "graph.ai-version.v1"
+  ],
+  "disabledCapabilities": [
+    "resource.image-description.v1",
+    "vault.user-profile-proposals.v1",
+    "vault.semantic-review-proposals.v1"
+  ],
+  "conditions": {
+    "fullSummaryMinContentLengthCharsExclusive": 2000,
+    "conceptsMinWordCount": 100,
+    "splitMinWordCount": 500
+  },
+  "output": {
+    "root": "${TASK_OUTPUT_ROOT}/replace-with-run-id",
+    "layoutVersion": "1.0.0",
+    "schemaPath": "vault-ai-batch-result.schema.json",
+    "eventsPath": "events.jsonl",
+    "atomicWrites": true
+  },
+  "safety": {
+    "writeVaultFiles": false,
+    "writePeakCanonicalStore": false,
+    "writeSQLite": false,
+    "materializeMarkdown": false,
+    "applyProposals": false
+  },
+  "validation": {
+    "validateEveryRecord": true,
+    "verifySourceHashBeforeGeneration": true,
+    "verifySourceHashBeforeFutureImport": true,
+    "rejectUnknownProperties": true
+  }
+}

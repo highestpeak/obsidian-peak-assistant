@@ -1,0 +1,636 @@
+{
+  "contractVersion": "1.0.0",
+  "contractId": "peak.vault-ai-batch-generation",
+  "title": "Peak Assistant Vault AI Batch Generation Contract",
+  "status": "design-only",
+  "purpose": "定义外部 Codex 或其他受控模型客户端批量生成 Peak Assistant 可验证 AI 衍生数据时的任务范围、输入快照、输出分区与安全边界。",
+  "implementationState": {
+    "externalRunnerOwnsExecution": true,
+    "peakExternalImporterAvailable": false,
+    "directPeakIngestionAllowed": false,
+    "reason": "Peak 当前没有实现该外部结果包的导入器。结果只能进入独立 staging 目录，待后续导入器完成 schema、来源哈希、provenance 与状态校验后再映射到 canonical JSON/JSONL。"
+  },
+  "goals": [
+    "让外部客户端可以按文件、资源、社区、Hub、图谱与整个 Vault 六种范围批量运行 AI 任务。",
+    "让每一条结果都能追溯到不可歧义的来源路径、SHA-256、模型、提示模板与运行 ID。",
+    "允许断点续跑、失败隔离、来源变更失效与按记录重试。",
+    "使结果结构能表达 Peak 当前已有能力，同时不假装外部导入链已经存在。"
+  ],
+  "nonGoals": [
+    "本合约不生成任何摘要、标签、评语、社区、Hub、图谱或其他知识内容。",
+    "本合约不修改 Vault 源文件、frontmatter、Markdown、Canvas 或 Excalidraw。",
+    "本合约不直接写入 Peak canonical DataStore、SQLite、FTS、向量索引或缓存。",
+    "本合约不让模型重算本地确定性图算法、哈希、分块、索引或 lint 事实。"
+  ],
+  "safetyBoundary": {
+    "sourceVaultMode": "read-only",
+    "outputMode": "staging-json-jsonl-only",
+    "allowedPersistentCarriers": [
+      "json",
+      "jsonl"
+    ],
+    "forbiddenWrites": [
+      "vault-source-files",
+      "frontmatter",
+      "markdown-materializations",
+      "peak-canonical-datastore",
+      "sqlite",
+      "fts",
+      "vector-index",
+      "cache",
+      "telemetry"
+    ],
+    "applyPolicy": "proposal-only-until-validated-importer-and-explicit-owner-approval",
+    "stalePolicy": "若来源 SHA-256 与任务开始时的快照不一致，结果必须标记 stale，禁止应用。",
+    "sensitivePolicy": "用户画像提案默认关闭；只有用户明确选择来源文件后才允许运行。"
+  },
+  "sourceSnapshotContract": {
+    "hashAlgorithm": "sha256",
+    "inventoryRequiredBeforeGeneration": true,
+    "requiredFileFields": [
+      "path",
+      "sha256",
+      "sizeBytes",
+      "modifiedAt",
+      "fileType"
+    ],
+    "contentTransport": "模型运行器可以读取源内容，但结果文件不得复制完整源文；仅允许必要的短 evidence excerpt。",
+    "pathRules": {
+      "format": "vault-relative-posix",
+      "caseSensitive": true,
+      "allowParentTraversal": false
+    }
+  },
+  "scopes": [
+    {
+      "scope": "document",
+      "unit": "一个可抽取文本的 Vault 文档",
+      "partitionKey": "sha256(vaultRelativePath)"
+    },
+    {
+      "scope": "resource",
+      "unit": "一个 PDF、Office、HTML、文本或其他 Peak loader 支持的资源",
+      "partitionKey": "sha256(vaultRelativePath)"
+    },
+    {
+      "scope": "community",
+      "unit": "一个由本地图算法预先计算的 community evidence snapshot",
+      "partitionKey": "communityId"
+    },
+    {
+      "scope": "hub",
+      "unit": "一个 Hub 候选或已存在 Hub 的确定性 evidence snapshot",
+      "partitionKey": "hubId"
+    },
+    {
+      "scope": "graph",
+      "unit": "一个带来源哈希和 evidence refs 的图谱输入快照",
+      "partitionKey": "graphId/versionId"
+    },
+    {
+      "scope": "vault",
+      "unit": "一个固定来源清单与确定性统计快照代表的整个 Vault",
+      "partitionKey": "vault"
+    }
+  ],
+  "outputLayout": {
+    "layoutVersion": "1.0.0",
+    "root": "<user-selected-staging-directory>/<runId>",
+    "files": {
+      "manifest": "manifest.json",
+      "sourceInventory": "source-inventory.jsonl",
+      "documentResults": "documents/<path-sha256>.json",
+      "resourceResults": "resources/<path-sha256>.json",
+      "communityResults": "communities/<community-id>.json",
+      "hubResults": "hubs/<hub-id>.json",
+      "graphResults": "graphs/<graph-id>/<version-id>.json",
+      "vaultResult": "vault/vault-result.json",
+      "events": "events.jsonl"
+    },
+    "globalJsonlPolicy": "禁止把整库全部结果塞入一个全局 JSONL；JSONL 只用于来源清单和审计事件。",
+    "writePolicy": "先写临时文件，完成 JSON Schema 校验后原子替换对应分区文件。",
+    "resumeKey": "idempotencyKey"
+  },
+  "executionProfiles": [
+    {
+      "profileId": "recommended-safe",
+      "default": true,
+      "description": "不改源文件、无需社区或图谱先决快照的高吞吐逐文件任务。",
+      "capabilities": [
+        "document.summary.short.v1",
+        "document.summary.full.v1",
+        "document.tags-and-role.v1",
+        "document.review-remarks.v1",
+        "document.auto-review-proposals.v1",
+        "document.concepts.v1",
+        "document.correction-proposals.v1",
+        "resource.summary.v1"
+      ]
+    },
+    {
+      "profileId": "maximal-safe",
+      "default": false,
+      "description": "在确定性图、community、Hub 与 Vault 快照均已准备好时运行所有非敏感、非实验能力。",
+      "capabilities": [
+        "document.summary.short.v1",
+        "document.summary.full.v1",
+        "document.tags-and-role.v1",
+        "document.review-remarks.v1",
+        "document.auto-review-proposals.v1",
+        "document.link-proposals.v1",
+        "document.frontmatter-proposals.v1",
+        "document.concepts.v1",
+        "document.split-proposal.v1",
+        "document.correction-proposals.v1",
+        "graph.node-explanation.v1",
+        "resource.summary.v1",
+        "community.explanation.v1",
+        "vault.knowledge-intuition.v1",
+        "vault.review-proposals.v1",
+        "vault.activity-summary.v1",
+        "vault.hub-curation-plan.v1",
+        "hub.draft-and-critique.v1",
+        "graph.ai-version.v1"
+      ]
+    },
+    {
+      "profileId": "sensitive-opt-in",
+      "default": false,
+      "description": "只在用户显式选择来源文件时生成用户画像候选事实。",
+      "capabilities": [
+        "vault.user-profile-proposals.v1"
+      ]
+    },
+    {
+      "profileId": "experimental-off",
+      "default": false,
+      "description": "当前实现或证据链不完整，不得在普通批处理里自动启用。",
+      "capabilities": [
+        "resource.image-description.v1",
+        "vault.semantic-review-proposals.v1"
+      ]
+    }
+  ],
+  "capabilityCatalog": [
+    {
+      "capabilityId": "document.summary.short.v1",
+      "scope": "document",
+      "status": "current-peak-capability",
+      "defaultEnabled": true,
+      "purpose": "为每个文档生成一句事实密集的短摘要。",
+      "conditions": [
+        "source text is non-empty"
+      ],
+      "dependencies": [],
+      "intendedPeakTarget": "mobius_node.summary",
+      "integrationDisposition": "index-compatible-after-importer",
+      "sourceEvidence": [
+        "templates/prompts/doc-summary-short.md",
+        "src/service/search/index/indexService.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.summary.full.v1",
+      "scope": "document",
+      "status": "current-peak-capability",
+      "defaultEnabled": true,
+      "purpose": "生成覆盖结构、主张、实体与结论的长摘要。",
+      "conditions": [
+        "contentLengthChars > configured fullSummaryLength",
+        "default configured fullSummaryLength is 2000"
+      ],
+      "dependencies": [],
+      "intendedPeakTarget": "mobius_node.attributes_json.full_summary",
+      "integrationDisposition": "index-compatible-after-importer",
+      "sourceEvidence": [
+        "templates/prompts/doc-summary-full.md",
+        "src/service/search/index/indexService.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.tags-and-role.v1",
+      "scope": "document",
+      "status": "current-peak-capability",
+      "defaultEnabled": true,
+      "purpose": "生成主题标签、功能标签、时间、地点、人物与文档类型候选。",
+      "conditions": [
+        "source text is non-empty"
+      ],
+      "dependencies": [],
+      "intendedPeakTarget": "mobius_node.tags_json and role-compatible metadata",
+      "integrationDisposition": "index-compatible-after-importer",
+      "sourceEvidence": [
+        "src/core/document/helper/TagService.ts",
+        "src/service/search/index/indexService.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.review-remarks.v1",
+      "scope": "document",
+      "status": "current-proposal-schema",
+      "defaultEnabled": true,
+      "purpose": "生成分节问题、严重度、反馈与修改建议，不直接改文档。",
+      "conditions": [
+        "source text is non-empty"
+      ],
+      "dependencies": [],
+      "intendedPeakTarget": "Copilot review proposal",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.auto-review-proposals.v1",
+      "scope": "document",
+      "status": "current-proposal-schema",
+      "defaultEnabled": true,
+      "purpose": "生成 Document Auto 的 insights、补充来源与块级 change proposals，全部保持待审核。",
+      "conditions": [
+        "source text is non-empty",
+        "every proposed source path is verified against the source inventory"
+      ],
+      "dependencies": [
+        "optional deterministic source candidate snapshot"
+      ],
+      "intendedPeakTarget": "Copilot document insight and change proposal submission",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/CopilotOutputCollector.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.link-proposals.v1",
+      "scope": "document",
+      "status": "current-proposal-schema",
+      "defaultEnabled": false,
+      "purpose": "提出带语境、原因与方向的内部链接候选。",
+      "conditions": [
+        "deterministic candidate paths are supplied",
+        "every target path is verified against the source inventory"
+      ],
+      "dependencies": [
+        "deterministic search or graph candidate snapshot"
+      ],
+      "intendedPeakTarget": "Copilot link suggestion proposal",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.frontmatter-proposals.v1",
+      "scope": "document",
+      "status": "current-proposal-schema",
+      "defaultEnabled": false,
+      "purpose": "生成带来源、证据与 review 标记的 frontmatter 字段候选。",
+      "conditions": [
+        "program-maintained fields are excluded",
+        "no proposed field is applied without explicit review and revision guard"
+      ],
+      "dependencies": [
+        "current frontmatter snapshot"
+      ],
+      "intendedPeakTarget": "Composer metadata field patch proposal",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/CopilotOutputCollector.ts",
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.concepts.v1",
+      "scope": "document",
+      "status": "current-proposal-schema",
+      "defaultEnabled": true,
+      "purpose": "提取概念、定义与可选类别。",
+      "conditions": [
+        "wordCount >= 100"
+      ],
+      "dependencies": [],
+      "intendedPeakTarget": "Copilot concept extraction result",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.split-proposal.v1",
+      "scope": "document",
+      "status": "current-proposal-schema",
+      "defaultEnabled": false,
+      "purpose": "为长文提出拆分原因、目标标题、标题范围与摘录。",
+      "conditions": [
+        "wordCount >= 500"
+      ],
+      "dependencies": [],
+      "intendedPeakTarget": "Copilot split proposal",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "document.correction-proposals.v1",
+      "scope": "document",
+      "status": "current-proposal-schema",
+      "defaultEnabled": true,
+      "purpose": "提出事实、逻辑、引用与拼写纠正，保留原文和解释。",
+      "conditions": [
+        "source text is non-empty"
+      ],
+      "dependencies": [],
+      "intendedPeakTarget": "Copilot correction proposal",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "graph.node-explanation.v1",
+      "scope": "document",
+      "status": "current-peak-capability",
+      "defaultEnabled": false,
+      "purpose": "只依据确定性图证据解释一个节点在 Vault 中的位置与关系。",
+      "conditions": [
+        "node evidence fingerprint is supplied",
+        "representative links and graph signals are supplied"
+      ],
+      "dependencies": [
+        "deterministic graph node evidence snapshot"
+      ],
+      "intendedPeakTarget": "GraphNodeExplanationRecord",
+      "integrationDisposition": "record-compatible-after-importer",
+      "sourceEvidence": [
+        "src/service/search/community/GraphNodeExplanationService.ts"
+      ]
+    },
+    {
+      "capabilityId": "resource.summary.v1",
+      "scope": "resource",
+      "status": "current-peak-capability",
+      "defaultEnabled": true,
+      "purpose": "为 Peak loader 已成功抽取文本的资源生成短摘要与长摘要。",
+      "conditions": [
+        "text extraction succeeded",
+        "resource source fingerprint is supplied"
+      ],
+      "dependencies": [
+        "Peak-compatible text extraction"
+      ],
+      "intendedPeakTarget": "ResourceSummary snapshot",
+      "integrationDisposition": "record-compatible-after-importer",
+      "sourceEvidence": [
+        "src/service/chat/context/ResourceSummaryService.ts",
+        "docs/conventions/generated-artifact-registry.md"
+      ]
+    },
+    {
+      "capabilityId": "resource.image-description.v1",
+      "scope": "resource",
+      "status": "experimental",
+      "defaultEnabled": false,
+      "purpose": "使用真正支持图像输入的客户端生成图片描述。",
+      "conditions": [
+        "runner proves binary multimodal input was sent",
+        "image source fingerprint is supplied"
+      ],
+      "dependencies": [
+        "binary-capable multimodal client"
+      ],
+      "intendedPeakTarget": "future validated resource description",
+      "integrationDisposition": "staging-only",
+      "sourceEvidence": [
+        "src/core/document/loader/ImageDocumentLoader.ts"
+      ]
+    },
+    {
+      "capabilityId": "community.explanation.v1",
+      "scope": "community",
+      "status": "current-peak-capability",
+      "defaultEnabled": false,
+      "purpose": "依据 community 成员、描述词和内部引用事实生成解释与可选标签。",
+      "conditions": [
+        "community membership is computed locally",
+        "community fingerprint and evidence snapshot are supplied"
+      ],
+      "dependencies": [
+        "deterministic Louvain community snapshot"
+      ],
+      "intendedPeakTarget": "CommunityExplanationRecord",
+      "integrationDisposition": "record-compatible-after-importer",
+      "sourceEvidence": [
+        "src/service/search/community/CommunityExplanationService.ts"
+      ]
+    },
+    {
+      "capabilityId": "vault.hub-curation-plan.v1",
+      "scope": "vault",
+      "status": "current-peak-capability",
+      "defaultEnabled": false,
+      "purpose": "基于确定性 communities 与覆盖事实提出 Hub create、keep、merge、retire 决策。",
+      "conditions": [
+        "community and existing Hub snapshots are supplied",
+        "member paths are verified"
+      ],
+      "dependencies": [
+        "deterministic community snapshot",
+        "current Hub manifest snapshot"
+      ],
+      "intendedPeakTarget": "Hub curation decision plan",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/core/schemas/agents/hubCuration.ts",
+        "src/service/agents/hub-curation-helper/hubCurationRecon.ts"
+      ]
+    },
+    {
+      "capabilityId": "hub.draft-and-critique.v1",
+      "scope": "hub",
+      "status": "current-peak-capability",
+      "defaultEnabled": false,
+      "purpose": "生成 Hub 草稿、成员引用清单、覆盖度与 critique 缺口，不自动物化 Markdown。",
+      "conditions": [
+        "Hub decision and member evidence snapshot are supplied",
+        "referenced members exist in the source inventory"
+      ],
+      "dependencies": [
+        "validated Hub curation decision"
+      ],
+      "intendedPeakTarget": "HubManifest summary draft and critique",
+      "integrationDisposition": "record-compatible-after-importer",
+      "sourceEvidence": [
+        "src/core/schemas/agents/hubMaterialization.ts",
+        "src/service/agents/HubMaterializationAgent.ts",
+        "docs/conventions/generated-artifact-registry.md"
+      ]
+    },
+    {
+      "capabilityId": "graph.ai-version.v1",
+      "scope": "graph",
+      "status": "current-peak-capability",
+      "defaultEnabled": false,
+      "purpose": "从固定来源 registry 与 evidence refs 生成不可变 AI Graph 候选版本。",
+      "conditions": [
+        "all source hashes are supplied",
+        "every node and edge carries evidence",
+        "reviewStatus starts as suggested"
+      ],
+      "dependencies": [
+        "source registry snapshot",
+        "deterministic search and graph evidence"
+      ],
+      "intendedPeakTarget": "immutable AIGraphVersion",
+      "integrationDisposition": "record-compatible-after-importer",
+      "sourceEvidence": [
+        "src/service/ai-graph/domain.ts",
+        "docs/conventions/generated-artifact-registry.md"
+      ]
+    },
+    {
+      "capabilityId": "vault.knowledge-intuition.v1",
+      "scope": "vault",
+      "status": "current-peak-capability",
+      "defaultEnabled": false,
+      "purpose": "生成 Vault 主题、分区、核心实体、拓扑、演化与入口意图的整体知识直觉。",
+      "conditions": [
+        "fixed source inventory and compact evidence snapshot are supplied"
+      ],
+      "dependencies": [
+        "vault overview evidence snapshot"
+      ],
+      "intendedPeakTarget": "Knowledge Intuition JSON",
+      "integrationDisposition": "record-compatible-after-importer",
+      "sourceEvidence": [
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "vault.review-proposals.v1",
+      "scope": "vault",
+      "status": "current-proposal-schema",
+      "defaultEnabled": false,
+      "purpose": "把确定性 Vault digest 转换成 cluster observations、gaps、actions、insights 与 sources。",
+      "conditions": [
+        "deterministic review digest is supplied",
+        "all involved note paths are verified"
+      ],
+      "dependencies": [
+        "Vault Review deterministic digest"
+      ],
+      "intendedPeakTarget": "Vault Review proposal submission",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/CopilotOutputCollector.ts"
+      ]
+    },
+    {
+      "capabilityId": "vault.activity-summary.v1",
+      "scope": "vault",
+      "status": "current-proposal-schema",
+      "defaultEnabled": false,
+      "purpose": "按指定时间窗总结 Vault 活动分组与叙事。",
+      "conditions": [
+        "activity period and deterministic activity facts are supplied"
+      ],
+      "dependencies": [
+        "activity snapshot"
+      ],
+      "intendedPeakTarget": "Vault activity summary",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/copilot/copilot-schemas.ts"
+      ]
+    },
+    {
+      "capabilityId": "vault.user-profile-proposals.v1",
+      "scope": "vault",
+      "status": "sensitive-opt-in",
+      "defaultEnabled": false,
+      "purpose": "从用户显式选择的来源中提取用户事实候选。",
+      "conditions": [
+        "explicit user opt-in is recorded",
+        "source allowlist is non-empty",
+        "results remain proposals"
+      ],
+      "dependencies": [
+        "explicit selected source allowlist"
+      ],
+      "intendedPeakTarget": "UserProfileItem proposals",
+      "integrationDisposition": "proposal-only-after-validation",
+      "sourceEvidence": [
+        "src/service/chat/context/UserProfileService.ts"
+      ]
+    },
+    {
+      "capabilityId": "vault.semantic-review-proposals.v1",
+      "scope": "vault",
+      "status": "future-schema-only",
+      "defaultEnabled": false,
+      "purpose": "为语义覆盖、低一致性、矛盾、幻影节点、语义孤岛与冗余 Hub 生成候选 findings。",
+      "conditions": [
+        "must not be presented as current detector coverage",
+        "must remain experimental proposals"
+      ],
+      "dependencies": [
+        "future implemented semantic detector evidence"
+      ],
+      "intendedPeakTarget": "future Vault semantic review proposal",
+      "integrationDisposition": "staging-only",
+      "sourceEvidence": [
+        "src/service/lint/signals/semantic.ts",
+        "src/core/types/lint.ts"
+      ]
+    }
+  ],
+  "deterministicExclusions": [
+    {
+      "fact": "community membership and Louvain clustering",
+      "owner": "local deterministic graph runtime"
+    },
+    {
+      "fact": "PageRank, semantic PageRank and betweenness",
+      "owner": "local deterministic graph runtime"
+    },
+    {
+      "fact": "file SHA-256, source fingerprint, revision and inventory",
+      "owner": "batch runner filesystem scan"
+    },
+    {
+      "fact": "text chunks, FTS rows, TextRank terms and sentences",
+      "owner": "local index runtime"
+    },
+    {
+      "fact": "embeddings and vector indexes",
+      "owner": "local embedding and index runtime"
+    },
+    {
+      "fact": "SQLite projections, caches and telemetry",
+      "owner": "Peak local rebuildable projections"
+    },
+    {
+      "fact": "deterministic lint findings",
+      "owner": "Vault Lint runtime"
+    }
+  ],
+  "validationGate": {
+    "schema": "vault-ai-batch-result.schema.json",
+    "requiredBeforeAcceptingARecord": [
+      "JSON parses",
+      "JSON Schema validates",
+      "capability was enabled by manifest",
+      "source path exists in frozen inventory",
+      "source SHA-256 still matches",
+      "provenance and idempotencyKey are present",
+      "all referenced paths exist in frozen inventory",
+      "status is success, failed, skipped or stale"
+    ],
+    "requiredBeforeFuturePeakImport": [
+      "external importer is implemented",
+      "target-specific domain validation passes",
+      "proposal-only fields receive explicit review",
+      "canonical writer uses registered artifact IDs",
+      "SQLite and indexes are rebuilt from canonical facts rather than written directly"
+    ]
+  }
+}

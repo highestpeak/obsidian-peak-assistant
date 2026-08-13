@@ -1,0 +1,3399 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peak-assistant.local/schemas/vault-ai-batch-result.schema.json",
+  "title": "Peak Assistant Vault AI Batch Package Record",
+  "description": "逐行或逐文件验证外部 AI 批处理 staging 包中的 manifest、来源清单、结果与事件。",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/runManifest"
+    },
+    {
+      "$ref": "#/$defs/sourceInventoryRecord"
+    },
+    {
+      "$ref": "#/$defs/documentResult"
+    },
+    {
+      "$ref": "#/$defs/resourceResult"
+    },
+    {
+      "$ref": "#/$defs/communityResult"
+    },
+    {
+      "$ref": "#/$defs/hubResult"
+    },
+    {
+      "$ref": "#/$defs/graphResult"
+    },
+    {
+      "$ref": "#/$defs/vaultResult"
+    },
+    {
+      "$ref": "#/$defs/auditEvent"
+    }
+  ],
+  "$defs": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "vaultRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoningTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cachedInputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimatedCostUsd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "client",
+        "executionMode",
+        "startedAt",
+        "completedAt",
+        "promptTemplateIds"
+      ],
+      "properties": {
+        "client": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clientVersion": {
+          "type": "string"
+        },
+        "executionMode": {
+          "enum": [
+            "external-subscription",
+            "peak-provider",
+            "manual"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "promptTemplateIds": {
+          "$ref": "#/$defs/stringList"
+        },
+        "usage": {
+          "$ref": "#/$defs/usage"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fileSnapshot": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256",
+        "sizeBytes",
+        "modifiedAt",
+        "fileType"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/vaultRelativePath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "modifiedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "fileType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "wordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contentLengthChars": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "snapshotRef": {
+      "type": "object",
+      "required": [
+        "snapshotId",
+        "sha256"
+      ],
+      "properties": {
+        "snapshotId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidenceRef": {
+      "type": "object",
+      "required": [
+        "sourcePath",
+        "sourceSha256"
+      ],
+      "properties": {
+        "sourcePath": {
+          "$ref": "#/$defs/vaultRelativePath"
+        },
+        "sourceSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "selector": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "excerpt": {
+          "type": "string",
+          "maxLength": 1200
+        }
+      },
+      "additionalProperties": false
+    },
+    "capabilityResult": {
+      "type": "object",
+      "required": [
+        "capabilityId",
+        "status",
+        "sourceFingerprint"
+      ],
+      "properties": {
+        "capabilityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "success",
+            "failed",
+            "skipped",
+            "stale"
+          ]
+        },
+        "sourceFingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "value": true,
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "success"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": true,
+              "provenance": {
+                "$ref": "#/$defs/provenance"
+              }
+            },
+            "required": [
+              "value",
+              "provenance"
+            ]
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "summaryValue": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string"
+        },
+        "targetMaxLengthChars": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tagsAndRoleValue": {
+      "type": "object",
+      "required": [
+        "topicTagEntries",
+        "functionalTagEntries",
+        "timeTags",
+        "geoTags",
+        "personTags",
+        "docType"
+      ],
+      "properties": {
+        "topicTagEntries": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/tagEntry"
+          }
+        },
+        "functionalTagEntries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/tagEntry"
+          }
+        },
+        "timeTags": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string"
+          }
+        },
+        "geoTags": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string"
+          }
+        },
+        "personTags": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string"
+          }
+        },
+        "inferredCreatedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "docType": {
+          "type": "object",
+          "required": [
+            "value",
+            "confidence",
+            "reasoning"
+          ],
+          "properties": {
+            "value": {
+              "enum": [
+                "principle",
+                "profile",
+                "index",
+                "daily",
+                "project",
+                "note",
+                "other"
+              ]
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "reasoning": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "tagEntry": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reviewRemarksValue": {
+      "type": "object",
+      "required": [
+        "overall",
+        "sections"
+      ],
+      "properties": {
+        "overall": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "title",
+              "severity",
+              "feedback",
+              "suggestion"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "feedback": {
+                "type": "string"
+              },
+              "suggestion": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "documentAutoReviewValue": {
+      "type": "object",
+      "required": [
+        "insights",
+        "sources",
+        "changeProposals"
+      ],
+      "properties": {
+        "insights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/insight"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "excerpt",
+              "relevance",
+              "weight"
+            ],
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/vaultRelativePath"
+              },
+              "excerpt": {
+                "type": "string",
+                "maxLength": 1200
+              },
+              "relevance": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "changeProposals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "title",
+              "blocks",
+              "provenance"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "heading",
+                    "before",
+                    "after"
+                  ],
+                  "properties": {
+                    "heading": {
+                      "type": "string"
+                    },
+                    "before": {
+                      "type": "string"
+                    },
+                    "after": {
+                      "type": "string"
+                    },
+                    "rationale": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "provenance": {
+                "$ref": "#/$defs/stringList"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "linkProposalsValue": {
+      "type": "object",
+      "required": [
+        "links"
+      ],
+      "properties": {
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "target",
+              "context",
+              "reason",
+              "type"
+            ],
+            "properties": {
+              "target": {
+                "$ref": "#/$defs/vaultRelativePath"
+              },
+              "context": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "outgoing",
+                  "incoming"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "frontmatterProposalsValue": {
+      "type": "object",
+      "required": [
+        "fields"
+      ],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "value",
+              "valueKind",
+              "origin",
+              "requiresReview"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "valueKind": {
+                "enum": [
+                  "scalar",
+                  "list",
+                  "boolean",
+                  "date",
+                  "link",
+                  "unknown"
+                ]
+              },
+              "origin": {
+                "const": "ai"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/evidenceRef"
+                }
+              },
+              "requiresReview": {
+                "const": true
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "conceptsValue": {
+      "type": "object",
+      "required": [
+        "concepts"
+      ],
+      "properties": {
+        "concepts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "term",
+              "definition"
+            ],
+            "properties": {
+              "term": {
+                "type": "string"
+              },
+              "definition": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "splitProposalValue": {
+      "type": "object",
+      "required": [
+        "reason",
+        "splits"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "splits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "newTitle",
+              "headings",
+              "lineRange",
+              "summary",
+              "excerpt"
+            ],
+            "properties": {
+              "newTitle": {
+                "type": "string"
+              },
+              "headings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "lineRange": {
+                "type": "object",
+                "required": [
+                  "start",
+                  "end"
+                ],
+                "properties": {
+                  "start": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "end": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "summary": {
+                "type": "string"
+              },
+              "excerpt": {
+                "type": "string",
+                "maxLength": 1200
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "correctionProposalsValue": {
+      "type": "object",
+      "required": [
+        "corrections",
+        "summary"
+      ],
+      "properties": {
+        "corrections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "original",
+              "corrected",
+              "type",
+              "explanation",
+              "severity"
+            ],
+            "properties": {
+              "original": {
+                "type": "string"
+              },
+              "corrected": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "factual",
+                  "logical",
+                  "reference",
+                  "typo"
+                ]
+              },
+              "explanation": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "critical",
+                  "major",
+                  "minor"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "nodeExplanationValue": {
+      "type": "object",
+      "required": [
+        "nodeKey",
+        "path",
+        "fingerprint",
+        "explanation",
+        "evidence"
+      ],
+      "properties": {
+        "nodeKey": {
+          "$ref": "#/$defs/identifier"
+        },
+        "path": {
+          "$ref": "#/$defs/vaultRelativePath"
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "object",
+          "required": [
+            "title",
+            "signals",
+            "incomingLinks",
+            "outgoingLinks",
+            "representativeLinks"
+          ],
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "signals": {
+              "$ref": "#/$defs/stringList"
+            },
+            "incomingLinks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outgoingLinks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "representativeLinks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/vaultRelativePath"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "resourceSummaryValue": {
+      "type": "object",
+      "required": [
+        "shortSummary",
+        "fullSummary"
+      ],
+      "properties": {
+        "shortSummary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fullSummary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "imageDescriptionValue": {
+      "type": "object",
+      "required": [
+        "description",
+        "multimodalInputConfirmed"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "multimodalInputConfirmed": {
+          "const": true
+        },
+        "visibleText": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "communityExplanationValue": {
+      "type": "object",
+      "required": [
+        "communityId",
+        "fingerprint",
+        "analysisVersion",
+        "explanation",
+        "suggestedLabel",
+        "evidence"
+      ],
+      "properties": {
+        "communityId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "analysisVersion": {
+          "type": "string"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggestedLabel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "object",
+          "required": [
+            "visibleMembers",
+            "totalMembers",
+            "internalReferenceCount",
+            "descriptors",
+            "representativeNotes"
+          ],
+          "properties": {
+            "visibleMembers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "totalMembers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "internalReferenceCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "descriptors": {
+              "$ref": "#/$defs/stringList"
+            },
+            "representativeNotes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/vaultRelativePath"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "hubCurationValue": {
+      "type": "object",
+      "required": [
+        "hubs",
+        "coverage",
+        "confidence",
+        "shouldStop"
+      ],
+      "properties": {
+        "hubs": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "required": [
+              "nodeId",
+              "hubPath",
+              "action",
+              "scope",
+              "reason"
+            ],
+            "properties": {
+              "nodeId": {
+                "$ref": "#/$defs/identifier"
+              },
+              "hubPath": {
+                "$ref": "#/$defs/vaultRelativePath"
+              },
+              "action": {
+                "enum": [
+                  "create",
+                  "keep",
+                  "merge",
+                  "retire"
+                ]
+              },
+              "scope": {
+                "type": "object",
+                "required": [
+                  "communityIds",
+                  "memberNodeIds"
+                ],
+                "properties": {
+                  "communityIds": {
+                    "type": "array",
+                    "maxItems": 3,
+                    "items": {
+                      "$ref": "#/$defs/identifier"
+                    }
+                  },
+                  "memberNodeIds": {
+                    "type": "array",
+                    "maxItems": 60,
+                    "items": {
+                      "$ref": "#/$defs/identifier"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "reason": {
+                "type": "string"
+              },
+              "mergeSourceHubs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/vaultRelativePath"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "required": [
+            "totalMembers",
+            "coveredMembers",
+            "uncoveredHighValue"
+          ],
+          "properties": {
+            "totalMembers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "coveredMembers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "uncoveredHighValue": {
+              "type": "array",
+              "maxItems": 20,
+              "items": {
+                "$ref": "#/$defs/identifier"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "shouldStop": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "hubDraftValue": {
+      "type": "object",
+      "required": [
+        "draft",
+        "critique"
+      ],
+      "properties": {
+        "draft": {
+          "type": "object",
+          "required": [
+            "title",
+            "summary",
+            "coreConceptSection",
+            "structureSection",
+            "evolutionSection",
+            "openQuestionsSection",
+            "entryPointsSection",
+            "referencedMemberIds"
+          ],
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "coreConceptSection": {
+              "type": "string"
+            },
+            "structureSection": {
+              "type": "string"
+            },
+            "evolutionSection": {
+              "type": "string"
+            },
+            "openQuestionsSection": {
+              "type": "string"
+            },
+            "entryPointsSection": {
+              "type": "string"
+            },
+            "referencedMemberIds": {
+              "type": "array",
+              "maxItems": 60,
+              "items": {
+                "$ref": "#/$defs/identifier"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "critique": {
+          "type": "object",
+          "required": [
+            "retryDraft",
+            "gaps",
+            "overallCoverage"
+          ],
+          "properties": {
+            "retryDraft": {
+              "type": "boolean"
+            },
+            "gaps": {
+              "type": "array",
+              "maxItems": 15,
+              "items": {
+                "type": "object",
+                "required": [
+                  "memberId",
+                  "kind",
+                  "hint"
+                ],
+                "properties": {
+                  "memberId": {
+                    "$ref": "#/$defs/identifier"
+                  },
+                  "kind": {
+                    "enum": [
+                      "missing-reference",
+                      "missing-quote",
+                      "missing-role"
+                    ]
+                  },
+                  "hint": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "overallCoverage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "graphVersionValue": {
+      "type": "object",
+      "required": [
+        "manifest",
+        "version",
+        "sources"
+      ],
+      "properties": {
+        "manifest": {
+          "$ref": "#/$defs/aiGraphManifest"
+        },
+        "version": {
+          "$ref": "#/$defs/aiGraphVersion"
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/aiGraphSource"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphOriginContextRef": {
+      "type": "object",
+      "required": [
+        "kind",
+        "ref",
+        "label"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "search-query",
+            "vault-file",
+            "vault-selection",
+            "atlas-file",
+            "conversation",
+            "project",
+            "import"
+          ]
+        },
+        "ref": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "locator": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphOrigin": {
+      "type": "object",
+      "required": [
+        "surface",
+        "contextRefs"
+      ],
+      "properties": {
+        "surface": {
+          "enum": [
+            "ai-search",
+            "ai-analysis",
+            "file-atlas",
+            "composer",
+            "vault-search",
+            "chat-studio",
+            "import"
+          ]
+        },
+        "contextRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/aiGraphOriginContextRef"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphManifest": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "graphId",
+        "title",
+        "graphType",
+        "status",
+        "headVersionId",
+        "createdAt",
+        "updatedAt",
+        "createdFrom",
+        "tags"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "graphId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "graphType": {
+          "enum": [
+            "free",
+            "concept",
+            "entity",
+            "evidence",
+            "causal",
+            "timeline"
+          ]
+        },
+        "status": {
+          "const": "draft"
+        },
+        "headVersionId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "createdAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "createdFrom": {
+          "$ref": "#/$defs/aiGraphOrigin"
+        },
+        "tags": {
+          "$ref": "#/$defs/stringList"
+        },
+        "defaultLens": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphSource": {
+      "type": "object",
+      "required": [
+        "sourceId",
+        "kind",
+        "title",
+        "locator",
+        "contentHash",
+        "capturedAt",
+        "freshness"
+      ],
+      "properties": {
+        "sourceId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "kind": {
+          "enum": [
+            "vault-file",
+            "vault-block",
+            "web-page",
+            "manual-text",
+            "analysis-result",
+            "ai-graph-version"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "locator": {
+          "type": "string"
+        },
+        "contentHash": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capturedAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "changed",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "removedAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parentSourceId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphEvidenceSelector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "from",
+            "to"
+          ],
+          "properties": {
+            "kind": {
+              "const": "vault-lines"
+            },
+            "from": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "to": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "heading": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "blockId"
+          ],
+          "properties": {
+            "kind": {
+              "const": "vault-block"
+            },
+            "blockId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "exact"
+          ],
+          "properties": {
+            "kind": {
+              "const": "text-quote"
+            },
+            "exact": {
+              "type": "string",
+              "maxLength": 1200
+            },
+            "prefix": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "suffix": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "url-fragment"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "aiGraphEvidence": {
+      "type": "object",
+      "required": [
+        "evidenceId",
+        "sourceId",
+        "selector",
+        "sourceContentHash",
+        "capturedAt"
+      ],
+      "properties": {
+        "evidenceId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "selector": {
+          "$ref": "#/$defs/aiGraphEvidenceSelector"
+        },
+        "quote": {
+          "type": "string",
+          "maxLength": 1200
+        },
+        "sourceContentHash": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capturedAt": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphProvenance": {
+      "type": "object",
+      "required": [
+        "origin"
+      ],
+      "properties": {
+        "origin": {
+          "enum": [
+            "ai-extracted",
+            "ai-inferred",
+            "deterministic",
+            "user",
+            "imported"
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "extractorVersion": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphNode": {
+      "type": "object",
+      "required": [
+        "nodeId",
+        "kind",
+        "label",
+        "aliases",
+        "properties",
+        "evidenceIds",
+        "provenance",
+        "reviewStatus"
+      ],
+      "properties": {
+        "nodeId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "kind": {
+          "enum": [
+            "vault-document",
+            "web-resource",
+            "concept",
+            "person",
+            "organization",
+            "place",
+            "event",
+            "work",
+            "product",
+            "claim",
+            "process",
+            "dataset",
+            "custom"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "aliases": {
+          "$ref": "#/$defs/stringList"
+        },
+        "description": {
+          "type": "string"
+        },
+        "canonicalRef": {
+          "type": "string"
+        },
+        "customType": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/stringList"
+        },
+        "provenance": {
+          "$ref": "#/$defs/aiGraphProvenance"
+        },
+        "reviewStatus": {
+          "const": "suggested"
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphRelation": {
+      "type": "object",
+      "required": [
+        "relationId",
+        "sourceNodeId",
+        "targetNodeId",
+        "family",
+        "predicate",
+        "label",
+        "directed",
+        "qualifiers",
+        "evidenceIds",
+        "confidence",
+        "provenance",
+        "reviewStatus"
+      ],
+      "properties": {
+        "relationId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "sourceNodeId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "targetNodeId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "family": {
+          "enum": [
+            "semantic",
+            "taxonomic",
+            "causal",
+            "evidence",
+            "temporal",
+            "attribution",
+            "structural",
+            "custom"
+          ]
+        },
+        "predicate": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "directed": {
+          "type": "boolean"
+        },
+        "qualifiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "value"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "value": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/stringList"
+        },
+        "confidence": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/aiGraphProvenance"
+        },
+        "reviewStatus": {
+          "const": "suggested"
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiGraphVersion": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "graphId",
+        "versionId",
+        "createdAt",
+        "createdBy",
+        "changeKind",
+        "sourceIds",
+        "nodes",
+        "relations",
+        "evidence",
+        "generation",
+        "stats"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "graphId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "versionId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "parentVersionId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "createdAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "createdBy": {
+          "const": "assistant"
+        },
+        "changeKind": {
+          "enum": [
+            "generated",
+            "imported"
+          ]
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "sourceIds": {
+          "$ref": "#/$defs/stringList"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/aiGraphNode"
+          }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/aiGraphRelation"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/aiGraphEvidence"
+          }
+        },
+        "generation": {
+          "type": "object",
+          "properties": {
+            "runId": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "extractorVersion": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "stats": {
+          "type": "object",
+          "required": [
+            "nodeCount",
+            "relationCount",
+            "sourceCount",
+            "needsReviewCount"
+          ],
+          "properties": {
+            "nodeCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "relationCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sourceCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "needsReviewCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "knowledgeIntuitionValue": {
+      "type": "object",
+      "required": [
+        "findingsSummary",
+        "partitions",
+        "coreEntities",
+        "topology",
+        "evolution",
+        "entryPoints",
+        "shouldStop"
+      ],
+      "properties": {
+        "findingsSummary": {
+          "type": "string"
+        },
+        "theme": {
+          "type": "string"
+        },
+        "partitions": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "purpose",
+              "entryPaths"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "entryPaths": {
+                "type": "array",
+                "maxItems": 2,
+                "items": {
+                  "$ref": "#/$defs/vaultRelativePath"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "coreEntities": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "description",
+              "location",
+              "whyItMatters"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "location": {
+                "$ref": "#/$defs/vaultRelativePath"
+              },
+              "whyItMatters": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "topology": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "relation"
+            ],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "relation": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evolution": {
+          "type": "string"
+        },
+        "entryPoints": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "required": [
+              "intent",
+              "startPaths",
+              "whatYouWillFind"
+            ],
+            "properties": {
+              "intent": {
+                "type": "string"
+              },
+              "startPaths": {
+                "type": "array",
+                "maxItems": 2,
+                "items": {
+                  "$ref": "#/$defs/vaultRelativePath"
+                }
+              },
+              "whatYouWillFind": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "openQuestions": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "string"
+          }
+        },
+        "shouldStop": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "vaultReviewValue": {
+      "type": "object",
+      "required": [
+        "clusterObservations",
+        "gaps",
+        "actions",
+        "insights",
+        "sources"
+      ],
+      "properties": {
+        "clusterObservations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "clusterId",
+              "clusterLabel",
+              "memberCount",
+              "status",
+              "headline",
+              "body",
+              "representativeNotes"
+            ],
+            "properties": {
+              "clusterId": {
+                "$ref": "#/$defs/identifier"
+              },
+              "clusterLabel": {
+                "type": "string"
+              },
+              "memberCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "status": {
+                "enum": [
+                  "growing",
+                  "stable",
+                  "dying",
+                  "central",
+                  "fragmenting"
+                ]
+              },
+              "headline": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "representativeNotes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/vaultRelativePath"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "title",
+              "body",
+              "confidence",
+              "references"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "structural-hole",
+                  "dangling-reference",
+                  "stale-hub",
+                  "abstraction-mismatch"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "references": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/vaultRelativePath"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "priority",
+              "title",
+              "rationale",
+              "involvedNotes"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "create-note",
+                  "merge-notes",
+                  "split-note",
+                  "archive-cluster",
+                  "add-tag",
+                  "restructure",
+                  "refresh-note"
+                ]
+              },
+              "priority": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "title": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "involvedNotes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/vaultRelativePath"
+                }
+              },
+              "estimatedImpact": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "insights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/insight"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "excerpt",
+              "relevance",
+              "weight"
+            ],
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/vaultRelativePath"
+              },
+              "excerpt": {
+                "type": "string",
+                "maxLength": 1200
+              },
+              "relevance": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "followUpQuestions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "insight": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "body",
+        "severity",
+        "provenance",
+        "followUpQuestions"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/stringList"
+        },
+        "followUpQuestions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "activitySummaryValue": {
+      "type": "object",
+      "required": [
+        "period",
+        "totalNotes",
+        "groups",
+        "narrative"
+      ],
+      "properties": {
+        "period": {
+          "type": "object",
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "end": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "additionalProperties": false
+        },
+        "totalNotes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "notePaths",
+              "summary"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "notePaths": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/vaultRelativePath"
+                }
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "narrative": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "profileProposalsValue": {
+      "type": "object",
+      "required": [
+        "explicitOptIn",
+        "selectedSources",
+        "items"
+      ],
+      "properties": {
+        "explicitOptIn": {
+          "const": true
+        },
+        "selectedSources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/vaultRelativePath"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "text",
+              "category"
+            ],
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "semanticReviewValue": {
+      "type": "object",
+      "required": [
+        "experimental",
+        "findings"
+      ],
+      "properties": {
+        "experimental": {
+          "const": true
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "detectorId",
+              "title",
+              "body",
+              "confidence",
+              "references"
+            ],
+            "properties": {
+              "detectorId": {
+                "enum": [
+                  "M-COVERAGE-GAP",
+                  "M-LOW-COHESION",
+                  "M-CONTRADICTION",
+                  "M-PHANTOM-NODE",
+                  "M-SEMANTIC-ISOLATION",
+                  "M-REDUNDANT-HUBS"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "references": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/evidenceRef"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "documentCapabilityResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/capabilityResult"
+        },
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.summary.short.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/summaryValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.summary.full.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/summaryValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.tags-and-role.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/tagsAndRoleValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.review-remarks.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/reviewRemarksValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.auto-review-proposals.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/documentAutoReviewValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.link-proposals.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/linkProposalsValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.frontmatter-proposals.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/frontmatterProposalsValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.concepts.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/conceptsValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.split-proposal.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/splitProposalValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "document.correction-proposals.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/correctionProposalsValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "graph.node-explanation.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/nodeExplanationValue"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "resourceCapabilityResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/capabilityResult"
+        },
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "resource.summary.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/resourceSummaryValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "resource.image-description.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/imageDescriptionValue"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "communityCapabilityResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/capabilityResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "capabilityId": {
+              "const": "community.explanation.v1"
+            },
+            "value": {
+              "$ref": "#/$defs/communityExplanationValue"
+            }
+          }
+        }
+      ]
+    },
+    "hubCapabilityResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/capabilityResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "capabilityId": {
+              "const": "hub.draft-and-critique.v1"
+            },
+            "value": {
+              "$ref": "#/$defs/hubDraftValue"
+            }
+          }
+        }
+      ]
+    },
+    "graphCapabilityResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/capabilityResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "capabilityId": {
+              "const": "graph.ai-version.v1"
+            },
+            "value": {
+              "$ref": "#/$defs/graphVersionValue"
+            }
+          }
+        }
+      ]
+    },
+    "vaultCapabilityResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/capabilityResult"
+        },
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "vault.knowledge-intuition.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/knowledgeIntuitionValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "vault.review-proposals.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/vaultReviewValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "vault.activity-summary.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/activitySummaryValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "vault.hub-curation-plan.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/hubCurationValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "vault.user-profile-proposals.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/profileProposalsValue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "const": "vault.semantic-review-proposals.v1"
+                },
+                "value": {
+                  "$ref": "#/$defs/semanticReviewValue"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "runManifest": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "contractId",
+        "contractVersion",
+        "runId",
+        "createdAt",
+        "mode",
+        "externalImportStatus",
+        "sourceRoot",
+        "sourceSelection",
+        "sourceInventory",
+        "execution",
+        "enabledCapabilities",
+        "output",
+        "safety",
+        "validation"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "run-manifest"
+        },
+        "contractId": {
+          "const": "peak.vault-ai-batch-generation"
+        },
+        "contractVersion": {
+          "const": "1.0.0"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "mode": {
+          "const": "external-batch"
+        },
+        "externalImportStatus": {
+          "const": "not-implemented"
+        },
+        "sourceRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceSelection": {
+          "type": "object",
+          "required": [
+            "includeGlobs",
+            "excludeGlobs",
+            "scopes"
+          ],
+          "properties": {
+            "includeGlobs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "excludeGlobs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "scopes": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "document",
+                  "resource",
+                  "community",
+                  "hub",
+                  "graph",
+                  "vault"
+                ]
+              }
+            },
+            "sensitiveSourceAllowlist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "sourceInventory": {
+          "type": "object",
+          "required": [
+            "status",
+            "path",
+            "hashAlgorithm"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "pending",
+                "ready"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hashAlgorithm": {
+              "const": "sha256"
+            },
+            "recordCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "inventorySha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution": {
+          "type": "object",
+          "required": [
+            "runner",
+            "sourceMode",
+            "resume",
+            "failFast",
+            "maxConcurrency",
+            "onSourceChange"
+          ],
+          "properties": {
+            "runner": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceMode": {
+              "const": "read-only"
+            },
+            "resume": {
+              "type": "boolean"
+            },
+            "failFast": {
+              "type": "boolean"
+            },
+            "maxConcurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "onSourceChange": {
+              "const": "mark-stale-and-skip-apply"
+            },
+            "modelRouting": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "enabledCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "disabledCapabilities": {
+          "$ref": "#/$defs/stringList"
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "fullSummaryMinContentLengthCharsExclusive": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "conceptsMinWordCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "splitMinWordCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "root",
+            "layoutVersion",
+            "schemaPath",
+            "eventsPath",
+            "atomicWrites"
+          ],
+          "properties": {
+            "root": {
+              "type": "string",
+              "minLength": 1
+            },
+            "layoutVersion": {
+              "const": "1.0.0"
+            },
+            "schemaPath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "eventsPath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "atomicWrites": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "safety": {
+          "type": "object",
+          "required": [
+            "writeVaultFiles",
+            "writePeakCanonicalStore",
+            "writeSQLite",
+            "materializeMarkdown",
+            "applyProposals"
+          ],
+          "properties": {
+            "writeVaultFiles": {
+              "const": false
+            },
+            "writePeakCanonicalStore": {
+              "const": false
+            },
+            "writeSQLite": {
+              "const": false
+            },
+            "materializeMarkdown": {
+              "const": false
+            },
+            "applyProposals": {
+              "const": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "validation": {
+          "type": "object",
+          "required": [
+            "validateEveryRecord",
+            "verifySourceHashBeforeGeneration",
+            "verifySourceHashBeforeFutureImport",
+            "rejectUnknownProperties"
+          ],
+          "properties": {
+            "validateEveryRecord": {
+              "const": true
+            },
+            "verifySourceHashBeforeGeneration": {
+              "const": true
+            },
+            "verifySourceHashBeforeFutureImport": {
+              "const": true
+            },
+            "rejectUnknownProperties": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourceInventoryRecord": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "snapshot"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "source-inventory-record"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/fileSnapshot"
+        }
+      },
+      "additionalProperties": false
+    },
+    "documentResult": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "recordId",
+        "idempotencyKey",
+        "createdAt",
+        "sourceSnapshot",
+        "results"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "document-result"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "recordId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceSnapshot": {
+          "$ref": "#/$defs/fileSnapshot"
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/documentCapabilityResult"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "resourceResult": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "recordId",
+        "idempotencyKey",
+        "createdAt",
+        "sourceSnapshot",
+        "results"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "resource-result"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "recordId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceSnapshot": {
+          "$ref": "#/$defs/fileSnapshot"
+        },
+        "extractionFingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/resourceCapabilityResult"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "communityResult": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "recordId",
+        "idempotencyKey",
+        "createdAt",
+        "communityId",
+        "evidenceSnapshot",
+        "results"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "community-result"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "recordId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "communityId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "evidenceSnapshot": {
+          "$ref": "#/$defs/snapshotRef"
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/communityCapabilityResult"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "hubResult": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "recordId",
+        "idempotencyKey",
+        "createdAt",
+        "hubId",
+        "evidenceSnapshot",
+        "results"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "hub-result"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "recordId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "hubId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "evidenceSnapshot": {
+          "$ref": "#/$defs/snapshotRef"
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/hubCapabilityResult"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "graphResult": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "recordId",
+        "idempotencyKey",
+        "createdAt",
+        "graphId",
+        "evidenceSnapshot",
+        "results"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "graph-result"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "recordId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "graphId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "evidenceSnapshot": {
+          "$ref": "#/$defs/snapshotRef"
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/graphCapabilityResult"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "vaultResult": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "recordId",
+        "idempotencyKey",
+        "createdAt",
+        "inventorySnapshot",
+        "evidenceSnapshots",
+        "results"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "vault-result"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "recordId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "inventorySnapshot": {
+          "$ref": "#/$defs/snapshotRef"
+        },
+        "evidenceSnapshots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/snapshotRef"
+          }
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/vaultCapabilityResult"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "auditEvent": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "runId",
+        "eventId",
+        "timestamp",
+        "eventType",
+        "status"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "recordType": {
+          "const": "audit-event"
+        },
+        "runId": {
+          "$ref": "#/$defs/runId"
+        },
+        "eventId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "eventType": {
+          "enum": [
+            "run-started",
+            "inventory-frozen",
+            "record-started",
+            "record-completed",
+            "record-failed",
+            "record-skipped",
+            "record-stale",
+            "run-completed",
+            "run-failed"
+          ]
+        },
+        "status": {
+          "enum": [
+            "running",
+            "success",
+            "failed",
+            "skipped",
+            "stale"
+          ]
+        },
+        "recordId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "capabilityId": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
