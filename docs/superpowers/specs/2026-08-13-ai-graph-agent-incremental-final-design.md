@@ -1,9 +1,11 @@
 # AI Graph Agent 增量生成：最终产品与交互设计
 
-> 状态：**最终设计已收束，生产增量运行时尚未实现**
-> 日期：2026-08-13
+> 状态：**单次生成与 Composer Block 合同已修正，生产实现待收敛**
+> 首次日期：2026-08-13
+> 最近修正：2026-08-14
 > 面向读者：产品 Owner、实现工程师、代码审查者、真实 Obsidian 验收者
 > 交互原型：[Incremental AI Graph · Cytoscape Mock](../../gstack/ai-graph-incremental-cytoscape-2026-08-12/index.html)
+> Composer 原型：[Composer AI Graph Block Mock](../../gstack/composer-ai-graph-block-2026-08-14/index.html)
 > 实施计划：[AI Graph Agent 增量生产实施计划](../plans/2026-08-13-ai-graph-agent-incremental-production-plan.md)
 > 前置公共能力：[Shared Graph Workspace 产品与交互规范](./2026-08-12-shared-graph-workspace-product-and-interaction-spec.md)
 
@@ -11,9 +13,9 @@
 
 AI Graph 的最终产品模型是：
 
-> **一份有来源、有版本的 canonical semantic graph，一次 Graph Agent run 生成一组包含五个视图的 view package；所有视图由同一个 Cytoscape / `AtlasGraphCanvas` 渲染栈显示。**
+> **一个 AI Graph Block 可以保留多个已生成的图类型；一次 Graph Agent run 只生成或更新其中一个类型。每个类型都是有来源、有版本的独立 graph artifact，并由同一个 Cytoscape / `AtlasGraphCanvas` 渲染栈显示。**
 
-五个视图是：
+支持的图类型是：
 
 - `Topology`：当前知识是怎样连接的。
 - `Thinking Tree`：推理分支是怎样逐步展开的。
@@ -21,17 +23,19 @@ AI Graph 的最终产品模型是：
 - `Timeline`：事件、任务和依赖如何在时间中并行、汇合与推进。
 - `Gaps`：任务所要求、但当前缺失或证据不足的连接在哪里。
 
-它们不是五份互相独立的 artifact，也不是五套 Graph 组件。它们共享 canonical node / relation / evidence identity，但各自拥有：
+它们不是同一张 canonical graph 的五个自动投影，也不是一次 run 必须同时生成的五个 entry。它们是同一个 Block 下可以逐个生成、逐个切换、分别更新和分别查看历史的图。不同类型可以引用相同来源或相同 canonical entity identity，但不共享必须同步变化的 node / relation body。
 
-- 视图成员关系；
-- 必要的诊断或临时展示对象；
-- 布局意图和视图坐标；
-- 视口状态；
-- 一段与当前版本绑定的自然语言解释。
+每个已生成类型独立拥有：
+
+- `graphId`、head version 与历史版本；
+- node、relation、evidence 与 provenance；
+- layout、positions、viewport 与当前 explanation；
+- run、Activity、Accept / Discard 与恢复状态；
+- 当前 Markdown materialization 关联。
 
 Graph Agent 以**离散、可验证、可回放的步骤**构图。每个步骤内部不展示 token 或隐藏思维链；步骤之间实时更新画布和 Activity。
 
-Accepted graph 始终不可变。Agent run 修改的是 working draft；只有整个 view package 校验通过且用户 `Accept` 后，才生成新的 immutable version。
+Accepted graph 始终不可变。Agent run 修改的是当前类型的 working draft；只有该图校验通过且用户 `Accept` 后，才生成这个 `graphId` 的新 immutable version。其他已生成类型不被替换，也不需要重新生成。
 
 ## 2. 本设计解决的核心问题
 
@@ -39,18 +43,19 @@ Accepted graph 始终不可变。Agent run 修改的是 working draft；只有�
 
 1. **渲染实例被重建**：新增一个节点或一条线时整张图跳动，镜头、节点和边失去空间连续性。
 2. **边与节点不在同一几何真值中**：外部 overlay、错误的动画遮罩或错误端点计算造成箭头偏移、断线、空白段。
-3. **五种视图只有不同名字，没有不同语义**：Tree、Bridge、Timeline、Gaps 使用同一套固定数据和同一段动画，难以理解。
+3. **五种图只有不同名字，没有不同语义**：Tree、Bridge、Timeline、Gaps 使用同一套固定数据和同一段动画，难以理解。
 4. **Agent 只有“提交整图”能力**：生产 Agent 当前更接近一次性生成完整结果，无法真实表达“先放节点、后连线、再删除、局部布局、最后 refine”。
 5. **图与解释割裂**：用户看见图，却不知道这一视图在回答什么问题，也看不出 bridge 或 gap 的判定理由。
 
-最终设计的关键不是再换一次布局参数，而是统一三层真值：
+最终设计的关键不是再换一次布局参数，而是统一 operation、artifact、Block mapping 与 renderer 的真值：
 
 ```mermaid
 flowchart LR
   A["Agent semantic operations"] --> B["Validated working-graph reducer"]
-  B --> C["Version-bound five-view package"]
-  C --> D["One persistent Cytoscape renderer"]
-  D --> E["Stable geometry, motion and viewport"]
+  B --> C["One versioned graph of the selected type"]
+  C --> D["Block graph-reference map"]
+  D --> E["One persistent Cytoscape renderer"]
+  E --> F["Stable geometry, motion and viewport"]
 ```
 
 ## 3. 现状、术语与边界
@@ -60,8 +65,8 @@ flowchart LR
 当前生产源码已经完成 Shared Graph Workspace 的 renderer 收敛：
 
 - `ContextualAIGraphView` 负责寻找并加载与当前上下文匹配的 AI Graph artifact。
-- `AIGraphWorkspaceCanvas` 负责 AI Graph Lens、控制栏和 graph model 适配。
-- `aiLensToAtlasModel` / `aiLensLayouts` 把 Lens 数据转换为中立的 `AtlasGraphModel`。
+- `AIGraphWorkspaceCanvas` 负责 AI Graph 的图类型、控制栏和 graph model 适配；当前多 Lens 输入是待迁移兼容路径。
+- `aiLensToAtlasModel` / `aiLensLayouts` 把旧 Lens 数据转换为中立的 `AtlasGraphModel`，不再定义新的 artifact 合同。
 - `AtlasGraphCanvas` 是统一 Cytoscape renderer。
 - `MultiLensGraph` 与 `@xyflow/react` 已从生产路径删除；React Flow 不再是允许扩展的 Graph 技术。
 - Artifact manifest、immutable versions、proposal / accept 边界、JSONL run events 已经存在。
@@ -73,16 +78,19 @@ flowchart LR
 - Graph Agent 主要仍通过 `read_sources` + `submit_graph` 一次性提交完整结果。
 - UI 主要在拿到完整 `LensGraphData` 后替换 graph data，没有消费 typed incremental patch stream。
 - `AtlasGraphCanvasImpl` 在 model / subgraph 更新路径上仍会销毁并重建 Cytoscape 实例，不满足连续增量渲染。
-- 五个 Lens 尚未保证由同一次 run 组成完整、可为空但可解释的 view package。
+- Composer 尚无能够保留多个独立 `graphId` 的 AI Graph Block carrier、parser 与 renderer。
+- 图类型菜单尚未区分“已生成可切换”和“尚未生成需先询问”的状态。
+- 现有 artifact runtime 的 `graphType` 与产品图类型命名尚未统一。
 - rich node card 尚未提供 AI Graph 专属的 `Explain / Expand / Focus / Evidence` 完整行为。
-- per-view explanation、Activity 的 operation receipt、最终 Refine 和场景缓存尚未接入生产链路。
+- per-graph explanation、Activity 的 operation receipt、最终 Refine 和场景缓存尚未接入当前生产分支。
+- Mermaid / SVG / PNG 的 Composer materializer、隐藏引用和映射恢复尚未实现。
 
 ### 3.3 三个常被混淆的名字
 
 | 名称 | 正确职责 | 是否 renderer |
 | --- | --- | --- |
 | `ContextualAIGraphView` | 根据当前文件 / 搜索 /入口加载正确 artifact，处理 loading、empty、error、ready | 否 |
-| `AIGraphWorkspaceCanvas` | AI Graph 的 Lens、布局、run 状态和共享画布编排 | 否 |
+| `AIGraphWorkspaceCanvas` | 当前 graph artifact、布局、run 状态和共享画布编排 | 否 |
 | `AtlasGraphCanvas` | 统一 Cytoscape 图形渲染、交互、camera、minimap、inspect | 是 |
 
 `MultiLensGraph` 是旧 React Flow 实现的名字，不是一个新的产品概念。它已经是迁移完成后的历史术语，不能继续增加行为。
@@ -95,17 +103,14 @@ AI Graph 是 sourced / versioned artifact。它不替代：
 - File Atlas：当前文件的一跳 / 两跳关系；
 - Vault Intelligence：Vault 级 Hub、Gap、Bridge、Orphan、Drift 诊断。
 
-AI Graph 的 Bridge / Gap 是**这个 artifact 和当前任务契约内部**的推理视图；Vault Intelligence 的 Bridge / Gap 是 Vault 级维护诊断。两者可以复用视觉语言，但不能混用数据真值。
+AI Graph 的 Bridge / Gap 是**这个 artifact 和当前任务契约内部**的图类型；Vault Intelligence 的 Bridge / Gap 是 Vault 级维护诊断。两者可以复用视觉语言，但不能混用数据真值。
 
 ## 4. 最终信息架构
 
-AI Graph 页面保持 Graph 为主，而不是让审计面板抢占空间。
+AI Graph Block 保持 Graph 为主。类型、布局和 Markdown 格式在同一条紧凑控制栏中；审计与运行细节按需展开。
 
 ```text
-Artifact title / version / run state                         History  Activity
-Update instruction + sources                                 Accept / Discard
-────────────────────────────────────────────────────────────────────────────
-Topology   Thinking Tree   Bridges   Timeline   Gaps         [layout controls]
+[Current graph type ▾]  [allowed layouts]                   [Save as ▾]
 ────────────────────────────────────────────────────────────────────────────
 
                               Graph canvas
@@ -113,75 +118,86 @@ Topology   Thinking Tree   Bridges   Timeline   Gaps         [layout controls]
   current operation
   Shift inspect · I pin                          Mini Map / zoom / fit tools
 ────────────────────────────────────────────────────────────────────────────
-Explanation of this view                                           Collapse
+Graph name only
+────────────────────────────────────────────────────────────────────────────
+Composer actions: Insert · Copy · Comment · Explain · Expand · Focus · History
 ```
 
-最终 UI 只保留：
+图类型菜单同时承担状态和导航：
 
-- 标题、版本、run 状态；
-- update instruction 与来源摘要；
-- 五个 Lens tab；
-- 当前 Lens 允许的 layout segmented control；
-- 主画布；
-- 可折叠的 per-view explanation；
-- 可选 Activity drawer；
-- draft 完成时的 `Accept / Discard`。
+- 已生成类型显示版本状态，点击后立即恢复对应 graph、layout、viewport 与 explanation；
+- 尚未生成类型显示 `Not generated`，点击后打开生成询问，不直接出现假数据；
+- 新建 Block 时先询问图类型，再允许输入可选 Prompt；
+- Prompt 为空时使用该类型的默认生成指令和冻结上下文；
+- 同一类型的 `Regenerate / Expand / Instruction` 进入该 `graphId` 的独立历史；
+- 切换类型不删除、不覆盖、不重新生成其他图。
 
-不保留常驻的 `Added / Changed / Removed / Validation passed` 大型 review dashboard。语义 diff 和完整 Activity 只在用户需要时打开。
+最终 UI 不保留常驻的 `Added / Changed / Removed / Validation passed` 大型 review dashboard。完整 Activity、semantic diff 和 Accept / Discard 仅在当前图存在 working draft 时出现。
 
-## 5. 一份图、五个视图，而不是五套组件
+## 5. 一个 Block、多个独立图，而不是一次 Run 的多视图包
 
-### 5.1 Canonical graph
+### 5.1 Block graph-reference map
 
-Canonical layer 只存一次：
-
-- node；
-- relation；
-- source / evidence；
-- provenance；
-- stable object ID；
-- artifact version / parent version；
-- accepted review state。
-
-### 5.2 View package
-
-每次完成的 run 产生一个 version-bound `viewPackage`：
+一个 Block 只保存引用和展示选择，不复制所有 graph body：
 
 ```ts
-type AIGraphViewPackage = {
+type ComposerAIGraphBlockState = {
   schemaVersion: number;
-  graphVersionId: string;
-  sourceRevision: string;
-  views: Record<AIGraphViewId, AIGraphViewProjection>;
-};
-
-type AIGraphViewProjection = {
-  viewId: "topology" | "thinking-tree" | "bridges" | "timeline" | "gaps";
-  nodeIds: string[];
-  relationIds: string[];
-  groups: ViewGroup[];
-  diagnostics: ViewDiagnostic[];
-  layoutIntent: LayoutIntent;
-  explanation: ViewExplanation;
-  validation: ViewValidationResult;
+  blockGraphSetId: string;
+  selectedType: AIGraphType;
+  graphs: Partial<Record<AIGraphType, {
+    graphId: string;
+    headVersionId: string;
+    selectedVersionId: string;
+    layout: AIGraphLayout;
+    viewport?: AIGraphViewport;
+  }>>;
+  materialization: {
+    format: "mermaid" | "svg" | "image";
+    graphType: AIGraphType;
+    versionId: string;
+    assetPath?: string;
+  };
 };
 ```
 
-这个结构应以 additive schema 方式进入 artifact version。旧版本没有 `viewPackage` 时，通过兼容 adapter 派生 best-effort views，不修改旧 artifact body。
+`graphs` 中没有某个类型时，表示尚未生成。它不是空 graph，也不是等待后台自动补齐的 view entry。
 
-### 5.3 一个可见 workspace 只保留一个 live Cytoscape instance
+### 5.2 每个类型是独立 artifact
 
-五个 Lens 不需要同时维护五个隐藏 Cytoscape 实例。正确模型是：
+一次 run 只绑定一个 `graphId` 和一个 `graphType`。该 artifact 独立保存：
 
-- 可见 workspace 只有一个 live `cy`；
-- Lens 切换时，从 scene cache 恢复该 Lens 的 elements、positions、zoom、pan；
-- 当前 Lens 的增量操作直接 patch live `cy`；
-- 非当前 Lens 的操作进入 reducer 和 scene cache，不抢走用户当前 tab 或 camera；
-- 切回时看到已完成或正在继续的正确状态。
+- node、relation、source / evidence 与 provenance；
+- stable object ID；
+- immutable version 与 `parentVersionId`；
+- accepted review state；
+- graph-specific explanation；
+- display scene state 的引用。
 
-这同时满足低内存、视图连续性和一次 run 多视图生成。
+不同类型允许引用相同的 source、evidence 或 canonical entity ref，但不能因为一个类型更新就隐式改写另一个类型。
 
-## 6. 五个视图的真实语义与生成故事
+### 5.3 一个可见 Block 只保留一个 live Cytoscape instance
+
+正确模型是：
+
+- 可见 Block 只有一个 live `cy`；
+- 切换已生成类型时，从该 `graphId` 的 scene cache 恢复 elements、positions、zoom 和 pan；
+- 当前图的增量 operation 直接 patch live `cy`；
+- 其他类型没有后台自动生成，也不会抢走当前 camera；
+- 切回旧类型时恢复其上次 accepted 或正在 review 的状态。
+
+### 5.4 生成前询问
+
+新建 Block 或点击尚未生成的类型时，打开同一个生成入口：
+
+1. 预选目标图类型；
+2. 展示可选 Prompt 输入；
+3. Prompt 为空时明确使用默认指令；
+4. `Generate` 创建这个类型的新 `graphId` 与 run；
+5. `Cancel` 不创建空 artifact，也不修改当前图；
+6. run 完成并 Accept 后，把新引用加入 Block map；若用户仍停留在生成目标则显示新图，若用户已手动切走则只显示 `Graph ready` 提示，不抢回当前类型和 camera。
+
+## 6. 五种图的真实语义与生成故事
 
 ### 6.1 Topology
 
@@ -203,7 +219,6 @@ type AIGraphViewProjection = {
 
 - `Constellation`
 - `Flow →`
-- `Flow ↓`
 
 ### 6.2 Thinking Tree
 
@@ -301,21 +316,21 @@ Agent 必须先证明任务契约要求该路径，再声明 Gap。若已存在�
 
 ## 7. Layout 控件的最终映射
 
-| View | Layout 选择 | 说明 |
+| 图类型 | Layout 选择 | 说明 |
 | --- | --- | --- |
-| Topology | `Constellation · Flow → · ↓` | 网络或有向关系 |
-| Thinking Tree | `Flow →` | 固定横向树生长 |
-| Bridges | `Constellation · Flow →` | 看组件或跨域方向 |
-| Timeline | `Timeline → · ↓` | 同一个 temporal DAG 的横纵阅读 |
+| Topology | `Constellation · → Flow` | 网络或有向关系 |
+| Thinking Tree | `→ Flow` | 固定横向树生长 |
+| Bridges | `Constellation · → Flow` | 看组件或跨域方向 |
+| Timeline | `→ Timeline · ↓ Timeline` | 同一个 temporal DAG 的横纵阅读 |
 | Gaps | `Diagnostic map` | 语义固定，不暴露无意义的通用布局 |
 
 按钮组必须复用 Shared Graph Workspace 的 Segmented 视觉与文案规则：
 
 - 方向只表达一次；
-- 横向写 `Flow →`，纵向写 `↓`；
-- Timeline 写 `Timeline → · ↓`；
+- 横向显示为一个向右图标加 `Flow`，纵向显示为一个向下图标加 `Flow`；
+- Timeline 显示为向右 / 向下图标加 `Timeline`；
 - 不出现重复的“箭头图标 + Flow →”双重方向；
-- 不给 AI Graph 暴露 `Community / Folders / Orbit`，除非未来某个具体 Lens 的语义明确需要并重新评审。
+- 不给 AI Graph 暴露 `Community / Folders / Orbit`，除非未来某个具体图类型的语义明确需要并重新评审。
 
 ## 8. Graph Agent 的能力模型
 
@@ -325,10 +340,9 @@ Graph Agent 可以决定：
 
 - 添加、更新或删除哪个对象；
 - relation 的方向、predicate 和证据；
-- 哪个对象属于哪个 view；
 - 哪个对象构成 group、bridge、timeline phase 或 gap diagnostic；
 - 何时请求局部 layout 或最终 Refine；
-- 何时完成一个 view 或整个 run。
+- 何时完成当前 graph run。
 
 Graph Agent 不可以决定：
 
@@ -347,7 +361,7 @@ Graph Agent 不可以决定：
 type AIGraphOperationEnvelope<TPayload> = {
   runId: string;
   graphId: string;
-  viewId: AIGraphViewId;
+  graphType: AIGraphType;
   operationId: string;
   baseRevision: number;
   expectedRevision: number;
@@ -362,7 +376,7 @@ type AIGraphOperationEnvelope<TPayload> = {
 
 - `operationId` 幂等；
 - `baseRevision` 不匹配则拒绝，不做 silent merge；
-- endpoint、stable ID、evidence ref 和 view membership 在 reducer 前校验；
+- endpoint、stable ID、evidence ref 和 graph-type constraint 在 reducer 前校验；
 - 一个 operation 可以原子地包含一组 coherent nodes / relations，但不能把整次 run 包成一个巨大 snapshot；
 - UI 动画完成与 operation 是否持久化无关。
 
@@ -375,7 +389,7 @@ graph.inspect
 graph.inspectNeighborhood
 graph.inspectComponents
 graph.inspectPath
-graph.inspectView
+graph.inspectGraph
 ```
 
 Canonical working graph tools：
@@ -391,17 +405,16 @@ graph.attachEvidence
 graph.detachEvidence
 ```
 
-View tools：
+Graph presentation tools：
 
 ```text
-graph.beginView
-graph.includeObjects
+graph.beginGraph
 graph.addGroup
 graph.addDiagnostic
 graph.removeDiagnostic
 graph.requestLayout
 graph.setExplanation
-graph.completeView
+graph.completeGraph
 ```
 
 Run tools：
@@ -425,8 +438,8 @@ flowchart LR
   T --> V["Schema + evidence + revision validation"]
   V --> L["Append operation event"]
   L --> D["Working graph reducer"]
-  D --> P["Five view projections"]
-  P --> C["AIGraphWorkspaceCanvas"]
+  D --> P["Current graph projection"]
+  P --> C["Composer AI Graph Block / AIGraphWorkspaceCanvas"]
   C --> Y["Persistent AtlasGraphCanvas / Cytoscape"]
   D --> X["Accept boundary"]
   X --> J["Immutable artifact JSON version"]
@@ -444,7 +457,7 @@ stateDiagram-v2
   Proposed --> Rejected: schema, evidence or revision invalid
   Proposed --> Appended: validation passed
   Appended --> Reduced: reducer applies atomically
-  Reduced --> Projected: affected views update
+  Reduced --> Projected: current graph projection updates
   Projected --> Animated: renderer patches elements
   Animated --> Complete: visual settle ends
   Rejected --> [*]
@@ -459,9 +472,10 @@ Activity 只显示 operation、对象、结果、revision 与 evidence receipt�
 
 ### 10.1 Run 中的默认行为
 
-- 首次 run 从 Topology 开始。
-- 若用户从未手动切换 Lens，UI 可以跟随 Agent 当前正在构建的 view。
-- 一旦用户手动选择某个 Lens，后台 view 继续生成，但不能自动切 tab 或抢 camera。
+- run 开始前已经锁定一个 `graphType`；Agent 不能在运行中改成另一个类型。
+- 新建 Block 不默认偷偷生成 Topology，必须先询问类型。
+- 用户可以提供 Prompt，也可以依赖该类型的默认指令。
+- 当前 run 只更新目标 `graphId`；其他已生成类型保持可切换和可读。
 - 新节点默认放在 semantic anchor 附近的最近可用位置；没有 anchor 时进入稳定的 free / staging region。
 - 新节点允许暂时无 relation。
 - 新 relation 可以晚于节点出现。
@@ -482,15 +496,15 @@ Activity 只显示 operation、对象、结果、revision 与 evidence receipt�
 
 生成期间 layout control 锁定，避免每一步在 `Constellation` / `Flow` 间反复切换。
 
-所有五个 view 完成后执行一次明确的 Refine stage：
+当前 graph run 完成后执行一次明确的 Refine stage：
 
-1. 每个 view 使用当前选定的 display layout；
+1. 当前图使用自身保存的 display layout；
 2. layout 读取真实 rendered label bbox；
 3. 运行 deterministic collision settle；
 4. compound wrapper 重新包住 children；
 5. edge geometry 重新计算；
-6. 当前 view 只做一次平滑 fit；
-7. 其他 view 更新 scene cache，不抢当前 camera。
+6. 当前图只做一次平滑 fit；
+7. 保存当前图的 scene state，不改动其他 graph type 的 scene cache。
 
 Refine 是显示层操作，不创建新的 semantic artifact version。
 
@@ -554,7 +568,7 @@ AI Graph node card 的动作是：
 
 | Action | 行为 |
 | --- | --- |
-| Explain | 解释此节点在当前 Lens 中的角色、证据与上下游 |
+| Explain | 解释此节点在当前图中的角色、证据与上下游 |
 | Expand | 从此节点启动新的 Graph Agent draft expansion |
 | Focus | 平滑居中该节点及其一跳邻域，不改变布局 |
 | Evidence | 打开来源、quote locator、revision / hash 与 provenance |
@@ -575,12 +589,12 @@ AI Graph node card 的动作是：
 
 多节点 expansion 必须以批量 changed bbox 做放置与 focus，不能把所有节点叠在 anchor 的同一个 offset 上。
 
-## 14. 每个 View 的文字解释
+## 14. 每张图的文字解释
 
-每个 view 都必须有一段 version-bound explanation，因为图不能假设用户天然看懂。
+每个已生成 graph version 都必须有一段 version-bound explanation，因为图不能假设用户天然看懂。
 
 ```ts
-type ViewExplanation = {
+type AIGraphExplanation = {
   headline: string;
   body: string;
   keyObjectIds: string[];
@@ -593,12 +607,12 @@ type ViewExplanation = {
 
 - 只解释当前可见 graph、diagnostics 与证据；
 - 不输出隐藏 chain-of-thought；
-- 明确回答当前 Lens 的问题；
+- 明确回答当前 graph type 的问题；
 - Bridges 说明连接了哪两个 domain、为什么成立；
 - Gaps 说明任务为何要求这条路径、缺的是什么；
 - Timeline 说明关键并行、汇合和依赖；
-- 可折叠，默认在 view 完成后展开一次；
-- 切换 Lens 同步切换 explanation；
+- 可折叠，默认在当前图完成后展开一次；
+- 切换已生成类型时同步恢复该 graph version 的 explanation；
 - explanation 与 graph version 一起接受，不能用后来的文字解释旧图。
 
 ## 15. Activity 的最终角色
@@ -631,7 +645,7 @@ Activity drawer 中每项显示：
 validated operation
 → append JSONL run event
 → reduce working draft
-→ update view projection
+→ update current graph projection
 → patch Cytoscape
 → animate
 ```
@@ -642,30 +656,68 @@ validated operation
 - Artifact history：manifest head + `parentVersionId` chain；
 - Run operation history：partitioned JSONL；
 - Working draft：可从 event replay 重建的临时状态；
-- SQLite / graph index：可重建 projection；
+- Block-to-graph mapping：app-owned durable record，并进入 SQLite / graph index 供快速查询；
+- SQLite / graph index：可从 hidden ref、artifact manifest 与 durable mapping record 重建，不是唯一恢复来源；
 - positions / viewport：display scene state，不是 semantic truth。
 
-### 16.3 Accept / Discard
+### 16.3 Markdown hidden ref
+
+Composer 在可见 materialization 旁保存稳定隐藏引用。示例仅说明字段，不是最终 parser 语法：
+
+```md
+<!-- peak-ai-graph blockGraphSetId="..." graphId="..." type="timeline" versionId="..." format="svg" -->
+![[graph-name.svg]]
+```
+
+隐藏引用至少需要：
+
+- `blockGraphSetId`；
+- 当前 materialized `graphId`、`graphType` 与 `versionId`；
+- `format` 与可选 `assetPath` / checksum；
+- schema version。
+
+隐藏引用不是 graph body，也不复制历史。它用于在数据库 projection 丢失、Vault 同步到另一台设备或 Markdown 被重新解析时，定位 durable Block mapping 和 artifact。
+
+### 16.4 Mermaid / SVG / Image materialization
+
+`Save as` 没有 `Graph` 选项。用户选择什么，Markdown 就保存什么：
+
+- `Mermaid`：写入当前选中图的 Mermaid fenced block；
+- `SVG`：写入 SVG asset，并在 Markdown 中写 native embed；
+- `Image`：写入 PNG asset，并在 Markdown 中写 native embed。
+
+规则：
+
+- 只 materialize 当前选中的 graph type、version 与 layout；
+- 其他已生成类型仍保存在 Block mapping 和各自 artifact history 中；
+- 切换已生成类型会使用当前 `Save as` 格式重物化该 Block，但不会生成新 semantic graph version；
+- 切换 `Save as` 会在一个 Composer transaction 中替换可见 representation 和 hidden ref；
+- SVG / PNG 的创建、替换、Undo / Redo、孤儿 asset 清理和 checksum 必须进入 generated artifact governance；
+- Mermaid 是可编辑的简化表达，不能假装保留 Cytoscape 专属样式和交互。
+
+### 16.5 Accept / Discard
 
 - run 中的每一步不创建 artifact version；
-- `completeRun` 只表示 draft 完整、可 review；
+- `completeRun` 只表示当前图 draft 完整、可 review；
 - `Accept` 原子创建新 version 并更新 manifest head；
+- 首次生成 Accept 后把 `{ graphType → graphId }` 加入 Block mapping；
 - `Discard` 不创建 graph version，但保留 run receipt / rejection reason；
 - 单纯切 layout、pan、zoom、focus、Refine 不创建 semantic version。
 
 ## 17. Validation contract
 
-### 17.1 所有视图共有
+### 17.1 所有图类型共有
 
 - stable ID 唯一；
 - relation endpoints 存在；
 - directionality 合法；
 - evidence refs 可解析；
 - operation revision 连续；
-- projection object 必须引用 canonical object，除明确声明为 diagnostic / group；
-- explanation revision 与 view revision 相同。
+- projection object 必须引用当前 artifact object，除明确声明为 diagnostic / group；
+- operation、artifact 与 Block mapping 的 `graphType` 必须一致；
+- explanation revision 与 graph revision 相同。
 
-### 17.2 View-specific
+### 17.2 Type-specific
 
 - Topology：允许孤立节点，但必须标明 working / accepted 状态。
 - Thinking Tree：除 root 外，每个可见 tree node 有唯一 tree parent；cross-reference 不冒充 parent。
@@ -675,7 +727,7 @@ validated operation
 
 ### 17.3 Complete run
 
-一次 run 必须返回五个 view entry，但每个 entry 可以是合法空结果。不能因为“没有 bridge / gap”就缺失整个 tab，也不能为了填满 tab 伪造数据。
+一次 run 必须只完成一个已锁定 `graphType`。Bridge / Gap 等类型可以是经过验证的合法空结果，但不能为了让类型看起来“有内容”而伪造节点、relation 或 diagnostic。其他类型不属于本次 run 的完成条件。
 
 ## 18. 错误与恢复
 
@@ -685,19 +737,21 @@ validated operation
 - animation 中断：re-render 当前 reducer state，不回滚已追加事件；
 - UI reload：从 accepted artifact + active run events replay working draft；
 - layout 失败：保留上一次 positions，标记 display failure，不破坏 semantic draft；
-- view generation 失败：其他 view 可查看，run 不能 Accept，允许 retry failed view；
+- graph generation 失败：其他已生成类型仍可查看；当前 run 不能 Accept，允许 retry 当前类型；
 - Agent 取消：停止新 operation，等待已接受 operation settle，保留可恢复 draft receipt。
 
 ## 19. 不采用的方案
 
 - **恢复或新增 React Flow**：违反统一 renderer 治理，也无法解决第二套交互语义的问题。
-- **五个 view 各自一套 React component / state model**：会复制 camera、card、Activity、layout 和修复。
-- **后台同时常驻五个 Cytoscape instance**：内存和生命周期成本不必要；scene cache 足够。
+- **五个图类型各自一套 React component / renderer**：会复制 camera、card、Activity、layout 和修复。
+- **后台同时常驻多个 Cytoscape instance**：内存和生命周期成本不必要；当前可见 Block 只需要一个 live instance。
 - **每个 operation 重建整个 model / Cytoscape**：导致跳图、焦点丢失和动画断裂。
 - **每加一个节点就全图自动布局**：破坏空间记忆，也会抢用户 camera。
 - **Agent 输出坐标**：把不稳定的模型输出当成几何真值，无法保证碰撞与 resize。
 - **把 Gap 画成虚构节点**：混淆诊断与 semantic truth。
-- **把五个 view 存成五个独立 artifact**：版本、证据、接受边界会发生漂移。
+- **把五个类型塞进一个 `viewPackage` 并要求一次生成**：与用户选择、独立 Prompt、独立历史和合法的“尚未生成”状态冲突。
+- **只在 SQLite 保存 Block 映射**：Projection 丢失后无法仅凭 Markdown 和 artifact 恢复。
+- **只写可见 Mermaid / SVG / PNG 而没有 hidden ref**：重新打开后退化成普通 Mermaid / Image，失去 AI Graph 操作和历史。
 
 ## 20. 讨论到设计的追踪矩阵
 
@@ -713,42 +767,51 @@ validated operation
 | 线绘制太快 | configurable 720–1000ms edge enter | P4 Motion |
 | `+` 遮盖正文 | marker 锚定右下角 / edge label | P4 UI overlay |
 | Review 右栏太重 | 主画布 + optional Activity / Review drawer | P5 UI |
-| 五个 view 组件过多 | one orchestrator + one renderer + pure planners | P2–P4 |
+| 图类型组件过多 | one orchestrator + one renderer + type-specific validators | P2–P4 |
 | Timeline 太线性 | temporal DAG、parallel lanes、join、cross-dependency | P3 Timeline |
 | Bridge 看不懂 | 两个分离 domain + validated connector | P3 Bridges |
 | Gaps 看不懂 | task-required missing / weak path diagnostic | P3 Gaps |
-| 每个 view 动画一样 | 每个 Lens 有自己的 operation grammar | P2–P3 |
+| 每个图动画一样 | 每个 graph type 有自己的 operation grammar | P2–P3 |
 | 生成期间 layout 是否生效 | generation 锁 display layout；local layout 仅显式请求；结束 Refine | P4–P5 |
 | Expand 只是提示 | revision-guarded executable expansion | P2 / P5 |
 | Expand card 重新出现 | run-scoped inspect suppression | P5 UI |
 | Expand nodes 堆叠 | batch placement + changed bbox focus | P4 Renderer |
-| 用户看不懂图 | version-bound per-view explanation | P3 / P5 / P6 |
+| 用户看不懂图 | version-bound per-graph explanation | P3 / P5 / P6 |
+| 生成前不知道会生成什么 | type-first 生成询问 + optional Prompt | P3 / P5 |
+| 新类型覆盖上一张图 | Block graph-reference map；已生成类型可切回 | P1 / P5 / P6 |
+| Save as 与图内容不一致 | 当前 type + version + layout 的事务性 materialization | P5 / P6 |
+| 重新打开丢失 AI Graph 身份 | hidden ref + durable mapping + rebuildable DB projection | P1 / P6 |
 
 ## 21. 完成定义
 
 只有同时满足以下条件，才能把本设计标记为 production complete：
 
-- 同一次 run 生成完整的五视图 package；
+- 一次 run 只生成或更新一个已锁定图类型；
+- 一个 Block 可逐个生成多个类型，并无损切换已生成图；
+- 未生成类型打开 type-first、optional-Prompt 生成入口；
 - operation stream 可验证、幂等、可 replay；
 - incremental patch 不销毁 Cytoscape instance；
 - 普通 patch 不触发 whole-graph fit / layout；
-- 五个 Lens 具有不同且真实的 operation story；
+- 五种图具有不同且真实的 operation story；
 - edge animation 无断线、无空白、箭头端点正确；
 - placement 在批量 Expand、Refine 和 resize 后均无不可接受覆盖；
 - rich card 的 Explain / Expand / Focus / Evidence 可真实执行；
 - Expand 全程 card 不重开；
-- 每个 view 有 version-bound explanation；
+- 每个已生成图有 version-bound explanation；
 - Accept 创建 immutable version，Discard 不污染 accepted graph；
+- Block mapping、hidden ref 与数据库 projection 可互相校验并可恢复；
+- Mermaid / SVG / PNG 均按当前 type、version 与 layout 正确 materialize；
 - backward-compatible reader 可打开旧 artifact；
 - focused tests、生产 build、storage / architecture checks 通过；
 - 在真实 Obsidian 中用 DOM / geometry assertion 与短视频验证关键 motion、focus、resize、drawer、hover / pin / Escape。
 
 ## 22. 当前验证声明
 
-本文件是对交互 Mock、现有生产源码、artifact contract 和全部 owner 反馈的最终设计收束。
+本文件是对交互 Mock、现有生产源码、artifact contract 和全部 owner 反馈的当前设计真值。2026-08-14 修正废止了“一次 run 同时生成五视图 package”的旧结论。
 
-- `DESIGN COMPLETE`
-- `PRODUCTION INCREMENTAL RUNTIME NOT IMPLEMENTED`
+- `DESIGN CONTRACT CORRECTED`
+- `ISOLATED INCREMENTAL RUNTIME EXISTS · CURRENT BRANCH INTEGRATION PENDING`
+- `COMPOSER AI GRAPH BLOCK NOT IMPLEMENTED`
 - `REAL OBSIDIAN INTERACTION NOT VERIFIED`
 
 静态 HTML Mock 证明的是交互方向与构图语法，不证明生产 Obsidian 行为。实施与验收必须遵循配套计划。

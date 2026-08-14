@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Composer · AI Graph Block</title>
+  <style>
+    :root {
+      --bg:#f2f2f5; --paper:#fff; --ink:#292730; --muted:#77737e; --quiet:#9b97a3;
+      --line:#e3e1e8; --line2:#d5d1dc; --violet:#7049e8; --violet2:#8b6ff0;
+      --vsoft:#f2eeff; --vfaint:#fbf9ff; --blue:#4f79c5; --bsoft:#eef5ff;
+      --teal:#388b78; --tsoft:#edf9f5; --amber:#ad7428; --asoft:#fff6e8;
+      --danger:#ba5968; --shadow:0 12px 34px rgba(39,27,66,.13); --shadow2:0 22px 55px rgba(39,27,66,.18);
+    }
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+    button,input{font:inherit;color:inherit}.icon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+    .app{min-height:100vh;display:grid;grid-template-columns:52px minmax(0,1fr)}.rail{height:100vh;position:sticky;top:0;background:#f8f8f9;border-right:1px solid #dedde2;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:9px;z-index:10}
+    .brand,.rail button{width:32px;height:32px;border-radius:8px;display:grid;place-items:center}.brand{background:var(--violet);color:#fff;margin-bottom:7px}.rail button{border:0;background:transparent;color:#77747e}.rail button.active{color:var(--violet);background:var(--vsoft)}.rail .spacer{flex:1}
+    .shell{min-width:0}.tabs{height:40px;background:#f8f8f9;border-bottom:1px solid #dedde2;display:flex;align-items:end;padding:0 14px;gap:2px}.tab{height:34px;min-width:175px;border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;padding:0 12px;display:flex;align-items:center;gap:8px;color:#706d77;font-size:12px}.tab.active{background:#fff;border-color:#dedde2;color:#34313b}
+    .toolbar{height:48px;position:sticky;top:0;z-index:9;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 18px;gap:12px}.crumbs{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.crumbs strong{color:#37333d}.grow{flex:1}
+    .states{display:flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:8px;background:#f8f8fa}.states span{align-self:center;padding:0 7px;color:var(--quiet);font-size:9px;font-weight:750;letter-spacing:.09em;text-transform:uppercase}.states button{height:27px;border:0;border-radius:6px;background:transparent;padding:0 9px;color:#77737f;font-size:10px;cursor:pointer}.states button.active{background:#fff;color:var(--violet);font-weight:700;box-shadow:0 0 0 1px rgba(112,73,232,.14)}
+    .canvas{padding:28px 38px 80px}.document{width:min(1080px,calc(100vw - 128px));min-height:980px;margin:auto;background:#fff;border:1px solid #e1e0e5;padding:58px 74px 110px}.kicker{display:flex;align-items:center;gap:7px;color:var(--violet);font-size:10px;font-weight:750;letter-spacing:.13em;text-transform:uppercase;margin-bottom:14px}.title{display:block;font-family:Georgia,serif;font-size:38px;line-height:1.12;font-weight:650;letter-spacing:-.025em;margin-bottom:16px}.meta{display:flex;gap:11px;color:var(--quiet);font-size:11px;padding-bottom:27px;border-bottom:1px solid #efedf2;margin-bottom:28px}.copy{display:block;max-width:770px;font-family:Georgia,serif;font-size:17px;line-height:1.72;color:#48444d;margin-bottom:21px}
+    .between{height:19px;display:flex;justify-content:center;align-items:center;opacity:.2;transition:.15s}.between:hover{opacity:1}.between button{width:25px;height:25px;border:1px solid var(--line2);border-radius:50%;background:#fff;color:var(--muted);display:grid;place-items:center;cursor:pointer}
+    .insert{display:none;margin:7px 0 20px;border:1px solid var(--line2);border-radius:10px;background:#fff;box-shadow:var(--shadow);overflow:hidden}.insert.show{display:block}.insert-search{height:43px;border-bottom:1px solid var(--line);padding:0 13px;display:flex;align-items:center;gap:8px;color:var(--muted)}.insert-search input{flex:1;border:0;outline:0;font-size:12px}.insert-list{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}.insert-option{border:1px solid transparent;border-radius:8px;background:transparent;padding:10px;display:flex;gap:10px;text-align:left;cursor:pointer}.insert-option.selected,.insert-option:hover{border-color:#dcd3ff;background:var(--vfaint)}.insert-ico,.type-ico{display:grid;place-items:center;background:var(--vsoft);color:var(--violet);border-radius:8px;flex:0 0 auto}.insert-ico{width:34px;height:34px}.insert-option strong{display:block;font-size:12px;margin-bottom:3px}.insert-option small{display:block;color:var(--muted);font-size:9px;line-height:1.4}
+    .graph-block{position:relative;margin:4px 0 0;border:1px solid var(--line2);border-radius:10px;background:#fff;box-shadow:0 4px 12px rgba(31,42,61,.07);overflow:hidden}.graph-block.fullscreen{position:fixed;inset:14px;z-index:100;margin:0;box-shadow:0 24px 80px rgba(25,20,36,.26)}.graph-block.fullscreen .stage{height:calc(100vh - 106px)}.block-head{position:relative;z-index:20;min-height:51px;border-bottom:1px solid var(--line);padding:8px 12px;display:flex;align-items:center;gap:8px;background:#f8f8fa}.control-dropdown{position:relative;flex:0 0 auto}.state-trigger{height:32px;border:1px solid var(--line2);border-radius:7px;background:#fff;padding:0 9px;display:flex;align-items:center;gap:6px;color:#55515d;font-size:9px;font-weight:650;cursor:pointer}.state-trigger.active{border-color:#d8cefa;background:var(--vfaint);color:var(--violet)}.state-trigger .chevron{width:12px;height:12px;margin-left:3px;color:#918c98}.trigger-version{padding:2px 4px;border-radius:4px;background:#ece7fb;color:#765bd4;font-size:7px;font-weight:750}.state-key{color:var(--quiet);font-size:8px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}.state-menu{position:absolute;top:38px;left:0;z-index:30;width:252px;padding:5px;border:1px solid var(--line2);border-radius:8px;background:#fff;box-shadow:var(--shadow2)}.control-dropdown.save .state-menu{left:auto;right:0;width:170px}.state-menu[hidden]{display:none}.state-option{width:100%;min-height:39px;border:0;border-radius:6px;background:transparent;padding:6px 8px;display:grid;grid-template-columns:18px minmax(0,1fr) 14px;align-items:center;gap:7px;color:#5d5864;text-align:left;cursor:pointer}.state-option:hover{background:#f6f4fa}.state-option.active{color:var(--violet);background:var(--vfaint)}.state-option[data-availability="not-generated"]{color:#77727e}.state-option[data-availability="running"]{color:var(--violet);background:#f8f5ff}.state-option strong,.state-option small{display:block}.state-option strong{font-size:9px}.state-option small{margin-top:2px;color:var(--quiet);font-size:7px}.state-option[data-availability="generated"] small{color:#4c8b78}.state-option[data-availability="running"] small{color:var(--violet)}.state-option .checkmark{opacity:0}.state-option.active .checkmark{opacity:1}.type-ico{width:29px;height:29px}.block-title{min-width:0;display:flex;align-items:center}.block-title strong{font-size:12px;font-weight:680}.block-meta{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:9px}.pill{padding:4px 7px;border:1px solid var(--line);border-radius:999px;background:#f8f8fa;font-weight:650}.graph-caption{min-height:39px;border-top:1px solid var(--line);padding:8px 12px;background:#fff;display:flex;align-items:center}.graph-caption strong{font-size:11px;font-weight:650;color:#44404a}
+    .iconbtn,.textbtn{height:30px;border:1px solid var(--line2);border-radius:7px;background:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}.iconbtn{width:30px;padding:0;color:#686570}.textbtn{padding:0 10px;color:#514e58;font-size:10px;font-weight:650}.textbtn.primary{color:#fff;border-color:var(--violet);background:var(--violet)}.textbtn.violet{color:var(--violet);border-color:#ddd4fb;background:var(--vfaint)}
+    .mode-view{display:block}
+    .layouts{height:32px;display:flex;align-items:center;gap:2px;padding:2px;border:1px solid var(--line2);border-radius:7px;background:#fff}.layout{height:26px;border:0;border-radius:5px;background:transparent;color:#78757f;padding:0 8px;display:flex;gap:5px;align-items:center;font-size:9px;cursor:pointer}.layout.active{background:#f1eff7;color:#4e4958;font-weight:650}
+    .stage{height:402px;position:relative;overflow:hidden;outline:0;background-color:#fdfdfe;background-image:radial-gradient(#dedce6 .7px,transparent .7px);background-size:18px 18px}.stage:before{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 18px 28px rgba(247,246,251,.45);z-index:2}#graphSvg{width:100%;height:100%;display:block;position:relative;z-index:1;transform-origin:center;transition:transform .22s ease}
+    #graphSvg .edge{fill:none;stroke:#85818e;stroke-width:1.45;marker-end:url(#arrow);opacity:.84;stroke-linecap:round}#graphSvg .edge.soft{stroke:#b4a7e9;stroke-dasharray:4 4}#graphSvg .edge-label{fill:#89858f;font-size:7px;paint-order:stroke;stroke:#fdfdfe;stroke-width:4px;stroke-linejoin:round}
+    #graphSvg .node{cursor:pointer;transform-box:fill-box;transform-origin:center}#graphSvg .node.enter{animation:nodeIn .58s cubic-bezier(.2,.9,.25,1) both}#graphSvg .node rect{fill:#f4f0ff;stroke:#8062ea;stroke-width:1.25;rx:8;transition:stroke-width .14s,filter .14s}#graphSvg .node:hover rect,#graphSvg .node.selected rect{stroke-width:2.2;filter:drop-shadow(0 4px 8px rgba(71,42,141,.16))}#graphSvg .node.core rect{fill:#dcd2ff;stroke:#6840dd;stroke-width:2.1}#graphSvg .node.evidence rect{fill:var(--bsoft);stroke:var(--blue)}#graphSvg .node.control rect{fill:var(--tsoft);stroke:var(--teal)}#graphSvg .node.gap rect{fill:var(--asoft);stroke:var(--amber);stroke-dasharray:4 3}.node-label{fill:#302d38;font-size:10px;font-weight:650;text-anchor:middle;dominant-baseline:central}.node-sub{fill:#78747f;font-size:6.5px;text-anchor:middle}.node-plus{fill:var(--violet);stroke:#fff;stroke-width:2;filter:drop-shadow(0 3px 7px rgba(67,38,143,.22))}.node-plus-text{fill:#fff;font-size:10px;font-weight:700;text-anchor:middle;dominant-baseline:central}@keyframes nodeIn{0%{opacity:0;transform:translateY(8px) scale(.88)}62%{opacity:1;transform:translateY(-1px) scale(1.025)}100%{opacity:1;transform:translateY(0) scale(1)}}
+    .canvas-toolbar{position:absolute;right:12px;top:12px;z-index:8;height:38px;display:flex;align-items:center;padding:3px 5px;border:1px solid rgba(213,208,220,.94);border-radius:8px;background:rgba(255,255,255,.96);box-shadow:0 7px 20px rgba(40,33,50,.1);backdrop-filter:blur(8px)}.tool-group{height:30px;display:flex;align-items:center;gap:1px}.canvas-tool{height:30px;min-width:30px;border:0;border-radius:6px;background:transparent;color:#77727f;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 7px;font-size:9px;line-height:1;cursor:pointer}.canvas-tool .icon{width:14px;height:14px}.canvas-tool:hover,.canvas-tool.active{color:var(--violet);background:var(--vsoft)}.canvas-tool.label{padding:0 9px}.tool-separator{width:1px;height:20px;margin:0 5px;background:var(--line)}.zoom-value{min-width:38px;text-align:center;color:#77727f;font-size:9px;font-variant-numeric:tabular-nums}
+    .generating{position:absolute;right:16px;top:57px;z-index:8;display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #dcd3ff;border-radius:8px;background:rgba(249,247,255,.95);color:var(--violet);font-size:9px;font-weight:650}.generating.hide{display:none}.spinner{width:12px;height:12px;border:1.5px solid #d3c8fa;border-top-color:var(--violet);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    .generation-layer{position:absolute;inset:51px 0 39px;z-index:18;display:grid;place-items:center;padding:18px;background:rgba(248,247,251,.78);backdrop-filter:blur(5px)}.generation-layer[hidden]{display:none}.generation-card{width:min(520px,calc(100% - 28px));border:1px solid var(--line2);border-radius:11px;background:#fff;box-shadow:var(--shadow2);overflow:hidden}.generation-head{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line)}.generation-icon{width:32px;height:32px;border-radius:8px;background:var(--vsoft);color:var(--violet);display:grid;place-items:center}.generation-head strong{display:block;font-size:13px}.generation-head small{display:block;margin-top:2px;color:var(--muted);font-size:8px}.generation-head button{margin-left:auto}.generation-body{padding:14px}.generation-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;color:#605b67;font-size:8px;font-weight:700}.generation-label span:last-child{color:var(--quiet);font-weight:500}.generation-types{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin-bottom:13px}.generation-type{min-height:57px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:7px 5px;color:#68636f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:7px;font-weight:650;cursor:pointer}.generation-type:hover:not([disabled]),.generation-type.active{border-color:#cfc3fa;background:var(--vfaint);color:var(--violet)}.generation-type[disabled]{cursor:not-allowed;opacity:.46}.generation-type .icon{width:15px;height:15px}.generation-prompt{width:100%;height:72px;resize:none;border:1px solid var(--line2);border-radius:8px;padding:9px 10px;outline:0;color:#4d4854;font:9px/1.45 Inter,sans-serif}.generation-prompt:focus{border-color:#b8a6f4;box-shadow:0 0 0 2px rgba(112,73,232,.08)}.generation-default{display:flex;align-items:center;gap:6px;margin-top:7px;color:var(--quiet);font-size:8px}.generation-default .icon{width:13px;height:13px;color:var(--violet)}.generation-foot{display:flex;align-items:center;justify-content:flex-end;gap:7px;padding:10px 14px;border-top:1px solid var(--line);background:#fbfbfc}
+    .node-inspector{position:absolute;z-index:9;width:268px;padding:12px;border:1px solid #d6d0dc;border-top:3px solid var(--violet);border-radius:9px;background:rgba(255,255,255,.98);box-shadow:0 16px 36px rgba(43,34,54,.18)}.node-inspector[hidden]{display:none}.inspector-head{display:flex;align-items:center;gap:8px}.inspector-head span{color:var(--violet);font-size:8px;font-weight:800;letter-spacing:.09em}.inspector-head b{margin-left:auto;color:var(--quiet);font-size:8px}.inspector-head button{width:22px;height:22px;border:0;border-radius:5px;background:transparent;color:var(--quiet);display:grid;place-items:center;cursor:pointer}.node-inspector>strong{display:block;margin-top:7px;font-size:13px}.inspector-meta{display:block;margin-top:3px;color:var(--quiet);font-size:8px}.inspector-copy{display:block;margin-top:7px;color:var(--muted);font-size:9px;line-height:1.48}.inspector-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}.inspector-actions button{height:27px;border:0;border-radius:6px;background:#f5f3f8;color:#5f5968;font-size:8px;cursor:pointer}.inspector-actions button:hover{background:var(--vsoft);color:var(--violet)}
+    .node-list{position:absolute;right:12px;top:56px;z-index:10;width:260px;overflow:hidden;border:1px solid var(--line2);border-radius:8px;background:rgba(255,255,255,.98);box-shadow:var(--shadow)}.node-list[hidden]{display:none}.node-list header{height:34px;display:flex;align-items:center;padding:0 10px;border-bottom:1px solid var(--line);font-size:9px;font-weight:700}.node-list header span{margin-left:auto;color:var(--quiet);font-weight:500}.node-list button{width:100%;height:31px;border:0;border-bottom:1px solid #efedf2;background:transparent;padding:0 10px;display:flex;align-items:center;text-align:left;color:#5e5964;font-size:8px;cursor:pointer}.node-list button:hover{background:var(--vfaint);color:var(--violet)}.node-list button span:last-child{margin-left:auto;color:var(--quiet)}
+    .graph-keyboard-help{position:absolute;left:12px;bottom:11px;z-index:5;display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(219,215,225,.78);border-radius:6px;background:rgba(255,255,255,.88);color:var(--quiet);font-size:8px;pointer-events:none;backdrop-filter:blur(5px)}.graph-keyboard-help kbd{padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--muted);font:8px Inter,sans-serif}.graph-minimap{position:absolute;right:12px;bottom:11px;z-index:5;width:106px;height:66px;overflow:hidden;border:1px solid #d9d4df;border-radius:8px;background:rgba(255,255,255,.92);box-shadow:0 5px 15px rgba(43,35,61,.09);cursor:pointer}.graph-minimap svg{width:100%;height:100%}.graph-minimap line{stroke:#b9afca;stroke-width:5}.graph-minimap circle{fill:#9a72e7}.graph-minimap rect{fill:rgba(117,73,223,.08);stroke:#7b55d8;stroke-width:6}
+    .actions{position:relative;z-index:20;width:max-content;max-width:100%;min-height:38px;margin-top:8px;padding:4px 6px;border:1px solid var(--line2);border-radius:10px;background:#fff;box-shadow:var(--shadow);display:flex;align-items:center;gap:4px;overflow:visible}.action-options,.instruction-row,.action-group{display:flex;align-items:center;gap:2px}.instruction-row{display:none;gap:7px}.actions.instruction .action-options{display:none}.actions.instruction .instruction-row{display:flex}.action{height:28px;border:0;border-radius:999px;background:transparent;color:#66626d;display:flex;align-items:center;gap:4px;padding:0 7px;cursor:pointer;font-size:9px}.action:hover,.action.active{background:var(--vsoft);color:var(--violet)}.action.ai{padding:0 6px}.action-spark{color:var(--violet);margin:0 2px}.divider{width:1px;height:16px;background:var(--line);margin:0 2px}.instruction-row input{width:330px;height:28px;border:0;outline:0;background:transparent;color:var(--ink);font-size:10px}.instruction-row .submit-hint{color:var(--quiet);font-size:9px}.action-surface{display:none;width:max-content;max-width:min(620px,100%);margin-top:6px;padding:7px;border:1px solid var(--line2);border-radius:10px;background:#fff;box-shadow:var(--shadow);font-size:9px}.action-surface.open{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.surface-title{color:var(--quiet);font-weight:700;letter-spacing:.06em;padding:0 3px}.surface-option{height:29px;border:0;border-radius:7px;background:#f5f4f7;padding:0 9px;display:flex;align-items:center;gap:5px;color:#58545f;font-size:9px;cursor:pointer}.surface-option:hover{background:var(--vsoft);color:var(--violet)}.surface-input{width:280px;height:30px;border:1px solid var(--line2);border-radius:7px;padding:0 9px;outline:0;font-size:9px}.surface-note{max-width:440px;color:#5f5a66;line-height:1.5;padding:3px 5px}.history-item{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:8px;width:390px;padding:7px;border-bottom:1px solid var(--line)}.history-item:last-child{border-bottom:0}.history-item strong{font-size:9px}.history-item span{color:var(--muted);font-size:8px}
+    .continuation{margin-top:28px;padding-top:24px;border-top:1px solid #efedf2}.continuation strong{display:block;font-size:13px;margin-bottom:8px}
+    .toast{position:fixed;right:24px;bottom:24px;z-index:50;min-width:280px;padding:11px 13px;border:1px solid #cfded9;border-radius:9px;background:#f7fffc;color:#316a5e;box-shadow:var(--shadow);display:flex;align-items:center;gap:9px;font-size:10px;transform:translateY(16px);opacity:0;transition:.2s;pointer-events:none}.toast.show{transform:none;opacity:1}.design-note{width:min(1080px,calc(100vw - 128px));margin:14px auto 0;padding:10px 12px;display:flex;gap:9px;align-items:flex-start;color:#6f6b76;font-size:10px;line-height:1.5}.design-note strong{color:#47434c}
+    @media(max-width:1050px){.canvas{padding-left:18px;padding-right:18px}.document,.design-note{width:calc(100vw - 90px)}.document{padding-left:42px;padding-right:42px}.states span,.block-meta{display:none}}
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="spark" viewBox="0 0 24 24"><path d="m12 3-1.2 3.7A2 2 0 0 1 9.5 8L6 9.2l3.5 1.2a2 2 0 0 1 1.3 1.3l1.2 3.8 1.2-3.8a2 2 0 0 1 1.3-1.3L18 9.2 14.5 8a2 2 0 0 1-1.3-1.3Z"/><path d="m19 15-.7 2.1-.7.7-2.1.7 2.1.7.7.7.7 2.1.7-2.1.7-.7 2.1-.7-2.1-.7-.7-.7Z"/></symbol>
+    <symbol id="file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="graph" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="m7 7 4 9m6-9-4 9M7 6h10"/></symbol>
+    <symbol id="network" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4m0 0H6v4m6-4h6v4"/></symbol>
+    <symbol id="tree" viewBox="0 0 24 24"><path d="M12 3v18M7 8h10M7 8v4M17 8v4M3 16h8M13 16h8"/></symbol>
+    <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="gap" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><path d="M12 9v3m0 3h.01"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="expand" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+    <symbol id="code" viewBox="0 0 24 24"><path d="m8 9-3 3 3 3m8-6 3 3-3 3m-3-9-2 12"/></symbol>
+    <symbol id="image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-4-4L5 20"/></symbol>
+    <symbol id="copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="message" viewBox="0 0 24 24"><path d="M20 15a3 3 0 0 1-3 3H9l-5 3v-6a3 3 0 0 1-1-2V7a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3Z"/></symbol>
+    <symbol id="history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="wand" viewBox="0 0 24 24"><path d="m15 4 5 5L8 21H3v-5Z"/><path d="m13 6 5 5M6 3v3M4.5 4.5h3M19 16v4M17 18h4"/></symbol>
+    <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 20h16"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="layout" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="right" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="down" viewBox="0 0 24 24"><path d="M12 5v14m-5-5 5 5 5-5"/></symbol>
+    <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
+    <symbol id="focus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 8V3h5m8 0h5v5m0 8v5h-5M8 21H3v-5"/></symbol>
+    <symbol id="mermaid" viewBox="0 0 24 24"><path d="M5 4h5v5H5zm9 11h5v5h-5zM7.5 9v3.5H16V15"/></symbol>
+    <symbol id="panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m4-10h4m-4 4h4"/></symbol>
+    <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="fit" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  </svg>
+  <div class="app">
+    <aside class="rail">
+      <div class="brand"><svg class="icon"><use href="#spark"/></svg></div>
+      <button data-rail="Files"><svg class="icon"><use href="#file"/></svg></button>
+      <button class="active" data-rail="Composer"><svg class="icon"><use href="#wand"/></svg></button>
+      <button data-rail="Search"><svg class="icon"><use href="#search"/></svg></button>
+      <button data-rail="Graph workspace"><svg class="icon"><use href="#graph"/></svg></button>
+      <div class="spacer"></div><button data-rail="Help"><svg class="icon"><use href="#info"/></svg></button>
+    </aside>
+    <main class="shell">
+      <div class="tabs"><div class="tab active"><svg class="icon"><use href="#file"/></svg>GraphRAG research brief</div><div class="tab"><svg class="icon"><use href="#graph"/></svg>AI Graph · v13</div></div>
+      <div class="toolbar">
+        <div class="crumbs"><span>Research</span><span>/</span><strong>GraphRAG research brief.md</strong></div><div class="grow"></div>
+        <button class="textbtn" id="readingView">Reading view</button>
+      </div>
+      <div class="canvas">
+        <article class="document">
+          <div class="kicker"><svg class="icon"><use href="#wand"/></svg>Peak Composer</div>
+          <span class="title">GraphRAG evidence synthesis</span>
+          <div class="meta"><span>Updated today</span><span>·</span><span>12 sources</span><span>·</span><span>Composer draft</span></div>
+          <span class="copy">The research suggests that retrieval quality is not improved by a graph alone. The graph becomes useful when provenance, evaluation, and human review remain visible as part of the same reasoning system.</span>
+          <div class="between"><button id="addBlock" aria-label="Insert block"><svg class="icon"><use href="#plus"/></svg></button></div>
+          <div class="insert" id="insert">
+            <div class="insert-search"><svg class="icon"><use href="#search"/></svg><input value="graph" aria-label="Find block type"><small>ESC</small></div>
+            <div class="insert-list">
+              <button class="insert-option selected" id="insertGraph"><span class="insert-ico"><svg class="icon"><use href="#spark"/></svg></span><span><strong>AI Graph</strong><small>Build one editable, versioned graph with the Graph Agent.</small></span></button>
+              <button class="insert-option" id="insertMermaid"><span class="insert-ico" style="background:#f1f1f4;color:#686570"><svg class="icon"><use href="#mermaid"/></svg></span><span><strong>Mermaid</strong><small>Write and render a Mermaid diagram from source text.</small></span></button>
+            </div>
+          </div>
+          <section class="graph-block" id="graphBlock">
+            <div class="block-head">
+              <div class="control-dropdown">
+                <button class="state-trigger active" id="graphTypeTrigger" aria-haspopup="menu" aria-expanded="false"><svg class="icon" id="graphTypeIcon"><use href="#network"/></svg><span id="graphTypeLabel">Topology</span><span class="trigger-version" id="graphTypeVersion">v3</span><svg class="icon chevron"><use href="#chevron"/></svg></button>
+                <div class="state-menu" id="graphTypeMenu" role="menu" hidden>
+                  <button class="state-option active" data-graph-type="topology" data-availability="generated"><svg class="icon"><use href="#network"/></svg><span><strong>Topology</strong><small>Generated · v3</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                  <button class="state-option" data-graph-type="tree" data-availability="not-generated"><svg class="icon"><use href="#tree"/></svg><span><strong>Thinking Tree</strong><small>Not generated · Generate…</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                  <button class="state-option" data-graph-type="bridges" data-availability="not-generated"><svg class="icon"><use href="#graph"/></svg><span><strong>Bridges</strong><small>Not generated · Generate…</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                  <button class="state-option" data-graph-type="timeline" data-availability="generated"><svg class="icon"><use href="#clock"/></svg><span><strong>Timeline</strong><small>Generated · v2</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                  <button class="state-option" data-graph-type="gaps" data-availability="not-generated"><svg class="icon"><use href="#gap"/></svg><span><strong>Gaps</strong><small>Not generated · Generate…</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                </div>
+              </div>
+              <div class="layouts" id="layoutOptions" aria-label="Graph layout"><button class="layout active" data-layout="constellation"><svg class="icon"><use href="#layout"/></svg>Constellation</button><button class="layout" data-layout="flow"><svg class="icon"><use href="#right"/></svg>Flow</button></div>
+              <div class="grow"></div>
+              <div class="control-dropdown save">
+                <button class="state-trigger" id="saveFormatTrigger" aria-haspopup="menu" aria-expanded="false"><span class="state-key">Save as</span><strong id="saveFormatLabel">Mermaid</strong><svg class="icon chevron"><use href="#chevron"/></svg></button>
+                <div class="state-menu" id="saveFormatMenu" role="menu" hidden>
+                  <button class="state-option active" data-save-format="mermaid"><svg class="icon"><use href="#mermaid"/></svg><span><strong>Mermaid</strong><small>Editable Markdown diagram</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                  <button class="state-option" data-save-format="svg"><svg class="icon"><use href="#code"/></svg><span><strong>SVG</strong><small>Vector asset</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                  <button class="state-option" data-save-format="image"><svg class="icon"><use href="#image"/></svg><span><strong>Image</strong><small>PNG asset</small></span><svg class="icon checkmark"><use href="#check"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="graph-view mode-view active" data-mode-view="graph">
+              <div class="stage" id="graphStage" tabindex="0" aria-label="Interactive graph canvas. Hover a node to inspect; press I to pin.">
+                <div class="canvas-toolbar" aria-label="Graph canvas tools">
+                  <div class="tool-group"><button class="canvas-tool label active" id="evidenceToggle" title="Toggle evidence links"><svg class="icon"><use href="#graph"/></svg><span>Evidence links</span></button><button class="canvas-tool label" id="nodesTool" title="Open node list"><svg class="icon"><use href="#panel"/></svg><span>Nodes</span></button></div>
+                  <span class="tool-separator"></span>
+                  <div class="tool-group"><button class="canvas-tool" id="copyMermaidTool" title="Copy graph as Mermaid"><svg class="icon"><use href="#mermaid"/></svg></button><button class="canvas-tool" id="copyImageTool" title="Copy graph as image"><svg class="icon"><use href="#image"/></svg></button></div>
+                  <span class="tool-separator"></span>
+                  <div class="tool-group"><button class="canvas-tool" id="zoomOutTool" title="Zoom out"><svg class="icon"><use href="#minus"/></svg></button><span class="zoom-value" id="zoomValue">100%</span><button class="canvas-tool" id="zoomInTool" title="Zoom in"><svg class="icon"><use href="#plus"/></svg></button></div>
+                  <span class="tool-separator"></span>
+                  <div class="tool-group"><button class="canvas-tool" id="fitTool" title="Fit entire graph"><svg class="icon"><use href="#expand"/></svg></button><button class="canvas-tool" id="readableTool" title="Readable view"><svg class="icon"><use href="#fit"/></svg></button><button class="canvas-tool" id="openGraph" title="Full screen" aria-label="Open graph in full screen"><svg class="icon"><use href="#expand"/></svg></button></div>
+                </div>
+                <div class="generating hide" id="generating"><span class="spinner"></span><span id="generatingText">Graph Agent · operation 4 of 8</span></div>
+                <svg id="graphSvg" viewBox="0 0 920 402" role="img" aria-label="AI graph"></svg>
+                <div class="node-inspector" id="nodeInspector" hidden>
+                  <div class="inspector-head"><span id="inspectorType">GRAPH CONCEPT</span><b id="inspectorStatus">PINNED · I</b><button id="inspectorClose" title="Close inspector"><svg class="icon"><use href="#close"/></svg></button></div>
+                  <strong id="inspectorTitle">GraphRAG</strong>
+                  <span class="inspector-meta" id="inspectorMeta">Research model · 2 incoming · 3 outgoing</span>
+                  <span class="inspector-copy" id="inspectorCopy">A grounded concept in the current generated graph view.</span>
+                  <div class="inspector-actions"><button id="inspectorExplain">Explain</button><button id="inspectorExpand">Expand</button><button id="inspectorFocus">Focus</button><button id="inspectorEvidence">Evidence</button></div>
+                </div>
+                <div class="node-list" id="nodeList" hidden></div>
+                <div class="graph-keyboard-help"><kbd>Shift</kbd> inspect <span>·</span><kbd>I</kbd> pin <span>·</span><kbd>↑↓</kbd> navigate <span>·</span><kbd>Enter</kbd> open</div>
+                <div class="graph-minimap" id="miniMap" title="Fit entire graph"><svg id="miniMapSvg" viewBox="0 0 920 402" aria-label="Graph minimap"></svg></div>
+              </div>
+            </div>
+            <div class="graph-caption"><strong>GraphRAG research map</strong></div>
+            <div class="generation-layer" id="generationLayer" hidden>
+              <div class="generation-card" role="dialog" aria-modal="true" aria-labelledby="generationTitle">
+                <div class="generation-head"><span class="generation-icon"><svg class="icon"><use href="#spark"/></svg></span><span><strong id="generationTitle">Generate a graph</strong><small>One run creates one graph type. Existing graphs stay available.</small></span><button class="iconbtn" id="generationClose" aria-label="Cancel graph generation"><svg class="icon"><use href="#close"/></svg></button></div>
+                <div class="generation-body">
+                  <div class="generation-label"><span>Graph type</span><span>Choose one</span></div>
+                  <div class="generation-types" id="generationTypes">
+                    <button class="generation-type" data-generation-type="topology"><svg class="icon"><use href="#network"/></svg>Topology</button>
+                    <button class="generation-type" data-generation-type="tree"><svg class="icon"><use href="#tree"/></svg>Thinking Tree</button>
+                    <button class="generation-type" data-generation-type="bridges"><svg class="icon"><use href="#graph"/></svg>Bridges</button>
+                    <button class="generation-type" data-generation-type="timeline"><svg class="icon"><use href="#clock"/></svg>Timeline</button>
+                    <button class="generation-type" data-generation-type="gaps"><svg class="icon"><use href="#gap"/></svg>Gaps</button>
+                  </div>
+                  <div class="generation-label"><span>Prompt</span><span>Optional</span></div>
+                  <textarea class="generation-prompt" id="generationPrompt" placeholder="Add a specific question or constraint, or leave this empty…"></textarea>
+                  <div class="generation-default"><svg class="icon"><use href="#info"/></svg><span>Empty uses the selected graph type’s default instruction and the current Composer context.</span></div>
+                </div>
+                <div class="generation-foot"><button class="textbtn" id="generationCancel">Cancel</button><button class="textbtn primary" id="generationStart"><svg class="icon"><use href="#spark"/></svg>Generate</button></div>
+              </div>
+            </div>
+          </section>
+          <div class="actions" id="actionRow">
+            <div class="action-options" id="actionOptions">
+              <span class="action-group">
+                <button class="action" id="insertAction"><svg class="icon"><use href="#plus"/></svg>Insert below</button>
+                <button class="action" id="copyAction"><svg class="icon"><use href="#copy"/></svg>Copy</button>
+                <button class="action" id="commentAction"><svg class="icon"><use href="#message"/></svg>Comment</button>
+              </span>
+              <span class="divider"></span>
+              <span class="action-group"><svg class="icon action-spark"><use href="#spark"/></svg>
+                <button class="action ai" id="explainAction">Explain</button>
+                <button class="action ai" id="expandAction">Expand</button>
+                <button class="action ai" id="focusAction">Focus</button>
+              </span>
+              <span class="divider"></span>
+              <span class="action-group">
+                <button class="action" id="historyAction" title="History"><svg class="icon"><use href="#history"/></svg>History</button>
+                <button class="action" id="instructionAction"><svg class="icon"><use href="#wand"/></svg>Instruction</button>
+              </span>
+            </div>
+            <div class="instruction-row" id="instructionRow">
+              <svg class="icon action-spark"><use href="#spark"/></svg>
+              <svg class="icon"><use href="#history"/></svg>
+              <input id="instructionInput" placeholder="Tell the Graph Agent what to change…" aria-label="Graph instruction">
+              <span class="submit-hint">Enter to run</span>
+              <button class="action" id="closeInstruction"><svg class="icon"><use href="#close"/></svg></button>
+            </div>
+          </div>
+          <div class="action-surface" id="actionSurface"></div>
+          <div class="continuation"><strong>Interpretation</strong><span class="copy">The resulting structure makes one point especially clear: claim provenance is the bridge between retrieval and human evaluation. The graph can keep evolving, while the document can carry a stable representation for reading and publishing.</span></div>
+        </article>
+        <div class="design-note"><svg class="icon"><use href="#info"/></svg><span><strong>Composer rule:</strong> One AI Graph block can retain several independently generated graph types. One run generates one type; generated types switch instantly, ungenerated types ask for an optional prompt, and Save as controls the current Markdown representation.</span></div>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"><svg class="icon"><use href="#check"/></svg><span id="toastText"></span></div>
+  <script>
+  (function(){
+    var ns='http://www.w3.org/2000/svg',lens='topology',saveFormat='mermaid',timer=null,runningType=null,generationTarget='tree',surface=null,focused=false,inspectorPinned=true,evidenceLinks=true,inspectHideTimer=null;
+    var graphLabels={topology:['Topology','network'],tree:['Thinking Tree','tree'],bridges:['Bridges','graph'],timeline:['Timeline','clock'],gaps:['Gaps','gap']};
+    var graphStates={
+      topology:{generated:true,running:false,version:3,layout:'constellation',zoom:100,visible:999,selectedNodeId:'claim'},
+      tree:{generated:false,running:false,version:0,layout:'flow',zoom:100,visible:0,selectedNodeId:null},
+      bridges:{generated:false,running:false,version:0,layout:'constellation',zoom:100,visible:0,selectedNodeId:null},
+      timeline:{generated:true,running:false,version:2,layout:'flow',zoom:100,visible:999,selectedNodeId:'jun'},
+      gaps:{generated:false,running:false,version:0,layout:'diagnostic',zoom:100,visible:0,selectedNodeId:null}
+    };
+    var layoutChoices={
+      topology:[['constellation','layout','Constellation'],['flow','right','Flow']],
+      tree:[['flow','right','Flow']],
+      bridges:[['constellation','layout','Constellation'],['flow','right','Flow']],
+      timeline:[['flow','right','Timeline'],['vertical','down','Timeline']],
+      gaps:[['diagnostic','gap','Diagnostic map']]
+    };
+    var data={
+      topology:{title:'Topology',copy:'How evidence, retrieval methods, and the control layer connect.',nodes:[
+        ['rag','GraphRAG','research model','core',120,211,94,194,108],['retrieve','Retrieval generation','method','',308,120,262,194,138],['community','Community summaries','synthesis','',318,283,440,112,142],['evidence','Evidence-linked graph','evidence','evidence',520,109,438,272,143],['claim','Claim provenance','evidence','evidence',566,280,616,194,126],['evaluation','Evaluation benchmark','evaluation','gap',736,101,786,113,143],['review','Human review loop','control','control',736,278,786,274,130],['observe','Agent observability','control','control',825,190,786,344,126]
+      ],edges:[['rag','retrieve','grounds'],['rag','community','summarizes'],['retrieve','evidence','builds'],['community','claim','supports'],['evidence','claim','provenance'],['claim','evaluation','evaluates'],['claim','review','reviewed by'],['evaluation','observe','reports'],['review','observe','monitors']]},
+      tree:{title:'Thinking Tree',copy:'A reasoning branch grows only after its parent claim has been inspected.',nodes:[
+        ['question','How should retrieval improve?','root question','core',455,76,110,201,178],['ep','Evidence quality','branch','evidence',245,166,315,118,130],['cp','Control model','branch','control',670,166,315,286,125],['source','Source lineage','finding','evidence',160,278,525,78,112],['claim','Claim provenance','finding','evidence',340,278,525,158,120],['review','Human review','finding','control',585,278,525,238,110],['observe','Observability','finding','control',755,278,525,318,108]
+      ],edges:[['question','ep','branch'],['question','cp','branch'],['ep','source','inspect'],['ep','claim','derive'],['cp','review','validate'],['cp','observe','monitor']]},
+      bridges:{title:'Bridges',copy:'Bridge nodes explain how otherwise separate evidence and control domains connect.',nodes:[
+        ['retrieval','Retrieval methods','domain','core',155,198,112,198,130],['evidence','Evidence system','domain','evidence',765,108,735,108,124],['control','Human control','domain','control',765,292,735,292,118],['community','Community summaries','source concept','',335,112,320,112,142],['claim','Claim provenance','bridge','core',495,198,505,198,130],['review','Human review loop','bridge','core',600,292,505,292,135],['lineage','Source lineage','source concept','evidence',590,88,505,88,110]
+      ],edges:[['retrieval','community','contains'],['community','claim','supports'],['lineage','claim','grounds'],['claim','evidence','connects'],['claim','review','hands off'],['review','control','governs']]},
+      timeline:{title:'Timeline',copy:'Dated discoveries, parallel validation work, and dependencies on one shared time axis.',nodes:[
+        ['jan','Baseline ingestion','Jan 12','core',120,202,150,84,120],['feb','Entity extraction','Feb 03','',285,142,150,166,112],['mar','Community summaries','Mar 18','',285,270,150,248,140],['may','Local + global search','May 06','evidence',470,142,390,166,138],['jun','Claim provenance','Jun 09','evidence',470,270,390,248,122],['sep','Human review policy','Sep 14','control',660,142,630,166,137],['oct','Evaluation gate','Oct 02','gap',660,270,630,248,115],['nov','Run observability','Nov 11','control',825,202,790,207,120]
+      ],edges:[['jan','feb','starts'],['jan','mar','parallel'],['feb','may','enables'],['mar','jun','supports'],['may','sep','informs'],['jun','oct','grounds'],['sep','nov','monitors'],['oct','nov','releases']]},
+      gaps:{title:'Gaps',copy:'Missing or weak relationships are first-class graph objects, not unexplained empty space.',nodes:[
+        ['model','Retrieval model','covered','core',170,198,105,198,118],['evidence','Evidence system','covered','evidence',410,100,285,112,118],['evaluation','Evaluation','covered','evidence',410,296,285,284,105],['claimGap','Missing claim lineage','gap · no evidence path','gap',610,106,490,112,154],['metricGap','Unverified quality metric','gap · weak relation','gap',610,292,490,284,162],['review','Human review','covered','control',790,198,710,198,112]
+      ],edges:[['model','evidence','retrieves'],['model','evaluation','tested by'],['evidence','claimGap','missing'],['evaluation','metricGap','weak'],['claimGap','review','needs review'],['metricGap','review','needs review']]}
+    };
+    function q(id){return document.getElementById(id)}
+    function svg(tag){return document.createElementNS(ns,tag)}
+    function useIcon(id){var s=svg('svg'),u=svg('use');s.setAttribute('class','icon');u.setAttribute('href','#'+id);s.appendChild(u);return s}
+    function state(type){return graphStates[type||lens]}
+    function currentLayout(){return state().layout}
+    function selectedNodeId(){return state().selectedNodeId}
+    function pos(n){
+      var layout=currentLayout();
+      if(layout==='flow')return{x:n[6],y:n[7]};
+      if(layout==='vertical')return{x:145+(n[7]-84)*2.45,y:66+(n[6]-150)*.43};
+      return{x:n[4],y:n[5]}
+    }
+    function renderLayoutOptions(){
+      var host=q('layoutOptions');host.innerHTML='';
+      layoutChoices[lens].forEach(function(choice){
+        var button=document.createElement('button');button.className='layout'+(state().layout===choice[0]?' active':'');button.dataset.layout=choice[0];button.appendChild(useIcon(choice[1]));button.appendChild(document.createTextNode(choice[2]));button.onclick=function(){pickLayout(choice[0])};host.appendChild(button)
+      })
+    }
+    function updateTypeUi(){
+      var active=graphLabels[lens],activeState=state();q('graphTypeLabel').textContent=active[0];q('graphTypeIcon').querySelector('use').setAttribute('href','#'+active[1]);q('graphTypeVersion').textContent=activeState.running?'running':activeState.generated?'v'+activeState.version:'new';
+      document.querySelectorAll('[data-graph-type]').forEach(function(button){
+        var type=button.dataset.graphType,itemState=state(type),status=button.querySelector('small');button.classList.toggle('active',type===lens);button.dataset.availability=itemState.running?'running':itemState.generated?'generated':'not-generated';status.textContent=itemState.running?'Generating · operation '+Math.max(1,itemState.visible)+' of '+data[type].nodes.length:itemState.generated?'Generated · v'+itemState.version:'Not generated · Generate…'
+      })
+    }
+    function renderMiniMap(g,ids){
+      var root=q('miniMapSvg'),map={};while(root.firstChild)root.removeChild(root.firstChild);g.nodes.forEach(function(n){map[n[0]]=n});g.edges.forEach(function(e){if(!ids[e[0]]||!ids[e[1]])return;var a=pos(map[e[0]]),b=pos(map[e[1]]),line=svg('line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);root.appendChild(line)});g.nodes.forEach(function(n){if(!ids[n[0]])return;var p=pos(n),dot=svg('circle');dot.setAttribute('cx',p.x);dot.setAttribute('cy',p.y);dot.setAttribute('r',18);root.appendChild(dot)});var viewport=svg('rect');viewport.setAttribute('x',52);viewport.setAttribute('y',35);viewport.setAttribute('width',816);viewport.setAttribute('height',332);viewport.setAttribute('rx',20);root.appendChild(viewport)
+    }
+    function render(animate){
+      var g=data[lens],root=q('graphSvg');while(root.firstChild)root.removeChild(root.firstChild);
+      var defs=svg('defs'),marker=svg('marker'),arrow=svg('path');marker.id='arrow';marker.setAttribute('viewBox','0 0 8 8');marker.setAttribute('refX','7');marker.setAttribute('refY','4');marker.setAttribute('markerWidth','6');marker.setAttribute('markerHeight','6');marker.setAttribute('orient','auto');arrow.setAttribute('d','M0 0L8 4L0 8z');arrow.setAttribute('fill','#85818e');marker.appendChild(arrow);defs.appendChild(marker);root.appendChild(defs);
+      var graphState=state(),shown=g.nodes.slice(0,Math.min(graphState.visible,g.nodes.length)),ids={},map={};shown.forEach(function(n){ids[n[0]]=1});g.nodes.forEach(function(n){map[n[0]]=n});
+      g.edges.forEach(function(e,i){if(!ids[e[0]]||!ids[e[1]])return;var a=map[e[0]],b=map[e[1]],ap=pos(a),bp=pos(b),dx=bp.x-ap.x,dy=bp.y-ap.y,d=Math.sqrt(dx*dx+dy*dy)||1,sx=ap.x+dx/d*(a[8]/2+3),sy=ap.y+dy/d*18,tx=bp.x-dx/d*(b[8]/2+8),ty=bp.y-dy/d*18,p=svg('path'),path;
+        if(currentLayout()==='flow'){var mx=(sx+tx)/2;path='M'+sx+' '+sy+' C'+mx+' '+sy+','+mx+' '+ty+','+tx+' '+ty}else if(currentLayout()==='vertical'){var my=(sy+ty)/2;path='M'+sx+' '+sy+' C'+sx+' '+my+','+tx+' '+my+','+tx+' '+ty}else{var cy=(sy+ty)/2-(i%2===0?1:-1)*Math.min(52,Math.abs(dx)*.18)*.24;path='M'+sx+' '+sy+' C'+(sx+dx*.36)+' '+cy+','+(sx+dx*.68)+' '+cy+','+tx+' '+ty}
+        var soft=lens==='gaps'&&(a[3]==='gap'||b[3]==='gap')||i%4===1;p.setAttribute('d',path);p.setAttribute('class','edge'+(soft?' soft':''));if(soft&&!evidenceLinks)p.style.display='none';root.appendChild(p);var t=svg('text');t.setAttribute('x',(sx+tx)/2);t.setAttribute('y',(sy+ty)/2-5);t.setAttribute('text-anchor','middle');t.setAttribute('class','edge-label');t.textContent=e[2];if(soft&&!evidenceLinks)t.style.display='none';root.appendChild(t)
+      });
+      shown.forEach(function(n,i){var p=pos(n),group=svg('g'),rect=svg('rect'),label=svg('text'),sub=svg('text');group.setAttribute('class','node '+n[3]+(selectedNodeId()===n[0]?' selected':'')+(animate&&i===shown.length-1?' enter':''));group.setAttribute('transform','translate('+(p.x-n[8]/2)+','+(p.y-23)+')');group.setAttribute('data-node-id',n[0]);group.setAttribute('role','button');group.setAttribute('tabindex','0');group.setAttribute('aria-label','Inspect '+n[1]);group.onclick=function(){showInspector(n,true)};group.onmouseenter=function(){if(!inspectorPinned)showInspector(n,false)};group.onmouseleave=function(){if(!inspectorPinned)scheduleInspectorHide()};group.onkeydown=function(event){if(event.key==='Enter')showInspector(n,true)};rect.setAttribute('width',n[8]);rect.setAttribute('height',46);group.appendChild(rect);label.setAttribute('x',n[8]/2);label.setAttribute('y',19);label.setAttribute('class','node-label');label.textContent=n[1];group.appendChild(label);sub.setAttribute('x',n[8]/2);sub.setAttribute('y',34);sub.setAttribute('class','node-sub');sub.textContent=n[2];group.appendChild(sub);
+        if(i===g.nodes.length-1&&graphState.visible>=g.nodes.length){var c=svg('circle'),pt=svg('text');c.setAttribute('cx',n[8]-2);c.setAttribute('cy',43);c.setAttribute('r',9);c.setAttribute('class','node-plus');group.appendChild(c);pt.setAttribute('x',n[8]-2);pt.setAttribute('y',43);pt.setAttribute('class','node-plus-text');pt.textContent='+';group.appendChild(pt)}root.appendChild(group)
+      });
+      renderMiniMap(g,ids)
+    }
+    function showInspector(n,pin){
+      if(!n)return;clearTimeout(inspectHideTimer);state().selectedNodeId=n[0];inspectorPinned=pin;var incoming=0,outgoing=0;data[lens].edges.forEach(function(e){if(e[0]===n[0])outgoing++;if(e[1]===n[0])incoming++});q('inspectorType').textContent=n[3]==='gap'?'EVIDENCE GAP':n[3]==='evidence'?'EVIDENCE NODE':n[3]==='control'?'CONTROL NODE':'GRAPH CONCEPT';q('inspectorStatus').textContent=pin?'PINNED · I':'PREVIEW · SHIFT';q('inspectorTitle').textContent=n[1];q('inspectorMeta').textContent=n[2]+' · '+incoming+' incoming · '+outgoing+' outgoing';q('inspectorCopy').textContent=data[lens].copy;var card=q('nodeInspector'),stage=q('graphStage'),point=pos(n),w=stage.clientWidth||920,x=point.x*(w/920),left=x>w-320?x-282:x+38,top=Math.max(56,Math.min(216,point.y-58));card.style.left=Math.max(12,left)+'px';card.style.top=top+'px';card.hidden=false;document.querySelectorAll('#graphSvg .node').forEach(function(el){el.classList.toggle('selected',el.dataset.nodeId===n[0])})
+    }
+    function scheduleInspectorHide(){clearTimeout(inspectHideTimer);inspectHideTimer=setTimeout(function(){if(!inspectorPinned)hideInspector(false)},180)}
+    function hideInspector(clearSelection){clearTimeout(inspectHideTimer);q('nodeInspector').hidden=true;inspectorPinned=false;if(clearSelection){state().selectedNodeId=null;document.querySelectorAll('#graphSvg .node').forEach(function(el){el.classList.remove('selected')})}}
+    function currentNode(){return data[lens].nodes.find(function(n){return n[0]===selectedNodeId()})}
+    function defaultNode(){var nodes=data[lens].nodes;return nodes[Math.min(4,nodes.length-1)]}
+    function applyZoom(next){state().zoom=Math.max(40,Math.min(220,next));q('zoomValue').textContent=state().zoom+'%';q('graphSvg').style.transform='scale('+(state().zoom/100)+')'}
+    function toggleNodeList(){var host=q('nodeList');if(!host.hidden){host.hidden=true;return}var nodes=data[lens].nodes.slice(0,Math.min(state().visible,data[lens].nodes.length));host.innerHTML='<header>Nodes <span>'+nodes.length+' visible</span></header>'+nodes.map(function(n){return '<button data-list-node="'+n[0]+'"><span>'+n[1]+'</span><span>'+n[2]+'</span></button>'}).join('');host.hidden=false;host.querySelectorAll('[data-list-node]').forEach(function(button){button.onclick=function(){showInspector(data[lens].nodes.find(function(n){return n[0]===button.dataset.listNode}),true);host.hidden=true}})}
+    function formatLabel(){return saveFormat==='image'?'Image':saveFormat.toUpperCase()}
+    function closeStateMenus(){q('graphTypeMenu').hidden=true;q('saveFormatMenu').hidden=true;q('graphTypeTrigger').setAttribute('aria-expanded','false');q('saveFormatTrigger').setAttribute('aria-expanded','false')}
+    function toggleStateMenu(menuId,triggerId){var menu=q(menuId),open=menu.hidden;closeStateMenus();menu.hidden=!open;q(triggerId).setAttribute('aria-expanded',open?'true':'false')}
+    function pickLens(v){
+      closeStateMenus();closeSurface();q('nodeList').hidden=true;
+      if(!state(v).generated&&!state(v).running){openGeneration(v);return}
+      lens=v;focused=false;q('focusAction').classList.remove('active');hideInspector(false);renderLayoutOptions();updateTypeUi();applyZoom(state().zoom);render(false);
+      var n=currentNode()||defaultNode();if(!state().running){state().selectedNodeId=n[0];showInspector(n,true)}
+      toast(graphLabels[v][0]+' restored · v'+state().version+' · no new run.')
+    }
+    function pickLayout(v){state().layout=v;document.querySelectorAll('.layout').forEach(function(b){b.classList.toggle('active',b.dataset.layout===v)});var n=currentNode(),wasOpen=!q('nodeInspector').hidden;render(false);if(n&&wasOpen)showInspector(n,inspectorPinned)}
+    function openGeneration(v){
+      generationTarget=v&&(!state(v).generated||state(v).running)?v:(['topology','tree','bridges','timeline','gaps'].find(function(type){return !state(type).generated&&!state(type).running})||lens);
+      closeStateMenus();closeSurface();hideInspector(false);q('generationPrompt').value='';q('generationLayer').hidden=false;
+      document.querySelectorAll('[data-generation-type]').forEach(function(button){var type=button.dataset.generationType,unavailable=state(type).generated||state(type).running;button.disabled=unavailable;button.classList.toggle('active',type===generationTarget);button.title=state(type).generated?'Already generated · switch from the graph type menu':''});
+      q('generationTitle').textContent='Generate '+graphLabels[generationTarget][0];setTimeout(function(){q('generationPrompt').focus()},0)
+    }
+    function closeGeneration(){q('generationLayer').hidden=true;q('generationPrompt').value=''}
+    function run(type,mode){
+      if(timer){toast('Finish the current '+graphLabels[runningType][0]+' run first.');return}
+      var target=type||lens,targetState=state(target),isNew=mode==='generate';runningType=target;targetState.running=true;targetState.visible=isNew?1:Math.max(2,data[target].nodes.length-2);targetState.selectedNodeId=null;lens=target;focused=false;q('focusAction').classList.remove('active');closeGeneration();closeSurface();closeStateMenus();hideInspector(false);q('nodeList').hidden=true;renderLayoutOptions();updateTypeUi();applyZoom(targetState.zoom);q('generating').classList.remove('hide');q('generatingText').textContent=graphLabels[target][0]+' · operation '+targetState.visible+' of '+data[target].nodes.length;render(false);
+      timer=setInterval(function(){
+        var targetGraph=data[target];targetState.visible++;
+        if(targetState.visible>targetGraph.nodes.length){
+          clearInterval(timer);timer=null;targetState.visible=999;targetState.running=false;targetState.generated=true;targetState.version=isNew?1:targetState.version+1;runningType=null;q('generating').classList.add('hide');updateTypeUi();if(lens===target){render(false);targetState.selectedNodeId=defaultNode()[0];showInspector(defaultNode(),true)}toast(graphLabels[target][0]+' ready · v'+targetState.version+' · other graph types preserved.');return
+        }
+        updateTypeUi();q('generatingText').textContent=graphLabels[target][0]+' · operation '+targetState.visible+' of '+targetGraph.nodes.length;if(lens===target)render(true)
+      },720)
+    }
+    function startGeneration(){var prompt=q('generationPrompt').value.trim();if(state(generationTarget).generated){closeGeneration();pickLens(generationTarget);return}toast(prompt?'Using your prompt for '+graphLabels[generationTarget][0]+'.':'Using the default '+graphLabels[generationTarget][0]+' instruction.');run(generationTarget,'generate')}
+    function setSaveFormat(v){saveFormat=v;closeStateMenus();q('saveFormatLabel').textContent=v==='image'?'Image':v.toUpperCase();document.querySelectorAll('[data-save-format]').forEach(function(button){button.classList.toggle('active',button.dataset.saveFormat===v)});q('graphBlock').dataset.materializedType=lens;q('graphBlock').dataset.materializedVersion=state().version;q('graphBlock').dataset.materializedFormat=v;toast(data[lens].title+' v'+state().version+' saved to Markdown as '+formatLabel()+'.')}
+    function closeSurface(){
+      surface=null;q('actionSurface').classList.remove('open');q('actionSurface').innerHTML='';['insertAction','copyAction','commentAction','historyAction','explainAction'].forEach(function(id){q(id).classList.remove('active')})
+    }
+    function showSurface(kind,trigger){
+      if(surface===kind){closeSurface();return}surface=kind;['insertAction','copyAction','commentAction','historyAction','explainAction'].forEach(function(id){q(id).classList.remove('active')});if(trigger)trigger.classList.add('active');var host=q('actionSurface');
+      if(kind==='insert')host.innerHTML='<span class="surface-title">INSERT</span><button class="surface-option" data-surface-value="Paragraph">Paragraph</button><button class="surface-option" data-surface-value="Heading">Heading</button><button class="surface-option" data-surface-value="AI Graph">AI Graph</button><button class="surface-option" data-surface-value="Mermaid">Mermaid</button><button class="surface-option" data-surface-value="Image">Image</button>';
+      if(kind==='copy')host.innerHTML='<span class="surface-title">COPY</span><button class="surface-option" data-surface-value="Markdown source">Markdown source</button><button class="surface-option" data-surface-value="Plain text">Plain text</button><button class="surface-option" data-surface-value="Current '+formatLabel()+' output">Graph as '+formatLabel()+'</button>';
+      if(kind==='comment')host.innerHTML='<span class="surface-title">COMMENT</span><input class="surface-input" id="commentInput" placeholder="Add a comment to this graph block"><button class="surface-option" id="commentSubmit">Add comment</button>';
+      if(kind==='history'){var version=state().version,previous=Math.max(1,version-1);host.innerHTML='<div><div class="history-item"><strong>v'+version+'</strong><span>Current '+data[lens].title+' graph</span><button class="surface-option" data-restore="'+version+'">Current</button></div>'+(version>1?'<div class="history-item"><strong>v'+previous+'</strong><span>Previous accepted '+data[lens].title+' version</span><button class="surface-option" data-restore="'+previous+'">Restore</button></div>':'')+'</div>'}
+      if(kind==='explain'){var explanation='<strong>'+data[lens].title+':</strong> '+data[lens].copy+' Claim provenance is the strongest bridge between evidence and review.';host.innerHTML='<span class="surface-note">'+explanation+'</span><button class="surface-option" data-surface-value="Evidence opened">Open evidence</button>'}
+      host.classList.add('open');
+      host.querySelectorAll('[data-surface-value]').forEach(function(b){b.onclick=function(){if(kind==='insert'&&b.dataset.surfaceValue==='AI Graph'){closeSurface();openGeneration();return}var suffix=kind==='insert'?' block inserted below.':kind==='explain'?'.':' copied.';toast(b.dataset.surfaceValue+suffix);closeSurface()}});
+      host.querySelectorAll('[data-restore]').forEach(function(b){b.onclick=function(){toast('Restored '+data[lens].title+' version '+b.dataset.restore+'. Other graph histories are unchanged.');closeSurface()}});
+      var submit=q('commentSubmit');if(submit){var send=function(){var input=q('commentInput');if(!input.value.trim())return;toast('Comment added to AI Graph block.');closeSurface()};submit.onclick=send;q('commentInput').onkeydown=function(e){if(e.key==='Enter')send()};q('commentInput').focus()}
+    }
+    function toast(msg){q('toastText').textContent=msg;q('toast').classList.add('show');setTimeout(function(){q('toast').classList.remove('show')},2500)}
+    q('graphTypeTrigger').onclick=function(event){event.stopPropagation();toggleStateMenu('graphTypeMenu','graphTypeTrigger')};q('saveFormatTrigger').onclick=function(event){event.stopPropagation();toggleStateMenu('saveFormatMenu','saveFormatTrigger')};document.querySelectorAll('[data-graph-type]').forEach(function(button){button.onclick=function(event){event.stopPropagation();pickLens(button.dataset.graphType)}});document.querySelectorAll('[data-save-format]').forEach(function(button){button.onclick=function(event){event.stopPropagation();setSaveFormat(button.dataset.saveFormat)}});document.querySelectorAll('[data-rail]').forEach(function(b){b.onclick=function(){toast(b.dataset.rail+' navigation selected.')}});
+    document.querySelectorAll('[data-generation-type]').forEach(function(button){button.onclick=function(){if(button.disabled)return;generationTarget=button.dataset.generationType;document.querySelectorAll('[data-generation-type]').forEach(function(item){item.classList.toggle('active',item.dataset.generationType===generationTarget)});q('generationTitle').textContent='Generate '+graphLabels[generationTarget][0]}});q('generationClose').onclick=closeGeneration;q('generationCancel').onclick=closeGeneration;q('generationStart').onclick=startGeneration;
+    q('evidenceToggle').onclick=function(){evidenceLinks=!evidenceLinks;q('evidenceToggle').classList.toggle('active',evidenceLinks);render(false);toast(evidenceLinks?'Evidence links shown.':'Evidence links hidden.')};q('nodesTool').onclick=toggleNodeList;q('copyMermaidTool').onclick=function(){toast(data[lens].title+' graph copied as Mermaid.')};q('copyImageTool').onclick=function(){toast(data[lens].title+' graph copied as image.')};q('zoomOutTool').onclick=function(){applyZoom(state().zoom-20)};q('zoomInTool').onclick=function(){applyZoom(state().zoom+20)};q('fitTool').onclick=function(){applyZoom(84);toast('Entire graph fitted.')};q('readableTool').onclick=function(){applyZoom(100);toast('Readable view restored.')};q('miniMap').onclick=function(){q('fitTool').click()};
+    q('nodeInspector').onmouseenter=function(){clearTimeout(inspectHideTimer)};q('nodeInspector').onmouseleave=function(){if(!inspectorPinned)scheduleInspectorHide()};q('inspectorClose').onclick=function(){hideInspector(true)};q('inspectorExplain').onclick=function(){toast('Explaining '+(currentNode()?currentNode()[1]:'selected concept')+'.')};q('inspectorExpand').onclick=function(){hideInspector(true);toast('Expansion queued from the selected concept.');run(lens,'update')};q('inspectorFocus').onclick=function(){applyZoom(116);toast('Focused the selected concept and its strongest relations.')};q('inspectorEvidence').onclick=function(){toast('Evidence opened for '+(currentNode()?currentNode()[1]:'selected concept')+'.')};
+    q('graphStage').onkeydown=function(event){if(event.key.toLowerCase()==='i'){event.preventDefault();var n=currentNode()||defaultNode();if(q('nodeInspector').hidden){showInspector(n,true);return}inspectorPinned=!inspectorPinned;q('inspectorStatus').textContent=inspectorPinned?'PINNED · I':'PREVIEW · SHIFT';if(!inspectorPinned)q('nodeInspector').hidden=true;return}if(event.key==='Shift'&&q('nodeInspector').hidden)showInspector(currentNode()||defaultNode(),false);if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft'].includes(event.key)){event.preventDefault();var nodes=data[lens].nodes,index=Math.max(0,nodes.findIndex(function(item){return item[0]===selectedNodeId()})),step=event.key==='ArrowDown'||event.key==='ArrowRight'?1:-1;showInspector(nodes[(index+step+nodes.length)%nodes.length],true);return}if(event.key==='Enter'&&currentNode()){toast('Opened '+currentNode()[1]+'.');return}if(event.key==='Escape'){if(!q('nodeList').hidden){q('nodeList').hidden=true;return}hideInspector(true)}};q('graphStage').onkeyup=function(event){if(event.key==='Shift'&&!inspectorPinned)hideInspector(false)};
+    q('addBlock').onclick=function(){q('insert').classList.toggle('show');closeSurface()};q('insertGraph').onclick=function(){q('insert').classList.remove('show');openGeneration('tree')};q('insertMermaid').onclick=function(){q('insert').classList.remove('show');toast('Mermaid block inserted above the AI Graph.')};q('openGraph').onclick=function(){var full=q('graphBlock').classList.toggle('fullscreen');q('openGraph').title=full?'Exit full screen':'Full screen';toast(full?'Graph opened in full screen.':'Returned to Composer block.')};q('readingView').onclick=function(){toast('Reading view keeps the selected block representation.')};
+    q('insertAction').onclick=function(){showSurface('insert',q('insertAction'))};q('copyAction').onclick=function(){showSurface('copy',q('copyAction'))};q('commentAction').onclick=function(){showSurface('comment',q('commentAction'))};q('historyAction').onclick=function(){showSurface('history',q('historyAction'))};q('explainAction').onclick=function(){showSurface('explain',q('explainAction'))};
+    q('expandAction').onclick=function(){toast('Expand queued for '+data[lens].title+' only.');run(lens,'update')};q('focusAction').onclick=function(){focused=!focused;q('focusAction').classList.toggle('active',focused);applyZoom(focused?112:100);toast(focused?'Focused the strongest evidence path.':'Focus cleared.')};
+    q('instructionAction').onclick=function(){closeSurface();q('actionRow').classList.add('instruction');q('instructionInput').focus()};q('closeInstruction').onclick=function(){q('actionRow').classList.remove('instruction');q('instructionInput').value=''};q('instructionInput').onkeydown=function(e){if(e.key==='Escape'){q('closeInstruction').click();return}if(e.key!=='Enter'||!e.currentTarget.value.trim())return;var text=e.currentTarget.value.trim();q('closeInstruction').click();toast('Instruction queued for '+data[lens].title+': '+text);run(lens,'update')};
+    document.onclick=function(){closeStateMenus()};document.onkeydown=function(e){if(e.key==='Escape'){closeStateMenus();closeSurface();closeGeneration();q('insert').classList.remove('show');q('actionRow').classList.remove('instruction');q('graphBlock').classList.remove('fullscreen')}};renderLayoutOptions();updateTypeUi();applyZoom(state().zoom);render(false);showInspector(currentNode()||defaultNode(),true)
+  })();
+  </script>
+</body>
+</html>
