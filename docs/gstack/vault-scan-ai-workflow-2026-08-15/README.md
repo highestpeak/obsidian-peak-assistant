@@ -1,11 +1,13 @@
 # Vault Scan AI workflow
 
-This package is the focused design handoff for the Vault Scan flow. It does not replace the broader Vault Intelligence V2 mock and does not claim production capability.
+This package now contains only the focused process companion for Vault Scan. The interaction itself lives in the broader Vault Intelligence V2 mock so there is one continuous workspace and one Scan implementation to review.
 
 ## Open the artifacts
 
-- [Interactive Scan mock](./index.html) — Setup, live AI usage, per-operation stop controls, Completed, and Work queue follow-up.
-- [Complete Scan and follow-up flow](./scan-flow.html) — user, local runtime, AI, persistence, proposal, Apply, and Verify lanes.
+- [Interactive Scan inside Vault Intelligence V2](../vault-intelligence-workspace-2026-08-12-v2/index.html?screen=setup) — Setup, live AI usage, grouped stop controls, Completed, and Work queue follow-up.
+- [Readable Scan and follow-up flow](./scan-flow.html) — the larger-text companion diagram for user, local runtime, AI, receipts, proposal, Apply, and Verify.
+
+The older standalone [`index.html`](./index.html) now redirects to the V2 workspace so reviewers cannot accidentally evaluate two competing Scan mocks. The existing screenshots remain historical evidence only.
 
 ## Product contract represented here
 

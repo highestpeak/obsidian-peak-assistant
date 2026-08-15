@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vault Scan 完整流程与 AI 参与图</title>
+  <title>Vault Scan 流程图 · Vault Intelligence V2</title>
   <style>
     :root {
       color-scheme: light;
@@ -12,7 +12,7 @@
       --surface-2: #f8f8fa;
       --ink: #222127;
       --ink-2: #55525c;
-      --ink-3: #89858f;
+      --ink-3: #7d7984;
       --line: #e6e4e9;
       --line-2: #d8d5dd;
       --accent: #6857d9;
@@ -31,251 +31,164 @@
     html { scroll-behavior: smooth; }
     body { margin: 0; color: var(--ink); background: var(--bg); font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
     a { color: inherit; }
-    .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 58px; padding: 0 28px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
-    .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 730; }
-    .brand-mark { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #ddd8f4; border-radius: 8px; color: var(--accent-2); background: var(--accent-soft); }
-    .top-links { display: flex; align-items: center; gap: 8px; }
-    .top-links a { min-height: 30px; display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 7px; color: var(--ink-2); background: white; font-size: 10px; font-weight: 680; text-decoration: none; }
-    .page { width: min(1500px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 70px; }
-    .hero { display: grid; grid-template-columns: minmax(0,1fr) 420px; gap: 20px; align-items: end; padding: 25px 27px; border: 1px solid var(--line); border-radius: 11px; background: white; }
-    .eyebrow { color: var(--accent-2); font-size: 10px; font-weight: 760; letter-spacing: .06em; }
-    h1 { max-width: 860px; margin: 8px 0 0; font-size: 29px; line-height: 1.2; letter-spacing: -.035em; }
-    .hero p { max-width: 900px; margin: 10px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.65; }
-    .hero-contract { padding: 15px; border: 1px solid #dcd6f6; border-radius: 9px; background: #faf9ff; }
-    .hero-contract strong { display: block; color: var(--accent-2); font-size: 11px; }
-    .hero-contract span { display: block; margin-top: 7px; color: var(--ink-2); font-size: 10px; line-height: 1.55; }
-    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); background: white; font-size: 9px; }
-    .legend-dot { width: 8px; height: 8px; border-radius: 3px; background: #777; }
-    .legend-dot.local { background: var(--blue); }
-    .legend-dot.ai { background: var(--accent); }
-    .legend-dot.user { background: var(--amber); }
-    .legend-dot.persist { background: var(--green); }
-    .legend-dot.boundary { background: var(--red); }
+    .topbar { position: sticky; top: 0; z-index: 30; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 30px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 15px; font-weight: 740; }
+    .brand-dot { width: 12px; height: 12px; border: 3px solid #ddd7f4; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+    .top-links { display: flex; gap: 8px; }
+    .top-links a { min-height: 36px; display: inline-flex; align-items: center; padding: 0 13px; border: 1px solid var(--line-2); border-radius: 8px; color: var(--ink-2); background: white; font-size: 12px; font-weight: 700; text-decoration: none; }
+    .page { width: min(1320px, calc(100% - 56px)); margin: 0 auto; padding: 34px 0 76px; }
+    .hero { display: grid; grid-template-columns: minmax(0,1fr) 390px; gap: 28px; align-items: center; padding: 30px 32px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+    .eyebrow { color: var(--accent-2); font-size: 12px; font-weight: 780; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 850px; margin: 9px 0 0; font-size: 32px; line-height: 1.2; letter-spacing: -.035em; }
+    .hero p { max-width: 850px; margin: 12px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.65; }
+    .contract { padding: 17px 18px; border: 1px solid #d8d0f2; border-radius: 10px; background: #faf9ff; }
+    .contract strong { display: block; color: var(--accent-2); font-size: 14px; }
+    .contract span { display: block; margin-top: 8px; color: var(--ink-2); font-size: 13px; line-height: 1.6; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); background: white; font-size: 11.5px; }
+    .legend-item i { width: 9px; height: 9px; border-radius: 3px; background: var(--blue); }
+    .legend-item.ai i { background: var(--accent); }
+    .legend-item.user i { background: var(--amber); }
+    .legend-item.output i { background: var(--green); }
 
-    section { margin-top: 22px; }
-    .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 11px; }
-    h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
-    .section-head p { max-width: 760px; margin: 0; color: var(--ink-3); font-size: 10px; line-height: 1.5; text-align: right; }
-    .card { border: 1px solid var(--line); border-radius: 10px; background: white; }
+    section { margin-top: 28px; }
+    .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 13px; }
+    h2 { margin: 0; font-size: 21px; letter-spacing: -.025em; }
+    .section-head p { max-width: 650px; margin: 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; text-align: right; }
+    .card { border: 1px solid var(--line); border-radius: 11px; background: white; }
 
-    .screen-flow { display: grid; grid-template-columns: 1fr 42px 1fr 42px 1fr 42px 1fr; align-items: center; padding: 14px; }
-    .screen-node { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); }
-    .screen-node a { display: block; text-decoration: none; }
-    .screen-thumb { width: 100%; height: 172px; display: block; object-fit: cover; object-position: top left; border-bottom: 1px solid var(--line); background: #efedf2; }
-    .screen-caption { padding: 11px 12px 12px; }
-    .screen-caption strong { display: block; font-size: 10.5px; }
-    .screen-caption span { display: block; margin-top: 5px; color: var(--ink-3); font-size: 8.5px; line-height: 1.45; }
-    .screen-arrow { color: var(--accent); font-size: 23px; text-align: center; }
+    .screen-path { display: grid; grid-template-columns: 1fr 46px 1fr 46px 1fr 46px 1fr; align-items: stretch; padding: 18px; }
+    .screen-step { min-height: 174px; display: flex; flex-direction: column; justify-content: space-between; padding: 18px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface-2); text-decoration: none; }
+    .screen-step:hover { border-color: #beb4ea; background: #faf9ff; }
+    .screen-number { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: var(--accent-2); background: var(--accent-soft); font-size: 12px; font-weight: 780; }
+    .screen-step strong { display: block; margin-top: 20px; font-size: 17px; }
+    .screen-step span { display: block; margin-top: 7px; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+    .screen-step small { display: block; margin-top: 14px; color: var(--accent-2); font-size: 11.5px; font-weight: 720; }
+    .arrow { display: grid; place-items: center; color: var(--accent); font-size: 26px; }
 
-    .swimlane { overflow-x: auto; padding: 0; }
-    .lane-grid { min-width: 1320px; display: grid; grid-template-columns: 118px repeat(8, minmax(135px,1fr)); }
-    .lane-corner, .lane-stage { min-height: 50px; display: flex; align-items: center; padding: 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface-2); }
-    .lane-corner { color: var(--ink-3); font-size: 8px; font-weight: 720; }
-    .lane-stage { flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; }
-    .lane-stage b { font-size: 8.5px; }
-    .lane-stage span { color: var(--ink-3); font-size: 7.5px; line-height: 1.35; }
-    .lane-label { min-height: 112px; display: flex; flex-direction: column; justify-content: center; padding: 11px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #fbfbfc; }
-    .lane-label strong { font-size: 9px; }
-    .lane-label span { margin-top: 4px; color: var(--ink-3); font-size: 7.5px; line-height: 1.35; }
-    .lane-cell { position: relative; min-height: 112px; display: flex; align-items: center; justify-content: center; padding: 9px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .lane-cell:last-child { border-right: 0; }
-    .flow-box { position: relative; width: 100%; min-height: 64px; display: flex; flex-direction: column; justify-content: center; padding: 9px; border: 1px solid var(--line-2); border-radius: 8px; background: white; }
-    .flow-box.local { border-color: #d3e1ef; background: var(--blue-soft); }
-    .flow-box.ai { border-color: #dcd5fa; background: var(--accent-soft); }
-    .flow-box.user { border-color: #edd9bc; background: var(--amber-soft); }
-    .flow-box.persist { border-color: #cee6de; background: var(--green-soft); }
-    .flow-box.boundary { border-color: #eccfd5; background: var(--red-soft); }
-    .flow-box strong { font-size: 8.5px; line-height: 1.35; }
-    .flow-box span { margin-top: 4px; color: var(--ink-2); font-size: 7.2px; line-height: 1.4; }
-    .flow-box::after { content: "→"; position: absolute; top: 50%; right: -17px; z-index: 5; color: var(--ink-3); font-size: 14px; transform: translateY(-50%); }
-    .lane-cell:last-child .flow-box::after, .flow-box.no-arrow::after { display: none; }
-    .empty { color: #c5c1c9; font-size: 12px; }
+    .timeline { overflow-x: auto; }
+    .timeline-grid { min-width: 1120px; display: grid; grid-template-columns: 145px repeat(5, minmax(185px, 1fr)); }
+    .timeline-corner, .timeline-stage { min-height: 74px; display: flex; flex-direction: column; justify-content: center; padding: 12px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface-2); }
+    .timeline-corner { color: var(--ink-3); font-size: 12px; font-weight: 740; }
+    .timeline-stage strong { font-size: 14px; }
+    .timeline-stage span { margin-top: 4px; color: var(--ink-3); font-size: 11.5px; line-height: 1.4; }
+    .lane-label { min-height: 132px; display: flex; flex-direction: column; justify-content: center; padding: 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #fbfbfc; }
+    .lane-label strong { font-size: 14px; }
+    .lane-label span { margin-top: 5px; color: var(--ink-3); font-size: 11.5px; line-height: 1.4; }
+    .lane-cell { min-height: 132px; display: flex; align-items: center; padding: 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .lane-box { width: 100%; min-height: 92px; display: flex; flex-direction: column; justify-content: center; padding: 13px; border: 1px solid var(--line-2); border-radius: 9px; background: white; }
+    .lane-box.local { border-color: #d3e1ef; background: var(--blue-soft); }
+    .lane-box.ai { border-color: #dcd5fa; background: var(--accent-soft); }
+    .lane-box.user { border-color: #edd9bc; background: var(--amber-soft); }
+    .lane-box.output { border-color: #cee6de; background: var(--green-soft); }
+    .lane-box strong { font-size: 13px; line-height: 1.35; }
+    .lane-box span { margin-top: 6px; color: var(--ink-2); font-size: 11.5px; line-height: 1.45; }
+    .empty { justify-content: center; color: #bbb7c1; font-size: 18px; }
 
-    .dag { padding: 17px; }
-    .dag-row { display: grid; grid-template-columns: repeat(5, minmax(150px,1fr)); gap: 38px; align-items: stretch; }
-    .dag-row + .dag-row { margin-top: 30px; }
-    .dag-node { position: relative; min-height: 84px; display: flex; flex-direction: column; justify-content: center; padding: 11px; border: 1px solid #dcd5fa; border-radius: 9px; background: var(--accent-soft); }
-    .dag-node.local { border-color: #d3e1ef; background: var(--blue-soft); }
-    .dag-node.persist { border-color: #cee6de; background: var(--green-soft); }
-    .dag-node.user { border-color: #edd9bc; background: var(--amber-soft); }
-    .dag-node strong { font-size: 9.5px; }
-    .dag-node span { margin-top: 5px; color: var(--ink-2); font-size: 8px; line-height: 1.4; }
-    .dag-node.arrow::after { content: "→"; position: absolute; top: 50%; right: -28px; color: var(--accent); font-size: 18px; transform: translateY(-50%); }
-    .dag-join { grid-column: 2 / 5; display: grid; grid-template-columns: repeat(3,1fr); gap: 38px; }
-    .dependency-note { margin-top: 13px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-2); background: var(--surface-2); font-size: 9px; line-height: 1.55; }
+    .ai-groups { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; padding: 16px; }
+    .ai-card { min-height: 210px; padding: 16px; border: 1px solid #dcd5fa; border-radius: 10px; background: var(--accent-soft); }
+    .ai-card-index { color: var(--accent-2); font-size: 11px; font-weight: 780; letter-spacing: .06em; }
+    .ai-card strong { display: block; margin-top: 11px; font-size: 15px; line-height: 1.35; }
+    .ai-card p { margin: 8px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+    .ai-model { margin-top: 13px; padding-top: 11px; border-top: 1px solid #d4cdf1; color: var(--ink-2); font-size: 11.5px; line-height: 1.45; }
+    .ai-note { margin: 0 16px 16px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-2); background: var(--surface-2); font-size: 12.5px; line-height: 1.55; }
 
-    .control-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; padding: 14px; }
-    .control-card { min-height: 150px; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: white; }
-    .control-state { display: inline-flex; padding: 4px 7px; border-radius: 999px; color: var(--ink-2); background: var(--surface-2); font-size: 8px; font-weight: 720; }
+    .control-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 11px; padding: 16px; }
+    .control-card { min-height: 190px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
+    .control-state { display: inline-flex; min-height: 26px; align-items: center; padding: 0 8px; border-radius: 999px; color: var(--ink-2); background: var(--surface-2); font-size: 11px; font-weight: 760; }
     .control-card.running .control-state { color: var(--accent-2); background: var(--accent-soft); }
-    .control-card.warning .control-state { color: var(--amber); background: var(--amber-soft); }
-    .control-card strong { display: block; margin-top: 10px; font-size: 10px; }
-    .control-card p { margin: 6px 0 0; color: var(--ink-3); font-size: 8.5px; line-height: 1.5; }
-    .control-result { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 8px; line-height: 1.45; }
+    .control-card.cap .control-state { color: var(--amber); background: var(--amber-soft); }
+    .control-card strong { display: block; margin-top: 13px; font-size: 15px; }
+    .control-card p { margin: 8px 0 0; color: var(--ink-2); font-size: 12.5px; line-height: 1.55; }
+    .control-result { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 11.5px; line-height: 1.5; }
 
-    .post-flow { display: grid; grid-template-columns: 1fr 38px 1fr 38px 1fr; gap: 0; align-items: stretch; padding: 16px; }
-    .post-column { min-width: 0; }
-    .post-head { min-height: 57px; padding: 11px; border: 1px solid var(--line); border-radius: 8px 8px 0 0; background: var(--surface-2); }
-    .post-head strong { display: block; font-size: 10px; }
-    .post-head span { display: block; margin-top: 4px; color: var(--ink-3); font-size: 8px; }
-    .post-list { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; overflow: hidden; }
-    .post-item { min-height: 58px; padding: 10px; border-bottom: 1px solid var(--line); }
+    .post-flow { display: grid; grid-template-columns: 1fr 44px 1fr 44px 1fr; padding: 17px; }
+    .post-column { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
+    .post-head { padding: 14px 15px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+    .post-head strong { display: block; font-size: 15px; }
+    .post-head span { display: block; margin-top: 5px; color: var(--ink-3); font-size: 11.5px; line-height: 1.4; }
+    .post-item { min-height: 74px; padding: 13px 15px; border-bottom: 1px solid var(--line); }
     .post-item:last-child { border-bottom: 0; }
-    .post-item strong { display: block; font-size: 8.5px; }
-    .post-item span { display: block; margin-top: 4px; color: var(--ink-3); font-size: 7.5px; line-height: 1.4; }
-    .post-arrow { display: grid; place-items: center; color: var(--accent); font-size: 22px; }
+    .post-item strong { display: block; font-size: 13px; }
+    .post-item span { display: block; margin-top: 5px; color: var(--ink-2); font-size: 11.5px; line-height: 1.45; }
+    .post-arrow { display: grid; place-items: center; color: var(--accent); font-size: 26px; }
+    .boundary { margin-top: 12px; padding: 14px 16px; border: 1px solid #eccfd5; border-radius: 10px; color: var(--ink-2); background: var(--red-soft); font-size: 13px; line-height: 1.55; }
+    .footer-note { margin-top: 26px; padding: 15px 17px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink-3); background: white; font-size: 12px; line-height: 1.55; }
 
-    .truth-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; padding: 14px; }
-    .truth-card { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
-    .truth-card strong { display: block; font-size: 9px; }
-    .truth-card span { display: block; margin-top: 5px; color: var(--ink-3); font-size: 8px; line-height: 1.45; }
-    .footer-note { margin-top: 20px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-3); background: white; font-size: 9px; line-height: 1.55; }
-    @media (max-width: 1100px) {
+    @media (max-width: 1080px) {
       .hero { grid-template-columns: 1fr; }
-      .screen-flow { grid-template-columns: 1fr; gap: 8px; }
-      .screen-arrow { transform: rotate(90deg); }
-      .control-grid, .truth-grid { grid-template-columns: 1fr 1fr; }
-      .post-flow { grid-template-columns: 1fr; gap: 8px; }
-      .post-arrow { transform: rotate(90deg); }
+      .screen-path, .ai-groups, .control-grid, .post-flow { grid-template-columns: 1fr; gap: 10px; }
+      .arrow, .post-arrow { transform: rotate(90deg); min-height: 32px; }
     }
   </style>
 </head>
 <body>
-  <header class="topbar"><div class="brand"><div class="brand-mark">P</div>Vault Scan 完整流程与 AI 参与图</div><div class="top-links"><a href="index.html">打开交互 Mock</a><a href="README.md">阅读交付说明</a></div></header>
+  <header class="topbar"><div class="brand"><span class="brand-dot"></span>Vault Scan 配套流程图</div><div class="top-links"><a href="../vault-intelligence-workspace-2026-08-12-v2/index.html?screen=setup">打开原 V2 Mock</a><a href="README.md">交付说明</a></div></header>
   <main class="page">
     <div class="hero">
-      <div><div class="eyebrow">VAULT INTELLIGENCE · SCAN CONTRACT</div><h1>从变化发现到用户决策：什么时候本地处理，什么时候 AI 参与，结果如何继续</h1><p>一次 Scan 是一条有明确授权、模型、费用、停止语义和写入边界的知识库维护流程。Changed files 只负责触发；分析会叠加 affected context 和完整当前图。AI 可以动态规划和扩大证据，但不能越过 Setup 授权或预算。</p><div class="legend"><span class="legend-item"><i class="legend-dot local"></i>本地确定性处理</span><span class="legend-item"><i class="legend-dot ai"></i>AI operation · 可计费</span><span class="legend-item"><i class="legend-dot user"></i>用户授权或决定</span><span class="legend-item"><i class="legend-dot persist"></i>持久化与验证</span><span class="legend-item"><i class="legend-dot boundary"></i>用户文件边界</span></div></div>
-      <div class="hero-contract"><strong>一句话合同</strong><span>确定性系统建立事实，AI 在命名、语义、结构和维护判断中深入参与；用户在运行前控制授权与上限，在运行中控制每项 AI operation，在写入用户文件前进行最终批准。</span></div>
+      <div><div class="eyebrow">Vault Intelligence · Scan contract</div><h1>一次 Scan：先建立事实，再让 AI 帮忙理解，最后只把真正需要人的事留下</h1><p>Changed files 只是触发点。实际分析会叠加受影响的上下文，并放回完整的当前知识图里理解。所有 AI 在 Setup 后才运行；模型、预计 token、预计费用与上限先给用户看。</p><div class="legend"><span class="legend-item"><i></i>本地确定性工作</span><span class="legend-item ai"><i></i>AI 可计费工作</span><span class="legend-item user"><i></i>用户授权与决定</span><span class="legend-item output"><i></i>机器更新与后续</span></div></div>
+      <div class="contract"><strong>最重要的边界</strong><span>Search、索引、Summary、AI Tags 和图分析属于可重建的 Peak machine knowledge。任何 Markdown 或 frontmatter 修改都只能先生成 proposal，由用户看 diff 后显式 Apply，再 re-index 和 Verify。</span></div>
     </div>
 
     <section>
-      <div class="section-head"><h2>1. 用户看到的一条连续路径</h2><p>Run 不是第四个长期工作区。Setup、Progress、Completed 是同一次 Scan；只有仍需用户处理的事项进入 Work queue。</p></div>
-      <div class="card screen-flow">
-        <article class="screen-node"><a href="index.html?screen=setup"><img class="screen-thumb" src="assets/setup.png" alt="Scan setup mock screenshot"><div class="screen-caption"><strong>Setup</strong><span>范围、AI operations、实际模型、token/费用预估、hard cap、数据与写入边界。</span></div></a></article>
-        <div class="screen-arrow">→</div>
-        <article class="screen-node"><a href="index.html?screen=progress"><img class="screen-thumb" src="assets/progress.png" alt="Run progress mock screenshot"><div class="screen-caption"><strong>Progress</strong><span>本地进度、AI operation 总账、逐项费用、Skip、Stop remaining、预算 governor。</span></div></a></article>
-        <div class="screen-arrow">→</div>
-        <article class="screen-node"><a href="index.html?screen=completed"><img class="screen-thumb" src="assets/completed.png" alt="Completed scan mock screenshot"><div class="screen-caption"><strong>Completed</strong><span>What changed、AI receipt、partial/stopped/skipped 状态、没有修改用户文件。</span></div></a></article>
-        <div class="screen-arrow">→</div>
-        <article class="screen-node"><a href="index.html?screen=queue"><img class="screen-thumb" src="assets/queue.png" alt="Work queue mock screenshot"><div class="screen-caption"><strong>Follow-up</strong><span>只保留 durable Vault-maintenance work，并通过 proposal、Apply、Verify 真正关闭。</span></div></a></article>
+      <div class="section-head"><h2>1. 用户看到的是一条连续路径</h2><p>真正的交互 Mock 已回到原 Vault Intelligence V2 文件。本页只解释流程，不再维护第二套 Scan UI。</p></div>
+      <div class="card screen-path">
+        <a class="screen-step" href="../vault-intelligence-workspace-2026-08-12-v2/index.html?screen=setup"><span class="screen-number">1</span><div><strong>Setup</strong><span>选范围、AI 组、模型和 hard cap；看到简单预估后再开始。</span><small>打开原 Mock →</small></div></a><div class="arrow">→</div>
+        <a class="screen-step" href="../vault-intelligence-workspace-2026-08-12-v2/index.html?screen=progress"><span class="screen-number">2</span><div><strong>Progress</strong><span>大阶段保持清楚；AI token、费用和逐组 Stop 始终可见。</span><small>打开原 Mock →</small></div></a><div class="arrow">→</div>
+        <a class="screen-step" href="../vault-intelligence-workspace-2026-08-12-v2/index.html?screen=completed"><span class="screen-number">3</span><div><strong>Completed</strong><span>先说哪些产品能力受影响，再给模型与费用 receipt。</span><small>打开原 Mock →</small></div></a><div class="arrow">→</div>
+        <a class="screen-step" href="../vault-intelligence-workspace-2026-08-12-v2/index.html?screen=queue"><span class="screen-number">4</span><div><strong>Work queue</strong><span>只保留 Peak 不能独自关闭的 durable Vault maintenance work。</span><small>打开原 Mock →</small></div></a>
       </div>
     </section>
 
     <section>
-      <div class="section-head"><h2>2. 完整 Scan 泳道图</h2><p>从左向右阅读。每一列是一段时间；同一列的四条泳道同时说明用户、本地 runtime、AI 和持久化分别做什么。</p></div>
-      <div class="card swimlane">
-        <div class="lane-grid">
-          <div class="lane-corner">时间 / 责任</div>
-          <div class="lane-stage"><b>① Trigger</b><span>文件变化或手动 Scan</span></div>
-          <div class="lane-stage"><b>② Local preflight</b><span>不调用 AI</span></div>
-          <div class="lane-stage"><b>③ Setup</b><span>授权与预算</span></div>
-          <div class="lane-stage"><b>④ Fact foundation</b><span>可证明的当前状态</span></div>
-          <div class="lane-stage"><b>⑤ AI planning</b><span>受限动态计划</span></div>
-          <div class="lane-stage"><b>⑥ AI maintenance</b><span>多项 operation</span></div>
-          <div class="lane-stage"><b>⑦ Synthesis</b><span>聚合与写回机器状态</span></div>
-          <div class="lane-stage"><b>⑧ Completed</b><span>变化与后续工作</span></div>
+      <div class="section-head"><h2>2. 什么时候做什么</h2><p>五段时间、四个责任面。横向阅读即可，不再塞进八个极小阶段。</p></div>
+      <div class="card timeline"><div class="timeline-grid">
+        <div class="timeline-corner">时间 / 责任</div><div class="timeline-stage"><strong>① Setup</strong><span>本地预估，不先偷跑 AI</span></div><div class="timeline-stage"><strong>② Local facts</strong><span>建立可信的当前状态</span></div><div class="timeline-stage"><strong>③ AI work</strong><span>只在授权和预算内</span></div><div class="timeline-stage"><strong>④ Completed</strong><span>说明影响和实际花费</span></div><div class="timeline-stage"><strong>⑤ Follow-up</strong><span>仅留下需要人的事项</span></div>
 
-          <div class="lane-label"><strong>用户</strong><span>授权、控制、判断</span></div>
-          <div class="lane-cell"><div class="flow-box user"><strong>触发 Scan</strong><span>Changed / selected / entire Vault</span></div></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><div class="flow-box user"><strong>选择 AI operations</strong><span>确认模型、范围、预计 token/费用、hard cap</span></div></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><div class="flow-box user"><strong>可随时控制</strong><span>Skip queued · Stop remaining · Pause · 调整 cap</span></div></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><div class="flow-box user no-arrow"><strong>查看结果</strong><span>决定是否进入 Queue、Review、Apply 或 Run later</span></div></div>
+        <div class="lane-label"><strong>用户</strong><span>授权、控制、判断</span></div><div class="lane-cell"><div class="lane-box user"><strong>选择范围与 AI</strong><span>看模型、typical tokens/cost、hard cap。</span></div></div><div class="lane-cell empty">—</div><div class="lane-cell"><div class="lane-box user"><strong>运行中可撤回剩余授权</strong><span>Queued 用 Skip；Running 用 Stop remaining。</span></div></div><div class="lane-cell"><div class="lane-box user"><strong>理解发生了什么</strong><span>查看 Search、AI Tags、Community 和失败影响。</span></div></div><div class="lane-cell"><div class="lane-box user"><strong>选择、Review、Apply 或 Recovery</strong><span>每个 item 有明确退出条件。</span></div></div>
 
-          <div class="lane-label"><strong>本地 runtime</strong><span>无 LLM 判断</span></div>
-          <div class="lane-cell"><div class="flow-box local"><strong>发现 changed inputs</strong><span>source hash、revision、mtime、可读性、排除策略</span></div></div>
-          <div class="lane-cell"><div class="flow-box local"><strong>计算影响范围</strong><span>affected neighbors、reverse refs、旧/新 Community、完整图摘要</span></div></div>
-          <div class="lane-cell"><div class="flow-box local"><strong>费用预估</strong><span>chars ÷ 4 + overhead + output allowance + model price</span></div></div>
-          <div class="lane-cell"><div class="flow-box local"><strong>建立事实</strong><span>Search/chunks、References、PageRank、Louvain、19 checks</span></div></div>
-          <div class="lane-cell"><div class="flow-box local"><strong>构建 evidence pack</strong><span>changed + affected context + full graph baseline</span></div></div>
-          <div class="lane-cell"><div class="flow-box local"><strong>依赖与预算 governor</strong><span>hard/soft dependency、并发、scope cap、stop signal</span></div></div>
-          <div class="lane-cell"><div class="flow-box local"><strong>验证机器更新</strong><span>source revision、coverage、stale/partial 状态</span></div></div>
-          <div class="lane-cell"><div class="flow-box local no-arrow"><strong>生成可读回执</strong><span>what changed、affected surfaces、skipped/partial</span></div></div>
+        <div class="lane-label"><strong>本地 runtime</strong><span>无 LLM 判断</span></div><div class="lane-cell"><div class="lane-box local"><strong>Preflight + 费用估算</strong><span>chars ÷ 4 + overhead + output allowance。</span></div></div><div class="lane-cell"><div class="lane-box local"><strong>Changed + affected + full graph</strong><span>Search、links、PageRank、Louvain、19 checks。</span></div></div><div class="lane-cell"><div class="lane-box local"><strong>守住依赖、并发和 cap</strong><span>AI 停止后，本地工作继续。</span></div></div><div class="lane-cell"><div class="lane-box local"><strong>发布可重建 machine state</strong><span>记录 partial、stopped、skipped 和 receipts。</span></div></div><div class="lane-cell"><div class="lane-box local"><strong>Apply 后 re-index + Verify</strong><span>关闭 finding，保存用户决定给下次 Scan。</span></div></div>
 
-          <div class="lane-label"><strong>AI</strong><span>只有 Setup 授权后</span></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><div class="flow-box ai"><strong>AI scan planning</strong><span>筛选候选、排序、预算分配、证据深度；不能新增未授权能力</span></div></div>
-          <div class="lane-cell"><div class="flow-box ai"><strong>分阶段维护</strong><span>Summary、Tags、关系、语义、Community、Hub/Bridge、proposal</span></div></div>
-          <div class="lane-cell"><div class="flow-box ai"><strong>Maintenance synthesis</strong><span>合并 facts、findings、judgments、partial receipts 与用户问题</span></div></div>
-          <div class="lane-cell"><div class="flow-box ai no-arrow"><strong>不再自动继续</strong><span>Completed 后只有用户触发的 review/regenerate/apply 才再用 AI</span></div></div>
+        <div class="lane-label"><strong>AI</strong><span>Setup 后才参与</span></div><div class="lane-cell empty">—</div><div class="lane-cell empty">—</div><div class="lane-cell"><div class="lane-box ai"><strong>规划 → 文件理解 → 关系 → 结构 → 综合</strong><span>每项 provider call 独立记 token、cost 和状态。</span></div></div><div class="lane-cell"><div class="lane-box ai"><strong>停止自动继续</strong><span>Completed 后只有用户触发 review/regenerate 才再调用。</span></div></div><div class="lane-cell empty">—</div>
 
-          <div class="lane-label"><strong>持久化 / 输出</strong><span>可追溯与可恢复</span></div>
-          <div class="lane-cell"><span class="empty">—</span></div>
-          <div class="lane-cell"><div class="flow-box persist"><strong>Scope manifest</strong><span>触发集合、影响闭包、完整图 revision</span></div></div>
-          <div class="lane-cell"><div class="flow-box persist"><strong>Approved run plan</strong><span>operation、model、scope、caps、privacy、fallback</span></div></div>
-          <div class="lane-cell"><div class="flow-box persist"><strong>Local stage receipts</strong><span>readiness、projection、detector、warning</span></div></div>
-          <div class="lane-cell"><div class="flow-box persist"><strong>AI plan receipt</strong><span>候选选择与被跳过范围，不保存隐藏思维链</span></div></div>
-          <div class="lane-cell"><div class="flow-box persist"><strong>Call receipts</strong><span>provider/model/tokens/cost/retry/status/duration</span></div></div>
-          <div class="lane-cell"><div class="flow-box persist"><strong>Machine knowledge</strong><span>Summary、AI Tags、proposals、Community judgments</span></div></div>
-          <div class="lane-cell"><div class="flow-box persist no-arrow"><strong>Run receipt + Work items</strong><span>immutable audit + durable follow-up</span></div></div>
-        </div>
-      </div>
+        <div class="lane-label"><strong>输出</strong><span>可观察、可追溯</span></div><div class="lane-cell"><div class="lane-box output"><strong>Approved run plan</strong><span>Scope、models、operations、privacy、caps。</span></div></div><div class="lane-cell"><div class="lane-box output"><strong>Local receipts</strong><span>Readiness、projection、graph revision、findings。</span></div></div><div class="lane-cell"><div class="lane-box output"><strong>Machine knowledge + call receipts</strong><span>Summary、AI Tags、AI overlay、proposals。</span></div></div><div class="lane-cell"><div class="lane-box output"><strong>What changed + AI receipt</strong><span>先讲影响，再讲内部运行记录。</span></div></div><div class="lane-cell"><div class="lane-box output"><strong>Durable work item or closed receipt</strong><span>没有 owner next action 就不进入 Queue。</span></div></div>
+      </div></div>
     </section>
 
     <section>
-      <div class="section-head"><h2>3. AI operation 依赖图</h2><p>不是单个巨大 Agent 调用。Coordinator 只在授权边界内编排；每项 operation 独立计费、独立停止、独立保存 receipt。</p></div>
-      <div class="card dag">
-        <div class="dag-row">
-          <div class="dag-node local arrow"><strong>Local evidence foundation</strong><span>Search、完整图、19 checks、旧决策、source revisions</span></div>
-          <div class="dag-node arrow"><strong>AI scan planning</strong><span>决定真正需要分析的候选、顺序、证据深度</span></div>
-          <div class="dag-node arrow"><strong>File understanding</strong><span>Embeddings、Summary、AI Tags</span></div>
-          <div class="dag-node arrow"><strong>Meaning &amp; relationships</strong><span>Relationship discovery、semantic review</span></div>
-          <div class="dag-node"><strong>Structure judgment</strong><span>Community → Hub/Bridge proposals</span></div>
-        </div>
-        <div class="dag-row">
-          <div></div>
-          <div class="dag-join">
-            <div class="dag-node arrow"><strong>Optional file proposals</strong><span>只有证据充分且 Setup 允许时准备 diff</span></div>
-            <div class="dag-node arrow"><strong>Maintenance synthesis</strong><span>事实、AI 判断、stops、partial results 合成用户结果</span></div>
-            <div class="dag-node persist"><strong>Completed + Work queue</strong><span>自动更新与用户后续明确分开</span></div>
-          </div>
-          <div></div>
-        </div>
-        <div class="dependency-note"><strong>硬依赖：</strong>Community AI 必须有完整确定性图；proposal 必须有 finding 和 source revision。 <strong>软依赖：</strong>Community 可以在 AI Tags 不完整时继续，但必须标记 reduced evidence；Hub AI 被停止时，确定性 bridge 事实仍然有效。 <strong>预算规则：</strong>任何扩展、重试或 critique 都只能发生在 operation 自己的 scope/token/cost cap 内。</div>
-      </div>
+      <div class="section-head"><h2>3. Progress 里只展示 5 个可理解的 AI 组</h2><p>底层仍可拆成 10 个 operation；默认界面不把内部粒度全部平铺。</p></div>
+      <div class="card"><div class="ai-groups">
+        <article class="ai-card"><div class="ai-card-index">AI 01</div><strong>Plan this scan</strong><p>按产品定义、Vault 状态、所选范围和预算锁定本轮实际计划。</p><div class="ai-model">gpt-5-mini<br>Planner 不能新增未授权能力</div></article>
+        <article class="ai-card"><div class="ai-card-index">AI 02</div><strong>Understand changed files</strong><p>Embedding refresh、file summaries、machine-only AI Tags。</p><div class="ai-model">gpt-5-mini + embedding model<br>只处理需要刷新的 source revision</div></article>
+        <article class="ai-card"><div class="ai-card-index">AI 03</div><strong>Meaning &amp; relationships</strong><p>Relationship discovery 和 semantic review 使用 changed + affected evidence。</p><div class="ai-model">Claude Sonnet 4<br>候选关系仍需证据和 policy</div></article>
+        <article class="ai-card"><div class="ai-card-index">AI 04</div><strong>Communities, Hubs &amp; bridges</strong><p>读取完整当前图，提出 rename / merge / split / move / outlier 等 overlay 建议。</p><div class="ai-model">Claude Sonnet 4<br>不会直接覆盖 community_id</div></article>
+        <article class="ai-card"><div class="ai-card-index">AI 05</div><strong>Prepare follow-up</strong><p>Maintenance synthesis；若 Setup 允许，再准备 guarded file proposals。</p><div class="ai-model">gpt-5-mini<br>Proposal 不是 Apply</div></article>
+      </div><div class="ai-note"><strong>费用规则：</strong>Setup 显示典型值与 hard cap；Progress 只有收到 usage event 或 provider receipt 才更新 actual token/cost，不做平滑“假花费”动画。Unknown price 显示 unavailable，本地模型显示 no metered API cost。</div></div>
     </section>
 
     <section>
-      <div class="section-head"><h2>4. Progress 中停止 AI 时发生什么</h2><p>用户撤回的是“剩余授权”，不是抹掉已经发生的调用，也不是停止所有本地维护。</p></div>
+      <div class="section-head"><h2>4. 用户停止 AI 后会怎样</h2><p>撤回的是剩余授权。已经发生的调用、费用和已完成结果不会被伪装成不存在。</p></div>
       <div class="card control-grid">
-        <article class="control-card"><span class="control-state">QUEUED</span><strong>Skip</strong><p>operation 尚未发出任何 provider request。立即从剩余计划和费用预测移除。</p><div class="control-result">结果：0 token、$0；依赖项按 hard/soft dependency 重新规划。</div></article>
-        <article class="control-card running"><span class="control-state">RUNNING</span><strong>Stop remaining</strong><p>停止新请求并尝试取消 in-flight request。已经完成的文件或候选继续保留。</p><div class="control-result">结果：provider 已处理部分可能仍计费；状态变成 partial/stopped。</div></article>
-        <article class="control-card"><span class="control-state">COMPLETED</span><strong>Cannot disable retroactively</strong><p>调用、token 和费用已经发生。用户只能在 Completed 决定 keep、discard、regenerate 或不 Apply。</p><div class="control-result">结果：receipt 不可修改；机器知识是否发布由对应边界决定。</div></article>
-        <article class="control-card warning"><span class="control-state">BUDGET CAP</span><strong>Stop new AI calls</strong><p>到达 hard cap 后不再开始新 AI request；本地 indexing、checks 与结果持久化继续。</p><div class="control-result">结果：Completed 诚实标记 budget-stopped，不把整次 Scan 判失败。</div></article>
+        <article class="control-card"><span class="control-state">QUEUED</span><strong>Skip</strong><p>还没有 provider call。立即从剩余计划和 projected cost 移除。</p><div class="control-result">0 token、$0；依赖项按 hard/soft dependency 重排。</div></article>
+        <article class="control-card running"><span class="control-state">RUNNING</span><strong>Stop remaining</strong><p>不再发新请求，并尝试取消 in-flight request；已完成输出继续保留。</p><div class="control-result">Provider 已处理部分可能仍计费，状态为 stopped / partial。</div></article>
+        <article class="control-card"><span class="control-state">COMPLETED</span><strong>Inspect receipt</strong><p>不能倒退禁用已经完成的调用。用户仍可 discard、regenerate 或不 Apply。</p><div class="control-result">Receipt 不可改写；发布边界由对应 machine/user-file policy 决定。</div></article>
+        <article class="control-card cap"><span class="control-state">BUDGET CAP</span><strong>Stop new AI calls</strong><p>达到 cap 后不再开始新 AI 请求。本地 indexing、checks 和持久化继续。</p><div class="control-result">Completed 标记 budget-stopped，不把整次 Scan 判成失败。</div></article>
       </div>
     </section>
 
     <section>
-      <div class="section-head"><h2>5. Completed 之后如何真正关闭问题</h2><p>自动更新直接进入 Vault 状态；只有 Peak 不能独自完成的 durable maintenance work 才进入 Queue。</p></div>
+      <div class="section-head"><h2>5. Scan 完成后，Work queue 才开始</h2><p>Work queue 是 Scan 的后续承接面，不是 Scan 产生的所有结果集合。</p></div>
       <div class="card post-flow">
-        <div class="post-column"><div class="post-head"><strong>Completed 分流</strong><span>先回答发生了什么，再决定是否需要后续</span></div><div class="post-list"><div class="post-item"><strong>自动完成</strong><span>Search、chunks、确定性图、已授权的 machine Summary/Tags。</span></div><div class="post-item"><strong>仅记录</strong><span>无变化、被跳过的 AI、普通 receipts，不自动制造 Queue 噪声。</span></div><div class="post-item"><strong>需要后续</strong><span>Owner decision、generated knowledge review、file proposal、recovery。</span></div></div></div>
+        <div class="post-column"><div class="post-head"><strong>Completed 先分流</strong><span>本轮实际数量可以是 0、3、5 或更多</span></div><div class="post-item"><strong>自动完成</strong><span>Search、chunks、local graph、已授权 machine Summary / AI Tags。</span></div><div class="post-item"><strong>只记录</strong><span>无变化、普通 receipts、已完成且不需 owner 的更新。</span></div><div class="post-item"><strong>仍需人</strong><span>结构选择、Peak-owned text review、file proposal、recovery。</span></div></div>
         <div class="post-arrow">→</div>
-        <div class="post-column"><div class="post-head"><strong>Work queue item</strong><span>来源、事实、Peak 已完成、用户为何需要、下一步、退出条件</span></div><div class="post-list"><div class="post-item"><strong>Community decision</strong><span>Keep baseline / publish curated overlay / dismiss evidence。</span></div><div class="post-item"><strong>Generated knowledge</strong><span>Publish / regenerate / keep current Peak-owned description。</span></div><div class="post-item"><strong>File proposal</strong><span>逐文件证据和 diff；冲突必须先解决。</span></div><div class="post-item"><strong>Recovery</strong><span>Retry、补权限、提供凭据或 durable exclusion。</span></div></div></div>
+        <div class="post-column"><div class="post-head"><strong>进入 Work queue 的门槛</strong><span>不是按 5 个永久类别硬塞</span></div><div class="post-item"><strong>有明确 owner next action</strong><span>用户知道为什么必须由自己决定。</span></div><div class="post-item"><strong>有可验证 exit condition</strong><span>能判断什么时候真正关闭，不会永久挂着。</span></div><div class="post-item"><strong>是 durable Vault maintenance work</strong><span>短暂状态和普通成功记录不制造队列噪声。</span></div></div>
         <div class="post-arrow">→</div>
-        <div class="post-column"><div class="post-head"><strong>关闭与验证</strong><span>不是点一下按钮就算结束</span></div><div class="post-list"><div class="post-item"><strong>Peak-owned state</strong><span>保存 versioned overlay/manifest → Vault map re-read → verify identity。</span></div><div class="post-item"><strong>User-file change</strong><span>Review → revision guard → explicit Apply → receipt → re-index → verify finding。</span></div><div class="post-item"><strong>Recovery</strong><span>对象变为 Search-ready，或 exclusion policy 被持久化。</span></div><div class="post-item"><strong>下一次 Scan</strong><span>读取这次用户决定，避免重复建议和 identity 漂移。</span></div></div></div>
+        <div class="post-column"><div class="post-head"><strong>关闭问题</strong><span>用户动作之后仍需验证</span></div><div class="post-item"><strong>Peak-owned knowledge</strong><span>Publish versioned overlay → re-read → verify identity。</span></div><div class="post-item"><strong>User-file change</strong><span>Evidence + diff → revision guard → Apply → re-index → Verify。</span></div><div class="post-item"><strong>Recovery</strong><span>对象恢复 Search-ready，或 exclusion policy 被持久化。</span></div></div>
       </div>
+      <div class="boundary"><strong>Community 特别规则：</strong>确定性 Louvain/图算法先给 baseline，AI 在 changed + affected + complete current graph 上提出可解释的 curated overlay。稳定 identity matching 尽量沿用原 Community；AI 从不直接覆盖 community_id。</div>
     </section>
 
-    <section>
-      <div class="section-head"><h2>6. 最终不能被界面隐藏的六条真相</h2><p>这些是实现和验收时的底线，而不是可选文案。</p></div>
-      <div class="card truth-grid">
-        <div class="truth-card"><strong>Changed 不等于 isolated subset</strong><span>增量决定重算对象；完整当前图决定如何理解它们。</span></div>
-        <div class="truth-card"><strong>Estimated 不等于 actual</strong><span>Setup 给典型值和 cap；Progress 用 provider receipt 校正预测。</span></div>
-        <div class="truth-card"><strong>Unknown price 不等于 $0</strong><span>没有可靠价格时显示 Cost unavailable；本地模型显示 no metered API cost。</span></div>
-        <div class="truth-card"><strong>Stop 不等于 erase</strong><span>已完成结果和已发生费用保留；只撤回剩余 AI 授权。</span></div>
-        <div class="truth-card"><strong>AI proposal 不等于 graph/file truth</strong><span>Community 建议进入 versioned overlay；用户文件必须 explicit Apply。</span></div>
-        <div class="truth-card"><strong>Completed 可以包含 follow-up</strong><span>局部失败或用户决定不会抹掉已完成的 Search、结构和机器知识更新。</span></div>
-      </div>
-    </section>
-
-    <div class="footer-note">本页是产品与交互设计流程图。截图、模型、token、价格、文件数和结果均为 Mock；它不证明生产数据链、provider usage、proposal Apply、真实 Obsidian 行为或计费准确性。</div>
+    <div class="footer-note">本页是原 V2 Mock 的配套产品流程图，不是另一套交互 Mock。模型、token、价格、文件数和结果均为示例；静态页面不证明真实 provider usage、production Scan runtime、Proposal Apply 或 Obsidian 交互已经实现。</div>
   </main>
 </body>
 </html>
