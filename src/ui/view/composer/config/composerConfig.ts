@@ -158,6 +158,9 @@ export interface ComposerChromeConfig {
 		nativeMarkdown: string;
 		/** `{count}` is replaced with the pending candidate count. */
 		reviewAll: string;
+		/** `{count}` is replaced with the atomically acceptable candidate count. */
+		acceptAll: string;
+		acceptAllFailed: string;
 	};
 	selection: {
 		formats: {
@@ -277,6 +280,8 @@ export interface ComposerConfig {
 	/** Per-block-kind display label. */
 	kinds: Record<ComposerBlockKind, string>;
 	strings: ComposerStrings;
+	preparation: ComposerPreparationConfig;
+	virtualization: ComposerVirtualizationConfig;
 	chrome: ComposerChromeConfig;
 	/** Table object-toolbar and selection copy. */
 	table: {
@@ -286,6 +291,52 @@ export interface ComposerConfig {
 	/** Chart object-block copy. */
 	chart: ChartBlockStrings;
 }
+
+export interface ComposerPreparationConfig {
+	cacheTtlMs: number;
+}
+
+export interface ComposerVirtualizationConfig {
+	defaultBlockHeightPx: number;
+	overscanPx: number;
+	maxHardPins: number;
+	revealViewportRatio: number;
+	revealMaxFrames: number;
+	dragAutoScrollEdgePx: number;
+	dragAutoScrollMaxStepPx: number;
+	kindHeightPx: Partial<Record<ComposerBlockKind, number>>;
+}
+
+export const DEFAULT_COMPOSER_PREPARATION_CONFIG: ComposerPreparationConfig = {
+	cacheTtlMs: 30_000,
+};
+
+export const DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG: ComposerVirtualizationConfig = {
+	defaultBlockHeightPx: 72,
+	overscanPx: 900,
+	maxHardPins: 12,
+	revealViewportRatio: 0.32,
+	revealMaxFrames: 90,
+	dragAutoScrollEdgePx: 72,
+	dragAutoScrollMaxStepPx: 24,
+	kindHeightPx: {
+		frontmatter: 180,
+		heading: 64,
+		paragraph: 72,
+		list: 112,
+		task: 112,
+		quote: 96,
+		callout: 128,
+		code: 180,
+		math: 112,
+		table: 240,
+		image: 360,
+		mermaid: 260,
+		dataview: 180,
+		html: 160,
+		embed: 280,
+	},
+};
 
 /** JSON/template patch shape. Table and chart deliberately support nested partial overrides. */
 export type ComposerConfigPatch = Omit<Partial<ComposerConfig>, 'table' | 'chart'> & {
@@ -341,6 +392,8 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 		readOnlyBadge: 'Read-only preview',
 		blocksSuffix: 'blocks',
 	},
+	preparation: DEFAULT_COMPOSER_PREPARATION_CONFIG,
+	virtualization: DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG,
 	chrome: {
 		surfacePreviewOpenDelayMs: 360,
 		surfacePreviewCloseDelayMs: 180,
@@ -426,6 +479,8 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			clean: '纯净阅读',
 			nativeMarkdown: '原生 Markdown',
 			reviewAll: '审阅全部改动 · {count}',
+			acceptAll: '一次接受 {count} 个改动',
+			acceptAllFailed: '这些改动存在重叠或不属于同一原子写入，请逐项审阅。',
 		},
 		selection: {
 			formats: {
@@ -591,6 +646,15 @@ export function mergeComposerConfig(parsed?: ComposerConfigPatch): ComposerConfi
 	return {
 		kinds: { ...base.kinds, ...(parsed.kinds ?? {}) },
 		strings: { ...base.strings, ...(parsed.strings ?? {}) },
+		preparation: { ...base.preparation, ...parsed.preparation },
+		virtualization: {
+			...base.virtualization,
+			...parsed.virtualization,
+			kindHeightPx: {
+				...base.virtualization.kindHeightPx,
+				...parsed.virtualization?.kindHeightPx,
+			},
+		},
 		chrome: mergeChrome(parsed.chrome),
 		table: {
 			toolbar: { ...base.table.toolbar, ...parsed.table?.toolbar },

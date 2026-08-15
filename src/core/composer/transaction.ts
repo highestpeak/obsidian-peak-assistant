@@ -179,6 +179,7 @@ export type ComposerConflictReason =
 	| 'revision-mismatch'
 	| 'target-missing-after-reparse'
 	| 'stale-candidate'
+	| 'candidate-group-conflict'
 	| 'anchor-drift';
 
 /** Thrown by the transaction engine / hub when a write is refused for safety. */

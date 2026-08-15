@@ -166,7 +166,9 @@ export class DocumentComposerView extends ReactFileViewHost {
 
 	getState(): Record<string, unknown> {
 		const filePath = this.getSourceFilePath();
-		return this.viewState && filePath ? { ...this.viewState, filePath } : {};
+		if (!this.viewState || !filePath) return {};
+		const { preparationId: _preparationId, ...persisted } = this.viewState;
+		return { ...persisted, filePath };
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
@@ -187,7 +189,7 @@ export class DocumentComposerView extends ReactFileViewHost {
 			}
 			this.viewState = normalized;
 			this.updatePendingState();
-			if (this.controller) this.controller.bindFile(normalized.filePath);
+			if (this.controller) this.controller.bindFile(normalized.filePath, normalized.preparationId);
 			else if (runtime) this.ensureController(runtime);
 			this.requestHeaderRefresh();
 			this.getReactRenderer()?.render(this.renderElement());
@@ -308,7 +310,7 @@ export class DocumentComposerView extends ReactFileViewHost {
 			this.updatePendingState();
 			this.requestHeaderRefresh();
 		});
-		this.controller.start(this.viewState.filePath);
+		this.controller.start(this.viewState.filePath, this.viewState.preparationId);
 	}
 
 	private updatePendingState(): void {

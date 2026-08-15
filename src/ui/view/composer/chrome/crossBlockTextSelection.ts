@@ -20,6 +20,11 @@ export interface CrossBlockSelectionDetail {
 	direction: 'forward' | 'backward';
 }
 
+export interface CrossBlockSelectionOptions {
+	copyTextForRange?: (range: Range) => string | null;
+	onSelectionChange?: (detail: CrossBlockSelectionDetail | null) => void;
+}
+
 interface CaretPoint {
 	node: Node;
 	offset: number;
@@ -47,7 +52,10 @@ interface CaretPositionDocument extends Document {
  * different leaf, so direct editing and same-block text selection keep their
  * native browser path.
  */
-export function installCrossBlockTextSelection(root: HTMLElement): () => void {
+export function installCrossBlockTextSelection(
+	root: HTMLElement,
+	options: CrossBlockSelectionOptions = {},
+): () => void {
 	const doc = root.ownerDocument;
 	const win = doc.defaultView;
 	let drag: SelectionDrag | null = null;
@@ -59,6 +67,7 @@ export function installCrossBlockTextSelection(root: HTMLElement): () => void {
 		root.removeAttribute('data-cross-block-selection');
 		root.querySelector('[data-cross-block-selection-overlay]')?.remove();
 		dispatchDetail(root, CROSS_BLOCK_SELECTION_EVENT, null);
+		options.onSelectionChange?.(null);
 	};
 
 	const finish = () => {
@@ -85,6 +94,7 @@ export function installCrossBlockTextSelection(root: HTMLElement): () => void {
 		doc.getSelection()?.removeAllRanges();
 		renderSelectionOverlay(root, next.range);
 		dispatchDetail(root, CROSS_BLOCK_SELECTION_EVENT, next);
+		options.onSelectionChange?.(next);
 		return true;
 	};
 
@@ -123,7 +133,10 @@ export function installCrossBlockTextSelection(root: HTMLElement): () => void {
 	const onCopy = (ev: ClipboardEvent) => {
 		if (!active || !ev.clipboardData) return;
 		ev.preventDefault();
-		ev.clipboardData.setData('text/plain', active.range.toString());
+		ev.clipboardData.setData(
+			'text/plain',
+			options.copyTextForRange?.(active.range) ?? active.range.toString(),
+		);
 	};
 
 	const onKeyDown = (ev: KeyboardEvent) => {

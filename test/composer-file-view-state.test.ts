@@ -19,10 +19,12 @@ function main(): void {
 		version: 2,
 		filePath: 'Projects/Alpha.md',
 		displayMode: 'clean',
+		preparationId: 'prepared-1',
 		selectedBlockId: 'p-1',
 	});
 	check('V2 keeps explicit file identity', v2?.filePath === 'Projects/Alpha.md');
 	check('V2 keeps clean presentation', v2?.displayMode === 'clean');
+	check('V2 keeps one-shot preparation identity', v2?.preparationId === 'prepared-1');
 	check('V2 keeps leaf-local selection', v2?.selectedBlockId === 'p-1');
 
 	const legacyWork = normalizeComposerViewState({ file: 'Legacy.md', displayState: 'work' });

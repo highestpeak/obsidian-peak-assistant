@@ -383,6 +383,44 @@ export class ComposerCapabilityDocumentRuntime
 		});
 	}
 
+	async acceptMany(candidateIds: readonly string[]): Promise<void> {
+		const ids = [...new Set(candidateIds)];
+		if (ids.length === 0) return;
+		const labels = new Set<string>();
+		const runIds = new Set<string>();
+		for (const candidateId of ids) {
+			const meta = this.requireMeta(candidateId);
+			const def = this.deps.registry.require(meta.capabilityId);
+			if (def.resultKind === 'native-file-patch') {
+				throw new ComposerConflictError(
+					'candidate-group-conflict',
+					`candidate ${candidateId} writes a separate native file`,
+				);
+			}
+			labels.add(resolvePresentation(
+				this.deps.config(),
+				def.configKey,
+				def.presentationFallback,
+			).historyLabel);
+			const runId = runIdForActiveVariant(this.findCandidate(candidateId), meta);
+			if (runId) runIds.add(runId);
+		}
+		await this.deps.hub.acceptCandidateGroup(ids, {
+			origin: 'ai',
+			label: [...labels].join(' + '),
+			...(runIds.size === 1 ? { runId: [...runIds][0] } : {}),
+		});
+	}
+
+	canAcceptMany(candidateIds: readonly string[]): boolean {
+		if (candidateIds.length < 2) return false;
+		return candidateIds.every((candidateId) => {
+			const meta = this.candidateMeta.get(candidateId);
+			if (!meta) return false;
+			return this.deps.registry.require(meta.capabilityId).resultKind !== 'native-file-patch';
+		});
+	}
+
 	private async acceptNative(candidateId: string, meta: CandidateMeta): Promise<void> {
 		const candidate = this.findCandidate(candidateId);
 		if (!candidate || candidate.status !== 'ready') {

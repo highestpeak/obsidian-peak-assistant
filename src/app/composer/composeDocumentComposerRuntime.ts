@@ -16,7 +16,7 @@ import {
 	loadImageDomainConfig,
 	type ImageDomainConfig,
 } from '@/service/composer';
-import { loadComposerTransactionConfig } from '@/ui/view/composer';
+import { loadComposerConfig, loadComposerTransactionConfig } from '@/ui/view/composer';
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from '@/ui/view/composer/sidecar/sidecarConfig';
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -159,11 +159,16 @@ export async function composeDocumentComposerRuntime(
 	let fallbackDefaultView: DefaultDocumentView = 'markdown';
 	let fallbackContentWidth: ComposerContentWidth = 'readable';
 	let fallbackIntelligenceManualOpen = false;
+	let runtime: DocumentComposerRuntime | null = null;
 	const navigation = new ComposerDocumentRouter(app, {
 		getDefaultView: options?.getDefaultDocumentView ?? (() => fallbackDefaultView),
 		setDefaultView: options?.setDefaultDocumentView ?? (async (view) => {
 			fallbackDefaultView = view;
 		}),
+		prepareComposerSession: async (filePath) => {
+			if (!runtime) throw new Error('Composer document runtime is not ready');
+			return runtime.prepareSession(filePath);
+		},
 		openIntelligenceCompanion: (filePath, context, returnFocus) => {
 			new NativeMarkdownIntelligenceModal(
 				AppContext.getInstance(),
@@ -190,7 +195,7 @@ export async function composeDocumentComposerRuntime(
 		sidecarConfig = loaded;
 	});
 	const fileAtlasHost = composeFileAtlasHost(AppContext.getInstance());
-	const runtime = new DocumentComposerRuntime(source, write, events, revisionService, undefined, {
+	runtime = new DocumentComposerRuntime(source, write, events, revisionService, undefined, {
 		navigation,
 		contentWidthPreference: {
 			get: options?.getContentWidth ?? (() => fallbackContentWidth),
@@ -293,6 +298,7 @@ export async function composeDocumentComposerRuntime(
 	// and apply once resolved. Hubs created before it lands use the compiled
 	// default (identical value, drift-guarded), so there is no race hazard.
 	void loadComposerTransactionConfig().then((config) => runtime.setTransactionConfig(config));
+	void loadComposerConfig().then((config) => runtime.setPreparationTtl(config.preparation.cacheTtlMs));
 	// WP3: the capability runtime factory (registry + executor + writeback).
 	// The AI prompter is resolved lazily per run, so boot order is a non-issue.
 	// WP-INT: the native-file port backs Base/Canvas/Excalidraw structural edits —

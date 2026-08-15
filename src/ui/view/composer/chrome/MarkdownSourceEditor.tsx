@@ -19,6 +19,7 @@ import {
 	type MappedSelection,
 } from './selectionMapping';
 import { renderContentEditableProjection } from './contentEditableProjection';
+import { registerComposerEditorKeydown } from './ComposerEditorKeyboardRouter';
 
 export type MarkdownSourceChangeKind = 'native' | 'atomic' | 'history';
 
@@ -400,8 +401,7 @@ export function MarkdownSourceEditor({
 			event.preventDefault();
 			event.stopImmediatePropagation();
 		};
-		win.addEventListener('keydown', capture, true);
-		return () => win.removeEventListener('keydown', capture, true);
+		return registerComposerEditorKeydown(el, capture);
 	}, []);
 
 	return (

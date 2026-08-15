@@ -79,6 +79,10 @@ const sharedEditor = readFileSync(
 	'src/ui/view/composer/chrome/MarkdownSourceEditor.tsx',
 	'utf8',
 );
+const editorKeyboardRouter = readFileSync(
+	'src/ui/view/composer/chrome/ComposerEditorKeyboardRouter.ts',
+	'utf8',
+);
 assert.ok(
 	editable.includes('<MarkdownSourceEditor'),
 	'existing Markdown leaves use the shared production editor',
@@ -122,9 +126,10 @@ assert.ok(
 	'keyboard and beforeinput formatting are serialized through Markdown source instead of native rich DOM',
 );
 assert.ok(
-	sharedEditor.includes("win.addEventListener('keydown', capture, true)") &&
+	sharedEditor.includes('registerComposerEditorKeydown(el, capture)') &&
+		editorKeyboardRouter.includes("ownerWindow.addEventListener('keydown', listener, true)") &&
 		sharedEditor.includes('event.stopImmediatePropagation()'),
-	'focused formatting shortcuts capture before Obsidian host keymaps',
+	'focused formatting shortcuts share one owner-window capture listener before Obsidian host keymaps',
 );
 
 console.log('composer-contenteditable-dom-ownership: passed');

@@ -127,6 +127,10 @@ import type { IntelligenceRuntime, SuggestionFinding } from '@/service/composer'
 import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
 import type { PeakKeyboardSurfaceAdapter } from '@/ui/keyboard/KeyboardNavigationPort';
 import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import {
+	ComposerHardPinRegistry,
+	useComposerVirtualWindow,
+} from './virtualization';
 
 /**
  * Peak Composer — document host + shared editing chrome (WP1 host, WP4 chrome).
@@ -201,6 +205,11 @@ interface DragState {
 	dropIndex: number | null;
 }
 
+type ComposerBlockLocator = (
+	blockId: string,
+	behavior?: ScrollBehavior,
+) => Promise<HTMLElement | null>;
+
 const EMPTY_RUNTIME: ComposerChromeRuntime = {};
 
 export function ComposerRoot({
@@ -232,7 +241,7 @@ export function ComposerRoot({
 	const getSnapshot = React.useCallback(() => source.getState(), [source]);
 	const state = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 	const [foldStore] = React.useState(createComposerFoldStore);
-	const processedRevealId = React.useRef<number | null>(null);
+	const virtualLocatorRef = React.useRef<ComposerBlockLocator | null>(null);
 	// The default streaming-text card + the three WP7 image cards (asset / caption /
 	// layout), registered by stable renderer id after the default set so image
 	// candidates dispatch without touching the candidates barrel (harness included).
@@ -252,23 +261,6 @@ export function ComposerRoot({
 		scrollGuardGestureWindowMs
 		?? runtime.transactionConfig?.scrollGuardGestureWindowMs
 		?? DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs;
-
-	React.useEffect(() => {
-		if (!revealRequest || !state.snapshot) return;
-		if (processedRevealId.current === revealRequest.id) return;
-		const resolved = resolveComposerSourceLocation(state.snapshot, revealRequest.location);
-		processedRevealId.current = revealRequest.id;
-		if (!resolved) return;
-		unfoldForDocumentLocation(foldStore, state.snapshot.blocks, resolved.block.blockId);
-		const root = rootRef.current;
-		const win = root?.ownerDocument.defaultView;
-		if (!root || !win) return;
-		win.requestAnimationFrame(() => {
-			win.requestAnimationFrame(() => {
-				locateAndFlashComposerLocation(root, resolved);
-			});
-		});
-	}, [foldStore, revealRequest, state.snapshot]);
 
 	const [flushers] = React.useState(() => new Set<() => Promise<void>>());
 	const chromeValue = React.useMemo<ComposerChromeValue>(
@@ -366,8 +358,13 @@ export function ComposerRoot({
 	);
 	usePeakKeyboardSurface('composer', rootRef, composerKeyboardAdapter);
 	const locateBlock = React.useCallback((blockId: string) => {
-		return locateAndFlashComposerBlock(rootRef.current, blockId);
-	}, []);
+		const exists = state.snapshot?.blocks.some((block) => block.blockId === blockId) ?? false;
+		if (!exists) return false;
+		void virtualLocatorRef.current?.(blockId, 'smooth').then((block) => {
+			if (block) flashLocatedComposerBlock(block);
+		});
+		return true;
+	}, [state.snapshot]);
 
 	// WP9 §12.2 — resolve the REAL focused block from chrome focus so a Copilot run
 	// freezes the block the user is on (not a document-level fallback). The DOM
@@ -448,6 +445,10 @@ export function ComposerRoot({
 							initialContentWidth={initialContentWidth}
 							onContentWidthChange={onContentWidthChange}
 							onOpenReviewDocument={onOpenReviewDocument}
+							revealRequest={revealRequest}
+							onLocatorReady={(locator) => {
+								virtualLocatorRef.current = locator;
+							}}
 						/>
 					</div>
 					{intelligence && currentSnapshot && (
@@ -508,6 +509,8 @@ interface BodyProps {
 	onContentWidthChange?: (width: ComposerContentWidth) => void | Promise<void>;
 	onOpenReviewDocument?: (path: string) => void;
 	intelligenceTriggerRef?: React.Ref<HTMLButtonElement>;
+	revealRequest?: { id: number; location: DocumentSourceLocation };
+	onLocatorReady?: (locator: ComposerBlockLocator | null) => void;
 }
 
 function ComposerBody(props: BodyProps): React.ReactElement {
@@ -620,12 +623,16 @@ function ComposerDocument({
 	onContentWidthChange,
 	onOpenReviewDocument,
 	intelligenceTriggerRef,
+	revealRequest,
+	onLocatorReady,
 }: BodyProps): React.ReactElement {
 	const chrome = useComposerChrome();
 	const { runtime, projection } = chrome;
 	const hub = runtime.hub;
 	const snapshot = state.snapshot as ComposerDocumentSnapshot;
 	const containerRef = React.useRef<HTMLDivElement | null>(null);
+	const blocksRef = React.useRef<HTMLDivElement | null>(null);
+	const virtualDropIndexRef = React.useRef<(clientY: number) => number>(() => 0);
 	const workspaceRef = React.useRef<HTMLDivElement | null>(null);
 	const findBarRef = React.useRef<ComposerFindBarHandle | null>(null);
 	const findRestoreFocusRef = React.useRef<HTMLElement | null>(null);
@@ -645,6 +652,10 @@ function ComposerDocument({
 	const [commentDraft, setCommentDraft] = React.useState<CommentDraftTarget | null>(null);
 	const [commentRailOpen, setCommentRailOpen] = React.useState(false);
 	const [drag, setDrag] = React.useState<DragState | null>(null);
+	const [focusedBlockIdState, setFocusedBlockIdState] = React.useState<string | null>(null);
+	const [compositionBlockId, setCompositionBlockId] = React.useState<string | null>(null);
+	const [selectionEndpointBlockIds, setSelectionEndpointBlockIds] = React.useState<readonly string[]>([]);
+	const [logicalSelection, setLogicalSelection] = React.useState<{ from: number; to: number } | null>(null);
 	const [hasSelection, setHasSelection] = React.useState(false);
 	const documentSurfaces = useComposerSurfaces();
 	const canClaimDocumentSurface = documentSurfaces.canClaim;
@@ -702,6 +713,32 @@ function ComposerDocument({
 	React.useEffect(() => {
 		setFindOpen(false);
 		findRestoreFocusRef.current = null;
+		setLogicalSelection(null);
+		setSelectionEndpointBlockIds([]);
+	}, [snapshot.documentId]);
+	React.useEffect(() => {
+		const root = containerRef.current;
+		const ownerDocument = root?.ownerDocument;
+		if (!root || !ownerDocument) return;
+		const updateSelection = () => {
+			const selection = ownerDocument.getSelection();
+			if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+				setLogicalSelection(null);
+				setSelectionEndpointBlockIds([]);
+				return;
+			}
+			const range = selection.getRangeAt(0);
+			if (!root.contains(range.startContainer) || !root.contains(range.endContainer)) {
+				setLogicalSelection(null);
+				setSelectionEndpointBlockIds([]);
+				return;
+			}
+			const mapped = mapDomRangeToSource(root, range);
+			setLogicalSelection(mapped ? { from: mapped.from, to: mapped.to } : null);
+			setSelectionEndpointBlockIds(blockIdsForRange(range));
+		};
+		ownerDocument.addEventListener('selectionchange', updateSelection);
+		return () => ownerDocument.removeEventListener('selectionchange', updateSelection);
 	}, [snapshot.documentId]);
 	const closeFind = React.useCallback(() => {
 		setFindOpen(false);
@@ -775,7 +812,25 @@ function ComposerDocument({
 	}, [panel]);
 
 	const editing = displayState === 'edit' && Boolean(hub);
-	useCrossBlockTextSelection(containerRef, editing);
+	const crossBlockSelectionOptions = React.useMemo(() => ({
+		copyTextForRange: (range: Range): string | null => {
+			const root = containerRef.current;
+			const mapped = root ? mapDomRangeToSource(root, range) : null;
+			return mapped ? snapshot.sourceText.slice(mapped.from, mapped.to) : null;
+		},
+		onSelectionChange: (detail: { range: Range } | null) => {
+			if (!detail) {
+				setLogicalSelection(null);
+				setSelectionEndpointBlockIds([]);
+				return;
+			}
+			const root = containerRef.current;
+			const mapped = root ? mapDomRangeToSource(root, detail.range) : null;
+			setLogicalSelection(mapped ? { from: mapped.from, to: mapped.to } : null);
+			setSelectionEndpointBlockIds(blockIdsForRange(detail.range));
+		},
+	}), [snapshot.revision, snapshot.sourceText]);
+	useCrossBlockTextSelection(containerRef, editing, crossBlockSelectionOptions);
 	// Comments are an on-demand reading layer, not editing chrome. Clean mode
 	// enters with the rail closed; the toolbar can still open existing threads
 	// without enabling source edits or new selection comments.
@@ -830,35 +885,61 @@ function ComposerDocument({
 		const rootEl = containerRef.current;
 		if (!rootEl) return;
 		const doc = rootEl.ownerDocument;
+		const ownerWindow = doc.defaultView;
 		const trigger = ev.currentTarget;
 		const startX = ev.clientX;
 		const startY = ev.clientY;
 		let dragStarted = false;
+		let autoScrollFrame = 0;
+		let lastClientY = startY;
 		trigger.dataset.dragMoved = 'false';
 
 		const indexAt = (clientY: number): number => {
-			const rows = Array.from(rootEl.querySelectorAll<HTMLElement>('.pk-composer-block'));
-			for (let i = 0; i < rows.length; i++) {
-				const r = rows[i].getBoundingClientRect();
-				if (clientY < r.top + r.height / 2) return i;
-			}
-			return rows.length;
+			return virtualDropIndexRef.current(clientY);
 		};
 		const move = (pe: PointerEvent) => {
+			lastClientY = pe.clientY;
 			if (!dragStarted) {
 				const distance = Math.hypot(pe.clientX - startX, pe.clientY - startY);
 				if (distance < config.chrome.blockDragThresholdPx) return;
 				dragStarted = true;
 				trigger.dataset.dragMoved = 'true';
 				setDrag({ blockId, dropIndex: indexAt(pe.clientY) });
+				scheduleAutoScroll();
 				return;
 			}
 			setDrag({ blockId, dropIndex: indexAt(pe.clientY) });
+			scheduleAutoScroll();
+		};
+		const autoScroll = () => {
+			autoScrollFrame = 0;
+			if (!dragStarted) return;
+			const scroller = scrollerOf(rootEl);
+			if (!scroller || !ownerWindow) return;
+			const rect = scroller.getBoundingClientRect();
+			const edge = config.virtualization.dragAutoScrollEdgePx;
+			let ratio = 0;
+			if (lastClientY < rect.top + edge) {
+				ratio = -Math.min(1, (rect.top + edge - lastClientY) / edge);
+			} else if (lastClientY > rect.bottom - edge) {
+				ratio = Math.min(1, (lastClientY - rect.bottom + edge) / edge);
+			}
+			if (ratio === 0) return;
+			markScrollIntent(scroller);
+			scroller.scrollTop += ratio * config.virtualization.dragAutoScrollMaxStepPx;
+			setDrag({ blockId, dropIndex: indexAt(lastClientY) });
+			autoScrollFrame = ownerWindow.requestAnimationFrame(autoScroll);
+		};
+		const scheduleAutoScroll = () => {
+			if (!ownerWindow || autoScrollFrame) return;
+			autoScrollFrame = ownerWindow.requestAnimationFrame(autoScroll);
 		};
 		function cleanup(): void {
 			doc.removeEventListener('pointermove', move);
 			doc.removeEventListener('pointerup', up);
 			doc.removeEventListener('pointercancel', cancel);
+			if (ownerWindow && autoScrollFrame) ownerWindow.cancelAnimationFrame(autoScrollFrame);
+			autoScrollFrame = 0;
 		}
 		async function up(pe: PointerEvent): Promise<void> {
 			cleanup();
@@ -940,29 +1021,77 @@ function ComposerDocument({
 
 	const folded = useStore(foldStore, (s) => s.folded);
 	const hidden = React.useMemo(() => hiddenBySections(snapshot.blocks, folded), [snapshot.blocks, folded]);
-	const visibleBlocks = snapshot.blocks.filter((b) => !hidden.has(b.blockId));
+	const visibleBlocks = React.useMemo(
+		() => snapshot.blocks.filter((block) => !hidden.has(block.blockId)),
+		[snapshot.blocks, hidden],
+	);
 	const findings = useComposerFindings(intelligence);
 	const reviewCandidates = useDocumentCandidates(runtime.candidateRuntime);
-	const locateReviewCandidate = React.useCallback((candidate: ComposerCandidate) => {
-		const candidateElement = Array.from(
-			containerRef.current?.querySelectorAll<HTMLElement>('[data-candidate-id]') ?? [],
-		).find((element) => element.dataset.candidateId === candidate.candidateId);
-		if (candidateElement?.tagName === 'BUTTON') candidateElement.click();
-		const ownerWindow = containerRef.current?.ownerDocument.defaultView;
-		ownerWindow?.requestAnimationFrame(() => {
-			const visibleCandidate = Array.from(
-				containerRef.current?.querySelectorAll<HTMLElement>('[data-candidate-id]') ?? [],
-			).find((element) =>
-				element.dataset.candidateId === candidate.candidateId
-				&& element.tagName !== 'BUTTON');
-			if (!visibleCandidate) return;
-			markScrollIntent(scrollerOf(containerRef.current));
-			visibleCandidate.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	const candidatesByBlockId = React.useMemo(
+		() => indexCandidatesByBlock(reviewCandidates),
+		[reviewCandidates],
+	);
+	const findingsByBlockId = React.useMemo(
+		() => indexFindingsByBlock(findings),
+		[findings],
+	);
+	const pinRegistryRef = React.useRef<ComposerHardPinRegistry | null>(null);
+	if (!pinRegistryRef.current) {
+		pinRegistryRef.current = new ComposerHardPinRegistry(config.virtualization.maxHardPins);
+	}
+	const pinRegistry = pinRegistryRef.current;
+	pinRegistry.setLimit(config.virtualization.maxHardPins);
+	pinRegistry.clear();
+	if (focusedBlockIdState) pinRegistry.acquire('focus', focusedBlockIdState, true);
+	if (compositionBlockId) pinRegistry.acquire('composition', compositionBlockId, true);
+	if (panel?.blockId) pinRegistry.acquire('panel', panel.blockId);
+	selectionEndpointBlockIds.forEach((blockId, index) => {
+		pinRegistry.acquire(`selection-${index}`, blockId, true);
+	});
+	if (drag?.blockId) pinRegistry.acquire('drag-source', drag.blockId, true);
+	if (drag?.dropIndex !== null && drag?.dropIndex !== undefined) {
+		const before = visibleBlocks[Math.max(0, drag.dropIndex - 1)];
+		const after = visibleBlocks[Math.min(visibleBlocks.length - 1, drag.dropIndex)];
+		if (before) pinRegistry.acquire('drag-before', before.blockId);
+		if (after) pinRegistry.acquire('drag-after', after.blockId);
+	}
+	const virtualWindow = useComposerVirtualWindow({
+		blocks: visibleBlocks,
+		shellRef: containerRef,
+		blocksRef,
+		config: config.virtualization,
+		pinnedBlockIds: pinRegistry.blocks(),
+		onScrollIntent: markScrollIntent,
+	});
+	virtualDropIndexRef.current = virtualWindow.insertionIndexAtClientY;
+	React.useEffect(() => {
+		onLocatorReady?.(virtualWindow.revealBlock);
+		return () => onLocatorReady?.(null);
+	}, [onLocatorReady, virtualWindow.revealBlock]);
+	const processedRevealId = React.useRef<number | null>(null);
+	React.useEffect(() => {
+		if (!revealRequest || processedRevealId.current === revealRequest.id) return;
+		const resolved = resolveComposerSourceLocation(snapshot, revealRequest.location);
+		processedRevealId.current = revealRequest.id;
+		if (!resolved) return;
+		unfoldForDocumentLocation(foldStore, snapshot.blocks, resolved.block.blockId);
+		void virtualWindow.revealBlock(resolved.block.blockId, 'auto').then(() => {
+			const root = containerRef.current;
+			if (root) locateAndFlashComposerLocation(root, resolved);
 		});
+	}, [foldStore, revealRequest, snapshot, virtualWindow.revealBlock]);
+	const locateReviewCandidate = React.useCallback((candidate: ComposerCandidate) => {
 		const blockId = candidate.anchorBlockId ?? composerTargetBlockId(candidate.target);
 		if (!blockId) return;
-		locateAndFlashComposerBlock(containerRef.current, blockId);
-	}, []);
+		void virtualWindow.revealBlock(blockId, 'smooth').then((block) => {
+			if (!block) return;
+			const candidateElement = Array.from(
+				block.querySelectorAll<HTMLElement>('[data-candidate-id]'),
+			).find((element) => element.dataset.candidateId === candidate.candidateId);
+			if (candidateElement?.tagName === 'BUTTON') candidateElement.click();
+			flashLocatedComposerBlock(block);
+		});
+	}, [virtualWindow.revealBlock]);
 
 	// INT-1: keep the edited block's React subtree (and its focused
 	// contenteditable DOM node) mounted through a burst commit — see
@@ -1016,8 +1145,53 @@ function ComposerDocument({
 				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cv-document']}
 				data-display-state={displayState}
 				data-has-selection={hasSelection || undefined}
+				data-logical-selection={logicalSelection
+					? `${logicalSelection.from}:${logicalSelection.to}`
+					: undefined}
 				data-dragging={drag ? 'true' : undefined}
+				data-virtual-total-blocks={visibleBlocks.length}
+				data-virtual-mounted-blocks={virtualWindow.items.length}
+				data-virtual-hard-pins={pinRegistry.blocks().size}
+				data-virtual-window={`${virtualWindow.start}:${virtualWindow.end}`}
+				data-candidate-count={reviewCandidates.length}
 				onPaste={(ev) => void onPaste(ev)}
+				onCopy={(event) => {
+					if (!logicalSelection) return;
+					const selection = event.currentTarget.ownerDocument.getSelection();
+					const startBlock = composerBlockIdForNode(selection?.anchorNode ?? null);
+					const endBlock = composerBlockIdForNode(selection?.focusNode ?? null);
+					if (!startBlock || !endBlock || startBlock === endBlock) return;
+					event.preventDefault();
+					event.clipboardData.setData(
+						'text/plain',
+						snapshot.sourceText.slice(logicalSelection.from, logicalSelection.to),
+					);
+				}}
+				onFocusCapture={(event) => {
+					const target = event.target as HTMLElement | null;
+					setFocusedBlockIdState(
+						target?.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null,
+					);
+				}}
+				onBlurCapture={(event) => {
+					const root = event.currentTarget;
+					const ownerWindow = root.ownerDocument.defaultView;
+					ownerWindow?.requestAnimationFrame(() => {
+						const active = root.ownerDocument.activeElement;
+						if (!(active instanceof HTMLElement) || !root.contains(active)) {
+							void chrome.flushAll().finally(() => setFocusedBlockIdState(null));
+						}
+					});
+				}}
+				onCompositionStart={(event) => {
+					const target = event.target as HTMLElement | null;
+					setCompositionBlockId(
+						target?.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null,
+					);
+				}}
+				onCompositionEnd={() => {
+					void chrome.flushAll().finally(() => setCompositionBlockId(null));
+				}}
 			>
 			<ComposerFindBar
 				ref={findBarRef}
@@ -1027,12 +1201,13 @@ function ComposerDocument({
 				rootRef={containerRef}
 				strings={config.chrome.find}
 				onClose={closeFind}
-				onReveal={(match) => {
+					onReveal={(match) => {
 					const target = snapshot.blocks.find(
 						(block) => block.source.from <= match.from && block.source.to >= match.to,
 					);
 					if (!target) return;
 					unfoldForDocumentLocation(foldStore, snapshot.blocks, target.blockId);
+					void virtualWindow.revealBlock(target.blockId, 'auto');
 				}}
 			/>
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
@@ -1042,11 +1217,36 @@ function ComposerDocument({
 				onRename={onRenameDocumentTitle}
 			/>
 			<AddFrontmatterEntry editing={editing} />
-			<div className="pk-composer-blocks">
-				{visibleBlocks.map((b, i) => {
+			<div
+				ref={blocksRef}
+				className="pk-composer-blocks"
+				data-virtualized="true"
+				data-total-height={Math.round(virtualWindow.totalHeight)}
+			>
+				{virtualWindow.items.map((virtualItem, mountedIndex) => {
+					const b = visibleBlocks[virtualItem.index];
+					if (!b) return null;
+					const i = virtualItem.index;
 					const previousBlock = visibleBlocks[i - 1];
+					const previousVirtualItem = virtualWindow.items[mountedIndex - 1];
+					const previousEnd = previousVirtualItem
+						? previousVirtualItem.offset + previousVirtualItem.height
+						: 0;
+					const gapBefore = Math.max(0, virtualItem.offset - previousEnd);
 					return (
 						<React.Fragment key={stableKey(b.blockId)}>
+						{gapBefore > 0 && (
+							<div
+								className="pk-composer-virtual-gap"
+								style={{ height: gapBefore }}
+								aria-hidden
+							/>
+						)}
+						<ComposerVirtualItem
+							blockId={b.blockId}
+							index={i}
+							onMeasure={virtualWindow.measureElement}
+						>
 						<ComposerBlockRow
 							block={b}
 							previousBlock={previousBlock}
@@ -1056,8 +1256,9 @@ function ComposerDocument({
 							editing={editing}
 							displayState={displayState}
 							reviewAll={false}
+							candidates={candidatesByBlockId.get(b.blockId) ?? []}
 							invokeError={invokeErrors[b.blockId]}
-							findings={findings.filter((finding) => composerTargetBlockId(finding.target) === b.blockId)}
+							findings={findingsByBlockId.get(b.blockId) ?? []}
 							onAskFinding={(finding) => {
 								if (!intelligence) return;
 								intelligence.session.selectSurface('talk');
@@ -1121,9 +1322,17 @@ function ComposerDocument({
 								/>
 							</div>
 						)}
+						</ComposerVirtualItem>
 						</React.Fragment>
 					);
 				})}
+				{virtualWindow.items.length > 0 && (() => {
+					const last = virtualWindow.items[virtualWindow.items.length - 1];
+					const gap = Math.max(0, virtualWindow.totalHeight - last.offset - last.height);
+					return gap > 0 ? (
+						<div className="pk-composer-virtual-gap" style={{ height: gap }} aria-hidden />
+					) : null;
+				})()}
 				{drag?.dropIndex === visibleBlocks.length && <div className="pk-drop-indicator" data-chrome="true" />}
 			</div>
 			{editing && (
@@ -1162,7 +1371,12 @@ function ComposerDocument({
 					strings={historySidecarConfig.strings}
 					onClose={() => setHistoryActivity(null)}
 					onLocate={(blockId) => {
-						return locateAndFlashComposerBlock(containerRef.current, blockId);
+						const exists = visibleBlocks.some((block) => block.blockId === blockId);
+						if (!exists) return false;
+						void virtualWindow.revealBlock(blockId, 'smooth').then((block) => {
+							if (block) flashLocatedComposerBlock(block);
+						});
+						return true;
 					}}
 					onRestore={(runId) => {
 						const run = runtime.workspaceIntelligence
@@ -1188,11 +1402,9 @@ function ComposerDocument({
 				onDraftClose={() => setCommentDraft(null)}
 				onActiveComment={onActiveComment}
 				onLocate={(blockId) => {
-					const block = containerRef.current?.querySelector<HTMLElement>(
-						`[data-block-id="${CSS.escape(blockId)}"]`,
-					);
-					markScrollIntent(scrollerOf(containerRef.current));
-					block?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+					void virtualWindow.revealBlock(blockId, 'smooth').then((block) => {
+						if (block) flashLocatedComposerBlock(block);
+					});
 				}}
 				onAskCopilot={intelligence
 					? (comment) => {
@@ -1217,6 +1429,38 @@ function ComposerDocument({
 }
 
 // ── block row ───────────────────────────────────────────────────────────────
+
+function ComposerVirtualItem({
+	blockId,
+	index,
+	onMeasure,
+	children,
+}: {
+	blockId: string;
+	index: number;
+	onMeasure(blockId: string, element: HTMLElement | null): void;
+	children: React.ReactNode;
+}): React.ReactElement {
+	const ref = React.useRef<HTMLDivElement | null>(null);
+	React.useLayoutEffect(() => {
+		onMeasure(blockId, ref.current);
+		return () => onMeasure(blockId, null);
+	}, [blockId, onMeasure]);
+	return (
+		<div
+			ref={ref}
+			className="pk-composer-virtual-item"
+			data-virtual-index={index}
+		>
+			{children}
+		</div>
+	);
+}
+
+function composerBlockIdForNode(node: Node | null): string | undefined {
+	const element = node?.nodeType === 1 ? node as Element : node?.parentElement;
+	return element?.closest<HTMLElement>('[data-block-id]')?.dataset.blockId;
+}
 
 const TEXT_EDIT_KINDS = new Set(['paragraph', 'heading', 'quote', 'callout']);
 
@@ -1247,6 +1491,7 @@ function ComposerBlockRow({
 	editing,
 	displayState,
 	reviewAll,
+	candidates,
 	invokeError,
 	findings,
 	onAskFinding,
@@ -1273,6 +1518,7 @@ function ComposerBlockRow({
 	editing: boolean;
 	displayState: ComposerDisplayState;
 	reviewAll: boolean;
+	candidates: readonly ComposerCandidate[];
 	invokeError?: string;
 	findings: readonly SuggestionFinding[];
 	onAskFinding(finding: SuggestionFinding): void;
@@ -1330,7 +1576,6 @@ function ComposerBlockRow({
 		pinnedCollectionViewportY.current = null;
 	}, [block.blockId]);
 	const candidateRuntime = chrome.runtime.candidateRuntime;
-	const candidates = useBlockCandidates(candidateRuntime, block.blockId);
 	const newestActiveCandidate = activeCandidateOf(candidates);
 	const [selectedCandidateId, setSelectedCandidateId] = React.useState<string | null>(null);
 	React.useEffect(() => {
@@ -1934,6 +2179,7 @@ function ComposerBlockRow({
 								key={visibleCandidate.candidateId}
 								runtime={candidateRuntime!}
 								candidateId={visibleCandidate.candidateId}
+								candidate={visibleCandidate}
 								registry={chrome.candidateRegistry}
 								resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
 							/>
@@ -1967,6 +2213,7 @@ function ComposerBlockRow({
 									key={visibleCandidate.candidateId}
 									runtime={candidateRuntime!}
 									candidateId={visibleCandidate.candidateId}
+									candidate={visibleCandidate}
 									registry={chrome.candidateRegistry}
 								/>
 							))}
@@ -1979,6 +2226,7 @@ function ComposerBlockRow({
 									key={visibleCandidate.candidateId}
 									runtime={candidateRuntime!}
 									candidateId={visibleCandidate.candidateId}
+									candidate={visibleCandidate}
 									registry={chrome.candidateRegistry}
 									resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
 								/>
@@ -1994,6 +2242,7 @@ function ComposerBlockRow({
 										key={visibleCandidate.candidateId}
 										runtime={candidateRuntime!}
 										candidateId={visibleCandidate.candidateId}
+										candidate={visibleCandidate}
 										registry={chrome.candidateRegistry}
 										resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
 									/>
@@ -2066,34 +2315,6 @@ function isTextActionBlock(kind: ComposerBlock['kind']): boolean {
 		kind === 'callout';
 }
 
-/**
- * Pending (non-terminal) candidates anchored to this block.
- * Subscribes to the candidate runtime so a freshly-invoked candidate appears
- * under the correct block and disappears on accept / discard.
- */
-function useBlockCandidates(
-	runtime: ComposerCandidateRuntimePort | undefined,
-	blockId: string,
-): ComposerCandidate[] {
-	const [candidates, setCandidates] = React.useState<ComposerCandidate[]>([]);
-	React.useEffect(() => {
-		if (!runtime) {
-			setCandidates([]);
-			return;
-		}
-		return runtime.subscribe((nextCandidates) => {
-			const matches = nextCandidates.filter(
-				(c) =>
-					anchorBlockOf(c) === blockId &&
-					c.status !== 'accepted' &&
-					c.status !== 'discarded',
-			);
-			setCandidates(matches);
-		});
-	}, [runtime, blockId]);
-	return candidates;
-}
-
 function useDocumentCandidates(
 	runtime: ComposerCandidateRuntimePort | undefined,
 ): ComposerCandidate[] {
@@ -2109,6 +2330,34 @@ function useDocumentCandidates(
 		});
 	}, [runtime]);
 	return candidates;
+}
+
+function indexCandidatesByBlock(
+	candidates: readonly ComposerCandidate[],
+): ReadonlyMap<string, readonly ComposerCandidate[]> {
+	const indexed = new Map<string, ComposerCandidate[]>();
+	for (const candidate of candidates) {
+		const blockId = anchorBlockOf(candidate);
+		if (!blockId) continue;
+		const blockCandidates = indexed.get(blockId) ?? [];
+		blockCandidates.push(candidate);
+		indexed.set(blockId, blockCandidates);
+	}
+	return indexed;
+}
+
+function indexFindingsByBlock(
+	findings: readonly SuggestionFinding[],
+): ReadonlyMap<string, readonly SuggestionFinding[]> {
+	const indexed = new Map<string, SuggestionFinding[]>();
+	for (const finding of findings) {
+		const blockId = composerTargetBlockId(finding.target);
+		if (!blockId) continue;
+		const blockFindings = indexed.get(blockId) ?? [];
+		blockFindings.push(finding);
+		indexed.set(blockId, blockFindings);
+	}
+	return indexed;
 }
 
 function activeCandidateOf(candidates: readonly ComposerCandidate[]): ComposerCandidate | null {
@@ -2431,6 +2680,7 @@ function EditableListBody({
 				<ComposerCandidateHost
 					runtime={candidateRuntime}
 					candidateId={candidate.candidateId}
+					candidate={candidate}
 					registry={candidateRegistry}
 				/>
 			</div>
@@ -2816,9 +3066,9 @@ function useStableBlockKeys(blocks: readonly ComposerBlock[]): (blockId: string)
 	return (blockId: string) => ref.current.keyByBlockId.get(blockId) ?? blockId;
 }
 
-/** The scrolling ancestor of the shell (`.peak-composer-root`, `overflow:auto`). */
+/** The scrolling ancestor that actually owns the document viewport. */
 function scrollerOf(shell: HTMLElement | null): HTMLElement | null {
-	return shell?.closest<HTMLElement>('.peak-composer-root') ?? null;
+	return shell?.closest<HTMLElement>('.pk-composer-main') ?? null;
 }
 
 /**
@@ -3094,6 +3344,14 @@ function focusedBlockId(container: HTMLElement | null): string | null {
 	const active = container.ownerDocument.activeElement;
 	if (!(active instanceof HTMLElement) || !container.contains(active)) return null;
 	return active.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
+}
+
+function blockIdsForRange(range: Range): string[] {
+	const ids = [range.startContainer, range.endContainer]
+		.map((node) => node.nodeType === 1 ? node as Element : node.parentElement)
+		.map((element) => element?.closest<HTMLElement>('[data-block-id]')?.dataset.blockId)
+		.filter((blockId): blockId is string => Boolean(blockId));
+	return [...new Set(ids)];
 }
 
 /** Locate a block in the (possibly newer) snapshot by id or kind-ordinal prefix. */

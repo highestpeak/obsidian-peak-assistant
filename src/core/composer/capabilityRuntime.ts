@@ -293,6 +293,10 @@ export interface ComposerCandidateRuntimePort {
 	isStreaming(candidateId: string): boolean;
 	/** Accept the active completed variant (routes through the transaction hub). */
 	accept(candidateId: string): Promise<void>;
+	/** Atomically accept compatible Markdown candidates from one base revision. */
+	acceptMany?(candidateIds: readonly string[]): Promise<void>;
+	/** Cheap owner/result-kind preflight for showing the atomic group action. */
+	canAcceptMany?(candidateIds: readonly string[]): boolean;
 	/** Discard the pending candidate (candidate-local; never a document undo). */
 	discard(candidateId: string): void;
 	/** Switch the visible variant (refused while streaming). */

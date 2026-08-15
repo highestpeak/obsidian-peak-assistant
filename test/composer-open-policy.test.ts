@@ -16,6 +16,18 @@ assert.equal(
 	'new installs must fail safe to Native Markdown',
 );
 assert.match(router, /await leaf\.view\.save\(\)/, 'same-leaf conversion must save the Markdown buffer');
+const convertLeafStart = router.indexOf('async convertLeaf(');
+assert.match(
+	router,
+	/await this\.options\.prepareComposerSession\?\.\(filePath\)/,
+	'Composer conversion must prepare source before replacing the Native Markdown leaf',
+);
+const prepareIndex = router.indexOf('await this.options.prepareComposerSession?.(filePath)', convertLeafStart);
+const setComposerStateIndex = router.indexOf('type: DOCUMENT_COMPOSER_VIEW_TYPE', prepareIndex);
+assert.ok(
+	prepareIndex >= 0 && setComposerStateIndex > prepareIndex,
+	'prepare-before-swap ordering must keep Native Markdown mounted during IO and parse',
+);
 assert.match(
 	router,
 	/preserveMarkdownBuffer !== false/,
@@ -98,7 +110,6 @@ assert.match(
 	'a failed stale conversion must not overwrite a newer file binding during rollback',
 );
 assert.match(router, /verifyConversion\(leaf, target, filePath\)/, 'conversion must verify leaf and file identity');
-const convertLeafStart = router.indexOf('async convertLeaf(');
 const awaitedReveal = router.indexOf(
 	'await this.app.workspace.revealLeaf(leaf);',
 	convertLeafStart,

@@ -35,6 +35,8 @@ import {
 export interface ComposerDocumentRouterOptions {
 	getDefaultView(): DefaultDocumentView;
 	setDefaultView(view: DefaultDocumentView): Promise<void>;
+	/** Read + parse while Native Markdown is still mounted. */
+	prepareComposerSession?(filePath: string): Promise<string>;
 	openIntelligenceCompanion?(
 		filePath: string,
 		context: NativeMarkdownIntelligenceContext,
@@ -181,9 +183,10 @@ export class ComposerDocumentRouter {
 		if (!leaf) return null;
 		await this.withGuard(leaf, async () => {
 			if (targetView === 'composer') {
+				const preparationId = await this.options.prepareComposerSession?.(file.path);
 				await leaf.setViewState({
 					type: DOCUMENT_COMPOSER_VIEW_TYPE,
-					state: composerState(file.path, request.intelligenceRunId),
+					state: composerState(file.path, request.intelligenceRunId, preparationId),
 					active: true,
 				});
 				return;
@@ -262,11 +265,15 @@ export class ComposerDocumentRouter {
 			) {
 				await leaf.view.save();
 			}
+			const preparationId = target === 'composer'
+				? await this.options.prepareComposerSession?.(filePath)
+				: undefined;
+			this.assertConversionCurrent(options);
 			await this.withGuard(leaf, async () => {
 				if (target === 'composer') {
 					await leaf.setViewState(withoutLeafHistory({
 						type: DOCUMENT_COMPOSER_VIEW_TYPE,
-						state: composerState(filePath),
+						state: composerState(filePath, undefined, preparationId),
 						active: true,
 					}));
 					return;
@@ -484,12 +491,14 @@ function waitForHostFileOpenToSettle(app: App): Promise<void> {
 function composerState(
 	filePath: string,
 	intelligenceRunId?: string,
+	preparationId?: string,
 ): ComposerViewStateV2 {
 	return {
 		version: 2,
 		filePath,
 		displayMode: 'edit',
 		...(intelligenceRunId ? { intelligenceRunId } : {}),
+		...(preparationId ? { preparationId } : {}),
 	};
 }
 

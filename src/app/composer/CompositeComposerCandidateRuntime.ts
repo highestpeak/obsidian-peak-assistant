@@ -75,6 +75,26 @@ export class CompositeComposerCandidateRuntime implements ComposerCandidateRunti
 		return this.owner(candidateId).accept(candidateId);
 	}
 
+	acceptMany(candidateIds: readonly string[]): Promise<void> {
+		const owners = new Set(candidateIds.map((candidateId) => this.owner(candidateId)));
+		if (owners.size !== 1) {
+			return Promise.reject(new Error('candidate group spans incompatible runtimes'));
+		}
+		const owner = [...owners][0];
+		if (!owner?.acceptMany) {
+			return Promise.reject(new Error('candidate runtime does not support atomic group acceptance'));
+		}
+		return owner.acceptMany(candidateIds);
+	}
+
+	canAcceptMany(candidateIds: readonly string[]): boolean {
+		const owners = new Set(candidateIds.map((candidateId) => this.owner(candidateId)));
+		if (owners.size !== 1) return false;
+		const owner = [...owners][0];
+		if (!owner?.acceptMany) return false;
+		return owner.canAcceptMany?.(candidateIds) ?? true;
+	}
+
 	discard(candidateId: string): void {
 		this.owner(candidateId).discard(candidateId);
 	}

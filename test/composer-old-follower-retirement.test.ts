@@ -18,7 +18,15 @@ assert.doesNotMatch(
 	/getLeavesOfType\(DOCUMENT_COMPOSER_VIEW_TYPE\)\[0\]/,
 	'opening Composer must never reuse the first unrelated Composer leaf',
 );
-assert.match(controller, /start\(filePath: string\)/, 'each Composer controller must start with an explicit file');
-assert.match(controller, /bindFile\(filePath: string\)/, 'leaf state is the only supported rebind path');
+assert.match(
+	controller,
+	/start\(filePath: string, preparationId\?: string\)/,
+	'each Composer controller must start with an explicit file and optional prepared session',
+);
+assert.match(
+	controller,
+	/bindFile\(filePath: string, preparationId\?: string\)/,
+	'leaf state is the only supported rebind path',
+);
 
 console.log('composer-old-follower-retirement: passed');

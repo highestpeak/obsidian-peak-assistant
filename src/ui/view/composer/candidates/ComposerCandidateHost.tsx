@@ -23,6 +23,8 @@ import { createStreamingTextFrameBuffer } from './streamFrameCoalescer';
 export interface ComposerCandidateHostProps {
 	runtime: ComposerCandidateRuntimePort;
 	candidateId: string;
+	/** Root-indexed projection. When present, no candidate-store subscription is created. */
+	candidate?: ComposerCandidate;
 	registry: CandidateRendererRegistry;
 	/** Injected strings (tests / storyless harness); loaded from config otherwise. */
 	strings?: CandidateUiStrings;
@@ -34,16 +36,19 @@ export interface ComposerCandidateHostProps {
 	resolveOriginalText?: (candidate: ComposerCandidate) => string | null;
 }
 
-function useCandidate(runtime: ComposerCandidateRuntimePort, candidateId: string): ComposerCandidate | null {
+function useCandidate(
+	runtime: ComposerCandidateRuntimePort,
+	candidateId: string,
+	projected?: ComposerCandidate,
+): ComposerCandidate | null {
 	const [candidate, setCandidate] = React.useState<ComposerCandidate | null>(null);
-	React.useEffect(
-		() =>
-			runtime.subscribe((candidates) => {
-				setCandidate(candidates.find((c) => c.candidateId === candidateId) ?? null);
-			}),
-		[runtime, candidateId],
-	);
-	return candidate;
+	React.useEffect(() => {
+		if (projected) return;
+		return runtime.subscribe((candidates) => {
+			setCandidate(candidates.find((c) => c.candidateId === candidateId) ?? null);
+		});
+	}, [runtime, candidateId, Boolean(projected)]);
+	return projected ?? candidate;
 }
 
 function useStreamingText(runtime: ComposerCandidateRuntimePort, candidateId: string): string | null {
@@ -93,7 +98,7 @@ function useStrings(injected?: CandidateUiStrings): CandidateUiStrings {
 }
 
 export function ComposerCandidateHost(props: ComposerCandidateHostProps): React.ReactElement | null {
-	const candidate = useCandidate(props.runtime, props.candidateId);
+	const candidate = useCandidate(props.runtime, props.candidateId, props.candidate);
 	const streamingText = useStreamingText(props.runtime, props.candidateId);
 	const strings = useStrings(props.strings);
 

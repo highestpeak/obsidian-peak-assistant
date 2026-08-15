@@ -37,6 +37,8 @@ export interface ComposerViewStateV2 extends Record<string, unknown> {
 	version: 2;
 	filePath: string;
 	displayMode: ComposerDisplayMode;
+	/** One-shot app-owned session handoff. Never required for workspace restore. */
+	preparationId?: string;
 	selectedBlockId?: string;
 	scrollAnchor?: unknown;
 	/** One-shot persisted Generation History handoff into the shared sidecar. */
@@ -80,11 +82,16 @@ export function normalizeComposerViewState(
 		typeof raw.intelligenceRunId === 'string' && raw.intelligenceRunId.trim()
 			? raw.intelligenceRunId
 			: undefined;
+	const preparationId =
+		typeof raw.preparationId === 'string' && raw.preparationId.trim()
+			? raw.preparationId
+			: undefined;
 
 	return {
 		version: 2,
 		filePath,
 		displayMode,
+		...(preparationId ? { preparationId } : {}),
 		...(selectedBlockId ? { selectedBlockId } : {}),
 		...(intelligenceRunId ? { intelligenceRunId } : {}),
 		...(raw.scrollAnchor !== undefined ? { scrollAnchor: raw.scrollAnchor } : {}),

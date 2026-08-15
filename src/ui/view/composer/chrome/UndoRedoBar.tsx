@@ -205,6 +205,8 @@ export function UndoRedoBar({
 				<ComposerReviewNavigation
 					candidates={reviewCandidates}
 					candidateRuntime={candidateRuntime}
+					acceptAllLabel={config.chrome.displayStates.acceptAll}
+					acceptAllFailedLabel={config.chrome.displayStates.acceptAllFailed}
 					workspaceRuntime={workspaceIntelligence}
 					documentId={documentId}
 					documentPath={documentPath}

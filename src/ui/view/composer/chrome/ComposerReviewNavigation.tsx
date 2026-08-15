@@ -33,6 +33,8 @@ import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigati
 export interface ComposerReviewNavigationProps {
 	candidates: readonly ComposerCandidate[];
 	candidateRuntime?: ComposerCandidateRuntimePort;
+	acceptAllLabel: string;
+	acceptAllFailedLabel: string;
 	workspaceRuntime?: ComposerWorkspaceIntelligenceRuntime;
 	documentId: string;
 	documentPath: string;
@@ -48,6 +50,8 @@ export interface ComposerReviewNavigationProps {
 export function ComposerReviewNavigation({
 	candidates,
 	candidateRuntime,
+	acceptAllLabel,
+	acceptAllFailedLabel,
 	workspaceRuntime,
 	documentId,
 	documentPath,
@@ -61,6 +65,14 @@ export function ComposerReviewNavigation({
 		setCandidateIndex((current) => clampIndex(current, reviewable.length));
 	}, [reviewable.length]);
 	const currentCandidate = reviewable[candidateIndex] ?? null;
+	const readyCandidates = reviewable.filter((candidate) => candidate.status === 'ready');
+	const [acceptingGroup, setAcceptingGroup] = React.useState(false);
+	const [groupError, setGroupError] = React.useState(false);
+	const groupCandidateIds = readyCandidates.map((candidate) => candidate.candidateId);
+	const groupAcceptable = Boolean(
+		candidateRuntime?.acceptMany
+		&& (candidateRuntime.canAcceptMany?.(groupCandidateIds) ?? true),
+	);
 	React.useEffect(() => {
 		if (currentCandidate) onLocateCandidate(currentCandidate);
 	}, [currentCandidate?.candidateId]);
@@ -87,6 +99,18 @@ export function ComposerReviewNavigation({
 	const accept = (): void => {
 		if (!currentCandidate || !candidateRuntime || currentCandidate.status !== 'ready') return;
 		void candidateRuntime.accept(currentCandidate.candidateId);
+	};
+	const acceptAll = async (): Promise<void> => {
+		if (!candidateRuntime?.acceptMany || !groupAcceptable || readyCandidates.length < 2 || acceptingGroup) return;
+		setAcceptingGroup(true);
+		setGroupError(false);
+		try {
+			await candidateRuntime.acceptMany(groupCandidateIds);
+		} catch {
+			setGroupError(true);
+		} finally {
+			setAcceptingGroup(false);
+		}
 	};
 
 	return (
@@ -128,6 +152,24 @@ export function ComposerReviewNavigation({
 							<span>接受</span>
 						</Button>
 					</div>
+					{groupAcceptable && readyCandidates.length > 1 ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="pk-composer-review-decision pk-composer-review-decision--accept-all"
+							disabled={acceptingGroup}
+							title={groupError ? acceptAllFailedLabel : undefined}
+							onClick={() => void acceptAll()}
+						>
+							<Check size={13} aria-hidden />
+							<span>{acceptAllLabel.replace('{count}', String(readyCandidates.length))}</span>
+						</Button>
+					) : null}
+					{groupError ? (
+						<span className="pk-composer-review-error" role="status">
+							{acceptAllFailedLabel}
+						</span>
+					) : null}
 					<div className="pk-composer-review-group" role="group" aria-label="任务文件间导航">
 						<IconButton
 							className="pk-composer-review-control"

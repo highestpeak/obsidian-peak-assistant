@@ -6,6 +6,7 @@
 export { DOCUMENT_COMPOSER_VIEW_TYPE } from './viewType';
 export { DocumentComposerView } from './DocumentComposerView';
 export { DocumentComposerRuntime } from './DocumentComposerRuntime';
+export { ComposerPreparedSessionStore } from './ComposerPreparedSessionStore';
 export { composeDocumentComposerRuntime } from './composeDocumentComposerRuntime';
 export { NativeMarkdownIntelligenceModal } from './NativeMarkdownIntelligenceModal';
 export * from './NativeMarkdownIntelligenceContext';

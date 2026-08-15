@@ -19,6 +19,7 @@
 
 import {
 	makeGroupId,
+	applyOperations,
 	ComposerConflictError,
 	type ComposerCandidate,
 	type ComposerDocumentSnapshot,
@@ -64,6 +65,11 @@ export interface AcceptOptions {
 	origin?: ComposerTransactionOrigin;
 	label?: string;
 	runId?: string;
+}
+
+export interface AcceptCandidateGroupOptions extends AcceptOptions {
+	/** Required owner/config-backed History label for the combined write. */
+	label: string;
 }
 
 export interface ComposerHistoryPreview {
@@ -171,6 +177,16 @@ export class ComposerTransactionHub {
 
 	/** Commit a direct / deterministic / AI transaction atomically. */
 	async commit(input: ComposerCommitInput): Promise<ComposerTransaction> {
+		return this.commitInternal(input);
+	}
+
+	private async commitInternal(
+		input: ComposerCommitInput,
+		options: {
+			notify?: boolean;
+			excludedCandidateIds?: ReadonlySet<string>;
+		} = {},
+	): Promise<ComposerTransaction> {
 		await this.historyReady;
 		const prev = this.session.snapshot;
 		const txn = await this.engine.commit(this.session, input);
@@ -183,9 +199,9 @@ export class ComposerTransactionHub {
 			at: txn.committedAt,
 			transaction: txn,
 		});
-		this.revalidateCandidates(prev);
+		this.revalidateCandidates(prev, options.excludedCandidateIds);
 		this.emit({ type: 'committed', transaction: txn });
-		this.notify();
+		if (options.notify !== false) this.notify();
 		return txn;
 	}
 
@@ -303,15 +319,68 @@ export class ComposerTransactionHub {
 			throw new ComposerConflictError('stale-candidate', `candidate ${candidateId} is ${prepared.reason}`);
 		}
 		const candidate = prepared.candidate;
-		const txn = await this.commit({
+		const txn = await this.commitInternal({
 			origin: opts.origin ?? 'ai',
 			label: opts.label ?? candidate.proposedChange.summary ?? 'Accept suggestion',
 			operations: candidate.proposedChange.operations,
 			target: candidate.target,
 			runId: opts.runId,
-		});
+		}, { notify: false, excludedCandidateIds: new Set([candidateId]) });
 		this.candidates.markAccepted(candidateId);
 		this.emit({ type: 'candidate-changed', candidateId, status: 'accepted' });
+		this.notify();
+		return txn;
+	}
+
+	/**
+	 * Accept a compatible Markdown candidate group as one transaction. Every
+	 * proposal is validated against the same base bytes before IO; overlap,
+	 * stale status or a not-ready variant leaves source and candidate states
+	 * unchanged. The final projection is published once.
+	 */
+	async acceptCandidateGroup(
+		candidateIds: readonly string[],
+		opts: AcceptCandidateGroupOptions,
+	): Promise<ComposerTransaction> {
+		const ids = [...new Set(candidateIds)];
+		if (ids.length === 0) {
+			throw new ComposerConflictError('candidate-group-conflict', 'candidate group is empty');
+		}
+		const candidates: ComposerCandidate[] = [];
+		for (const candidateId of ids) {
+			const prepared = this.candidates.prepareAccept(candidateId, this.session.baseRevision);
+			if (!prepared.ok) {
+				this.emit({ type: 'conflict', reason: 'stale-candidate' });
+				if (prepared.reason === 'stale') this.notify();
+				throw new ComposerConflictError(
+					'stale-candidate',
+					`candidate ${candidateId} is ${prepared.reason}`,
+				);
+			}
+			candidates.push(prepared.candidate);
+		}
+		const operations = candidates.flatMap((candidate) => candidate.proposedChange.operations);
+		try {
+			applyOperations(this.session.snapshot.sourceText, operations);
+		} catch (error) {
+			this.emit({ type: 'conflict', reason: 'candidate-group-conflict' });
+			throw new ComposerConflictError(
+				'candidate-group-conflict',
+				error instanceof Error ? error.message : String(error),
+			);
+		}
+		const excluded = new Set(ids);
+		const txn = await this.commitInternal({
+			origin: opts.origin ?? 'ai',
+			label: opts.label,
+			operations,
+			target: { kind: 'document', documentId: this.session.snapshot.documentId },
+			runId: opts.runId,
+		}, { notify: false, excludedCandidateIds: excluded });
+		for (const candidateId of ids) {
+			this.candidates.markAccepted(candidateId);
+			this.emit({ type: 'candidate-changed', candidateId, status: 'accepted' });
+		}
 		this.notify();
 		return txn;
 	}
@@ -408,8 +477,15 @@ export class ComposerTransactionHub {
 
 	// ── internals ─────────────────────────────────────────────────────────────────
 
-	private revalidateCandidates(prev: ComposerDocumentSnapshot): void {
-		const staleIds = this.candidates.revalidate(prev, this.session.snapshot);
+	private revalidateCandidates(
+		prev: ComposerDocumentSnapshot,
+		excludedCandidateIds?: ReadonlySet<string>,
+	): void {
+		const staleIds = this.candidates.revalidate(
+			prev,
+			this.session.snapshot,
+			excludedCandidateIds,
+		);
 		if (staleIds.length > 0) this.emit({ type: 'candidates-revalidated', staleIds });
 	}
 

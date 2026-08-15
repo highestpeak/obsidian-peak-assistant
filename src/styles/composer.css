@@ -89,6 +89,16 @@
 	display: flex;
 	flex-direction: column;
 }
+.peak-composer-root .pk-composer-virtual-item {
+	display: flow-root;
+	position: relative;
+	min-width: 0;
+}
+.peak-composer-root .pk-composer-virtual-gap {
+	flex: 0 0 auto;
+	width: 1px;
+	pointer-events: none;
+}
 .peak-composer-root .pk-composer-block {
 	display: block;
 	/* Tint breathes ~10px past the text; negative margin keeps the text column
@@ -112,6 +122,9 @@
 .peak-composer-root .pk-composer-block[data-spacing='table'] { margin-top: 36px; }
 .peak-composer-root .pk-composer-block[data-spacing='chart'] { margin-top: 56px; }
 .peak-composer-root .pk-composer-blocks > .pk-composer-block:first-child {
+	margin-top: 0;
+}
+.peak-composer-root .pk-composer-virtual-item[data-virtual-index='0'] > .pk-composer-block {
 	margin-top: 0;
 }
 
@@ -2584,6 +2597,24 @@
 }
 .peak-composer-root .pk-composer-review-decision--accept {
 	color: var(--pk-accent-text) !important;
+}
+.peak-composer-root .pk-composer-review-decision--accept-all {
+	color: var(--pk-accent-text) !important;
+	border: 1px solid var(--pk-border-accent) !important;
+}
+.peak-composer-root .pk-composer-review-error {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 50%;
+	max-width: 360px;
+	padding: 6px 9px;
+	transform: translateX(-50%);
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-raised);
+	color: var(--pk-danger);
+	font-size: var(--pk-text-xs);
+	white-space: normal;
 }
 .peak-composer-root .pk-composer-task-documents-trigger {
 	display: inline-flex;

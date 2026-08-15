@@ -117,7 +117,7 @@ export function FrontmatterBlockView({
 	const suggest = ports?.suggest;
 	const suggestDisabled = !suggest || suggest.disabledReason !== undefined;
 	const suggestReason = !suggest ? config.grid.aiSuggest : suggest.disabledReason;
-	const candidate = useFrontmatterCandidate(candidatePort);
+	const candidate = candidatePort?.candidate ?? null;
 	const candidatePayload = metadataCandidatePayload(candidate);
 	const [suggestionsOpen, setSuggestionsOpen] = React.useState(false);
 	const [candidateReviewOpen, setCandidateReviewOpen] = React.useState(false);
@@ -656,21 +656,6 @@ function CandidateFieldValue({
 		);
 	}
 	return <span className="pk-fm-field-candidate" data-ai-suggestion="true">+ {values.join(', ')}</span>;
-}
-
-function useFrontmatterCandidate(port?: FrontmatterCandidatePort): ComposerCandidate | null {
-	const [candidate, setCandidate] = React.useState<ComposerCandidate | null>(port?.candidate ?? null);
-	React.useEffect(() => {
-		if (!port) {
-			setCandidate(null);
-			return;
-		}
-		setCandidate(port.candidate);
-		return port.runtime.subscribe((candidates) => {
-			setCandidate(candidates.find((item) => item.candidateId === port.candidate.candidateId) ?? null);
-		});
-	}, [port]);
-	return candidate;
 }
 
 function metadataCandidatePayload(candidate: ComposerCandidate | null): ComposerMetadataFieldPatchPayload | null {

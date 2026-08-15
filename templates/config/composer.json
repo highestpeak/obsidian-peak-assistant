@@ -57,6 +57,37 @@
 		"readOnlyBadge": "Read-only preview",
 		"blocksSuffix": "blocks"
 	},
+	"preparation": {
+		"_doc": "App-owned prepare-before-swap cache. A token is one-shot and path-bound.",
+		"cacheTtlMs": 30000
+	},
+	"virtualization": {
+		"_doc": "Unified Composer block-window policy. Heights are estimates until ResizeObserver reports real rows.",
+		"defaultBlockHeightPx": 72,
+		"overscanPx": 900,
+		"maxHardPins": 12,
+		"revealViewportRatio": 0.32,
+		"revealMaxFrames": 90,
+		"dragAutoScrollEdgePx": 72,
+		"dragAutoScrollMaxStepPx": 24,
+		"kindHeightPx": {
+			"frontmatter": 180,
+			"heading": 64,
+			"paragraph": 72,
+			"list": 112,
+			"task": 112,
+			"quote": 96,
+			"callout": 128,
+			"code": 180,
+			"math": 112,
+			"table": 240,
+			"image": 360,
+			"mermaid": 260,
+			"dataview": 180,
+			"html": 160,
+			"embed": 280
+		}
+	},
 	"chrome": {
 		"_doc": "WP4 editing-chrome copy. AI capability labels are NOT here — they arrive from the capability projection port. Typed fallback: composerConfig.ts DEFAULT_COMPOSER_CONFIG.chrome. Drift guard: composer-config.test.ts checks the top-level chrome sub-keys.",
 		"surfacePreviewOpenDelayMs": 360,
@@ -142,7 +173,9 @@
 			"edit": "编辑视图",
 			"clean": "纯净阅读",
 			"nativeMarkdown": "原生 Markdown",
-			"reviewAll": "审阅全部改动 · {count}"
+			"reviewAll": "审阅全部改动 · {count}",
+			"acceptAll": "一次接受 {count} 个改动",
+			"acceptAllFailed": "这些改动存在重叠或不属于同一原子写入，请逐项审阅。"
 		},
 		"selection": {
 			"formats": {

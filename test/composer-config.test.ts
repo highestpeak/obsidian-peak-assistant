@@ -31,6 +31,16 @@ function main(): void {
 	const fbStrings = Object.keys(DEFAULT_COMPOSER_CONFIG.strings).sort();
 	const jsonStrings = Object.keys(json.strings ?? {}).sort();
 	check('string keys match', fbStrings.join(',') === jsonStrings.join(','), `fb=${fbStrings.length} json=${jsonStrings.length}`);
+	check(
+		'preparation keys match',
+		Object.keys(DEFAULT_COMPOSER_CONFIG.preparation).sort().join(',') ===
+			Object.keys(json.preparation ?? {}).filter((key) => !key.startsWith('_')).sort().join(','),
+	);
+	check(
+		'virtualization keys match',
+		Object.keys(DEFAULT_COMPOSER_CONFIG.virtualization).sort().join(',') ===
+			Object.keys(json.virtualization ?? {}).filter((key) => !key.startsWith('_')).sort().join(','),
+	);
 
 	// WP4: chrome section top-level + selection sub-keys mirror the fallback.
 	const fbChrome = Object.keys(DEFAULT_COMPOSER_CONFIG.chrome).sort();

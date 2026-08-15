@@ -62,6 +62,8 @@ import {
 import type { ComposerCapabilityRuntimeFactory } from './capabilities/composeComposerCapabilityRuntime';
 import { CompositeComposerCandidateRuntime } from './CompositeComposerCandidateRuntime';
 import type { ComposerDocumentRouter } from './ComposerDocumentRouter';
+import { ComposerPreparedSessionStore } from './ComposerPreparedSessionStore';
+import { DEFAULT_COMPOSER_PREPARATION_CONFIG } from '@/ui/view/composer/config/composerConfig';
 
 export interface DocumentComposerRuntimeAdapters {
 	/** App-owned Markdown/Composer navigation policy and same-leaf converter. */
@@ -129,6 +131,7 @@ export interface TransientComposerFeatures {
 }
 
 export class DocumentComposerRuntime {
+	private readonly preparedSessions: ComposerPreparedSessionStore;
 	private transactionConfig: ComposerTransactionConfig;
 	private capabilityFactory: ComposerCapabilityRuntimeFactory | null = null;
 	private readonly documentEntries = new Map<string, {
@@ -168,6 +171,11 @@ export class DocumentComposerRuntime {
 		transactionConfig: ComposerTransactionConfig = DEFAULT_TRANSACTION_CONFIG,
 		adapters: DocumentComposerRuntimeAdapters = {},
 	) {
+		this.preparedSessions = new ComposerPreparedSessionStore(
+			source,
+			revisionService,
+			DEFAULT_COMPOSER_PREPARATION_CONFIG.cacheTtlMs,
+		);
 		this.transactionConfig = transactionConfig;
 		this.commentPersistence = adapters.commentPersistence;
 		this.linkPort = adapters.linkPort;
@@ -191,6 +199,14 @@ export class DocumentComposerRuntime {
 			adapters.workspaceStatePersistence,
 		);
 		void this.workspaceIntelligence.hydrate();
+	}
+
+	prepareSession(filePath: string): Promise<string> {
+		return this.preparedSessions.prepare(filePath);
+	}
+
+	setPreparationTtl(ttlMs: number): void {
+		this.preparedSessions.setTtl(ttlMs);
 	}
 
 	getIntelligenceManualOpen(): boolean {
@@ -225,6 +241,8 @@ export class DocumentComposerRuntime {
 			revisionService: this.revisionService,
 			originHostId,
 			originHost,
+			consumePreparedSession: (preparationId, filePath) =>
+				this.preparedSessions.consume(preparationId, filePath),
 			editing: {
 				acquire: (session, hostId, host) => this.acquireEditing(session, hostId, host),
 				rename: (oldPath, newPath, session) => this.renameDocument(oldPath, newPath, session),
@@ -562,6 +580,7 @@ export class DocumentComposerRuntime {
 
 	/** Detach the shared Obsidian event listeners. Idempotent. */
 	dispose(): void {
+		this.preparedSessions.dispose();
 		for (const entry of this.documentEntries.values()) {
 			entry.offRun?.();
 			entry.offReview?.();

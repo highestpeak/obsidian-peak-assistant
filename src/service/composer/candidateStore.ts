@@ -206,12 +206,17 @@ export class ComposerCandidateStore {
 	 * block id; one that no longer maps is marked `stale`. Returns the ids that
 	 * went stale.
 	 */
-	revalidate(prev: ComposerDocumentSnapshot, next: ComposerDocumentSnapshot): string[] {
+	revalidate(
+		prev: ComposerDocumentSnapshot,
+		next: ComposerDocumentSnapshot,
+		excludedCandidateIds: ReadonlySet<string> = new Set(),
+	): string[] {
 		const matches = matchBlocks(prev.blocks, next.blocks);
 		const oldToNew = new Map<string, string>();
 		for (const m of matches) if (m.oldBlockId) oldToNew.set(m.oldBlockId, m.newBlockId);
 		const staleIds: string[] = [];
 		for (const [id, candidate] of this.candidates) {
+			if (excludedCandidateIds.has(id)) continue;
 			if (candidate.status === 'accepted' || candidate.status === 'stale') continue;
 			const anchor = candidate.anchorBlockId;
 			if (!anchor) {

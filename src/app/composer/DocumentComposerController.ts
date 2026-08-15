@@ -119,6 +119,11 @@ export interface DocumentComposerControllerDeps {
 	originHostId?: string;
 	/** Product surface that invoked the shared document runtime. */
 	originHost?: 'composer' | 'markdown';
+	/** App-owned one-shot session handoff prepared before a view-type swap. */
+	consumePreparedSession?: (
+		preparationId: string | undefined,
+		filePath: string,
+	) => ComposerDocumentSession | null;
 }
 
 interface ActiveEditing extends ComposerEditingRuntime {
@@ -132,6 +137,7 @@ export class DocumentComposerController implements ComposerStateSource {
 	private readonly editingComposer?: ComposerEditingComposer;
 	private readonly originHostId?: string;
 	private readonly originHost: 'composer' | 'markdown';
+	private readonly consumePreparedSession?: DocumentComposerControllerDeps['consumePreparedSession'];
 
 	private session: ComposerDocumentSession | null = null;
 	private editing: ActiveEditing | null = null;
@@ -150,19 +156,24 @@ export class DocumentComposerController implements ComposerStateSource {
 		this.editingComposer = deps.editing;
 		this.originHostId = deps.originHostId;
 		this.originHost = deps.originHost ?? 'composer';
+		this.consumePreparedSession = deps.consumePreparedSession;
 	}
 
 	/** Begin tracking one explicit Composer leaf binding. */
-	start(filePath: string): void {
+	start(filePath: string, preparationId?: string): void {
 		this.unsubscribers.push(this.events.onFileEvent((event) => this.onFileEvent(event)));
-		this.bindFile(filePath);
+		this.bindFile(filePath, preparationId);
 	}
 
 	/** Rebind only when Obsidian applies a new versioned state to this same leaf. */
-	bindFile(filePath: string): void {
+	bindFile(filePath: string, preparationId?: string): void {
 		if (!filePath) return;
-		if (filePath === this.state.filePath && this.state.status !== 'error') return;
-		this.load(filePath);
+		if (
+			filePath === this.state.filePath
+			&& this.state.status !== 'error'
+			&& !preparationId
+		) return;
+		this.load(filePath, preparationId);
 	}
 
 	/** Stop tracking and drop subscriptions. Idempotent. */
@@ -277,8 +288,17 @@ export class DocumentComposerController implements ComposerStateSource {
 		});
 	}
 
-	private load(filePath: string): void {
+	private load(filePath: string, preparationId?: string): void {
 		const bindingVersion = ++this.bindingVersion;
+		const prepared = this.consumePreparedSession?.(preparationId, filePath) ?? null;
+		if (prepared) {
+			this.disposeEditing();
+			const runtime = this.composeEditingFor(prepared);
+			this.session = runtime?.session ?? prepared;
+			this.lastSnapshot = this.session.snapshot;
+			this.setState({ status: 'loaded', filePath, snapshot: this.session.snapshot });
+			return;
+		}
 		this.setState({ status: 'loading', filePath, snapshot: this.state.snapshot });
 		this.run(async () => {
 			if (bindingVersion !== this.bindingVersion) return;
