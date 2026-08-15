@@ -409,6 +409,79 @@ White screen happens when 1+2 (+DevTools ≈ +1GB if open) crosses the ceiling s
 
 ---
 
+## 10. Composer long-document white screen — complete document state does not imply complete DOM
+
+### Symptom
+
+- Opening Composer for a long Markdown document stalls the renderer, turns the view grey/white, or crashes the Obsidian Renderer shortly after the first interaction.
+- The document can parse quickly, yet Composer still becomes unusable while mounting the initial view.
+- AI can produce changes for hundreds of blocks, and full-document navigation can target a block that is not currently visible.
+- The failure can resemble the `cppgc` OOM in §9, but it appears only after opening a feature surface rather than during vault startup.
+
+### Mechanism
+
+The failure is an **unbounded live projection**, not evidence that the Markdown document itself is too long. The Composer session correctly owns the complete source, blocks, units, references, candidates and revision, but the old UI projected every visible model block into live browser objects at once. Each row could add a React subtree, `contenteditable`, editor controller, layout work, keyboard handling, candidate filtering and measurement. A few hundred blocks therefore created a synchronized mount/reflow storm on Chromium's Renderer heap.
+
+The incident document contained 405 top-level blocks, 452 units and 375 Markdown links. Parsing took about 32 ms. The recorded interaction instead included about 1093 ms of handler work and about 897 ms of forced reflow, followed by a Renderer grey screen; three nearby crash reports ended in Chromium Renderer CppHeap young-generation GC. These measurements distinguish the rendering projection from Markdown parsing.
+
+The same mistake can return in less obvious forms:
+
+- pinning every block touched by an AI run because its candidate or streaming state changed;
+- using `querySelector` over a presumed full DOM for find, comment, history, candidate or source-location navigation;
+- keeping the native Markdown view blank while Composer reads and constructs its first frame;
+- virtualizing rows but retaining an editor, observer, listener, timer or panel anchor for every off-screen block;
+- accepting an AI batch one candidate at a time, causing repeated write, reparse, history and layout cycles.
+
+This is different from a detached-DOM leak. If objects remain retained after their owning view is closed, record and investigate that lifecycle failure in `docs/90-old-root-docs/MEMORY_LEAK_AUDIT.md`. This entry covers excessive **live** work while Composer is open.
+
+### Required invariant
+
+```text
+complete ComposerDocumentSession
+  -> complete data-only layout/candidate indexes
+      -> viewport + overscan + bounded hard pins
+          -> bounded mounted rows/editors/observers
+```
+
+- Keep the complete document model and transaction state in memory; bound only the DOM projection.
+- A block may stay mounted off-screen only while it owns focus, IME composition, an unflushed edit, an open DOM-anchored interaction, a drag/drop neighborhood, a reveal animation, or a native selection endpoint.
+- Every hard pin has an owner and a release event. Candidate data, findings, comments, history rows and AI streaming text do **not** pin block DOM by themselves. AI editing 500 blocks must not mount 500 rows.
+- Resolve full-document navigation against the complete snapshot and layout index, scroll the Composer container, wait for the target window to mount, then perform precise DOM focus/flash. “Not mounted” is never equivalent to “not found.”
+- Prepare Markdown → Composer before swapping views. On workspace restore, render a stable skeleton until the prepared session is available; never show an empty paper as the loading state.
+- Apply compatible Markdown candidate batches as one preflighted transaction: one write, one reparse and one History/Undo unit.
+
+### Detection signals
+
+- Mounted row/editor/observer counts rise with total document blocks rather than viewport size.
+- First paint contains text from the far end of a multi-thousand-block fixture.
+- Opening Composer produces long tasks or forced reflow while parsing remains comparatively small.
+- A far jump fails until the user manually scrolls the target into the DOM.
+- Candidate count or AI batch size changes mounted row count.
+- `compositionend`, blur, panel close, drag end/cancel or reveal completion does not release its hard pin.
+- Markdown is destroyed before preparation succeeds, leaving a blank interval or losing the original view on failure.
+
+### Prevention checklist
+
+- [ ] New Composer block surfaces render through the shared virtual window; do not add a second full-document `map` path for “small” documents.
+- [ ] Heavy per-row state is created only for mounted rows, while durable state remains in the document session or root projection.
+- [ ] New DOM-dependent interactions declare their pin owner, acquisition point, release event and unmount cleanup.
+- [ ] AI candidates and findings are subscribed/indexed once at the document root, not filtered from a full collection in every row.
+- [ ] Find, comment, history, candidate and source-location navigation use the shared virtual locator rather than direct full-document DOM queries.
+- [ ] First-open routing uses prepare-before-swap; restore uses a stable skeleton.
+- [ ] Performance tests assert mounted rows are bounded for a 5000-block document and that far-tail content is absent from first paint.
+- [ ] Batch-edit tests assert atomic preflight, one commit/reparse/notification and one Undo/History unit.
+- [ ] Real Obsidian acceptance records mounted rows/editors/pins, long tasks, heap behavior and new crash reports across repeated opens. Source/build tests alone remain `INTERACTION NOT VERIFIED`.
+
+### Implementation and evidence
+
+- Final design: [`Composer long-document runtime`](./superpowers/specs/2026-08-15-composer-long-document-runtime-final-design.md)
+- Execution plan: [`Composer long-document runtime implementation plan`](./superpowers/plans/2026-08-15-composer-long-document-runtime-implementation-plan.md)
+- Primary guards: [`composer-virtualized-rendering.test.ts`](../test/composer-virtualized-rendering.test.ts), [`composer-block-layout-index.test.ts`](../test/composer-block-layout-index.test.ts), [`composer-prepared-session.test.ts`](../test/composer-prepared-session.test.ts), and [`composer-candidate-group-atomicity.test.ts`](../test/composer-candidate-group-atomicity.test.ts)
+- Implementation commit: `5ce8d3f3` (`fix(composer): virtualize long document runtime`)
+- Current evidence status: source implementation, focused guards and production build were completed for the implementation commit; repeated target-document opening, IME/selection/drag flows and Renderer heap/crash verification in real Obsidian remain `INTERACTION NOT VERIFIED` until recorded through the canonical real-UI QA protocol.
+
+---
+
 ## How to consult this doc
 
 - Bug feels familiar? `grep` this file for the symptom phrase before re-deriving the root cause.
