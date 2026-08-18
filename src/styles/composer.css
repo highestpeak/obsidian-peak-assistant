@@ -86,18 +86,18 @@
 
 /* ── block rows ─────────────────────────────────────────────────────────── */
 .peak-composer-root .pk-composer-blocks {
-	display: flex;
-	flex-direction: column;
+	position: relative;
+	display: block;
+	min-width: 0;
+	overflow-anchor: none;
 }
 .peak-composer-root .pk-composer-virtual-item {
 	display: flow-root;
-	position: relative;
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 0;
 	min-width: 0;
-}
-.peak-composer-root .pk-composer-virtual-gap {
-	flex: 0 0 auto;
-	width: 1px;
-	pointer-events: none;
 }
 .peak-composer-root .pk-composer-block {
 	display: block;
@@ -506,7 +506,7 @@
 	box-shadow: inset 0 -2px 0 var(--pk-accent);
 }
 .peak-composer-root .pk-composer-blocks {
-	flex: 1 1 auto;
+	flex: 0 0 auto;
 	padding-bottom: var(--pk-space-10);
 }
 
@@ -698,6 +698,10 @@
 	box-shadow: 0 -2px 0 0 var(--pk-accent);
 }
 .peak-composer-root .pk-drop-indicator {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
 	height: 2px;
 	background: var(--pk-accent);
 	border-radius: 1px;

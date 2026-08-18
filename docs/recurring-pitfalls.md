@@ -430,11 +430,14 @@ The first virtualization pass fixed the unbounded mount, but a second recording 
 
 The implementation used a fixed 900 px overscan and deferred every scroll update to `requestAnimationFrame`. A large wheel/trackpad jump could therefore move the real viewport entirely into a virtual gap before React mounted the next range. Mounting that range then synchronously read `getComputedStyle` and `getBoundingClientRect` for every row, rebuilt the layout suffix once per row, and adjusted `scrollTop` once per row. The recovery work itself amplified the blank interval.
 
-The corrected scrolling contract is stricter than merely keeping the DOM count bounded:
+The first follow-up (`bde0972a`) removed the per-row synchronous geometry reads and added coverage escape handling, but the 17:07 recording showed repeated 0.3–0.5 second blank frames during fast scrolling. Its remaining flaw was architectural: covered scroll still called `setViewport` every animation frame, escape handling synchronously mounted a velocity-expanded window as large as 4800 px, and the following measurement frame forced a second React render of the same heavy rows. Normal-flow gaps also accumulated estimated-versus-real row-height error inside the mounted window.
 
-- The currently mounted contiguous range must cover the real viewport at every paint. Scrolls still inside that coverage may coalesce to the next frame; a viewport that escapes coverage must synchronously project its new range before paint.
-- Overscan stays small at rest and expands only ahead of the current scroll direction, using measured input velocity with a configured upper bound.
-- Row mounting performs no synchronous per-row style or geometry reads. One shared `ResizeObserver` collects border-box heights, one animation frame applies the batch, the layout index rebuilds once from the earliest changed row, and the scroll anchor receives at most one correction.
+The corrected scrolling contract is therefore stricter than merely keeping the DOM count bounded or proving estimated coverage:
+
+- Covered scrolling performs zero React projection updates. Recenter only when the viewport approaches a mounted edge, use a transition for that ordinary recenter, and restore the ordinary buffer once after scrolling settles.
+- A viewport that truly escapes coverage synchronously mounts only a minimal emergency window. Never combine emergency `flushSync` with a velocity-expanded heavy-row window.
+- Each mounted row is absolutely positioned at its complete-layout-index offset. Estimated row-height error is local to that row and cannot accumulate into a viewport-sized normal-flow gap.
+- Row mounting performs no synchronous per-row style or geometry reads. One shared `ResizeObserver` collects border-box heights, one animation frame rebuilds the layout suffix once, directly updates mounted `top` positions and total canvas height, and applies at most one scroll-anchor correction. Measurement does not trigger a second React render unless the corrected coverage no longer contains the viewport.
 - Space below the final document row is treated as document-tail coverage, so bottom padding cannot create an emergency-flush loop.
 
 The same mistake can return in less obvious forms:
@@ -467,6 +470,7 @@ complete ComposerDocumentSession
 
 - Mounted row/editor/observer counts rise with total document blocks rather than viewport size.
 - The scrollbar moves while the document body is temporarily only a virtual gap, then rows recover after the input stops.
+- Covered scrolling changes `data-virtual-window` every animation frame, or measurement delivery causes a second full ComposerBody render.
 - ResizeObserver delivery causes one layout-index rebuild or `scrollTop` write per mounted row instead of one per frame batch.
 - First paint contains text from the far end of a multi-thousand-block fixture.
 - Opening Composer produces long tasks or forced reflow while parsing remains comparatively small.
@@ -484,8 +488,8 @@ complete ComposerDocumentSession
 - [ ] Find, comment, history, candidate and source-location navigation use the shared virtual locator rather than direct full-document DOM queries.
 - [ ] First-open routing uses prepare-before-swap; restore uses a stable skeleton.
 - [ ] Performance tests assert mounted rows are bounded for a 5000-block document and that far-tail content is absent from first paint.
-- [ ] Scroll-policy tests cover slow and fast movement in both directions, the adaptive overscan cap, viewport-coverage escape and document-tail clamping.
-- [ ] Source guards reject synchronous per-row computed-style/geometry measurement and require one frame-batched layout update.
+- [ ] Scroll-policy tests prove centered covered movement chooses `none`, edge movement chooses deferred `recenter`, escape chooses `emergency`, and document-tail space remains covered.
+- [ ] Source guards reject per-frame covered-scroll projection, synchronous per-row computed-style/geometry measurement, normal-flow virtual gaps and measurement-triggered React rendering.
 - [ ] Batch-edit tests assert atomic preflight, one commit/reparse/notification and one Undo/History unit.
 - [ ] Real Obsidian acceptance records mounted rows/editors/pins, long tasks, heap behavior and new crash reports across repeated opens. Source/build tests alone remain `INTERACTION NOT VERIFIED`.
 

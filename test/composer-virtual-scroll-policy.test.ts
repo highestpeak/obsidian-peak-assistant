@@ -1,7 +1,11 @@
 import {
-	advanceComposerVirtualViewport,
 	composerVirtualViewportIsCovered,
+	composerVirtualViewportNeedsRecenter,
+	decideComposerVirtualProjection,
+	emergencyComposerVirtualViewport,
 	initialComposerVirtualViewport,
+	sampleComposerVirtualViewport,
+	settledComposerVirtualViewport,
 } from '@/ui/view/composer/virtualization/ComposerVirtualScrollPolicy';
 import { DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG } from '@/ui/view/composer/config/composerConfig';
 
@@ -17,29 +21,18 @@ function check(name: string, condition: boolean, detail = ''): void {
 function main(): void {
 	const config = DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG;
 	const initial = initialComposerVirtualViewport(config);
-	const slowForward = advanceComposerVirtualViewport(initial, {
-		start: 90,
-		height: 900,
-		sampledAtMs: 180,
-	}, config);
-	check('slow scroll keeps a bounded directional buffer', slowForward.overscanAfter === 990);
-	check('forward scroll keeps only base overscan behind', slowForward.overscanBefore === config.overscanPx);
-
-	const fastForward = advanceComposerVirtualViewport(slowForward, {
+	const sampled = sampleComposerVirtualViewport(initial, {
 		start: 3_090,
 		height: 900,
 		sampledAtMs: 196,
-	}, config);
-	check('fast forward scroll reaches the configured cap', fastForward.overscanAfter === config.maxOverscanPx);
-	check('fast forward scroll does not grow the trailing side', fastForward.overscanBefore === config.overscanPx);
-
-	const fastReverse = advanceComposerVirtualViewport(fastForward, {
-		start: 90,
-		height: 900,
-		sampledAtMs: 212,
-	}, config);
-	check('fast reverse scroll moves lookahead above', fastReverse.overscanBefore === config.maxOverscanPx);
-	check('fast reverse scroll restores base overscan below', fastReverse.overscanAfter === config.overscanPx);
+	});
+	check('scroll sampling never grows the mounted window', sampled.overscanAfter === config.overscanPx);
+	check('scroll sampling preserves the existing trailing buffer', sampled.overscanBefore === config.overscanPx);
+	const emergency = emergencyComposerVirtualViewport(sampled, config);
+	check('escaped viewport uses the minimal synchronous buffer', emergency.overscanAfter === config.emergencyOverscanPx);
+	check('emergency buffer is smaller than settled overscan', emergency.overscanBefore < config.overscanPx);
+	const settled = settledComposerVirtualViewport(emergency, config);
+	check('idle projection restores ordinary overscan', settled.overscanBefore === config.overscanPx);
 
 	check(
 		'covered viewport may wait for the scheduled frame',
@@ -68,6 +61,39 @@ function main(): void {
 			{ start: 9_500, height: 900 },
 			{ start: 8_000, end: 10_000, documentEnd: 10_000 },
 		),
+	);
+	const coverage = { start: 1_000, end: 4_000, documentEnd: 10_000 };
+	check(
+		'centered viewport does not request a React recenter',
+		!composerVirtualViewportNeedsRecenter({ start: 2_000, height: 900 }, coverage, 360),
+	);
+	check(
+		'forward edge requests deferred recentering',
+		composerVirtualViewportNeedsRecenter({ start: 2_800, height: 900 }, coverage, 360),
+	);
+	check(
+		'reverse edge requests deferred recentering',
+		composerVirtualViewportNeedsRecenter({ start: 1_200, height: 900 }, coverage, 360),
+	);
+	check(
+		'document start does not request impossible backward recentering',
+		!composerVirtualViewportNeedsRecenter(
+			{ start: 0, height: 900 },
+			{ start: 0, end: 2_000, documentEnd: 10_000 },
+			360,
+		),
+	);
+	check(
+		'centered covered scroll performs no React projection',
+		decideComposerVirtualProjection({ start: 2_000, height: 900 }, coverage, 360) === 'none',
+	);
+	check(
+		'near-edge covered scroll requests only deferred recentering',
+		decideComposerVirtualProjection({ start: 2_800, height: 900 }, coverage, 360) === 'recenter',
+	);
+	check(
+		'escaped scroll requests emergency projection',
+		decideComposerVirtualProjection({ start: 4_100, height: 900 }, coverage, 360) === 'emergency',
 	);
 
 	console.log(`composer-virtual-scroll-policy: ${checks - failures}/${checks} checks passed`);

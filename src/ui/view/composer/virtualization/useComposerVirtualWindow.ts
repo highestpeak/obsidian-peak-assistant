@@ -7,9 +7,13 @@ import {
 	type ComposerVirtualLayoutItem,
 } from './ComposerBlockLayoutIndex';
 import {
-	advanceComposerVirtualViewport,
 	composerVirtualViewportIsCovered,
+	composerVirtualViewportNeedsRecenter,
+	decideComposerVirtualProjection,
+	emergencyComposerVirtualViewport,
 	initialComposerVirtualViewport,
+	sampleComposerVirtualViewport,
+	settledComposerVirtualViewport,
 	type ComposerVirtualCoverage,
 	type ComposerVirtualViewport,
 } from './ComposerVirtualScrollPolicy';
@@ -50,12 +54,14 @@ export function useComposerVirtualWindow({
 	if (!layoutRef.current) layoutRef.current = new ComposerBlockLayoutIndex(config);
 	const layout = layoutRef.current;
 	layout.update(blocks, config);
-	const [, renderMeasurements] = React.useReducer((value: number) => value + 1, 0);
 	const [viewport, setViewport] = React.useState<ComposerVirtualViewport>(
 		() => initialComposerVirtualViewport(config),
 	);
 	const sampledViewportRef = React.useRef(viewport);
 	const committedViewportRef = React.useRef(viewport);
+	const pendingProjectionRef = React.useRef<ComposerVirtualViewport | null>(null);
+	const projectionGenerationRef = React.useRef(0);
+	const renderedSpanRef = React.useRef({ start: 0, end: 0 });
 	const renderedCoverageRef = React.useRef<ComposerVirtualCoverage>({
 		start: 0,
 		end: 0,
@@ -72,16 +78,37 @@ export function useComposerVirtualWindow({
 	const pendingMeasurementsRef = React.useRef(new Map<string, number>());
 	const measurementFrameRef = React.useRef(0);
 
-	const commitViewport = React.useCallback((next: ComposerVirtualViewport): void => {
-		if (sameVirtualProjection(committedViewportRef.current, next)) {
-			committedViewportRef.current = next;
+	const commitViewport = React.useCallback((
+		next: ComposerVirtualViewport,
+		synchronous: boolean,
+		force = false,
+	): void => {
+		if (!force && sameVirtualProjection(committedViewportRef.current, next)) {
+			if (synchronous) pendingProjectionRef.current = null;
 			return;
 		}
-		committedViewportRef.current = next;
-		flushSync(() => {
-			setViewport((current) => sameVirtualProjection(current, next) ? current : next);
-		});
+		if (!synchronous && pendingProjectionRef.current) return;
+		if (!synchronous) pendingProjectionRef.current = next;
+		else pendingProjectionRef.current = null;
+		const generation = projectionGenerationRef.current + 1;
+		projectionGenerationRef.current = generation;
+		const update = () => {
+			setViewport((current) => {
+				if (generation !== projectionGenerationRef.current) return current;
+				return !force && sameVirtualProjection(current, next) ? current : { ...next };
+			});
+		};
+		if (synchronous) {
+			flushSync(update);
+			return;
+		}
+		React.startTransition(update);
 	}, []);
+
+	React.useLayoutEffect(() => {
+		committedViewportRef.current = viewport;
+		pendingProjectionRef.current = null;
+	}, [viewport]);
 
 	const flushMeasurements = React.useCallback(() => {
 		measurementFrameRef.current = 0;
@@ -99,16 +126,24 @@ export function useComposerVirtualWindow({
 				start: Math.max(0, adjustedViewport.start + result.anchorDelta),
 			};
 			sampledViewportRef.current = adjustedViewport;
-			committedViewportRef.current = adjustedViewport;
 		}
-		committedViewportRef.current = adjustedViewport;
-		flushSync(() => {
-			setViewport((current) => (
-				sameVirtualProjection(current, adjustedViewport) ? current : adjustedViewport
-			));
-			renderMeasurements();
-		});
-	}, [layout, renderMeasurements, shellRef]);
+		syncMountedVirtualGeometry(layout, elements.current, blocksRef.current);
+		renderedCoverageRef.current = coverageForRenderedSpan(
+			layout,
+			renderedSpanRef.current.start,
+			renderedSpanRef.current.end,
+		);
+		if (!composerVirtualViewportIsCovered(
+			sampledViewportRef.current,
+			renderedCoverageRef.current,
+		)) {
+			commitViewport(
+				emergencyComposerVirtualViewport(sampledViewportRef.current, config),
+				true,
+				true,
+			);
+		}
+	}, [blocksRef, commitViewport, config, layout, shellRef]);
 
 	const scheduleMeasurements = React.useCallback((ownerWindow: Window): void => {
 		if (measurementFrameRef.current) return;
@@ -172,7 +207,7 @@ export function useComposerVirtualWindow({
 
 	React.useLayoutEffect(() => {
 		refreshViewportMetrics();
-	}, [blocks, refreshViewportMetrics]);
+	});
 
 	const readViewport = React.useCallback((): ComposerVirtualViewport => {
 		const scroller = scrollerFor(shellRef.current);
@@ -185,47 +220,64 @@ export function useComposerVirtualWindow({
 			height: metrics.height || scroller.clientHeight,
 			sampledAtMs: ownerWindow?.performance.now() ?? sampledViewportRef.current.sampledAtMs,
 		};
-		const next = advanceComposerVirtualViewport(sampledViewportRef.current, sample, config);
+		const next = sampleComposerVirtualViewport(sampledViewportRef.current, sample);
 		sampledViewportRef.current = next;
 		return next;
-	}, [config, refreshViewportMetrics, shellRef]);
+	}, [refreshViewportMetrics, shellRef]);
 
 	React.useLayoutEffect(() => {
 		const shell = shellRef.current;
-		const blockList = blocksRef.current;
 		const scroller = scrollerFor(shell);
 		const ownerWindow = scroller?.ownerDocument.defaultView;
 		if (!scroller || !ownerWindow) return;
-		let frame = 0;
-		let pendingViewport: ComposerVirtualViewport | null = null;
-		const flushPendingViewport = () => {
-			frame = 0;
-			const next = pendingViewport;
-			pendingViewport = null;
-			if (next) commitViewport(next);
+		let idleTimer = 0;
+		const scheduleSettledProjection = () => {
+			if (idleTimer) ownerWindow.clearTimeout(idleTimer);
+			idleTimer = ownerWindow.setTimeout(() => {
+				idleTimer = 0;
+				const latest = sampledViewportRef.current;
+				const committed = committedViewportRef.current;
+				const emergencyMounted = committed.overscanBefore < config.overscanPx
+					|| committed.overscanAfter < config.overscanPx;
+				const needsRecenter = composerVirtualViewportNeedsRecenter(
+					latest,
+					renderedCoverageRef.current,
+					config.recenterThresholdPx,
+				);
+				if (!emergencyMounted && !needsRecenter) return;
+				commitViewport(
+					settledComposerVirtualViewport(latest, config),
+					false,
+				);
+			}, config.scrollIdleMs);
 		};
-		const scheduleViewport = (next: ComposerVirtualViewport) => {
-			pendingViewport = next;
-			if (frame) return;
-			frame = ownerWindow.requestAnimationFrame(flushPendingViewport);
-		};
-		const onScroll = () => {
-			const next = readViewport();
-			if (composerVirtualViewportIsCovered(next, renderedCoverageRef.current)) {
-				scheduleViewport(next);
+		const projectSample = (next: ComposerVirtualViewport) => {
+			const decision = decideComposerVirtualProjection(
+				next,
+				renderedCoverageRef.current,
+				config.recenterThresholdPx,
+			);
+			recordVirtualProjectionDecision(blocksRef.current, decision);
+			if (decision === 'emergency') {
+				commitViewport(emergencyComposerVirtualViewport(next, config), true);
+				scheduleSettledProjection();
 				return;
 			}
-			pendingViewport = null;
-			if (frame) ownerWindow.cancelAnimationFrame(frame);
-			frame = 0;
-			commitViewport(next);
+			if (decision === 'recenter') {
+				commitViewport(settledComposerVirtualViewport(next, config), false);
+				scheduleSettledProjection();
+			}
+		};
+		const onScroll = () => {
+			projectSample(readViewport());
 		};
 		const onGeometryChange = () => {
 			refreshViewportMetrics();
-			scheduleViewport(readViewport());
+			projectSample(readViewport());
 		};
 		refreshViewportMetrics();
-		const initial = readViewport();
+		const initial = settledComposerVirtualViewport(readViewport(), config);
+		sampledViewportRef.current = initial;
 		committedViewportRef.current = initial;
 		setViewport(initial);
 		scroller.addEventListener('scroll', onScroll, { passive: true });
@@ -234,26 +286,22 @@ export function useComposerVirtualWindow({
 			? new ownerWindow.ResizeObserver(onGeometryChange)
 			: null;
 		resize?.observe(scroller);
-		if (shell) resize?.observe(shell);
-		if (blockList) resize?.observe(blockList);
 		return () => {
 			scroller.removeEventListener('scroll', onScroll);
 			ownerWindow.removeEventListener('resize', onGeometryChange);
 			resize?.disconnect();
-			if (frame) ownerWindow.cancelAnimationFrame(frame);
+			if (idleTimer) ownerWindow.clearTimeout(idleTimer);
 		};
-	}, [blocksRef, commitViewport, readViewport, refreshViewportMetrics, shellRef]);
+	}, [blocksRef, commitViewport, config, readViewport, refreshViewportMetrics, shellRef]);
 	const range = layout.range(viewport.start, viewport.height, pinnedBlockIds, {
 		before: viewport.overscanBefore,
 		after: viewport.overscanAfter,
 	});
 	React.useLayoutEffect(() => {
-		renderedCoverageRef.current = {
-			start: range.coverageStart,
-			end: range.coverageEnd,
-			documentEnd: range.totalHeight,
-		};
-	}, [range.coverageEnd, range.coverageStart, range.totalHeight]);
+		renderedSpanRef.current = { start: range.start, end: range.end };
+		renderedCoverageRef.current = coverageForRenderedSpan(layout, range.start, range.end);
+		syncMountedVirtualGeometry(layout, elements.current, blocksRef.current);
+	}, [blocksRef, layout, range.end, range.start, range.totalHeight]);
 	const revealBlock = React.useCallback(async (
 		blockId: string,
 		behavior: ScrollBehavior = 'auto',
@@ -275,7 +323,10 @@ export function useComposerVirtualWindow({
 		const ownerWindow = shell.ownerDocument.defaultView;
 		if (!ownerWindow) return null;
 		for (let frame = 0; frame < config.revealMaxFrames; frame += 1) {
-			commitViewport(readViewport());
+			const next = readViewport();
+			if (!composerVirtualViewportIsCovered(next, renderedCoverageRef.current)) {
+				commitViewport(emergencyComposerVirtualViewport(next, config), true);
+			}
 			await animationFrame(ownerWindow);
 			const target = shell.querySelector<HTMLElement>(
 				`[data-block-id="${CSS.escape(blockId)}"]`,
@@ -286,8 +337,7 @@ export function useComposerVirtualWindow({
 	}, [
 		blocksRef,
 		commitViewport,
-		config.revealMaxFrames,
-		config.revealViewportRatio,
+		config,
 		layout,
 		onScrollIntent,
 		readViewport,
@@ -320,12 +370,63 @@ export function useComposerVirtualWindow({
 	};
 }
 
+function recordVirtualProjectionDecision(
+	blockList: HTMLElement | null,
+	decision: 'none' | 'recenter' | 'emergency',
+): void {
+	if (!blockList) return;
+	blockList.dataset.virtualProjectionDecision = decision;
+	if (decision !== 'emergency') return;
+	const previous = Number.parseInt(blockList.dataset.virtualEmergencyCount ?? '0', 10);
+	blockList.dataset.virtualEmergencyCount = String(Number.isFinite(previous) ? previous + 1 : 1);
+}
+
 function scrollerFor(shell: HTMLElement | null): HTMLElement | null {
 	return shell?.closest<HTMLElement>('.pk-composer-main') ?? null;
 }
 
 function animationFrame(ownerWindow: Window): Promise<void> {
 	return new Promise((resolve) => ownerWindow.requestAnimationFrame(() => resolve()));
+}
+
+function syncMountedVirtualGeometry(
+	layout: ComposerBlockLayoutIndex,
+	elements: ReadonlyMap<string, HTMLElement>,
+	blockList: HTMLElement | null,
+): void {
+	if (blockList) {
+		blockList.style.height = `${layout.totalHeight}px`;
+		blockList.dataset.totalHeight = String(Math.round(layout.totalHeight));
+	}
+	for (const [blockId, element] of elements) {
+		const offset = layout.offsetOf(blockId);
+		if (offset === null) continue;
+		element.style.top = `${offset}px`;
+		element.dataset.virtualOffset = String(Math.round(offset));
+	}
+}
+
+function coverageForRenderedSpan(
+	layout: ComposerBlockLayoutIndex,
+	start: number,
+	end: number,
+): ComposerVirtualCoverage {
+	const boundedStart = Math.max(0, Math.min(start, layout.length));
+	const boundedEnd = Math.max(boundedStart, Math.min(end, layout.length));
+	if (boundedStart === boundedEnd) {
+		return { start: 0, end: 0, documentEnd: layout.totalHeight };
+	}
+	const first = layout.blockAt(boundedStart);
+	const last = layout.blockAt(boundedEnd - 1);
+	if (!first || !last) return { start: 0, end: 0, documentEnd: layout.totalHeight };
+	const coverageStart = layout.offsetOf(first.blockId) ?? 0;
+	const lastOffset = layout.offsetOf(last.blockId) ?? coverageStart;
+	const lastHeight = layout.heightOf(last.blockId) ?? 0;
+	return {
+		start: coverageStart,
+		end: lastOffset + lastHeight,
+		documentEnd: layout.totalHeight,
+	};
 }
 
 function sameVirtualProjection(

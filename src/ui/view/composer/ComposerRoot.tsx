@@ -1222,29 +1222,19 @@ function ComposerDocument({
 				className="pk-composer-blocks"
 				data-virtualized="true"
 				data-total-height={Math.round(virtualWindow.totalHeight)}
+				style={{ height: virtualWindow.totalHeight }}
 			>
-				{virtualWindow.items.map((virtualItem, mountedIndex) => {
+				{virtualWindow.items.map((virtualItem) => {
 					const b = visibleBlocks[virtualItem.index];
 					if (!b) return null;
 					const i = virtualItem.index;
 					const previousBlock = visibleBlocks[i - 1];
-					const previousVirtualItem = virtualWindow.items[mountedIndex - 1];
-					const previousEnd = previousVirtualItem
-						? previousVirtualItem.offset + previousVirtualItem.height
-						: 0;
-					const gapBefore = Math.max(0, virtualItem.offset - previousEnd);
 					return (
-						<React.Fragment key={stableKey(b.blockId)}>
-						{gapBefore > 0 && (
-							<div
-								className="pk-composer-virtual-gap"
-								style={{ height: gapBefore }}
-								aria-hidden
-							/>
-						)}
 						<ComposerVirtualItem
+							key={stableKey(b.blockId)}
 							blockId={b.blockId}
 							index={i}
+							offset={virtualItem.offset}
 							onMeasure={virtualWindow.measureElement}
 						>
 						<ComposerBlockRow
@@ -1321,18 +1311,10 @@ function ComposerDocument({
 									onDone={() => setPanel(null)}
 								/>
 							</div>
-						)}
+							)}
 						</ComposerVirtualItem>
-						</React.Fragment>
 					);
 				})}
-				{virtualWindow.items.length > 0 && (() => {
-					const last = virtualWindow.items[virtualWindow.items.length - 1];
-					const gap = Math.max(0, virtualWindow.totalHeight - last.offset - last.height);
-					return gap > 0 ? (
-						<div className="pk-composer-virtual-gap" style={{ height: gap }} aria-hidden />
-					) : null;
-				})()}
 				{drag?.dropIndex === visibleBlocks.length && <div className="pk-drop-indicator" data-chrome="true" />}
 			</div>
 			{editing && (
@@ -1433,11 +1415,13 @@ function ComposerDocument({
 function ComposerVirtualItem({
 	blockId,
 	index,
+	offset,
 	onMeasure,
 	children,
 }: {
 	blockId: string;
 	index: number;
+	offset: number;
 	onMeasure(blockId: string, element: HTMLElement | null): void;
 	children: React.ReactNode;
 }): React.ReactElement {
@@ -1449,6 +1433,8 @@ function ComposerVirtualItem({
 			ref={setRef}
 			className="pk-composer-virtual-item"
 			data-virtual-index={index}
+			data-virtual-offset={Math.round(offset)}
+			style={{ top: offset }}
 		>
 			{children}
 		</div>

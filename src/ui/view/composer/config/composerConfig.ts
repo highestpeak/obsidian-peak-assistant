@@ -299,8 +299,9 @@ export interface ComposerPreparationConfig {
 export interface ComposerVirtualizationConfig {
 	defaultBlockHeightPx: number;
 	overscanPx: number;
-	maxOverscanPx: number;
-	overscanLookaheadMs: number;
+	emergencyOverscanPx: number;
+	recenterThresholdPx: number;
+	scrollIdleMs: number;
 	maxHardPins: number;
 	revealViewportRatio: number;
 	revealMaxFrames: number;
@@ -316,8 +317,9 @@ export const DEFAULT_COMPOSER_PREPARATION_CONFIG: ComposerPreparationConfig = {
 export const DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG: ComposerVirtualizationConfig = {
 	defaultBlockHeightPx: 72,
 	overscanPx: 900,
-	maxOverscanPx: 4_800,
-	overscanLookaheadMs: 180,
+	emergencyOverscanPx: 180,
+	recenterThresholdPx: 360,
+	scrollIdleMs: 120,
 	maxHardPins: 12,
 	revealViewportRatio: 0.32,
 	revealMaxFrames: 90,

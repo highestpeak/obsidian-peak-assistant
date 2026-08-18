@@ -35,6 +35,8 @@ const virtualHook = readFileSync(
 	'src/ui/view/composer/virtualization/useComposerVirtualWindow.ts',
 	'utf8',
 );
+const composerRoot = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
+const composerCss = readFileSync('src/styles/composer.css', 'utf8');
 assert.ok(
 	virtualHook.includes('onScrollIntent?.(scroller)') &&
 		virtualHook.includes('frame < config.revealMaxFrames') &&
@@ -43,19 +45,38 @@ assert.ok(
 );
 assert.ok(
 	virtualHook.includes('composerVirtualViewportIsCovered') &&
-		virtualHook.includes('commitViewport(next)') &&
+		virtualHook.includes('emergencyComposerVirtualViewport(next, config), true') &&
 		virtualHook.includes('flushSync'),
-	'viewport escape must synchronously replace the stale mounted window before paint',
+	'viewport escape must synchronously mount only the emergency projection',
+);
+assert.ok(
+	virtualHook.includes('composerVirtualViewportNeedsRecenter') &&
+		virtualHook.includes('React.startTransition(update)') &&
+		virtualHook.includes('scheduleSettledProjection()'),
+	'covered scroll must defer ordinary recentering outside the input-critical path',
 );
 assert.ok(
 	virtualHook.includes('layout.measureBatch(measurements') &&
-		virtualHook.includes('requestAnimationFrame(flushMeasurements)'),
-	'ResizeObserver reports must share one animation-frame measurement batch',
+		virtualHook.includes('requestAnimationFrame(flushMeasurements)') &&
+		virtualHook.includes('syncMountedVirtualGeometry') &&
+		!virtualHook.includes('renderMeasurements') &&
+		!virtualHook.includes('resize?.observe(shell)'),
+	'ResizeObserver reports must update geometry once without a second React render',
 );
 assert.ok(
 	!virtualHook.includes('getComputedStyle(element)') &&
 		!virtualHook.includes('element.getBoundingClientRect().height'),
 	'row mounting must not synchronously force per-element style and geometry reads',
+);
+assert.ok(
+	!composerRoot.includes('pk-composer-virtual-gap') &&
+		composerRoot.includes('style={{ top: offset }}') &&
+		composerRoot.includes('style={{ height: virtualWindow.totalHeight }}'),
+	'virtual rows must use independent absolute offsets instead of cumulative normal-flow gaps',
+);
+assert.ok(
+	/\.pk-composer-virtual-item\s*\{[\s\S]*?position:\s*absolute;/.test(composerCss),
+	'virtual row CSS must keep each mounted row independently positioned',
 );
 
 console.log(`composer-virtualized-rendering: mounted ${mountedRows}/5000 rows`);

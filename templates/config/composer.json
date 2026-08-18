@@ -62,11 +62,12 @@
 		"cacheTtlMs": 30000
 	},
 	"virtualization": {
-		"_doc": "Unified Composer block-window policy. Overscan expands in the active scroll direction; row heights are batched from ResizeObserver.",
+		"_doc": "Unified Composer block-window policy. Covered scroll is render-free; edge recentering is deferred and escaped viewports mount only the emergency window.",
 		"defaultBlockHeightPx": 72,
 		"overscanPx": 900,
-		"maxOverscanPx": 4800,
-		"overscanLookaheadMs": 180,
+		"emergencyOverscanPx": 180,
+		"recenterThresholdPx": 360,
+		"scrollIdleMs": 120,
 		"maxHardPins": 12,
 		"revealViewportRatio": 0.32,
 		"revealMaxFrames": 90,
