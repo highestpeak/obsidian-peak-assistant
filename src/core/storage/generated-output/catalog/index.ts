@@ -7,6 +7,7 @@ import { GOVERNANCE_GENERATED_OUTPUTS } from './governanceOutputs';
 import { LOCAL_LEGACY_GENERATED_OUTPUTS } from './localLegacyOutputs';
 import { PROFILE_GENERATED_OUTPUTS } from './profileOutputs';
 import { PEAK_SHEET_GENERATED_OUTPUTS } from './peakSheetOutputs';
+import { VAULT_INTELLIGENCE_GENERATED_OUTPUTS } from './vaultIntelligenceOutputs';
 
 export const DEFAULT_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = Object.freeze([
 	...PROFILE_GENERATED_OUTPUTS,
@@ -16,5 +17,6 @@ export const DEFAULT_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = O
 	...GOVERNANCE_GENERATED_OUTPUTS,
 	...COMPOSER_MEDIA_GENERATED_OUTPUTS,
 	...PEAK_SHEET_GENERATED_OUTPUTS,
+	...VAULT_INTELLIGENCE_GENERATED_OUTPUTS,
 	...LOCAL_LEGACY_GENERATED_OUTPUTS,
 ]);

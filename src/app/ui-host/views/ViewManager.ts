@@ -20,6 +20,7 @@ import {
 	PLUGIN_COMMAND_GATEWAY_VIEW_TYPE,
 } from '@/app/ui-host/views/PluginCommandGatewayView';
 import { PeakSheetView, PEAK_SHEET_VIEW_TYPE } from '@/app/ui-host/views/PeakSheetView';
+import { VaultIntelligenceView, VAULT_INTELLIGENCE_VIEW_TYPE } from '@/app/ui-host/views/VaultIntelligenceView';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -70,6 +71,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(PEAK_SHEET_VIEW_TYPE, (leaf) => {
 			return new PeakSheetView(leaf, appContext);
+		});
+		this.viewCreators.set(VAULT_INTELLIGENCE_VIEW_TYPE, (leaf) => {
+			return new VaultIntelligenceView(leaf, appContext);
 		});
 	}
 
@@ -137,6 +141,11 @@ export class ViewManager {
 	/** Open the explicitly saved Peak content browser. */
 	async activateMyContentView(): Promise<void> {
 		await this.activateStandaloneView(MY_CONTENT_VIEW_TYPE);
+	}
+
+	/** Open the Vault-wide maintenance and intelligence workspace. */
+	async activateVaultIntelligenceView(): Promise<void> {
+		await this.activateStandaloneView(VAULT_INTELLIGENCE_VIEW_TYPE);
 	}
 
 	/** Open the human-review control plane for external plugin commands. */

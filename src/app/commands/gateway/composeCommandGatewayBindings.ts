@@ -31,6 +31,7 @@ import {
 	QUICK_SEARCH_MANIFEST,
 	SETTINGS_MODAL_MANIFEST,
 	USAGE_DASHBOARD_MANIFEST,
+	VAULT_INTELLIGENCE_MANIFEST,
 } from './manifests';
 
 /**
@@ -62,6 +63,7 @@ export interface PaletteCommandActions {
 	readonly openCommandCenter: () => void | Promise<void>;
 	readonly openAIControlCenter: () => void | Promise<void>;
 	readonly openMyContent: () => void | Promise<void>;
+	readonly openVaultIntelligence: () => void | Promise<void>;
 	readonly createPeakSheet: () => void | Promise<void>;
 	readonly openSettingsModal: () => void | Promise<void>;
 	readonly openHarnessSetupWizard: () => void | Promise<void>;
@@ -112,6 +114,14 @@ export function composeCommandGatewayBindings(
 			manifest: MY_CONTENT_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
 			execute: surfaceOpenStrategy(actions.openMyContent),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-open-vault-intelligence',
+			commandLabel: 'Open Vault Intelligence',
+			manifest: VAULT_INTELLIGENCE_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openVaultIntelligence),
 			trigger: 'manual',
 		},
 		{

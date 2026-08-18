@@ -147,7 +147,11 @@ async function testServiceRunsEndToEndWithFakePortsOnly(): Promise<void> {
 	assert.strictEqual(ensureCalls.length, 1, 'detectorRegistry.ensureInitialized should be called once per scan');
 
 	const phases = captured.map((c) => c.phase);
-	assert.deepStrictEqual(phases, ['init', 'scanning', 'cleared']);
+	assert.deepStrictEqual(
+		phases,
+		['init', 'scanning', 'scanning', 'scanning', 'cleared'],
+		'progress must include the scan start plus one durable update per completed detector',
+	);
 	console.log('PASS: serviceRunsEndToEndWithFakePortsOnly');
 }
 

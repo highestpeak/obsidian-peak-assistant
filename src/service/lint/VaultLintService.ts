@@ -77,14 +77,25 @@ export class VaultLintService implements VaultLintRuntime {
 			total: detectors.length,
 		});
 
+		let processedDetectors = 0;
 		const findingArrays = await Promise.all(
-			detectors.map((detector) =>
-				detector.detect(context).catch((err) => {
+			detectors.map(async (detector) => {
+				try {
+					return await detector.detect(context);
+				} catch (err) {
 					console.warn(`[VaultLintService] detector ${detector.id} failed:`, err);
 					callbacks?.onDetectorWarning?.(detector.id, err);
 					return [] as LintFinding[];
-				}),
-			),
+				} finally {
+					processedDetectors += 1;
+					callbacks?.onProgress?.({
+						phase: 'scanning',
+						detector: detector.id,
+						processed: processedDetectors,
+						total: detectors.length,
+					});
+				}
+			}),
 		);
 
 		const findings = findingArrays.flat();

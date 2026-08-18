@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import { Search, Sparkles, Globe, Plus, X, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle, Gauge, Check } from 'lucide-react';
 import { suggestHistoryStore, type SuggestHistoryEntry } from '@/ui/view/quick-search/rewrite/SuggestHistoryStore';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -36,7 +35,6 @@ import { ResultBrowserSearchInput } from '@/ui/component/result-browser';
 import { ResultBrowserDensityToggle } from '@/ui/component/result-browser/toolbar/ResultBrowserToolbar';
 import { GraphWorkspaceControl, resolveGraphWorkspaceManifest } from '@/ui/component/graph-workspace';
 import { AIInstructionComposer } from '@/ui/component/instruction-composer';
-import { VaultIntelligenceWorkspace } from './VaultIntelligenceWorkspace';
 import type { AIWorkspaceMode } from './store/sharedStore';
 import type {
 	AIGraphArtifactView,
@@ -465,7 +463,7 @@ const AI_WORKSPACE_OPTIONS: Array<{
 }> = [
 	{ mode: 'search', label: 'AI Search', description: 'Ask and analyze your Vault' },
 	{ mode: 'graph', label: 'AI Graph', description: 'Create, browse, and update graphs' },
-	{ mode: 'vault-intelligence', label: 'Vault Intelligence', description: 'Health summary and recent reviews' },
+	{ mode: 'vault-intelligence', label: 'Vault Intelligence', description: 'Vault map, maintenance, and explicit scans' },
 ];
 
 function AIWorkspaceIcon({ mode }: { mode: AIWorkspaceMode }): React.ReactElement {
@@ -479,11 +477,13 @@ function AIWorkspaceSelector({
 	active,
 	onActivate,
 	onModeChange,
+	onOpenVaultIntelligence,
 }: {
 	mode: AIWorkspaceMode;
 	active: boolean;
 	onActivate(): void;
 	onModeChange(mode: AIWorkspaceMode): void;
+	onOpenVaultIntelligence(): void;
 }): React.ReactElement {
 	const [open, setOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(() =>
@@ -537,6 +537,11 @@ function AIWorkspaceSelector({
 			menuTriggerRef.current?.focus());
 	};
 	const select = (nextMode: AIWorkspaceMode): void => {
+		if (nextMode === 'vault-intelligence') {
+			onOpenVaultIntelligence();
+			closeAndRestore();
+			return;
+		}
 		onModeChange(nextMode);
 		closeAndRestore();
 	};
@@ -2091,10 +2096,8 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 interface QuickSearchModalContentProps {
 	onClose?: () => void;
-	/** Fired when the user runs a vault-intelligence auto-run. */
-	onVaultAuto?: (mode: 'fast' | 'complete') => void;
-	/** Fired when the user opens a past vault review record. */
-	onOpenVaultRecord?: (record: VaultReviewHistoryRecord) => void;
+	/** Opens Vault Intelligence in its owner workspace rather than embedding it here. */
+	onOpenVaultIntelligence?: () => void;
 	/**
 	 * Fired when the user clicks the ✦ Suggest button — the QuickSearchModal
 	 * wrapper opens `AIQueryRewriteModal` (spec:
@@ -2112,8 +2115,7 @@ interface QuickSearchModalContentProps {
 /** Root quick search: Vault Search plus one AI workspace selector. */
 export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = ({
 	onClose,
-	onVaultAuto,
-	onOpenVaultRecord,
+	onOpenVaultIntelligence,
 	onOpenSuggest,
 	onReplaySuggest,
 }) => {
@@ -2129,6 +2131,9 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 	const isGraph = activeTab === 'vault' && resultView === 'graph';
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const tabListRef = React.useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		if (aiWorkspaceMode === 'vault-intelligence') setAIWorkspaceMode('search');
+	}, [aiWorkspaceMode, setAIWorkspaceMode]);
 	usePeakKeyboardSurface(
 		activeTab === 'vault' ? 'vault-search' : 'ai-search',
 		rootRef,
@@ -2184,21 +2189,18 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 					className="pktw-rounded-tl-lg"
 				/>
 				<AIWorkspaceSelector
-					mode={aiWorkspaceMode}
+					mode={aiWorkspaceMode === 'vault-intelligence' ? 'search' : aiWorkspaceMode}
 					active={activeTab === 'ai'}
 					onActivate={() => setActiveTab('ai')}
 					onModeChange={setAIWorkspaceMode}
+					onOpenVaultIntelligence={() => onOpenVaultIntelligence?.()}
 				/>
 			</div>
 			{activeTab === 'ai' ? (
-				aiWorkspaceMode === 'vault-intelligence' ? (
-					<VaultIntelligenceWorkspace
-						onRunReview={(mode) => onVaultAuto?.(mode)}
-						onOpenRecord={(record) => onOpenVaultRecord?.(record)}
-					/>
-				) : (
-					<AITabContent onClose={onClose} mode={aiWorkspaceMode} />
-				)
+				<AITabContent
+					onClose={onClose}
+					mode={aiWorkspaceMode === 'vault-intelligence' ? 'search' : aiWorkspaceMode}
+				/>
 			) : (
 				<VaultTabContent onClose={onClose} activeTab={activeTab} setActiveTab={setActiveTab} onOpenSuggest={onOpenSuggest} onReplaySuggest={onReplaySuggest} />
 			)}

@@ -14,11 +14,13 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type {
 	ClusterMemberRow,
 	DanglingReferenceRow,
+	VaultCommunityLinkRow,
 	VaultFingerprintRow,
 	VaultNodeDigestRow,
 	VaultReviewReadPort,
 } from '@/core/ports/VaultReviewReadPort';
 import type { CommunityInfo, StructuralHole } from '@/core/search/structuralTypes';
+import { GraphEdgeType } from '@/core/types/graph';
 
 export class SqliteVaultReviewReadAdapter implements VaultReviewReadPort {
 	async listFingerprintRows(): Promise<VaultFingerprintRow[]> {
@@ -67,6 +69,48 @@ export class SqliteVaultReviewReadAdapter implements VaultReviewReadPort {
 	async listCommunities(): Promise<CommunityInfo[]> {
 		const structRepo = sqliteStoreManager.getStructuralAnalysisRepo();
 		return structRepo.getCommunities();
+	}
+
+	async listCommunityLinks(): Promise<VaultCommunityLinkRow[]> {
+		try {
+			const db = sqliteStoreManager.getIndexContext('vault');
+			const rows = await db
+				.selectFrom('mobius_edge as edge')
+				.innerJoin('mobius_node as source', 'source.node_id', 'edge.from_node_id')
+				.innerJoin('mobius_node as target', 'target.node_id', 'edge.to_node_id')
+				.select([
+					'source.community_id as sourceCommunityId',
+					'target.community_id as targetCommunityId',
+				])
+				.select(({ fn }) => fn.countAll<number>().as('referenceCount'))
+				.where('edge.type', '=', GraphEdgeType.References)
+				.where('source.community_id', 'is not', null)
+				.where('target.community_id', 'is not', null)
+				.groupBy(['source.community_id', 'target.community_id'])
+				.execute() as Array<{
+					sourceCommunityId: string | null;
+					targetCommunityId: string | null;
+					referenceCount: number;
+				}>;
+
+			const counts = new Map<string, VaultCommunityLinkRow>();
+			for (const row of rows) {
+				if (!row.sourceCommunityId || !row.targetCommunityId) continue;
+				if (row.sourceCommunityId === row.targetCommunityId) continue;
+				const [communityAId, communityBId] = [row.sourceCommunityId, row.targetCommunityId].sort();
+				const key = `${communityAId}\u0000${communityBId}`;
+				const existing = counts.get(key);
+				counts.set(key, {
+					communityAId,
+					communityBId,
+					referenceCount: (existing?.referenceCount ?? 0) + Number(row.referenceCount),
+				});
+			}
+			return [...counts.values()].sort((a, b) => b.referenceCount - a.referenceCount);
+		} catch (err) {
+			console.warn('[SqliteVaultReviewReadAdapter] listCommunityLinks failed', err);
+			return [];
+		}
 	}
 
 	async listTopStructuralHoles(limit: number): Promise<StructuralHole[]> {

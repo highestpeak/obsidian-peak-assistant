@@ -161,6 +161,19 @@ export const MY_CONTENT_MANIFEST: CapabilityManifest = {
 	surfaceBinding: ['chat', 'vault-search'],
 };
 
+export const VAULT_INTELLIGENCE_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.vault-intelligence',
+	title: 'Open Vault Intelligence',
+	description: 'Open the Vault-wide status, maintenance queue, and scan workspace.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['vault-search', 'copilot'],
+};
+
 export const CREATE_PEAK_SHEET_MANIFEST: CapabilityManifest = {
 	id: 'ui.create.peak-sheet',
 	title: 'Create Peak Sheet',
@@ -184,6 +197,7 @@ export const PALETTE_COMMAND_MANIFESTS: Readonly<Record<string, CapabilityManife
 	'peak-open-command-center': COMMAND_CENTER_MANIFEST,
 	'peak-open-ai-control-center': AI_CONTROL_CENTER_MANIFEST,
 	'peak-open-my-content': MY_CONTENT_MANIFEST,
+	'peak-open-vault-intelligence': VAULT_INTELLIGENCE_MANIFEST,
 	'peak-create-sheet': CREATE_PEAK_SHEET_MANIFEST,
 	'peak-open-settings': SETTINGS_MODAL_MANIFEST,
 	'peak-harness-setup-wizard': HARNESS_WIZARD_MANIFEST,

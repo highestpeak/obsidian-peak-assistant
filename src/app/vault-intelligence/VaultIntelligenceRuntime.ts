@@ -1,0 +1,956 @@
+import type { App, TFile } from 'obsidian';
+import type { SearchSettings } from '@/core/config/settingsTypes';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+import { ChatConversationRecordStore } from '@/core/storage/generated-output';
+import type { LintScanResult } from '@/core/types/lint';
+import type {
+	VaultCompletedRun,
+	VaultIntelligenceEvent,
+	VaultIntelligencePersistedState,
+	VaultMaintenanceOwnerChoice,
+	VaultMaintenanceTask,
+	VaultScanAiOperationId,
+	VaultScanOperationState,
+	VaultScanPlan,
+	VaultScanOperationRoute,
+	VaultScanRunState,
+	VaultScanScopeMode,
+	VaultScanStageId,
+	VaultScanUsage,
+} from '@/core/types/vault-intelligence';
+import type { IndexService } from '@/service/search/index/indexService';
+import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
+import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
+import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
+import { VaultIntelligenceRecordStore } from './VaultIntelligenceRecordStore';
+import {
+	createEmptyVaultScanRun,
+	deriveMaintenanceState,
+	deriveVaultMaintenanceTasks,
+	maintenanceAffectedLabel,
+	summarizeVaultActivity,
+	summarizeVaultFileTypes,
+	type VaultIntelligenceObjectSummary,
+	type VaultIntelligenceSnapshot,
+} from '@/ui/view/vault-intelligence/VaultIntelligenceModel';
+import {
+	loadVaultIntelligenceConfig,
+	type VaultIntelligenceConfig,
+} from '@/ui/view/vault-intelligence/VaultIntelligenceDefaults';
+
+export interface VaultIntelligenceRuntimeDeps {
+	app: App;
+	resolveLintRuntime: () => VaultLintRuntime | null;
+	resolveReviewRuntime: () => VaultReviewRuntime | null;
+	resolveIndexService: () => IndexService | null;
+	resolveGeneratedOutputs: () => GeneratedOutputPersistenceRuntime | null;
+	getSearchSettings: () => SearchSettings;
+	runCoreIndex: (scope: VaultScanScopeMode, paths: string[]) => Promise<void>;
+	resolveProjectCount: () => Promise<number>;
+	resolveOperationRoutes: () => Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>>;
+	calculateCostUsd: (provider: string, model: string, usage: VaultScanUsage) => Promise<number>;
+	now?: () => number;
+	idFactory?: () => string;
+}
+
+const EMPTY_USAGE: VaultScanUsage = {
+	inputTokens: 0,
+	outputTokens: 0,
+	totalTokens: 0,
+	costUsd: 0,
+};
+
+export class VaultIntelligenceRuntime {
+	private readonly listeners = new Set<() => void>();
+	private readonly now: () => number;
+	private readonly idFactory: () => string;
+	private abortController: AbortController | null = null;
+	private persistenceTail: Promise<void> = Promise.resolve();
+	private indexErrors: Array<{ path: string; message: string }> = [];
+	private snapshot: VaultIntelligenceSnapshot = {
+		loading: false,
+		error: null,
+		digest: null,
+		fileTypes: [],
+		availablePaths: [],
+		activityDays: [],
+		changedSinceScan: 0,
+		changedCursorAt: null,
+		objects: [],
+		operationRoutes: {},
+		tasks: [],
+		run: createEmptyVaultScanRun(),
+		lastCompletedRun: null,
+		recentActivity: [],
+		events: [],
+	};
+
+	constructor(private readonly deps: VaultIntelligenceRuntimeDeps) {
+		this.now = deps.now ?? (() => Date.now());
+		this.idFactory = deps.idFactory ?? (() => `vi-${this.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`);
+	}
+
+	getSnapshot = (): VaultIntelligenceSnapshot => this.snapshot;
+
+	subscribe = (listener: () => void): (() => void) => {
+		this.listeners.add(listener);
+		return () => this.listeners.delete(listener);
+	};
+
+	async refresh(): Promise<void> {
+		this.patch({ loading: true, error: null });
+		const files = this.deps.app.vault.getFiles();
+		try {
+			const store = this.recordStore();
+			const review = this.deps.resolveReviewRuntime();
+			const outputs = this.deps.resolveGeneratedOutputs();
+			const operationRoutes = this.deps.resolveOperationRoutes();
+			const [persisted, digest, events, projectCount, conversationCount, composerEventCount] = await Promise.all([
+				store?.load().catch(() => null) ?? Promise.resolve(null),
+				review?.getDigest().catch(() => null) ?? Promise.resolve(null),
+				store?.listEvents().catch(() => []) ?? Promise.resolve([]),
+				this.deps.resolveProjectCount().catch(() => 0),
+				outputs
+					? new ChatConversationRecordStore(outputs).listConversationIds().then((ids) => ids.length).catch(() => 0)
+					: Promise.resolve(0),
+				outputs
+					? outputs.events.readEvents({ outputId: 'composer.workspace-events', streamKey: 'current' })
+						.then((result) => result.events.length).catch(() => 0)
+					: Promise.resolve(0),
+			]);
+			const recovered = this.recoverPersistedState(persisted);
+			const changedSinceScan = recovered.changedCursorAt
+				? files.filter((file) => file.stat.mtime > recovered.changedCursorAt!).length
+				: files.length;
+			this.patch({
+				loading: false,
+				digest,
+				fileTypes: summarizeVaultFileTypes(files),
+				availablePaths: files.map((file) => file.path).sort((left, right) => left.localeCompare(right)),
+				activityDays: summarizeVaultActivity(files),
+				changedSinceScan,
+				changedCursorAt: recovered.changedCursorAt,
+				objects: buildObjectSummaries(files.length, conversationCount, projectCount, composerEventCount),
+				operationRoutes,
+				tasks: recovered.tasks,
+				run: recovered.activeRun ?? createEmptyVaultScanRun(),
+				lastCompletedRun: recovered.lastCompletedRun,
+				recentActivity: recovered.recentActivity,
+				events: events.slice(-120),
+			});
+			if (persisted?.activeRun?.status === 'running' || persisted?.activeRun?.status === 'stopping') {
+				this.queuePersist();
+			}
+		} catch (error) {
+			this.patch({ loading: false, error: errorMessage(error) });
+		}
+	}
+
+	async startScan(plan: VaultScanPlan): Promise<void> {
+		if (this.isActive()) return;
+		const config = await loadVaultIntelligenceConfig();
+		this.indexErrors = [];
+		this.abortController = new AbortController();
+		const startedAt = this.now();
+		const runId = this.idFactory();
+		const normalizedPlan = normalizePlan(plan, config, this.deps.resolveOperationRoutes());
+		const run: VaultScanRunState = {
+			...createEmptyVaultScanRun(),
+			id: runId,
+			status: 'running',
+			plan: normalizedPlan,
+			startedAt,
+			operations: normalizedPlan.aiOperations.map((operation) => ({
+				...operation,
+				status: operation.enabled ? 'waiting' : 'skipped',
+				processed: 0,
+				total: 0,
+				currentPath: null,
+				usage: { ...EMPTY_USAGE },
+				error: null,
+			})),
+		};
+		this.patch({ run, error: null });
+		await this.recordEvent('run-started', runId, 'Vault Scan started with a frozen plan.');
+		await this.flushPersist();
+		await this.executeRun();
+	}
+
+	async resumeScan(): Promise<void> {
+		if (this.snapshot.run.status !== 'interrupted' || !this.snapshot.run.plan) return;
+		this.abortController = new AbortController();
+		this.patchRun({ status: 'running', stopRequested: false, error: null });
+		await this.recordEvent('run-started', this.snapshot.run.id, 'Vault Scan resumed from its durable checkpoint.');
+		await this.flushPersist();
+		await this.executeRun();
+	}
+
+	requestStop(): void {
+		if (this.snapshot.run.status !== 'running') return;
+		this.patchRun({
+			status: 'stopping',
+			stopRequested: true,
+			warnings: unique([...this.snapshot.run.warnings, 'Stop requested; completed stages remain in this run checkpoint.']),
+		});
+		this.queuePersist();
+		this.abortController?.abort();
+	}
+
+	skipOperation(operationId: VaultScanAiOperationId): void {
+		const operation = this.snapshot.run.operations.find((candidate) => candidate.id === operationId);
+		if (!operation || operation.status === 'completed' || operation.status === 'failed') return;
+		const group = operationExecutionGroup(operationId);
+		for (const id of group) {
+			const candidate = this.operation(id);
+			if (!candidate || candidate.status === 'completed' || candidate.status === 'failed') continue;
+			this.patchOperation(id, { status: 'skipped', currentPath: null });
+		}
+		const reviewOperationIds: VaultScanAiOperationId[] = [
+			'relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis',
+		];
+		if (reviewOperationIds.includes(operationId)) this.abortController?.abort();
+		this.queuePersist();
+	}
+
+	async choose(taskId: string, atomicItemId: string | null, choiceId: string): Promise<void> {
+		const config = await loadVaultIntelligenceConfig();
+		const task = this.snapshot.tasks.find((candidate) => candidate.id === taskId);
+		const definition = config.tasks.find((candidate) => candidate.kind === task?.kind);
+		if (!task || !definition?.choices.some((choice) => choice.id === choiceId)) return;
+		const now = this.now();
+		const ownerChoice: VaultMaintenanceOwnerChoice = {
+			choiceId,
+			chosenAt: now,
+			status: 'selected',
+			sourceRevision: atomicItemId
+				? this.fileMtime(task.atomicItems.find((item) => item.id === atomicItemId)?.filePath ?? null)
+				: null,
+		};
+		const atomicItems = atomicItemId
+			? task.atomicItems.map((item) => item.id === atomicItemId ? { ...item, ownerChoice } : item)
+			: task.atomicItems;
+		const defaultChoice = atomicItemId ? task.defaultChoice : ownerChoice;
+		const updated = {
+			...task,
+			atomicItems,
+			defaultChoice,
+			state: deriveMaintenanceState(definition.initialState, atomicItems, defaultChoice),
+			updatedAt: now,
+		};
+		this.replaceTask(updated);
+		await this.recordEvent('owner-choice', task.sourceRunId, `${task.kind} choice: ${choiceId}`);
+		this.addActivity('owner-choice', task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
+		await this.flushPersist();
+	}
+
+	async applyTask(taskId: string): Promise<void> {
+		const config = await loadVaultIntelligenceConfig();
+		const task = this.snapshot.tasks.find((candidate) => candidate.id === taskId);
+		const definition = config.tasks.find((candidate) => candidate.kind === task?.kind);
+		if (!task || !definition) return;
+		const boundaries = new Map(definition.choices.map((choice) => [choice.id, choice.boundary]));
+		let hasProposal = false;
+		let staleSource: string | null = null;
+		const atomicItems = task.atomicItems.map((item) => {
+			const choice = item.ownerChoice ?? task.defaultChoice;
+			if (!choice || choice.choiceId === 'later') return item;
+			if (boundaries.get(choice.choiceId) === 'proposal') {
+				hasProposal = true;
+				const currentRevision = this.fileMtime(item.filePath);
+				if (choice.sourceRevision !== null && currentRevision !== choice.sourceRevision) {
+					staleSource = item.filePath ?? item.title;
+					return item;
+				}
+				return {
+					...item,
+					ownerChoice: {
+						...choice,
+						sourceRevision: choice.sourceRevision ?? currentRevision,
+					},
+				};
+			}
+			return { ...item, ownerChoice: { ...choice, status: 'applied' as const } };
+		});
+		if (staleSource) {
+			this.replaceTask({ ...task, atomicItems, state: 'recovery', updatedAt: this.now() });
+			this.patch({ error: `${staleSource} changed after the owner choice. Review current evidence before preparing file changes.` });
+			await this.flushPersist();
+			return;
+		}
+		const defaultChoice = task.defaultChoice && task.defaultChoice.choiceId !== 'later'
+			&& boundaries.get(task.defaultChoice.choiceId) !== 'proposal'
+			? { ...task.defaultChoice, status: 'applied' as const }
+			: task.defaultChoice;
+		this.replaceTask({
+			...task,
+			atomicItems,
+			defaultChoice,
+			state: hasProposal ? 'ready-review' : 'ready-apply',
+			updatedAt: this.now(),
+		});
+		await this.recordEvent('task-applied', task.sourceRunId, hasProposal
+			? `${task.kind} prepared for guarded owner-surface review.`
+			: `${task.kind} Peak-owned choices recorded.`);
+		this.addActivity('apply', task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
+		await this.flushPersist();
+	}
+
+	async verifyTask(taskId: string): Promise<void> {
+		const config = await loadVaultIntelligenceConfig();
+		const task = this.snapshot.tasks.find((candidate) => candidate.id === taskId);
+		const definition = config.tasks.find((candidate) => candidate.kind === task?.kind);
+		if (!task || !definition) return;
+		const boundaries = new Map(definition.choices.map((choice) => [choice.id, choice.boundary]));
+		const effective = task.atomicItems.map((item) => item.ownerChoice ?? task.defaultChoice).filter(Boolean);
+		if (effective.length !== task.atomicItems.length || effective.some((choice) => (
+			choice!.choiceId === 'later' || boundaries.get(choice!.choiceId) === 'proposal'
+		))) {
+			this.patch({ error: 'File-changing proposals must be reviewed and applied in their owner surface before verification.' });
+			return;
+		}
+		if (task.kind === 'unreadable-files') {
+			const retryPaths = task.atomicItems.filter((item) => (
+				(item.ownerChoice ?? task.defaultChoice)?.choiceId === 'retry' && item.filePath
+			)).map((item) => item.filePath!);
+			if (retryPaths.length > 0) await this.deps.runCoreIndex('selected', retryPaths);
+		}
+		const verifiedAt = this.now();
+		const atomicItems = task.atomicItems.map((item) => {
+			const choice = item.ownerChoice ?? task.defaultChoice!;
+			return { ...item, ownerChoice: { ...choice, status: 'verified' as const } };
+		});
+		this.replaceTask({ ...task, atomicItems, state: 'verified', updatedAt: verifiedAt });
+		await this.recordEvent('task-verified', task.sourceRunId, `${task.kind} verified.`);
+		this.addActivity('verify', task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
+		await this.flushPersist();
+	}
+
+	async openFile(path: string): Promise<boolean> {
+		const file = this.deps.app.vault.getAbstractFileByPath(path);
+		if (!file || !('extension' in file)) return false;
+		await this.deps.app.workspace.getLeaf(false).openFile(file as TFile);
+		return true;
+	}
+
+	dispose(): void {
+		this.abortController?.abort();
+		this.abortController = null;
+		this.listeners.clear();
+	}
+
+	private async executeRun(): Promise<void> {
+		try {
+			if (!this.snapshot.run.completedStages.includes('discover')) await this.performDiscover();
+			if (this.stopAtCheckpoint()) return;
+			if (!this.snapshot.run.completedStages.includes('index')) await this.performIndex();
+			if (this.stopAtCheckpoint()) return;
+			if (!this.snapshot.run.completedStages.includes('ai')) await this.performAi();
+			if (this.stopAtCheckpoint()) return;
+			if (!this.snapshot.run.completedStages.includes('publish')) await this.performPublish();
+		} catch (error) {
+			if (this.snapshot.run.stopRequested) {
+				this.stopAtCheckpoint();
+				return;
+			}
+			this.patchRun({ status: 'failed', error: errorMessage(error), completedAt: this.now() });
+			await this.recordEvent('run-failed', this.snapshot.run.id, errorMessage(error));
+			await this.flushPersist();
+		}
+	}
+
+	private async performDiscover(): Promise<void> {
+		this.startStage('discover', 'Freezing scope and affected inputs.');
+		const plan = this.requirePlan();
+		const allFiles = this.deps.app.vault.getFiles();
+		let frozen = allFiles.map((file) => file.path);
+		if (plan.scope.mode === 'selected') {
+			const selected = new Set(plan.scope.selectedPaths);
+			frozen = frozen.filter((path) => selected.has(path));
+		}
+		if (plan.scope.mode === 'changed' && this.snapshot.changedCursorAt) {
+			frozen = allFiles
+				.filter((file) => file.stat.mtime > this.snapshot.changedCursorAt!)
+				.map((file) => file.path);
+		}
+		this.patchRun({ frozenPaths: frozen });
+		this.completeStage('discover', `${frozen.length.toLocaleString()} objects frozen for this run.`, frozen.length, frozen.length);
+		await this.recordEvent('stage-changed', this.snapshot.run.id, `Discover completed with ${frozen.length} objects.`);
+		await this.flushPersist();
+	}
+
+	private async performIndex(): Promise<void> {
+		const run = this.snapshot.run;
+		const plan = this.requirePlan();
+		this.startStage('index', 'Updating full-text passages and the Knowledge Index.');
+		await this.deps.runCoreIndex(plan.scope.mode, run.frozenPaths);
+		const index = this.deps.resolveIndexService();
+		if (!index) {
+			this.addRunWarning('Knowledge Index runtime is not available; Scan continued with deterministic checks.');
+			for (const id of ['embedding-refresh', 'file-summaries', 'ai-tags'] as const) {
+				if (this.operation(id)?.status === 'skipped') continue;
+				this.patchOperation(id, {
+					status: 'failed',
+					error: 'Knowledge Index runtime is unavailable.',
+				});
+			}
+		} else {
+			await this.runVectorEnrichment(index);
+			await this.runLlmEnrichment(index);
+		}
+		const lint = this.deps.resolveLintRuntime();
+		if (!lint) throw new Error('Vault maintenance checks are still loading.');
+		const result = await lint.runFullScan({
+			onProgress: (event) => this.patchStage('index', {
+				processed: event.processed ?? this.stage('index').processed,
+				total: event.total ?? this.stage('index').total,
+				message: event.detector ? `Checking ${event.detector}` : 'Running maintenance checks',
+			}),
+			onDetectorWarning: (detectorId, error) => this.addRunWarning(`${detectorId}: ${errorMessage(error)}`),
+		});
+		this.completeStage('index', `${result.totalNotes.toLocaleString()} notes checked; Index layers retained independently.`, result.totalNotes, result.totalNotes);
+		await this.recordEvent('stage-changed', run.id, 'Build Index completed.');
+		await this.flushPersist();
+	}
+
+	private async runVectorEnrichment(index: IndexService): Promise<void> {
+		const operation = this.operation('embedding-refresh');
+		if (!operation || operation.status === 'skipped') return;
+		this.patchOperation(operation.id, { status: 'running' });
+		const result = await index.runPendingVectorIndexEnrichment(this.deps.getSearchSettings(), {
+			paths: this.snapshot.run.frozenPaths,
+			shouldContinue: () => !this.snapshot.run.stopRequested && this.operation(operation.id)?.status !== 'skipped',
+			onProgress: (progress) => this.patchOperation(operation.id, {
+				processed: progress.processed,
+				total: progress.total,
+				currentPath: progress.path,
+			}),
+		});
+		if (this.snapshot.run.stopRequested) throw new Error('Vault Scan stopped during vector enrichment.');
+		this.indexErrors.push(...result.errors);
+		if (this.operation(operation.id)?.status === 'skipped') return;
+		this.patchOperation(operation.id, {
+			status: result.errors.length ? 'failed' : 'completed',
+			processed: result.processed,
+			currentPath: null,
+			error: result.errors[0]?.message ?? null,
+		});
+	}
+
+	private async runLlmEnrichment(index: IndexService): Promise<void> {
+		const ids: VaultScanAiOperationId[] = ['file-summaries', 'ai-tags'];
+		const enabled = ids.filter((id) => this.operation(id)?.status !== 'skipped');
+		if (enabled.length === 0) return;
+		for (const id of enabled) this.patchOperation(id, { status: 'running' });
+		const result = await index.runPendingLlmIndexEnrichment(this.deps.getSearchSettings(), {
+			paths: this.snapshot.run.frozenPaths,
+			shouldContinue: () => !this.snapshot.run.stopRequested && enabled.some((id) => this.operation(id)?.status !== 'skipped'),
+			onProgress: (progress) => {
+				const primary = enabled[0]!;
+				this.patchOperation(primary, {
+					processed: progress.processed,
+					total: progress.total,
+					currentPath: progress.path,
+					usage: {
+						inputTokens: progress.sumInputTokens,
+						outputTokens: progress.sumOutputTokens,
+						totalTokens: progress.sumTotalTokens,
+						costUsd: progress.sumCostUsd,
+					},
+				});
+				for (const id of enabled.slice(1)) this.patchOperation(id, {
+					processed: progress.processed,
+					total: progress.total,
+					currentPath: progress.path,
+				});
+			},
+		});
+		if (this.snapshot.run.stopRequested) throw new Error('Vault Scan stopped during LLM enrichment.');
+		this.indexErrors.push(...result.errors);
+		for (const id of enabled) {
+			if (this.operation(id)?.status === 'skipped') continue;
+			this.patchOperation(id, {
+				status: result.errors.length ? 'failed' : 'completed',
+				processed: result.processed,
+				currentPath: null,
+				error: result.errors[0]?.message ?? null,
+			});
+		}
+	}
+
+	private async performAi(): Promise<void> {
+		this.startStage('ai', 'Reviewing Vault-wide relationships and preparing evidence.');
+		const ids: VaultScanAiOperationId[] = [
+			'relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis',
+		];
+		const enabled = ids.filter((id) => this.operation(id)?.status !== 'skipped');
+		if (enabled.length === 0) {
+			this.completeStage('ai', 'Optional AI work skipped; deterministic Scan results are preserved.', 0, 0);
+			return;
+		}
+		const review = this.deps.resolveReviewRuntime();
+		if (!review) {
+			for (const id of enabled) this.patchOperation(id, { status: 'failed', error: 'AI Review runtime is unavailable.' });
+			this.patchStage('ai', { status: 'partial', message: 'AI Review unavailable; deterministic results retained.' });
+			this.completeStage('ai', 'AI Review unavailable; deterministic results retained.', 0, 0, 'partial');
+			return;
+		}
+		for (const id of enabled) this.patchOperation(id, { status: 'running' });
+		let finalSnapshot: VaultReviewSessionSnapshot | null = null;
+		try {
+			for await (const reviewSnapshot of review.run({ mode: 'fast', signal: this.abortController!.signal })) {
+				finalSnapshot = reviewSnapshot;
+				const processed = reviewSnapshot.rounds.filter((round) => round.endedAt).length;
+				const total = Math.max(1, reviewSnapshot.rounds.length);
+				this.patchStage('ai', { processed, total, message: `AI review · round ${reviewSnapshot.currentRoundIndex + 1}` });
+			}
+		} catch (error) {
+			const skipped = enabled.every((id) => this.operation(id)?.status === 'skipped');
+			if (!skipped) throw error;
+			this.completeStage('ai', 'Vault Review skipped; deterministic Scan results are preserved.', 0, 0);
+			await this.recordEvent('stage-changed', this.snapshot.run.id, 'Vault Review skipped by the owner.');
+			await this.flushPersist();
+			return;
+		}
+		if (this.snapshot.run.stopRequested) return;
+		if (finalSnapshot?.status === 'completed') await review.saveReport(finalSnapshot);
+		const usage = collectReviewUsage(finalSnapshot);
+		const primaryRoute = enabled.map((id) => this.operation(id)).find(Boolean);
+		if (primaryRoute && usage.totalTokens > 0) {
+			usage.costUsd = await this.deps.calculateCostUsd(
+				primaryRoute.provider,
+				primaryRoute.model,
+				usage,
+			).catch(() => 0);
+		}
+		for (const [index, id] of enabled.entries()) {
+			if (this.operation(id)?.status === 'skipped') continue;
+			this.patchOperation(id, {
+				status: finalSnapshot?.status === 'completed' ? 'completed' : 'failed',
+				processed: finalSnapshot?.rounds.length ?? 0,
+				total: finalSnapshot?.rounds.length ?? 0,
+				currentPath: null,
+				usage: index === 0 ? usage : { ...EMPTY_USAGE },
+				error: finalSnapshot?.status === 'completed' ? null : finalSnapshot?.error ?? 'AI Review did not complete.',
+			});
+		}
+		this.completeStage('ai', finalSnapshot?.status === 'completed'
+			? 'Vault-wide AI evidence completed.'
+			: 'AI work completed partially; deterministic results remain valid.',
+			finalSnapshot?.rounds.length ?? 0,
+			finalSnapshot?.rounds.length ?? 0,
+			finalSnapshot?.status === 'completed' ? 'completed' : 'partial');
+		await this.recordEvent('stage-changed', this.snapshot.run.id, 'AI work completed.');
+		await this.flushPersist();
+	}
+
+	private async performPublish(): Promise<void> {
+		this.startStage('publish', 'Publishing verified Index layers, receipts and owner follow-up.');
+		const index = this.deps.resolveIndexService();
+		if (index) {
+			try {
+				await index.runMobiusGlobalMaintenance(['vault', 'chat'], {
+					onProgress: (event) => this.patchStage('publish', {
+						message: `Publishing ${event.phase.replace(/_/g, ' ')}${event.progressTextSuffix ?? ''}`,
+					}),
+				});
+			} catch (error) {
+				this.addRunWarning(`Knowledge map publish: ${errorMessage(error)}`);
+			}
+		}
+		const lintResult = (await this.deps.resolveLintRuntime()?.loadLatestScan()) ?? null;
+		const config = await loadVaultIntelligenceConfig();
+		const runId = this.snapshot.run.id!;
+		const plan = this.requirePlan();
+		const enabledKinds = new Set(plan.enabledTaskKinds);
+		const frozen = new Set(this.snapshot.run.frozenPaths);
+		const findings = plan.scope.mode === 'entire'
+			? lintResult?.findings ?? []
+			: (lintResult?.findings ?? []).filter((finding) => finding.filePath && frozen.has(finding.filePath));
+		const derived = deriveVaultMaintenanceTasks({
+			config,
+			findings,
+			unreadableErrors: this.indexErrors,
+			previous: this.snapshot.tasks,
+			runId,
+			now: this.now(),
+			fileMtime: (path) => this.fileMtime(path),
+		}).filter((task) => enabledKinds.has(task.kind));
+		const tasks = mergeScopedMaintenanceTasks({
+			config,
+			previous: this.snapshot.tasks,
+			derived,
+			enabledKinds,
+			frozenPaths: this.snapshot.run.frozenPaths,
+			entireVault: plan.scope.mode === 'entire',
+			runId,
+			now: this.now(),
+		});
+		const followUpTasks = tasks.filter((task) => task.sourceRunId === runId);
+		const indexStatus = await index?.getIndexStatus().catch(() => null) ?? null;
+		const completedAt = this.now();
+		const completed: VaultCompletedRun = {
+			runId,
+			startedAt: this.snapshot.run.startedAt ?? completedAt,
+			completedAt,
+			scopeMode: plan.scope.mode,
+			objectCount: this.snapshot.run.frozenPaths.length,
+			searchableCount: indexStatus?.indexedDocs ?? lintResult?.totalNotes ?? 0,
+			usage: totalUsage(this.snapshot.run.operations),
+			receipts: buildReceipts(this.snapshot.run, indexStatus?.indexedDocs ?? null, lintResult),
+			maintenanceTaskIds: followUpTasks.map((task) => task.id),
+			warnings: [...this.snapshot.run.warnings],
+		};
+		this.completeStage('publish', `${followUpTasks.length} maintenance tasks need owner follow-up.`, followUpTasks.length, followUpTasks.length);
+		this.patchRun({ status: 'completed', completedAt, currentStage: null });
+		const changedCursorAt = plan.scope.mode === 'selected'
+			? this.snapshot.changedCursorAt
+			: this.snapshot.run.startedAt;
+		this.patch({ tasks, lastCompletedRun: completed, changedCursorAt });
+		this.addActivity('scan', 'Vault Scan completed', null, runId);
+		await this.recordEvent('run-completed', runId, `Vault Scan completed with ${followUpTasks.length} maintenance tasks.`);
+		await this.flushPersist();
+		await this.refreshAfterRun();
+	}
+
+	private recoverPersistedState(persisted: VaultIntelligencePersistedState | null): VaultIntelligencePersistedState {
+		if (!persisted || persisted.version !== 1) {
+			return { version: 1, updatedAt: this.now(), changedCursorAt: null, activeRun: null, lastCompletedRun: null, tasks: [], recentActivity: [] };
+		}
+		if (!('changedCursorAt' in persisted)) {
+			persisted = {
+				...persisted,
+				changedCursorAt: persisted.lastCompletedRun?.scopeMode === 'selected'
+					? null
+					: persisted.lastCompletedRun?.startedAt ?? null,
+			};
+		}
+		if (persisted.activeRun?.status !== 'running' && persisted.activeRun?.status !== 'stopping') return persisted;
+		return {
+			...persisted,
+			activeRun: { ...persisted.activeRun, status: 'interrupted', stopRequested: false },
+		};
+	}
+
+	private async refreshAfterRun(): Promise<void> {
+		const files = this.deps.app.vault.getFiles();
+		const digest = await this.deps.resolveReviewRuntime()?.getDigest().catch(() => null) ?? null;
+		const changedSinceScan = this.snapshot.changedCursorAt
+			? files.filter((file) => file.stat.mtime > this.snapshot.changedCursorAt!).length
+			: files.length;
+		this.patch({
+			digest,
+			fileTypes: summarizeVaultFileTypes(files),
+			availablePaths: files.map((file) => file.path).sort((left, right) => left.localeCompare(right)),
+			activityDays: summarizeVaultActivity(files),
+			changedSinceScan,
+		});
+	}
+
+	private stopAtCheckpoint(): boolean {
+		if (!this.snapshot.run.stopRequested) return false;
+		this.patchRun({ status: 'interrupted', currentStage: null, stopRequested: false });
+		this.queuePersist();
+		return true;
+	}
+
+	private startStage(id: VaultScanStageId, message: string): void {
+		this.patchRun({ currentStage: id });
+		this.patchStage(id, { status: 'running', message });
+		void this.recordEvent('stage-changed', this.snapshot.run.id, `${id}: ${message}`);
+	}
+
+	private completeStage(
+		id: VaultScanStageId,
+		message: string,
+		processed: number,
+		total: number,
+		status: 'completed' | 'partial' = 'completed',
+	): void {
+		this.patchStage(id, { status, message, processed, total });
+		this.patchRun({ completedStages: unique([...this.snapshot.run.completedStages, id]) });
+	}
+
+	private stage(id: VaultScanStageId) {
+		return this.snapshot.run.stages.find((stage) => stage.id === id)!;
+	}
+
+	private operation(id: VaultScanAiOperationId) {
+		return this.snapshot.run.operations.find((operation) => operation.id === id);
+	}
+
+	private patchStage(id: VaultScanStageId, next: Partial<VaultScanRunState['stages'][number]>): void {
+		this.patchRun({ stages: this.snapshot.run.stages.map((stage) => stage.id === id ? { ...stage, ...next } : stage) });
+	}
+
+	private patchOperation(id: VaultScanAiOperationId, next: Partial<VaultScanOperationState>): void {
+		this.patchRun({ operations: this.snapshot.run.operations.map((operation) => operation.id === id ? { ...operation, ...next } : operation) });
+	}
+
+	private addRunWarning(warning: string): void {
+		this.patchRun({ warnings: unique([...this.snapshot.run.warnings, warning]) });
+	}
+
+	private replaceTask(task: VaultMaintenanceTask): void {
+		this.patch({ tasks: this.snapshot.tasks.map((candidate) => candidate.id === task.id ? task : candidate) });
+		this.queuePersist();
+	}
+
+	private addActivity(
+		kind: 'scan' | 'owner-choice' | 'apply' | 'verify',
+		label: string,
+		objectPath: string | null,
+		runId: string | null,
+	): void {
+		const record = { id: this.idFactory(), timestamp: this.now(), kind, label, objectPath, runId } as const;
+		this.patch({ recentActivity: [...this.snapshot.recentActivity, record].slice(-500) });
+	}
+
+	private fileMtime(path: string | null): number | null {
+		if (!path) return null;
+		const file = this.deps.app.vault.getAbstractFileByPath(path);
+		return file && 'stat' in file ? (file as TFile).stat.mtime : null;
+	}
+
+	private requirePlan(): VaultScanPlan {
+		if (!this.snapshot.run.plan) throw new Error('Vault Scan has no frozen plan.');
+		return this.snapshot.run.plan;
+	}
+
+	private isActive(): boolean {
+		return this.snapshot.run.status === 'running' || this.snapshot.run.status === 'stopping';
+	}
+
+	private recordStore(): VaultIntelligenceRecordStore | null {
+		const outputs = this.deps.resolveGeneratedOutputs();
+		return outputs ? new VaultIntelligenceRecordStore(outputs) : null;
+	}
+
+	private queuePersist(): void {
+		const store = this.recordStore();
+		if (!store) return;
+		const activeRun = this.snapshot.run.status === 'running'
+			|| this.snapshot.run.status === 'stopping'
+			|| this.snapshot.run.status === 'interrupted'
+			|| this.snapshot.run.status === 'failed'
+			? this.snapshot.run
+			: null;
+		const state: VaultIntelligencePersistedState = {
+			version: 1,
+			updatedAt: this.now(),
+			changedCursorAt: this.snapshot.changedCursorAt,
+			activeRun,
+			lastCompletedRun: this.snapshot.lastCompletedRun,
+			tasks: this.snapshot.tasks,
+			recentActivity: this.snapshot.recentActivity.slice(-500),
+		};
+		this.persistenceTail = this.persistenceTail.catch(() => undefined).then(() => store.save(state));
+	}
+
+	private async flushPersist(): Promise<void> {
+		this.queuePersist();
+		await this.persistenceTail;
+	}
+
+	private async recordEvent(
+		type: VaultIntelligenceEvent['type'],
+		runId: string | null,
+		detail: string,
+	): Promise<void> {
+		const event: VaultIntelligenceEvent = { id: this.idFactory(), timestamp: this.now(), type, runId, detail };
+		this.patch({ events: [...this.snapshot.events, event].slice(-120) });
+		await this.recordStore()?.append(event).catch((error) => {
+			this.patch({ error: `Could not persist Vault Intelligence event: ${errorMessage(error)}` });
+		});
+	}
+
+	private patch(next: Partial<VaultIntelligenceSnapshot>): void {
+		this.snapshot = { ...this.snapshot, ...next };
+		for (const listener of this.listeners) listener();
+	}
+
+	private patchRun(next: Partial<VaultScanRunState>): void {
+		this.patch({ run: { ...this.snapshot.run, ...next } });
+	}
+}
+
+function normalizePlan(
+	plan: VaultScanPlan,
+	config: VaultIntelligenceConfig,
+	routes: Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>>,
+): VaultScanPlan {
+	const incoming = new Map(plan.aiOperations.map((operation) => [operation.id, operation]));
+	const normalizedOperations = config.scanOperations.map((definition) => {
+		const candidate = incoming.get(definition.id) ?? {
+			id: definition.id,
+			enabled: definition.defaultEnabled,
+			model: definition.model,
+			provider: definition.provider,
+			estimatedTokens: definition.estimatedTokens,
+			estimatedCostUsd: definition.estimatedCostUsd,
+		};
+		const route = routes[definition.id];
+		if (!route) return candidate;
+		return {
+			...candidate,
+			enabled: candidate.enabled && route.available,
+			model: route.model,
+			provider: route.provider,
+		};
+	});
+	for (const group of [
+		['file-summaries', 'ai-tags'],
+		['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis'],
+	] as const) {
+		const enabled = group.every((id) => normalizedOperations.find((operation) => operation.id === id)?.enabled);
+		for (const operation of normalizedOperations) {
+			if ((group as readonly string[]).includes(operation.id)) operation.enabled = enabled;
+		}
+	}
+	if (plan.scope.mode !== 'entire') {
+		for (const operation of normalizedOperations) {
+			if (operationExecutionGroup(operation.id).includes('relationship-review')) operation.enabled = false;
+		}
+	}
+	return {
+		...plan,
+		scope: { ...plan.scope, selectedPaths: unique(plan.scope.selectedPaths) },
+		enabledTaskKinds: unique(plan.enabledTaskKinds),
+		aiOperations: normalizedOperations,
+	};
+}
+
+function operationExecutionGroup(id: VaultScanAiOperationId): readonly VaultScanAiOperationId[] {
+	if (id === 'file-summaries' || id === 'ai-tags') return ['file-summaries', 'ai-tags'];
+	if (id === 'relationship-review' || id === 'community-analysis' || id === 'file-proposals' || id === 'maintenance-synthesis') {
+		return ['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis'];
+	}
+	return [id];
+}
+
+function mergeScopedMaintenanceTasks(options: {
+	config: VaultIntelligenceConfig;
+	previous: readonly VaultMaintenanceTask[];
+	derived: readonly VaultMaintenanceTask[];
+	enabledKinds: ReadonlySet<VaultMaintenanceTask['kind']>;
+	frozenPaths: readonly string[];
+	entireVault: boolean;
+	runId: string;
+	now: number;
+}): VaultMaintenanceTask[] {
+	const previousByKind = new Map(options.previous.map((task) => [task.kind, task]));
+	const derivedByKind = new Map(options.derived.map((task) => [task.kind, task]));
+	const frozen = new Set(options.frozenPaths);
+	const tasks: VaultMaintenanceTask[] = [];
+	for (const definition of options.config.tasks) {
+		const previous = previousByKind.get(definition.kind);
+		if (!options.enabledKinds.has(definition.kind)) {
+			if (previous?.state !== 'verified') tasks.push(previous);
+			continue;
+		}
+		const current = derivedByKind.get(definition.kind);
+		const retained = options.entireVault
+			? []
+			: previous?.atomicItems.filter((item) => !item.filePath || !frozen.has(item.filePath)) ?? [];
+		const currentIds = new Set(current?.atomicItems.map((item) => item.id) ?? []);
+		const atomicItems = [
+			...(current?.atomicItems ?? []),
+			...retained.filter((item) => !currentIds.has(item.id)),
+		];
+		if (atomicItems.length === 0) continue;
+		const base = current ?? previous!;
+		const paths = new Set(atomicItems.flatMap((item) => item.filePath ? [item.filePath] : []));
+		const touched = Boolean(current) || retained.length !== previous?.atomicItems.length;
+		const task: VaultMaintenanceTask = {
+			...base,
+			sourceRunId: current ? options.runId : base.sourceRunId,
+			atomicItems,
+			affectedLabel: maintenanceAffectedLabel(definition.kind, atomicItems.length),
+			contextLabel: `${paths.size.toLocaleString()} ${paths.size === 1 ? 'file' : 'files'}`,
+			state: deriveMaintenanceState(definition.initialState, atomicItems, base.defaultChoice),
+			createdAt: previous?.createdAt ?? base.createdAt,
+			updatedAt: touched ? options.now : base.updatedAt,
+		};
+		if (task.state !== 'verified') tasks.push(task);
+	}
+	return tasks;
+}
+
+function buildObjectSummaries(
+	fileCount: number,
+	chatCount: number,
+	projectCount: number,
+	composerEventCount: number,
+): VaultIntelligenceObjectSummary[] {
+	return [
+		{ id: 'files', label: 'Files', count: fileCount, detail: 'Vault files visible to Peak' },
+		{ id: 'chats', label: 'Chats', count: chatCount, detail: 'Durable Peak conversations' },
+		{ id: 'projects', label: 'Projects', count: projectCount, detail: 'Current Peak projects' },
+		{ id: 'composer', label: 'Composer', count: composerEventCount, detail: 'Durable workspace events' },
+	];
+}
+
+function totalUsage(operations: readonly VaultScanOperationState[]): VaultScanUsage {
+	return operations.reduce<VaultScanUsage>((total, operation) => ({
+		inputTokens: total.inputTokens + operation.usage.inputTokens,
+		outputTokens: total.outputTokens + operation.usage.outputTokens,
+		totalTokens: total.totalTokens + operation.usage.totalTokens,
+		costUsd: total.costUsd + operation.usage.costUsd,
+	}), { ...EMPTY_USAGE });
+}
+
+function collectReviewUsage(snapshot: VaultReviewSessionSnapshot | null): VaultScanUsage {
+	if (!snapshot) return { ...EMPTY_USAGE };
+	const usage = { ...EMPTY_USAGE };
+	for (const round of snapshot.rounds) {
+		for (const event of round.events) {
+			if (event.type !== 'complete') continue;
+			usage.inputTokens += event.usage.inputTokens ?? 0;
+			usage.outputTokens += event.usage.outputTokens ?? 0;
+			usage.totalTokens += event.usage.totalTokens ?? 0;
+		}
+	}
+	return usage;
+}
+
+function buildReceipts(
+	run: VaultScanRunState,
+	indexedDocs: number | null,
+	lintResult: LintScanResult | null,
+): VaultCompletedRun['receipts'] {
+	const indexFailures = run.operations.filter((operation) => operation.status === 'failed').length;
+	const aiCompleted = run.operations.filter((operation) => operation.status === 'completed').length;
+	return [
+		{
+			id: 'knowledge-index',
+			label: 'Knowledge Index · Core Search',
+			detail: 'Full-text passages and enabled enrichment layers were published independently.',
+			result: `${(indexedDocs ?? lintResult?.totalNotes ?? 0).toLocaleString()} searchable`,
+			status: indexFailures ? 'partial' : 'completed',
+			ownerBoundary: 'peak-owned',
+		},
+		{
+			id: 'machine-knowledge',
+			label: 'Machine summaries, AI Tags and review evidence',
+			detail: 'These outputs stay in Peak-owned machine state and do not edit Markdown or YAML.',
+			result: `${aiCompleted.toLocaleString()} operations completed`,
+			status: indexFailures ? 'partial' : 'completed',
+			ownerBoundary: 'peak-owned',
+		},
+		{
+			id: 'knowledge-map',
+			label: 'Knowledge map',
+			detail: 'Deterministic graph facts were refreshed; owner decisions remain reviewable.',
+			result: 'Current graph projection published',
+			status: run.warnings.some((warning) => warning.includes('map')) ? 'partial' : 'completed',
+			ownerBoundary: 'peak-owned',
+		},
+	];
+}
+
+function unique<T>(values: readonly T[]): T[] {
+	return [...new Set(values)];
+}
+
+function errorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}

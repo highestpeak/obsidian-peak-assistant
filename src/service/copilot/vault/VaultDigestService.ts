@@ -50,6 +50,13 @@ export interface VaultStructuralHoleDigest {
 	semanticBridgePotential: number;
 }
 
+/** A real indexed reference crossing two computed communities. */
+export interface VaultCommunityLinkDigest {
+	communityAId: string;
+	communityBId: string;
+	referenceCount: number;
+}
+
 export interface VaultHubDigest {
 	path: string;
 	pagerank: number | null;
@@ -85,6 +92,7 @@ export interface VaultDigest {
 		signalCounts: Record<string, number>;
 	} | null;
 	clusters: VaultClusterDigest[];
+	communityLinks?: VaultCommunityLinkDigest[];
 	structuralHoles: VaultStructuralHoleDigest[];
 	hubs: VaultHubDigest[];
 	staleHubs: VaultHubDigest[];

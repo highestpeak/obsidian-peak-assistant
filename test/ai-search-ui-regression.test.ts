@@ -11,7 +11,7 @@ const promptInputBody = readFileSync(
 	'utf8',
 );
 const vaultIntelligence = readFileSync(
-	'src/ui/view/quick-search/VaultIntelligenceWorkspace.tsx',
+	'src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx',
 	'utf8',
 );
 const sources = readFileSync('src/ui/view/quick-search/components/V2SourcesView.tsx', 'utf8');
@@ -90,13 +90,13 @@ assert.match(
 assert.match(styles, /\.cm-scroller\s*\{[\s\S]*?scrollbar-width:\s*none;/);
 assert.match(styles, /\.cm-scroller::\-webkit-scrollbar[\s\S]*?display:\s*none;/);
 
-assert(vaultIntelligence.includes('pk-vault-health-summary'));
-assert(vaultIntelligence.includes('pk-vault-metric-grid'));
-assert(vaultIntelligence.includes('pk-vault-community-map'));
-assert(vaultIntelligence.includes('pk-vault-attention-list'));
-assert(vaultIntelligence.includes('pk-vault-hub-list'));
-assert(!vaultIntelligence.includes('Opening this mode never starts a scan'));
-assert(!vaultIntelligence.includes('pk-vault-overview-node'));
+assert(vaultIntelligence.includes('pk-vi-object-grid'));
+assert(vaultIntelligence.includes('pk-vi-work-surface'));
+assert(vaultIntelligence.includes('pk-vi-graph-canvas'));
+assert(vaultIntelligence.includes('pk-vi-activity-grid'));
+assert(vaultIntelligence.includes('pk-vi-maintenance'));
+assert(!vaultIntelligence.includes("['runs', 'Runs']"));
+assert(!vaultIntelligence.includes('@xyflow/react'));
 
 assert(!sources.includes('pktw-h-[540px]'), 'Sources list and tree must not reserve a fixed 540px canvas');
 assert(sources.includes('0 Vault relationships'));

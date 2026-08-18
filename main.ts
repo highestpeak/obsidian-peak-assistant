@@ -544,6 +544,7 @@ export default class MyPlugin extends Plugin {
 			},
 			openAIControlCenter: () => this.viewManager.activateAIControlCenterView(),
 			openMyContent: () => this.viewManager.activateMyContentView(),
+			openVaultIntelligence: () => this.viewManager.activateVaultIntelligenceView(),
 			createPeakSheet: async () => {
 				const runtime = appContext.runtimeRegistry.tryGetPeakSheetRuntime();
 				if (!runtime) {

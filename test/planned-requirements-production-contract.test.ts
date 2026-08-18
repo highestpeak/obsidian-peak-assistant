@@ -7,7 +7,7 @@ function source(relativePath: string): string {
 }
 
 const contextualPort = source('src/core/ports/ContextualGraphPort.ts');
-const vaultWorkspace = source('src/ui/view/quick-search/VaultIntelligenceWorkspace.tsx');
+const vaultWorkspace = source('src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx');
 const atlasPanel = source('src/ui/view/file-atlas/FileAtlasPanel.tsx');
 const atlasInspector = source('src/ui/view/file-atlas/components/AtlasInspector.tsx');
 const atlasInspectorModel = source('src/ui/view/file-atlas/atlasInspectorModel.ts');
@@ -43,9 +43,9 @@ const folderHubLayoutModel = source('src/ui/component/graph/folderTreeHubLayoutM
 const timelineLayout = source('src/ui/component/graph/adapters/aiLensLayouts.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
-assert.match(vaultWorkspace, /Community overview/);
-assert.match(vaultWorkspace, /Review work starts only from explicit actions/);
-assert.doesNotMatch(vaultWorkspace, /Opening this mode never starts a scan/);
+assert.match(vaultWorkspace, /Knowledge communities/);
+assert.match(vaultWorkspace, /One canonical decision set/);
+assert.match(vaultWorkspace, /source-file changes remain guarded proposals/);
 assert.doesNotMatch(atlasPanel, /FileAtlasDocumentContext|pkfa-document-context-slot/);
 assert.match(atlasPanel, /resolveGraphWorkspaceManifest\('file-atlas'\)/);
 assert.match(atlasPanel, /onScopeChange/);
@@ -96,7 +96,8 @@ assert.match(promptTrigger, /trigger: '@'/);
 assert.match(promptTrigger, /'\[\['/);
 
 assert.match(quickSearch, /AI_WORKSPACE_OPTIONS/);
-assert.match(quickSearch, /VaultIntelligenceWorkspace/);
+assert.match(quickSearch, /onOpenVaultIntelligence/);
+assert.doesNotMatch(quickSearch, /import .*VaultIntelligenceWorkspace/);
 assert.doesNotMatch(quickSearch, /CopilotPickerContent/);
 assert.match(quickSearch, /AIGraphHistoryPanel/);
 assert.doesNotMatch(quickSearch, /event\.key === 'Tab'/);

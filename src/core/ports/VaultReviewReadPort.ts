@@ -45,6 +45,13 @@ export interface DanglingReferenceRow {
 	referencedBy: number;
 }
 
+/** Verified indexed references whose endpoints belong to different communities. */
+export interface VaultCommunityLinkRow {
+	communityAId: string;
+	communityBId: string;
+	referenceCount: number;
+}
+
 /** Row shape returned by the cluster drill-down. */
 export interface ClusterMemberRow {
 	path: string;
@@ -73,6 +80,9 @@ export interface VaultReviewReadPort {
 
 	/** Pass-through to the Louvain community metadata. */
 	listCommunities(): Promise<CommunityInfo[]>;
+
+	/** Aggregated real references between different Louvain communities. */
+	listCommunityLinks?(): Promise<VaultCommunityLinkRow[]>;
 
 	/** Pass-through to the structural-hole metadata. */
 	listTopStructuralHoles(limit: number): Promise<StructuralHole[]>;
