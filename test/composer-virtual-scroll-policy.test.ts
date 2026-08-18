@@ -5,6 +5,7 @@ import {
 	emergencyComposerVirtualViewport,
 	initialComposerVirtualViewport,
 	sampleComposerVirtualViewport,
+	shouldUseComposerLightweightScrollProjection,
 	settledComposerVirtualViewport,
 } from '@/ui/view/composer/virtualization/ComposerVirtualScrollPolicy';
 import { DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG } from '@/ui/view/composer/config/composerConfig';
@@ -33,6 +34,14 @@ function main(): void {
 	check('emergency buffer is smaller than settled overscan', emergency.overscanBefore < config.overscanPx);
 	const settled = settledComposerVirtualViewport(emergency, config);
 	check('idle projection restores ordinary overscan', settled.overscanBefore === config.overscanPx);
+	check(
+		'short documents retain the full interactive projection while scrolling',
+		!shouldUseComposerLightweightScrollProjection(config.lightweightScrollMinBlocks - 1, config),
+	);
+	check(
+		'long documents switch to the lightweight scrolling projection',
+		shouldUseComposerLightweightScrollProjection(config.lightweightScrollMinBlocks, config),
+	);
 
 	check(
 		'covered viewport may wait for the scheduled frame',

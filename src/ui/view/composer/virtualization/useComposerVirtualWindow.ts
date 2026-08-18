@@ -13,6 +13,7 @@ import {
 	emergencyComposerVirtualViewport,
 	initialComposerVirtualViewport,
 	sampleComposerVirtualViewport,
+	shouldUseComposerLightweightScrollProjection,
 	settledComposerVirtualViewport,
 	type ComposerVirtualCoverage,
 	type ComposerVirtualViewport,
@@ -30,6 +31,7 @@ export interface ComposerVirtualWindow {
 	totalHeight: number;
 	start: number;
 	end: number;
+	lightweightProjection: boolean;
 	measureElement(blockId: string, element: HTMLElement | null): void;
 	revealBlock(blockId: string, behavior?: ScrollBehavior): Promise<HTMLElement | null>;
 	insertionIndexAtClientY(clientY: number): number;
@@ -57,8 +59,11 @@ export function useComposerVirtualWindow({
 	const [viewport, setViewport] = React.useState<ComposerVirtualViewport>(
 		() => initialComposerVirtualViewport(config),
 	);
+	const [lightweightProjection, setLightweightProjection] = React.useState(false);
 	const sampledViewportRef = React.useRef(viewport);
 	const committedViewportRef = React.useRef(viewport);
+	const lightweightProjectionRef = React.useRef(false);
+	const lightweightProjectionGenerationRef = React.useRef(0);
 	const pendingProjectionRef = React.useRef<ComposerVirtualViewport | null>(null);
 	const projectionGenerationRef = React.useRef(0);
 	const renderedSpanRef = React.useRef({ start: 0, end: 0 });
@@ -77,6 +82,42 @@ export function useComposerVirtualWindow({
 	const observer = React.useRef<ResizeObserver | null>(null);
 	const pendingMeasurementsRef = React.useRef(new Map<string, number>());
 	const measurementFrameRef = React.useRef(0);
+	const programmaticMeasurementScrollTopRef = React.useRef<number | null>(null);
+	const lightweightProjectionEligible = shouldUseComposerLightweightScrollProjection(
+		blocks.length,
+		config,
+	);
+
+	const beginLightweightProjection = React.useCallback((ownerWindow: Window): void => {
+		if (!lightweightProjectionEligible || lightweightProjectionRef.current) return;
+		lightweightProjectionRef.current = true;
+		lightweightProjectionGenerationRef.current += 1;
+		pendingMeasurementsRef.current.clear();
+		if (measurementFrameRef.current) {
+			ownerWindow.cancelAnimationFrame(measurementFrameRef.current);
+			measurementFrameRef.current = 0;
+		}
+		flushSync(() => setLightweightProjection(true));
+	}, [lightweightProjectionEligible]);
+
+	const endLightweightProjection = React.useCallback((): void => {
+		if (!lightweightProjectionRef.current) return;
+		lightweightProjectionRef.current = false;
+		const generation = lightweightProjectionGenerationRef.current + 1;
+		lightweightProjectionGenerationRef.current = generation;
+		React.startTransition(() => {
+			setLightweightProjection((current) => (
+				generation === lightweightProjectionGenerationRef.current ? false : current
+			));
+		});
+	}, []);
+
+	React.useEffect(() => {
+		if (lightweightProjectionEligible || !lightweightProjectionRef.current) return;
+		lightweightProjectionRef.current = false;
+		lightweightProjectionGenerationRef.current += 1;
+		setLightweightProjection(false);
+	}, [lightweightProjectionEligible]);
 
 	const commitViewport = React.useCallback((
 		next: ComposerVirtualViewport,
@@ -113,14 +154,21 @@ export function useComposerVirtualWindow({
 	const flushMeasurements = React.useCallback(() => {
 		measurementFrameRef.current = 0;
 		if (pendingMeasurementsRef.current.size === 0) return;
-		const measurements = pendingMeasurementsRef.current;
+		const measurements = new Map(
+			[...pendingMeasurementsRef.current].filter(([blockId]) => {
+				const element = elements.current.get(blockId);
+				return element?.dataset.virtualMeasurementSuspended !== 'true';
+			}),
+		);
 		pendingMeasurementsRef.current = new Map();
+		if (measurements.size === 0) return;
 		const result = layout.measureBatch(measurements, sampledViewportRef.current.start);
 		if (result.changedCount === 0) return;
 		const scroller = scrollerFor(shellRef.current);
 		let adjustedViewport = sampledViewportRef.current;
 		if (scroller && Math.abs(result.anchorDelta) >= 0.5) {
 			scroller.scrollTop += result.anchorDelta;
+			programmaticMeasurementScrollTopRef.current = scroller.scrollTop;
 			adjustedViewport = {
 				...adjustedViewport,
 				start: Math.max(0, adjustedViewport.start + result.anchorDelta),
@@ -156,13 +204,14 @@ export function useComposerVirtualWindow({
 		const next = new ownerWindow.ResizeObserver((entries) => {
 			for (const entry of entries) {
 				const element = entry.target as HTMLElement;
+				if (element.dataset.virtualMeasurementSuspended === 'true') continue;
 				const blockId = element.dataset.virtualBlockId;
 				const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
 				if (blockId && Number.isFinite(height) && height > 0) {
 					pendingMeasurementsRef.current.set(blockId, height);
 				}
 			}
-			scheduleMeasurements(ownerWindow);
+			if (pendingMeasurementsRef.current.size > 0) scheduleMeasurements(ownerWindow);
 		});
 		observer.current = next;
 		for (const element of elements.current.values()) next.observe(element);
@@ -244,11 +293,13 @@ export function useComposerVirtualWindow({
 					renderedCoverageRef.current,
 					config.recenterThresholdPx,
 				);
-				if (!emergencyMounted && !needsRecenter) return;
-				commitViewport(
-					settledComposerVirtualViewport(latest, config),
-					false,
-				);
+				if (emergencyMounted || needsRecenter) {
+					commitViewport(
+						settledComposerVirtualViewport(latest, config),
+						false,
+					);
+				}
+				endLightweightProjection();
 			}, config.scrollIdleMs);
 		};
 		const projectSample = (next: ComposerVirtualViewport) => {
@@ -260,16 +311,25 @@ export function useComposerVirtualWindow({
 			recordVirtualProjectionDecision(blocksRef.current, decision);
 			if (decision === 'emergency') {
 				commitViewport(emergencyComposerVirtualViewport(next, config), true);
-				scheduleSettledProjection();
 				return;
 			}
 			if (decision === 'recenter') {
 				commitViewport(settledComposerVirtualViewport(next, config), false);
-				scheduleSettledProjection();
 			}
 		};
 		const onScroll = () => {
+			const measurementScrollTop = programmaticMeasurementScrollTopRef.current;
+			if (
+				measurementScrollTop !== null
+				&& Math.abs(scroller.scrollTop - measurementScrollTop) < 0.5
+			) {
+				programmaticMeasurementScrollTopRef.current = null;
+				return;
+			}
+			programmaticMeasurementScrollTopRef.current = null;
+			beginLightweightProjection(ownerWindow);
 			projectSample(readViewport());
+			scheduleSettledProjection();
 		};
 		const onGeometryChange = () => {
 			refreshViewportMetrics();
@@ -292,7 +352,16 @@ export function useComposerVirtualWindow({
 			resize?.disconnect();
 			if (idleTimer) ownerWindow.clearTimeout(idleTimer);
 		};
-	}, [blocksRef, commitViewport, config, readViewport, refreshViewportMetrics, shellRef]);
+	}, [
+		beginLightweightProjection,
+		blocksRef,
+		commitViewport,
+		config,
+		endLightweightProjection,
+		readViewport,
+		refreshViewportMetrics,
+		shellRef,
+	]);
 	const range = layout.range(viewport.start, viewport.height, pinnedBlockIds, {
 		before: viewport.overscanBefore,
 		after: viewport.overscanAfter,
@@ -364,6 +433,7 @@ export function useComposerVirtualWindow({
 		totalHeight: range.totalHeight,
 		start: range.start,
 		end: range.end,
+		lightweightProjection,
 		measureElement,
 		revealBlock,
 		insertionIndexAtClientY,

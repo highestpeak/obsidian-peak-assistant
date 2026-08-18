@@ -302,6 +302,8 @@ export interface ComposerVirtualizationConfig {
 	emergencyOverscanPx: number;
 	recenterThresholdPx: number;
 	scrollIdleMs: number;
+	lightweightScrollMinBlocks: number;
+	lightweightScrollMaxChars: number;
 	maxHardPins: number;
 	revealViewportRatio: number;
 	revealMaxFrames: number;
@@ -319,7 +321,9 @@ export const DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG: ComposerVirtualizationConfi
 	overscanPx: 900,
 	emergencyOverscanPx: 180,
 	recenterThresholdPx: 360,
-	scrollIdleMs: 120,
+	scrollIdleMs: 180,
+	lightweightScrollMinBlocks: 80,
+	lightweightScrollMaxChars: 2_400,
 	maxHardPins: 12,
 	revealViewportRatio: 0.32,
 	revealMaxFrames: 90,

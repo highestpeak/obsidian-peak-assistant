@@ -62,12 +62,14 @@
 		"cacheTtlMs": 30000
 	},
 	"virtualization": {
-		"_doc": "Unified Composer block-window policy. Covered scroll is render-free; edge recentering is deferred and escaped viewports mount only the emergency window.",
+		"_doc": "Unified Composer block-window policy. Long documents use lightweight rows while scrolling; covered scroll is render-free, edge recentering is deferred, and escaped viewports mount only the emergency window.",
 		"defaultBlockHeightPx": 72,
 		"overscanPx": 900,
 		"emergencyOverscanPx": 180,
 		"recenterThresholdPx": 360,
-		"scrollIdleMs": 120,
+		"scrollIdleMs": 180,
+		"lightweightScrollMinBlocks": 80,
+		"lightweightScrollMaxChars": 2400,
 		"maxHardPins": 12,
 		"revealViewportRatio": 0.32,
 		"revealMaxFrames": 90,

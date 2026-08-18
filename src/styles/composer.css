@@ -109,6 +109,14 @@
 	border-radius: 10px;
 	transition: background-color 140ms ease, box-shadow 140ms ease;
 }
+.peak-composer-root .pk-composer-block--scroll-projection {
+	contain: layout paint style;
+	pointer-events: none;
+}
+.peak-composer-root .pk-composer-scroll-text {
+	white-space: pre-wrap;
+	overflow: hidden;
+}
 .peak-composer-root .pk-composer-block[data-spacing='title'] { margin-top: 28px; }
 .peak-composer-root .pk-composer-block[data-spacing='heading'] { margin-top: 32px; }
 .peak-composer-root .pk-composer-block[data-spacing='paragraph'],

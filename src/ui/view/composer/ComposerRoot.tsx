@@ -53,6 +53,7 @@ import {
 	type ResolvedComposerSourceLocation,
 	type DirectListItemKind,
 	resolveComposerSourceLocation,
+	toPlainText,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import {
@@ -1055,12 +1056,13 @@ function ComposerDocument({
 		if (before) pinRegistry.acquire('drag-before', before.blockId);
 		if (after) pinRegistry.acquire('drag-after', after.blockId);
 	}
+	const pinnedBlockIds = pinRegistry.blocks();
 	const virtualWindow = useComposerVirtualWindow({
 		blocks: visibleBlocks,
 		shellRef: containerRef,
 		blocksRef,
 		config: config.virtualization,
-		pinnedBlockIds: pinRegistry.blocks(),
+		pinnedBlockIds,
 		onScrollIntent: markScrollIntent,
 	});
 	virtualDropIndexRef.current = virtualWindow.insertionIndexAtClientY;
@@ -1151,8 +1153,9 @@ function ComposerDocument({
 				data-dragging={drag ? 'true' : undefined}
 				data-virtual-total-blocks={visibleBlocks.length}
 				data-virtual-mounted-blocks={virtualWindow.items.length}
-				data-virtual-hard-pins={pinRegistry.blocks().size}
+				data-virtual-hard-pins={pinnedBlockIds.size}
 				data-virtual-window={`${virtualWindow.start}:${virtualWindow.end}`}
+				data-virtual-lightweight-projection={virtualWindow.lightweightProjection || undefined}
 				data-candidate-count={reviewCandidates.length}
 				onPaste={(ev) => void onPaste(ev)}
 				onCopy={(event) => {
@@ -1229,88 +1232,100 @@ function ComposerDocument({
 					if (!b) return null;
 					const i = virtualItem.index;
 					const previousBlock = visibleBlocks[i - 1];
+					const lightweight = virtualWindow.lightweightProjection
+						&& !pinnedBlockIds.has(b.blockId);
 					return (
 						<ComposerVirtualItem
 							key={stableKey(b.blockId)}
 							blockId={b.blockId}
 							index={i}
 							offset={virtualItem.offset}
+							height={virtualItem.height}
+							measurementSuspended={lightweight}
 							onMeasure={virtualWindow.measureElement}
 						>
-						<ComposerBlockRow
-							block={b}
-							previousBlock={previousBlock}
-							snapshot={snapshot}
-							config={config}
-							foldStore={foldStore}
-							editing={editing}
-							displayState={displayState}
-							reviewAll={false}
-							candidates={candidatesByBlockId.get(b.blockId) ?? []}
-							invokeError={invokeErrors[b.blockId]}
-							findings={findingsByBlockId.get(b.blockId) ?? []}
-							onAskFinding={(finding) => {
-								if (!intelligence) return;
-								intelligence.session.selectSurface('talk');
-								intelligence.session.openSession(finding.body?.title ?? finding.reason, []);
-								const blockId = composerTargetBlockId(finding.target);
-								if (!blockId) return;
-								onIntelligenceContextualOpen({
-									kind: 'automatic-suggestion',
-									findingId: finding.findingId,
-									blockId,
-								});
-							}}
-							onConfirmFinding={(finding) => intelligence?.findings.consume(finding.findingId)}
-							onDismissFinding={(finding) => intelligence?.findings.dismiss(finding.findingId, 'body')}
-							panel={panel?.blockId === b.blockId ? panel : null}
-							setPanel={setPanel}
-							onInsertBelow={
-								hub && editing
-									? () => setPanel({
-											blockId: b.blockId,
-											panel: 'insert-draft',
-											pinned: true,
-											initialTypeId: 'markdown',
-										})
-									: undefined
-							}
-							onSelectInsertType={(typeId) =>
-								setPanel({ blockId: b.blockId, panel: 'insert-draft', pinned: true, initialTypeId: typeId })
-							}
-							onDragStart={hub && editing ? startDrag(b.blockId) : undefined}
-							dropBefore={drag?.dropIndex === i}
-							onInvoke={invoke}
-							activeCommentId={activeCommentId}
-							onActiveComment={(commentId) => {
-								if (commentId) setCommentRailOpen(true);
-								onActiveComment(commentId);
-							}}
-							onOpenComment={() => {
-								setPanel(null);
-								setCommentRailOpen(true);
-								setCommentDraft({ blockId: b.blockId });
-							}}
-							onViewHistory={intelligence
-								? () => {
-										intelligence.session.selectSurface('history');
-										onIntelligenceManualOpen(true);
-										setPanel(null);
-									}
-								: undefined}
-							onOpenHistoryActivity={(activity) => {
-								setPanel(null);
-								setHistoryActivity(activity);
-							}}
-						/>
-						{panel?.blockId === b.blockId && panel.panel === 'insert-draft' && (
-							<div data-composer-surface-owner={b.blockId}>
-								<NewBlockDraft
-									blockId={b.blockId}
-									initialTypeId={panel.initialTypeId}
-									onDone={() => setPanel(null)}
+							{lightweight ? (
+								<ComposerScrollProjectionRow
+									block={b}
+									previousBlock={previousBlock}
+									maxChars={config.virtualization.lightweightScrollMaxChars}
 								/>
-							</div>
+							) : (
+								<ComposerBlockRow
+									block={b}
+									previousBlock={previousBlock}
+									snapshot={snapshot}
+									config={config}
+									foldStore={foldStore}
+									editing={editing}
+									displayState={displayState}
+									reviewAll={false}
+									candidates={candidatesByBlockId.get(b.blockId) ?? []}
+									invokeError={invokeErrors[b.blockId]}
+									findings={findingsByBlockId.get(b.blockId) ?? []}
+									onAskFinding={(finding) => {
+										if (!intelligence) return;
+										intelligence.session.selectSurface('talk');
+										intelligence.session.openSession(finding.body?.title ?? finding.reason, []);
+										const blockId = composerTargetBlockId(finding.target);
+										if (!blockId) return;
+										onIntelligenceContextualOpen({
+											kind: 'automatic-suggestion',
+											findingId: finding.findingId,
+											blockId,
+										});
+									}}
+									onConfirmFinding={(finding) => intelligence?.findings.consume(finding.findingId)}
+									onDismissFinding={(finding) => intelligence?.findings.dismiss(finding.findingId, 'body')}
+									panel={panel?.blockId === b.blockId ? panel : null}
+									setPanel={setPanel}
+									onInsertBelow={
+										hub && editing
+											? () => setPanel({
+													blockId: b.blockId,
+													panel: 'insert-draft',
+													pinned: true,
+													initialTypeId: 'markdown',
+												})
+											: undefined
+									}
+									onSelectInsertType={(typeId) =>
+										setPanel({ blockId: b.blockId, panel: 'insert-draft', pinned: true, initialTypeId: typeId })
+									}
+									onDragStart={hub && editing ? startDrag(b.blockId) : undefined}
+									dropBefore={drag?.dropIndex === i}
+									onInvoke={invoke}
+									activeCommentId={activeCommentId}
+									onActiveComment={(commentId) => {
+										if (commentId) setCommentRailOpen(true);
+										onActiveComment(commentId);
+									}}
+									onOpenComment={() => {
+										setPanel(null);
+										setCommentRailOpen(true);
+										setCommentDraft({ blockId: b.blockId });
+									}}
+									onViewHistory={intelligence
+										? () => {
+												intelligence.session.selectSurface('history');
+												onIntelligenceManualOpen(true);
+												setPanel(null);
+											}
+										: undefined}
+									onOpenHistoryActivity={(activity) => {
+										setPanel(null);
+										setHistoryActivity(activity);
+									}}
+								/>
+							)}
+							{panel?.blockId === b.blockId && panel.panel === 'insert-draft' && (
+								<div data-composer-surface-owner={b.blockId}>
+									<NewBlockDraft
+										blockId={b.blockId}
+										initialTypeId={panel.initialTypeId}
+										onDone={() => setPanel(null)}
+									/>
+								</div>
 							)}
 						</ComposerVirtualItem>
 					);
@@ -1416,12 +1431,16 @@ function ComposerVirtualItem({
 	blockId,
 	index,
 	offset,
+	height,
+	measurementSuspended,
 	onMeasure,
 	children,
 }: {
 	blockId: string;
 	index: number;
 	offset: number;
+	height: number;
+	measurementSuspended: boolean;
 	onMeasure(blockId: string, element: HTMLElement | null): void;
 	children: React.ReactNode;
 }): React.ReactElement {
@@ -1434,7 +1453,10 @@ function ComposerVirtualItem({
 			className="pk-composer-virtual-item"
 			data-virtual-index={index}
 			data-virtual-offset={Math.round(offset)}
-			style={{ top: offset }}
+			data-virtual-measurement-suspended={measurementSuspended || undefined}
+			style={measurementSuspended
+				? { top: offset, height, overflow: 'hidden' }
+				: { top: offset }}
 		>
 			{children}
 		</div>
@@ -1464,6 +1486,41 @@ interface ComposerUnitActions {
 	onFocus: (anchor: ComposerUnitActionAnchor) => void;
 	renderBefore?: (anchor: ComposerUnitActionAnchor) => React.ReactNode;
 	render: (anchor: ComposerUnitActionAnchor) => React.ReactNode;
+}
+
+function ComposerScrollProjectionRow({
+	block,
+	previousBlock,
+	maxChars,
+}: {
+	block: ComposerBlock;
+	previousBlock?: ComposerBlock;
+	maxChars: number;
+}): React.ReactElement {
+	const limit = Math.max(1, Math.floor(Number.isFinite(maxChars) ? maxChars : 1));
+	const truncated = block.renderModel.raw.length > limit;
+	const boundedRaw = block.renderModel.raw.slice(0, limit);
+	const projected = toPlainText(boundedRaw, block.kind);
+	const fallback = (block.renderModel.text || boundedRaw).slice(0, limit);
+	const text = `${projected || fallback}${truncated ? '…' : ''}`;
+	const isHeading = block.kind === 'heading';
+	const className = isHeading
+		? `pk-composer-heading pk-heading-${block.renderModel.level ?? 1}`
+		: `${blockBodyClass(block.kind)} pk-composer-scroll-text`;
+	return (
+		<div
+			className="pk-composer-block pk-composer-block--scroll-projection"
+			data-kind={block.kind}
+			data-block-id={block.blockId}
+			data-level={isHeading ? block.renderModel.level ?? 1 : undefined}
+			data-spacing={blockSpacingRole(block, previousBlock)}
+			data-scroll-projection="true"
+		>
+			<div className="pk-composer-block__body">
+				<div className={className} data-src-text-from={block.source.from}>{text}</div>
+			</div>
+		</div>
+	);
 }
 
 function ComposerBlockRow({

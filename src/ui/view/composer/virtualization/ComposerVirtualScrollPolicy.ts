@@ -103,6 +103,14 @@ export function decideComposerVirtualProjection(
 	return 'none';
 }
 
+export function shouldUseComposerLightweightScrollProjection(
+	blockCount: number,
+	config: ComposerVirtualizationConfig,
+): boolean {
+	const threshold = Math.max(1, Math.floor(finiteNonNegative(config.lightweightScrollMinBlocks)));
+	return Number.isFinite(blockCount) && blockCount >= threshold;
+}
+
 function withOverscan(
 	viewport: Pick<ComposerVirtualViewport, 'start' | 'height' | 'sampledAtMs'>,
 	overscanPx: number,

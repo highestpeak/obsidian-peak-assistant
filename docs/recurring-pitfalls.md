@@ -432,10 +432,14 @@ The implementation used a fixed 900 px overscan and deferred every scroll update
 
 The first follow-up (`bde0972a`) removed the per-row synchronous geometry reads and added coverage escape handling, but the 17:07 recording showed repeated 0.3–0.5 second blank frames during fast scrolling. Its remaining flaw was architectural: covered scroll still called `setViewport` every animation frame, escape handling synchronously mounted a velocity-expanded window as large as 4800 px, and the following measurement frame forced a second React render of the same heavy rows. Normal-flow gaps also accumulated estimated-versus-real row-height error inside the mounted window.
 
+The absolute-row and render-free covered-scroll follow-up (`285b9529`) removed those blank intervals in a browser stress harness, but it still bounded only the **simultaneous live set**. The real 17:28 recording traversed the 405-block, 376-link note quickly and crashed the entire Electron Renderer after about 10.5 seconds. macOS recorded three consecutive `Obsidian Helper (Renderer)` reports at 17:27:24, 17:27:50 and 17:28:28 with the same signature as the original incident: `SIGABRT` on `CrRendererMain`, `node::OnFatalError`, `v8::CppHeap`, and `cppgc::Allocate`. Each new virtual range was still constructing and destroying full `ComposerBlockRow` trees containing `DirectEditController`, `MarkdownSourceEditor`, `contentEditable`, keyboard registration and link SVG nodes. A bounded live DOM can therefore still exhaust CppHeap when the **allocation rate** is unbounded.
+
 The corrected scrolling contract is therefore stricter than merely keeping the DOM count bounded or proving estimated coverage:
 
 - Covered scrolling performs zero React projection updates. Recenter only when the viewport approaches a mounted edge, use a transition for that ordinary recenter, and restore the ordinary buffer once after scrolling settles.
 - A viewport that truly escapes coverage synchronously mounts only a minimal emergency window. Never combine emergency `flushSync` with a velocity-expanded heavy-row window.
+- Long documents use a two-level projection. While scrolling, ordinary rows are fixed-height plain-text proxies with no editor, controller, object renderer, SVG, rail or action chrome; focused, composing, selected, panel-owned and drag-owned hard pins retain their complete interactive row. Full rows return once after the configured idle interval.
+- Proxy rows never write their temporary height into the complete layout index. Measurement-anchor scroll corrections are internal geometry events and must not reactivate scrolling projection.
 - Each mounted row is absolutely positioned at its complete-layout-index offset. Estimated row-height error is local to that row and cannot accumulate into a viewport-sized normal-flow gap.
 - Row mounting performs no synchronous per-row style or geometry reads. One shared `ResizeObserver` collects border-box heights, one animation frame rebuilds the layout suffix once, directly updates mounted `top` positions and total canvas height, and applies at most one scroll-anchor correction. Measurement does not trigger a second React render unless the corrected coverage no longer contains the viewport.
 - Space below the final document row is treated as document-tail coverage, so bottom padding cannot create an emergency-flush loop.
@@ -471,6 +475,7 @@ complete ComposerDocumentSession
 - Mounted row/editor/observer counts rise with total document blocks rather than viewport size.
 - The scrollbar moves while the document body is temporarily only a virtual gap, then rows recover after the input stops.
 - Covered scrolling changes `data-virtual-window` every animation frame, or measurement delivery causes a second full ComposerBody render.
+- Fast traversal keeps constructing ordinary `contenteditable` leaves even though mounted row count stays bounded.
 - ResizeObserver delivery causes one layout-index rebuild or `scrollTop` write per mounted row instead of one per frame batch.
 - First paint contains text from the far end of a multi-thousand-block fixture.
 - Opening Composer produces long tasks or forced reflow while parsing remains comparatively small.
@@ -490,6 +495,7 @@ complete ComposerDocumentSession
 - [ ] Performance tests assert mounted rows are bounded for a 5000-block document and that far-tail content is absent from first paint.
 - [ ] Scroll-policy tests prove centered covered movement chooses `none`, edge movement chooses deferred `recenter`, escape chooses `emergency`, and document-tail space remains covered.
 - [ ] Source guards reject per-frame covered-scroll projection, synchronous per-row computed-style/geometry measurement, normal-flow virtual gaps and measurement-triggered React rendering.
+- [ ] A 405-block allocation stress run proves zero ordinary `contenteditable` creation while scrolling, keeps hard-pinned editors focused, restores full rows once after idle, and records zero blank frames.
 - [ ] Batch-edit tests assert atomic preflight, one commit/reparse/notification and one Undo/History unit.
 - [ ] Real Obsidian acceptance records mounted rows/editors/pins, long tasks, heap behavior and new crash reports across repeated opens. Source/build tests alone remain `INTERACTION NOT VERIFIED`.
 
