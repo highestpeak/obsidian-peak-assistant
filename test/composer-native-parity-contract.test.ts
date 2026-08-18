@@ -110,8 +110,8 @@ assert.match(
 );
 assert.match(
 	composerCss,
-	/\.pk-composer-document-title\s*\{[\s\S]*?font-size:\s*var\(--pkc-h1-size\)/,
-	'the file title owns the first document heading level',
+	/\.pk-composer-document-title\s*\{[\s\S]*?justify-content:\s*flex-start !important;[\s\S]*?font-size:\s*var\(--pkc-h1-size\) !important;[\s\S]*?font-weight:\s*var\(--pkc-h1-weight\) !important;[\s\S]*?line-height:\s*1\.25 !important;[\s\S]*?white-space:\s*normal !important;/,
+	'the editable title defeats the shared Button center and small-text utilities',
 );
 assert.match(
 	frontmatterCss,

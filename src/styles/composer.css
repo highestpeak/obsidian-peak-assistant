@@ -337,7 +337,7 @@
 	margin: 0 0 28px;
 }
 .peak-composer-root .pk-composer-document-title {
-	display: flex;
+	display: flex !important;
 	box-sizing: border-box;
 	width: 100% !important;
 	min-width: 0 !important;
@@ -345,22 +345,24 @@
 	height: auto !important;
 	min-height: 0 !important;
 	max-height: none !important;
-	align-items: center;
-	justify-content: flex-start;
+	align-items: center !important;
+	justify-content: flex-start !important;
 	gap: 8px;
 	margin: 0;
 	padding: 0 !important;
 	border: 0 !important;
 	border-radius: 3px !important;
-	color: var(--pkc-text);
+	color: var(--pkc-text) !important;
 	background: transparent !important;
 	box-shadow: none !important;
-	font-size: var(--pkc-h1-size);
-	font-weight: var(--pkc-h1-weight);
-	line-height: 1.25;
-	letter-spacing: -0.02em;
-	text-align: left;
-	word-break: break-word;
+	font-family: inherit !important;
+	font-size: var(--pkc-h1-size) !important;
+	font-weight: var(--pkc-h1-weight) !important;
+	line-height: 1.25 !important;
+	letter-spacing: -0.02em !important;
+	text-align: left !important;
+	white-space: normal !important;
+	word-break: break-word !important;
 }
 .peak-composer-root button.pk-composer-document-title {
 	cursor: text;
