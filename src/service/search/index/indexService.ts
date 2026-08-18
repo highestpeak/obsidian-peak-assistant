@@ -2164,6 +2164,7 @@ export class IndexService
 		options?: {
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
 			shouldContinue?: () => boolean;
+			paths?: readonly string[];
 		},
 	): Promise<LlmIndexEnrichmentResult> {
 		if (!sqliteStoreManager.isInitialized()) {
@@ -2182,10 +2183,12 @@ export class IndexService
 		const errors: Array<{ path: string; message: string }> = [];
 
 		const pendingPaths: string[] = [];
+		const allowedPaths = options?.paths ? new Set(options.paths) : null;
 		for (const tenant of tenants) {
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const paths = await repo.listPathsWithPendingLlm();
 			for (const path of paths) {
+				if (allowedPaths && !allowedPaths.has(path)) continue;
 				if (this.getTenantForPath(path) !== tenant) {
 					skippedWrongTenant++;
 					continue;
@@ -2342,7 +2345,11 @@ export class IndexService
 	 */
 	async runPendingVectorIndexEnrichment(
 		settings: SearchSettings,
-		options?: { onProgress?: (ev: PendingEnrichmentProgress) => void },
+		options?: {
+			onProgress?: (ev: PendingEnrichmentProgress) => void;
+			shouldContinue?: () => boolean;
+			paths?: readonly string[];
+		},
 	): Promise<VectorIndexEnrichmentResult> {
 		if (!sqliteStoreManager.isInitialized()) {
 			return {
@@ -2360,10 +2367,12 @@ export class IndexService
 		const errors: Array<{ path: string; message: string }> = [];
 
 		const pendingPaths: string[] = [];
+		const allowedPaths = options?.paths ? new Set(options.paths) : null;
 		for (const tenant of tenants) {
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const paths = await repo.listPathsWithPendingVector();
 			for (const path of paths) {
+				if (allowedPaths && !allowedPaths.has(path)) continue;
 				if (this.getTenantForPath(path) !== tenant) {
 					skippedWrongTenant++;
 					continue;
@@ -2374,6 +2383,7 @@ export class IndexService
 		const total = pendingPaths.length;
 		let done = 0;
 		for (const path of pendingPaths) {
+			if (options?.shouldContinue && !options.shouldContinue()) break;
 			try {
 				await index.indexDocument(path, settings, opts);
 				processed++;

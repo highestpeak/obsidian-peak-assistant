@@ -14,6 +14,7 @@ import {
 } from '@/core/storage/generated-output';
 import { HubRecordStore, virtualHubPath } from '@/service/hub/HubRecordStore';
 import { CopilotReviewRecordStore } from '@/service/copilot/CopilotReviewRecordStore';
+import { VaultIntelligenceRecordStore } from '@/app/vault-intelligence/VaultIntelligenceRecordStore';
 
 class MemoryGeneratedOutputAdapter implements GeneratedOutputDataAdapter {
 	readonly files = new Map<string, Uint8Array>();
@@ -285,12 +286,43 @@ async function testDomainRecordReplayAndTombstones(): Promise<void> {
 	console.log('PASS: chat, Hub, and review canonical records replay and honor tombstones');
 }
 
+async function testVaultIntelligenceStateAndAuditStream(): Promise<void> {
+	const adapter = new MemoryGeneratedOutputAdapter();
+	const runtime = createMemoryRuntime(adapter);
+	const store = new VaultIntelligenceRecordStore(runtime);
+	const state = {
+		version: 1 as const,
+		updatedAt: 10,
+		changedCursorAt: null,
+		activeRun: null,
+		lastCompletedRun: null,
+		tasks: [],
+		recentActivity: [],
+	};
+	await store.save(state);
+	assert.deepStrictEqual(await store.load(), state);
+	assert.ok(adapter.files.has('ChatFolder/DataStore/records/vault-intelligence/state.json'));
+	const event = {
+		id: 'event-1',
+		timestamp: 11,
+		type: 'run-started' as const,
+		runId: 'run-1',
+		detail: 'Started',
+	};
+	await store.append(event);
+	await store.append(event);
+	assert.deepStrictEqual(await store.listEvents(), [event], 'stable event IDs make audit appends idempotent');
+	assert.ok(adapter.files.has('ChatFolder/DataStore/records/vault-intelligence/events.jsonl'));
+	console.log('PASS: Vault Intelligence state and audit events use canonical durable records');
+}
+
 async function main(): Promise<void> {
 	await testAtomicSnapshotAndCorruptionRecovery();
 	await testJsonlIdempotenceAndExplicitQuarantine();
 	await testImmutableArtifactBodies();
 	await testMigrationJournalSyncManifestAndProjectionRegistry();
 	await testDomainRecordReplayAndTombstones();
+	await testVaultIntelligenceStateAndAuditStream();
 }
 
 main().catch((error) => {

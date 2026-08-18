@@ -1,0 +1,78 @@
+{
+  "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
+  "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
+  "scanOperations": [
+    { "id": "embedding-refresh", "group": "index", "label": "Embedding refresh", "description": "Build vectors after full-text passages and chunks are ready.", "defaultEnabled": true, "model": "Configured embedding model", "provider": "Configured provider", "estimatedTokens": 0, "estimatedCostUsd": 0 },
+    { "id": "file-summaries", "group": "index", "label": "File summaries", "description": "Refresh machine summaries used by Search and maintenance context.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimatedTokens": 16800, "estimatedCostUsd": 0.046 },
+    { "id": "ai-tags", "group": "index", "label": "AI Tags and entities", "description": "Generate rebuildable machine-only knowledge without editing Markdown or YAML.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimatedTokens": 12200, "estimatedCostUsd": 0.034 },
+    { "id": "relationship-review", "group": "vault", "label": "Relationship review", "description": "Review changed sources and cross-Community connections.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 21600, "estimatedCostUsd": 0.061 },
+    { "id": "community-analysis", "group": "vault", "label": "Community analysis", "description": "Explain current Communities, Hubs and bridge evidence.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 19400, "estimatedCostUsd": 0.055 },
+    { "id": "file-proposals", "group": "follow-up", "label": "File proposal preparation", "description": "Prepare evidence-backed proposals with source revision guards; apply nothing during Scan.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 8000, "estimatedCostUsd": 0.01 },
+    { "id": "maintenance-synthesis", "group": "follow-up", "label": "Maintenance synthesis", "description": "Keep only follow-up with a real owner action.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 8000, "estimatedCostUsd": 0.01 }
+  ],
+  "tasks": [
+    { "kind": "file-properties", "category": "review", "initialState": "ready-review", "title": "Review note property changes", "typeLabel": "Notes · Properties", "impact": "medium", "signalIds": ["C-FRONTMATTER-MISSING"], "choices": [
+      { "id": "accept", "label": "Accept proposal", "description": "Keep the proposed property change for guarded file review.", "boundary": "proposal" },
+      { "id": "reject", "label": "Reject", "description": "Reject this proposed change without editing the note.", "boundary": "peak-owned" },
+      { "id": "later", "label": "Decide later", "description": "Keep this change in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "broken-links", "category": "decision", "initialState": "needs-choice", "title": "Repair broken references", "typeLabel": "Links · Broken references", "impact": "high", "signalIds": ["S-BROKEN-LINK", "S-MISSING-BACKLINK"], "choices": [
+      { "id": "redirect", "label": "Redirect reference", "description": "Prepare a guarded replacement target for file review.", "boundary": "proposal" },
+      { "id": "create", "label": "Create missing note", "description": "Prepare a new-note proposal; nothing is created yet.", "boundary": "proposal" },
+      { "id": "remove", "label": "Remove reference", "description": "Prepare a guarded removal proposal.", "boundary": "proposal" },
+      { "id": "keep", "label": "Keep unresolved", "description": "Record that the unresolved reference is expected.", "boundary": "peak-owned" }
+    ] },
+    { "kind": "community-membership", "category": "decision", "initialState": "needs-choice", "title": "Assign notes to Communities", "typeLabel": "Notes · Community membership", "impact": "high", "signalIds": ["S-ORPHAN", "S-SOFT-ORPHAN", "M-LOW-COHESION"], "choices": [
+      { "id": "suggested", "label": "Use suggested Community", "description": "Update Peak-owned Community membership only.", "boundary": "peak-owned" },
+      { "id": "separate", "label": "Keep separate", "description": "Record this structure as intentional.", "boundary": "peak-owned" },
+      { "id": "proposal", "label": "Edit source files", "description": "Prepare frontmatter or link proposals for review.", "boundary": "proposal" },
+      { "id": "later", "label": "Decide later", "description": "Keep the evidence in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "knowledge-connections", "category": "decision", "initialState": "needs-choice", "title": "Review changed knowledge connections", "typeLabel": "Connections · Changed sources", "impact": "high", "signalIds": ["S-FRAGILE-BRIDGE", "T-DECAYING-BRIDGE", "T-RECENT-DRIFT"], "choices": [
+      { "id": "keep", "label": "Keep connection", "description": "Record the current bridge as expected.", "boundary": "peak-owned" },
+      { "id": "update", "label": "Prepare update", "description": "Prepare source-document updates in the owner surface.", "boundary": "proposal" },
+      { "id": "replace", "label": "Replace bridge", "description": "Prepare a replacement proposal for review.", "boundary": "proposal" },
+      { "id": "later", "label": "Decide later", "description": "Keep the connection in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "related-notes", "category": "decision", "initialState": "needs-choice", "title": "Resolve related and duplicate notes", "typeLabel": "Notes · Duplicates", "impact": "high", "signalIds": ["C-DUPLICATE", "M-REDUNDANT-HUBS"], "choices": [
+      { "id": "merge", "label": "Prepare merge", "description": "Prepare a guarded merge proposal.", "boundary": "proposal" },
+      { "id": "related", "label": "Mark related", "description": "Store a Peak-owned typed relationship.", "boundary": "peak-owned" },
+      { "id": "separate", "label": "Keep separate", "description": "Record that the notes are intentionally distinct.", "boundary": "peak-owned" },
+      { "id": "later", "label": "Decide later", "description": "Keep the group in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "note-split", "category": "review", "initialState": "ready-review", "title": "Review proposed note splits", "typeLabel": "Notes · Splits", "impact": "medium", "signalIds": ["C-OVERSIZED"], "choices": [
+      { "id": "accept", "label": "Accept routing", "description": "Keep the line-routing proposal for Composer review.", "boundary": "proposal" },
+      { "id": "revise", "label": "Revise routing", "description": "Open the routing proposal for adjustment.", "boundary": "proposal" },
+      { "id": "reject", "label": "Reject split", "description": "Reject the split without changing the source note.", "boundary": "peak-owned" },
+      { "id": "later", "label": "Decide later", "description": "Keep the proposal in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "community-structure", "category": "decision", "initialState": "needs-choice", "title": "Decide Community structure changes", "typeLabel": "Communities · Structure", "impact": "high", "signalIds": ["S-ISLAND-CLUSTER", "T-ABANDONED-CLUSTER"], "choices": [
+      { "id": "accept", "label": "Accept structure", "description": "Update Peak-owned Community structure.", "boundary": "peak-owned" },
+      { "id": "adjust", "label": "Adjust grouping", "description": "Keep the evidence and provide a different grouping.", "boundary": "peak-owned" },
+      { "id": "keep", "label": "Keep current", "description": "Record the current structure as intentional.", "boundary": "peak-owned" },
+      { "id": "later", "label": "Decide later", "description": "Keep the structure change in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "community-hubs", "category": "review", "initialState": "ready-review", "title": "Maintain Community index notes", "typeLabel": "Notes · Community indexes", "impact": "medium", "signalIds": ["T-STALE-HUB", "M-COVERAGE-GAP"], "choices": [
+      { "id": "update", "label": "Prepare update", "description": "Prepare a guarded Community index-note update.", "boundary": "proposal" },
+      { "id": "keep", "label": "Keep current", "description": "Record the current index note as expected.", "boundary": "peak-owned" },
+      { "id": "later", "label": "Review later", "description": "Keep the index note in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "content-lifecycle", "category": "decision", "initialState": "needs-choice", "title": "Decide which notes are still current", "typeLabel": "Notes · Lifecycle", "impact": "medium", "signalIds": ["T-ABANDONED-FOLDER", "C-STUB"], "choices": [
+      { "id": "active", "label": "Active", "description": "Keep the note in current-work context.", "boundary": "peak-owned" },
+      { "id": "paused", "label": "Paused", "description": "Keep it available but out of current-work context.", "boundary": "peak-owned" },
+      { "id": "finished", "label": "Finished", "description": "Mark Peak's lifecycle state as finished; archiving is separate.", "boundary": "peak-owned" },
+      { "id": "later", "label": "Decide later", "description": "Keep the lifecycle decision in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "unusual-notes", "category": "decision", "initialState": "needs-choice", "title": "Resolve isolated or unusual notes", "typeLabel": "Notes · Unusual notes", "impact": "medium", "signalIds": ["M-CONTRADICTION", "M-PHANTOM-NODE", "M-SEMANTIC-ISOLATION", "C-NAMING-VIOLATION", "G-TAG-ISLAND", "G-TAG-REDUNDANCY", "G-TAG-EXPLOSION", "G-NOISE-TAGS"], "choices": [
+      { "id": "connect", "label": "Connect in Peak", "description": "Store a reversible Peak-owned relationship.", "boundary": "peak-owned" },
+      { "id": "keep", "label": "Keep unusual", "description": "Record the current state as intentional.", "boundary": "peak-owned" },
+      { "id": "proposal", "label": "Prepare file proposal", "description": "Prepare source-file changes for review.", "boundary": "proposal" },
+      { "id": "later", "label": "Decide later", "description": "Keep the finding in Work queue.", "boundary": "no-change" }
+    ] },
+    { "kind": "unreadable-files", "category": "recovery", "initialState": "recovery", "title": "Recover unreadable documents", "typeLabel": "Documents · Index recovery", "impact": "high", "signalIds": [], "choices": [
+      { "id": "retry", "label": "Retry indexing", "description": "Retry the document parser and Index pipeline.", "boundary": "peak-owned" },
+      { "id": "exclude", "label": "Exclude document", "description": "Record an explicit Index exclusion without changing the file.", "boundary": "peak-owned" },
+      { "id": "later", "label": "Recover later", "description": "Keep the recovery task in Work queue.", "boundary": "no-change" }
+    ] }
+  ]
+}

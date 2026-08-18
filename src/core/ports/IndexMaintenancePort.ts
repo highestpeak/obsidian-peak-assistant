@@ -40,12 +40,17 @@ export interface IndexMaintenancePort {
 		options?: {
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
 			shouldContinue?: () => boolean;
+			paths?: readonly string[];
 		},
 	): Promise<LlmIndexEnrichmentResult>;
 
 	runPendingVectorIndexEnrichment(
 		settings: SearchSettings,
-		options?: { onProgress?: (ev: PendingEnrichmentProgress) => void },
+		options?: {
+			onProgress?: (ev: PendingEnrichmentProgress) => void;
+			shouldContinue?: () => boolean;
+			paths?: readonly string[];
+		},
 	): Promise<VectorIndexEnrichmentResult>;
 
 	clearPendingLlmFlags(): Promise<{ cleared: number }>;

@@ -4,9 +4,6 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { QuickSearchModalContent } from '@/ui/view/quick-search/SearchModal';
 import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
-import { VaultAutoRunModal } from '@/app/copilot/modals/VaultAutoRunModal';
-import { openVaultReviewHistoryRecord } from '@/app/copilot/modals/openVaultReviewHistoryRecord';
-import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
 import { AIQueryRewriteModal } from '@/app/ui-host/modals/AIQueryRewriteModal';
 import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContextRecorder';
 import { useSharedStore } from '@/ui/view/quick-search/store';
@@ -65,7 +62,7 @@ export class QuickSearchModal extends Modal {
 		modalEl.addClass('peak-result-browser-modal-frame');
 		// `peak-design-root` on modalEl opts the whole subtree into the
 		// Obsidian-tag reset (see docs/recurring-pitfalls.md #obsidian-css-bleed).
-		// Without it, bare <button> inside Vault Intelligence + view-mode
+		// Without it, shared controls inside the Quick Search view-mode
 		// toggle inherit Obsidian's --input-height / hover transforms and
 		// render as separate pill outlines instead of a segmented control.
 		modalEl.addClass('peak-design-root');
@@ -77,20 +74,15 @@ export class QuickSearchModal extends Modal {
 		modalEl.style.padding = '0';
 		modalEl.style.overflow = 'hidden'; // Prevent modal itself from scrolling
 
-		const app = this.appContext.app;
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.reactRenderer.render(
 			createReactElementWithServices(
 				QuickSearchModalContent,
 				{
 					onClose: () => this.closeFromContent(),
-					onVaultAuto: (mode: 'fast' | 'complete') => {
+					onOpenVaultIntelligence: () => {
 						this.closeFromContent();
-						new VaultAutoRunModal(app, { mode }).open();
-					},
-					onOpenVaultRecord: (record: VaultReviewHistoryRecord) => {
-						this.closeFromContent();
-						openVaultReviewHistoryRecord(app, record);
+						void this.appContext.viewManager.activateVaultIntelligenceView();
 					},
 					onOpenSuggest: () => {
 						new AIQueryRewriteModal(this.appContext, this.appContext.settings).open();

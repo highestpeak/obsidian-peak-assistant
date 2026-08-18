@@ -41,6 +41,7 @@ import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated
 import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
 import type { PeakKeyboardNavigationPort } from '@/ui/keyboard/KeyboardNavigationPort';
 import type { PeakSheetRuntime } from '@/app/sheet/PeakSheetRuntime';
+import type { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -76,6 +77,7 @@ export class AppRuntimeRegistry {
 	private commandCenterRuntime: CommandCenterRuntime | null = null;
 	private keyboardNavigationRuntime: PeakKeyboardNavigationPort | null = null;
 	private peakSheetRuntime: PeakSheetRuntime | null = null;
+	private vaultIntelligenceRuntime: VaultIntelligenceRuntime | null = null;
 
 	constructor(generatedOutputRegistry: GeneratedOutputRegistry = createDefaultGeneratedOutputRegistry()) {
 		this.generatedOutputRegistry = generatedOutputRegistry;
@@ -775,6 +777,32 @@ export class AppRuntimeRegistry {
 	clearPeakSheetRuntime(): void {
 		const runtime = this.peakSheetRuntime;
 		this.peakSheetRuntime = null;
+		runtime?.dispose();
+	}
+
+	// ── Vault Intelligence workspace runtime ──────────────────────────────
+
+	setVaultIntelligenceRuntime(runtime: VaultIntelligenceRuntime): void {
+		if (this.vaultIntelligenceRuntime !== null) {
+			throw new Error('AppRuntimeRegistry.setVaultIntelligenceRuntime: a runtime is already bound.');
+		}
+		this.vaultIntelligenceRuntime = runtime;
+	}
+
+	getVaultIntelligenceRuntime(): VaultIntelligenceRuntime {
+		if (this.vaultIntelligenceRuntime === null) {
+			throw new Error('AppRuntimeRegistry.getVaultIntelligenceRuntime: no runtime is bound.');
+		}
+		return this.vaultIntelligenceRuntime;
+	}
+
+	tryGetVaultIntelligenceRuntime(): VaultIntelligenceRuntime | null {
+		return this.vaultIntelligenceRuntime;
+	}
+
+	clearVaultIntelligenceRuntime(): void {
+		const runtime = this.vaultIntelligenceRuntime;
+		this.vaultIntelligenceRuntime = null;
 		runtime?.dispose();
 	}
 

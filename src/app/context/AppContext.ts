@@ -41,6 +41,9 @@ import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotRevie
 import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 import { ObsidianProgressReporter } from '@/app/platform/ObsidianProgressReporter';
 import { FileAtlasSessionStore } from '@/app/file-atlas/FileAtlasSessionStore';
+import { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 
 /**
  * Application context containing all global dependencies.
@@ -478,6 +481,7 @@ export class AppContext {
 			// Release any per-capability runtime so a hot-reloaded plugin
 			// bundle does not retain references to the closed sqlite repo
 			// or the editor event subscriptions.
+			AppContext.instance.runtimeRegistry.clearVaultIntelligenceRuntime();
 			AppContext.instance.runtimeRegistry.clearVaultLintRuntime();
 			AppContext.instance.runtimeRegistry.clearAmbientRuntime();
 			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
@@ -520,6 +524,48 @@ export class AppContext {
 		this.eventBus = EventBus.getInstance(app);
 		this._bridge = new HarnessRunBridge();
 		this.runtimeRegistry = new AppRuntimeRegistry();
+		this.runtimeRegistry.setVaultIntelligenceRuntime(new VaultIntelligenceRuntime({
+			app,
+			resolveLintRuntime: () => this.runtimeRegistry.tryGetVaultLintRuntime(),
+			resolveReviewRuntime: () => this.runtimeRegistry.tryGetVaultReviewRuntime(),
+			resolveIndexService: () => this.runtimeRegistry.tryGetIndexService(),
+			resolveGeneratedOutputs: () => this.runtimeRegistry.tryGetGeneratedOutputPersistenceRuntime(),
+			getSearchSettings: () => this.settings.search,
+			runCoreIndex: async (scope, paths) => {
+				const initializer = plugin.indexInitializer;
+				if (!initializer) throw new Error('Knowledge Index is still loading.');
+				if (scope === 'entire') {
+					await initializer.performFastCoreFullIndexing(false);
+					return;
+				}
+				await initializer.performFastCoreIncrementalIndexing(paths);
+			},
+			resolveProjectCount: async () => (await manager.proj.listProjects()).length,
+			resolveOperationRoutes: () => {
+				const profiles = ProfileRegistry.getInstance();
+				const embedding = profiles.resolveSlot('knowledgeIndex');
+				const agent = profiles.getActiveAgentConfig();
+				const review = profiles.getActiveAgentFastConfig() ?? agent;
+				const route = (binding: typeof agent) => binding ? {
+					model: binding.modelId,
+					provider: binding.profile.kind,
+					available: binding.profile.enabled,
+				} : { model: 'Not configured', provider: 'Not configured', available: false };
+				return {
+					'embedding-refresh': route(embedding),
+					'file-summaries': route(agent),
+					'ai-tags': route(agent),
+					'relationship-review': route(review),
+					'community-analysis': route(review),
+					'file-proposals': route(review),
+					'maintenance-synthesis': route(review),
+				};
+			},
+			calculateCostUsd: async (provider, model, usage) => {
+				const info = await manager.getModelInfo(model, provider);
+				return computeUsdFromUsage(usage, info);
+			},
+		}));
 		this.fileAtlasSessionStore = new FileAtlasSessionStore();
 		this.runtimeRegistry.setGeneratedOutputPersistenceRuntime(
 			composeGeneratedOutputPersistenceRuntime(

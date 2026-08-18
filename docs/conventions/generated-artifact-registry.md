@@ -149,6 +149,8 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | DR-23 | Shared Graph node explanation | 用户从 Vault Search 或 File Atlas 显式触发、绑定稳定节点证据 fingerprint 的当前 AI 解释 snapshot | `records/graph-nodes/<node-key>/explanation.json` | 已实现 |
 | DR-24 | Shared Graph node explanation history | 节点 explain / regenerate 的追加 run receipt；失败与取消也保留 | `records/graph-nodes/<node-key>/events.jsonl` | 已实现 |
 | DR-25 | Peak Sheet dataset events | 每次数据/结构/视图修改及 Undo/Redo 使用稳定事件追加记录 | `records/peak-sheets/<dataset-id>/events.jsonl`；只用于恢复与 Undo，永不覆盖或向前重放超过可见 `.peaksheet` 的 revision | 已实现 |
+| DR-26 | Vault Intelligence state | 当前 Scan checkpoint、最近完成 receipt、维护任务与 owner choice；完成的 Scan 不保留为 active run | `records/vault-intelligence/state.json` | 已实现 |
+| DR-27 | Vault Intelligence event history | Scan 阶段、owner choice、apply handoff 与 verify 的追加审计事件 | `records/vault-intelligence/events.jsonl` | 已实现 |
 
 主要 writer 证据：
 
@@ -163,6 +165,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 - [`VaultArtifactStore.ts`](../../src/service/run-envelope/VaultArtifactStore.ts)
 - [AI Graph Artifact Platform](../superpowers/specs/2026-07-28-ai-graph-artifact-platform.md)
 - [`AppPeakSheetRepository.ts`](../../src/app/sheet/AppPeakSheetRepository.ts)
+- [`VaultIntelligenceRecordStore.ts`](../../src/app/vault-intelligence/VaultIntelligenceRecordStore.ts)
 
 ## 5. 本地可重建数据
 

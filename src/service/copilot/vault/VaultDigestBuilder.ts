@@ -116,6 +116,7 @@ export class VaultDigestBuilder implements VaultReviewDigestDataPort {
 
 		const docRows = await this.reads.listNodeRowsForDigest();
 		const communityInfos = await this.reads.listCommunities();
+		const communityLinks = await this.reads.listCommunityLinks?.() ?? [];
 		const holes = await this.reads.listTopStructuralHoles(TOP_K_HOLES);
 		const danglingRows = await this.reads.listDanglingReferences(TOP_K_DANGLING);
 
@@ -246,6 +247,7 @@ export class VaultDigestBuilder implements VaultReviewDigestDataPort {
 			},
 			health,
 			clusters,
+			...(communityLinks.length > 0 ? { communityLinks } : {}),
 			structuralHoles,
 			hubs: hubCandidates.slice(0, TOP_K_HUBS),
 			staleHubs: staleHubCandidates.slice(0, TOP_K_STALE_HUBS),

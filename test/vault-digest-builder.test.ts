@@ -19,6 +19,7 @@ import assert from 'assert';
 import type {
 	ClusterMemberRow,
 	DanglingReferenceRow,
+	VaultCommunityLinkRow,
 	VaultFingerprintRow,
 	VaultNodeDigestRow,
 	VaultReviewReadPort,
@@ -54,6 +55,7 @@ function makeReadPortStub(initial: {
 	fingerprint?: VaultFingerprintRow[];
 	nodes?: VaultNodeDigestRow[];
 	communities?: CommunityInfo[];
+	communityLinks?: VaultCommunityLinkRow[];
 	holes?: StructuralHole[];
 	dangling?: DanglingReferenceRow[];
 	clusterMembers?: ClusterMemberRow[];
@@ -62,6 +64,7 @@ function makeReadPortStub(initial: {
 		fingerprint: initial.fingerprint ?? [],
 		nodes: initial.nodes ?? [],
 		communities: initial.communities ?? [],
+		communityLinks: initial.communityLinks ?? [],
 		holes: initial.holes ?? [],
 		dangling: initial.dangling ?? [],
 		clusterMembers: initial.clusterMembers ?? [],
@@ -86,6 +89,9 @@ function makeReadPortStub(initial: {
 		async listCommunities() {
 			calls.communities += 1;
 			return state.communities;
+		},
+		async listCommunityLinks() {
+			return state.communityLinks;
 		},
 		async listTopStructuralHoles(_limit) {
 			calls.holes += 1;
@@ -459,6 +465,20 @@ async function testFixtureDigestMatchesSnapshot(): Promise<void> {
 	console.log('PASS: fixtureDigestMatchesSnapshot');
 }
 
+async function testVerifiedCommunityLinksEnterDigest(): Promise<void> {
+	const reads = makeReadPortStub({
+		fingerprint: fixtureFingerprintRows(),
+		communities: fixtureCommunities(),
+		communityLinks: [{ communityAId: 'c0', communityBId: 'c1', referenceCount: 4 }],
+	});
+	const builder = new VaultDigestBuilder(reads.port, stubLintRuntime(), new FakeClock(FIXED_NOW));
+	const digest = await builder.buildDigest({ vaultLintRuntime: stubLintRuntime() });
+	assert.deepStrictEqual(digest?.communityLinks, [
+		{ communityAId: 'c0', communityBId: 'c1', referenceCount: 4 },
+	]);
+	console.log('PASS: verifiedCommunityLinksEnterDigest');
+}
+
 async function testListClusterMembersDelegatesAndShapes(): Promise<void> {
 	const members: ClusterMemberRow[] = [
 		{ path: 'a.md', title: 'A', wordCount: 100, pagerank: 0.5, mtime: FIXED_NOW, incomingCount: 5 },
@@ -493,6 +513,7 @@ async function main(): Promise<void> {
 	await testTopKCapsAreEnforced();
 	await testLintHealthMergedWhenScanExists();
 	await testFixtureDigestMatchesSnapshot();
+	await testVerifiedCommunityLinksEnterDigest();
 	await testListClusterMembersDelegatesAndShapes();
 	await testDisposeClearsFingerprintCache();
 }
