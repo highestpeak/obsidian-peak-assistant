@@ -4,7 +4,7 @@
 >
 > 目标：为首次公开上线或公开 Beta 提供任务顺序、优先级和最终闸门。
 >
-> 最后更新：2026-08-12。
+> 最后更新：2026-08-18。
 
 ## 使用规则
 
@@ -49,8 +49,8 @@
 - [ ] **P1 · 条件式宣传任务** · [12 · AI 生成 HTML 与图片产物管理定位](pre-launch/12-ai-generated-html-image-workspace-positioning.md)
   - 把 Codex、Claude Code 等工具生成的大量 HTML、mock、截图和图片，包装为可整理、关联和继续工作的本地项目材料。
   - 只有 HTML/Image File Workspace 真正交付并通过真实验收后才启用强主张。
-- [ ] **P1 · 品牌宣传任务** · [19 · Personal Assistant 与 Peak Assistant 双关宣传语](pre-launch/19-brand-tagline-and-peak-wordplay.md)
-  - 评估 `Your personal assistant. Your Peak Assistant.` 作为品牌层宣传语。
+- [ ] **P1 · 品牌宣传任务** · [19 · Peak Assistant 品牌宣传语与 AI Harness 定位](pre-launch/19-brand-tagline-and-peak-wordplay.md)
+  - 评估 `Your personal assistant. Your Peak Assistant.` 与 `An AI harness, designed for your notes.` 两条品牌方向。
   - 将品牌记忆点、具体价值说明和功能证据分层，避免只剩一句无法解释产品的口号。
 
 ### 阶段三 · 稳定版本验证与公开材料定稿
