@@ -348,21 +348,16 @@ export function CommentHighlightLayer({
 }
 
 export function CommentAnchorMarker({
-	blockId,
+	comments,
 	activeCommentId,
+	label,
 	onActivate,
 }: {
-	blockId: string;
+	comments: readonly ComposerComment[];
 	activeCommentId: string | null;
+	label: string;
 	onActivate: (commentId: string) => void;
 }): React.ReactElement | null {
-	const { runtime, config } = useComposerChrome();
-	const store = runtime.comments;
-	const [comments, setComments] = React.useState<readonly ComposerComment[]>([]);
-	React.useEffect(() => {
-		if (!store) return;
-		return store.subscribe((all) => setComments(all.filter((comment) => comment.anchor.blockId === blockId)));
-	}, [store, blockId]);
 	if (comments.length === 0) return null;
 	const active = comments.some((comment) => comment.commentId === activeCommentId);
 	return (
@@ -371,7 +366,7 @@ export function CommentAnchorMarker({
 			size="sm"
 			className="pk-comment-anchor-marker"
 			data-active={active || undefined}
-			aria-label={`${config.chrome.comment.openRail} (${comments.length})`}
+			aria-label={`${label} (${comments.length})`}
 			onClick={() => onActivate(comments[0].commentId)}
 		>
 			<MessageSquare size={12} />

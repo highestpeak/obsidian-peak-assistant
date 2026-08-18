@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { shouldHydrateComposerBlockEditor } from '@/ui/view/composer/virtualization';
+import {
+	shouldHydrateComposerBlockEditor,
+	shouldUseComposerStaticBlockRow,
+} from '@/ui/view/composer/virtualization';
 
 const noPins = new Set<string>();
 const focusPin = new Set(['block-b']);
@@ -35,4 +38,35 @@ assert.equal(
 	'activation and hard pins do not hydrate unrelated viewport blocks',
 );
 
-console.log('composer-editor-hydration-policy: 6 checks passed');
+assert.equal(
+	shouldUseComposerStaticBlockRow(true, false, 'paragraph', 0, 0, false),
+	true,
+	'an ordinary long-document paragraph uses the low-allocation visual row',
+);
+assert.equal(
+	shouldUseComposerStaticBlockRow(true, true, 'paragraph', 0, 0, false),
+	false,
+	'an active editor always upgrades to the complete Composer row',
+);
+assert.equal(
+	shouldUseComposerStaticBlockRow(true, false, 'paragraph', 1, 0, false),
+	false,
+	'AI candidate state keeps its complete review surface',
+);
+assert.equal(
+	shouldUseComposerStaticBlockRow(true, false, 'paragraph', 0, 1, false),
+	false,
+	'finding state keeps its complete review surface',
+);
+assert.equal(
+	shouldUseComposerStaticBlockRow(true, false, 'paragraph', 0, 0, true),
+	false,
+	'invoke errors remain visible on the complete row',
+);
+assert.equal(
+	shouldUseComposerStaticBlockRow(true, false, 'table', 0, 0, false),
+	false,
+	'object renderers keep their specialized complete row',
+);
+
+console.log('composer-editor-hydration-policy: 12 checks passed');

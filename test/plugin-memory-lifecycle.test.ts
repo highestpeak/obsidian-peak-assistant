@@ -61,6 +61,32 @@ assert.match(
 	'a restored file-bound leaf must never project the unbound empty document state',
 );
 assert.match(composerView, /getState: \(\) => this\.pendingState/);
+const composerOnOpen = composerView.slice(
+	composerView.indexOf('async onOpen(): Promise<void>'),
+	composerView.indexOf('async onClose(): Promise<void>'),
+);
+const hostMountIndex = composerOnOpen.indexOf('await super.onOpen()');
+assert.ok(
+	hostMountIndex >= 0 &&
+		composerOnOpen.indexOf('await this.ensureControllerAfterLoadingPaint', hostMountIndex) > hostMountIndex,
+	'Composer onOpen must route initial controller creation through the loading-paint gate',
+);
+const paintGate = composerView.slice(
+	composerView.indexOf('private async ensureControllerAfterLoadingPaint'),
+	composerView.indexOf('private updatePendingState'),
+);
+const loadingRenderIndex = paintGate.indexOf('this.rerender()');
+const paintIndex = paintGate.indexOf('await waitForComposerLoadingPaint', loadingRenderIndex);
+const controllerStartIndex = paintGate.indexOf('this.ensureController', paintIndex);
+assert.ok(
+	loadingRenderIndex >= 0 && paintIndex > loadingRenderIndex && controllerStartIndex > paintIndex,
+	'file-bound loading must render and paint before synchronous controller composition',
+);
+assert.match(
+	composerView,
+	/else if \(runtime && this\.reactHostReady\) \{\s*await this\.ensureControllerAfterLoadingPaint\(runtime\)/,
+	'setState-after-onOpen must use the same loading-paint gate',
+);
 
 assert.match(streamdown, /importImplWithoutMermaidLoadListener/);
 assert.match(mermaidLoader, /Mermaid failed to initialize/);

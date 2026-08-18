@@ -436,12 +436,14 @@ The absolute-row and render-free covered-scroll follow-up (`285b9529`) removed t
 
 The temporary fast-scroll proxy follow-up (`66e8e458`) reduced that allocation rate but did not close the incident. The 17:46 recording still contained one Renderer crash and repeatedly showed rows first as plain text, then changing appearance when the idle timer restored the full renderer—for example external-link decoration appeared late. More importantly, every idle transition recreated the whole viewport's editor/controller graph. A renderer swap that happens less often is still an allocation burst, and a visually weaker proxy makes the optimization visible to the user.
 
+The next “stable visual projection” attempt removed that proxy and moved ordinary text leaves to `StaticEditableText`, but the 18:20 recording proved that this was still only a partial boundary. The video showed a blank first-open interval, correctly styled links once a window mounted, then a complete Renderer grey screen after fast traversal. Two new crash reports captured at 18:20:38 and 18:21:01—including the newly relaunched Renderer, which survived only about 19 seconds—ended in the same `CrRendererMain → v8::CppHeap → cppgc::Allocate` fatal path. Source inspection found that every ordinary virtual row still mounted the complete `ComposerBlockRow`; only its innermost text leaf was static. That shell still allocated per-row surface coordination, effects, timers, rails and SVG controls, comment subscriptions, finding/candidate plumbing and hidden action surfaces. A “static projection” is therefore not static if it merely swaps out `contenteditable` while retaining the interactive row shell.
+
 The corrected scrolling contract is therefore stricter than merely keeping the DOM count bounded or proving estimated coverage:
 
 - Covered scrolling performs zero React projection updates. Recenter only when the viewport approaches a mounted edge, use a transition for that ordinary recenter, and restore the ordinary buffer once after scrolling settles.
 - A viewport that truly escapes coverage synchronously mounts only a minimal emergency window. Never combine emergency `flushSync` with a velocity-expanded heavy-row window.
-- Long documents use one stable visual projection from the first frame through scroll idle. Static text uses the same Markdown styling, links, formulas and block geometry as the interactive row, but constructs no `DirectEditController`, `MarkdownSourceEditor` or `contenteditable`.
-- Only the explicitly activated block and interaction-critical hard pins hydrate text editors. Candidate, finding, comment, history and AI-stream state remains data-only until its bounded viewport row is mounted; it never hydrates editors across the document.
+- Long documents use one stable visual projection from the first frame through scroll idle. An ordinary row uses a dedicated static row shell with no rail, action surface, timer, per-row subscription, editor controller or contenteditable. Its text still uses the same Markdown styling, links, formulas and geometry as the interactive row.
+- Only the explicitly activated block, editor-critical focus/IME/panel/drag pins and rows with visible candidate/finding/error state upgrade to the complete `ComposerBlockRow`. Native selection endpoints are mount-only pins so their DOM Range is not destroyed by a renderer swap. Candidate, finding, comment, history and AI-stream state remains data-only until its bounded viewport row is mounted; it never hydrates editors across the document.
 - Leaving the viewport does not abruptly destroy a dirty editor. After scrolling settles, save the pending burst, wait for IME/selection/panel/drag ownership to end, blur the off-screen editor, then release its hard pin. Editor cleanup must itself extract pending input before disposal as a final safety net.
 - Scrolling and idle never change row renderer type or freeze a proxy height. Measurement-anchor scroll corrections are internal geometry events and must not reactivate projection.
 - Each mounted row is absolutely positioned at its complete-layout-index offset. Estimated row-height error is local to that row and cannot accumulate into a viewport-sized normal-flow gap.
@@ -453,6 +455,7 @@ The same mistake can return in less obvious forms:
 - pinning every block touched by an AI run because its candidate or streaming state changed;
 - using `querySelector` over a presumed full DOM for find, comment, history, candidate or source-location navigation;
 - keeping the native Markdown view blank while Composer reads and constructs its first frame;
+- mounting React only after synchronous prepared-session composition, so even a fast prepared open leaves no loading pixels for the browser to paint;
 - virtualizing rows but retaining an editor, observer, listener, timer or panel anchor for every off-screen block;
 - accepting an AI batch one candidate at a time, causing repeated write, reparse, history and layout cycles.
 
@@ -480,6 +483,7 @@ complete ComposerDocumentSession
 - The scrollbar moves while the document body is temporarily only a virtual gap, then rows recover after the input stops.
 - Covered scrolling changes `data-virtual-window` every animation frame, or measurement delivery causes a second full ComposerBody render.
 - Fast traversal keeps constructing ordinary `contenteditable` leaves even though mounted row count stays bounded.
+- Ordinary rows report static text leaves but still contain `.pk-composer-rail`, `.pk-block-action-row`, comment subscriptions or per-row surface timers.
 - Link, mark or formula styling appears only after scrolling stops because a visually weaker proxy is being replaced.
 - ResizeObserver delivery causes one layout-index rebuild or `scrollTop` write per mounted row instead of one per frame batch.
 - First paint contains text from the far end of a multi-thousand-block fixture.
@@ -496,8 +500,8 @@ complete ComposerDocumentSession
 - [ ] New DOM-dependent interactions declare their pin owner, acquisition point, release event and unmount cleanup.
 - [ ] AI candidates and findings are subscribed/indexed once at the document root, not filtered from a full collection in every row.
 - [ ] Find, comment, history, candidate and source-location navigation use the shared virtual locator rather than direct full-document DOM queries.
-- [ ] First-open routing uses prepare-before-swap; restore uses a stable skeleton.
-- [ ] Performance tests assert mounted rows are bounded for a 5000-block document and that far-tail content is absent from first paint.
+- [ ] First-open routing uses prepare-before-swap; the Composer React root paints a file-bound document skeleton before synchronous controller composition starts.
+- [ ] Performance tests assert mounted rows are bounded for a 5000-block document, ordinary mounted rows contain no rail/action/editor chrome, link semantics exist on first paint, and far-tail content is absent.
 - [ ] Scroll-policy tests prove centered covered movement chooses `none`, edge movement chooses deferred `recenter`, escape chooses `emergency`, and document-tail space remains covered.
 - [ ] Source guards reject per-frame covered-scroll projection, synchronous per-row computed-style/geometry measurement, normal-flow virtual gaps and measurement-triggered React rendering.
 - [ ] A 405-block allocation stress run proves zero ordinary `contenteditable` creation on first paint and while scrolling, keeps hard-pinned editors focused, performs no idle renderer swap, and records zero blank frames or late link/style changes.
@@ -511,7 +515,7 @@ complete ComposerDocumentSession
 - Stable visual projection plan: [`2026-08-18-composer-stable-visual-projection-plan.md`](./superpowers/plans/2026-08-18-composer-stable-visual-projection-plan.md)
 - Primary guards: [`composer-virtualized-rendering.test.ts`](../test/composer-virtualized-rendering.test.ts), [`composer-virtual-scroll-policy.test.ts`](../test/composer-virtual-scroll-policy.test.ts), [`composer-editor-hydration-policy.test.ts`](../test/composer-editor-hydration-policy.test.ts), [`composer-block-layout-index.test.ts`](../test/composer-block-layout-index.test.ts), [`composer-prepared-session.test.ts`](../test/composer-prepared-session.test.ts), and [`composer-candidate-group-atomicity.test.ts`](../test/composer-candidate-group-atomicity.test.ts)
 - Implementation commit: `5ce8d3f3` (`fix(composer): virtualize long document runtime`)
-- Current evidence status: stable static projection, block-level hydration, save-before-release source guards and production build are complete. Repeated target-document opening, fast-scroll allocation/blank-frame sampling, IME/selection/drag flows and Renderer heap/crash verification remain `INTERACTION NOT VERIFIED` until recorded through the canonical real-UI QA protocol.
+- Current evidence status: dedicated static row shell, exact static link projection, stateful-row upgrade policy, block-level hydration, save-before-release guards, first-paint skeleton source guards and production build are complete. Repeated target-document opening, fast-scroll allocation/blank-frame sampling, IME/selection/drag flows and Renderer heap/crash verification remain `INTERACTION NOT VERIFIED` until recorded through the canonical real-UI QA protocol.
 
 ---
 

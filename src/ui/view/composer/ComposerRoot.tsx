@@ -128,13 +128,20 @@ import {
 	type SidecarConfig,
 } from './sidecar/sidecarConfig';
 import { restoreGenerationReview } from './generationHistory';
-import type { IntelligenceRuntime, SuggestionFinding } from '@/service/composer';
+import type {
+	ComposerComment,
+	ComposerCommentStore,
+	IntelligenceRuntime,
+	SuggestionFinding,
+} from '@/service/composer';
 import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
 import type { PeakKeyboardSurfaceAdapter } from '@/ui/keyboard/KeyboardNavigationPort';
 import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import {
 	ComposerHardPinRegistry,
+	ComposerStaticBlockRow,
 	shouldHydrateComposerBlockEditor,
+	shouldUseComposerStaticBlockRow,
 	shouldUseComposerStaticProjection,
 	useComposerVirtualWindow,
 } from './virtualization';
@@ -529,7 +536,7 @@ function ComposerBody(props: BodyProps): React.ReactElement {
 	if (state.status === 'empty') return <StateBanner title={strings.emptyTitle} hint={strings.emptyHint} />;
 	if (state.status === 'missing') return <StateBanner title={strings.missingTitle} hint={strings.missingHint} />;
 	if (state.status === 'error') return <StateBanner title={strings.errorTitle} hint={state.error ?? ''} tone="error" />;
-	if (!state.snapshot) return <StateBanner title={strings.loading} hint="" />;
+	if (!state.snapshot) return <ComposerLoadingSkeleton label={strings.loading} />;
 	return <ComposerDocument {...props} />;
 }
 
@@ -663,6 +670,7 @@ function ComposerDocument({
 	const [commentRailOpen, setCommentRailOpen] = React.useState(false);
 	const [drag, setDrag] = React.useState<DragState | null>(null);
 	const [focusedBlockIdState, setFocusedBlockIdState] = React.useState<string | null>(null);
+	const [focusedEditorBlockIdState, setFocusedEditorBlockIdState] = React.useState<string | null>(null);
 	const [hydratedBlockId, setHydratedBlockId] = React.useState<string | null>(null);
 	const hydrationRequestGenerationRef = React.useRef(0);
 	const [compositionBlockId, setCompositionBlockId] = React.useState<string | null>(null);
@@ -728,6 +736,8 @@ function ComposerDocument({
 		setLogicalSelection(null);
 		setSelectionEndpointBlockIds([]);
 		hydrationRequestGenerationRef.current += 1;
+		setFocusedBlockIdState(null);
+		setFocusedEditorBlockIdState(null);
 		setHydratedBlockId(null);
 	}, [snapshot.documentId]);
 	React.useEffect(() => {
@@ -1045,6 +1055,7 @@ function ComposerDocument({
 	);
 	const findings = useComposerFindings(intelligence);
 	const reviewCandidates = useDocumentCandidates(runtime.candidateRuntime);
+	const comments = useDocumentComments(runtime.comments);
 	const candidatesByBlockId = React.useMemo(
 		() => indexCandidatesByBlock(reviewCandidates),
 		[reviewCandidates],
@@ -1053,6 +1064,10 @@ function ComposerDocument({
 		() => indexFindingsByBlock(findings),
 		[findings],
 	);
+	const commentsByBlockId = React.useMemo(
+		() => indexCommentsByBlock(comments),
+		[comments],
+	);
 	const pinRegistryRef = React.useRef<ComposerHardPinRegistry | null>(null);
 	if (!pinRegistryRef.current) {
 		pinRegistryRef.current = new ComposerHardPinRegistry(config.virtualization.maxHardPins);
@@ -1060,19 +1075,33 @@ function ComposerDocument({
 	const pinRegistry = pinRegistryRef.current;
 	pinRegistry.setLimit(config.virtualization.maxHardPins);
 	pinRegistry.clear();
+	const editorPinnedBlockIds = new Set<string>();
 	if (hydratedBlockId) pinRegistry.acquire('hydrated-editor', hydratedBlockId, true);
 	if (focusedBlockIdState) pinRegistry.acquire('focus', focusedBlockIdState, true);
-	if (compositionBlockId) pinRegistry.acquire('composition', compositionBlockId, true);
-	if (panel?.blockId) pinRegistry.acquire('panel', panel.blockId);
+	if (focusedEditorBlockIdState) {
+		editorPinnedBlockIds.add(focusedEditorBlockIdState);
+	}
+	if (compositionBlockId && pinRegistry.acquire('composition', compositionBlockId, true)) {
+		editorPinnedBlockIds.add(compositionBlockId);
+	}
+	if (panel?.blockId && pinRegistry.acquire('panel', panel.blockId)) {
+		editorPinnedBlockIds.add(panel.blockId);
+	}
 	selectionEndpointBlockIds.forEach((blockId, index) => {
 		pinRegistry.acquire(`selection-${index}`, blockId, true);
 	});
-	if (drag?.blockId) pinRegistry.acquire('drag-source', drag.blockId, true);
+	if (drag?.blockId && pinRegistry.acquire('drag-source', drag.blockId, true)) {
+		editorPinnedBlockIds.add(drag.blockId);
+	}
 	if (drag?.dropIndex !== null && drag?.dropIndex !== undefined) {
 		const before = visibleBlocks[Math.max(0, drag.dropIndex - 1)];
 		const after = visibleBlocks[Math.min(visibleBlocks.length - 1, drag.dropIndex)];
-		if (before) pinRegistry.acquire('drag-before', before.blockId);
-		if (after) pinRegistry.acquire('drag-after', after.blockId);
+		if (before && pinRegistry.acquire('drag-before', before.blockId)) {
+			editorPinnedBlockIds.add(before.blockId);
+		}
+		if (after && pinRegistry.acquire('drag-after', after.blockId)) {
+			editorPinnedBlockIds.add(after.blockId);
+		}
 	}
 	const pinnedBlockIds = pinRegistry.blocks();
 	const releaseOffscreenEditor = React.useCallback((visibleBlockIds: ReadonlySet<string>) => {
@@ -1093,6 +1122,7 @@ function ComposerDocument({
 				active.blur();
 			}
 			setFocusedBlockIdState(null);
+			setFocusedEditorBlockIdState(null);
 			setHydratedBlockId(null);
 		});
 	}, [
@@ -1234,6 +1264,7 @@ function ComposerDocument({
 				data-virtual-total-blocks={visibleBlocks.length}
 				data-virtual-mounted-blocks={virtualWindow.items.length}
 				data-virtual-hard-pins={pinnedBlockIds.size}
+				data-virtual-editor-pins={editorPinnedBlockIds.size}
 				data-virtual-window={`${virtualWindow.start}:${virtualWindow.end}`}
 				data-virtual-static-projection={virtualWindow.staticProjection || undefined}
 				data-virtual-hydrated-block={hydratedBlockId ?? undefined}
@@ -1253,8 +1284,10 @@ function ComposerDocument({
 				}}
 				onFocusCapture={(event) => {
 					const target = event.target as HTMLElement | null;
-					setFocusedBlockIdState(
-						target?.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null,
+					const block = target?.closest<HTMLElement>('[data-block-id]');
+					setFocusedBlockIdState(block?.dataset.blockId ?? null);
+					setFocusedEditorBlockIdState(
+						block?.dataset.staticBlockRow === 'true' ? null : block?.dataset.blockId ?? null,
 					);
 				}}
 				onBlurCapture={(event) => {
@@ -1266,6 +1299,7 @@ function ComposerDocument({
 							void chrome.flushAll().finally(() => {
 								hydrationRequestGenerationRef.current += 1;
 								setFocusedBlockIdState(null);
+								setFocusedEditorBlockIdState(null);
 								setHydratedBlockId(null);
 							});
 						}
@@ -1317,12 +1351,23 @@ function ComposerDocument({
 					if (!b) return null;
 					const i = virtualItem.index;
 					const previousBlock = visibleBlocks[i - 1];
+					const blockCandidates = candidatesByBlockId.get(b.blockId) ?? [];
+					const blockFindings = findingsByBlockId.get(b.blockId) ?? [];
+					const blockComments = commentsByBlockId.get(b.blockId) ?? [];
 					const rowEditing = shouldHydrateComposerBlockEditor(
 						editing,
 						staticProjection,
 						b.blockId,
 						hydratedBlockId,
-						pinnedBlockIds,
+						editorPinnedBlockIds,
+					);
+					const useStaticRow = shouldUseComposerStaticBlockRow(
+						staticProjection,
+						rowEditing,
+						b.kind,
+						blockCandidates.length,
+						blockFindings.length,
+						Boolean(invokeErrors[b.blockId]),
 					);
 					return (
 						<ComposerVirtualItem
@@ -1332,20 +1377,39 @@ function ComposerDocument({
 							offset={virtualItem.offset}
 							onMeasure={virtualWindow.measureElement}
 						>
-							<ComposerBlockRow
+							{useStaticRow ? (
+								<ComposerStaticBlockRow
+									block={b}
+									snapshot={snapshot}
+									folded={folded.has(b.blockId)}
+									spacing={blockSpacingRole(b, previousBlock)}
+									emptyPreview={config.strings.emptyPreview}
+									comments={blockComments}
+									activeCommentId={activeCommentId}
+									commentLabel={config.chrome.comment.openRail}
+									onActiveComment={(commentId) => {
+										setCommentRailOpen(true);
+										onActiveComment(commentId);
+									}}
+									onRequestEditor={(event) => requestBlockEditorHydration(b.blockId, event)}
+								/>
+							) : <ComposerBlockRow
 								block={b}
 								previousBlock={previousBlock}
 								snapshot={snapshot}
 								config={config}
 								foldStore={foldStore}
+								folded={folded.has(b.blockId)}
 								editing={editing}
 								editorHydrated={rowEditing}
 								onRequestEditor={(event) => requestBlockEditorHydration(b.blockId, event)}
 								displayState={displayState}
 								reviewAll={false}
-								candidates={candidatesByBlockId.get(b.blockId) ?? []}
+								candidates={blockCandidates}
 								invokeError={invokeErrors[b.blockId]}
-								findings={findingsByBlockId.get(b.blockId) ?? []}
+								findings={blockFindings}
+								comments={blockComments}
+								commentLabel={config.chrome.comment.openRail}
 								onAskFinding={(finding) => {
 									if (!intelligence) return;
 									intelligence.session.selectSurface('talk');
@@ -1399,7 +1463,7 @@ function ComposerDocument({
 									setPanel(null);
 									setHistoryActivity(activity);
 								}}
-							/>
+							/>}
 							{panel?.blockId === b.blockId && panel.panel === 'insert-draft' && (
 								<div data-composer-surface-owner={b.blockId}>
 									<NewBlockDraft
@@ -1569,6 +1633,7 @@ function ComposerBlockRow({
 	snapshot,
 	config,
 	foldStore,
+	folded,
 	editing,
 	editorHydrated,
 	onRequestEditor,
@@ -1577,6 +1642,8 @@ function ComposerBlockRow({
 	candidates,
 	invokeError,
 	findings,
+	comments,
+	commentLabel,
 	onAskFinding,
 	onConfirmFinding,
 	onDismissFinding,
@@ -1598,6 +1665,7 @@ function ComposerBlockRow({
 	snapshot: ComposerDocumentSnapshot;
 	config: ComposerConfig;
 	foldStore: ComposerFoldStore;
+	folded: boolean;
 	editing: boolean;
 	editorHydrated: boolean;
 	onRequestEditor?: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -1606,6 +1674,8 @@ function ComposerBlockRow({
 	candidates: readonly ComposerCandidate[];
 	invokeError?: string;
 	findings: readonly SuggestionFinding[];
+	comments: readonly ComposerComment[];
+	commentLabel: string;
 	onAskFinding(finding: SuggestionFinding): void;
 	onConfirmFinding(finding: SuggestionFinding): void;
 	onDismissFinding(finding: SuggestionFinding): void;
@@ -1628,7 +1698,6 @@ function ComposerBlockRow({
 	onOpenHistoryActivity: (activity: ComposerHistoryActivity) => void;
 }): React.ReactElement {
 	const chrome = useComposerChrome();
-	const folded = useStore(foldStore, (s) => s.folded.has(block.blockId));
 	const blockRef = React.useRef<HTMLDivElement | null>(null);
 	const bodyRef = React.useRef<HTMLDivElement | null>(null);
 	const isHeading = block.kind === 'heading';
@@ -2257,8 +2326,9 @@ function ComposerBlockRow({
 					onDismiss={onDismissFinding}
 				/>
 				<CommentAnchorMarker
-					blockId={block.blockId}
+					comments={comments}
 					activeCommentId={activeCommentId}
+					label={commentLabel}
 					onActivate={onActiveComment}
 				/>
 				{replacesBlockBody ? (
@@ -2370,6 +2440,21 @@ function useComposerFindings(runtime?: IntelligenceRuntime): readonly Suggestion
 }
 
 const EMPTY_FINDINGS: readonly SuggestionFinding[] = [];
+const EMPTY_COMMENTS: readonly ComposerComment[] = [];
+
+function useDocumentComments(store?: ComposerCommentStore): readonly ComposerComment[] {
+	const [comments, setComments] = React.useState<readonly ComposerComment[]>(
+		() => store?.list() ?? EMPTY_COMMENTS,
+	);
+	React.useEffect(() => {
+		if (!store) {
+			setComments(EMPTY_COMMENTS);
+			return;
+		}
+		return store.subscribe(setComments);
+	}, [store]);
+	return comments;
+}
 
 function hiddenQuickCapabilities(kind: ComposerBlock['kind']): readonly string[] | undefined {
 	if (kind === 'frontmatter') return [SUGGEST_PROPERTIES_CAPABILITY_ID];
@@ -2446,6 +2531,18 @@ function indexFindingsByBlock(
 		const blockFindings = indexed.get(blockId) ?? [];
 		blockFindings.push(finding);
 		indexed.set(blockId, blockFindings);
+	}
+	return indexed;
+}
+
+function indexCommentsByBlock(
+	comments: readonly ComposerComment[],
+): ReadonlyMap<string, readonly ComposerComment[]> {
+	const indexed = new Map<string, ComposerComment[]>();
+	for (const comment of comments) {
+		const blockComments = indexed.get(comment.anchor.blockId) ?? [];
+		blockComments.push(comment);
+		indexed.set(comment.anchor.blockId, blockComments);
 	}
 	return indexed;
 }
@@ -3111,6 +3208,22 @@ function StateBanner({
 		<div className="pk-composer-state" data-tone={tone}>
 			<span className="pk-composer-state__title">{title}</span>
 			{hint && <span className="pk-composer-state__hint">{hint}</span>}
+		</div>
+	);
+}
+
+function ComposerLoadingSkeleton({ label }: { label: string }): React.ReactElement {
+	return (
+		<div className="pk-composer-loading" role="status" aria-live="polite" aria-label={label}>
+			<span className="pk-composer-loading__label">{label}</span>
+			<div className="pk-composer-loading__paper" aria-hidden="true">
+				<span className="pk-composer-loading__title" />
+				<span className="pk-composer-loading__line" data-width="wide" />
+				<span className="pk-composer-loading__line" data-width="medium" />
+				<span className="pk-composer-loading__line" data-width="full" />
+				<span className="pk-composer-loading__line" data-width="short" />
+				<span className="pk-composer-loading__line" data-width="wide" />
+			</div>
 		</div>
 	);
 }

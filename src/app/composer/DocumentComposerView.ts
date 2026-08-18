@@ -65,6 +65,9 @@ export class DocumentComposerView extends ReactFileViewHost {
 	};
 	private pendingRawState: unknown = null;
 	private controllerSubscription: (() => void) | null = null;
+	private reactHostReady = false;
+	private controllerPaintGeneration = 0;
+	private openGeneration = 0;
 	private readonly originHostId = `composer-leaf-${crypto.randomUUID()}`;
 	private revealSequence = 0;
 	private pendingReveal: { id: number; location: DocumentSourceLocation } | null = null;
@@ -99,6 +102,8 @@ export class DocumentComposerView extends ReactFileViewHost {
 	}
 
 	async onOpen(): Promise<void> {
+		const openGeneration = ++this.openGeneration;
+		this.reactHostReady = false;
 		const runtime = this.appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
 		if (runtime) {
 			this.viewState = normalizeComposerViewState(
@@ -106,10 +111,13 @@ export class DocumentComposerView extends ReactFileViewHost {
 				runtime.navigation?.getLegacyActiveMarkdownPath(),
 			);
 			this.updatePendingState();
-			this.ensureController(runtime);
 		}
 		await super.onOpen();
+		this.reactHostReady = true;
 		this.contentEl.addEventListener('focusin', this.onComposerFocusIn);
+		const readyRuntime = this.appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
+		if (readyRuntime) await this.ensureControllerAfterLoadingPaint(readyRuntime);
+		if (openGeneration !== this.openGeneration || !this.getReactRenderer()) return;
 		// Load the runtime-editable config, then re-render once resolved.
 		void loadComposerConfig().then((cfg) => {
 			this.config = cfg;
@@ -118,6 +126,9 @@ export class DocumentComposerView extends ReactFileViewHost {
 	}
 
 	async onClose(): Promise<void> {
+		this.openGeneration += 1;
+		this.controllerPaintGeneration += 1;
+		this.reactHostReady = false;
 		this.contentEl.removeEventListener('focusin', this.onComposerFocusIn);
 		this.controllerSubscription?.();
 		this.controllerSubscription = null;
@@ -190,7 +201,9 @@ export class DocumentComposerView extends ReactFileViewHost {
 			this.viewState = normalized;
 			this.updatePendingState();
 			if (this.controller) this.controller.bindFile(normalized.filePath, normalized.preparationId);
-			else if (runtime) this.ensureController(runtime);
+			else if (runtime && this.reactHostReady) {
+				await this.ensureControllerAfterLoadingPaint(runtime);
+			}
 			this.requestHeaderRefresh();
 			this.getReactRenderer()?.render(this.renderElement());
 			return;
@@ -313,6 +326,30 @@ export class DocumentComposerView extends ReactFileViewHost {
 		this.controller.start(this.viewState.filePath, this.viewState.preparationId);
 	}
 
+	private async ensureControllerAfterLoadingPaint(
+		runtime: NonNullable<
+			ReturnType<AppContext['runtimeRegistry']['tryGetDocumentComposerRuntime']>
+		>,
+	): Promise<void> {
+		if (this.controller || !this.viewState || !this.reactHostReady) return;
+		const filePath = this.viewState.filePath;
+		const generation = this.controllerPaintGeneration + 1;
+		this.controllerPaintGeneration = generation;
+		// A prepared session avoids IO and parsing here, but composing the complete
+		// editing model is still synchronous enough to leave a newly swapped leaf
+		// white. Render the file-bound document skeleton and cross a real paint
+		// before controller.start(), regardless of whether setState ran before or
+		// after onOpen.
+		this.updatePendingState();
+		this.rerender();
+		await waitForComposerLoadingPaint(this.contentEl);
+		if (generation !== this.controllerPaintGeneration) return;
+		if (!this.getReactRenderer() || this.controller || !this.viewState) return;
+		if (this.viewState.filePath !== filePath) return;
+		this.ensureController(runtime);
+		this.rerender();
+	}
+
 	private updatePendingState(): void {
 		this.pendingState = this.viewState ? {
 			status: 'loading',
@@ -340,4 +377,13 @@ export class DocumentComposerView extends ReactFileViewHost {
 		const sourcePath = this.controller?.getState().filePath ?? '';
 		void this.appContext.vaultNavigation.openLink(target, { sourcePath, newLeaf: false });
 	}
+}
+
+function waitForComposerLoadingPaint(element: HTMLElement): Promise<void> {
+	const ownerWindow = element.ownerDocument.defaultView ?? window;
+	return new Promise((resolve) => {
+		ownerWindow.requestAnimationFrame(() => {
+			ownerWindow.requestAnimationFrame(() => resolve());
+		});
+	});
 }

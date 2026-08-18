@@ -126,8 +126,8 @@ assert.match(router, /openIntelligenceCompanion/, 'Native Markdown must expose t
 assert.match(view, /getSourceFilePath\(\)/, 'Composer views must expose their bound source file');
 assert.match(
 	view,
-	/else if \(runtime\) this\.ensureController\(runtime\)/,
-	'Composer must bind its controller when Obsidian calls setState after onOpen',
+	/else if \(runtime && this\.reactHostReady\) \{\s*await this\.ensureControllerAfterLoadingPaint\(runtime\)/,
+	'Composer must bind setState-after-onOpen through the file-bound loading-paint gate',
 );
 assert.match(view, /replace\(\/\\\.md\$\/i, ''\)/, 'Composer tab titles must derive from the file basename');
 assert.match(navigation, /await router\.open/, 'Vault navigation must delegate exact Markdown opens');

@@ -79,7 +79,7 @@ export function EditableText({
 	);
 }
 
-function StaticEditableText({
+export function StaticEditableText({
 	blockId,
 	unitId,
 	text,

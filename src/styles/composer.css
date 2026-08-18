@@ -278,6 +278,52 @@
 .peak-composer-root .pk-composer-state__hint {
 	font-size: var(--pk-text-sm);
 }
+.peak-composer-root .pk-composer-loading {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--pk-space-3);
+	padding: 44px var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);
+	background: var(--pkc-page-bg);
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-composer-loading__label {
+	width: min(760px, 100%);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-composer-loading__paper {
+	display: flex;
+	box-sizing: border-box;
+	width: min(760px, 100%);
+	min-height: 420px;
+	flex-direction: column;
+	gap: 18px;
+	padding: 52px 58px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pkc-paper-bg);
+	box-shadow: var(--pk-shadow-card);
+}
+.peak-composer-root .pk-composer-loading__title,
+.peak-composer-root .pk-composer-loading__line {
+	display: block;
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface-sunken);
+}
+.peak-composer-root .pk-composer-loading__title {
+	width: 42%;
+	height: 24px;
+	margin-bottom: 18px;
+}
+.peak-composer-root .pk-composer-loading__line {
+	height: 12px;
+}
+.peak-composer-root .pk-composer-loading__line[data-width='full'] { width: 100%; }
+.peak-composer-root .pk-composer-loading__line[data-width='wide'] { width: 86%; }
+.peak-composer-root .pk-composer-loading__line[data-width='medium'] { width: 68%; }
+.peak-composer-root .pk-composer-loading__line[data-width='short'] { width: 48%; }
 .peak-composer-root .pk-composer-stale {
 	display: flex;
 	align-items: center;
@@ -2091,6 +2137,9 @@
 	flex: none;
 	margin-top: 3px;
 	accent-color: var(--pk-accent);
+}
+.peak-composer-root .pk-composer-block--static .pk-composer-task-check {
+	pointer-events: none;
 }
 .peak-composer-root .pk-composer-list__text {
 	flex: 1;

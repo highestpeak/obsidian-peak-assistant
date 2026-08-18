@@ -7,7 +7,9 @@ import { ComposerRoot } from '@/ui/view/composer/ComposerRoot';
 import { readFileSync } from 'fs';
 import { FakeVault, makeHub } from './helpers/composer-fakes';
 
-const sourceText = Array.from({ length: 5_000 }, (_, index) => `Paragraph ${index}.`).join('\n\n');
+const sourceText = Array.from({ length: 5_000 }, (_, index) => index === 0
+	? 'Read [[Vault Note]] and [OpenAI](https://openai.com).'
+	: `Paragraph ${index}.`).join('\n\n');
 const session = ComposerDocumentSession.fromSource('Virtual.md', sourceText);
 const vault = new FakeVault();
 vault.set('Virtual.md', sourceText);
@@ -44,6 +46,27 @@ assert.equal(
 	html.match(/contenteditable="true"/g)?.length ?? 0,
 	0,
 	'long-document first paint must allocate zero text editors even with a live hub',
+);
+assert.equal(
+	html.match(/data-static-block-row="true"/g)?.length ?? 0,
+	mountedRows,
+	'ordinary long-document rows must mount the lightweight visual row, not full Composer chrome',
+);
+assert.equal(
+	html.match(/class="pk-composer-rail/g)?.length ?? 0,
+	0,
+	'static virtual rows must not allocate one rail and its SVG controls per mounted block',
+);
+assert.equal(
+	html.match(/class="pk-block-action-row/g)?.length ?? 0,
+	0,
+	'static virtual rows must not allocate hidden action surfaces during scroll',
+);
+assert.ok(
+	html.includes('class="pk-composer-link pk-composer-wikilink"') &&
+		html.includes('class="pk-composer-link pk-composer-link--external"') &&
+		html.includes('data-link-target="https://openai.com"'),
+	'the low-allocation projection must retain wikilink and external-link semantics from first paint',
 );
 assert.ok(!html.includes('Paragraph 4999.'), 'far document tail cannot be mounted on first paint');
 
@@ -112,8 +135,15 @@ assert.ok(
 	composerRoot.includes('shouldHydrateComposerBlockEditor') &&
 		composerRoot.includes('hydratedBlockId') &&
 		composerRoot.includes("pinRegistry.acquire('hydrated-editor'") &&
-		composerRoot.includes('editorHydrated={rowEditing}'),
-	'long documents must hydrate only the active or hard-pinned block editor',
+		composerRoot.includes('editorHydrated={rowEditing}') &&
+		composerRoot.includes('<ComposerStaticBlockRow') &&
+		composerRoot.includes('editorPinnedBlockIds') &&
+		composerRoot.includes('focusedEditorBlockIdState') &&
+		composerRoot.includes("pinRegistry.acquire(`selection-${index}`") &&
+		composerRoot.includes("block?.dataset.staticBlockRow === 'true' ? null") &&
+		composerRoot.includes('blockCandidates.length') &&
+		composerRoot.includes('blockFindings.length'),
+	'long documents must keep ordinary selection/link rows static and upgrade only editor-critical or stateful blocks',
 );
 assert.ok(
 	virtualHook.includes('onScrollSettled?.') &&
@@ -125,6 +155,10 @@ assert.ok(
 
 const editableText = readFileSync(
 	'src/ui/view/composer/chrome/EditableText.tsx',
+	'utf8',
+);
+const commentPanel = readFileSync(
+	'src/ui/view/composer/chrome/CommentPanel.tsx',
 	'utf8',
 );
 const staticBranch = /function StaticEditableText[\s\S]*?function InteractiveEditableText/.exec(
@@ -142,6 +176,17 @@ assert.ok(
 	interactiveBranch.includes('new DirectEditController') &&
 		interactiveBranch.includes('<MarkdownSourceEditor'),
 	'only the hydrated interactive branch may allocate editing machinery',
+);
+const commentMarkerBranch = /export function CommentAnchorMarker[\s\S]*?const CommentDraftCard/.exec(
+	commentPanel,
+)?.[0] ?? '';
+assert.ok(
+	composerRoot.includes('useDocumentComments(runtime.comments)') &&
+		composerRoot.includes('indexCommentsByBlock(comments)') &&
+		commentMarkerBranch &&
+		!commentMarkerBranch.includes('useComposerChrome()') &&
+		!commentMarkerBranch.includes('.subscribe('),
+	'comments must be subscribed and indexed once at the document root, never once per virtual row',
 );
 
 console.log(`composer-virtualized-rendering: mounted ${mountedRows}/5000 rows`);
