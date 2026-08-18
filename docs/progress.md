@@ -8,6 +8,16 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-18 · Composer 长文档 CppHeap 根因收束
+
+- [x] **最终根因**：早期虚拟化只约束同时挂载行数，后续方案分别修复 viewport 空洞、布局抖动和 `contenteditable` 数量，但快速滚动仍反复创建完整 `ComposerBlockRow`。累计分配率而非某一时刻的 DOM 数量最终触发 Chromium CppHeap fatal。
+- [x] **方案演进**：六代方案及其反证已写入 [`recurring-pitfalls.md` 的长文档事故条目](./recurring-pitfalls.md#why-the-earlier-passes-did-not-reveal-the-final-boundary)。17:46 的链接样式延迟否定了 proxy renderer swap，18:20 的同签名崩溃否定了“静态文字叶等于静态行”。
+- [x] **当前实现**：普通长文档行使用 `ComposerStaticBlockRow`，只有 `ComposerStaticRowPolicy` 判定为交互态或有状态 UI 的行才升级为完整交互壳。链接、标记和公式从静态行第一帧就是最终样式。
+- [x] **首次打开**：Composer React host 先绘制文件级 skeleton，跨过真实 paint 后再启动同步 controller composition；`onOpen` 与 `setState` 两种生命周期顺序共用同一 gate。
+- [x] **自动验证**：focused suites 与 production build 通过；全量 `490/494`，4 个失败均为未触碰基线。实现提交为 `6920ce89`。
+- [x] **Owner 反馈**：当前结果由 owner 评价为“非常好了”。这证明可见体验明显改善，但不替代重复打开、完整快速遍历、heap 曲线和 crash-report 监测。
+- [ ] **真实宿主量化验收**：当时没有 Obsidian CDP listener；mounted/editor/pin 计数、IME/selection/drag 与重复 heap/crash 证据仍保持 `INTERACTION NOT VERIFIED`。
+
 ## 2026-08-18 · Shared Graph Mini Map 导航修复
 
 - [x] **根因**：共享 `AtlasGraphCanvas` 的 Mini Map 只根据 Cytoscape viewport 绘制静态方框，容器还设置了 `pointer-events: none`；没有 pointer capture、反向坐标换算或 pan 回写，因此所有宿主都无法拖动。

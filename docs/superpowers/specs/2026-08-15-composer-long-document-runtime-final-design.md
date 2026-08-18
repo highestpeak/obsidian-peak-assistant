@@ -21,10 +21,12 @@ Composer 对短文档和长文档使用同一套运行时。文档模型始终�
 ### 主指标
 
 - 已挂载块行数量只随视口、overscan 和少量硬固定项增长，不随全文块数增长。
-- contenteditable、块级 React 子树、ResizeObserver 和编辑控制器数量同样有界。
+- 普通长文档行使用专用静态行壳；`contenteditable`、完整交互行、ResizeObserver 和编辑控制器数量同样有界。
+- 快速滚动时不仅同时挂载数量有界，单位滚动距离内的完整交互子树分配量也必须有界。
+- 静态行从第一次挂载就呈现最终 Markdown 链接、标记和公式样式；滚动停止不更换 renderer。
 - 候选投影在文档根只订阅一次，并按 block id 建索引。
 - 同一 base revision 的 Markdown 候选可一次预检、一次写入、一次 reparse、一个 History/Undo 单元完成。
-- Markdown → Composer 在准备完成前保留原视图；恢复 Composer 叶时先显示稳定骨架，不能出现无内容白屏。
+- Markdown → Composer 在准备完成前保留原视图；恢复或首次创建 Composer 叶时，React host 先绘制文件级骨架，再开始同步 composition，不能出现无内容白屏。
 
 ### 必须完成的轨道
 
@@ -61,14 +63,39 @@ ComposerDocumentSession (完整、可事务化)
   -> ComposerBlockLayoutIndex (完整、纯数据)
       -> viewport range + overscan + hard pins
           -> mounted block rows (有界)
-              -> block editor / candidate card / native preview
+              -> ordinary text/list/callout: ComposerStaticBlockRow
+              -> active/stateful/object row: ComposerBlockRow
+                  -> editor / candidate / finding / error / native preview
 ```
 
 布局索引以 block id 为稳定查询键，维护顺序、估算高度、实测高度、前缀 offset 和 total height。高度更新必须保持当前锚点的视觉位置，避免图片、表格、候选卡或折叠变化导致滚动跳跃。
 
 首个版本不依赖第三方虚拟列表库。Composer 的块有折叠、插入面板、跨块选择、拖动和 source location 语义，使用小型领域布局索引比把这些合同塞进通用 item API 更清楚，也避免新增运行时依赖。
 
-### 2. 挂载与卸载合同
+### 2. 稳定静态行与挂载/卸载合同
+
+长文档中符合静态策略的普通 block 使用 `ComposerStaticBlockRow`，包括：
+
+- 文字与标题；
+- 引用与 callout；
+- 列表与 task。
+
+这个组件保留与编辑态相同的 Markdown 文本投影和几何，但不拥有完整交互行的运行时负担：
+
+- rail 与 action surface；
+- timer 与逐行订阅；
+- 编辑控制器与 `contenteditable`。
+
+评论在文档根订阅并按 block id 建索引，静态行只接收当前块的纯数据。
+
+以下情况才升级为完整 `ComposerBlockRow`：
+
+- 用户明确激活该块进行编辑；
+- 该块拥有 editor-critical focus、IME、面板或 drag 状态；
+- 该块当前显示 candidate、finding 或 invoke error；
+- block kind 本身需要专用对象 renderer。
+
+原生 selection endpoint 只负责保持行挂载，不自动升级编辑器，避免 renderer 替换摧毁现有 DOM Range。链接或评论标记获得键盘焦点时同样只保持静态行挂载；用户真正发起编辑后才升级。
 
 普通块只由视口窗口决定是否挂载。以下状态可 hard pin 一个块：
 
@@ -98,7 +125,7 @@ App-owned `DocumentComposerRuntime` 提供短期 prepared-session cache。Markdo
 
 prepared entry 有一次性 token、file path、source revision 和过期时间；消费时验证 path，过期后释放。它由 app runtime 持有，不是 service singleton。
 
-工作区恢复没有可保留的 Markdown 视图，因此 Composer 外壳在 runtime/controller 建立前就渲染稳定 skeleton。恢复路径可异步 load，但不能先画空 paper。
+工作区恢复没有可保留的 Markdown 视图，因此 Composer 外壳在 runtime/controller 建立前就渲染稳定 skeleton。prepared session 避免了重复 IO/parse，但从完整 snapshot 构造 editing projection 仍可能同步占用一帧以上；`DocumentComposerView` 必须先挂载 React host，绘制与目标文件绑定的 skeleton，跨过真实 paint 后才能调用 controller start。`onOpen` 先于 `setState` 或 `setState` 先于 `onOpen` 都走同一个 paint gate。
 
 ### 4. 统一定位与导航
 
@@ -156,13 +183,15 @@ drop 目标由 pointer 的 document-space Y 和布局索引计算，不依赖所
 
 ## 诊断与验收证据
 
-Composer 根节点暴露只读诊断 dataset 或测试 probe：总块数、窗口 start/end、mounted rows、mounted editors、hard pins、candidate subscriptions、layout total height。生产 UI 不展示这些内部指标。
+Composer 根节点暴露只读诊断 dataset 或测试 probe：总块数、窗口 start/end、mounted rows、editor pins、hard pins、hydrated block、candidate count 和 layout total height。静态行暴露 `data-static-block-row="true"`，用于证明普通窗口没有退回完整交互壳。生产 UI 不展示这些内部指标。
 
 完成条件：
 
 - 目标文档连续打开 10 次，无灰屏、无新增 CppHeap crash report。
 - 1000 块混合 fixture 首屏 mounted rows/editors 有界，滚动高度稳定，首尾跳转正确。
 - 5000 块压力 fixture 不产生与全文等量 DOM。
+- 5000 块压力 fixture 的普通已挂载行全部使用静态行壳，不包含 rail、action row 或 editor；首屏 wikilink 与 external link 已具备最终语义和样式。
+- 完整滚动遍历不因窗口变化创建普通 `contenteditable`，也不在 idle 时更换 renderer。
 - 500 个 ready Markdown 候选不增加 mounted rows；一次接受产生一次 write、一次 reparse、一个 History/Undo 单元。
 - 当前行编辑、中文 IME、跨块选择、find next/previous、评论/History/candidate 定位、drag/autoscroll、Undo/Redo 在真实 Obsidian 通过。
 - focused tests 和 production build 通过；若真实 renderer 不可连接，必须明确标记 `INTERACTION NOT VERIFIED`，不能把 harness 升格为验收。

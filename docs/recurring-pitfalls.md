@@ -438,6 +438,32 @@ The temporary fast-scroll proxy follow-up (`66e8e458`) reduced that allocation r
 
 The next “stable visual projection” attempt removed that proxy and moved ordinary text leaves to `StaticEditableText`, but the 18:20 recording proved that this was still only a partial boundary. The video showed a blank first-open interval, correctly styled links once a window mounted, then a complete Renderer grey screen after fast traversal. Two new crash reports captured at 18:20:38 and 18:21:01—including the newly relaunched Renderer, which survived only about 19 seconds—ended in the same `CrRendererMain → v8::CppHeap → cppgc::Allocate` fatal path. Source inspection found that every ordinary virtual row still mounted the complete `ComposerBlockRow`; only its innermost text leaf was static. That shell still allocated per-row surface coordination, effects, timers, rails and SVG controls, comment subscriptions, finding/candidate plumbing and hidden action surfaces. A “static projection” is therefore not static if it merely swaps out `contenteditable` while retaining the interactive row shell.
 
+### Why the earlier passes did not reveal the final boundary
+
+The earlier diagnosis was directionally correct but incomplete: each recording exposed a different dominant failure, and each implementation bounded only the metric visible in that recording. The missing distinction was between the **simultaneous live set** and the **cumulative allocation rate while traversing the document**. A virtual list can keep only a few rows mounted and still crash Chromium if every range change constructs and destroys a large interactive React tree.
+
+| Generation | What it bounded | What remained unbounded | Evidence that falsified completion |
+| --- | --- | --- | --- |
+| Full projection, before `bdbc1daf` | Nothing; the complete document was live DOM | Rows, editors, subscriptions, layout work | 15 Aug grey screen and CppHeap reports |
+| Initial virtual window, `bdbc1daf` | Simultaneous mounted row count | Coverage gaps, per-row measurement and full row cost | 16:44 and 17:07 blank windows |
+| Frame-stable window, `bde0972a` + `285b9529` | Coverage, anchor correction and React updates during covered scroll | Complete `ComposerBlockRow` allocation for every new range | 17:28 full Renderer crash |
+| Fast-scroll proxy, `66e8e458` | Heavy row churn while the pointer was moving | Idle-time whole-window renderer swap and weaker visual output | 17:46 crash plus late link styling |
+| Static text leaf, `fa83002f` | `contenteditable` and editor creation in ordinary text leaves | Interactive row shell, effects, rails, timers, SVGs and subscriptions | 18:20 crash with the same CppHeap signature |
+| Dedicated static row shell, `6920ce89` | Ordinary-row shell allocation as well as editor allocation | Only explicitly activated or stateful rows use the full shell | Source/build/tests complete; repeated real-host heap acceptance still required |
+
+Three blind spots delayed the final design:
+
+- The first tests asserted bounded mounted rows and later asserted zero ordinary `contenteditable` leaves. Neither assertion proved that the surrounding row subtree was cheap.
+- Browser stress harnesses characterized blank-frame coverage and layout stability, but they did not reproduce Electron's cumulative CppHeap allocation failure across repeated full-document traversal.
+- The name “static projection” was applied too early to a static leaf inside an interactive owner. The correct optimization boundary is the complete ordinary row shell, not its innermost editor.
+
+Future reviews must treat four budgets as independent. Passing any one of them does not imply that long-document rendering is safe:
+
+1. **Live-set budget:** mounted rows, editors, observers and hard pins stay proportional to viewport size.
+2. **Frame-work budget:** covered scrolling does not schedule React work, and a measurement batch performs at most one layout rebuild and anchor correction.
+3. **Allocation budget:** traversing new ranges creates lightweight static rows; it does not repeatedly construct the full interaction graph.
+4. **Visual continuity budget:** first open paints a file-bound skeleton, and mounted static rows include final link/mark/formula styling without an idle renderer swap.
+
 The corrected scrolling contract is therefore stricter than merely keeping the DOM count bounded or proving estimated coverage:
 
 - Covered scrolling performs zero React projection updates. Recenter only when the viewport approaches a mounted edge, use a transition for that ordinary recenter, and restore the ordinary buffer once after scrolling settles.
