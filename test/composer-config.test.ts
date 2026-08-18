@@ -45,6 +45,11 @@ function main(): void {
 			Object.keys(json.chrome?.find ?? {}).sort().join(','),
 	);
 	check(
+		'chrome.documentTitle keys match',
+		Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.documentTitle).sort().join(',') ===
+			Object.keys(json.chrome?.documentTitle ?? {}).sort().join(','),
+	);
+	check(
 		'chrome.actions keys match',
 		Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.actions).sort().join(',') ===
 			Object.keys(json.chrome?.actions ?? {}).sort().join(','),

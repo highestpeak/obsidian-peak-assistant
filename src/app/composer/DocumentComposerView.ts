@@ -3,6 +3,7 @@ import {
 	Menu,
 	Notice,
 	Scope,
+	TFile,
 	WorkspaceLeaf,
 	type ViewStateResult,
 } from 'obsidian';
@@ -11,6 +12,7 @@ import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactor
 import type { AppContext } from '@/app/context/AppContext';
 import {
 	normalizeComposerViewState,
+	composerDocumentRenamePath,
 	type ComposerDisplayMode,
 	type ComposerStateSource,
 	type ComposerViewStateV2,
@@ -249,6 +251,7 @@ export class DocumentComposerView extends ReactFileViewHost {
 						}
 					}
 					: undefined,
+				onRenameDocumentTitle: (title) => this.renameDocumentTitle(title),
 				initialIntelligenceOpen: runtime?.getIntelligenceManualOpen() ?? false,
 				initialIntelligenceRunId: this.viewState?.intelligenceRunId,
 				onIntelligenceManualOpenChange: runtime
@@ -314,6 +317,17 @@ export class DocumentComposerView extends ReactFileViewHost {
 			filePath: this.viewState.filePath,
 			snapshot: null,
 		} : EMPTY_STATE;
+	}
+
+	private async renameDocumentTitle(title: string): Promise<void> {
+		const currentPath = this.getSourceFilePath();
+		const file = this.file ?? (currentPath
+			? this.app.vault.getAbstractFileByPath(currentPath)
+			: null);
+		if (!(file instanceof TFile)) throw new Error('Composer file binding is unavailable');
+		const targetPath = composerDocumentRenamePath(file.path, title);
+		if (targetPath === file.path) return;
+		await this.app.fileManager.renameFile(file, targetPath);
 	}
 
 	private openLink(kind: 'vault' | 'external', target: string): void {

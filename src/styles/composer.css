@@ -331,16 +331,94 @@
 	border-radius: var(--pkc-paper-radius);
 	box-shadow: var(--pkc-paper-shadow);
 }
-.peak-composer-root .pk-composer-document-title {
+.peak-composer-root .pk-composer-document-title-heading {
 	display: block;
 	flex: none;
 	margin: 0 0 28px;
+}
+.peak-composer-root .pk-composer-document-title {
+	display: flex;
+	box-sizing: border-box;
+	width: 100% !important;
+	min-width: 0 !important;
+	max-width: none !important;
+	height: auto !important;
+	min-height: 0 !important;
+	max-height: none !important;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 8px;
+	margin: 0;
+	padding: 0 !important;
+	border: 0 !important;
+	border-radius: 3px !important;
 	color: var(--pkc-text);
+	background: transparent !important;
+	box-shadow: none !important;
 	font-size: var(--pkc-h1-size);
 	font-weight: var(--pkc-h1-weight);
 	line-height: 1.25;
 	letter-spacing: -0.02em;
+	text-align: left;
 	word-break: break-word;
+}
+.peak-composer-root button.pk-composer-document-title {
+	cursor: text;
+}
+.peak-composer-root button.pk-composer-document-title:focus-visible {
+	outline: 2px solid var(--pk-accent);
+	outline-offset: 4px;
+}
+.peak-composer-root .pk-composer-document-title__text {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.peak-composer-root .pk-composer-document-title__icon {
+	width: 16px;
+	height: 16px;
+	flex: 0 0 auto;
+	opacity: 0;
+	color: var(--pk-text-tertiary);
+	transition: opacity var(--pk-transition-fast);
+}
+.peak-composer-root .pk-composer-document-title:hover .pk-composer-document-title__icon,
+.peak-composer-root .pk-composer-document-title:focus-visible .pk-composer-document-title__icon {
+	opacity: 1;
+}
+.peak-composer-root input.pk-composer-document-title-input {
+	box-sizing: border-box;
+	display: block;
+	width: 100%;
+	height: auto;
+	margin: 0;
+	padding: 0 0 3px;
+	border: 0;
+	border-bottom: 2px solid var(--pk-accent);
+	border-radius: 0;
+	outline: none;
+	color: var(--pkc-text);
+	background: transparent;
+	box-shadow: none;
+	font-family: inherit;
+	font-size: var(--pkc-h1-size);
+	font-weight: var(--pkc-h1-weight);
+	line-height: 1.25;
+	letter-spacing: -0.02em;
+}
+.peak-composer-root input.pk-composer-document-title-input:focus {
+	border-bottom-color: var(--pk-accent);
+	box-shadow: 0 2px 0 color-mix(in srgb, var(--pk-accent) 18%, transparent);
+}
+.peak-composer-root input.pk-composer-document-title-input[aria-invalid='true'] {
+	border-bottom-color: var(--pk-error-text);
+}
+.peak-composer-root .pk-composer-document-title-error {
+	display: block;
+	margin-top: 6px;
+	color: var(--pk-error-text);
+	font-size: var(--pk-text-xs);
+	font-weight: 500;
+	line-height: 1.4;
 }
 .peak-composer-root .pk-composer-find {
 	position: sticky;

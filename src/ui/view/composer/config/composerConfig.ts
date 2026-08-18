@@ -98,6 +98,13 @@ export interface ComposerChromeConfig {
 		next: string;
 		close: string;
 	};
+	documentTitle: {
+		edit: string;
+		inputLabel: string;
+		empty: string;
+		pathSeparator: string;
+		renameFailed: string;
+	};
 	insertDraft: {
 		chooserLabel: string;
 		commit: string;
@@ -365,6 +372,13 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				next: '下一个匹配',
 				close: '关闭查找',
 			},
+		documentTitle: {
+			edit: '编辑文件名',
+			inputLabel: '文件名',
+			empty: '文件名不能为空。',
+			pathSeparator: '文件名不能包含 / 或 \\。',
+			renameFailed: '无法重命名文件，请检查是否存在同名文件。',
+		},
 			insertDraft: {
 				chooserLabel: '在下方插入',
 				commit: '写入为块',
@@ -603,6 +617,7 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 			parsed.collectionActionFlipSpacePx ?? base.collectionActionFlipSpacePx,
 		actions: { ...base.actions, ...parsed.actions },
 		find: { ...base.find, ...parsed.find },
+		documentTitle: { ...base.documentTitle, ...parsed.documentTitle },
 		insertDraft: {
 			...base.insertDraft,
 			...parsed.insertDraft,

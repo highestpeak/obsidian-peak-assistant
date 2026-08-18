@@ -89,6 +89,13 @@
 			"next": "下一个匹配",
 			"close": "关闭查找"
 		},
+		"documentTitle": {
+			"edit": "编辑文件名",
+			"inputLabel": "文件名",
+			"empty": "文件名不能为空。",
+			"pathSeparator": "文件名不能包含 / 或 \\。",
+			"renameFailed": "无法重命名文件，请检查是否存在同名文件。"
+		},
 		"insertDraft": {
 			"chooserLabel": "在下方插入",
 			"commit": "写入为块",

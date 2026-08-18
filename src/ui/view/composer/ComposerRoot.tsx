@@ -173,6 +173,8 @@ export interface ComposerRootProps {
 	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
 	/** Convert this leaf to Obsidian's Native Markdown view. */
 	onOpenNativeMarkdown?: () => void | Promise<void>;
+	/** Rename the bound Markdown file through the app-owned Vault adapter. */
+	onRenameDocumentTitle?: (title: string) => void | Promise<void>;
 	/** Workspace-level readable/wide document measure. */
 	initialContentWidth?: ComposerContentWidth;
 	onContentWidthChange?: (width: ComposerContentWidth) => void | Promise<void>;
@@ -216,6 +218,7 @@ export function ComposerRoot({
 	initialDisplayMode = 'edit',
 	onDisplayModeChange,
 	onOpenNativeMarkdown,
+	onRenameDocumentTitle,
 	initialContentWidth = 'readable',
 	onContentWidthChange,
 	initialIntelligenceOpen = false,
@@ -441,6 +444,7 @@ export function ComposerRoot({
 							intelligenceTriggerRef={intelligenceTriggerRef}
 							onDisplayModeChange={onDisplayModeChange}
 							onOpenNativeMarkdown={onOpenNativeMarkdown}
+							onRenameDocumentTitle={onRenameDocumentTitle}
 							initialContentWidth={initialContentWidth}
 							onContentWidthChange={onContentWidthChange}
 							onOpenReviewDocument={onOpenReviewDocument}
@@ -499,6 +503,7 @@ interface BodyProps {
 	initialDisplayMode?: ComposerDisplayMode;
 	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
 	onOpenNativeMarkdown?: () => void | Promise<void>;
+	onRenameDocumentTitle?: (title: string) => void | Promise<void>;
 	initialContentWidth?: ComposerContentWidth;
 	onContentWidthChange?: (width: ComposerContentWidth) => void | Promise<void>;
 	onOpenReviewDocument?: (path: string) => void;
@@ -610,6 +615,7 @@ function ComposerDocument({
 	initialDisplayMode = 'edit',
 	onDisplayModeChange,
 	onOpenNativeMarkdown,
+	onRenameDocumentTitle,
 	initialContentWidth = 'readable',
 	onContentWidthChange,
 	onOpenReviewDocument,
@@ -1030,7 +1036,11 @@ function ComposerDocument({
 				}}
 			/>
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
-			<ComposerDocumentTitle filePath={snapshot.filePath} />
+			<ComposerDocumentTitle
+				filePath={snapshot.filePath}
+				strings={config.chrome.documentTitle}
+				onRename={onRenameDocumentTitle}
+			/>
 			<AddFrontmatterEntry editing={editing} />
 			<div className="pk-composer-blocks">
 				{visibleBlocks.map((b, i) => {

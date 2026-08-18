@@ -1,17 +1,24 @@
 import assert from 'assert';
 import { readFileSync } from 'fs';
 import {
+	composerDocumentRenamePath,
+	composerDocumentTitle,
 	normalizeComposerContentWidth,
+	normalizeComposerDocumentTitleDraft,
 	type ComposerContentWidth,
 } from '@/core/composer';
 import { normalizePluginSettings } from '@/app/settings/PluginSettingsLoader';
-import { composerDocumentTitle } from '@/ui/view/composer/chrome/ComposerDocumentTitle';
 
 const nativeAffordance = readFileSync(
 	'src/app/composer/NativeMarkdownComposerAffordance.tsx',
 	'utf8',
 );
 const composerRoot = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
+const composerTitle = readFileSync(
+	'src/ui/view/composer/chrome/ComposerDocumentTitle.tsx',
+	'utf8',
+);
+const composerView = readFileSync('src/app/composer/DocumentComposerView.ts', 'utf8');
 const undoRedoBar = readFileSync('src/ui/view/composer/chrome/UndoRedoBar.tsx', 'utf8');
 const composerCss = readFileSync('src/styles/composer.css', 'utf8');
 const frontmatterCss = readFileSync('src/styles/composer-fm-math.css', 'utf8');
@@ -21,6 +28,23 @@ const settingsLoader = readFileSync('src/app/settings/PluginSettingsLoader.ts', 
 assert.equal(composerDocumentTitle('Notes/做过的事情-做成的事情.md'), '做过的事情-做成的事情');
 assert.equal(composerDocumentTitle('Root.md'), 'Root');
 assert.equal(composerDocumentTitle('Windows\\Path\\Plan.MD'), 'Plan');
+assert.deepStrictEqual(normalizeComposerDocumentTitleDraft('  新标题.md  '), {
+	ok: true,
+	title: '新标题',
+});
+assert.deepStrictEqual(normalizeComposerDocumentTitleDraft('Folder/新标题'), {
+	ok: false,
+	reason: 'path-separator',
+});
+assert.deepStrictEqual(normalizeComposerDocumentTitleDraft('  .md  '), {
+	ok: false,
+	reason: 'empty',
+});
+assert.equal(
+	composerDocumentRenamePath('Notes/旧标题.md', '新标题'),
+	'Notes/新标题.md',
+	'title edits preserve the current Vault folder and Markdown extension',
+);
 
 const readable: ComposerContentWidth = normalizeComposerContentWidth(undefined);
 assert.equal(readable, 'readable', 'unknown values fail safe to the readable document width');
@@ -51,10 +75,24 @@ assert.doesNotMatch(
 
 assert.match(undoRedoBar, /contentWidth: ComposerContentWidth/);
 assert.match(undoRedoBar, /pk-composer-content-width-toggle/);
-assert.match(composerRoot, /<ComposerDocumentTitle filePath=\{snapshot\.filePath\} \/>/);
+assert.match(
+	composerRoot,
+	/<ComposerDocumentTitle[\s\S]*?filePath=\{snapshot\.filePath\}[\s\S]*?onRename=\{onRenameDocumentTitle\}/,
+	'the document title receives the app-owned rename action',
+);
 assert.ok(
 	composerRoot.indexOf('<ComposerDocumentTitle') < composerRoot.indexOf('<AddFrontmatterEntry'),
 	'the native-like document title stays above Properties',
+);
+assert.match(composerTitle, /<Button[\s\S]*?onClick=\{onStartEditing\}/);
+assert.match(composerTitle, /<input[\s\S]*?onBlur=\{onBlur\}/);
+assert.match(composerTitle, /event\.key === 'Enter'/);
+assert.match(composerTitle, /event\.key !== 'Escape'/);
+assert.match(composerTitle, /nativeEvent\.isComposing/);
+assert.match(
+	composerView,
+	/this\.app\.fileManager\.renameFile\(file, targetPath\)/,
+	'Composer delegates title renames to Obsidian so links and workspace state stay coherent',
 );
 assert.match(composerRoot, /data-content-width=\{contentWidth\}/);
 

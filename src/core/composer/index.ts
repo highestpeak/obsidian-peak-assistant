@@ -16,3 +16,4 @@ export * from './packIds';
 export * from './nativeEmbed';
 export * from './viewState';
 export * from './intelligencePresentation';
+export * from './documentTitle';
