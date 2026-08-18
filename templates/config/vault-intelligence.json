@@ -2,7 +2,7 @@
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
   "checkGroups": [
-    { "id": "connections", "label": "Connections", "description": "Broken references, isolated areas and fragile paths between knowledge regions.", "checks": [
+    { "id": "connections", "displayOrder": 3, "label": "Relationships & Communities", "description": "Broken references, isolated areas and fragile paths between knowledge regions.", "checks": [
       { "checkId": "S-ISLAND-CLUSTER", "label": "Island Communities", "description": "Find knowledge regions with no verified connection to the rest of the Vault." },
       { "checkId": "S-FRAGILE-BRIDGE", "label": "Fragile bridges", "description": "Find important regions connected through too few notes or references." },
       { "checkId": "S-MISSING-BACKLINK", "label": "Missing backlinks", "description": "Find one-way references that are missing expected return context." },
@@ -10,7 +10,7 @@
       { "checkId": "S-ORPHAN", "label": "Unconnected notes", "description": "Find notes outside the current verified knowledge structure." },
       { "checkId": "S-BROKEN-LINK", "label": "Broken links", "description": "Find references whose exact target cannot be resolved." }
     ] },
-    { "id": "content", "label": "Content health", "description": "Readable content, note shape, metadata and duplicated material.", "checks": [
+    { "id": "content", "displayOrder": 2, "label": "Content health", "description": "Readable content, note shape, metadata and duplicated material.", "checks": [
       { "checkId": "C-EMPTY", "label": "Empty notes", "description": "Find notes with no meaningful readable content." },
       { "checkId": "C-OVERSIZED", "label": "Oversized notes", "description": "Find notes large enough to benefit from an owner-reviewed split." },
       { "checkId": "C-FRONTMATTER-MISSING", "label": "Missing properties", "description": "Find notes that do not have the expected frontmatter block." },
@@ -18,11 +18,11 @@
       { "checkId": "C-DUPLICATE", "label": "Duplicate content", "description": "Find notes with substantially duplicated readable content." },
       { "checkId": "C-STUB", "label": "Incomplete notes", "description": "Find short notes that appear unfinished rather than intentionally concise." }
     ] },
-    { "id": "tags", "label": "Tags", "description": "Deterministic user-tag shape checks; machine AI Tags remain a separate Index output.", "checks": [
+    { "id": "tags", "displayOrder": 1, "label": "Knowledge Index", "description": "Deterministic tag-shape tasks that complement rebuildable machine Index outputs.", "checks": [
       { "checkId": "G-TAG-EXPLOSION", "label": "Too many tags", "description": "Find notes whose tag count is far above the Vault baseline." },
       { "checkId": "G-UNTAGGED", "label": "Untagged notes", "description": "Find notes without user-authored tags where the current policy expects them." }
     ] },
-    { "id": "aging", "label": "Aging & freshness", "description": "Stale folders, Communities, bridges and Hub summaries.", "checks": [
+    { "id": "aging", "displayOrder": 4, "label": "Reviewable follow-up", "description": "Stale folders, Communities, bridges and Hub summaries that may require owner review.", "checks": [
       { "checkId": "T-ABANDONED-FOLDER", "label": "Inactive folders", "description": "Find folders whose contents have not changed within the configured window." },
       { "checkId": "T-ABANDONED-CLUSTER", "label": "Inactive Communities", "description": "Find knowledge regions whose members have stopped changing." },
       { "checkId": "T-RECENT-DRIFT", "label": "Recent drift", "description": "Find recent notes moving away from their established knowledge region." },

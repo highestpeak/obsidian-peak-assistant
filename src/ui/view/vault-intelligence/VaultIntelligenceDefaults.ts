@@ -50,6 +50,7 @@ export interface VaultScanCheckDefinition {
 
 export interface VaultScanCheckGroupDefinition {
 	id: 'connections' | 'content' | 'tags' | 'aging';
+	displayOrder?: number;
 	label: string;
 	description: string;
 	checks: VaultScanCheckDefinition[];
