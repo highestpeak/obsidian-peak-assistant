@@ -103,11 +103,11 @@ export function decideComposerVirtualProjection(
 	return 'none';
 }
 
-export function shouldUseComposerLightweightScrollProjection(
+export function shouldUseComposerStaticProjection(
 	blockCount: number,
 	config: ComposerVirtualizationConfig,
 ): boolean {
-	const threshold = Math.max(1, Math.floor(finiteNonNegative(config.lightweightScrollMinBlocks)));
+	const threshold = Math.max(1, Math.floor(finiteNonNegative(config.staticProjectionMinBlocks)));
 	return Number.isFinite(blockCount) && blockCount >= threshold;
 }
 

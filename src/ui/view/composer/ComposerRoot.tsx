@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { flushSync } from 'react-dom';
 import { useStore } from 'zustand';
 import { RefreshCw } from 'lucide-react';
 import {
@@ -53,7 +54,6 @@ import {
 	type ResolvedComposerSourceLocation,
 	type DirectListItemKind,
 	resolveComposerSourceLocation,
-	toPlainText,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import {
@@ -86,7 +86,11 @@ import {
 import { BlockRail, CollectionActionHandle } from './chrome/BlockRail';
 import { BlockActionRow, type BlockPanelKind } from './chrome/BlockActionRow';
 import { EditableText } from './chrome/EditableText';
-import { forwardBlockClickToEditable } from './chrome/focusForwarding';
+import {
+	forwardBlockClickToEditable,
+	readClickTargetTraits,
+	shouldForwardClick,
+} from './chrome/focusForwarding';
 import { EasyCopyMenu } from './chrome/EasyCopyMenu';
 import {
 	CommentAnchorMarker,
@@ -130,6 +134,8 @@ import type { PeakKeyboardSurfaceAdapter } from '@/ui/keyboard/KeyboardNavigatio
 import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import {
 	ComposerHardPinRegistry,
+	shouldHydrateComposerBlockEditor,
+	shouldUseComposerStaticProjection,
 	useComposerVirtualWindow,
 } from './virtualization';
 
@@ -264,6 +270,13 @@ export function ComposerRoot({
 		?? DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs;
 
 	const [flushers] = React.useState(() => new Set<() => Promise<void>>());
+	const registerFlusher = React.useCallback((flush: () => Promise<void>) => {
+		flushers.add(flush);
+		return () => flushers.delete(flush);
+	}, [flushers]);
+	const flushAll = React.useCallback(async () => {
+		await Promise.all([...flushers].map((flush) => flush()));
+	}, [flushers]);
 	const chromeValue = React.useMemo<ComposerChromeValue>(
 		() => ({
 			runtime,
@@ -275,13 +288,8 @@ export function ComposerRoot({
 			snapshot: state.snapshot,
 			burstWindowMs: resolvedBurstWindowMs,
 			scrollGuardGestureWindowMs: resolvedScrollGuardGestureWindowMs,
-			registerFlusher: (flush) => {
-				flushers.add(flush);
-				return () => flushers.delete(flush);
-			},
-			flushAll: async () => {
-				await Promise.all([...flushers].map((f) => f()));
-			},
+			registerFlusher,
+			flushAll,
 			onOpenLink,
 		}),
 		[
@@ -291,7 +299,8 @@ export function ComposerRoot({
 			state.snapshot,
 			resolvedBurstWindowMs,
 			resolvedScrollGuardGestureWindowMs,
-			flushers,
+			registerFlusher,
+			flushAll,
 			onOpenLink,
 		],
 	);
@@ -654,6 +663,8 @@ function ComposerDocument({
 	const [commentRailOpen, setCommentRailOpen] = React.useState(false);
 	const [drag, setDrag] = React.useState<DragState | null>(null);
 	const [focusedBlockIdState, setFocusedBlockIdState] = React.useState<string | null>(null);
+	const [hydratedBlockId, setHydratedBlockId] = React.useState<string | null>(null);
+	const hydrationRequestGenerationRef = React.useRef(0);
 	const [compositionBlockId, setCompositionBlockId] = React.useState<string | null>(null);
 	const [selectionEndpointBlockIds, setSelectionEndpointBlockIds] = React.useState<readonly string[]>([]);
 	const [logicalSelection, setLogicalSelection] = React.useState<{ from: number; to: number } | null>(null);
@@ -716,6 +727,8 @@ function ComposerDocument({
 		findRestoreFocusRef.current = null;
 		setLogicalSelection(null);
 		setSelectionEndpointBlockIds([]);
+		hydrationRequestGenerationRef.current += 1;
+		setHydratedBlockId(null);
 	}, [snapshot.documentId]);
 	React.useEffect(() => {
 		const root = containerRef.current;
@@ -1026,6 +1039,10 @@ function ComposerDocument({
 		() => snapshot.blocks.filter((block) => !hidden.has(block.blockId)),
 		[snapshot.blocks, hidden],
 	);
+	const staticProjection = shouldUseComposerStaticProjection(
+		visibleBlocks.length,
+		config.virtualization,
+	);
 	const findings = useComposerFindings(intelligence);
 	const reviewCandidates = useDocumentCandidates(runtime.candidateRuntime);
 	const candidatesByBlockId = React.useMemo(
@@ -1043,6 +1060,7 @@ function ComposerDocument({
 	const pinRegistry = pinRegistryRef.current;
 	pinRegistry.setLimit(config.virtualization.maxHardPins);
 	pinRegistry.clear();
+	if (hydratedBlockId) pinRegistry.acquire('hydrated-editor', hydratedBlockId, true);
 	if (focusedBlockIdState) pinRegistry.acquire('focus', focusedBlockIdState, true);
 	if (compositionBlockId) pinRegistry.acquire('composition', compositionBlockId, true);
 	if (panel?.blockId) pinRegistry.acquire('panel', panel.blockId);
@@ -1057,6 +1075,34 @@ function ComposerDocument({
 		if (after) pinRegistry.acquire('drag-after', after.blockId);
 	}
 	const pinnedBlockIds = pinRegistry.blocks();
+	const releaseOffscreenEditor = React.useCallback((visibleBlockIds: ReadonlySet<string>) => {
+		const blockId = hydratedBlockId;
+		if (!blockId || visibleBlockIds.has(blockId)) return;
+		if (compositionBlockId === blockId || panel?.blockId === blockId) return;
+		if (selectionEndpointBlockIds.includes(blockId) || drag?.blockId === blockId) return;
+		const generation = hydrationRequestGenerationRef.current + 1;
+		hydrationRequestGenerationRef.current = generation;
+		void chrome.flushAll().then(() => {
+			if (hydrationRequestGenerationRef.current !== generation) return;
+			const root = containerRef.current;
+			const active = root?.ownerDocument.activeElement;
+			if (
+				active instanceof HTMLElement
+				&& active.closest<HTMLElement>('[data-block-id]')?.dataset.blockId === blockId
+			) {
+				active.blur();
+			}
+			setFocusedBlockIdState(null);
+			setHydratedBlockId(null);
+		});
+	}, [
+		chrome,
+		compositionBlockId,
+		drag?.blockId,
+		hydratedBlockId,
+		panel?.blockId,
+		selectionEndpointBlockIds,
+	]);
 	const virtualWindow = useComposerVirtualWindow({
 		blocks: visibleBlocks,
 		shellRef: containerRef,
@@ -1064,7 +1110,41 @@ function ComposerDocument({
 		config: config.virtualization,
 		pinnedBlockIds,
 		onScrollIntent: markScrollIntent,
+		onScrollSettled: releaseOffscreenEditor,
 	});
+	const requestBlockEditorHydration = React.useCallback((
+		blockId: string,
+		event: React.MouseEvent<HTMLDivElement>,
+	): void => {
+		if (!editing || !staticProjection || hydratedBlockId === blockId) return;
+		const traits = readClickTargetTraits(event.target);
+		if (!traits || !shouldForwardClick(traits)) return;
+		const selection = event.currentTarget.ownerDocument.getSelection();
+		if (selection && !selection.isCollapsed) return;
+		const clientX = event.clientX;
+		const clientY = event.clientY;
+		const root = containerRef.current;
+		const ownerWindow = root?.ownerDocument.defaultView;
+		if (!root || !ownerWindow) return;
+		const generation = hydrationRequestGenerationRef.current + 1;
+		hydrationRequestGenerationRef.current = generation;
+		void chrome.flushAll().then(() => {
+			if (hydrationRequestGenerationRef.current !== generation) return;
+			flushSync(() => setHydratedBlockId(blockId));
+			ownerWindow.requestAnimationFrame(() => {
+				const blockElement = root.querySelector<HTMLElement>(
+					`[data-block-id="${CSS.escape(blockId)}"]`,
+				);
+				if (!blockElement) return;
+				forwardBlockClickToEditable(blockElement, {
+					target: blockElement,
+					clientX,
+					clientY,
+					preventDefault: () => undefined,
+				});
+			});
+		});
+	}, [chrome, editing, hydratedBlockId, staticProjection]);
 	virtualDropIndexRef.current = virtualWindow.insertionIndexAtClientY;
 	React.useEffect(() => {
 		onLocatorReady?.(virtualWindow.revealBlock);
@@ -1155,7 +1235,8 @@ function ComposerDocument({
 				data-virtual-mounted-blocks={virtualWindow.items.length}
 				data-virtual-hard-pins={pinnedBlockIds.size}
 				data-virtual-window={`${virtualWindow.start}:${virtualWindow.end}`}
-				data-virtual-lightweight-projection={virtualWindow.lightweightProjection || undefined}
+				data-virtual-static-projection={virtualWindow.staticProjection || undefined}
+				data-virtual-hydrated-block={hydratedBlockId ?? undefined}
 				data-candidate-count={reviewCandidates.length}
 				onPaste={(ev) => void onPaste(ev)}
 				onCopy={(event) => {
@@ -1182,7 +1263,11 @@ function ComposerDocument({
 					ownerWindow?.requestAnimationFrame(() => {
 						const active = root.ownerDocument.activeElement;
 						if (!(active instanceof HTMLElement) || !root.contains(active)) {
-							void chrome.flushAll().finally(() => setFocusedBlockIdState(null));
+							void chrome.flushAll().finally(() => {
+								hydrationRequestGenerationRef.current += 1;
+								setFocusedBlockIdState(null);
+								setHydratedBlockId(null);
+							});
 						}
 					});
 				}}
@@ -1232,92 +1317,89 @@ function ComposerDocument({
 					if (!b) return null;
 					const i = virtualItem.index;
 					const previousBlock = visibleBlocks[i - 1];
-					const lightweight = virtualWindow.lightweightProjection
-						&& !pinnedBlockIds.has(b.blockId);
+					const rowEditing = shouldHydrateComposerBlockEditor(
+						editing,
+						staticProjection,
+						b.blockId,
+						hydratedBlockId,
+						pinnedBlockIds,
+					);
 					return (
 						<ComposerVirtualItem
 							key={stableKey(b.blockId)}
 							blockId={b.blockId}
 							index={i}
 							offset={virtualItem.offset}
-							height={virtualItem.height}
-							measurementSuspended={lightweight}
 							onMeasure={virtualWindow.measureElement}
 						>
-							{lightweight ? (
-								<ComposerScrollProjectionRow
-									block={b}
-									previousBlock={previousBlock}
-									maxChars={config.virtualization.lightweightScrollMaxChars}
-								/>
-							) : (
-								<ComposerBlockRow
-									block={b}
-									previousBlock={previousBlock}
-									snapshot={snapshot}
-									config={config}
-									foldStore={foldStore}
-									editing={editing}
-									displayState={displayState}
-									reviewAll={false}
-									candidates={candidatesByBlockId.get(b.blockId) ?? []}
-									invokeError={invokeErrors[b.blockId]}
-									findings={findingsByBlockId.get(b.blockId) ?? []}
-									onAskFinding={(finding) => {
-										if (!intelligence) return;
-										intelligence.session.selectSurface('talk');
-										intelligence.session.openSession(finding.body?.title ?? finding.reason, []);
-										const blockId = composerTargetBlockId(finding.target);
-										if (!blockId) return;
-										onIntelligenceContextualOpen({
-											kind: 'automatic-suggestion',
-											findingId: finding.findingId,
-											blockId,
-										});
-									}}
-									onConfirmFinding={(finding) => intelligence?.findings.consume(finding.findingId)}
-									onDismissFinding={(finding) => intelligence?.findings.dismiss(finding.findingId, 'body')}
-									panel={panel?.blockId === b.blockId ? panel : null}
-									setPanel={setPanel}
-									onInsertBelow={
-										hub && editing
-											? () => setPanel({
-													blockId: b.blockId,
-													panel: 'insert-draft',
-													pinned: true,
-													initialTypeId: 'markdown',
-												})
-											: undefined
-									}
-									onSelectInsertType={(typeId) =>
-										setPanel({ blockId: b.blockId, panel: 'insert-draft', pinned: true, initialTypeId: typeId })
-									}
-									onDragStart={hub && editing ? startDrag(b.blockId) : undefined}
-									dropBefore={drag?.dropIndex === i}
-									onInvoke={invoke}
-									activeCommentId={activeCommentId}
-									onActiveComment={(commentId) => {
-										if (commentId) setCommentRailOpen(true);
-										onActiveComment(commentId);
-									}}
-									onOpenComment={() => {
-										setPanel(null);
-										setCommentRailOpen(true);
-										setCommentDraft({ blockId: b.blockId });
-									}}
-									onViewHistory={intelligence
-										? () => {
-												intelligence.session.selectSurface('history');
-												onIntelligenceManualOpen(true);
-												setPanel(null);
-											}
-										: undefined}
-									onOpenHistoryActivity={(activity) => {
-										setPanel(null);
-										setHistoryActivity(activity);
-									}}
-								/>
-							)}
+							<ComposerBlockRow
+								block={b}
+								previousBlock={previousBlock}
+								snapshot={snapshot}
+								config={config}
+								foldStore={foldStore}
+								editing={editing}
+								editorHydrated={rowEditing}
+								onRequestEditor={(event) => requestBlockEditorHydration(b.blockId, event)}
+								displayState={displayState}
+								reviewAll={false}
+								candidates={candidatesByBlockId.get(b.blockId) ?? []}
+								invokeError={invokeErrors[b.blockId]}
+								findings={findingsByBlockId.get(b.blockId) ?? []}
+								onAskFinding={(finding) => {
+									if (!intelligence) return;
+									intelligence.session.selectSurface('talk');
+									intelligence.session.openSession(finding.body?.title ?? finding.reason, []);
+									const blockId = composerTargetBlockId(finding.target);
+									if (!blockId) return;
+									onIntelligenceContextualOpen({
+										kind: 'automatic-suggestion',
+										findingId: finding.findingId,
+										blockId,
+									});
+								}}
+								onConfirmFinding={(finding) => intelligence?.findings.consume(finding.findingId)}
+								onDismissFinding={(finding) => intelligence?.findings.dismiss(finding.findingId, 'body')}
+								panel={panel?.blockId === b.blockId ? panel : null}
+								setPanel={setPanel}
+								onInsertBelow={
+									hub && editing
+										? () => setPanel({
+												blockId: b.blockId,
+												panel: 'insert-draft',
+												pinned: true,
+												initialTypeId: 'markdown',
+											})
+										: undefined
+								}
+								onSelectInsertType={(typeId) =>
+									setPanel({ blockId: b.blockId, panel: 'insert-draft', pinned: true, initialTypeId: typeId })
+								}
+								onDragStart={hub && editing ? startDrag(b.blockId) : undefined}
+								dropBefore={drag?.dropIndex === i}
+								onInvoke={invoke}
+								activeCommentId={activeCommentId}
+								onActiveComment={(commentId) => {
+									if (commentId) setCommentRailOpen(true);
+									onActiveComment(commentId);
+								}}
+								onOpenComment={() => {
+									setPanel(null);
+									setCommentRailOpen(true);
+									setCommentDraft({ blockId: b.blockId });
+								}}
+								onViewHistory={intelligence
+									? () => {
+											intelligence.session.selectSurface('history');
+											onIntelligenceManualOpen(true);
+											setPanel(null);
+										}
+									: undefined}
+								onOpenHistoryActivity={(activity) => {
+									setPanel(null);
+									setHistoryActivity(activity);
+								}}
+							/>
 							{panel?.blockId === b.blockId && panel.panel === 'insert-draft' && (
 								<div data-composer-surface-owner={b.blockId}>
 									<NewBlockDraft
@@ -1431,16 +1513,12 @@ function ComposerVirtualItem({
 	blockId,
 	index,
 	offset,
-	height,
-	measurementSuspended,
 	onMeasure,
 	children,
 }: {
 	blockId: string;
 	index: number;
 	offset: number;
-	height: number;
-	measurementSuspended: boolean;
 	onMeasure(blockId: string, element: HTMLElement | null): void;
 	children: React.ReactNode;
 }): React.ReactElement {
@@ -1453,10 +1531,7 @@ function ComposerVirtualItem({
 			className="pk-composer-virtual-item"
 			data-virtual-index={index}
 			data-virtual-offset={Math.round(offset)}
-			data-virtual-measurement-suspended={measurementSuspended || undefined}
-			style={measurementSuspended
-				? { top: offset, height, overflow: 'hidden' }
-				: { top: offset }}
+			style={{ top: offset }}
 		>
 			{children}
 		</div>
@@ -1488,41 +1563,6 @@ interface ComposerUnitActions {
 	render: (anchor: ComposerUnitActionAnchor) => React.ReactNode;
 }
 
-function ComposerScrollProjectionRow({
-	block,
-	previousBlock,
-	maxChars,
-}: {
-	block: ComposerBlock;
-	previousBlock?: ComposerBlock;
-	maxChars: number;
-}): React.ReactElement {
-	const limit = Math.max(1, Math.floor(Number.isFinite(maxChars) ? maxChars : 1));
-	const truncated = block.renderModel.raw.length > limit;
-	const boundedRaw = block.renderModel.raw.slice(0, limit);
-	const projected = toPlainText(boundedRaw, block.kind);
-	const fallback = (block.renderModel.text || boundedRaw).slice(0, limit);
-	const text = `${projected || fallback}${truncated ? '…' : ''}`;
-	const isHeading = block.kind === 'heading';
-	const className = isHeading
-		? `pk-composer-heading pk-heading-${block.renderModel.level ?? 1}`
-		: `${blockBodyClass(block.kind)} pk-composer-scroll-text`;
-	return (
-		<div
-			className="pk-composer-block pk-composer-block--scroll-projection"
-			data-kind={block.kind}
-			data-block-id={block.blockId}
-			data-level={isHeading ? block.renderModel.level ?? 1 : undefined}
-			data-spacing={blockSpacingRole(block, previousBlock)}
-			data-scroll-projection="true"
-		>
-			<div className="pk-composer-block__body">
-				<div className={className} data-src-text-from={block.source.from}>{text}</div>
-			</div>
-		</div>
-	);
-}
-
 function ComposerBlockRow({
 	block,
 	previousBlock,
@@ -1530,6 +1570,8 @@ function ComposerBlockRow({
 	config,
 	foldStore,
 	editing,
+	editorHydrated,
+	onRequestEditor,
 	displayState,
 	reviewAll,
 	candidates,
@@ -1557,6 +1599,8 @@ function ComposerBlockRow({
 	config: ComposerConfig;
 	foldStore: ComposerFoldStore;
 	editing: boolean;
+	editorHydrated: boolean;
+	onRequestEditor?: (event: React.MouseEvent<HTMLDivElement>) => void;
 	displayState: ComposerDisplayState;
 	reviewAll: boolean;
 	candidates: readonly ComposerCandidate[];
@@ -2152,12 +2196,16 @@ function ComposerBlockRow({
 			data-collection-action-active={collectionActionActive || undefined}
 			data-collection-anchor-unit={collectionFollowsUnit ? collectionActionAnchor?.unitId : undefined}
 			style={collectionAnchorStyle}
+			data-editor-hydrated={editorHydrated || undefined}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
 			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
 			// never focuses the contenteditable leaf — typing then goes to the
 			// workspace. Forward such clicks: focus the nearest leaf and place the
 			// caret at the closest text position (line-end for past-the-edge clicks).
-			onMouseDown={editing ? (ev) => forwardBlockClickToEditable(ev.currentTarget, ev) : undefined}
+			onMouseDown={editorHydrated
+				? (ev) => forwardBlockClickToEditable(ev.currentTarget, ev)
+				: undefined}
+			onClick={!editorHydrated ? onRequestEditor : undefined}
 			onPointerEnter={editing ? () => {
 				if (unitized) {
 					clearActionClose();
@@ -2233,6 +2281,7 @@ function ComposerBlockRow({
 						block={block}
 						snapshot={snapshot}
 						editing={editing}
+						textEditing={editorHydrated}
 						frontmatterLibraryOpen={frontmatterLibraryOpen}
 						frontmatterCandidate={frontmatterCandidate}
 						listItemCandidates={showInlineCandidate ? listItemCandidates : []}
@@ -2470,6 +2519,7 @@ function BlockBody({
 	block,
 	snapshot,
 	editing,
+	textEditing,
 	frontmatterLibraryOpen,
 	frontmatterCandidate,
 	listItemCandidates,
@@ -2483,6 +2533,7 @@ function BlockBody({
 	block: ComposerBlock;
 	snapshot: ComposerDocumentSnapshot;
 	editing: boolean;
+	textEditing: boolean;
 	frontmatterLibraryOpen: boolean;
 	frontmatterCandidate?: FrontmatterCandidatePort;
 	listItemCandidates: readonly ComposerCandidate[];
@@ -2504,6 +2555,7 @@ function BlockBody({
 				block={block}
 				snapshot={snapshot}
 				editing={editing}
+				textEditing={textEditing}
 				listItemCandidates={listItemCandidates}
 				candidateRuntime={candidateRuntime}
 				candidateRegistry={candidateRegistry}
@@ -2514,7 +2566,7 @@ function BlockBody({
 		);
 	}
 	if (block.kind === 'callout') {
-		return <CalloutBlockView block={block} snapshot={snapshot} editing={editing} />;
+		return <CalloutBlockView block={block} snapshot={snapshot} editing={textEditing} />;
 	}
 	if (
 		block.kind === 'paragraph' &&
@@ -2524,13 +2576,13 @@ function BlockBody({
 			<EditableParagraphLinesBody
 				block={block}
 				snapshot={snapshot}
-				editing={editing}
+				editing={textEditing}
 				unitActions={unitActions}
 			/>
 		);
 	}
 	if (TEXT_EDIT_KINDS.has(block.kind)) {
-		return <EditableTextBody block={block} snapshot={snapshot} editing={editing} />;
+		return <EditableTextBody block={block} snapshot={snapshot} editing={textEditing} />;
 	}
 	// WP7 — image blocks carry an object toolbar (caption / AI 改图) wired to the
 	// image coordinator; the read-only dispatcher keeps a verbatim ref fallback.
@@ -2677,6 +2729,7 @@ function EditableListBody({
 	block,
 	snapshot,
 	editing,
+	textEditing,
 	listItemCandidates,
 	candidateRuntime,
 	candidateRegistry,
@@ -2687,6 +2740,7 @@ function EditableListBody({
 	block: ComposerBlock;
 	snapshot: ComposerDocumentSnapshot;
 	editing: boolean;
+	textEditing: boolean;
 	listItemCandidates: readonly ComposerCandidate[];
 	candidateRuntime?: ComposerCandidateRuntimePort;
 	candidateRegistry: CandidateRendererRegistry;
@@ -2887,7 +2941,7 @@ function EditableListBody({
 								unitId={unit.unitId}
 								text={text}
 								sourceFrom={contentStart}
-								editable={editing}
+								editable={textEditing}
 								resolveRange={() => {
 									const current = locateBlock(snapshot, block.blockId);
 									const u = current?.units.find((x) => x.unitId === unit.unitId);
@@ -2910,12 +2964,12 @@ function EditableListBody({
 								}}
 								className="pk-composer-list__text"
 								onInsertParagraph={
-									editing && hub && topLevel
+									textEditing && hub && topLevel
 										? () => insertListItem(topIndex + 1, checkbox ? 'task' : 'list')
 										: undefined
 								}
 								onIndentListItem={
-									editing && hub
+									textEditing && hub
 										? (outdent) => {
 												void indentListItem(itemIndex, outdent);
 												return true;

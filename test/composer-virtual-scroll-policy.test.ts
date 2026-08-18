@@ -5,7 +5,7 @@ import {
 	emergencyComposerVirtualViewport,
 	initialComposerVirtualViewport,
 	sampleComposerVirtualViewport,
-	shouldUseComposerLightweightScrollProjection,
+	shouldUseComposerStaticProjection,
 	settledComposerVirtualViewport,
 } from '@/ui/view/composer/virtualization/ComposerVirtualScrollPolicy';
 import { DEFAULT_COMPOSER_VIRTUALIZATION_CONFIG } from '@/ui/view/composer/config/composerConfig';
@@ -35,12 +35,12 @@ function main(): void {
 	const settled = settledComposerVirtualViewport(emergency, config);
 	check('idle projection restores ordinary overscan', settled.overscanBefore === config.overscanPx);
 	check(
-		'short documents retain the full interactive projection while scrolling',
-		!shouldUseComposerLightweightScrollProjection(config.lightweightScrollMinBlocks - 1, config),
+		'short documents retain the full interactive projection',
+		!shouldUseComposerStaticProjection(config.staticProjectionMinBlocks - 1, config),
 	);
 	check(
-		'long documents switch to the lightweight scrolling projection',
-		shouldUseComposerLightweightScrollProjection(config.lightweightScrollMinBlocks, config),
+		'long documents use the stable static projection from first paint',
+		shouldUseComposerStaticProjection(config.staticProjectionMinBlocks, config),
 	);
 
 	check(

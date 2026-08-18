@@ -434,12 +434,16 @@ The first follow-up (`bde0972a`) removed the per-row synchronous geometry reads 
 
 The absolute-row and render-free covered-scroll follow-up (`285b9529`) removed those blank intervals in a browser stress harness, but it still bounded only the **simultaneous live set**. The real 17:28 recording traversed the 405-block, 376-link note quickly and crashed the entire Electron Renderer after about 10.5 seconds. macOS recorded three consecutive `Obsidian Helper (Renderer)` reports at 17:27:24, 17:27:50 and 17:28:28 with the same signature as the original incident: `SIGABRT` on `CrRendererMain`, `node::OnFatalError`, `v8::CppHeap`, and `cppgc::Allocate`. Each new virtual range was still constructing and destroying full `ComposerBlockRow` trees containing `DirectEditController`, `MarkdownSourceEditor`, `contentEditable`, keyboard registration and link SVG nodes. A bounded live DOM can therefore still exhaust CppHeap when the **allocation rate** is unbounded.
 
+The temporary fast-scroll proxy follow-up (`66e8e458`) reduced that allocation rate but did not close the incident. The 17:46 recording still contained one Renderer crash and repeatedly showed rows first as plain text, then changing appearance when the idle timer restored the full renderer—for example external-link decoration appeared late. More importantly, every idle transition recreated the whole viewport's editor/controller graph. A renderer swap that happens less often is still an allocation burst, and a visually weaker proxy makes the optimization visible to the user.
+
 The corrected scrolling contract is therefore stricter than merely keeping the DOM count bounded or proving estimated coverage:
 
 - Covered scrolling performs zero React projection updates. Recenter only when the viewport approaches a mounted edge, use a transition for that ordinary recenter, and restore the ordinary buffer once after scrolling settles.
 - A viewport that truly escapes coverage synchronously mounts only a minimal emergency window. Never combine emergency `flushSync` with a velocity-expanded heavy-row window.
-- Long documents use a two-level projection. While scrolling, ordinary rows are fixed-height plain-text proxies with no editor, controller, object renderer, SVG, rail or action chrome; focused, composing, selected, panel-owned and drag-owned hard pins retain their complete interactive row. Full rows return once after the configured idle interval.
-- Proxy rows never write their temporary height into the complete layout index. Measurement-anchor scroll corrections are internal geometry events and must not reactivate scrolling projection.
+- Long documents use one stable visual projection from the first frame through scroll idle. Static text uses the same Markdown styling, links, formulas and block geometry as the interactive row, but constructs no `DirectEditController`, `MarkdownSourceEditor` or `contenteditable`.
+- Only the explicitly activated block and interaction-critical hard pins hydrate text editors. Candidate, finding, comment, history and AI-stream state remains data-only until its bounded viewport row is mounted; it never hydrates editors across the document.
+- Leaving the viewport does not abruptly destroy a dirty editor. After scrolling settles, save the pending burst, wait for IME/selection/panel/drag ownership to end, blur the off-screen editor, then release its hard pin. Editor cleanup must itself extract pending input before disposal as a final safety net.
+- Scrolling and idle never change row renderer type or freeze a proxy height. Measurement-anchor scroll corrections are internal geometry events and must not reactivate projection.
 - Each mounted row is absolutely positioned at its complete-layout-index offset. Estimated row-height error is local to that row and cannot accumulate into a viewport-sized normal-flow gap.
 - Row mounting performs no synchronous per-row style or geometry reads. One shared `ResizeObserver` collects border-box heights, one animation frame rebuilds the layout suffix once, directly updates mounted `top` positions and total canvas height, and applies at most one scroll-anchor correction. Measurement does not trigger a second React render unless the corrected coverage no longer contains the viewport.
 - Space below the final document row is treated as document-tail coverage, so bottom padding cannot create an emergency-flush loop.
@@ -476,6 +480,7 @@ complete ComposerDocumentSession
 - The scrollbar moves while the document body is temporarily only a virtual gap, then rows recover after the input stops.
 - Covered scrolling changes `data-virtual-window` every animation frame, or measurement delivery causes a second full ComposerBody render.
 - Fast traversal keeps constructing ordinary `contenteditable` leaves even though mounted row count stays bounded.
+- Link, mark or formula styling appears only after scrolling stops because a visually weaker proxy is being replaced.
 - ResizeObserver delivery causes one layout-index rebuild or `scrollTop` write per mounted row instead of one per frame batch.
 - First paint contains text from the far end of a multi-thousand-block fixture.
 - Opening Composer produces long tasks or forced reflow while parsing remains comparatively small.
@@ -495,7 +500,7 @@ complete ComposerDocumentSession
 - [ ] Performance tests assert mounted rows are bounded for a 5000-block document and that far-tail content is absent from first paint.
 - [ ] Scroll-policy tests prove centered covered movement chooses `none`, edge movement chooses deferred `recenter`, escape chooses `emergency`, and document-tail space remains covered.
 - [ ] Source guards reject per-frame covered-scroll projection, synchronous per-row computed-style/geometry measurement, normal-flow virtual gaps and measurement-triggered React rendering.
-- [ ] A 405-block allocation stress run proves zero ordinary `contenteditable` creation while scrolling, keeps hard-pinned editors focused, restores full rows once after idle, and records zero blank frames.
+- [ ] A 405-block allocation stress run proves zero ordinary `contenteditable` creation on first paint and while scrolling, keeps hard-pinned editors focused, performs no idle renderer swap, and records zero blank frames or late link/style changes.
 - [ ] Batch-edit tests assert atomic preflight, one commit/reparse/notification and one Undo/History unit.
 - [ ] Real Obsidian acceptance records mounted rows/editors/pins, long tasks, heap behavior and new crash reports across repeated opens. Source/build tests alone remain `INTERACTION NOT VERIFIED`.
 
@@ -503,9 +508,10 @@ complete ComposerDocumentSession
 
 - Final design: [`Composer long-document runtime`](./superpowers/specs/2026-08-15-composer-long-document-runtime-final-design.md)
 - Execution plan: [`Composer long-document runtime implementation plan`](./superpowers/plans/2026-08-15-composer-long-document-runtime-implementation-plan.md)
-- Primary guards: [`composer-virtualized-rendering.test.ts`](../test/composer-virtualized-rendering.test.ts), [`composer-virtual-scroll-policy.test.ts`](../test/composer-virtual-scroll-policy.test.ts), [`composer-block-layout-index.test.ts`](../test/composer-block-layout-index.test.ts), [`composer-prepared-session.test.ts`](../test/composer-prepared-session.test.ts), and [`composer-candidate-group-atomicity.test.ts`](../test/composer-candidate-group-atomicity.test.ts)
+- Stable visual projection plan: [`2026-08-18-composer-stable-visual-projection-plan.md`](./superpowers/plans/2026-08-18-composer-stable-visual-projection-plan.md)
+- Primary guards: [`composer-virtualized-rendering.test.ts`](../test/composer-virtualized-rendering.test.ts), [`composer-virtual-scroll-policy.test.ts`](../test/composer-virtual-scroll-policy.test.ts), [`composer-editor-hydration-policy.test.ts`](../test/composer-editor-hydration-policy.test.ts), [`composer-block-layout-index.test.ts`](../test/composer-block-layout-index.test.ts), [`composer-prepared-session.test.ts`](../test/composer-prepared-session.test.ts), and [`composer-candidate-group-atomicity.test.ts`](../test/composer-candidate-group-atomicity.test.ts)
 - Implementation commit: `5ce8d3f3` (`fix(composer): virtualize long document runtime`)
-- Current evidence status: source implementation, focused guards and production build were completed for the implementation commit; repeated target-document opening, IME/selection/drag flows and Renderer heap/crash verification in real Obsidian remain `INTERACTION NOT VERIFIED` until recorded through the canonical real-UI QA protocol.
+- Current evidence status: stable static projection, block-level hydration, save-before-release source guards and production build are complete. Repeated target-document opening, fast-scroll allocation/blank-frame sampling, IME/selection/drag flows and Renderer heap/crash verification remain `INTERACTION NOT VERIFIED` until recorded through the canonical real-UI QA protocol.
 
 ---
 

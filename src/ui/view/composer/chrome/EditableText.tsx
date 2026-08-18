@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { ExternalLink } from 'lucide-react';
 import {
 	DirectEditController,
 	projectSourceVisualParts,
@@ -50,6 +49,84 @@ export function EditableText({
 	onInsertParagraph,
 	onIndentListItem,
 }: EditableTextProps): React.ReactElement {
+	const { runtime } = useComposerChrome();
+	const hub = runtime.hub;
+	const canEdit = editable && Boolean(hub);
+	if (!canEdit) {
+		return (
+			<StaticEditableText
+				blockId={blockId}
+				unitId={unitId}
+				text={text}
+				sourceFrom={sourceFrom}
+				hiddenSourceRanges={hiddenSourceRanges}
+				className={className}
+			/>
+		);
+	}
+	return (
+		<InteractiveEditableText
+			blockId={blockId}
+			unitId={unitId}
+			text={text}
+			sourceFrom={sourceFrom}
+			hiddenSourceRanges={hiddenSourceRanges}
+			resolveRange={resolveRange}
+			className={className}
+			onInsertParagraph={onInsertParagraph}
+			onIndentListItem={onIndentListItem}
+		/>
+	);
+}
+
+function StaticEditableText({
+	blockId,
+	unitId,
+	text,
+	sourceFrom,
+	hiddenSourceRanges,
+	className,
+}: Pick<
+	EditableTextProps,
+	'blockId' | 'unitId' | 'text' | 'sourceFrom' | 'hiddenSourceRanges' | 'className'
+>): React.ReactElement {
+	const visualParts = React.useMemo(
+		() => projectSourceVisualParts(text, sourceFrom, {
+			hiddenRanges: hiddenSourceRanges,
+			mathMode: 'atom',
+		}),
+		[hiddenSourceRanges, sourceFrom, text],
+	);
+	return (
+		<div
+			className={className ? `pk-composer-editable ${className}` : 'pk-composer-editable'}
+			data-block-id={blockId}
+			data-unit-id={unitId}
+			data-src-text-from={sourceFrom}
+			data-static-visual="true"
+		>
+			{visualParts.map((part) => (
+				<SourceVisualPartView
+					key={`${part.from - sourceFrom}-${part.to - sourceFrom}-${part.kind}`}
+					part={part}
+					unitId={unitId}
+				/>
+			))}
+		</div>
+	);
+}
+
+function InteractiveEditableText({
+	blockId,
+	unitId,
+	text,
+	sourceFrom,
+	hiddenSourceRanges,
+	resolveRange,
+	className,
+	onInsertParagraph,
+	onIndentListItem,
+}: Omit<EditableTextProps, 'editable'>): React.ReactElement {
 	const {
 		runtime,
 		config,
@@ -75,31 +152,24 @@ export function EditableText({
 		const unregister = registerFlusher(() => controller.flush());
 		return () => {
 			unregister();
+			// Extract pending input before the editor subtree disappears. `flush()`
+			// extracts pending text synchronously before returning its serialized
+			// commit promise, so disposal cannot discard the last local burst.
+			void controller.flush();
 			controller.dispose();
 		};
 	}, [controller, registerFlusher]);
 
-	const canEdit = editable && Boolean(hub);
-	if (!canEdit || !controller || !hub) {
-		const visualParts = projectSourceVisualParts(text, sourceFrom, {
-			hiddenRanges: hiddenSourceRanges,
-			mathMode: 'atom',
-		});
+	if (!controller || !hub) {
 		return (
-			<div
-				className={className ? `pk-composer-editable ${className}` : 'pk-composer-editable'}
-				data-block-id={blockId}
-				data-unit-id={unitId}
-				data-src-text-from={sourceFrom}
-			>
-				{visualParts.map((part) => (
-					<SourceVisualPartView
-						key={`${part.from - sourceFrom}-${part.to - sourceFrom}-${part.kind}`}
-						part={part}
-						unitId={unitId}
-					/>
-				))}
-			</div>
+			<StaticEditableText
+				blockId={blockId}
+				unitId={unitId}
+				text={text}
+				sourceFrom={sourceFrom}
+				hiddenSourceRanges={hiddenSourceRanges}
+				className={className}
+			/>
 		);
 	}
 
@@ -169,6 +239,7 @@ export function SourceVisualPartView({
 		const linkClass = [
 			'pk-composer-link',
 			part.linkKind === 'wikilink' ? 'pk-composer-wikilink' : '',
+			part.linkKind !== 'wikilink' ? 'pk-composer-link--external' : '',
 			className ?? '',
 		].filter(Boolean).join(' ');
 		return (
@@ -184,13 +255,6 @@ export function SourceVisualPartView({
 				tabIndex={0}
 			>
 				{part.text}
-				{part.linkKind !== 'wikilink' && (
-					<ExternalLink
-						className="pk-composer-external-link-icon"
-						size={12}
-						aria-label="外部链接"
-					/>
-				)}
 			</span>
 		);
 	}
