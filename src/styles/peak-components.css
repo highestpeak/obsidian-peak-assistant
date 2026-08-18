@@ -12411,7 +12411,19 @@
 }
 
 .pk-graph-minimap {
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.pk-graph-minimap:focus-visible {
+  outline: 2px solid var(--pk-focus-ring, var(--interactive-accent));
+  outline-offset: 2px;
+}
+
+.pk-graph-minimap svg {
+  cursor: crosshair;
 }
 
 .pk-graph-minimap__node {
@@ -12424,6 +12436,14 @@
   stroke: var(--pk-accent, var(--interactive-accent));
   stroke-width: 1.4;
   vector-effect: non-scaling-stroke;
+  pointer-events: all;
+  cursor: grab;
+}
+
+.pk-graph-minimap[data-dragging='true'],
+.pk-graph-minimap[data-dragging='true'] svg,
+.pk-graph-minimap[data-dragging='true'] .pk-graph-minimap__viewport {
+  cursor: grabbing;
 }
 
 .pk-graph-workspace__control {

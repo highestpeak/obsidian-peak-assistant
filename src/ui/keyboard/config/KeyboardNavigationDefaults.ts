@@ -247,6 +247,7 @@ export const PEAK_KEYBOARD_A11Y_STRINGS = {
 	openGraphNodeList: 'Open graph node list',
 	closeGraphNodeList: 'Close graph node list',
 	graphInstructions: 'Knowledge graph. Use arrow keys to move between nodes, Enter to open, Space to select, plus and minus to zoom, and zero to fit.',
+	graphMiniMapInstructions: 'Graph mini map. Drag the viewport or click the map to pan. Use arrow keys to pan and Home to fit.',
 	conversations: 'Conversations',
 } as const;
 

@@ -84,6 +84,13 @@ import {
 	retainGraphSelection,
 	updateGraphSelection,
 } from './graphInteractionModel';
+import {
+	clampMiniMapCenter,
+	graphExtentToMiniMapViewport,
+	miniMapCenterToPan,
+	type GraphMiniMapBounds,
+	type GraphMiniMapPoint,
+} from './graphMiniMapNavigation';
 import type { AtlasGraphModel } from './AtlasGraphModel';
 import { atlasGraphModelToResultSubgraph } from './AtlasGraphModel';
 
@@ -1063,6 +1070,7 @@ interface NodeAiCardState {
 interface GraphMiniMapSnapshot {
 	nodes: Array<{ id: string; x: number; y: number; role: string }>;
 	viewport: { x: number; y: number; width: number; height: number };
+	bounds: GraphMiniMapBounds;
 }
 
 function graphMiniMapSnapshot(cy: Core): GraphMiniMapSnapshot | null {
@@ -1076,13 +1084,9 @@ function graphMiniMapSnapshot(cy: Core): GraphMiniMapSnapshot | null {
 	const bounds = nodes.boundingBox({ includeLabels: false });
 	const width = Math.max(1, bounds.w);
 	const height = Math.max(1, bounds.h);
+	const modelBounds = { x1: bounds.x1, y1: bounds.y1, width, height };
 	const normalizeX = (x: number) => ((x - bounds.x1) / width) * 100;
 	const normalizeY = (y: number) => ((y - bounds.y1) / height) * 100;
-	const extent = cy.extent();
-	const x = Math.max(0, Math.min(100, normalizeX(extent.x1)));
-	const y = Math.max(0, Math.min(100, normalizeY(extent.y1)));
-	const x2 = Math.max(0, Math.min(100, normalizeX(extent.x2)));
-	const y2 = Math.max(0, Math.min(100, normalizeY(extent.y2)));
 	return {
 		nodes: nodes.map((node) => {
 			const position = node.position();
@@ -1093,12 +1097,19 @@ function graphMiniMapSnapshot(cy: Core): GraphMiniMapSnapshot | null {
 				role: String(node.data('atlasRole') ?? node.data('kind') ?? 'document'),
 			};
 		}),
-		viewport: {
-			x,
-			y,
-			width: Math.max(5, x2 - x),
-			height: Math.max(5, y2 - y),
-		},
+		viewport: graphExtentToMiniMapViewport(modelBounds, cy.extent()),
+		bounds: modelBounds,
+	};
+}
+
+function miniMapPointFromPointer(
+	event: React.PointerEvent<SVGSVGElement>,
+): GraphMiniMapPoint | null {
+	const rect = event.currentTarget.getBoundingClientRect();
+	if (rect.width <= 0 || rect.height <= 0) return null;
+	return {
+		x: ((event.clientX - rect.left) / rect.width) * 100,
+		y: ((event.clientY - rect.top) / rect.height) * 100,
 	};
 }
 
@@ -1154,6 +1165,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 	const [inspectMode, setInspectMode] = useState(false);
 	const [miniMap, setMiniMap] = useState<GraphMiniMapSnapshot | null>(null);
+	const [miniMapDragging, setMiniMapDragging] = useState(false);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const surfaceRootRef = useRef<HTMLDivElement | null>(null);
 	const inlineSlotRef = useRef<HTMLDivElement | null>(null);
@@ -1168,6 +1180,10 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const mountedRef = useRef(true);
 	const positionCacheRef = useRef<Map<string, Map<string, { x: number; y: number }>>>(new Map());
 	const lastViewportRef = useRef<AtlasGraphViewport | null>(null);
+	const miniMapDragRef = useRef<{
+		pointerId: number;
+		offset: GraphMiniMapPoint;
+	} | null>(null);
 	const lastRenderedRef = useRef<{ subgraph: ResultSubgraphOutput; preset: AtlasGraphPreset } | null>(null);
 	const inlineViewportBeforeFullscreenRef = useRef<{
 		projectionKey: string;
@@ -2042,6 +2058,84 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		if (!cy) return;
 		fitReadableGraphViewport(cy, PRESETS[preset].folderTree);
 	}, [preset]);
+	const panGraphFromMiniMap = useCallback((requestedCenter: GraphMiniMapPoint) => {
+		const cy = cyRef.current;
+		const container = containerRef.current;
+		if (!cy || !container || !miniMap) return;
+		const center = clampMiniMapCenter(requestedCenter, miniMap.viewport);
+		cy.pan(miniMapCenterToPan({
+			bounds: miniMap.bounds,
+			center,
+			zoom: cy.zoom(),
+			viewport: {
+				width: container.clientWidth,
+				height: container.clientHeight,
+			},
+		}));
+	}, [miniMap]);
+	const handleMiniMapPointerDown = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+		const point = miniMapPointFromPointer(event);
+		if (!point || !miniMap) return;
+		event.preventDefault();
+		event.stopPropagation();
+		const viewportTarget = (event.target as SVGElement | null)?.closest?.(
+			'[data-peak-graph-minimap-viewport]',
+		);
+		const viewportCenter = {
+			x: miniMap.viewport.x + miniMap.viewport.width / 2,
+			y: miniMap.viewport.y + miniMap.viewport.height / 2,
+		};
+		const offset = viewportTarget
+			? { x: point.x - viewportCenter.x, y: point.y - viewportCenter.y }
+			: { x: 0, y: 0 };
+		miniMapDragRef.current = { pointerId: event.pointerId, offset };
+		event.currentTarget.setPointerCapture(event.pointerId);
+		setMiniMapDragging(true);
+		if (!viewportTarget) panGraphFromMiniMap(point);
+	}, [miniMap, panGraphFromMiniMap]);
+	const handleMiniMapPointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+		const drag = miniMapDragRef.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		const point = miniMapPointFromPointer(event);
+		if (!point) return;
+		event.preventDefault();
+		event.stopPropagation();
+		panGraphFromMiniMap({
+			x: point.x - drag.offset.x,
+			y: point.y - drag.offset.y,
+		});
+	}, [panGraphFromMiniMap]);
+	const finishMiniMapPointer = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+		const drag = miniMapDragRef.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			event.currentTarget.releasePointerCapture(event.pointerId);
+		}
+		miniMapDragRef.current = null;
+		setMiniMapDragging(false);
+	}, []);
+	const handleMiniMapKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+		const cy = cyRef.current;
+		if (!cy) return;
+		const step = event.shiftKey ? 160 : 64;
+		const delta = event.key === 'ArrowLeft' ? { x: step, y: 0 }
+			: event.key === 'ArrowRight' ? { x: -step, y: 0 }
+				: event.key === 'ArrowUp' ? { x: 0, y: step }
+					: event.key === 'ArrowDown' ? { x: 0, y: -step }
+						: null;
+		if (delta) {
+			event.preventDefault();
+			event.stopPropagation();
+			cy.panBy(delta);
+			return;
+		}
+		if (event.key !== 'Home') return;
+		event.preventDefault();
+		event.stopPropagation();
+		fitAllGraphViewport(cy);
+	}, []);
 	const toggleFullscreen = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
 		if (fullscreen) {
 			closeFullscreen();
@@ -2288,11 +2382,26 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			{showMiniMap && !emptyMessage && miniMap && (
 				<div
 					className="pk-graph-minimap pktw-absolute pktw-bottom-2 pktw-right-2 pktw-z-10 pktw-h-20 pktw-w-28 pktw-overflow-hidden pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised/90 pktw-p-1.5 pktw-shadow-sm"
-					role="img"
-					aria-label="Graph mini map"
+					role="region"
+					tabIndex={0}
+					aria-label={PEAK_KEYBOARD_A11Y_STRINGS.graphMiniMapInstructions}
+					onKeyDown={handleMiniMapKeyDown}
 					data-peak-graph-minimap
+					data-dragging={miniMapDragging ? 'true' : 'false'}
 				>
-					<svg viewBox="0 0 100 100" className="pktw-h-full pktw-w-full" aria-hidden="true">
+					<svg
+						viewBox="0 0 100 100"
+						className="pktw-h-full pktw-w-full"
+						aria-hidden="true"
+						onPointerDown={handleMiniMapPointerDown}
+						onPointerMove={handleMiniMapPointerMove}
+						onPointerUp={finishMiniMapPointer}
+						onPointerCancel={finishMiniMapPointer}
+						onLostPointerCapture={() => {
+							miniMapDragRef.current = null;
+							setMiniMapDragging(false);
+						}}
+					>
 						{miniMap.nodes.map((node) => (
 							<circle
 								key={node.id}
@@ -2309,6 +2418,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 							height={miniMap.viewport.height}
 							rx="2"
 							className="pk-graph-minimap__viewport"
+							data-peak-graph-minimap-viewport
 						/>
 					</svg>
 				</div>

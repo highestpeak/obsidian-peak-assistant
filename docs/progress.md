@@ -8,6 +8,13 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-18 · Shared Graph Mini Map 导航修复
+
+- [x] **根因**：共享 `AtlasGraphCanvas` 的 Mini Map 只根据 Cytoscape viewport 绘制静态方框，容器还设置了 `pointer-events: none`；没有 pointer capture、反向坐标换算或 pan 回写，因此所有宿主都无法拖动。
+- [x] **统一修复**：Mini Map 现在支持拖住 viewport 方框平移、点击地图跳转、Pointer Events / 触控抓取、边界限制，以及方向键平移和 Home fit；World Search、File Atlas、AI Search Sources、Composer Relations 与 AI Graph Artifact 自动共享同一实现。
+- [x] **自动验证**：新增模型坐标 ↔ Mini Map ↔ Cytoscape pan 单元测试和交互源码契约；11 个 Graph / File Atlas / AI Graph focused suites 与生产 build、bundle check、simulator boundary 全部通过。
+- [ ] **真实宿主确认**：当前没有 Obsidian CDP listener；真实鼠标拖拽、点击跳转、触控与全屏态拖拽保持 `INTERACTION NOT VERIFIED`，需在真实 Obsidian 插件重载后完成 DOM / pan 断言。
+
 ## 2026-08-18 · File Atlas Graph 空白画布回归修复
 
 - [x] **根因**：共享 Graph Workspace 把 scope / projection 工具栏移到 `FileAtlasPanel` 后，`.pkfa-graph` 从两行 Grid 退化为普通 block；`.pkfa-graph-canvas` 失去原先的 `minmax(0, 1fr)` 高度来源，实际宿主高度坍缩为 0，导致 loading、空状态、Cytoscape 和画布悬浮工具同时不可见。
