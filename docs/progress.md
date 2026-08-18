@@ -8,6 +8,13 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-18 · File Atlas Graph 空白画布回归修复
+
+- [x] **根因**：共享 Graph Workspace 把 scope / projection 工具栏移到 `FileAtlasPanel` 后，`.pkfa-graph` 从两行 Grid 退化为普通 block；`.pkfa-graph-canvas` 失去原先的 `minmax(0, 1fr)` 高度来源，实际宿主高度坍缩为 0，导致 loading、空状态、Cytoscape 和画布悬浮工具同时不可见。
+- [x] **修复**：File Atlas Graph 恢复为单行 `minmax(0, 1fr)` Grid，canvas host 显式继承 100% 宽高；新增 owner-review contract 防止再次删除这条高度链。
+- [x] **自动验证**：6 个 File Atlas / Graph Workspace focused suites 与生产 build、bundle check、simulator boundary 全部通过。
+- [ ] **真实宿主确认**：当前没有 Obsidian CDP listener；插件重载后的节点绘制、loading/empty state 与右上悬浮工具仍保持 `INTERACTION NOT VERIFIED`，需在真实 Obsidian 重新打开 File Atlas Graph 后确认。
+
 ## 2026-08-13 · Shared Graph Workspace 生产实现
 
 - [x] **公共组件成为唯一交互壳**：新增宿主 capability manifest、统一状态与模板配置；World Search、File Atlas、AI Search Sources、Composer Relations、AI Graph Artifact 共用 `GraphWorkspaceControl`，旧 Result Browser 私有 View / Graph 控件已移除。

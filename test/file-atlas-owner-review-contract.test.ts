@@ -140,6 +140,16 @@ assert.match(
 );
 assert.match(css, /grid-template-rows:\s*42px 42px auto 46px minmax\(0, 1fr\) auto;/);
 assert.match(css, /\[data-subview="graph"\] \.pkfa-content\s*\{[\s\S]*?grid-template-rows:\s*42px 42px minmax\(0, 1fr\);/);
+assert.match(
+	css,
+	/\.pkfa-graph\s*\{[^}]*display:\s*grid;[^}]*grid-template-rows:\s*minmax\(0, 1fr\);/,
+	'File Atlas Graph must allocate its remaining modal row to the canvas instead of collapsing it to zero height',
+);
+assert.match(
+	css,
+	/\.pkfa-graph-canvas\s*\{[^}]*height:\s*100%;/,
+	'the Cytoscape canvas host must inherit the definite height of the Graph subview',
+);
 assert.doesNotMatch(panel, /pkfa-document-context-slot|FileAtlasDocumentContext/);
 assert.match(panel, /type: 'select'; id: string \| null/);
 assert.match(panel, /dispatch\(\{ type: 'select', id: firstVisibleId \}\)/);
