@@ -144,6 +144,36 @@ assert.match(
 );
 
 assert.match(
+	primitiveCss,
+	/\.peak-vault-intelligence-view \.pk-vi-object-card\.pk-btn\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?height:\s*78px !important;[\s\S]*?min-height:\s*78px !important;[\s\S]*?max-height:\s*78px !important;[\s\S]*?padding:\s*15px !important;/,
+	'Vault Intelligence object cards must survive the Obsidian reset',
+);
+
+assert.match(
+	primitiveCss,
+	/\.peak-vault-intelligence-view \.pk-vi-activity-grid > \.pk-btn\s*\{[\s\S]*?width:\s*11px !important;[\s\S]*?height:\s*11px !important;[\s\S]*?min-width:\s*11px !important;[\s\S]*?min-height:\s*11px !important;[\s\S]*?max-width:\s*11px !important;[\s\S]*?max-height:\s*11px !important;[\s\S]*?padding:\s*0 !important;/,
+	'Vault Intelligence activity cells must remain square under the Obsidian reset',
+);
+
+assert.doesNotMatch(
+	primitiveCss,
+	/\.pk-vi-graph-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 240px;/,
+	'Vault Intelligence map context must remain below the graph instead of becoming a permanent right drawer',
+);
+
+assert.match(
+	primitiveCss,
+	/\.pk-vi-graph-context\s*\{[\s\S]*?grid-template-columns:\s*minmax\(220px, 0\.7fr\) minmax\(360px, 1\.3fr\);/,
+	'Vault Intelligence map context must use its intended below-graph two-column summary',
+);
+
+assert.doesNotMatch(
+	primitiveCss,
+	/\.pk-vi-work-columns,[^{]*\{[^}]*grid-template-columns:\s*minmax\(190px, 1\.3fr\) minmax\(150px, 0\.8fr\) 112px 20px;/,
+	'Vault Intelligence Work queue must not collapse its five production columns back to the legacy four-column grid',
+);
+
+assert.match(
 	composerCss,
 	/\.peak-composer-root \.pk-composer-collection-handle\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*30px !important;[\s\S]*?min-width:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-width:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 !important;/,
 	'Composer collection handle must retain its 30px hit target under the Obsidian button reset',

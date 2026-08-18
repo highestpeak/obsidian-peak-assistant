@@ -35,6 +35,16 @@ function derive(findings: LintFinding[], previous: VaultMaintenanceTask[] = []) 
 
 assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.tasks.length, 11, 'the owner surface must cover all 11 maintenance task kinds');
 assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.scanOperations.length, 7, 'scan setup must disclose all seven routed operations');
+assert.deepEqual(
+	DEFAULT_VAULT_INTELLIGENCE_CONFIG.checkGroups.map((group) => group.id),
+	['connections', 'content', 'tags', 'aging'],
+	'Scan checks must use the four owner-facing groups from the final contract',
+);
+assert.equal(
+	DEFAULT_VAULT_INTELLIGENCE_CONFIG.checkGroups.flatMap((group) => group.checks).length,
+	19,
+	'Scan Setup must expose the 19 deterministic checks independently of maintenance task kinds',
+);
 
 const tasks = derive([
 	finding({ id: 'broken-a', signalId: 'S-BROKEN-LINK', metadata: { brokenTarget: 'Missing note' } }),
@@ -63,15 +73,20 @@ const chosen: VaultMaintenanceTask = {
 		status: 'selected',
 		sourceRevision: null,
 	},
-	atomicItems: previous.atomicItems.map((item, index) => index === 0 ? {
+	atomicItems: previous.atomicItems.map((item, index) => ({
 		...item,
-		ownerChoice: {
+		ownerChoice: index === 0 ? {
 			choiceId: 'redirect',
 			chosenAt: 1_100,
 			status: 'selected',
 			sourceRevision: 1_000,
+		} : {
+			choiceId: 'keep',
+			chosenAt: 1_000,
+			status: 'selected',
+			sourceRevision: 1_000,
 		},
-	} : item),
+	})),
 };
 const rescanned = derive([
 	finding({ id: 'broken-a', signalId: 'S-BROKEN-LINK', metadata: { brokenTarget: 'New suggestion' } }),
@@ -81,7 +96,15 @@ const rescanned = derive([
 assert.equal(rescanned.defaultChoice?.choiceId, 'keep', 'the current owner default must survive a newer Peak suggestion');
 assert.equal(rescanned.atomicItems[0]?.ownerChoice?.choiceId, 'redirect', 'an atomic owner choice must outrank defaults and suggestions');
 assert.equal(rescanned.atomicItems[0]?.ownerChoice?.sourceRevision, 1_000, 'a rescan must not erase the revision guard captured with the owner choice');
-assert.equal(rescanned.state, 'ready-apply');
+assert.equal(rescanned.state, 'recovery', 'a changed source revision must surface recovery without erasing the owner choice');
+
+const expanded = derive([
+	finding({ id: 'broken-a', signalId: 'S-BROKEN-LINK', metadata: { brokenTarget: 'Missing note' } }),
+	finding({ id: 'broken-b', signalId: 'S-MISSING-BACKLINK', metadata: { brokenTarget: 'Missing note' } }),
+	finding({ id: 'broken-c', signalId: 'S-BROKEN-LINK', metadata: { brokenTarget: 'New missing note' } }),
+], [chosen]).find((task) => task.kind === 'broken-links')!;
+assert.equal(expanded.defaultChoice, null, 'a bulk choice from an older canonical set must not silently apply to newly discovered atoms');
+assert.equal(expanded.atomicItems.find((item) => item.id === 'broken-c')?.ownerChoice, null);
 
 assert.equal(deriveMaintenanceState('needs-choice', [], null), 'needs-choice');
 assert.equal(deriveMaintenanceState('ready-review', rescanned.atomicItems, rescanned.defaultChoice), 'ready-apply');

@@ -42,9 +42,23 @@ export interface VaultScanOperationDefinition {
 	estimatedCostUsd: number;
 }
 
+export interface VaultScanCheckDefinition {
+	checkId: string;
+	label: string;
+	description: string;
+}
+
+export interface VaultScanCheckGroupDefinition {
+	id: 'connections' | 'content' | 'tags' | 'aging';
+	label: string;
+	description: string;
+	checks: VaultScanCheckDefinition[];
+}
+
 export interface VaultIntelligenceConfig {
 	activityColors: string[];
 	fileTypeColors: string[];
+	checkGroups: VaultScanCheckGroupDefinition[];
 	tasks: VaultMaintenanceTaskDefinition[];
 	scanOperations: VaultScanOperationDefinition[];
 }
@@ -56,8 +70,8 @@ export async function loadVaultIntelligenceConfig(): Promise<VaultIntelligenceCo
 	if (!manager) return DEFAULT_VAULT_INTELLIGENCE_CONFIG;
 	try {
 		const loaded = await manager.loadJson<VaultIntelligenceConfig>(ConfigTemplateId.VaultIntelligence);
-		if (!Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations)) {
-			throw new Error('tasks and scanOperations must be arrays');
+		if (!Array.isArray(loaded.checkGroups) || !Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations)) {
+			throw new Error('checkGroups, tasks and scanOperations must be arrays');
 		}
 		return loaded;
 	} catch (error) {

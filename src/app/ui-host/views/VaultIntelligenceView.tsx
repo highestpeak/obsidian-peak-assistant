@@ -10,7 +10,7 @@ export { VAULT_INTELLIGENCE_VIEW_TYPE };
 export class VaultIntelligenceView extends ReactItemViewHost {
 	protected readonly viewType = VAULT_INTELLIGENCE_VIEW_TYPE;
 	protected readonly displayText = 'Vault Intelligence';
-	protected readonly icon: IconName = 'scan-search';
+	public readonly icon: IconName = 'scan-search';
 	protected readonly rootClasses = ['peak-design-root', 'pktw-root', 'peak-vault-intelligence-view'] as const;
 
 	protected renderElement(): React.ReactElement {

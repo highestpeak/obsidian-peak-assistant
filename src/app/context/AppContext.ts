@@ -540,6 +540,17 @@ export class AppContext {
 				await initializer.performFastCoreIncrementalIndexing(paths);
 			},
 			resolveProjectCount: async () => (await manager.proj.listProjects()).length,
+			openOwnerSurface: async (surface) => {
+				if (surface === 'files') {
+					await this.viewManager.activateMyContentView();
+					return;
+				}
+				if (surface === 'composer') {
+					await this.viewManager.activateDocumentComposerView();
+					return;
+				}
+				await this.viewManager.openChatStudio();
+			},
 			resolveOperationRoutes: () => {
 				const profiles = ProfileRegistry.getInstance();
 				const embedding = profiles.resolveSlot('knowledgeIndex');

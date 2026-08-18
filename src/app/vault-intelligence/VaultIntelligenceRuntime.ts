@@ -34,6 +34,7 @@ import {
 	type VaultIntelligenceSnapshot,
 } from '@/ui/view/vault-intelligence/VaultIntelligenceModel';
 import {
+	DEFAULT_VAULT_INTELLIGENCE_CONFIG,
 	loadVaultIntelligenceConfig,
 	type VaultIntelligenceConfig,
 } from '@/ui/view/vault-intelligence/VaultIntelligenceDefaults';
@@ -47,6 +48,7 @@ export interface VaultIntelligenceRuntimeDeps {
 	getSearchSettings: () => SearchSettings;
 	runCoreIndex: (scope: VaultScanScopeMode, paths: string[]) => Promise<void>;
 	resolveProjectCount: () => Promise<number>;
+	openOwnerSurface?: (surface: VaultIntelligenceObjectSummary['id']) => Promise<void>;
 	resolveOperationRoutes: () => Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>>;
 	calculateCostUsd: (provider: string, model: string, usage: VaultScanUsage) => Promise<number>;
 	now?: () => number;
@@ -74,8 +76,9 @@ export class VaultIntelligenceRuntime {
 		fileTypes: [],
 		availablePaths: [],
 		activityDays: [],
-		changedSinceScan: 0,
+		changedSinceScan: null,
 		changedCursorAt: null,
+		indexReadiness: { discovered: 0, searchReady: null, pendingOrExcluded: null, builtAt: null, isReady: false },
 		objects: [],
 		operationRoutes: {},
 		tasks: [],
@@ -105,7 +108,7 @@ export class VaultIntelligenceRuntime {
 			const review = this.deps.resolveReviewRuntime();
 			const outputs = this.deps.resolveGeneratedOutputs();
 			const operationRoutes = this.deps.resolveOperationRoutes();
-			const [persisted, digest, events, projectCount, conversationCount, composerEventCount] = await Promise.all([
+			const [persisted, digest, events, projectCount, conversationCount, composerEventCount, indexStatus] = await Promise.all([
 				store?.load().catch(() => null) ?? Promise.resolve(null),
 				review?.getDigest().catch(() => null) ?? Promise.resolve(null),
 				store?.listEvents().catch(() => []) ?? Promise.resolve([]),
@@ -117,11 +120,13 @@ export class VaultIntelligenceRuntime {
 					? outputs.events.readEvents({ outputId: 'composer.workspace-events', streamKey: 'current' })
 						.then((result) => result.events.length).catch(() => 0)
 					: Promise.resolve(0),
+				this.deps.resolveIndexService()?.getIndexStatus().catch(() => null) ?? Promise.resolve(null),
 			]);
 			const recovered = this.recoverPersistedState(persisted);
 			const changedSinceScan = recovered.changedCursorAt
 				? files.filter((file) => file.stat.mtime > recovered.changedCursorAt!).length
-				: files.length;
+				: null;
+			const searchReady = indexStatus?.indexedDocs ?? null;
 			this.patch({
 				loading: false,
 				digest,
@@ -130,6 +135,13 @@ export class VaultIntelligenceRuntime {
 				activityDays: summarizeVaultActivity(files),
 				changedSinceScan,
 				changedCursorAt: recovered.changedCursorAt,
+				indexReadiness: {
+					discovered: files.length,
+					searchReady,
+					pendingOrExcluded: searchReady === null ? null : Math.max(0, files.length - searchReady),
+					builtAt: indexStatus?.indexBuiltAt ?? null,
+					isReady: indexStatus?.isReady ?? false,
+				},
 				objects: buildObjectSummaries(files.length, conversationCount, projectCount, composerEventCount),
 				operationRoutes,
 				tasks: recovered.tasks,
@@ -212,14 +224,16 @@ export class VaultIntelligenceRuntime {
 		this.queuePersist();
 	}
 
-	async choose(taskId: string, atomicItemId: string | null, choiceId: string): Promise<void> {
+	async choose(taskId: string, atomicItemId: string | null, choiceId: string, choiceValue: string | null = null): Promise<void> {
 		const config = await loadVaultIntelligenceConfig();
 		const task = this.snapshot.tasks.find((candidate) => candidate.id === taskId);
 		const definition = config.tasks.find((candidate) => candidate.kind === task?.kind);
 		if (!task || !definition?.choices.some((choice) => choice.id === choiceId)) return;
+		if (choiceId === 'another' && !choiceValue?.trim()) return;
 		const now = this.now();
 		const ownerChoice: VaultMaintenanceOwnerChoice = {
 			choiceId,
+			choiceValue: choiceValue?.trim() || null,
 			chosenAt: now,
 			status: 'selected',
 			sourceRevision: atomicItemId
@@ -228,7 +242,13 @@ export class VaultIntelligenceRuntime {
 		};
 		const atomicItems = atomicItemId
 			? task.atomicItems.map((item) => item.id === atomicItemId ? { ...item, ownerChoice } : item)
-			: task.atomicItems;
+			: task.atomicItems.map((item) => ({
+				...item,
+				ownerChoice: {
+					...ownerChoice,
+					sourceRevision: this.fileMtime(item.filePath),
+				},
+			}));
 		const defaultChoice = atomicItemId ? task.defaultChoice : ownerChoice;
 		const updated = {
 			...task,
@@ -238,7 +258,8 @@ export class VaultIntelligenceRuntime {
 			updatedAt: now,
 		};
 		this.replaceTask(updated);
-		await this.recordEvent('owner-choice', task.sourceRunId, `${task.kind} choice: ${choiceId}`);
+		this.patch({ error: null });
+		await this.recordEvent('owner-choice', task.sourceRunId, `${task.kind} choice: ${choiceId}${ownerChoice.choiceValue ? ` · ${ownerChoice.choiceValue}` : ''}`);
 		this.addActivity('owner-choice', task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
 		await this.flushPersist();
 	}
@@ -285,13 +306,14 @@ export class VaultIntelligenceRuntime {
 			...task,
 			atomicItems,
 			defaultChoice,
-			state: hasProposal ? 'ready-review' : 'ready-apply',
+			state: hasProposal ? 'needs-proposal' : 'ready-apply',
 			updatedAt: this.now(),
 		});
-		await this.recordEvent('task-applied', task.sourceRunId, hasProposal
-			? `${task.kind} prepared for guarded owner-surface review.`
+		this.patch({ error: null });
+		await this.recordEvent(hasProposal ? 'review-decisions-saved' : 'task-applied', task.sourceRunId, hasProposal
+			? `${task.kind} review decisions saved; user files unchanged.`
 			: `${task.kind} Peak-owned choices recorded.`);
-		this.addActivity('apply', task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
+		this.addActivity(hasProposal ? 'owner-choice' : 'apply', hasProposal ? `${task.title} review decisions saved` : task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
 		await this.flushPersist();
 	}
 
@@ -320,6 +342,7 @@ export class VaultIntelligenceRuntime {
 			return { ...item, ownerChoice: { ...choice, status: 'verified' as const } };
 		});
 		this.replaceTask({ ...task, atomicItems, state: 'verified', updatedAt: verifiedAt });
+		this.patch({ error: null });
 		await this.recordEvent('task-verified', task.sourceRunId, `${task.kind} verified.`);
 		this.addActivity('verify', task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
 		await this.flushPersist();
@@ -329,6 +352,12 @@ export class VaultIntelligenceRuntime {
 		const file = this.deps.app.vault.getAbstractFileByPath(path);
 		if (!file || !('extension' in file)) return false;
 		await this.deps.app.workspace.getLeaf(false).openFile(file as TFile);
+		return true;
+	}
+
+	async openOwnerSurface(surface: VaultIntelligenceObjectSummary['id']): Promise<boolean> {
+		if (!this.deps.openOwnerSurface) return false;
+		await this.deps.openOwnerSurface(surface);
 		return true;
 	}
 
@@ -561,11 +590,16 @@ export class VaultIntelligenceRuntime {
 		const config = await loadVaultIntelligenceConfig();
 		const runId = this.snapshot.run.id!;
 		const plan = this.requirePlan();
-		const enabledKinds = new Set(plan.enabledTaskKinds);
+		const enabledCheckIds = new Set(plan.enabledCheckIds);
+		const enabledKinds = new Set(config.tasks
+			.filter((definition) => definition.kind === 'unreadable-files'
+				|| definition.signalIds.some((signalId) => enabledCheckIds.has(signalId)))
+			.map((definition) => definition.kind));
 		const frozen = new Set(this.snapshot.run.frozenPaths);
-		const findings = plan.scope.mode === 'entire'
+		const scopedFindings = plan.scope.mode === 'entire'
 			? lintResult?.findings ?? []
 			: (lintResult?.findings ?? []).filter((finding) => finding.filePath && frozen.has(finding.filePath));
+		const findings = scopedFindings.filter((finding) => enabledCheckIds.has(finding.signalId));
 		const derived = deriveVaultMaintenanceTasks({
 			config,
 			findings,
@@ -585,7 +619,7 @@ export class VaultIntelligenceRuntime {
 			runId,
 			now: this.now(),
 		});
-		const followUpTasks = tasks.filter((task) => task.sourceRunId === runId);
+		const followUpTasks = tasks.filter((task) => task.sourceRunId === runId && task.state !== 'verified');
 		const indexStatus = await index?.getIndexStatus().catch(() => null) ?? null;
 		const completedAt = this.now();
 		const completed: VaultCompletedRun = {
@@ -594,7 +628,7 @@ export class VaultIntelligenceRuntime {
 			completedAt,
 			scopeMode: plan.scope.mode,
 			objectCount: this.snapshot.run.frozenPaths.length,
-			searchableCount: indexStatus?.indexedDocs ?? lintResult?.totalNotes ?? 0,
+			searchableCount: indexStatus?.indexedDocs ?? null,
 			usage: totalUsage(this.snapshot.run.operations),
 			receipts: buildReceipts(this.snapshot.run, indexStatus?.indexedDocs ?? null, lintResult),
 			maintenanceTaskIds: followUpTasks.map((task) => task.id),
@@ -616,18 +650,25 @@ export class VaultIntelligenceRuntime {
 		if (!persisted || persisted.version !== 1) {
 			return { version: 1, updatedAt: this.now(), changedCursorAt: null, activeRun: null, lastCompletedRun: null, tasks: [], recentActivity: [] };
 		}
-		if (!('changedCursorAt' in persisted)) {
+		const legacy = persisted as VaultIntelligencePersistedState & { changedCursorAt?: number | null };
+		if (legacy.changedCursorAt === undefined) {
 			persisted = {
-				...persisted,
-				changedCursorAt: persisted.lastCompletedRun?.scopeMode === 'selected'
+				...legacy,
+				changedCursorAt: legacy.lastCompletedRun?.scopeMode === 'selected'
 					? null
-					: persisted.lastCompletedRun?.startedAt ?? null,
+					: legacy.lastCompletedRun?.startedAt ?? null,
 			};
 		}
-		if (persisted.activeRun?.status !== 'running' && persisted.activeRun?.status !== 'stopping') return persisted;
+		const activeRun = persisted.activeRun ? {
+			...persisted.activeRun,
+			plan: persisted.activeRun.plan
+				? migratePlanChecks(persisted.activeRun.plan, DEFAULT_VAULT_INTELLIGENCE_CONFIG)
+				: null,
+		} : null;
+		if (activeRun?.status !== 'running' && activeRun?.status !== 'stopping') return { ...persisted, activeRun };
 		return {
 			...persisted,
-			activeRun: { ...persisted.activeRun, status: 'interrupted', stopRequested: false },
+			activeRun: { ...activeRun, status: 'interrupted', stopRequested: false },
 		};
 	}
 
@@ -636,13 +677,22 @@ export class VaultIntelligenceRuntime {
 		const digest = await this.deps.resolveReviewRuntime()?.getDigest().catch(() => null) ?? null;
 		const changedSinceScan = this.snapshot.changedCursorAt
 			? files.filter((file) => file.stat.mtime > this.snapshot.changedCursorAt!).length
-			: files.length;
+			: null;
+		const indexStatus = await this.deps.resolveIndexService()?.getIndexStatus().catch(() => null) ?? null;
+		const searchReady = indexStatus?.indexedDocs ?? null;
 		this.patch({
 			digest,
 			fileTypes: summarizeVaultFileTypes(files),
 			availablePaths: files.map((file) => file.path).sort((left, right) => left.localeCompare(right)),
 			activityDays: summarizeVaultActivity(files),
 			changedSinceScan,
+			indexReadiness: {
+				discovered: files.length,
+				searchReady,
+				pendingOrExcluded: searchReady === null ? null : Math.max(0, files.length - searchReady),
+				builtAt: indexStatus?.indexBuiltAt ?? null,
+				isReady: indexStatus?.isReady ?? false,
+			},
 		});
 	}
 
@@ -778,7 +828,8 @@ function normalizePlan(
 	config: VaultIntelligenceConfig,
 	routes: Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>>,
 ): VaultScanPlan {
-	const incoming = new Map(plan.aiOperations.map((operation) => [operation.id, operation]));
+	const migratedPlan = migratePlanChecks(plan, config);
+	const incoming = new Map(migratedPlan.aiOperations.map((operation) => [operation.id, operation]));
 	const normalizedOperations = config.scanOperations.map((definition) => {
 		const candidate = incoming.get(definition.id) ?? {
 			id: definition.id,
@@ -806,16 +857,30 @@ function normalizePlan(
 			if ((group as readonly string[]).includes(operation.id)) operation.enabled = enabled;
 		}
 	}
-	if (plan.scope.mode !== 'entire') {
+	if (migratedPlan.scope.mode !== 'entire') {
 		for (const operation of normalizedOperations) {
 			if (operationExecutionGroup(operation.id).includes('relationship-review')) operation.enabled = false;
 		}
 	}
 	return {
-		...plan,
-		scope: { ...plan.scope, selectedPaths: unique(plan.scope.selectedPaths) },
-		enabledTaskKinds: unique(plan.enabledTaskKinds),
+		...migratedPlan,
+		scope: { ...migratedPlan.scope, selectedPaths: unique(migratedPlan.scope.selectedPaths) },
+		enabledCheckIds: unique(migratedPlan.enabledCheckIds).filter((checkId) => (
+			config.checkGroups.some((group) => group.checks.some((check) => check.checkId === checkId))
+		)),
 		aiOperations: normalizedOperations,
+	};
+}
+
+function migratePlanChecks(plan: VaultScanPlan, config: VaultIntelligenceConfig): VaultScanPlan {
+	const legacy = plan as VaultScanPlan & { enabledTaskKinds?: VaultMaintenanceTask['kind'][] };
+	if (Array.isArray(legacy.enabledCheckIds)) return plan;
+	const enabledKinds = new Set(legacy.enabledTaskKinds ?? config.tasks.map((task) => task.kind));
+	return {
+		...plan,
+		enabledCheckIds: unique(config.tasks
+			.filter((task) => enabledKinds.has(task.kind))
+			.flatMap((task) => task.signalIds)),
 	};
 }
 
@@ -844,7 +909,7 @@ function mergeScopedMaintenanceTasks(options: {
 	for (const definition of options.config.tasks) {
 		const previous = previousByKind.get(definition.kind);
 		if (!options.enabledKinds.has(definition.kind)) {
-			if (previous?.state !== 'verified') tasks.push(previous);
+			if (previous) tasks.push(previous);
 			continue;
 		}
 		const current = derivedByKind.get(definition.kind);
@@ -866,11 +931,13 @@ function mergeScopedMaintenanceTasks(options: {
 			atomicItems,
 			affectedLabel: maintenanceAffectedLabel(definition.kind, atomicItems.length),
 			contextLabel: `${paths.size.toLocaleString()} ${paths.size === 1 ? 'file' : 'files'}`,
-			state: deriveMaintenanceState(definition.initialState, atomicItems, base.defaultChoice),
+			state: current?.state === 'recovery'
+				? 'recovery'
+				: deriveMaintenanceState(definition.initialState, atomicItems, base.defaultChoice),
 			createdAt: previous?.createdAt ?? base.createdAt,
 			updatedAt: touched ? options.now : base.updatedAt,
 		};
-		if (task.state !== 'verified') tasks.push(task);
+		tasks.push(task);
 	}
 	return tasks;
 }
@@ -917,14 +984,18 @@ function buildReceipts(
 	indexedDocs: number | null,
 	lintResult: LintScanResult | null,
 ): VaultCompletedRun['receipts'] {
-	const indexFailures = run.operations.filter((operation) => operation.status === 'failed').length;
-	const aiCompleted = run.operations.filter((operation) => operation.status === 'completed').length;
+	const indexOperationIds = new Set<VaultScanAiOperationId>(['embedding-refresh', 'file-summaries', 'ai-tags']);
+	const indexOperations = run.operations.filter((operation) => indexOperationIds.has(operation.id));
+	const indexFailures = indexOperations.filter((operation) => operation.status === 'failed').length;
+	const enabledMachineOperations = run.operations.filter((operation) => operation.status !== 'skipped');
+	const machineCompleted = enabledMachineOperations.filter((operation) => operation.status === 'completed').length;
+	const machineFailures = enabledMachineOperations.filter((operation) => operation.status === 'failed').length;
 	return [
 		{
 			id: 'knowledge-index',
 			label: 'Knowledge Index · Core Search',
 			detail: 'Full-text passages and enabled enrichment layers were published independently.',
-			result: `${(indexedDocs ?? lintResult?.totalNotes ?? 0).toLocaleString()} searchable`,
+			result: indexedDocs === null ? 'Readiness unavailable' : `${indexedDocs.toLocaleString()} searchable`,
 			status: indexFailures ? 'partial' : 'completed',
 			ownerBoundary: 'peak-owned',
 		},
@@ -932,8 +1003,8 @@ function buildReceipts(
 			id: 'machine-knowledge',
 			label: 'Machine summaries, AI Tags and review evidence',
 			detail: 'These outputs stay in Peak-owned machine state and do not edit Markdown or YAML.',
-			result: `${aiCompleted.toLocaleString()} operations completed`,
-			status: indexFailures ? 'partial' : 'completed',
+			result: `${machineCompleted.toLocaleString()} of ${enabledMachineOperations.length.toLocaleString()} enabled operations completed`,
+			status: machineFailures ? 'partial' : 'completed',
 			ownerBoundary: 'peak-owned',
 		},
 		{

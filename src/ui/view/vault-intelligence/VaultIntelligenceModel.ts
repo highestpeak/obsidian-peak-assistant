@@ -43,8 +43,15 @@ export interface VaultIntelligenceSnapshot {
 	fileTypes: VaultFileTypeSummary[];
 	availablePaths: string[];
 	activityDays: VaultActivityDay[];
-	changedSinceScan: number;
+	changedSinceScan: number | null;
 	changedCursorAt: number | null;
+	indexReadiness: {
+		discovered: number;
+		searchReady: number | null;
+		pendingOrExcluded: number | null;
+		builtAt: number | null;
+		isReady: boolean;
+	};
 	objects: VaultIntelligenceObjectSummary[];
 	operationRoutes: Partial<Record<VaultScanRunState['operations'][number]['id'], VaultScanOperationRoute>>;
 	tasks: VaultMaintenanceTask[];
@@ -62,10 +69,11 @@ export interface VaultIntelligenceWorkspaceRuntime {
 	resumeScan: () => Promise<void>;
 	requestStop: () => void;
 	skipOperation: (operationId: VaultScanRunState['operations'][number]['id']) => void;
-	choose: (taskId: string, atomicItemId: string | null, choiceId: string) => Promise<void>;
+	choose: (taskId: string, atomicItemId: string | null, choiceId: string, choiceValue?: string | null) => Promise<void>;
 	applyTask: (taskId: string) => Promise<void>;
 	verifyTask: (taskId: string) => Promise<void>;
 	openFile: (path: string) => Promise<boolean>;
+	openOwnerSurface: (surface: VaultIntelligenceObjectSummary['id']) => Promise<boolean>;
 }
 
 export function createVaultScanPlan(
@@ -75,7 +83,7 @@ export function createVaultScanPlan(
 ): VaultScanPlan {
 	return {
 		scope,
-		enabledTaskKinds: config.tasks.map((task) => task.kind),
+		enabledCheckIds: config.checkGroups.flatMap((group) => group.checks.map((check) => check.checkId)),
 		aiOperations: config.scanOperations.map((operation) => ({
 			id: operation.id,
 			enabled: operation.defaultEnabled,
@@ -160,19 +168,32 @@ export function deriveVaultMaintenanceTasks(options: {
 		}
 		if (atomicItems.length === 0) continue;
 		const paths = new Set(atomicItems.flatMap((item) => item.filePath ? [item.filePath] : []));
+		const proposalChoiceIds = new Set(definition.choices
+			.filter((choice) => choice.boundary === 'proposal')
+			.map((choice) => choice.id));
+		const hasStaleProposal = atomicItems.some((item) => {
+			const choice = item.ownerChoice ?? previous?.defaultChoice;
+			if (!item.filePath || !choice || !proposalChoiceIds.has(choice.choiceId) || choice.sourceRevision === null) return false;
+			return options.fileMtime(item.filePath) !== choice.sourceRevision;
+		});
+		const defaultChoice = previous?.defaultChoice && atomicItems.every((item) => item.ownerChoice)
+			? previous.defaultChoice
+			: null;
 		const task: VaultMaintenanceTask = {
 			id: `maintenance:${definition.kind}`,
 			kind: definition.kind,
 			sourceRunId: options.runId,
 			category: definition.category,
-			state: deriveMaintenanceState(definition.initialState, atomicItems, previous?.defaultChoice ?? null),
+			state: hasStaleProposal
+				? 'recovery'
+				: deriveMaintenanceState(definition.initialState, atomicItems, defaultChoice),
 			title: definition.title,
 			typeLabel: definition.typeLabel,
 			affectedLabel: maintenanceAffectedLabel(definition.kind, atomicItems.length),
 			contextLabel: `${paths.size.toLocaleString()} ${paths.size === 1 ? 'file' : 'files'}`,
 			impact: definition.impact,
 			atomicItems,
-			defaultChoice: previous?.defaultChoice ?? null,
+			defaultChoice,
 			createdAt: previous?.createdAt ?? options.now,
 			updatedAt: options.now,
 		};

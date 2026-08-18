@@ -4,7 +4,7 @@ export type VaultScanScopeMode = 'changed' | 'selected' | 'entire';
 export type VaultScanStageId = 'discover' | 'index' | 'ai' | 'publish';
 export type VaultScanRunStatus = 'idle' | 'running' | 'stopping' | 'interrupted' | 'completed' | 'failed';
 export type VaultMaintenanceTaskCategory = 'decision' | 'review' | 'recovery';
-export type VaultMaintenanceTaskState = 'needs-choice' | 'ready-review' | 'ready-apply' | 'recovery' | 'verified';
+export type VaultMaintenanceTaskState = 'needs-choice' | 'needs-proposal' | 'ready-review' | 'ready-apply' | 'recovery' | 'verified';
 export type VaultMaintenanceTaskKind =
 	| 'file-properties'
 	| 'broken-links'
@@ -48,7 +48,7 @@ export interface VaultScanOperationRoute {
 
 export interface VaultScanPlan {
 	scope: VaultScanScope;
-	enabledTaskKinds: VaultMaintenanceTaskKind[];
+	enabledCheckIds: string[];
 	aiOperations: VaultScanAiOperationPlan[];
 	createdAt: number;
 }
@@ -95,6 +95,7 @@ export interface VaultScanRunState {
 
 export interface VaultMaintenanceOwnerChoice {
 	choiceId: string;
+	choiceValue?: string | null;
 	chosenAt: number;
 	status: 'selected' | 'applied' | 'verified';
 	sourceRevision: number | null;
@@ -145,7 +146,7 @@ export interface VaultCompletedRun {
 	completedAt: number;
 	scopeMode: VaultScanScopeMode;
 	objectCount: number;
-	searchableCount: number;
+	searchableCount: number | null;
 	usage: VaultScanUsage;
 	receipts: VaultScanReceipt[];
 	maintenanceTaskIds: string[];
@@ -174,7 +175,7 @@ export interface VaultIntelligencePersistedState {
 export interface VaultIntelligenceEvent {
 	id: string;
 	timestamp: number;
-	type: 'run-started' | 'stage-changed' | 'operation-changed' | 'run-completed' | 'run-failed' | 'owner-choice' | 'task-applied' | 'task-verified';
+	type: 'run-started' | 'stage-changed' | 'operation-changed' | 'run-completed' | 'run-failed' | 'owner-choice' | 'review-decisions-saved' | 'task-applied' | 'task-verified';
 	runId: string | null;
 	detail: string;
 }
