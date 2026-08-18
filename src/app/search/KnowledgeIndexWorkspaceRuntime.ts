@@ -1,21 +1,19 @@
 import type { AppContext } from '@/app/context/AppContext';
 import type { IndexLevel } from '@/core/search/indexTypes';
 import type { IndexRunOutputs, KnowledgeIndexWorkspacePort, KnowledgeIndexWorkspaceSnapshot } from '@/core/ports/KnowledgeIndexWorkspacePort';
-import { IndexInitializer } from '@/service/search/index/indexInitializer';
-import { IndexService } from '@/service/search/index/indexService';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { INDEXABLE_FILE_TYPES } from '@/core/settings/peakSettingsContract';
 import type { DocumentType } from '@/core/document/types';
 
 export class KnowledgeIndexWorkspaceRuntime implements KnowledgeIndexWorkspacePort {
-	private paused = false;
 	private lastRun: { level: IndexLevel; outputs: IndexRunOutputs } | null = null;
-	private readonly listeners = new Set<() => void>();
 
 	constructor(private readonly appContext: AppContext) {}
 
 	async getSnapshot(): Promise<KnowledgeIndexWorkspaceSnapshot> {
-		const progress = this.appContext.progressReporter.getSnapshot();
+		const coordinator = this.appContext.runtimeRegistry.getIndexRunCoordinator();
+		const progress = coordinator.getSnapshot();
+		const reportedProgress = this.appContext.progressReporter.getSnapshot();
 		let indexReady = false;
 		let indexedDocuments = 0;
 		let lastBuiltAt: number | null = null;
@@ -34,8 +32,8 @@ export class KnowledgeIndexWorkspaceRuntime implements KnowledgeIndexWorkspacePo
 			.filter((file) => loaderManager.shouldIndexDocument({ type: file.type, sourceFileInfo: { path: file.path } } as any))
 			.sort((a, b) => a.path.localeCompare(b.path));
 		const totalDocuments = files.length;
-		const status = this.paused && progress.status === 'running'
-			? 'paused'
+		const status = progress.status === 'failed'
+			? 'error'
 			: progress.status === 'idle' && indexReady
 				? 'complete'
 				: progress.status;
@@ -57,54 +55,42 @@ export class KnowledgeIndexWorkspaceRuntime implements KnowledgeIndexWorkspacePo
 				.map((entry) => ({ type: entry.type, label: entry.label, count: typeCounts.get(entry.type) ?? 0 }))
 				.filter((entry) => entry.count > 0),
 			queue: files.slice(queueStart, queueStart + 24).map((file, index) => ({ position: queueStart + index + 1, path: file.path })),
-			failures: progress.failures,
+			failures: reportedProgress.failures,
 		};
 	}
 
 	subscribe(listener: () => void): () => void {
-		this.listeners.add(listener);
-		const off = this.appContext.progressReporter.subscribe(() => listener());
-		return () => { this.listeners.delete(listener); off(); };
+		return this.appContext.runtimeRegistry.getIndexRunCoordinator().subscribe(() => listener());
 	}
 
 	async start(options: { level: IndexLevel; outputs: IndexRunOutputs }): Promise<void> {
 		this.lastRun = options;
-		this.paused = false;
-		IndexService.resumeIndexing();
-		const initializer = new IndexInitializer(
-			this.appContext.app,
-			this.appContext.settings.search,
-			this.appContext.settings.dataStorageFolder ?? '',
-			this.appContext.progressReporter,
-			this.appContext.runtimeRegistry.getIndexService(),
-		);
-		this.emit();
-		await initializer.performStagedFullIndexing(true, options.level, undefined, {
+		const coordinator = this.appContext.runtimeRegistry.getIndexRunCoordinator();
+		const start = await coordinator.startOrAttach({ level: options.level, outputs: {
 			includeEmbeddings: options.outputs.embeddings,
 			includeLlmTags: options.outputs.aiTags,
 			includeLlmSummary: options.outputs.markdownSummaries,
 			includeGraphMaintenance: options.outputs.searchRankingSignals,
-		});
-		this.emit();
+		} });
+		await coordinator.waitFor(start.runId);
 	}
 
 	pause(): void {
-		this.paused = true;
-		IndexService.pauseIndexing();
-		this.emit();
+		const coordinator = this.appContext.runtimeRegistry.getIndexRunCoordinator();
+		const runId = coordinator.getSnapshot().runId;
+		if (runId) coordinator.pause(runId);
 	}
 
 	resume(): void {
-		this.paused = false;
-		IndexService.resumeIndexing();
-		this.emit();
+		const coordinator = this.appContext.runtimeRegistry.getIndexRunCoordinator();
+		const runId = coordinator.getSnapshot().runId;
+		if (runId) coordinator.resume(runId);
 	}
 
 	cancel(): void {
-		this.paused = false;
-		IndexService.cancelIndexing();
-		this.appContext.progressReporter.markCancelled();
-		this.emit();
+		const coordinator = this.appContext.runtimeRegistry.getIndexRunCoordinator();
+		const runId = coordinator.getSnapshot().runId;
+		if (runId) coordinator.cancel(runId);
 	}
 
 	async retry(): Promise<void> {
@@ -117,7 +103,4 @@ export class KnowledgeIndexWorkspaceRuntime implements KnowledgeIndexWorkspacePo
 		new QuickSearchModal(this.appContext).open();
 	}
 
-	private emit(): void {
-		for (const listener of this.listeners) listener();
-	}
 }

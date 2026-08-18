@@ -16,13 +16,14 @@
 import type { EnvironmentSnapshot } from '@/service/agents/harness/curator/types';
 import type { IndexLevel } from '@/core/search/indexTypes';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
+import type { IndexReadinessProjection, IndexRunResult } from '@/core/ports/IndexRunCoordinatorPort';
 
 export type { IndexLevel };
 
 export interface SettingsSetupActions {
 	openHarnessWizard(): void;
 	/** Ensure the required native SQLite component matches the current Electron ABI. */
-	repairBetterSqlite(): Promise<{ ready: boolean; message: string }>;
+	repairBetterSqlite(): Promise<{ ready: boolean; message: string; checks: string[] }>;
 	/**
 	 * Probe the user's environment for the Curator (RAM, profiles, vault
 	 * language ratio, Ollama). The adapter binds `app` from `AppContext`;
@@ -74,23 +75,26 @@ export interface SettingsKnowledgeIndexActions {
 	 * construction site previously inlined in `triggerFastIndex` and
 	 * `applyLevelChange`.
 	 */
-	startStagedFullIndexing(opts?: { level?: IndexLevel }): Promise<void>;
+	startStagedFullIndexing(opts?: { level?: IndexLevel }): Promise<IndexRunResult>;
+	prepareFastIndex(): Promise<{ disposition: 'reused' | 'started' | 'attached'; runId: string | null; readiness: IndexReadinessProjection }>;
+	getReadiness(): Promise<IndexReadinessProjection>;
 	runVectorEnrichmentPending(): Promise<void>;
 	runLlmEnrichmentPending(): Promise<void>;
 	compareSearchResults(): Promise<void>;
 }
 
 export interface SettingsLaunchActions {
-	openChatStudio(): void;
-	openVaultSearch(): void;
-	openFileAtlas(): Promise<void>;
-	openComposer(): void;
-	openRecentNote(): Promise<void>;
+	openChatStudio(): Promise<{ opened: boolean; message?: string }>;
+	openVaultSearch(): Promise<{ opened: boolean; message?: string }>;
+	openFileAtlas(): Promise<{ opened: boolean; message?: string }>;
+	openComposer(): Promise<{ opened: boolean; message?: string }>;
+	openRecentNote(): Promise<{ opened: boolean; message?: string }>;
 }
 
 /** Narrow, app-owned persistence surface for settings UIs and onboarding. */
 export interface SettingsPersistenceActions {
 	current(): MyPluginSettings;
+	updateAll(updates: Partial<MyPluginSettings>): Promise<void>;
 	update<K extends keyof MyPluginSettings>(key: K, value: MyPluginSettings[K]): Promise<void>;
 	updateSearch<K extends keyof MyPluginSettings['search']>(
 		key: K,

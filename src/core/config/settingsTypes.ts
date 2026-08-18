@@ -349,12 +349,14 @@ export interface OnboardingProgressSettings {
 	step: 'connect-ai' | 'core-models' | 'prepare-vault' | 'system-check' | 'try-peak';
 	selectedProfileId: string | null;
 	models: {
-		conversation: RoleConfig | null;
-		knowledge: RoleConfig | null;
-		agent: RoleConfig | null;
+		conversation: ModelAssignment;
+		knowledge: ModelAssignment;
+		agent: ModelAssignment;
 	};
 	updatedAt: number;
 	completedAt: number | null;
+	firstSuccessAt: number | null;
+	firstSuccessTarget: 'chat-studio' | 'vault-search' | 'file-atlas' | 'recent-note' | 'composer' | null;
 }
 
 export interface AgentToolSettings {
@@ -575,12 +577,18 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 		hiddenModels: [],
 		aliases: {},
 	},
-	onboarding: {
+		onboarding: {
 		step: 'connect-ai',
 		selectedProfileId: null,
-		models: { conversation: null, knowledge: null, agent: null },
+		models: {
+			conversation: { mode: 'automatic' },
+			knowledge: { mode: 'automatic' },
+			agent: { mode: 'automatic' },
+		},
 		updatedAt: 0,
 		completedAt: null,
+		firstSuccessAt: null,
+		firstSuccessTarget: null,
 	},
 	ambientPush: undefined,
 	harnessSettings: { ...DEFAULT_HARNESS_SETTINGS },

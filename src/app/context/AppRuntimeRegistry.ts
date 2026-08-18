@@ -42,6 +42,7 @@ import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/Plug
 import type { PeakKeyboardNavigationPort } from '@/ui/keyboard/KeyboardNavigationPort';
 import type { PeakSheetRuntime } from '@/app/sheet/PeakSheetRuntime';
 import type { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
+import type { IndexRunCoordinator } from '@/app/search/IndexRunCoordinator';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -63,6 +64,7 @@ export class AppRuntimeRegistry {
 	private quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null = null;
 	private copilotActionRuntime: CopilotActionRuntime | null = null;
 	private indexService: IndexService | null = null;
+	private indexRunCoordinator: IndexRunCoordinator | null = null;
 	private mcpClientManager: MCPClientManager | null = null;
 	private skillRegistry: SkillRegistry | null = null;
 	private capabilityRegistry: CapabilityRegistry | null = null;
@@ -415,6 +417,26 @@ export class AppRuntimeRegistry {
 		const service = this.indexService;
 		this.indexService = null;
 		service?.disposeTenantHelper();
+	}
+
+	setIndexRunCoordinator(coordinator: IndexRunCoordinator): void {
+		if (this.indexRunCoordinator !== null) throw new Error('AppRuntimeRegistry.setIndexRunCoordinator: a coordinator is already bound.');
+		this.indexRunCoordinator = coordinator;
+	}
+
+	getIndexRunCoordinator(): IndexRunCoordinator {
+		if (this.indexRunCoordinator === null) throw new Error('AppRuntimeRegistry.getIndexRunCoordinator: no coordinator is bound.');
+		return this.indexRunCoordinator;
+	}
+
+	tryGetIndexRunCoordinator(): IndexRunCoordinator | null {
+		return this.indexRunCoordinator;
+	}
+
+	clearIndexRunCoordinator(): void {
+		const coordinator = this.indexRunCoordinator;
+		this.indexRunCoordinator = null;
+		coordinator?.dispose();
 	}
 
 	// ─── T13: MCPClientManager ────────────────────────────────────────────

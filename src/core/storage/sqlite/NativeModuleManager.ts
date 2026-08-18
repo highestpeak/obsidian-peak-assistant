@@ -190,8 +190,7 @@ export class NativeModuleManager {
 	 */
 	async ensureCompatible(): Promise<void> {
 		if (!this.pluginDir) {
-			console.warn('[NativeModuleManager] pluginDir not set, skipping');
-			return;
+			throw new Error('SQLite repair cannot run before the plugin directory is configured.');
 		}
 
 		// Fast path: managed copy exists and matches current ABI
@@ -234,7 +233,7 @@ export class NativeModuleManager {
 				`Or manually run: cd "${this.pluginDir}" && npm install better-sqlite3`,
 				15000,
 			);
-			// Don't throw — let the existing fallback logic in BetterSqliteStore handle it
+			throw error instanceof Error ? error : new Error(msg);
 		}
 	}
 

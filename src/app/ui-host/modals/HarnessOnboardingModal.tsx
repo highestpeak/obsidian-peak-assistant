@@ -3,8 +3,8 @@
  * wizard React content from `@/ui/view/onboarding/HarnessOnboardingWizard`.
  *
  * Visual goals (per docs/superpowers/specs/2026-05-29-onboarding-design-brief):
- *   - 720px wide modal with progress indicator at top, footer with Back/Continue
- *   - Single-column body, max-width hugged by modal shell (mock uses 680px)
+ *   - Wide modal with a five-step progress indicator and fixed action footer
+ *   - Single-column body with enough width for readable labels and model pickers
  */
 
 import { ReactModalHost, type ReactModalShellOptions } from '@/app/ui-host/ReactModalHost';
@@ -21,6 +21,7 @@ export interface HarnessOnboardingOptions {
 }
 
 export class HarnessOnboardingModal extends ReactModalHost {
+	private static current: HarnessOnboardingModal | null = null;
 	protected readonly shell: ReactModalShellOptions = {
 		contentClasses: [
 			'peak-harness-onboarding-modal',
@@ -31,8 +32,8 @@ export class HarnessOnboardingModal extends ReactModalHost {
 		// Tag the outer modalEl so our CSS can neutralize Obsidian's default
 		// theme border / scrollbar without leaking into other modals.
 		modalClasses: ['pkonb-modal-shell'],
-		// Mock's "modal--wide" = 680px; we use a comparable width that still
-		// fits the 92vw safety. The pk-modal-shell tokens cover narrower views.
+		// The five complete step labels need a real wide setup surface. The
+		// max-width guard keeps it usable on smaller Obsidian windows.
 		width: '1080px',
 		maxWidth: '94vw',
 		maxHeight: 'calc(100vh - 48px)',
@@ -43,6 +44,17 @@ export class HarnessOnboardingModal extends ReactModalHost {
 		private readonly options: HarnessOnboardingOptions = {},
 	) {
 		super(appContext);
+	}
+
+	static openSingleton(appContext: AppContext, options: HarnessOnboardingOptions = {}): HarnessOnboardingModal {
+		if (HarnessOnboardingModal.current) {
+			HarnessOnboardingModal.current.modalEl.focus();
+			return HarnessOnboardingModal.current;
+		}
+		const modal = new HarnessOnboardingModal(appContext, options);
+		HarnessOnboardingModal.current = modal;
+		modal.open();
+		return modal;
 	}
 
 	protected renderElement(): React.ReactElement {
@@ -58,6 +70,7 @@ export class HarnessOnboardingModal extends ReactModalHost {
 	}
 
 	onClose(): void {
+		if (HarnessOnboardingModal.current === this) HarnessOnboardingModal.current = null;
 		// Remove the shell tag we added so we don't leak styling onto a
 		// different modal that reuses the same DOM node.
 		try {
