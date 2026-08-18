@@ -41,5 +41,21 @@ assert.ok(
 		virtualHook.includes('if (target) return target'),
 	'far locator requests must authorize scrolling and wait for the virtual target to mount',
 );
+assert.ok(
+	virtualHook.includes('composerVirtualViewportIsCovered') &&
+		virtualHook.includes('commitViewport(next)') &&
+		virtualHook.includes('flushSync'),
+	'viewport escape must synchronously replace the stale mounted window before paint',
+);
+assert.ok(
+	virtualHook.includes('layout.measureBatch(measurements') &&
+		virtualHook.includes('requestAnimationFrame(flushMeasurements)'),
+	'ResizeObserver reports must share one animation-frame measurement batch',
+);
+assert.ok(
+	!virtualHook.includes('getComputedStyle(element)') &&
+		!virtualHook.includes('element.getBoundingClientRect().height'),
+	'row mounting must not synchronously force per-element style and geometry reads',
+);
 
 console.log(`composer-virtualized-rendering: mounted ${mountedRows}/5000 rows`);

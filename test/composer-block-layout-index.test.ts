@@ -38,11 +38,41 @@ function main(): void {
 	check('measurement advances total height', layout.totalHeight > before);
 	check('invalid measurement is ignored', !layout.measure(measuredId, 0));
 
+	const batchAnchorId = snapshot.blocks[100].blockId;
+	const beforeBatchTotal = layout.totalHeight;
+	const batch = layout.measureBatch([
+		[snapshot.blocks[10].blockId, 120],
+		[snapshot.blocks[20].blockId, 160],
+		[snapshot.blocks[200].blockId, 200],
+	], layout.offsetOf(batchAnchorId) ?? 0);
+	check('measurement batch applies every changed row', batch.changedCount === 3, String(batch.changedCount));
+	check('measurement batch reports one combined anchor correction', batch.anchorDelta === 136, String(batch.anchorDelta));
+	check('measurement batch updates total height', layout.totalHeight === beforeBatchTotal + 264);
+	const settledBatch = layout.measureBatch([
+		[snapshot.blocks[10].blockId, 120],
+		[snapshot.blocks[20].blockId, 160],
+	], layout.offsetOf(batchAnchorId) ?? 0);
+	check('settled measurement batch is a no-op', settledBatch.changedCount === 0 && settledBatch.anchorDelta === 0);
+	const duplicateBatch = layout.measureBatch([
+		[snapshot.blocks[30].blockId, 120],
+		[snapshot.blocks[30].blockId, 140],
+	], layout.offsetOf(batchAnchorId) ?? 0);
+	check('measurement batch keeps only the latest report per row', duplicateBatch.changedCount === 1);
+	check('deduplicated row contributes one anchor correction', duplicateBatch.anchorDelta === 68);
+
 	const pinnedId = snapshot.blocks[4_900].blockId;
 	const pinned = layout.range(0, 900, new Set([pinnedId]));
 	check('far hard pin mounts requested block', pinned.items.some((item) => item.blockId === pinnedId));
-	check('one far pin does not mount corridor', pinned.items.length === top.items.length + 1);
+	check('one far pin does not mount corridor', pinned.items.length === layout.range(0, 900).items.length + 1);
 	check('drop index resolves from complete layout', layout.insertionIndexAtOffset(layout.totalHeight - 1) === 5_000);
+	const forwardWindow = layout.range(10_000, 900, new Set(), { before: 900, after: 4_800 });
+	const reverseWindow = layout.range(10_000, 900, new Set(), { before: 4_800, after: 900 });
+	check('forward overscan projects farther below', forwardWindow.end > reverseWindow.end);
+	check('reverse overscan projects farther above', reverseWindow.start < forwardWindow.start);
+	check(
+		'layout range exposes contiguous viewport coverage',
+		forwardWindow.coverageStart <= 10_000 && forwardWindow.coverageEnd >= 10_900,
+	);
 
 	const pins = new ComposerHardPinRegistry(2);
 	check('first ordinary pin accepted', pins.acquire('panel', snapshot.blocks[0].blockId));

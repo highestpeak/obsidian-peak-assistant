@@ -424,6 +424,19 @@ The failure is an **unbounded live projection**, not evidence that the Markdown 
 
 The incident document contained 405 top-level blocks, 452 units and 375 Markdown links. Parsing took about 32 ms. The recorded interaction instead included about 1093 ms of handler work and about 897 ms of forced reflow, followed by a Renderer grey screen; three nearby crash reports ended in Chromium Renderer CppHeap young-generation GC. These measurements distinguish the rendering projection from Markdown parsing.
 
+### 2026-08-18 recurrence: bounded row count but uncovered fast-scroll viewport
+
+The first virtualization pass fixed the unbounded mount, but a second recording exposed a narrower contract failure. During fast scrolling, the Composer body was blank for roughly three seconds, recovered, then blanked again for roughly two seconds while the surrounding Obsidian chrome stayed alive. DevTools showed about 743 MB total JavaScript heap and eight grouped forced-reflow violations. This was a stale virtual projection, not a new parse stall or a Renderer death in that recording.
+
+The implementation used a fixed 900 px overscan and deferred every scroll update to `requestAnimationFrame`. A large wheel/trackpad jump could therefore move the real viewport entirely into a virtual gap before React mounted the next range. Mounting that range then synchronously read `getComputedStyle` and `getBoundingClientRect` for every row, rebuilt the layout suffix once per row, and adjusted `scrollTop` once per row. The recovery work itself amplified the blank interval.
+
+The corrected scrolling contract is stricter than merely keeping the DOM count bounded:
+
+- The currently mounted contiguous range must cover the real viewport at every paint. Scrolls still inside that coverage may coalesce to the next frame; a viewport that escapes coverage must synchronously project its new range before paint.
+- Overscan stays small at rest and expands only ahead of the current scroll direction, using measured input velocity with a configured upper bound.
+- Row mounting performs no synchronous per-row style or geometry reads. One shared `ResizeObserver` collects border-box heights, one animation frame applies the batch, the layout index rebuilds once from the earliest changed row, and the scroll anchor receives at most one correction.
+- Space below the final document row is treated as document-tail coverage, so bottom padding cannot create an emergency-flush loop.
+
 The same mistake can return in less obvious forms:
 
 - pinning every block touched by an AI run because its candidate or streaming state changed;
@@ -453,6 +466,8 @@ complete ComposerDocumentSession
 ### Detection signals
 
 - Mounted row/editor/observer counts rise with total document blocks rather than viewport size.
+- The scrollbar moves while the document body is temporarily only a virtual gap, then rows recover after the input stops.
+- ResizeObserver delivery causes one layout-index rebuild or `scrollTop` write per mounted row instead of one per frame batch.
 - First paint contains text from the far end of a multi-thousand-block fixture.
 - Opening Composer produces long tasks or forced reflow while parsing remains comparatively small.
 - A far jump fails until the user manually scrolls the target into the DOM.
@@ -469,6 +484,8 @@ complete ComposerDocumentSession
 - [ ] Find, comment, history, candidate and source-location navigation use the shared virtual locator rather than direct full-document DOM queries.
 - [ ] First-open routing uses prepare-before-swap; restore uses a stable skeleton.
 - [ ] Performance tests assert mounted rows are bounded for a 5000-block document and that far-tail content is absent from first paint.
+- [ ] Scroll-policy tests cover slow and fast movement in both directions, the adaptive overscan cap, viewport-coverage escape and document-tail clamping.
+- [ ] Source guards reject synchronous per-row computed-style/geometry measurement and require one frame-batched layout update.
 - [ ] Batch-edit tests assert atomic preflight, one commit/reparse/notification and one Undo/History unit.
 - [ ] Real Obsidian acceptance records mounted rows/editors/pins, long tasks, heap behavior and new crash reports across repeated opens. Source/build tests alone remain `INTERACTION NOT VERIFIED`.
 
@@ -476,7 +493,7 @@ complete ComposerDocumentSession
 
 - Final design: [`Composer long-document runtime`](./superpowers/specs/2026-08-15-composer-long-document-runtime-final-design.md)
 - Execution plan: [`Composer long-document runtime implementation plan`](./superpowers/plans/2026-08-15-composer-long-document-runtime-implementation-plan.md)
-- Primary guards: [`composer-virtualized-rendering.test.ts`](../test/composer-virtualized-rendering.test.ts), [`composer-block-layout-index.test.ts`](../test/composer-block-layout-index.test.ts), [`composer-prepared-session.test.ts`](../test/composer-prepared-session.test.ts), and [`composer-candidate-group-atomicity.test.ts`](../test/composer-candidate-group-atomicity.test.ts)
+- Primary guards: [`composer-virtualized-rendering.test.ts`](../test/composer-virtualized-rendering.test.ts), [`composer-virtual-scroll-policy.test.ts`](../test/composer-virtual-scroll-policy.test.ts), [`composer-block-layout-index.test.ts`](../test/composer-block-layout-index.test.ts), [`composer-prepared-session.test.ts`](../test/composer-prepared-session.test.ts), and [`composer-candidate-group-atomicity.test.ts`](../test/composer-candidate-group-atomicity.test.ts)
 - Implementation commit: `5ce8d3f3` (`fix(composer): virtualize long document runtime`)
 - Current evidence status: source implementation, focused guards and production build were completed for the implementation commit; repeated target-document opening, IME/selection/drag flows and Renderer heap/crash verification in real Obsidian remain `INTERACTION NOT VERIFIED` until recorded through the canonical real-UI QA protocol.
 

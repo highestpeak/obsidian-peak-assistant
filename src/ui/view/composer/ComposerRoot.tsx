@@ -1441,14 +1441,12 @@ function ComposerVirtualItem({
 	onMeasure(blockId: string, element: HTMLElement | null): void;
 	children: React.ReactNode;
 }): React.ReactElement {
-	const ref = React.useRef<HTMLDivElement | null>(null);
-	React.useLayoutEffect(() => {
-		onMeasure(blockId, ref.current);
-		return () => onMeasure(blockId, null);
+	const setRef = React.useCallback((element: HTMLDivElement | null) => {
+		onMeasure(blockId, element);
 	}, [blockId, onMeasure]);
 	return (
 		<div
-			ref={ref}
+			ref={setRef}
 			className="pk-composer-virtual-item"
 			data-virtual-index={index}
 		>

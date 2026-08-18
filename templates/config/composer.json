@@ -62,9 +62,11 @@
 		"cacheTtlMs": 30000
 	},
 	"virtualization": {
-		"_doc": "Unified Composer block-window policy. Heights are estimates until ResizeObserver reports real rows.",
+		"_doc": "Unified Composer block-window policy. Overscan expands in the active scroll direction; row heights are batched from ResizeObserver.",
 		"defaultBlockHeightPx": 72,
 		"overscanPx": 900,
+		"maxOverscanPx": 4800,
+		"overscanLookaheadMs": 180,
 		"maxHardPins": 12,
 		"revealViewportRatio": 0.32,
 		"revealMaxFrames": 90,
