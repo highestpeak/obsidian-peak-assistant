@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 import type { ModelCapabilities } from '@/core/providers/types';
@@ -42,6 +42,8 @@ export function UnifiedModelPicker({
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const [filter, setFilter] = useState<keyof ModelCapabilities | null>(null);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const searchRef = useRef<HTMLInputElement>(null);
 	const hidden = useMemo(() => new Set(hiddenModels), [hiddenModels]);
 	const choices = useMemo(
 		() => buildUnifiedModelChoices(modelRegistry, profiles, requirement),
@@ -74,15 +76,27 @@ export function UnifiedModelPicker({
 	function choose(next: RoleConfig | null) {
 		onChange(next);
 		setOpen(false);
+		setQuery('');
+		setFilter(null);
+	}
+
+	function handleOpenChange(next: boolean) {
+		setOpen(next);
+		if (next) return;
+		setQuery('');
+		setFilter(null);
 	}
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={handleOpenChange}>
 			<PopoverTrigger asChild>
 				<Button
+					ref={triggerRef}
 					variant="ghost"
 					className="pk-model-trigger"
 					aria-label="Choose provider and model"
+					aria-haspopup="listbox"
+					aria-expanded={open}
 				>
 					<span className="pk-model-trigger__provider">{selected?.profileName ?? automaticLabel}</span>
 					<span className="pk-model-trigger__model">{selected ? aliases[`${selected.profileId}/${selected.modelId}`] ?? selected.displayName : 'Best compatible model'}</span>
@@ -92,15 +106,21 @@ export function UnifiedModelPicker({
 			<PopoverContent
 				align={align}
 				sideOffset={8}
+				collisionPadding={18}
 				className="pk-model-picker"
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
-					requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-peak-model-search="true"]')?.focus());
+					requestAnimationFrame(() => searchRef.current?.focus());
+				}}
+				onCloseAutoFocus={(event) => {
+					event.preventDefault();
+					triggerRef.current?.focus();
 				}}
 			>
 				<div className="pk-model-picker__search">
 					<Search size={16} />
 					<input
+						ref={searchRef}
 						data-peak-model-search="true"
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
@@ -120,8 +140,8 @@ export function UnifiedModelPicker({
 						</Button>
 					))}
 				</div>
-				<div className="pk-model-picker__list">
-					<Button variant="ghost" className="pk-model-picker__automatic" onClick={() => choose(null)}>
+				<div className="pk-model-picker__list" role="listbox" aria-label="Available models">
+					<Button variant="ghost" role="option" aria-selected={!value} className="pk-model-picker__automatic" onClick={() => choose(null)}>
 						<span><strong>{automaticLabel}</strong><small>Peak selects a compatible ready model</small></span>
 						{!value && <Check size={16} />}
 					</Button>
@@ -139,6 +159,8 @@ export function UnifiedModelPicker({
 									<Button
 										key={key}
 										variant="ghost"
+										role="option"
+										aria-selected={active}
 										className={cn('pk-model-picker__row', !choice.selectable && 'is-unavailable')}
 										disabled={!choice.selectable}
 										title={choice.unavailableReason ?? undefined}

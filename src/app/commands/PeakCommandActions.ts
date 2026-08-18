@@ -87,9 +87,7 @@ export function openQuickSearch(options?: QuickSearchOpenOptions): void {
 
 export function openHarnessSetupWizard(): void {
 	const ctx = getContext();
-	const harness = ctx.settings?.harnessSettings;
-	const hasBindings = !!(harness?.localFastConfig || harness?.localDeepConfig || harness?.onlineConfig);
-	new HarnessOnboardingModal(ctx, { isReRun: hasBindings }).open();
+	HarnessOnboardingModal.openSingleton(ctx, { isReRun: ctx.settings.onboarding.completedAt !== null });
 }
 
 export function openSettingsModal(initialTab?: import('@/ui/view/settings/types').TabId): void {
@@ -408,13 +406,22 @@ export async function runSearchFastIndex(): Promise<void> {
 		return;
 	}
 
+	const coordinator = ctx.runtimeRegistry.getIndexRunCoordinator();
+	const active = coordinator.getSnapshot();
+	if ((active.status === 'running' || active.status === 'paused') && active.runId) {
+		new Notice('An indexing run is already active. Peak will reuse it.', 4000);
+		await coordinator.waitFor(active.runId);
+		return;
+	}
 	const indexStatus = await AppContext.getIndexService().getIndexStatus();
 	const hasIndex = indexStatus.isReady && indexStatus.indexBuiltAt !== null;
 	if (hasIndex) {
 		await getIndexInitializer().performFastCoreIncrementalIndexing();
 		return;
 	}
-	await getIndexInitializer().performFastCoreFullIndexing(true);
+	const started = await coordinator.startOrAttach({ level: 'fast' });
+	const result = await coordinator.waitFor(started.runId);
+	if (result.status === 'failed') throw new Error(result.message);
 }
 
 export async function runFullIndexPipeline(): Promise<void> {
@@ -428,7 +435,10 @@ export async function runFullIndexPipeline(): Promise<void> {
 		return;
 	}
 	try {
-		await getIndexInitializer().performStagedFullIndexing(true);
+		const coordinator = ctx.runtimeRegistry.getIndexRunCoordinator();
+		const started = await coordinator.startOrAttach({ level: 'full' });
+		const result = await coordinator.waitFor(started.runId);
+		if (result.status === 'failed') throw new Error(result.message);
 	} catch (e) {
 		console.error('[peak-search-staged-full-pipeline]', e);
 		new Notice(`Pipeline failed: ${(e as Error).message}`, 8000);

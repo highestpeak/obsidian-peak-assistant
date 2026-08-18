@@ -4,19 +4,16 @@
  * post-T11F).
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Notice } from 'obsidian';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
-import type { ProfileKind } from '@/core/profiles/types';
-import { testProviderConnection } from '@/core/providers/testProviderConnection';
+import type { Profile, ProfileKind } from '@/core/profiles/types';
+import { inspectProviderConnection, type ConnectionEvidence } from '@/core/providers/testProviderConnection';
 import { uiHttpClient } from '@/ui/util/uiHttpClient';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Button } from '@/ui/components/primitives';
+import { ProviderIcon } from '@/ui/view/settings/components/ProviderIcon';
 import {
-    Shield,
-    Globe,
-    Zap,
-    Settings2,
     Check,
     Loader2,
     X,
@@ -30,27 +27,26 @@ export interface ProviderOption {
     kind: ProfileKind;
     label: string;
     desc: string;
-    Icon: React.FC<{ className?: string; size?: number }>;
     keyUrl: string | null;
     keyUrlLabel: string;
 }
 
 export const PROVIDER_OPTIONS: ProviderOption[] = [
-    { kind: 'openai', label: 'OpenAI', desc: 'GPT models', Icon: Zap, keyUrl: 'https://platform.openai.com/api-keys', keyUrlLabel: 'Get API Key' },
-    { kind: 'anthropic', label: 'Anthropic', desc: 'Direct API access', Icon: Shield, keyUrl: 'https://console.anthropic.com/settings/keys', keyUrlLabel: 'Get API Key' },
-    { kind: 'openrouter', label: 'OpenRouter', desc: 'Multi-provider + web search', Icon: Globe, keyUrl: 'https://openrouter.ai/keys', keyUrlLabel: 'Get API Key' },
-    { kind: 'ollama', label: 'Ollama', desc: 'Local models', Icon: Settings2, keyUrl: 'https://ollama.com/', keyUrlLabel: 'Documentation' },
-	{ kind: 'codex', label: 'Codex', desc: 'Via Peak execution gateway', Icon: Zap, keyUrl: null, keyUrlLabel: '' },
-	{ kind: 'claude-code', label: 'Claude Code', desc: 'Via Peak execution gateway', Icon: Shield, keyUrl: null, keyUrlLabel: '' },
-	{ kind: 'google', label: 'Google AI', desc: 'Gemini + web grounding', Icon: Globe, keyUrl: 'https://aistudio.google.com/apikey', keyUrlLabel: 'Get API Key' },
-    { kind: 'perplexity', label: 'Perplexity', desc: 'Search-augmented AI', Icon: Globe, keyUrl: 'https://www.perplexity.ai/settings/api', keyUrlLabel: 'Get API Key' },
-    { kind: 'litellm', label: 'LiteLLM', desc: 'Self-hosted proxy', Icon: Zap, keyUrl: 'https://docs.litellm.ai/docs/', keyUrlLabel: 'Documentation' },
-    { kind: 'custom', label: 'Custom', desc: 'OpenAI-compatible endpoint', Icon: Settings2, keyUrl: null, keyUrlLabel: '' },
+    { kind: 'openai', label: 'OpenAI', desc: 'GPT models', keyUrl: 'https://platform.openai.com/api-keys', keyUrlLabel: 'Get API Key' },
+    { kind: 'anthropic', label: 'Anthropic', desc: 'Claude models', keyUrl: 'https://console.anthropic.com/settings/keys', keyUrlLabel: 'Get API Key' },
+    { kind: 'openrouter', label: 'OpenRouter', desc: 'Many model providers', keyUrl: 'https://openrouter.ai/keys', keyUrlLabel: 'Get API Key' },
+    { kind: 'ollama', label: 'Ollama', desc: 'Models on this computer', keyUrl: 'https://ollama.com/', keyUrlLabel: 'Documentation' },
+	{ kind: 'codex', label: 'Codex', desc: 'Peak execution gateway', keyUrl: null, keyUrlLabel: '' },
+	{ kind: 'claude-code', label: 'Claude Code', desc: 'Peak execution gateway', keyUrl: null, keyUrlLabel: '' },
+	{ kind: 'google', label: 'Google AI', desc: 'Gemini models', keyUrl: 'https://aistudio.google.com/apikey', keyUrlLabel: 'Get API Key' },
+    { kind: 'perplexity', label: 'Perplexity', desc: 'Search-first models', keyUrl: 'https://www.perplexity.ai/settings/api', keyUrlLabel: 'Get API Key' },
+    { kind: 'litellm', label: 'LiteLLM', desc: 'Self-hosted gateway', keyUrl: 'https://docs.litellm.ai/docs/', keyUrlLabel: 'Documentation' },
+    { kind: 'custom', label: 'Custom', desc: 'OpenAI-compatible API', keyUrl: null, keyUrlLabel: '' },
 ];
 
 export interface AddProviderFormProps {
     /** Called after a new profile is added. */
-    onAdded: (profileId: string) => void;
+    onAdded: (profileId: string, evidence: ConnectionEvidence) => void;
     /** Called when the user cancels (closes the form without adding). */
     onCancel?: () => void;
     /** When true, the new profile is set as active agent profile if no active one exists. */
@@ -64,15 +60,16 @@ export interface AddProviderFormProps {
 /** Inline form for adding a single provider profile. */
 export function AddProviderForm({
     onAdded,
-    onCancel: _onCancel,
+    onCancel,
     setActiveOnFirst = true,
     autoAssignWebSearch = true,
 	allowedKinds,
 }: AddProviderFormProps) {
-    const [selectedKind, setSelectedKind] = useState<ProfileKind>('anthropic');
+    const [selectedKind, setSelectedKind] = useState<ProfileKind>('openai');
     const [apiKey, setApiKey] = useState('');
+    const [baseUrl, setBaseUrl] = useState('');
     const [testing, setTesting] = useState(false);
-    const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
+    const [testResult, setTestResult] = useState<ConnectionEvidence | null>(null);
 
 	const visibleOptions = allowedKinds
 		? PROVIDER_OPTIONS.filter((option) => allowedKinds.includes(option.kind))
@@ -82,19 +79,30 @@ export function AddProviderForm({
 		: visibleOptions[0]?.kind ?? 'openai';
     const selectedOption = PROVIDER_OPTIONS.find((p) => p.kind === effectiveKind)!;
     const requiresKey = !['ollama', 'custom', 'litellm', 'codex', 'claude-code'].includes(effectiveKind);
+    const preset = createPresetProfile(effectiveKind);
+    const effectiveBaseUrl = baseUrl || preset.baseUrl;
 
-    const handleTest = useCallback(async () => {
+	useEffect(() => {
+		setBaseUrl(createPresetProfile(effectiveKind).baseUrl);
+		setApiKey('');
+		setTestResult(null);
+	}, [effectiveKind]);
+
+    async function handleTest() {
         setTesting(true);
         setTestResult(null);
-        const ok = await testProviderConnection(uiHttpClient, effectiveKind, apiKey);
-        setTestResult(ok ? 'success' : 'fail');
-        setTesting(false);
-    }, [apiKey, effectiveKind]);
+        try {
+            const profile = createPresetProfile(effectiveKind, { apiKey: apiKey || null, baseUrl: effectiveBaseUrl });
+            setTestResult(await inspectProviderConnection(uiHttpClient, profile));
+        } finally {
+            setTesting(false);
+        }
+    }
 
-    const handleSave = useCallback(() => {
-        if (requiresKey && !apiKey.trim()) return;
+    function handleSave() {
+        if (!testResult?.ready) return;
         const registry = ProfileRegistry.getInstance();
-        const profile = createPresetProfile(effectiveKind, { apiKey });
+        const profile = createPresetProfile(effectiveKind, { apiKey: apiKey || null, baseUrl: effectiveBaseUrl });
         registry.addProfile(profile);
         if (setActiveOnFirst && !registry.getActiveAgentProfile()) {
             registry.setActiveAgentProfile(profile.id);
@@ -109,27 +117,27 @@ export function AddProviderForm({
         new Notice(`Profile "${profile.name}" added`);
         setApiKey('');
         setTestResult(null);
-        onAdded(profile.id);
-    }, [apiKey, effectiveKind, onAdded, setActiveOnFirst, autoAssignWebSearch, requiresKey]);
+        onAdded(profile.id, { ...testResult, profileId: profile.id });
+    }
 
     return (
-        <div className="pktw-flex pktw-flex-col pktw-gap-3 pktw-p-3 pktw-rounded-lg pktw-border pktw-border-[--background-modifier-border] pktw-bg-[--background-primary-alt]">
+        <div className="pk-onboarding-provider-form">
             {/* Provider kind selector */}
-            <div className="pktw-grid pktw-grid-cols-2 pktw-gap-1.5">
-                {visibleOptions.map(({ kind, label, Icon }) => (
-                    <div
+            <div className="pk-onboarding-provider-kinds" role="radiogroup" aria-label="AI service">
+                {visibleOptions.map(({ kind, label, desc }) => (
+                    <Button
                         key={kind}
+                        type="button"
+                        variant="ghost"
+                        role="radio"
+                        aria-checked={effectiveKind === kind}
                         onClick={() => { setSelectedKind(kind); setTestResult(null); }}
-                        className={cn(
-                            'pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors pktw-text-sm',
-                            effectiveKind === kind
-                                ? 'pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent]'
-                                : 'pktw-text-[--text-normal] hover:pktw-bg-[--background-modifier-hover]',
-                        )}
+                        className="pk-onboarding-provider-kind"
                     >
-                        <Icon size={14} className="pktw-shrink-0" />
-                        {label}
-                    </div>
+                        <ProviderIcon kind={kind} size={32} />
+                        <span><strong>{label}</strong><small>{desc}</small></span>
+                        {effectiveKind === kind ? <Check size={16} /> : null}
+                    </Button>
                 ))}
             </div>
 
@@ -154,81 +162,107 @@ export function AddProviderForm({
                     onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
                     className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary] pktw-text-[--text-normal] focus:pktw-outline-none focus:pktw-ring-1 focus:pktw-ring-[--interactive-accent] disabled:pktw-opacity-50"
                 />
-                <Button variant="ghost" size="sm" onClick={handleTest} disabled={(requiresKey && !apiKey.trim()) || testing} className="pktw-gap-1.5">
+                <Button variant="secondary" size="sm" onClick={() => void handleTest()} disabled={(requiresKey && !apiKey.trim()) || !effectiveBaseUrl || testing} className="pktw-gap-1.5">
                     {testing ? <Loader2 size={14} className="pktw-animate-spin" /> : null}
                     Test
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={requiresKey && !apiKey.trim()}>
+                <Button size="sm" onClick={handleSave} disabled={!testResult?.ready}>
                     Add
                 </Button>
             </div>
 
+            <label className="pktw-flex pktw-flex-col pktw-gap-1">
+				<span className="pktw-text-xs pktw-text-[--text-muted]">Base URL</span>
+				<input
+					type="url"
+					value={effectiveBaseUrl}
+					onChange={(event) => { setBaseUrl(event.target.value); setTestResult(null); }}
+					className="pktw-w-full pktw-px-3 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary] pktw-text-[--text-normal]"
+				/>
+			</label>
+
             {/* Test result */}
-            {testResult === 'success' && (
+            {testResult?.ready && (
                 <span className="pktw-text-xs pktw-text-pk-success pktw-flex pktw-items-center pktw-gap-1">
                     <Check size={12} /> Connection successful
                 </span>
             )}
-            {testResult === 'fail' && (
+            {testResult && !testResult.ready && (
                 <span className="pktw-text-xs pktw-text-pk-error pktw-flex pktw-items-center pktw-gap-1">
-                    <X size={12} /> Connection failed — check key and try again
+                    <X size={12} /> {testResult.catalog.message || testResult.authentication.message}
                 </span>
             )}
+			{onCancel && <Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={onCancel}>Back to saved connections</Button>}
         </div>
     );
 }
 
 export interface SavedProfileRowProps {
-    profile: { id: string; name: string; kind: ProfileKind; apiKey: string | null; baseUrl: string };
-    onDelete: () => void;
+    profile: Profile;
+    onDelete?: () => void;
     onChange: () => void;
+	onSelect?: () => void;
+	selected?: boolean;
+	status?: 'idle' | 'checking' | 'ready' | 'error';
+	onEvidence?: (evidence: ConnectionEvidence) => void;
 }
 
 /** Expandable row for an already-saved profile — click to edit. */
-export function SavedProfileRow({ profile, onDelete, onChange }: SavedProfileRowProps) {
+export function SavedProfileRow({ profile, onDelete, onChange, onSelect, selected = false, status = 'idle', onEvidence }: SavedProfileRowProps) {
     const [expanded, setExpanded] = useState(false);
     const [apiKey, setApiKey] = useState(profile.apiKey ?? '');
+	const [baseUrl, setBaseUrl] = useState(profile.baseUrl);
     const [testing, setTesting] = useState(false);
-    const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
+    const [testResult, setTestResult] = useState<ConnectionEvidence | null>(null);
 
     const option = PROVIDER_OPTIONS.find((p) => p.kind === profile.kind);
-    const Icon = option?.Icon ?? Settings2;
     const isActive = ProfileRegistry.getInstance().getActiveAgentProfile()?.id === profile.id;
 
-    const handleSave = useCallback(() => {
-        ProfileRegistry.getInstance().updateProfile(profile.id, { apiKey: apiKey || null });
+    function handleSave() {
+        if (!testResult?.ready) return;
+        ProfileRegistry.getInstance().updateProfile(profile.id, { apiKey: apiKey || null, baseUrl });
         new Notice('Profile updated');
         setExpanded(false);
+		onEvidence?.({ ...testResult, profileId: profile.id });
         onChange();
-    }, [apiKey, profile.id, onChange]);
+    }
 
-    const handleTest = useCallback(async () => {
-        if (!apiKey.trim()) return;
+    function cancelEdit() {
+        setApiKey(profile.apiKey ?? '');
+        setBaseUrl(profile.baseUrl);
+        setTestResult(null);
+        setExpanded(false);
+    }
+
+    async function handleTest() {
         setTesting(true);
         setTestResult(null);
-        const ok = await testProviderConnection(uiHttpClient, profile.kind, apiKey);
-        setTestResult(ok ? 'success' : 'fail');
-        setTesting(false);
-    }, [apiKey, profile.kind]);
+        try {
+            const result = await inspectProviderConnection(uiHttpClient, { ...profile, apiKey: apiKey || null, baseUrl });
+            setTestResult(result);
+        } finally {
+            setTesting(false);
+        }
+    }
 
-    const handleSetActive = useCallback(() => {
+    function handleSetActive() {
         ProfileRegistry.getInstance().setActiveAgentProfile(profile.id);
         onChange();
-    }, [profile.id, onChange]);
+    }
 
     return (
         <div className="pktw-rounded-md pktw-border pktw-border-[--background-modifier-border] pktw-overflow-hidden">
             {/* Header row — click to expand */}
             <div
-                onClick={() => setExpanded(!expanded)}
+				data-selected={selected ? 'true' : 'false'}
                 className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2 pktw-cursor-pointer hover:pktw-bg-[--background-modifier-hover] pktw-transition-colors"
             >
-                <Icon size={14} className="pktw-text-[--text-muted] pktw-shrink-0" />
+				<Button variant="ghost" className="pk-onboarding-provider-select" onClick={onSelect} aria-pressed={selected}>
+                <ProviderIcon kind={profile.kind} size={32} />
                 <span className="pktw-flex-1 pktw-text-sm pktw-text-[--text-normal] pktw-truncate">{profile.name}</span>
-                {isActive && (
-                    <span className="pktw-text-pk-xs pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-pk-success-bg pktw-text-pk-success-text">active</span>
-                )}
-                <ChevronRight size={13} className={cn('pktw-text-[--text-muted] pktw-transition-transform', expanded && 'pktw-rotate-90')} />
+				<span className="pk-onboarding-provider-state" data-state={status}>{status === 'checking' ? 'Checking' : status === 'ready' ? 'Ready' : status === 'error' ? 'Needs attention' : isActive ? 'Default' : 'Not tested'}</span>
+				</Button>
+				<Button variant="ghost" className="pk-onboarding-provider-edit" aria-label={expanded ? `Cancel editing ${profile.name}` : `Edit ${profile.name}`} onClick={() => expanded ? cancelEdit() : setExpanded(true)}><ChevronRight size={16} className={cn('pktw-transition-transform', expanded && 'pktw-rotate-90')} /></Button>
             </div>
 
             {/* Expanded edit form */}
@@ -248,25 +282,27 @@ export function SavedProfileRow({ profile, onDelete, onChange }: SavedProfileRow
                             onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
                             className="pktw-flex-1 pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary] pktw-text-[--text-normal] focus:pktw-outline-none focus:pktw-ring-1 focus:pktw-ring-[--interactive-accent]"
                         />
-                        <Button variant="ghost" size="sm" onClick={handleTest} disabled={!apiKey.trim() || testing} className="pktw-gap-1">
+                        <Button variant="secondary" size="sm" onClick={() => void handleTest()} disabled={testing} className="pktw-gap-1">
                             {testing ? <Loader2 size={12} className="pktw-animate-spin" /> : null}
                             Test
                         </Button>
-                        <Button size="sm" onClick={handleSave} disabled={!apiKey.trim()}>Save</Button>
+                        <Button size="sm" onClick={handleSave} disabled={!testResult?.ready}>Save</Button>
                     </div>
-                    {testResult === 'success' && (
+                    <input type="url" value={baseUrl} onChange={(event) => { setBaseUrl(event.target.value); setTestResult(null); }} className="pktw-w-full pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary]" />
+                    {testResult?.ready && (
                         <span className="pktw-text-xs pktw-text-pk-success pktw-flex pktw-items-center pktw-gap-1"><Check size={12} /> OK</span>
                     )}
-                    {testResult === 'fail' && (
-                        <span className="pktw-text-xs pktw-text-pk-error pktw-flex pktw-items-center pktw-gap-1"><X size={12} /> Failed</span>
+                    {testResult && !testResult.ready && (
+                        <span className="pktw-text-xs pktw-text-pk-error pktw-flex pktw-items-center pktw-gap-1"><X size={12} /> {testResult.catalog.message}</span>
                     )}
                     <div className="pktw-flex pktw-gap-2 pktw-pt-1">
+						<Button variant="ghost" size="sm" onClick={cancelEdit}>Cancel</Button>
                         {!isActive && (
                             <Button variant="ghost" size="sm" onClick={handleSetActive} className="pktw-text-xs">Set Active</Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={onDelete} className="pktw-text-xs pktw-text-pk-error hover:pktw-text-pk-error-text pktw-gap-1">
+                        {onDelete && <Button variant="ghost" size="sm" onClick={onDelete} className="pktw-text-xs pktw-text-pk-error hover:pktw-text-pk-error-text pktw-gap-1">
                             <Trash2 size={12} /> Delete
-                        </Button>
+						</Button>}
                     </div>
                 </div>
             )}

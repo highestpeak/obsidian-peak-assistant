@@ -19,9 +19,10 @@ import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-pr
 // T11R Phase 2: inline file-size lookup via the vault adapter (duck-typed)
 // so this module no longer imports `getFileSize` from the relocated
 // `obsidian-utils` helper.
-async function readFileSize(app: { vault: { adapter: { stat?: (p: string) => Promise<{ size?: number } | null> } } }, filePath: string): Promise<number> {
+async function readFileSize(app: App, filePath: string): Promise<number> {
 	try {
-		const stat = await app.vault.adapter.stat?.(filePath);
+		const adapter = app.vault.adapter as { stat?: (p: string) => Promise<{ size?: number } | null> };
+		const stat = await adapter.stat?.(filePath);
 		return stat?.size ?? 0;
 	} catch {
 		return 0;
@@ -29,6 +30,22 @@ async function readFileSize(app: { vault: { adapter: { stat?: (p: string) => Pro
 }
 import type { IndexLevel } from '@/core/search/indexTypes';
 import { defaultIndexDocumentOptionsForLevel } from '@/core/search/indexTypes';
+import type { IndexRunResult } from '@/core/ports/IndexRunCoordinatorPort';
+
+export class IndexRunControl {
+	private cancelled = false;
+	private paused = false;
+	private readonly waiters: Array<() => void> = [];
+
+	cancel(): void { this.cancelled = true; this.resume(); }
+	pause(): void { this.paused = true; }
+	resume(): void { this.paused = false; for (const resolve of this.waiters.splice(0)) resolve(); }
+	isCancelled(): boolean { return this.cancelled; }
+	async waitIfPaused(): Promise<void> {
+		if (!this.paused) return;
+		await new Promise<void>((resolve) => this.waiters.push(resolve));
+	}
+}
 
 export type IndexErrorAction = 'continue' | 'retry' | 'cancel';
 export type IndexErrorHandler = (error: {
@@ -193,10 +210,12 @@ export class IndexInitializer {
 		level: IndexLevel = 'full',
 		onError?: IndexErrorHandler,
 		outputs?: StagedIndexOutputs,
-	): Promise<void> {
+		control?: IndexRunControl,
+	): Promise<IndexRunResult> {
 		if (!sqliteStoreManager.isInitialized()) {
-			this.reporter.show('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
-			return;
+			const message = 'Search database is not initialized.';
+			this.reporter.show(message, 6000);
+			return { status: 'failed', indexedCount: 0, failureCount: 1, totalDocuments: 0, message };
 		}
 
 		IndexService.resetCancellation();
@@ -213,10 +232,11 @@ export class IndexInitializer {
 			const PROGRESS_INTERVAL_MS = 2000;
 
 			for (const path of filesToIndex) {
-				await IndexService.waitIfPaused();
-				if (IndexService.isCancelled() || progressTracker.isCancelled()) {
+				if (control) await control.waitIfPaused();
+				else await IndexService.waitIfPaused();
+				if (control?.isCancelled() || (!control && IndexService.isCancelled()) || progressTracker.isCancelled()) {
 					progressTracker.dismiss();
-					return;
+					return { status: 'cancelled', indexedCount, failureCount, totalDocuments: filesToIndex.length, message: 'Indexing cancelled' };
 				}
 				let indexed = false;
 				let lastError: unknown = null;
@@ -248,7 +268,7 @@ export class IndexInitializer {
 			progressTracker.dismiss();
 			console.error('[IndexInitializer] Staged pipeline failed at FTS step:', e);
 			this.reporter.show(`Peak: Step 1/4 failed — ${(e as Error).message}`, 8000);
-			return;
+			return { status: 'failed', indexedCount, failureCount: failureCount + 1, totalDocuments: filesToIndex.length, message: `Full-text indexing failed: ${(e as Error).message}` };
 		}
 
 		const dbFilePath = this.storageFolder
@@ -282,7 +302,7 @@ export class IndexInitializer {
 					const action = await onError({ step: 'Embedding generation', failedCount: 0, error: e as Error });
 					if (action === 'cancel') {
 						pipelineUi.hide();
-						return;
+						return { status: 'cancelled', indexedCount, failureCount, totalDocuments: filesToIndex.length, message: 'Indexing cancelled' };
 					}
 					if (action === 'retry') {
 						try {
@@ -330,7 +350,7 @@ export class IndexInitializer {
 						const action = await onError({ step: 'LLM enrichment', failedCount: 0, error: e as Error });
 						if (action === 'cancel') {
 							pipelineUi.hide();
-							return;
+							return { status: 'cancelled', indexedCount, failureCount, totalDocuments: filesToIndex.length, message: 'Indexing cancelled' };
 						}
 						if (action === 'retry') {
 							try {
@@ -389,6 +409,13 @@ export class IndexInitializer {
 					: 'Indexing complete! Full-text search is ready.', 5000);
 			}
 		}
+		return {
+			status: 'complete',
+			indexedCount,
+			failureCount,
+			totalDocuments: filesToIndex.length,
+			message: failureCount > 0 ? `Full-text index is ready with ${failureCount} document failure(s).` : 'Full-text index is ready.',
+		};
 	}
 
 	async performFullIndexing(showNotification: boolean): Promise<void> {

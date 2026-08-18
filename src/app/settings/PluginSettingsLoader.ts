@@ -429,12 +429,22 @@ function normalizeOnboarding(raw: unknown): MyPluginSettings['onboarding'] {
 	const source = raw as Record<string, unknown>;
 	const validSteps = new Set(['connect-ai', 'core-models', 'prepare-vault', 'system-check', 'try-peak']);
 	const models = source.models && typeof source.models === 'object' ? source.models as Record<string, unknown> : {};
-	const role = (value: unknown) => {
-		if (!value || typeof value !== 'object') return null;
+	const role = (value: unknown): MyPluginSettings['onboarding']['models']['conversation'] => {
+		if (!value || typeof value !== 'object') return { mode: 'automatic' };
 		const candidate = value as Record<string, unknown>;
-		return typeof candidate.profileId === 'string' && typeof candidate.modelId === 'string'
-			? { profileId: candidate.profileId, modelId: candidate.modelId }
-			: null;
+		if (candidate.mode === 'automatic') return { mode: 'automatic' };
+		if (candidate.mode === 'fixed' && candidate.config && typeof candidate.config === 'object') {
+			const config = candidate.config as Record<string, unknown>;
+			if (typeof config.profileId === 'string' && typeof config.modelId === 'string') {
+				return { mode: 'fixed', config: { profileId: config.profileId, modelId: config.modelId } };
+			}
+		}
+		// Migrate the pre-explicit draft shape without turning a legacy null into
+		// an ambiguous state.
+		if (typeof candidate.profileId === 'string' && typeof candidate.modelId === 'string') {
+			return { mode: 'fixed', config: { profileId: candidate.profileId, modelId: candidate.modelId } };
+		}
+		return { mode: 'automatic' };
 	};
 	return {
 		step: validSteps.has(String(source.step)) ? source.step as MyPluginSettings['onboarding']['step'] : fallback.step,
@@ -446,6 +456,10 @@ function normalizeOnboarding(raw: unknown): MyPluginSettings['onboarding'] {
 		},
 		updatedAt: typeof source.updatedAt === 'number' ? source.updatedAt : 0,
 		completedAt: typeof source.completedAt === 'number' ? source.completedAt : null,
+		firstSuccessAt: typeof source.firstSuccessAt === 'number' ? source.firstSuccessAt : null,
+		firstSuccessTarget: ['chat-studio', 'vault-search', 'file-atlas', 'recent-note', 'composer'].includes(String(source.firstSuccessTarget))
+			? source.firstSuccessTarget as MyPluginSettings['onboarding']['firstSuccessTarget']
+			: null,
 	};
 }
 

@@ -145,6 +145,30 @@ assert.match(
 
 assert.match(
 	primitiveCss,
+	/button\.pk-model-trigger\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?min-height:\s*44px !important;[\s\S]*?padding:\s*7px 10px !important;/,
+	'model picker triggers must retain a readable hit target under the Obsidian reset',
+);
+
+assert.match(
+	primitiveCss,
+	/button\.pk-onboarding-provider-kind\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?min-height:\s*66px !important;[\s\S]*?padding:\s*10px 12px !important;/,
+	'onboarding provider choices must remain large enough to scan and click',
+);
+
+assert.match(
+	primitiveCss,
+	/button\.pk-onboarding-provider-edit\s*\{[\s\S]*?width:\s*40px !important;[\s\S]*?min-width:\s*40px !important;[\s\S]*?max-width:\s*40px !important;[\s\S]*?height:\s*40px !important;[\s\S]*?min-height:\s*40px !important;[\s\S]*?max-height:\s*40px !important;[\s\S]*?padding:\s*0 !important;/,
+	'onboarding connection edit controls must remain square under the Obsidian reset',
+);
+
+assert.match(
+	primitiveCss,
+	/button\.pk-onboarding-connect-another\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-height:\s*48px !important;[\s\S]*?padding:\s*10px 14px !important;/,
+	'onboarding add-connection action must not collapse to an undersized text button',
+);
+
+assert.match(
+	primitiveCss,
 	/\.peak-vault-intelligence-view \.pk-vi-object-card\.pk-btn\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?height:\s*78px !important;[\s\S]*?min-height:\s*78px !important;[\s\S]*?max-height:\s*78px !important;[\s\S]*?padding:\s*15px !important;/,
 	'Vault Intelligence object cards must survive the Obsidian reset',
 );

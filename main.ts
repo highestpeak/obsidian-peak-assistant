@@ -868,13 +868,12 @@ export default class MyPlugin extends Plugin {
 		// Auto-open the Harness onboarding wizard on first run (no profiles
 		// configured). T11F retired the older general OnboardingModal — the
 		// capability-binding wizard is now the single onboarding surface.
-		const profiles = ProfileRegistry.getInstance().getAllProfiles();
-		if (profiles.length === 0) {
+		if (this.settings.onboarding.completedAt === null) {
 			// Slight delay so the workspace is fully rendered before opening the modal
 			this.scheduleTimeout(() => {
 				if (this.unloading) return;
 				const { HarnessOnboardingModal } = require('@/app/ui-host/modals/HarnessOnboardingModal');
-				new HarnessOnboardingModal(appContext, { isReRun: false }).open();
+				HarnessOnboardingModal.openSingleton(appContext, { isReRun: false });
 			}, 500);
 		}
 	}
@@ -1245,6 +1244,8 @@ export default class MyPlugin extends Plugin {
 			AppContext.getInstance().progressReporter,
 			indexService,
 		);
+		const { IndexRunCoordinator } = await import('@/app/search/IndexRunCoordinator');
+		this.appContext!.runtimeRegistry.setIndexRunCoordinator(new IndexRunCoordinator(this.appContext!));
 		// B2.index (2026-07-03): startup check-and-update runs inside a
 		// RunEnvelope so startup latency + failures land in the run
 		// trace. Errors are logged (not rethrown) — a startup index
@@ -1451,6 +1452,7 @@ export default class MyPlugin extends Plugin {
 		// internally, but invoking it here makes the ordering explicit
 		// and keeps the unload sequence symmetrical with the boot path.
 		try { AppContext.clearVaultLintRuntime(); } catch { /* not bound — ignore */ }
+		try { this.appContext?.runtimeRegistry.clearIndexRunCoordinator(); } catch { /* not bound — ignore */ }
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();
