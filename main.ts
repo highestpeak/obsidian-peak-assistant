@@ -865,17 +865,6 @@ export default class MyPlugin extends Plugin {
 		// shown under assistant messages.
 		this.unregisterUsageDashboardReceipts = registerUsageDashboardReceipts();
 
-		// Auto-open the Harness onboarding wizard on first run (no profiles
-		// configured). T11F retired the older general OnboardingModal — the
-		// capability-binding wizard is now the single onboarding surface.
-		if (this.settings.onboarding.completedAt === null) {
-			// Slight delay so the workspace is fully rendered before opening the modal
-			this.scheduleTimeout(() => {
-				if (this.unloading) return;
-				const { HarnessOnboardingModal } = require('@/app/ui-host/modals/HarnessOnboardingModal');
-				HarnessOnboardingModal.openSingleton(appContext, { isReRun: false });
-			}, 500);
-		}
 	}
 
 	/**

@@ -375,7 +375,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 	return (
 		<div className="pk-onboarding">
 			<header className="pk-onboarding__topbar">
-				<span className="pk-onboarding__brand"><span>P</span><strong>Set up Peak Assistant</strong></span>
+				<span className="pk-onboarding__brand"><strong>Peak Setup</strong></span>
 				<span className="pk-onboarding__saved" data-state={saveState}>
 					{saveState === 'saving' ? <Loader2 size={16} /> : saveState === 'failed' ? <CircleAlert size={16} /> : <Check size={16} />}
 					{saveState === 'saving' ? 'Saving progress…' : saveState === 'failed' ? 'Progress not saved' : 'Progress saved'}
@@ -422,18 +422,11 @@ function ProgressHeader({ state }: { state: OnboardingState }) {
 		<div className="pk-onboarding__progress">
 			<div className="pk-onboarding__steps">
 				{ONBOARDING_STEPS.map((step, index) => (
-					<React.Fragment key={step.id}>
-						<div className="pk-onboarding-step" data-state={index < active ? 'complete' : index === active ? 'active' : 'future'}>
-							<span>{index < active ? <Check size={17} /> : index + 1}</span>
-							<div><strong>{step.label}</strong><small>{step.summary}</small></div>
-						</div>
-						{index < ONBOARDING_STEPS.length - 1 ? <i data-complete={index < active ? 'true' : 'false'} /> : null}
-					</React.Fragment>
+					<div key={step.id} className="pk-onboarding-step" data-state={index < active ? 'complete' : index === active ? 'active' : 'future'}>
+						<span>{index < active ? <Check size={15} /> : index + 1}</span>
+						<strong>{step.label}</strong>
+					</div>
 				))}
-			</div>
-			<div className="pk-onboarding__step-caption">
-				<strong>Step {active + 1} of {PRIMARY_STEPS.length} · {ONBOARDING_STEPS[active]?.label}</strong>
-				<span>Only setup that affects first use</span>
 			</div>
 		</div>
 	);
@@ -449,7 +442,7 @@ function ConnectAIStep({ state, dispatch, profiles, evidence, onProfilesChange }
 	const [adding, setAdding] = useState(profiles.length === 0);
 	const selectedEvidence = state.selectedProfileId ? evidence[state.selectedProfileId] : undefined;
 	return (
-		<StepShell eyebrow="Step 1 of 5" title="Connect one AI service" intro="Peak needs one verified connection before any AI feature depends on it.">
+		<StepShell eyebrow="Step 1 of 5" title="Connect AI" intro="Connect and verify one service. You can add the rest later in Settings.">
 			{profiles.length === 0 && !adding ? <div className="pk-onboarding-empty"><Cpu size={25} /><strong>No AI service is connected yet</strong><span>Choose one below. You can add more services later in Settings.</span></div> : null}
 			{!adding ? (
 				<div className="pk-onboarding-provider-list">
@@ -491,7 +484,7 @@ function CoreModelsStep({ state, dispatch, profiles, settings }: {
 	settings: MyPluginSettings;
 }) {
 	return (
-		<StepShell eyebrow="Step 2 of 5" title="Choose three safe defaults" intro="Automatic is recommended. Pick a specific model only when you need one; incompatible Hermes models are hidden.">
+		<StepShell eyebrow="Step 2 of 5" title="Choose core models" intro="Use Automatic, or choose a compatible model for each role.">
 			<div className="pk-onboarding-role-list">
 				<ModelRole icon={MessageSquare} title="Conversation" detail="Chat Studio and everyday writing" status={state.modelChecks.conversation} picker={<AssignmentPicker role="conversation" state={state} dispatch={dispatch} profiles={profiles} settings={settings} />} />
 				<ModelRole icon={Search} title="Knowledge work" detail="Vault questions, synthesis and reports" status={state.modelChecks.knowledge} picker={<AssignmentPicker role="knowledge" state={state} dispatch={dispatch} profiles={profiles} settings={settings} />} />
@@ -515,7 +508,7 @@ function AssignmentPicker({ role, state, dispatch, profiles, settings }: {
 
 function PrepareVaultStep({ state, onRetry }: { state: OnboardingState; onRetry: () => void }) {
 	return (
-		<StepShell eyebrow="Step 3 of 5" title="Prepare local search" intro="Peak repairs its required database component. The fastest full-text index starts only if the Vault does not already have one.">
+		<StepShell eyebrow="Step 3 of 5" title="Prepare your vault" intro="Peak checks the local database and reuses search data that is already ready.">
 			<div className="pk-onboarding-preflight">
 				<PreflightRow icon={Database} title="Better SQLite" state={state.betterSqlite} detail={state.betterSqliteMessage || 'Required local database component'} />
 				<PreflightRow icon={FileSearch} title="Fast full-text index" state={state.fastIndex === 'ready' ? 'ready' : state.fastIndex === 'running' || state.fastIndex === 'starting' ? 'repairing' : state.fastIndex === 'error' ? 'error' : 'unchecked'} detail={state.fastIndexMessage || 'Reuses a ready index, or attaches to the single active run'} />
@@ -538,7 +531,7 @@ function SystemCheckStep({ state }: { state: OnboardingState }) {
 		{ key: 'safety', label: 'Agent safety default' },
 	];
 	return (
-		<StepShell eyebrow="Step 4 of 5" title="System check" intro="Peak verifies each dependency in sequence so failures can be fixed before real work.">
+		<StepShell eyebrow="Step 4 of 5" title="System check" intro="Confirm the required services before opening a real Peak workspace.">
 			<div className="pk-onboarding-system-check">{rows.map((row) => <SystemCheckRow key={row.key} label={row.label} status={state.systemChecks[row.key]} />)}</div>
 			<div className="pk-onboarding-note"><ShieldCheck size={18} /><span><strong>Safe default:</strong> Agents ask before writes, commands, network access and costly actions. Existing expert bypass settings are shown as needing attention.</span></div>
 		</StepShell>
@@ -550,7 +543,7 @@ function TryPeakStep({ launchError, onLaunch }: {
 	onLaunch: (target: NonNullable<MyPluginSettings['onboarding']['firstSuccessTarget']>) => void;
 }) {
 	return (
-		<StepShell eyebrow="Step 5 of 5" title="Try Peak with something real" intro="Choose one destination. Peak opens the actual product surface instead of leaving you on a setup page.">
+		<StepShell eyebrow="Step 5 of 5" title="Try Peak" intro="Choose where to start. Peak opens the real product surface immediately.">
 			{launchError ? <div className="pk-onboarding-error"><CircleAlert size={18} /><span>{launchError}</span></div> : null}
 			<div className="pk-onboarding-launchpad">
 				<LaunchCard icon={MessageSquare} title="Open Chat Studio" detail="Ask a question or continue a conversation" onClick={() => onLaunch('chat-studio')} />
