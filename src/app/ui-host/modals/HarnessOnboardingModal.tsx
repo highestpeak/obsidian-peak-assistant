@@ -2,9 +2,9 @@
  * Harness Onboarding Modal — Obsidian Modal shell that mounts the Curator
  * wizard React content from `@/ui/view/onboarding/HarnessOnboardingWizard`.
  *
- * Visual goals (per docs/superpowers/specs/2026-05-29-onboarding-design-brief):
- *   - Wide modal with a five-step progress indicator and fixed action footer
- *   - Single-column body with enough width for readable labels and model pickers
+ * Visual goals (per docs/superpowers/specs/2026-08-19-command-invoked-compact-setup-assistant.md):
+ *   - Compact command-invoked assistant with a readable five-step rail
+ *   - Single-column body and a stable action footer
  */
 
 import { ReactModalHost, type ReactModalShellOptions } from '@/app/ui-host/ReactModalHost';
@@ -32,11 +32,9 @@ export class HarnessOnboardingModal extends ReactModalHost {
 		// Tag the outer modalEl so our CSS can neutralize Obsidian's default
 		// theme border / scrollbar without leaking into other modals.
 		modalClasses: ['pkonb-modal-shell'],
-		// The five complete step labels need a real wide setup surface. The
-		// max-width guard keeps it usable on smaller Obsidian windows.
-		width: '1080px',
-		maxWidth: '94vw',
-		maxHeight: 'calc(100vh - 48px)',
+		width: '920px',
+		maxWidth: '92vw',
+		maxHeight: 'calc(100vh - 64px)',
 	};
 
 	constructor(
