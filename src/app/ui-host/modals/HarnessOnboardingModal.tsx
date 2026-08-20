@@ -32,8 +32,8 @@ export class HarnessOnboardingModal extends ReactModalHost {
 		// Tag the outer modalEl so our CSS can neutralize Obsidian's default
 		// theme border / scrollbar without leaking into other modals.
 		modalClasses: ['pkonb-modal-shell'],
-		width: '920px',
-		maxWidth: '92vw',
+		width: '1080px',
+		maxWidth: 'calc(100vw - 64px)',
 		maxHeight: 'calc(100vh - 64px)',
 	};
 

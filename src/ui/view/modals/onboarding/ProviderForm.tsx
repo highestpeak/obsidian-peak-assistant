@@ -257,7 +257,15 @@ export function SavedProfileRow({ profile, onDelete, onChange, onSelect, selecte
 				data-selected={selected ? 'true' : 'false'}
                 className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2 pktw-cursor-pointer hover:pktw-bg-[--background-modifier-hover] pktw-transition-colors"
             >
-				<Button variant="ghost" className="pk-onboarding-provider-select" onClick={onSelect} aria-pressed={selected}>
+				<Button
+					variant="ghost"
+					className="pk-onboarding-provider-select"
+					onClick={() => {
+						onSelect?.();
+						setExpanded(true);
+					}}
+					aria-pressed={selected}
+				>
                 <ProviderIcon kind={profile.kind} size={32} />
                 <span className="pktw-flex-1 pktw-text-sm pktw-text-[--text-normal] pktw-truncate">{profile.name}</span>
 				<span className="pk-onboarding-provider-state" data-state={status}>{status === 'checking' ? 'Checking' : status === 'ready' ? 'Ready' : status === 'error' ? 'Needs attention' : isActive ? 'Default' : 'Not tested'}</span>

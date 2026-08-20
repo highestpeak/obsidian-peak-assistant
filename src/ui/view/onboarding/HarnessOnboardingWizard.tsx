@@ -14,6 +14,7 @@ import {
 	MessageSquare,
 	Network,
 	Pencil,
+	Plus,
 	Search,
 	ShieldCheck,
 	Sparkles,
@@ -107,6 +108,8 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 	const [evidence, setEvidence] = useState<Record<string, ConnectionEvidence>>({});
 	const [saveState, setSaveState] = useState<SaveState>('saved');
 	const [launchError, setLaunchError] = useState<string | null>(null);
+	const onboardingRef = useRef<HTMLDivElement>(null);
+	const [modelPickerPortal, setModelPickerPortal] = useState<HTMLElement | null>(null);
 	const operationRef = useRef(0);
 	const busyRef = useRef(false);
 	const launchProfiles = useMemo(
@@ -117,6 +120,10 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 		() => launchProfiles.filter((profile) => state.connectionChecks[profile.id] === 'ready'),
 		[launchProfiles, state.connectionChecks],
 	);
+
+	useEffect(() => {
+		setModelPickerPortal(onboardingRef.current?.closest('.modal-content') as HTMLElement | null);
+	}, []);
 
 	useEffect(() => {
 		const selected = launchProfiles.find((candidate) => candidate.id === state.selectedProfileId);
@@ -273,11 +280,25 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 	async function continueFlow() {
 		if (busyRef.current || !canContinue(state)) return;
 		const id = ++operationRef.current;
+		const currentStep = state.step;
+		const currentIndex = PRIMARY_STEPS.indexOf(currentStep);
+		const nextStep = currentIndex < PRIMARY_STEPS.length - 1 ? PRIMARY_STEPS[currentIndex + 1] : null;
 		busyRef.current = true;
 		dispatch({ type: 'operation', id, kind: 'continuing' });
 		try {
-			if (state.step === 'core-models') await saveCoreModels(state.models, settingsActions);
-			if (state.step === 'prepare-vault') {
+			if (currentStep === 'core-models') {
+				// Persist role bindings in the background. The next screen owns the
+				// readiness work, so the Continue button must never look frozen while
+				// a settings write is in flight.
+				if (nextStep) dispatch({ type: 'jump', step: nextStep });
+				dispatch({ type: 'operation', id, kind: 'idle' });
+				busyRef.current = false;
+				void saveCoreModels(state.models, settingsActions).catch((error) => {
+					dispatch({ type: 'operation', id, kind: 'idle', message: errorMessage(error) });
+				});
+				return;
+			}
+			if (currentStep === 'prepare-vault') {
 				const result = await settingsActions.knowledgeIndex.prepareFastIndex();
 				dispatch({
 					type: 'index-status',
@@ -289,10 +310,9 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 							: 'Fast full-text indexing started in the background.',
 				});
 			}
-			if (state.step === 'system-check') await markConfigurationComplete(settingsActions);
+			if (currentStep === 'system-check') await markConfigurationComplete(settingsActions);
 			dispatch({ type: 'operation', id, kind: 'idle' });
-			const index = PRIMARY_STEPS.indexOf(state.step);
-			if (index < PRIMARY_STEPS.length - 1) dispatch({ type: 'jump', step: PRIMARY_STEPS[index + 1] });
+			if (nextStep) dispatch({ type: 'jump', step: nextStep });
 		} catch (error) {
 			dispatch({ type: 'operation', id, kind: 'idle', message: errorMessage(error) });
 		} finally {
@@ -358,24 +378,10 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 		}
 	}
 
-	async function finishSetup() {
-		if (busyRef.current) return;
-		busyRef.current = true;
-		try {
-			await markConfigurationComplete(settingsActions);
-			dispatch({ type: 'finish' });
-			onClose();
-		} catch (error) {
-			setLaunchError(errorMessage(error));
-		} finally {
-			busyRef.current = false;
-		}
-	}
-
 	return (
-		<div className="pk-onboarding">
+		<div ref={onboardingRef} className="pk-onboarding">
 			<header className="pk-onboarding__topbar">
-				<span className="pk-onboarding__brand"><strong>Peak Setup</strong></span>
+				<span className="pk-onboarding__brand"><strong>Set up Peak Assistant</strong></span>
 				<span className="pk-onboarding__saved" data-state={saveState}>
 					{saveState === 'saving' ? <Loader2 size={16} /> : saveState === 'failed' ? <CircleAlert size={16} /> : <Check size={16} />}
 					{saveState === 'saving' ? 'Saving progress…' : saveState === 'failed' ? 'Progress not saved' : 'Progress saved'}
@@ -393,7 +399,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 						onProfilesChange={refreshProfiles}
 					/>
 				) : null}
-				{state.step === 'core-models' ? <CoreModelsStep state={state} dispatch={dispatch} profiles={readyProfiles} settings={settings} /> : null}
+				{state.step === 'core-models' ? <CoreModelsStep state={state} dispatch={dispatch} profiles={readyProfiles} settings={settings} portalContainer={modelPickerPortal} /> : null}
 				{state.step === 'prepare-vault' ? <PrepareVaultStep state={state} onRetry={() => void repairSqlite()} /> : null}
 				{state.step === 'system-check' ? <SystemCheckStep state={state} /> : null}
 				{state.step === 'try-peak' ? <TryPeakStep launchError={launchError} onLaunch={(target) => void launch(target)} /> : null}
@@ -404,7 +410,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 				</Button>
 				<span>{state.operation.message || stepFooterHint(state)}</span>
 				{state.step === 'try-peak' ? (
-					<Button disabled={state.operation.kind !== 'idle'} onClick={() => void finishSetup()}>Finish setup</Button>
+					<span className="pk-onboarding__first-success-hint">Choose a task above to finish setup.</span>
 				) : (
 					<Button disabled={!canContinue(state)} onClick={() => void continueFlow()}>
 						{state.operation.kind === 'continuing' ? <Loader2 size={17} /> : null}
@@ -421,12 +427,13 @@ function ProgressHeader({ state }: { state: OnboardingState }) {
 	return (
 		<div className="pk-onboarding__progress">
 			<div className="pk-onboarding__steps">
-				{ONBOARDING_STEPS.map((step, index) => (
-					<div key={step.id} className="pk-onboarding-step" data-state={index < active ? 'complete' : index === active ? 'active' : 'future'}>
+				{ONBOARDING_STEPS.map((step, index) => <React.Fragment key={step.id}>
+					<div className="pk-onboarding-step" data-state={index < active ? 'complete' : index === active ? 'active' : 'future'}>
 						<span>{index < active ? <Check size={15} /> : index + 1}</span>
 						<strong>{step.label}</strong>
 					</div>
-				))}
+					{index < ONBOARDING_STEPS.length - 1 ? <i className="pk-onboarding-step-connector" data-state={index < active ? 'complete' : 'future'} /> : null}
+				</React.Fragment>)}
 			</div>
 		</div>
 	);
@@ -442,7 +449,7 @@ function ConnectAIStep({ state, dispatch, profiles, evidence, onProfilesChange }
 	const [adding, setAdding] = useState(profiles.length === 0);
 	const selectedEvidence = state.selectedProfileId ? evidence[state.selectedProfileId] : undefined;
 	return (
-		<StepShell eyebrow="Step 1 of 5" title="Connect AI" intro="Connect and verify one service. You can add the rest later in Settings.">
+		<StepShell title="Connect AI" intro="Connect and verify one service. You can add the rest later in Settings.">
 			{profiles.length === 0 && !adding ? <div className="pk-onboarding-empty"><Cpu size={25} /><strong>No AI service is connected yet</strong><span>Choose one below. You can add more services later in Settings.</span></div> : null}
 			{!adding ? (
 				<div className="pk-onboarding-provider-list">
@@ -457,13 +464,13 @@ function ConnectAIStep({ state, dispatch, profiles, evidence, onProfilesChange }
 							onChange={() => onProfilesChange(profile.id)}
 						/>
 					))}
-					<Button variant="secondary" className="pk-onboarding-connect-another" onClick={() => setAdding(true)}>Connect another service</Button>
+					<Button variant="secondary" className="pk-onboarding-connect-another" onClick={() => setAdding(true)}><Plus size={18} /> Connect another service</Button>
 				</div>
 			) : (
 				<AddProviderForm
 					allowedKinds={[...LAUNCH_PROVIDER_KINDS]}
 					onAdded={(id, result) => { onProfilesChange(id, result); setAdding(false); }}
-					onCancel={profiles.length > 0 ? () => setAdding(false) : undefined}
+					onCancel={() => setAdding(false)}
 				/>
 			)}
 			{selectedEvidence ? (
@@ -477,38 +484,40 @@ function ConnectAIStep({ state, dispatch, profiles, evidence, onProfilesChange }
 	);
 }
 
-function CoreModelsStep({ state, dispatch, profiles, settings }: {
+function CoreModelsStep({ state, dispatch, profiles, settings, portalContainer }: {
 	state: OnboardingState;
 	dispatch: (event: OnboardingEvent) => void;
 	profiles: Profile[];
 	settings: MyPluginSettings;
+	portalContainer: HTMLElement | null;
 }) {
 	return (
-		<StepShell eyebrow="Step 2 of 5" title="Choose core models" intro="Use Automatic, or choose a compatible model for each role.">
+		<StepShell title="Choose core models" intro="Compatible defaults are already selected. Change a role only when you want a specific model.">
 			<div className="pk-onboarding-role-list">
-				<ModelRole icon={MessageSquare} title="Conversation" detail="Chat Studio and everyday writing" status={state.modelChecks.conversation} picker={<AssignmentPicker role="conversation" state={state} dispatch={dispatch} profiles={profiles} settings={settings} />} />
-				<ModelRole icon={Search} title="Knowledge work" detail="Vault questions, synthesis and reports" status={state.modelChecks.knowledge} picker={<AssignmentPicker role="knowledge" state={state} dispatch={dispatch} profiles={profiles} settings={settings} />} />
-				<ModelRole icon={Bot} title="Peak Hermes" detail="Planning and tool execution; tool support is required" status={state.modelChecks.agent} picker={<AssignmentPicker role="agent" state={state} dispatch={dispatch} profiles={profiles} settings={settings} />} />
+				<ModelRole icon={MessageSquare} title="Conversation" detail="Chat Studio and everyday writing" status={state.modelChecks.conversation} picker={<AssignmentPicker role="conversation" state={state} dispatch={dispatch} profiles={profiles} settings={settings} portalContainer={portalContainer} />} />
+				<ModelRole icon={Search} title="Knowledge work" detail="Vault questions, synthesis and reports" status={state.modelChecks.knowledge} picker={<AssignmentPicker role="knowledge" state={state} dispatch={dispatch} profiles={profiles} settings={settings} portalContainer={portalContainer} />} />
+				<ModelRole icon={Bot} title="Peak Hermes" detail="Planning and tool execution; tool support is required" status={state.modelChecks.agent} picker={<AssignmentPicker role="agent" state={state} dispatch={dispatch} profiles={profiles} settings={settings} portalContainer={portalContainer} />} />
 			</div>
 			<div className="pk-onboarding-note"><ShieldCheck size={18} /><span><strong>Peak Hermes remains the only Agent runtime.</strong> The provider supplies its model; it does not replace Peak's workflow, permissions or receipts.</span></div>
 		</StepShell>
 	);
 }
 
-function AssignmentPicker({ role, state, dispatch, profiles, settings }: {
+function AssignmentPicker({ role, state, dispatch, profiles, settings, portalContainer }: {
 	role: keyof OnboardingRoleModels;
 	state: OnboardingState;
 	dispatch: (event: OnboardingEvent) => void;
 	profiles: Profile[];
 	settings: MyPluginSettings;
+	portalContainer: HTMLElement | null;
 }) {
 	const assignment = state.models[role];
-	return <UnifiedModelPicker profiles={profiles} value={assignment.mode === 'fixed' ? assignment.config : null} requirement={ROLE_REQUIREMENTS[role]} onChange={(config) => dispatch({ type: 'select-model', role, assignment: config ? { mode: 'fixed', config } : { mode: 'automatic' } })} automaticLabel="Automatic" aliases={settings.modelCatalog.aliases} hiddenModels={settings.modelCatalog.hiddenModels} align="end" />;
+	return <UnifiedModelPicker profiles={profiles} value={assignment.mode === 'fixed' ? assignment.config : null} requirement={ROLE_REQUIREMENTS[role]} onChange={(config) => dispatch({ type: 'select-model', role, assignment: config ? { mode: 'fixed', config } : { mode: 'automatic' } })} automaticLabel="Automatic" aliases={settings.modelCatalog.aliases} hiddenModels={settings.modelCatalog.hiddenModels} align="end" portalContainer={portalContainer} />;
 }
 
 function PrepareVaultStep({ state, onRetry }: { state: OnboardingState; onRetry: () => void }) {
 	return (
-		<StepShell eyebrow="Step 3 of 5" title="Prepare your vault" intro="Peak checks the local database and reuses search data that is already ready.">
+		<StepShell title="Prepare your vault" intro="Peak checks the required local component, then reuses any search data that is already ready.">
 			<div className="pk-onboarding-preflight">
 				<PreflightRow icon={Database} title="Better SQLite" state={state.betterSqlite} detail={state.betterSqliteMessage || 'Required local database component'} />
 				<PreflightRow icon={FileSearch} title="Fast full-text index" state={state.fastIndex === 'ready' ? 'ready' : state.fastIndex === 'running' || state.fastIndex === 'starting' ? 'repairing' : state.fastIndex === 'error' ? 'error' : 'unchecked'} detail={state.fastIndexMessage || 'Reuses a ready index, or attaches to the single active run'} />
@@ -530,8 +539,14 @@ function SystemCheckStep({ state }: { state: OnboardingState }) {
 		{ key: 'fullText', label: 'Vault full-text search' },
 		{ key: 'safety', label: 'Agent safety default' },
 	];
+	const settled = rows.filter((row) => state.systemChecks[row.key] !== 'idle' && state.systemChecks[row.key] !== 'checking').length;
+	const hasProblem = rows.some((row) => state.systemChecks[row.key] === 'failed' || state.systemChecks[row.key] === 'needs-attention');
 	return (
-		<StepShell eyebrow="Step 4 of 5" title="System check" intro="Confirm the required services before opening a real Peak workspace.">
+		<StepShell title="System check" intro="Peak checks each requirement in turn before opening a real workspace.">
+			<div className="pk-onboarding-system-summary" data-state={hasProblem ? 'attention' : settled === rows.length ? 'ready' : 'checking'}>
+				<span>{settled === rows.length ? <CheckCircle2 size={19} /> : <Loader2 size={19} />}{settled === rows.length ? (hasProblem ? 'Review one or more items' : 'Everything required is ready') : 'Checking your setup'}</span>
+				<span>{settled} of {rows.length}</span>
+			</div>
 			<div className="pk-onboarding-system-check">{rows.map((row) => <SystemCheckRow key={row.key} label={row.label} status={state.systemChecks[row.key]} />)}</div>
 			<div className="pk-onboarding-note"><ShieldCheck size={18} /><span><strong>Safe default:</strong> Agents ask before writes, commands, network access and costly actions. Existing expert bypass settings are shown as needing attention.</span></div>
 		</StepShell>
@@ -543,7 +558,7 @@ function TryPeakStep({ launchError, onLaunch }: {
 	onLaunch: (target: NonNullable<MyPluginSettings['onboarding']['firstSuccessTarget']>) => void;
 }) {
 	return (
-		<StepShell eyebrow="Step 5 of 5" title="Try Peak" intro="Choose where to start. Peak opens the real product surface immediately.">
+		<StepShell title="Try Peak" intro="Choose one real task. Peak opens that workspace immediately.">
 			{launchError ? <div className="pk-onboarding-error"><CircleAlert size={18} /><span>{launchError}</span></div> : null}
 			<div className="pk-onboarding-launchpad">
 				<LaunchCard icon={MessageSquare} title="Open Chat Studio" detail="Ask a question or continue a conversation" onClick={() => onLaunch('chat-studio')} />
@@ -556,8 +571,8 @@ function TryPeakStep({ launchError, onLaunch }: {
 	);
 }
 
-function StepShell({ eyebrow, title, intro, children }: { eyebrow: string; title: string; intro: string; children: React.ReactNode }) {
-	return <section className="pk-onboarding-step-content"><span className="pk-onboarding-step-content__eyebrow">{eyebrow}</span><strong className="pk-onboarding-step-content__title">{title}</strong><span className="pk-onboarding-step-content__intro">{intro}</span>{children}</section>;
+function StepShell({ title, intro, children }: { title: string; intro: string; children: React.ReactNode }) {
+	return <section className="pk-onboarding-step-content"><strong className="pk-onboarding-step-content__title">{title}</strong><span className="pk-onboarding-step-content__intro">{intro}</span>{children}</section>;
 }
 
 function StatusCell({ label, check }: { label: string; check: ConnectionCheckEvidence }) {
@@ -636,8 +651,7 @@ function fixedConfig(assignment: ModelAssignment): RoleConfig | null {
 
 function stepFooterHint(state: OnboardingState): string {
 	if (state.step === 'prepare-vault' && state.betterSqlite === 'repairing') return 'Preparing required local components…';
-	if (state.step === 'system-check') return 'A ready full-text index is reused; an active run is never duplicated.';
-	if (state.step === 'try-peak') return 'Configuration is complete. The first successful launch is recorded separately.';
+	if (state.step === 'system-check') return 'Existing indexing work is reused or attached; it is never duplicated.';
 	return '';
 }
 

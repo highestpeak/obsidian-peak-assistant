@@ -163,7 +163,7 @@ assert.match(
 
 assert.match(
 	primitiveCss,
-	/button\.pk-onboarding-connect-another\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-height:\s*48px !important;[\s\S]*?padding:\s*10px 14px !important;/,
+	/button\.pk-onboarding-connect-another\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-height:\s*56px !important;[\s\S]*?padding:\s*12px 16px !important;/,
 	'onboarding add-connection action must not collapse to an undersized text button',
 );
 
