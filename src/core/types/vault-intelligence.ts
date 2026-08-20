@@ -1,6 +1,7 @@
 export type VaultIntelligenceSurface = 'overview' | 'map' | 'queue';
 export type VaultIntelligenceMapSurface = 'contents' | 'activity';
 export type VaultScanScopeMode = 'changed' | 'selected' | 'entire';
+export type VaultScanScopeSelectorKind = 'file' | 'folder' | 'community' | 'saved-work';
 export type VaultScanStageId = 'discover' | 'index' | 'ai' | 'publish';
 export type VaultScanRunStatus = 'idle' | 'running' | 'stopping' | 'interrupted' | 'completed' | 'failed';
 export type VaultMaintenanceTaskCategory = 'decision' | 'review' | 'recovery';
@@ -28,7 +29,20 @@ export type VaultScanAiOperationId =
 
 export interface VaultScanScope {
 	mode: VaultScanScopeMode;
+	/**
+	 * Concrete paths frozen into the plan.  This is deliberately retained even
+	 * when the owner selected a folder, Community, or saved work set so a later
+	 * run is reproducible if that collection changes.
+	 */
 	selectedPaths: string[];
+	selectors?: VaultScanScopeSelector[];
+}
+
+export interface VaultScanScopeSelector {
+	id: string;
+	kind: VaultScanScopeSelectorKind;
+	label: string;
+	paths: string[];
 }
 
 export interface VaultScanAiOperationPlan {
@@ -111,6 +125,8 @@ export interface VaultMaintenanceAtomicItem {
 	projectionKey: string;
 	projectionLabel: string;
 	suggestedChoiceId: string | null;
+	/** A concrete candidate supplied by the detector, never a guessed replacement. */
+	suggestedValue?: string | null;
 	ownerChoice: VaultMaintenanceOwnerChoice | null;
 }
 
@@ -156,26 +172,71 @@ export interface VaultCompletedRun {
 export interface VaultActivityRecord {
 	id: string;
 	timestamp: number;
-	kind: 'file-change' | 'scan' | 'owner-choice' | 'apply' | 'verify';
+	kind: 'file-change' | 'chat' | 'project' | 'composer' | 'scan' | 'owner-choice' | 'apply' | 'verify';
 	label: string;
 	objectPath: string | null;
 	runId: string | null;
 }
 
+export type VaultProposalStatus = 'ready-review' | 'applied' | 'stale' | 'verified' | 'rejected';
+
+/**
+ * A compact, reviewable textual patch.  We persist only the matched fragment
+ * and its context, not an entire copy of the user's note.  `sourceHash` and
+ * `sourceMtime` make Apply fail closed when the source has changed.
+ */
+export interface VaultProposalFileChange {
+	id: string;
+	atomicItemIds: string[];
+	path: string;
+	sourceMtime: number | null;
+	sourceHash: string;
+	beforeText: string;
+	afterText: string;
+	beforeContext: string;
+	afterContext: string;
+	matchCount: number;
+}
+
+export interface VaultMaintenanceProposal {
+	id: string;
+	taskId: string;
+	sourceRunId: string;
+	status: VaultProposalStatus;
+	createdAt: number;
+	updatedAt: number;
+	changes: VaultProposalFileChange[];
+	warnings: string[];
+	appliedAt: number | null;
+	verifiedAt: number | null;
+}
+
+export interface VaultMapTextEntry {
+	id: string;
+	communityId: string;
+	communityLabel: string;
+	text: string;
+	sourceFingerprint: string | null;
+	createdAt: number;
+	updatedAt: number;
+}
+
 export interface VaultIntelligencePersistedState {
-	version: 1;
+	version: 1 | 2;
 	updatedAt: number;
 	changedCursorAt: number | null;
 	activeRun: VaultScanRunState | null;
 	lastCompletedRun: VaultCompletedRun | null;
 	tasks: VaultMaintenanceTask[];
 	recentActivity: VaultActivityRecord[];
+	proposals?: VaultMaintenanceProposal[];
+	mapTextEntries?: VaultMapTextEntry[];
 }
 
 export interface VaultIntelligenceEvent {
 	id: string;
 	timestamp: number;
-	type: 'run-started' | 'stage-changed' | 'operation-changed' | 'run-completed' | 'run-failed' | 'owner-choice' | 'review-decisions-saved' | 'task-applied' | 'task-verified';
+	type: 'run-started' | 'stage-changed' | 'operation-changed' | 'run-completed' | 'run-failed' | 'owner-choice' | 'review-decisions-saved' | 'proposal-prepared' | 'proposal-applied' | 'task-applied' | 'task-verified' | 'map-text-saved';
 	runId: string | null;
 	detail: string;
 }

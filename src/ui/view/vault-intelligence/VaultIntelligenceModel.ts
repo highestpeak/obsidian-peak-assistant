@@ -6,6 +6,7 @@ import type {
 	VaultActivityRecord,
 	VaultCompletedRun,
 	VaultIntelligenceEvent,
+	VaultMaintenanceProposal,
 	VaultMaintenanceAtomicItem,
 	VaultMaintenanceOwnerChoice,
 	VaultMaintenanceTask,
@@ -14,6 +15,7 @@ import type {
 	VaultScanOperationRoute,
 	VaultScanRunState,
 	VaultScanScope,
+	VaultMapTextEntry,
 } from '@/core/types/vault-intelligence';
 import type { VaultIntelligenceConfig } from './VaultIntelligenceDefaults';
 
@@ -34,6 +36,12 @@ export interface VaultIntelligenceObjectSummary {
 	label: string;
 	count: number;
 	detail: string;
+}
+
+export interface VaultCommunityMemberProjection {
+	path: string;
+	label: string;
+	score: number | null;
 }
 
 export interface VaultIntelligenceSnapshot {
@@ -58,6 +66,10 @@ export interface VaultIntelligenceSnapshot {
 	run: VaultScanRunState;
 	lastCompletedRun: VaultCompletedRun | null;
 	recentActivity: VaultActivityRecord[];
+	sourceActivity: VaultActivityRecord[];
+	proposals: VaultMaintenanceProposal[];
+	mapTextEntries: VaultMapTextEntry[];
+	communityMembers: Record<string, VaultCommunityMemberProjection[]>;
 	events: VaultIntelligenceEvent[];
 }
 
@@ -71,7 +83,12 @@ export interface VaultIntelligenceWorkspaceRuntime {
 	skipOperation: (operationId: VaultScanRunState['operations'][number]['id']) => void;
 	choose: (taskId: string, atomicItemId: string | null, choiceId: string, choiceValue?: string | null) => Promise<void>;
 	applyTask: (taskId: string) => Promise<void>;
+	prepareProposal: (taskId: string) => Promise<void>;
+	applyProposal: (proposalId: string) => Promise<void>;
+	rejectProposal: (proposalId: string) => Promise<void>;
 	verifyTask: (taskId: string) => Promise<void>;
+	saveMapText: (communityId: string, text: string) => Promise<void>;
+	expandCommunity: (communityId: string) => Promise<void>;
 	openFile: (path: string) => Promise<boolean>;
 	openOwnerSurface: (surface: VaultIntelligenceObjectSummary['id']) => Promise<boolean>;
 }
@@ -149,6 +166,7 @@ export function deriveVaultMaintenanceTasks(options: {
 				projectionKey: projection.key,
 				projectionLabel: projection.label,
 				suggestedChoiceId: suggestedChoiceFor(definition.kind, finding),
+				suggestedValue: suggestedValueFor(definition.kind, finding),
 				ownerChoice: previousChoices.get(finding.id) ?? null,
 			};
 		});
@@ -163,6 +181,7 @@ export function deriveVaultMaintenanceTasks(options: {
 				projectionKey: error.message,
 				projectionLabel: 'Index error',
 				suggestedChoiceId: 'retry',
+				suggestedValue: null,
 				ownerChoice: previousChoices.get(`index-error:${error.path}`) ?? null,
 			}));
 		}
@@ -200,6 +219,12 @@ export function deriveVaultMaintenanceTasks(options: {
 		tasks.push(task);
 	}
 	return tasks;
+}
+
+function suggestedValueFor(kind: VaultMaintenanceTask['kind'], finding: LintFinding): string | null {
+	if (kind !== 'broken-links') return null;
+	const value = finding.metadata.suggestedReplacement;
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 export function maintenanceAffectedLabel(kind: VaultMaintenanceTask['kind'], count: number): string {
@@ -288,7 +313,11 @@ export function deriveMaintenanceState(
 
 export function buildVaultIntelligenceGraph(
 	digest: VaultDigest | null,
-	options: { extension?: string | null } = {},
+	options: {
+		extension?: string | null;
+		expandedCommunityIds?: ReadonlySet<string>;
+		communityMembers?: Record<string, VaultCommunityMemberProjection[]>;
+	} = {},
 ): AtlasGraphModel | null {
 	if (!digest || digest.clusters.length === 0) return null;
 	const extension = options.extension?.toLocaleLowerCase() ?? null;
@@ -306,10 +335,12 @@ export function buildVaultIntelligenceGraph(
 			constituentCount: cluster.memberCount,
 			metadata: { kind: 'community', memberCount: cluster.memberCount, topics: cluster.dominantTopics },
 		});
-		const representatives = cluster.topNodes.filter((node) => (
+		const representatives = (options.expandedCommunityIds?.has(cluster.id)
+			? options.communityMembers?.[cluster.id]?.map((member) => ({ path: member.path, label: member.label, betweenness: member.score ?? undefined })) ?? cluster.topNodes
+			: cluster.topNodes).filter((node) => (
 			!extension || node.path.toLocaleLowerCase().endsWith(`.${extension}`)
 		));
-		for (const node of representatives.slice(0, 6)) {
+		for (const node of representatives.slice(0, options.expandedCommunityIds?.has(cluster.id) ? 60 : 6)) {
 			const nodeId = `note:${node.path}`;
 			nodes.push({
 				id: nodeId,

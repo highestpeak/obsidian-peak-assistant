@@ -2,11 +2,14 @@ import type { App, TFile } from 'obsidian';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 import { ChatConversationRecordStore } from '@/core/storage/generated-output';
+import { sha256Text } from '@/core/storage/generated-output/GeneratedOutputIntegrity';
 import type { LintScanResult } from '@/core/types/lint';
 import type {
 	VaultCompletedRun,
 	VaultIntelligenceEvent,
 	VaultIntelligencePersistedState,
+	VaultMaintenanceProposal,
+	VaultMapTextEntry,
 	VaultMaintenanceOwnerChoice,
 	VaultMaintenanceTask,
 	VaultScanAiOperationId,
@@ -85,6 +88,10 @@ export class VaultIntelligenceRuntime {
 		run: createEmptyVaultScanRun(),
 		lastCompletedRun: null,
 		recentActivity: [],
+		sourceActivity: [],
+		proposals: [],
+		mapTextEntries: [],
+		communityMembers: {},
 		events: [],
 	};
 
@@ -108,7 +115,7 @@ export class VaultIntelligenceRuntime {
 			const review = this.deps.resolveReviewRuntime();
 			const outputs = this.deps.resolveGeneratedOutputs();
 			const operationRoutes = this.deps.resolveOperationRoutes();
-			const [persisted, digest, events, projectCount, conversationCount, composerEventCount, indexStatus] = await Promise.all([
+			const [persisted, digest, events, projectCount, conversationCount, composerEventCount, sourceActivity, indexStatus] = await Promise.all([
 				store?.load().catch(() => null) ?? Promise.resolve(null),
 				review?.getDigest().catch(() => null) ?? Promise.resolve(null),
 				store?.listEvents().catch(() => []) ?? Promise.resolve([]),
@@ -120,6 +127,7 @@ export class VaultIntelligenceRuntime {
 					? outputs.events.readEvents({ outputId: 'composer.workspace-events', streamKey: 'current' })
 						.then((result) => result.events.length).catch(() => 0)
 					: Promise.resolve(0),
+				outputs ? collectSourceActivity(outputs).catch(() => []) : Promise.resolve([]),
 				this.deps.resolveIndexService()?.getIndexStatus().catch(() => null) ?? Promise.resolve(null),
 			]);
 			const recovered = this.recoverPersistedState(persisted);
@@ -148,6 +156,9 @@ export class VaultIntelligenceRuntime {
 				run: recovered.activeRun ?? createEmptyVaultScanRun(),
 				lastCompletedRun: recovered.lastCompletedRun,
 				recentActivity: recovered.recentActivity,
+				sourceActivity,
+				proposals: recovered.proposals ?? [],
+				mapTextEntries: recovered.mapTextEntries ?? [],
 				events: events.slice(-120),
 			});
 			if (persisted?.activeRun?.status === 'running' || persisted?.activeRun?.status === 'stopping') {
@@ -317,6 +328,166 @@ export class VaultIntelligenceRuntime {
 		await this.flushPersist();
 	}
 
+	/**
+	 * Materialize a narrow, deterministic source-file proposal.  The scan only
+	 * records an owner choice; this is the separate transition that turns a
+	 * supported choice into a reviewable diff.  Unsupported task kinds remain
+	 * honest rather than emitting an invented Markdown patch.
+	 */
+	async prepareProposal(taskId: string): Promise<void> {
+		const config = await loadVaultIntelligenceConfig();
+		const task = this.snapshot.tasks.find((candidate) => candidate.id === taskId);
+		const definition = config.tasks.find((candidate) => candidate.kind === task?.kind);
+		if (!task || !definition) return;
+		const proposalChoiceIds = new Set(definition.choices
+			.filter((choice) => choice.boundary === 'proposal')
+			.map((choice) => choice.id));
+		const requested = task.atomicItems.flatMap((item) => {
+			const choice = item.ownerChoice ?? task.defaultChoice;
+			return choice && proposalChoiceIds.has(choice.choiceId) ? [{ item, choice }] : [];
+		});
+		if (requested.length === 0) {
+			this.patch({ error: 'Choose a source-file outcome before preparing a proposal.' });
+			return;
+		}
+		if (task.kind !== 'broken-links') {
+			this.patch({ error: `${task.title} has no safe diff materializer yet. The owner choice remains recorded, but no source change was generated.` });
+			return;
+		}
+
+		const changes: VaultMaintenanceProposal['changes'] = [];
+		const warnings: string[] = [];
+		for (const { item, choice } of requested) {
+			if (!item.filePath) {
+				warnings.push(`${item.title}: no source file is available for this reference.`);
+				continue;
+			}
+			const patch = brokenLinkPatch(item.projectionLabel, choice.choiceId, choice.choiceValue ?? item.suggestedValue ?? null);
+			if (!patch) {
+				warnings.push(`${item.filePath}: ${choice.choiceId} needs a concrete replacement target.`);
+				continue;
+			}
+			const source = await this.readSourceFile(item.filePath);
+			if (!source) {
+				warnings.push(`${item.filePath}: the source file is no longer available.`);
+				continue;
+			}
+			const matchCount = occurrenceCount(source.content, patch.beforeText);
+			if (matchCount !== 1) {
+				warnings.push(`${item.filePath}: expected one ${patch.beforeText} occurrence, found ${matchCount}; prepare this repair in its owner editor.`);
+				continue;
+			}
+			changes.push({
+				id: this.idFactory(),
+				atomicItemIds: [item.id],
+				path: item.filePath,
+				sourceMtime: source.file.stat.mtime,
+				sourceHash: sha256Text(source.content),
+				beforeText: patch.beforeText,
+				afterText: patch.afterText,
+				beforeContext: textContext(source.content, patch.beforeText),
+				afterContext: textContext(source.content.replace(patch.beforeText, patch.afterText), patch.afterText),
+				matchCount,
+			});
+		}
+		if (changes.length === 0) {
+			this.patch({ error: warnings.join(' ') || 'No safe source-file diff could be prepared.' });
+			return;
+		}
+		const createdAt = this.now();
+		const proposal: VaultMaintenanceProposal = {
+			id: this.idFactory(),
+			taskId: task.id,
+			sourceRunId: task.sourceRunId,
+			status: 'ready-review',
+			createdAt,
+			updatedAt: createdAt,
+			changes,
+			warnings,
+			appliedAt: null,
+			verifiedAt: null,
+		};
+		this.patch({
+			proposals: [...this.snapshot.proposals.filter((candidate) => candidate.taskId !== task.id || candidate.status === 'applied' || candidate.status === 'verified'), proposal],
+			tasks: this.snapshot.tasks.map((candidate) => candidate.id === task.id ? { ...candidate, state: 'ready-review', updatedAt: createdAt } : candidate),
+			error: warnings.length ? warnings.join(' ') : null,
+		});
+		this.addActivity('owner-choice', `${task.title} proposal prepared`, changes[0]?.path ?? null, task.sourceRunId);
+		await this.recordEvent('proposal-prepared', task.sourceRunId, `${task.kind} proposal prepared with ${changes.length} guarded file change${changes.length === 1 ? '' : 's'}.`);
+		await this.flushPersist();
+	}
+
+	async applyProposal(proposalId: string): Promise<void> {
+		const proposal = this.snapshot.proposals.find((candidate) => candidate.id === proposalId);
+		if (!proposal || proposal.status !== 'ready-review') return;
+		const sources = new Map<string, Awaited<ReturnType<VaultIntelligenceRuntime['readSourceFile']>>>();
+		for (const path of unique(proposal.changes.map((change) => change.path))) {
+			const source = await this.readSourceFile(path);
+			if (!source) {
+				await this.markProposalStale(proposal, `${path}: source file is unavailable.`);
+				return;
+			}
+			sources.set(path, source);
+		}
+		for (const change of proposal.changes) {
+			const source = sources.get(change.path);
+			if (!source || source.file.stat.mtime !== change.sourceMtime || sha256Text(source.content) !== change.sourceHash) {
+				await this.markProposalStale(proposal, `${change.path}: source changed after the diff was prepared.`);
+				return;
+			}
+		}
+		for (const [path, source] of sources) {
+			if (!source) continue;
+			let next = source.content;
+			for (const change of proposal.changes.filter((candidate) => candidate.path === path)) {
+				if (occurrenceCount(next, change.beforeText) !== change.matchCount) {
+					await this.markProposalStale(proposal, `${path}: the prepared patch no longer has the expected source context.`);
+					return;
+				}
+				next = next.replace(change.beforeText, change.afterText);
+			}
+			if (next !== source.content) await this.deps.app.vault.modify(source.file, next);
+		}
+		const appliedAt = this.now();
+		const task = this.snapshot.tasks.find((candidate) => candidate.id === proposal.taskId) ?? null;
+		const proposalItemIds = new Set(proposal.changes.flatMap((change) => change.atomicItemIds));
+		this.patch({
+			proposals: this.snapshot.proposals.map((candidate) => candidate.id === proposal.id ? { ...candidate, status: 'applied', appliedAt, updatedAt: appliedAt } : candidate),
+			tasks: task ? this.snapshot.tasks.map((candidate) => candidate.id === task.id ? {
+				...candidate,
+				state: 'ready-apply',
+				updatedAt: appliedAt,
+				atomicItems: candidate.atomicItems.map((item) => proposalItemIds.has(item.id) && item.ownerChoice
+					? { ...item, ownerChoice: { ...item.ownerChoice, status: 'applied' } }
+					: item),
+			} : candidate) : this.snapshot.tasks,
+			error: null,
+		});
+		this.addActivity('apply', `${task?.title ?? 'Proposal'} applied`, proposal.changes[0]?.path ?? null, proposal.sourceRunId);
+		await this.recordEvent('proposal-applied', proposal.sourceRunId, `${task?.kind ?? 'proposal'} applied to ${sources.size} source file${sources.size === 1 ? '' : 's'}.`);
+		await this.flushPersist();
+	}
+
+	async rejectProposal(proposalId: string): Promise<void> {
+		const proposal = this.snapshot.proposals.find((candidate) => candidate.id === proposalId);
+		if (!proposal || proposal.status !== 'ready-review') return;
+		const task = this.snapshot.tasks.find((candidate) => candidate.id === proposal.taskId) ?? null;
+		const itemIds = new Set(proposal.changes.flatMap((change) => change.atomicItemIds));
+		const now = this.now();
+		this.patch({
+			proposals: this.snapshot.proposals.map((candidate) => candidate.id === proposalId ? { ...candidate, status: 'rejected', updatedAt: now } : candidate),
+			tasks: task ? this.snapshot.tasks.map((candidate) => candidate.id === task.id ? {
+				...candidate,
+				state: 'needs-choice',
+				updatedAt: now,
+				atomicItems: candidate.atomicItems.map((item) => itemIds.has(item.id) ? { ...item, ownerChoice: null } : item),
+			} : candidate) : this.snapshot.tasks,
+			error: null,
+		});
+		await this.recordEvent('review-decisions-saved', proposal.sourceRunId, `${task?.kind ?? 'proposal'} diff rejected; source files remain unchanged.`);
+		await this.flushPersist();
+	}
+
 	async verifyTask(taskId: string): Promise<void> {
 		const config = await loadVaultIntelligenceConfig();
 		const task = this.snapshot.tasks.find((candidate) => candidate.id === taskId);
@@ -324,11 +495,32 @@ export class VaultIntelligenceRuntime {
 		if (!task || !definition) return;
 		const boundaries = new Map(definition.choices.map((choice) => [choice.id, choice.boundary]));
 		const effective = task.atomicItems.map((item) => item.ownerChoice ?? task.defaultChoice).filter(Boolean);
-		if (effective.length !== task.atomicItems.length || effective.some((choice) => (
-			choice!.choiceId === 'later' || boundaries.get(choice!.choiceId) === 'proposal'
-		))) {
+		const appliedProposalItems = new Set(this.snapshot.proposals
+			.filter((proposal) => proposal.taskId === task.id && (proposal.status === 'applied' || proposal.status === 'verified'))
+			.flatMap((proposal) => proposal.changes.flatMap((change) => change.atomicItemIds)));
+		const hasUnappliedSourceChoice = task.atomicItems.some((item) => {
+			const choice = item.ownerChoice ?? task.defaultChoice;
+			return Boolean(choice && boundaries.get(choice.choiceId) === 'proposal' && !appliedProposalItems.has(item.id));
+		});
+		if (effective.length !== task.atomicItems.length || effective.some((choice) => choice!.choiceId === 'later') || hasUnappliedSourceChoice) {
 			this.patch({ error: 'File-changing proposals must be reviewed and applied in their owner surface before verification.' });
 			return;
+		}
+		const proposalPaths = [...new Set(this.snapshot.proposals
+			.filter((proposal) => proposal.taskId === task.id && proposal.status === 'applied')
+			.flatMap((proposal) => proposal.changes.map((change) => change.path)))];
+		if (proposalPaths.length > 0) {
+			await this.deps.runCoreIndex('selected', proposalPaths);
+			const verification = await this.deps.resolveLintRuntime()?.runFullScan().catch(() => null) ?? null;
+			const stillOpen = verification?.findings.some((finding) => (
+				finding.status === 'open' && task.atomicItems.some((item) => item.sourceFindingId === finding.id)
+			));
+			if (stillOpen) {
+				this.replaceTask({ ...task, state: 'recovery', updatedAt: this.now() });
+				this.patch({ error: 'The follow-up scan still reports this finding. Review the current source and create a new proposal if needed.' });
+				await this.flushPersist();
+				return;
+			}
 		}
 		if (task.kind === 'unreadable-files') {
 			const retryPaths = task.atomicItems.filter((item) => (
@@ -341,11 +533,66 @@ export class VaultIntelligenceRuntime {
 			const choice = item.ownerChoice ?? task.defaultChoice!;
 			return { ...item, ownerChoice: { ...choice, status: 'verified' as const } };
 		});
+		this.patch({
+			proposals: this.snapshot.proposals.map((proposal) => proposal.taskId === task.id && proposal.status === 'applied'
+				? { ...proposal, status: 'verified', verifiedAt, updatedAt: verifiedAt }
+				: proposal),
+		});
 		this.replaceTask({ ...task, atomicItems, state: 'verified', updatedAt: verifiedAt });
 		this.patch({ error: null });
 		await this.recordEvent('task-verified', task.sourceRunId, `${task.kind} verified.`);
 		this.addActivity('verify', task.title, task.atomicItems[0]?.filePath ?? null, task.sourceRunId);
 		await this.flushPersist();
+	}
+
+	async saveMapText(communityId: string, text: string): Promise<void> {
+		const community = this.snapshot.digest?.clusters.find((candidate) => candidate.id === communityId);
+		if (!community) {
+			this.patch({ error: 'This Community is no longer present in the current Knowledge Index.' });
+			return;
+		}
+		const now = this.now();
+		const previous = this.snapshot.mapTextEntries.find((entry) => entry.communityId === communityId) ?? null;
+		const entry: VaultMapTextEntry = {
+			id: previous?.id ?? this.idFactory(),
+			communityId,
+			communityLabel: community.label,
+			text: text.trim(),
+			sourceFingerprint: this.snapshot.digest?.fingerprint.fingerprint ?? null,
+			createdAt: previous?.createdAt ?? now,
+			updatedAt: now,
+		};
+		this.patch({
+			mapTextEntries: [...this.snapshot.mapTextEntries.filter((candidate) => candidate.communityId !== communityId), entry],
+			error: null,
+		});
+		await this.recordEvent('map-text-saved', null, `Map text saved for ${community.label}.`);
+		await this.flushPersist();
+	}
+
+	async expandCommunity(communityId: string): Promise<void> {
+		if (this.snapshot.communityMembers[communityId]) return;
+		const review = this.deps.resolveReviewRuntime();
+		if (!review) {
+			this.patch({ error: 'Community members are unavailable until the Vault Review runtime is ready.' });
+			return;
+		}
+		try {
+			const members = await review.listClusterMembers(communityId, 60);
+			this.patch({
+				communityMembers: {
+					...this.snapshot.communityMembers,
+					[communityId]: members.map((member) => ({
+						path: member.path,
+						label: member.title ?? member.path,
+						score: member.pagerank,
+					})),
+				},
+				error: null,
+			});
+		} catch (error) {
+			this.patch({ error: `Could not expand this Community: ${errorMessage(error)}` });
+		}
 	}
 
 	async openFile(path: string): Promise<boolean> {
@@ -647,8 +894,18 @@ export class VaultIntelligenceRuntime {
 	}
 
 	private recoverPersistedState(persisted: VaultIntelligencePersistedState | null): VaultIntelligencePersistedState {
-		if (!persisted || persisted.version !== 1) {
-			return { version: 1, updatedAt: this.now(), changedCursorAt: null, activeRun: null, lastCompletedRun: null, tasks: [], recentActivity: [] };
+		if (!persisted || (persisted.version !== 1 && persisted.version !== 2)) {
+			return {
+				version: 2,
+				updatedAt: this.now(),
+				changedCursorAt: null,
+				activeRun: null,
+				lastCompletedRun: null,
+				tasks: [],
+				recentActivity: [],
+				proposals: [],
+				mapTextEntries: [],
+			};
 		}
 		const legacy = persisted as VaultIntelligencePersistedState & { changedCursorAt?: number | null };
 		if (legacy.changedCursorAt === undefined) {
@@ -665,9 +922,16 @@ export class VaultIntelligenceRuntime {
 				? migratePlanChecks(persisted.activeRun.plan, DEFAULT_VAULT_INTELLIGENCE_CONFIG)
 				: null,
 		} : null;
-		if (activeRun?.status !== 'running' && activeRun?.status !== 'stopping') return { ...persisted, activeRun };
-		return {
+		const migrated = {
 			...persisted,
+			version: 2 as const,
+			proposals: persisted.proposals ?? [],
+			mapTextEntries: persisted.mapTextEntries ?? [],
+			activeRun,
+		};
+		if (activeRun?.status !== 'running' && activeRun?.status !== 'stopping') return migrated;
+		return {
+			...migrated,
 			activeRun: { ...activeRun, status: 'interrupted', stopRequested: false },
 		};
 	}
@@ -761,6 +1025,30 @@ export class VaultIntelligenceRuntime {
 		return file && 'stat' in file ? (file as TFile).stat.mtime : null;
 	}
 
+	private async readSourceFile(path: string): Promise<{ file: TFile; content: string } | null> {
+		const file = this.deps.app.vault.getAbstractFileByPath(path);
+		if (!file || !('extension' in file)) return null;
+		try {
+			return { file: file as TFile, content: await this.deps.app.vault.read(file as TFile) };
+		} catch {
+			return null;
+		}
+	}
+
+	private async markProposalStale(proposal: VaultMaintenanceProposal, error: string): Promise<void> {
+		const now = this.now();
+		this.patch({
+			proposals: this.snapshot.proposals.map((candidate) => candidate.id === proposal.id
+				? { ...candidate, status: 'stale', updatedAt: now, warnings: unique([...candidate.warnings, error]) }
+				: candidate),
+			tasks: this.snapshot.tasks.map((task) => task.id === proposal.taskId
+				? { ...task, state: 'recovery', updatedAt: now }
+				: task),
+			error,
+		});
+		await this.flushPersist();
+	}
+
 	private requirePlan(): VaultScanPlan {
 		if (!this.snapshot.run.plan) throw new Error('Vault Scan has no frozen plan.');
 		return this.snapshot.run.plan;
@@ -785,13 +1073,15 @@ export class VaultIntelligenceRuntime {
 			? this.snapshot.run
 			: null;
 		const state: VaultIntelligencePersistedState = {
-			version: 1,
+			version: 2,
 			updatedAt: this.now(),
 			changedCursorAt: this.snapshot.changedCursorAt,
 			activeRun,
 			lastCompletedRun: this.snapshot.lastCompletedRun,
 			tasks: this.snapshot.tasks,
 			recentActivity: this.snapshot.recentActivity.slice(-500),
+			proposals: this.snapshot.proposals.slice(-120),
+			mapTextEntries: this.snapshot.mapTextEntries.slice(-120),
 		};
 		this.persistenceTail = this.persistenceTail.catch(() => undefined).then(() => store.save(state));
 	}
@@ -1016,6 +1306,80 @@ function buildReceipts(
 			ownerBoundary: 'peak-owned',
 		},
 	];
+}
+
+function brokenLinkPatch(
+	target: string,
+	choiceId: string,
+	replacement: string | null,
+): { beforeText: string; afterText: string } | null {
+	const cleanTarget = target.trim();
+	if (!cleanTarget) return null;
+	const beforeText = `[[${cleanTarget}]]`;
+	if (choiceId === 'remove') return { beforeText, afterText: cleanTarget };
+	if (choiceId !== 'redirect' || !replacement?.trim()) return null;
+	return { beforeText, afterText: `[[${replacement.trim()}]]` };
+}
+
+function occurrenceCount(source: string, fragment: string): number {
+	if (!fragment) return 0;
+	let count = 0;
+	let start = 0;
+	while (start < source.length) {
+		const index = source.indexOf(fragment, start);
+		if (index < 0) return count;
+		count += 1;
+		start = index + fragment.length;
+	}
+	return count;
+}
+
+function textContext(source: string, fragment: string, radius = 96): string {
+	const index = source.indexOf(fragment);
+	if (index < 0) return '';
+	const start = Math.max(0, index - radius);
+	const end = Math.min(source.length, index + fragment.length + radius);
+	return source.slice(start, end);
+}
+
+async function collectSourceActivity(outputs: GeneratedOutputPersistenceRuntime): Promise<import('@/core/types/vault-intelligence').VaultActivityRecord[]> {
+	const chatStore = new ChatConversationRecordStore(outputs);
+	const chatIds = await chatStore.listConversationIds();
+	const chatRecords = await Promise.all(chatIds.slice(-120).map((conversationId) => chatStore.read(conversationId).catch(() => null)));
+	const chats = chatRecords.flatMap((record) => record?.messages.map((message) => ({
+		id: `chat:${message.id}`,
+		timestamp: message.createdAtTimestamp,
+		kind: 'chat' as const,
+		label: 'Chat message',
+		objectPath: record.meta.id,
+		runId: null,
+	})) ?? []);
+	const composer = await outputs.events.readEvents<unknown>({ outputId: 'composer.workspace-events', streamKey: 'current' }).catch(() => null);
+	const composerRecords = composer?.events.flatMap((event, index) => {
+		const payload = event.payload as Record<string, unknown>;
+		const timestamp = eventTimestamp(payload);
+		if (!timestamp) return [];
+		return [{
+			id: `composer:${String((event as { eventId?: string }).eventId ?? index)}`,
+			timestamp,
+			kind: 'composer' as const,
+			label: 'Composer workspace event',
+			objectPath: typeof payload.filePath === 'string' ? payload.filePath : null,
+			runId: null,
+		}];
+	}) ?? [];
+	return [...chats, ...composerRecords]
+		.filter((record) => Number.isFinite(record.timestamp) && record.timestamp > 0)
+		.sort((left, right) => right.timestamp - left.timestamp)
+		.slice(0, 500);
+}
+
+function eventTimestamp(payload: Record<string, unknown>): number | null {
+	for (const key of ['timestamp', 'createdAt', 'updatedAt', 'createdAtTimestamp', 'updatedAtTimestamp']) {
+		const value = payload[key];
+		if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+	}
+	return null;
 }
 
 function unique<T>(values: readonly T[]): T[] {

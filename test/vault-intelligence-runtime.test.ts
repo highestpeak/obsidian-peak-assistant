@@ -17,6 +17,11 @@ const otherFile = {
 	stat: { mtime: 110, ctime: 95, size: 12 },
 };
 
+const sourceContent = new Map<string, string>([
+	[file.path, 'A real source note with [[Missing]].'],
+	[otherFile.path, 'Another note with [[Also Missing]].'],
+]);
+
 const findings: LintFinding[] = [
 	{
 		id: 'broken-link',
@@ -72,6 +77,11 @@ const app = {
 	vault: {
 		getFiles: () => [file, otherFile],
 		getAbstractFileByPath: (path: string) => [file, otherFile].find((candidate) => candidate.path === path) ?? null,
+		read: async (target: typeof file) => sourceContent.get(target.path) ?? '',
+		modify: async (target: typeof file, next: string) => {
+			sourceContent.set(target.path, next);
+			target.stat.mtime += 1;
+		},
 	},
 	workspace: {
 		getLeaf: () => ({ openFile: async () => undefined }),
@@ -154,6 +164,37 @@ async function main(): Promise<void> {
 	assert.equal(proposalRuntime.getSnapshot().tasks[0]?.state, 'needs-proposal', 'a source-file decision must not masquerade as a generated reviewable diff');
 	const proposalEvents = proposalRuntime.getSnapshot().events;
 	assert.equal(proposalEvents[proposalEvents.length - 1]?.type, 'review-decisions-saved');
+
+	const materializedProposalRuntime = createRuntime();
+	await materializedProposalRuntime.startScan(planFor('broken-links'));
+	const materializedTask = materializedProposalRuntime.getSnapshot().tasks[0]!;
+	await materializedProposalRuntime.choose(materializedTask.id, materializedTask.atomicItems[0]!.id, 'redirect', 'Resolved');
+	await materializedProposalRuntime.applyTask(materializedTask.id);
+	await materializedProposalRuntime.prepareProposal(materializedTask.id);
+	const prepared = materializedProposalRuntime.getSnapshot().proposals[0]!;
+	assert.equal(prepared.status, 'ready-review');
+	assert.equal(prepared.changes[0]?.beforeText, '[[Missing]]');
+	assert.equal(prepared.changes[0]?.afterText, '[[Resolved]]');
+	await materializedProposalRuntime.applyProposal(prepared.id);
+	assert.equal(sourceContent.get(file.path), 'A real source note with [[Resolved]].');
+	assert.equal(materializedProposalRuntime.getSnapshot().proposals[0]?.status, 'applied');
+	assert.equal(materializedProposalRuntime.getSnapshot().tasks[0]?.state, 'ready-apply');
+	sourceContent.set(file.path, 'A real source note with [[Missing]].');
+	file.stat.mtime = 100;
+
+	const guardedProposalRuntime = createRuntime();
+	await guardedProposalRuntime.startScan(planFor('broken-links'));
+	const guardedTask = guardedProposalRuntime.getSnapshot().tasks[0]!;
+	await guardedProposalRuntime.choose(guardedTask.id, guardedTask.atomicItems[0]!.id, 'redirect', 'Resolved');
+	await guardedProposalRuntime.applyTask(guardedTask.id);
+	await guardedProposalRuntime.prepareProposal(guardedTask.id);
+	const guardedProposal = guardedProposalRuntime.getSnapshot().proposals[0]!;
+	sourceContent.set(file.path, 'A concurrent edit leaves [[Missing]] in a different context.');
+	await guardedProposalRuntime.applyProposal(guardedProposal.id);
+	assert.equal(guardedProposalRuntime.getSnapshot().proposals[0]?.status, 'stale', 'Apply must reject a changed source even when the mtime was not updated');
+	assert.equal(guardedProposalRuntime.getSnapshot().tasks[0]?.state, 'recovery');
+	sourceContent.set(file.path, 'A real source note with [[Missing]].');
+	file.stat.mtime = 100;
 
 	const membershipRuntime = createRuntime();
 	await membershipRuntime.startScan(planFor('community-membership'));

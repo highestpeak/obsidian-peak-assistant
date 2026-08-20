@@ -37,6 +37,10 @@ const snapshot: VaultIntelligenceSnapshot = {
 	run: createEmptyVaultScanRun(),
 	lastCompletedRun: null,
 	recentActivity: [],
+	sourceActivity: [],
+	proposals: [],
+	mapTextEntries: [],
+	communityMembers: {},
 	events: [],
 };
 
@@ -50,7 +54,12 @@ const runtime: VaultIntelligenceWorkspaceRuntime = {
 	skipOperation: () => undefined,
 	choose: async () => undefined,
 	applyTask: async () => undefined,
+	prepareProposal: async () => undefined,
+	applyProposal: async () => undefined,
+	rejectProposal: async () => undefined,
 	verifyTask: async () => undefined,
+	saveMapText: async () => undefined,
+	expandCommunity: async () => undefined,
 	openFile: async () => true,
 	openOwnerSurface: async () => true,
 };
@@ -63,11 +72,17 @@ assert.match(
 	'production object cards must render the class that owns their fixed geometry',
 );
 assert.equal((html.match(/pk-vi-object-card/g) ?? []).length, 4);
-assert.match(html, /pk-vi-continue-summary/);
+assert.doesNotMatch(html, /pk-vi-continue-summary/, 'first setup must not manufacture a since-last-scan delta');
+assert.match(html, /Set up Vault/);
 assert.match(html, /pk-vi-overview-secondary/);
 assert.doesNotMatch(html, /pktw-bg-primary/);
 assert.match(source, /main\.scrollTop = 0;/, 'route changes must not preserve a stale page scroll anchor');
 assert.match(source, /<main ref=\{mainRef\} className="pk-vi-main">/);
+assert.match(source, /function MapTextWorkspace/, 'Map text must be a real route, not a dead label');
+assert.match(source, /function ProposalReview/, 'source-file changes must be reviewed as a diff before Apply');
+assert.match(source, /Prepare guarded diff/, 'proposal preparation must remain an explicit owner action');
+assert.match(source, /Expand members/, 'the graph must expose Community expansion instead of a fixed thumbnail');
+assert.match(source, /Add a saved scope/, 'Scan setup must accept selector-backed scopes beyond an exact file');
 
 const css = readFileSync('src/styles/peak-components.css', 'utf8');
 const baseIndex = css.indexOf('Vault Intelligence\n   Standalone, evidence-first maintenance workspace');
