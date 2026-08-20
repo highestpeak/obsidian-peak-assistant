@@ -26,11 +26,13 @@ assert.equal(state.step, 'prepare-vault');
 assert.equal(canContinue(state), false, 'Better SQLite is a hard gate');
 
 state = reduce(state, { type: 'sqlite-result', ready: true, message: 'ready' });
+state = reduce(state, { type: 'index-status', status: 'running', message: 'Attached to the active run.' });
+assert.equal(canContinue(state), false, 'an active run remains on the vault screen instead of advancing with an unfinished index');
 state = reduce(state, { type: 'index-status', status: 'ready', message: 'Existing index reused.' });
 assert.equal(state.fastIndexMessage, 'Existing index reused.');
 state = reduce(state, { type: 'next' });
 assert.equal(state.step, 'system-check');
-for (const check of ['connection', 'conversation', 'knowledge', 'agent', 'sqlite', 'fullText', 'safety'] as const) {
+for (const check of ['connection', 'conversation', 'knowledge', 'agent', 'hermes', 'sqlite', 'fullText', 'storage', 'safety'] as const) {
 	state = reduce(state, { type: 'system-check', check, status: check === 'fullText' ? 'building' : 'ready' });
 }
 state = reduce(state, { type: 'next' });

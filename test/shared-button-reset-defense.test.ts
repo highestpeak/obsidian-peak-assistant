@@ -169,6 +169,12 @@ assert.match(
 
 assert.match(
 	primitiveCss,
+	/button\.pk-onboarding-empty-action\s*\{[\s\S]*?min-height:\s*42px !important;[\s\S]*?padding:\s*9px 14px !important;/,
+	'onboarding initial connection action must remain usable under the Obsidian reset',
+);
+
+assert.match(
+	primitiveCss,
 	/\.peak-vault-intelligence-view \.pk-vi-object-card\.pk-btn\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?height:\s*78px !important;[\s\S]*?min-height:\s*78px !important;[\s\S]*?max-height:\s*78px !important;[\s\S]*?padding:\s*15px !important;/,
 	'Vault Intelligence object cards must survive the Obsidian reset',
 );

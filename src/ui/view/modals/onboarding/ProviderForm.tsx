@@ -55,17 +55,21 @@ export interface AddProviderFormProps {
     autoAssignWebSearch?: boolean;
 	/** Limit the first-use chooser without removing additional providers from Settings. */
 	allowedKinds?: ProfileKind[];
+	/** Start directly at a selected provider's connection form. */
+	initialKind?: ProfileKind;
 }
 
 /** Inline form for adding a single provider profile. */
 export function AddProviderForm({
     onAdded,
     onCancel,
-    setActiveOnFirst = true,
-    autoAssignWebSearch = true,
+	setActiveOnFirst = true,
+	autoAssignWebSearch = true,
 	allowedKinds,
+	initialKind,
 }: AddProviderFormProps) {
-    const [selectedKind, setSelectedKind] = useState<ProfileKind>('openai');
+    const [selectedKind, setSelectedKind] = useState<ProfileKind>(initialKind ?? 'openai');
+	const [choosingProvider, setChoosingProvider] = useState(!initialKind);
     const [apiKey, setApiKey] = useState('');
     const [baseUrl, setBaseUrl] = useState('');
     const [testing, setTesting] = useState(false);
@@ -88,19 +92,21 @@ export function AddProviderForm({
 		setTestResult(null);
 	}, [effectiveKind]);
 
-    async function handleTest() {
+    async function handleTestAndUse() {
         setTesting(true);
         setTestResult(null);
         try {
             const profile = createPresetProfile(effectiveKind, { apiKey: apiKey || null, baseUrl: effectiveBaseUrl });
-            setTestResult(await inspectProviderConnection(uiHttpClient, profile));
+            const result = await inspectProviderConnection(uiHttpClient, profile);
+            setTestResult(result);
+            if (!result.ready) return;
+            addVerifiedProfile(result);
         } finally {
             setTesting(false);
         }
     }
 
-    function handleSave() {
-        if (!testResult?.ready) return;
+    function addVerifiedProfile(testResult: ConnectionEvidence) {
         const registry = ProfileRegistry.getInstance();
         const profile = createPresetProfile(effectiveKind, { apiKey: apiKey || null, baseUrl: effectiveBaseUrl });
         registry.addProfile(profile);
@@ -120,10 +126,10 @@ export function AddProviderForm({
         onAdded(profile.id, { ...testResult, profileId: profile.id });
     }
 
-    return (
-        <div className="pk-onboarding-provider-form">
-            {/* Provider kind selector */}
-            <div className="pk-onboarding-provider-kinds" role="radiogroup" aria-label="AI service">
+    if (choosingProvider) {
+		return (
+			<div className="pk-onboarding-provider-form">
+				<div className="pk-onboarding-provider-kinds" role="radiogroup" aria-label="Choose an AI service">
                 {visibleOptions.map(({ kind, label, desc }) => (
                     <Button
                         key={kind}
@@ -131,7 +137,7 @@ export function AddProviderForm({
                         variant="ghost"
                         role="radio"
                         aria-checked={effectiveKind === kind}
-                        onClick={() => { setSelectedKind(kind); setTestResult(null); }}
+                        onClick={() => { setSelectedKind(kind); setTestResult(null); setChoosingProvider(false); }}
                         className="pk-onboarding-provider-kind"
                     >
                         <ProviderIcon kind={kind} size={32} />
@@ -139,7 +145,19 @@ export function AddProviderForm({
                         {effectiveKind === kind ? <Check size={16} /> : null}
                     </Button>
                 ))}
-            </div>
+				</div>
+				{onCancel ? <Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={onCancel}>Back to saved connections</Button> : null}
+			</div>
+		);
+	}
+
+    return (
+        <div className="pk-onboarding-provider-form">
+			<div className="pk-onboarding-provider-form__header">
+				<Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={() => setChoosingProvider(true)}>Back</Button>
+				<ProviderIcon kind={effectiveKind} size={32} />
+				<span><strong>Connect {selectedOption.label}</strong><small>{requiresKey ? 'Paste a key, then run the same safe connection check.' : 'Peak will verify this local or authenticated connection.'}</small></span>
+			</div>
 
             {/* Platform link */}
             {selectedOption.keyUrl && (
@@ -162,12 +180,9 @@ export function AddProviderForm({
                     onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
                     className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary] pktw-text-[--text-normal] focus:pktw-outline-none focus:pktw-ring-1 focus:pktw-ring-[--interactive-accent] disabled:pktw-opacity-50"
                 />
-                <Button variant="secondary" size="sm" onClick={() => void handleTest()} disabled={(requiresKey && !apiKey.trim()) || !effectiveBaseUrl || testing} className="pktw-gap-1.5">
+                <Button onClick={() => void handleTestAndUse()} disabled={(requiresKey && !apiKey.trim()) || !effectiveBaseUrl || testing} className="pktw-gap-1.5">
                     {testing ? <Loader2 size={14} className="pktw-animate-spin" /> : null}
-                    Test
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={!testResult?.ready}>
-                    Add
+                    Test and use
                 </Button>
             </div>
 
@@ -192,7 +207,8 @@ export function AddProviderForm({
                     <X size={12} /> {testResult.catalog.message || testResult.authentication.message}
                 </span>
             )}
-			{onCancel && <Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={onCancel}>Back to saved connections</Button>}
+			<span className="pk-onboarding-provider-form__receipt">No Vault content is used by this connection test.</span>
+			{onCancel ? <Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={onCancel}>Back to saved connections</Button> : null}
         </div>
     );
 }

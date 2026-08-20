@@ -106,9 +106,31 @@ export function composeSettingsActions(appContext: AppContext): SettingsActions 
 				try { openQuickSearch(); return { opened: true }; }
 				catch (error) { return { opened: false, message: error instanceof Error ? error.message : String(error) }; }
 			},
+			openAiSearch: async () => {
+				try { openQuickSearch({ aiMode: 'search' }); return { opened: true }; }
+				catch (error) { return { opened: false, message: error instanceof Error ? error.message : String(error) }; }
+			},
 			openFileAtlas: async () => {
 				try { await openFileAtlas(); return { opened: true }; }
 				catch (error) { return { opened: false, message: error instanceof Error ? error.message : String(error) }; }
+			},
+			openAiGraph: async () => {
+				try { openQuickSearch({ aiMode: 'graph' }); return { opened: true }; }
+				catch (error) { return { opened: false, message: error instanceof Error ? error.message : String(error) }; }
+			},
+			openAgentWizard: async () => {
+				try {
+					const runtime = appContext.runtimeRegistry.tryGetCommandCenterRuntime();
+					if (!runtime) return { opened: false, message: 'Peak Command Center is still loading.' };
+					runtime.openLauncher();
+					return { opened: true };
+				} catch (error) { return { opened: false, message: error instanceof Error ? error.message : String(error) }; }
+			},
+			openMediaCreation: async () => {
+				try {
+					await appContext.viewManager.openChatStudio();
+					return { opened: true };
+				} catch (error) { return { opened: false, message: error instanceof Error ? error.message : String(error) }; }
 			},
 			openComposer: async () => {
 				try {
@@ -131,6 +153,28 @@ export function composeSettingsActions(appContext: AppContext): SettingsActions 
 		},
 		setup: {
 			openHarnessWizard: () => openHarnessSetupWizard(),
+			verifyPeakHermes: async () => {
+				const runtime = appContext.runtimeRegistry.tryGetCommandCenterRuntime();
+				return runtime
+					? { ready: true, message: 'Peak Hermes runtime, tool registry and recovery surfaces are available.' }
+					: { ready: false, message: 'Peak Hermes is still starting. Wait a moment and run this check again.' };
+			},
+			verifyPeakStorage: async () => {
+				const dataRoot = normalizePath(appContext.plugin.settings.dataStorageFolder ?? '');
+				if (!dataRoot) return { ready: false, message: 'Peak data storage is not configured.' };
+				const probePath = normalizePath(`${dataRoot}/.peak-onboarding-storage-probe-${Date.now()}.tmp`);
+				try {
+					if (!await app.vault.adapter.exists(dataRoot)) await app.vault.adapter.mkdir(dataRoot);
+					await app.vault.adapter.write(probePath, 'Peak storage readiness probe');
+					const value = await app.vault.adapter.read(probePath);
+					if (value !== 'Peak storage readiness probe') throw new Error('Storage readback did not match the probe.');
+					return { ready: true, message: 'Peak-managed data storage is readable and writable.' };
+				} catch (error) {
+					return { ready: false, message: error instanceof Error ? error.message : String(error) };
+				} finally {
+					try { if (await app.vault.adapter.exists(probePath)) await app.vault.adapter.remove(probePath); } catch { /* best effort cleanup */ }
+				}
+			},
 			repairBetterSqlite: async () => {
 				const manager = NativeModuleManager.getInstance();
 				await manager.ensureCompatible();
