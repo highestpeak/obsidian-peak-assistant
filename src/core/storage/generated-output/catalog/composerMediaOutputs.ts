@@ -19,6 +19,7 @@ export const COMPOSER_MEDIA_GENERATED_OUTPUTS: readonly GeneratedOutputDescripto
 		writerEvidence: [
 			'src/app/chat/AppChatVaultWriterAdapter.ts',
 			'src/app/copilot/panels/AppCopilotPanelVaultAdapter.ts',
+			'src/app/vault-intelligence/VaultIntelligenceRuntime.ts',
 		],
 		userSurface: { visibility: 'hidden' },
 	}),

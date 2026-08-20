@@ -10,6 +10,8 @@ import type {
 	VaultIntelligencePersistedState,
 	VaultMaintenanceProposal,
 	VaultMapTextEntry,
+	VaultActivitySession,
+	VaultActivityTheme,
 	VaultMaintenanceOwnerChoice,
 	VaultMaintenanceTask,
 	VaultScanAiOperationId,
@@ -91,6 +93,8 @@ export class VaultIntelligenceRuntime {
 		sourceActivity: [],
 		proposals: [],
 		mapTextEntries: [],
+		activitySessions: [],
+		activityThemes: [],
 		communityMembers: {},
 		events: [],
 	};
@@ -135,6 +139,8 @@ export class VaultIntelligenceRuntime {
 				? files.filter((file) => file.stat.mtime > recovered.changedCursorAt!).length
 				: null;
 			const searchReady = indexStatus?.indexedDocs ?? null;
+			const recentActivity = recovered.recentActivity;
+			const activitySessions = buildActivitySessions([...sourceActivity, ...recentActivity]);
 			this.patch({
 				loading: false,
 				digest,
@@ -155,10 +161,12 @@ export class VaultIntelligenceRuntime {
 				tasks: recovered.tasks,
 				run: recovered.activeRun ?? createEmptyVaultScanRun(),
 				lastCompletedRun: recovered.lastCompletedRun,
-				recentActivity: recovered.recentActivity,
+				recentActivity,
 				sourceActivity,
 				proposals: recovered.proposals ?? [],
 				mapTextEntries: recovered.mapTextEntries ?? [],
+				activitySessions,
+				activityThemes: recovered.activityThemes ?? [],
 				events: events.slice(-120),
 			});
 			if (persisted?.activeRun?.status === 'running' || persisted?.activeRun?.status === 'stopping') {
@@ -191,6 +199,9 @@ export class VaultIntelligenceRuntime {
 				currentPath: null,
 				usage: { ...EMPTY_USAGE },
 				error: null,
+				evidence: [],
+				startedAt: null,
+				completedAt: null,
 			})),
 		};
 		this.patch({ run, error: null });
@@ -228,10 +239,7 @@ export class VaultIntelligenceRuntime {
 			if (!candidate || candidate.status === 'completed' || candidate.status === 'failed') continue;
 			this.patchOperation(id, { status: 'skipped', currentPath: null });
 		}
-		const reviewOperationIds: VaultScanAiOperationId[] = [
-			'relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis',
-		];
-		if (reviewOperationIds.includes(operationId)) this.abortController?.abort();
+		if (operationExecutionGroup(operationId).includes('relationship-discovery')) this.abortController?.abort();
 		this.queuePersist();
 	}
 
@@ -350,11 +358,6 @@ export class VaultIntelligenceRuntime {
 			this.patch({ error: 'Choose a source-file outcome before preparing a proposal.' });
 			return;
 		}
-		if (task.kind !== 'broken-links') {
-			this.patch({ error: `${task.title} has no safe diff materializer yet. The owner choice remains recorded, but no source change was generated.` });
-			return;
-		}
-
 		const changes: VaultMaintenanceProposal['changes'] = [];
 		const warnings: string[] = [];
 		for (const { item, choice } of requested) {
@@ -362,9 +365,9 @@ export class VaultIntelligenceRuntime {
 				warnings.push(`${item.title}: no source file is available for this reference.`);
 				continue;
 			}
-			const patch = brokenLinkPatch(item.projectionLabel, choice.choiceId, choice.choiceValue ?? item.suggestedValue ?? null);
+			const patch = item.proposalPatch ?? brokenLinkPatch(item.projectionLabel, choice.choiceId, choice.choiceValue ?? item.suggestedValue ?? null);
 			if (!patch) {
-				warnings.push(`${item.filePath}: ${choice.choiceId} needs a concrete replacement target.`);
+				warnings.push(`${item.filePath}: ${choice.choiceId} has no detector-supplied exact source patch. Keep the recorded owner decision or prepare this change in its owner editor.`);
 				continue;
 			}
 			const source = await this.readSourceFile(item.filePath);
@@ -388,6 +391,7 @@ export class VaultIntelligenceRuntime {
 				beforeContext: textContext(source.content, patch.beforeText),
 				afterContext: textContext(source.content.replace(patch.beforeText, patch.afterText), patch.afterText),
 				matchCount,
+				selected: true,
 			});
 		}
 		if (changes.length === 0) {
@@ -420,8 +424,13 @@ export class VaultIntelligenceRuntime {
 	async applyProposal(proposalId: string): Promise<void> {
 		const proposal = this.snapshot.proposals.find((candidate) => candidate.id === proposalId);
 		if (!proposal || proposal.status !== 'ready-review') return;
+		const selectedChanges = proposal.changes.filter((change) => change.selected !== false);
+		if (selectedChanges.length === 0) {
+			this.patch({ error: 'Select at least one guarded file change before Apply.' });
+			return;
+		}
 		const sources = new Map<string, Awaited<ReturnType<VaultIntelligenceRuntime['readSourceFile']>>>();
-		for (const path of unique(proposal.changes.map((change) => change.path))) {
+		for (const path of unique(selectedChanges.map((change) => change.path))) {
 			const source = await this.readSourceFile(path);
 			if (!source) {
 				await this.markProposalStale(proposal, `${path}: source file is unavailable.`);
@@ -429,7 +438,7 @@ export class VaultIntelligenceRuntime {
 			}
 			sources.set(path, source);
 		}
-		for (const change of proposal.changes) {
+		for (const change of selectedChanges) {
 			const source = sources.get(change.path);
 			if (!source || source.file.stat.mtime !== change.sourceMtime || sha256Text(source.content) !== change.sourceHash) {
 				await this.markProposalStale(proposal, `${change.path}: source changed after the diff was prepared.`);
@@ -439,7 +448,7 @@ export class VaultIntelligenceRuntime {
 		for (const [path, source] of sources) {
 			if (!source) continue;
 			let next = source.content;
-			for (const change of proposal.changes.filter((candidate) => candidate.path === path)) {
+			for (const change of selectedChanges.filter((candidate) => candidate.path === path)) {
 				if (occurrenceCount(next, change.beforeText) !== change.matchCount) {
 					await this.markProposalStale(proposal, `${path}: the prepared patch no longer has the expected source context.`);
 					return;
@@ -450,7 +459,7 @@ export class VaultIntelligenceRuntime {
 		}
 		const appliedAt = this.now();
 		const task = this.snapshot.tasks.find((candidate) => candidate.id === proposal.taskId) ?? null;
-		const proposalItemIds = new Set(proposal.changes.flatMap((change) => change.atomicItemIds));
+		const proposalItemIds = new Set(selectedChanges.flatMap((change) => change.atomicItemIds));
 		this.patch({
 			proposals: this.snapshot.proposals.map((candidate) => candidate.id === proposal.id ? { ...candidate, status: 'applied', appliedAt, updatedAt: appliedAt } : candidate),
 			tasks: task ? this.snapshot.tasks.map((candidate) => candidate.id === task.id ? {
@@ -463,7 +472,7 @@ export class VaultIntelligenceRuntime {
 			} : candidate) : this.snapshot.tasks,
 			error: null,
 		});
-		this.addActivity('apply', `${task?.title ?? 'Proposal'} applied`, proposal.changes[0]?.path ?? null, proposal.sourceRunId);
+		this.addActivity('apply', `${task?.title ?? 'Proposal'} applied`, selectedChanges[0]?.path ?? null, proposal.sourceRunId);
 		await this.recordEvent('proposal-applied', proposal.sourceRunId, `${task?.kind ?? 'proposal'} applied to ${sources.size} source file${sources.size === 1 ? '' : 's'}.`);
 		await this.flushPersist();
 	}
@@ -488,6 +497,19 @@ export class VaultIntelligenceRuntime {
 		await this.flushPersist();
 	}
 
+	async setProposalChangeSelected(proposalId: string, changeId: string, selected: boolean): Promise<void> {
+		const proposal = this.snapshot.proposals.find((candidate) => candidate.id === proposalId);
+		if (!proposal || proposal.status !== 'ready-review') return;
+		this.patch({
+			proposals: this.snapshot.proposals.map((candidate) => candidate.id === proposalId ? {
+				...candidate,
+				updatedAt: this.now(),
+				changes: candidate.changes.map((change) => change.id === changeId ? { ...change, selected } : change),
+			} : candidate),
+		});
+		await this.flushPersist();
+	}
+
 	async verifyTask(taskId: string): Promise<void> {
 		const config = await loadVaultIntelligenceConfig();
 		const task = this.snapshot.tasks.find((candidate) => candidate.id === taskId);
@@ -497,7 +519,7 @@ export class VaultIntelligenceRuntime {
 		const effective = task.atomicItems.map((item) => item.ownerChoice ?? task.defaultChoice).filter(Boolean);
 		const appliedProposalItems = new Set(this.snapshot.proposals
 			.filter((proposal) => proposal.taskId === task.id && (proposal.status === 'applied' || proposal.status === 'verified'))
-			.flatMap((proposal) => proposal.changes.flatMap((change) => change.atomicItemIds)));
+			.flatMap((proposal) => proposal.changes.filter((change) => change.selected !== false).flatMap((change) => change.atomicItemIds)));
 		const hasUnappliedSourceChoice = task.atomicItems.some((item) => {
 			const choice = item.ownerChoice ?? task.defaultChoice;
 			return Boolean(choice && boundaries.get(choice.choiceId) === 'proposal' && !appliedProposalItems.has(item.id));
@@ -508,7 +530,7 @@ export class VaultIntelligenceRuntime {
 		}
 		const proposalPaths = [...new Set(this.snapshot.proposals
 			.filter((proposal) => proposal.taskId === task.id && proposal.status === 'applied')
-			.flatMap((proposal) => proposal.changes.map((change) => change.path)))];
+			.flatMap((proposal) => proposal.changes.filter((change) => change.selected !== false).map((change) => change.path)))];
 		if (proposalPaths.length > 0) {
 			await this.deps.runCoreIndex('selected', proposalPaths);
 			const verification = await this.deps.resolveLintRuntime()?.runFullScan().catch(() => null) ?? null;
@@ -553,6 +575,13 @@ export class VaultIntelligenceRuntime {
 		}
 		const now = this.now();
 		const previous = this.snapshot.mapTextEntries.find((entry) => entry.communityId === communityId) ?? null;
+		const revision = {
+			id: this.idFactory(),
+			text: text.trim(),
+			sourceFingerprint: this.snapshot.digest?.fingerprint.fingerprint ?? null,
+			createdAt: now,
+			status: 'draft' as const,
+		};
 		const entry: VaultMapTextEntry = {
 			id: previous?.id ?? this.idFactory(),
 			communityId,
@@ -561,12 +590,80 @@ export class VaultIntelligenceRuntime {
 			sourceFingerprint: this.snapshot.digest?.fingerprint.fingerprint ?? null,
 			createdAt: previous?.createdAt ?? now,
 			updatedAt: now,
+			revisions: [
+				...(previous?.revisions ?? []).map((candidate) => candidate.status === 'draft' ? { ...candidate, status: 'superseded' as const } : candidate),
+				revision,
+			],
 		};
 		this.patch({
 			mapTextEntries: [...this.snapshot.mapTextEntries.filter((candidate) => candidate.communityId !== communityId), entry],
 			error: null,
 		});
 		await this.recordEvent('map-text-saved', null, `Map text saved for ${community.label}.`);
+		await this.flushPersist();
+	}
+
+	async publishMapText(communityId: string): Promise<void> {
+		const entry = this.snapshot.mapTextEntries.find((candidate) => candidate.communityId === communityId);
+		if (!entry) return;
+		const now = this.now();
+		this.patch({
+			mapTextEntries: this.snapshot.mapTextEntries.map((candidate) => candidate.communityId === communityId ? {
+				...candidate,
+				updatedAt: now,
+				revisions: (candidate.revisions ?? []).map((revision) => revision.status === 'draft'
+					? { ...revision, status: 'published' as const }
+					: revision.status === 'published' ? { ...revision, status: 'superseded' as const } : revision),
+			} : candidate),
+			error: null,
+		});
+		await this.recordEvent('map-text-published', null, `Map text published for ${entry.communityLabel}.`);
+		await this.flushPersist();
+	}
+
+	async keepMapText(communityId: string): Promise<void> {
+		const entry = this.snapshot.mapTextEntries.find((candidate) => candidate.communityId === communityId);
+		if (!entry) return;
+		const now = this.now();
+		this.patch({
+			mapTextEntries: this.snapshot.mapTextEntries.map((candidate) => candidate.communityId === communityId ? {
+				...candidate,
+				updatedAt: now,
+				revisions: (candidate.revisions ?? []).map((revision) => revision.status === 'draft' ? { ...revision, status: 'kept' as const } : revision),
+			} : candidate),
+			error: null,
+		});
+		await this.recordEvent('map-text-saved', null, `Current map text retained for ${entry.communityLabel}.`);
+		await this.flushPersist();
+	}
+
+	async analyzeActivityThemes(rangeStart: number, rangeEnd: number): Promise<void> {
+		const records = [...this.snapshot.sourceActivity, ...this.snapshot.recentActivity]
+			.filter((record) => record.timestamp >= rangeStart && record.timestamp <= rangeEnd);
+		if (records.length === 0) {
+			this.patch({ error: 'There are no timestamped records in this range to analyze.' });
+			return;
+		}
+		const sessions = buildActivitySessions(records);
+		const sourceRevision = activitySourceRevision(records);
+		const groups = new Map<string, typeof records>();
+		for (const record of records) {
+			const label = activityThemeLabel(record);
+			groups.set(label, [...(groups.get(label) ?? []), record]);
+		}
+		const generatedAt = this.now();
+		const themes: VaultActivityTheme[] = [...groups.entries()].map(([label, grouped]) => ({
+			id: `theme:${sourceRevision}:${label.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+			label,
+			recordIds: grouped.map((record) => record.id),
+			sessionIds: sessions.filter((session) => session.recordIds.some((id) => grouped.some((record) => record.id === id))).map((session) => session.id),
+			confidence: 1,
+			citations: grouped.slice(0, 12).map((record) => ({ recordId: record.id, objectPath: record.objectPath })),
+			generatedAt,
+			sourceRevision,
+		})).sort((left, right) => right.recordIds.length - left.recordIds.length || left.label.localeCompare(right.label));
+		this.patch({ activityThemes: themes, activitySessions: sessions, error: null });
+		await this.recordEvent('activity-themes-generated', null, `Activity themes grouped ${records.length} explicit records; every theme retains its source record citations.`);
 		await this.flushPersist();
 	}
 
@@ -618,9 +715,10 @@ export class VaultIntelligenceRuntime {
 		try {
 			if (!this.snapshot.run.completedStages.includes('discover')) await this.performDiscover();
 			if (this.stopAtCheckpoint()) return;
-			if (!this.snapshot.run.completedStages.includes('index')) await this.performIndex();
-			if (this.stopAtCheckpoint()) return;
-			if (!this.snapshot.run.completedStages.includes('ai')) await this.performAi();
+			await Promise.all([
+				this.snapshot.run.completedStages.includes('index') ? Promise.resolve() : this.performIndex(),
+				this.snapshot.run.completedStages.includes('ai') ? Promise.resolve() : this.performAi(),
+			]);
 			if (this.stopAtCheckpoint()) return;
 			if (!this.snapshot.run.completedStages.includes('publish')) await this.performPublish();
 		} catch (error) {
@@ -636,6 +734,7 @@ export class VaultIntelligenceRuntime {
 
 	private async performDiscover(): Promise<void> {
 		this.startStage('discover', 'Freezing scope and affected inputs.');
+		this.patchOperation('plan-scan', { status: 'running', startedAt: this.now(), evidence: ['Resolving selected scope and affected context.'] });
 		const plan = this.requirePlan();
 		const allFiles = this.deps.app.vault.getFiles();
 		let frozen = allFiles.map((file) => file.path);
@@ -650,6 +749,10 @@ export class VaultIntelligenceRuntime {
 		}
 		this.patchRun({ frozenPaths: frozen });
 		this.completeStage('discover', `${frozen.length.toLocaleString()} objects frozen for this run.`, frozen.length, frozen.length);
+		this.patchOperation('plan-scan', {
+			status: 'completed', processed: frozen.length, total: frozen.length, currentPath: null,
+			completedAt: this.now(), evidence: [`${frozen.length.toLocaleString()} selected objects and affected context frozen.`, 'No user-file write was included in this run plan.'],
+		});
 		await this.recordEvent('stage-changed', this.snapshot.run.id, `Discover completed with ${frozen.length} objects.`);
 		await this.flushPersist();
 	}
@@ -756,7 +859,7 @@ export class VaultIntelligenceRuntime {
 	private async performAi(): Promise<void> {
 		this.startStage('ai', 'Reviewing Vault-wide relationships and preparing evidence.');
 		const ids: VaultScanAiOperationId[] = [
-			'relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis',
+			'relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis',
 		];
 		const enabled = ids.filter((id) => this.operation(id)?.status !== 'skipped');
 		if (enabled.length === 0) {
@@ -770,7 +873,11 @@ export class VaultIntelligenceRuntime {
 			this.completeStage('ai', 'AI Review unavailable; deterministic results retained.', 0, 0, 'partial');
 			return;
 		}
-		for (const id of enabled) this.patchOperation(id, { status: 'running' });
+		for (const id of enabled) this.patchOperation(id, {
+			status: 'running',
+			startedAt: this.now(),
+			evidence: ['Waiting for the shared Vault Review evidence stream.'],
+		});
 		let finalSnapshot: VaultReviewSessionSnapshot | null = null;
 		try {
 			for await (const reviewSnapshot of review.run({ mode: 'fast', signal: this.abortController!.signal })) {
@@ -806,6 +913,10 @@ export class VaultIntelligenceRuntime {
 				total: finalSnapshot?.rounds.length ?? 0,
 				currentPath: null,
 				usage: index === 0 ? usage : { ...EMPTY_USAGE },
+				completedAt: this.now(),
+				evidence: finalSnapshot?.status === 'completed'
+					? [`Vault Review completed ${finalSnapshot.rounds.length} evidence rounds.`, 'This row shares the same provider receipt; no duplicate provider call was made.']
+					: ['The shared Vault Review runtime did not return a completed evidence stream.'],
 				error: finalSnapshot?.status === 'completed' ? null : finalSnapshot?.error ?? 'AI Review did not complete.',
 			});
 		}
@@ -894,9 +1005,9 @@ export class VaultIntelligenceRuntime {
 	}
 
 	private recoverPersistedState(persisted: VaultIntelligencePersistedState | null): VaultIntelligencePersistedState {
-		if (!persisted || (persisted.version !== 1 && persisted.version !== 2)) {
+		if (!persisted || (persisted.version !== 1 && persisted.version !== 2 && persisted.version !== 3)) {
 			return {
-				version: 2,
+				version: 3,
 				updatedAt: this.now(),
 				changedCursorAt: null,
 				activeRun: null,
@@ -905,6 +1016,7 @@ export class VaultIntelligenceRuntime {
 				recentActivity: [],
 				proposals: [],
 				mapTextEntries: [],
+				activityThemes: [],
 			};
 		}
 		const legacy = persisted as VaultIntelligencePersistedState & { changedCursorAt?: number | null };
@@ -924,9 +1036,10 @@ export class VaultIntelligenceRuntime {
 		} : null;
 		const migrated = {
 			...persisted,
-			version: 2 as const,
+			version: 3 as const,
 			proposals: persisted.proposals ?? [],
 			mapTextEntries: persisted.mapTextEntries ?? [],
+			activityThemes: persisted.activityThemes ?? [],
 			activeRun,
 		};
 		if (activeRun?.status !== 'running' && activeRun?.status !== 'stopping') return migrated;
@@ -1073,7 +1186,7 @@ export class VaultIntelligenceRuntime {
 			? this.snapshot.run
 			: null;
 		const state: VaultIntelligencePersistedState = {
-			version: 2,
+			version: 3,
 			updatedAt: this.now(),
 			changedCursorAt: this.snapshot.changedCursorAt,
 			activeRun,
@@ -1082,6 +1195,7 @@ export class VaultIntelligenceRuntime {
 			recentActivity: this.snapshot.recentActivity.slice(-500),
 			proposals: this.snapshot.proposals.slice(-120),
 			mapTextEntries: this.snapshot.mapTextEntries.slice(-120),
+			activityThemes: this.snapshot.activityThemes.slice(-80),
 		};
 		this.persistenceTail = this.persistenceTail.catch(() => undefined).then(() => store.save(state));
 	}
@@ -1119,7 +1233,10 @@ function normalizePlan(
 	routes: Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>>,
 ): VaultScanPlan {
 	const migratedPlan = migratePlanChecks(plan, config);
-	const incoming = new Map(migratedPlan.aiOperations.map((operation) => [operation.id, operation]));
+	const incoming = new Map(migratedPlan.aiOperations.map((operation) => [
+		operation.id === 'relationship-review' ? 'relationship-discovery' : operation.id,
+		operation,
+	]));
 	const normalizedOperations = config.scanOperations.map((definition) => {
 		const candidate = incoming.get(definition.id) ?? {
 			id: definition.id,
@@ -1140,7 +1257,7 @@ function normalizePlan(
 	});
 	for (const group of [
 		['file-summaries', 'ai-tags'],
-		['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis'],
+		['relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis'],
 	] as const) {
 		const enabled = group.every((id) => normalizedOperations.find((operation) => operation.id === id)?.enabled);
 		for (const operation of normalizedOperations) {
@@ -1149,15 +1266,16 @@ function normalizePlan(
 	}
 	if (migratedPlan.scope.mode !== 'entire') {
 		for (const operation of normalizedOperations) {
-			if (operationExecutionGroup(operation.id).includes('relationship-review')) operation.enabled = false;
+			if (operationExecutionGroup(operation.id).includes('relationship-discovery')) operation.enabled = false;
 		}
 	}
 	return {
 		...migratedPlan,
 		scope: { ...migratedPlan.scope, selectedPaths: unique(migratedPlan.scope.selectedPaths) },
-		enabledCheckIds: unique(migratedPlan.enabledCheckIds).filter((checkId) => (
-			config.checkGroups.some((group) => group.checks.some((check) => check.checkId === checkId))
-		)),
+			enabledCheckIds: unique(migratedPlan.enabledCheckIds).filter((checkId) => (
+				config.checkGroups.some((group) => group.checks.some((check) => (check.checkIds ?? [check.checkId]).includes(checkId)))
+			)),
+			indexOutputs: normalizeIndexOutputs(migratedPlan, config),
 		aiOperations: normalizedOperations,
 	};
 }
@@ -1176,10 +1294,25 @@ function migratePlanChecks(plan: VaultScanPlan, config: VaultIntelligenceConfig)
 
 function operationExecutionGroup(id: VaultScanAiOperationId): readonly VaultScanAiOperationId[] {
 	if (id === 'file-summaries' || id === 'ai-tags') return ['file-summaries', 'ai-tags'];
-	if (id === 'relationship-review' || id === 'community-analysis' || id === 'file-proposals' || id === 'maintenance-synthesis') {
-		return ['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis'];
+	if (id === 'relationship-review' || id === 'relationship-discovery' || id === 'semantic-review' || id === 'community-analysis' || id === 'hub-bridge-analysis' || id === 'file-proposals' || id === 'maintenance-synthesis') {
+		return ['relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis'];
 	}
 	return [id];
+}
+
+function normalizeIndexOutputs(plan: VaultScanPlan, config: VaultIntelligenceConfig): NonNullable<VaultScanPlan['indexOutputs']> {
+	const incoming = new Map((plan.indexOutputs ?? []).map((output) => [output.id, output]));
+	return config.indexOutputs.map((definition) => {
+		const current = incoming.get(definition.id);
+		return {
+			id: definition.id,
+			enabled: definition.availability === 'required' || definition.availability === 'automatic'
+				? true
+				: (current?.enabled ?? definition.availability === 'optional'),
+			availability: definition.availability,
+			operationIds: definition.operationIds,
+		};
+	});
 }
 
 function mergeScopedMaintenanceTasks(options: {
@@ -1372,6 +1505,53 @@ async function collectSourceActivity(outputs: GeneratedOutputPersistenceRuntime)
 		.filter((record) => Number.isFinite(record.timestamp) && record.timestamp > 0)
 		.sort((left, right) => right.timestamp - left.timestamp)
 		.slice(0, 500);
+}
+
+function buildActivitySessions(records: readonly import('@/core/types/vault-intelligence').VaultActivityRecord[]): VaultActivitySession[] {
+	const ordered = [...records]
+		.filter((record) => Number.isFinite(record.timestamp) && record.timestamp > 0)
+		.sort((left, right) => left.timestamp - right.timestamp);
+	const sessions: VaultActivitySession[] = [];
+	for (const record of ordered) {
+		const previous = sessions[sessions.length - 1];
+		const sharedObject = previous?.objectPaths.some((path) => path && path === record.objectPath) ?? false;
+		const adjacent = previous ? record.timestamp - previous.endedAt <= 45 * 60 * 1000 : false;
+		if (!previous || (!sharedObject && !adjacent)) {
+			sessions.push({
+				id: `session:${record.id}`,
+				startedAt: record.timestamp,
+				endedAt: record.timestamp,
+				recordIds: [record.id],
+				objectPaths: record.objectPath ? [record.objectPath] : [],
+				reason: 'single-record',
+				label: record.label,
+			});
+			continue;
+		}
+		previous.endedAt = record.timestamp;
+		previous.recordIds.push(record.id);
+		if (record.objectPath && !previous.objectPaths.includes(record.objectPath)) previous.objectPaths.push(record.objectPath);
+		previous.reason = sharedObject ? 'shared-object' : 'adjacent-time';
+		previous.label = previous.objectPaths[0] ?? previous.label;
+	}
+	return sessions.reverse().slice(0, 160);
+}
+
+function activitySourceRevision(records: readonly import('@/core/types/vault-intelligence').VaultActivityRecord[]): string {
+	return sha256Text(records
+		.slice()
+		.sort((left, right) => left.id.localeCompare(right.id))
+		.map((record) => `${record.id}:${record.timestamp}:${record.objectPath ?? ''}`)
+		.join('|'));
+}
+
+function activityThemeLabel(record: import('@/core/types/vault-intelligence').VaultActivityRecord): string {
+	if (record.kind === 'chat') return 'Chat context';
+	if (record.kind === 'composer') return 'Composer work';
+	if (record.kind === 'project') return 'Project changes';
+	if (record.kind === 'scan' || record.kind === 'owner-choice' || record.kind === 'apply' || record.kind === 'verify') return 'Vault Intelligence';
+	const folder = record.objectPath?.includes('/') ? record.objectPath.slice(0, record.objectPath.indexOf('/')) : null;
+	return folder ? `Files · ${folder}` : 'File edits';
 }
 
 function eventTimestamp(payload: Record<string, unknown>): number | null {

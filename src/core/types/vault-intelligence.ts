@@ -19,13 +19,41 @@ export type VaultMaintenanceTaskKind =
 	| 'unusual-notes'
 	| 'unreadable-files';
 export type VaultScanAiOperationId =
+	| 'plan-scan'
 	| 'embedding-refresh'
 	| 'file-summaries'
 	| 'ai-tags'
-	| 'relationship-review'
+	| 'relationship-discovery'
+	| 'semantic-review'
 	| 'community-analysis'
+	| 'hub-bridge-analysis'
 	| 'file-proposals'
-	| 'maintenance-synthesis';
+	| 'maintenance-synthesis'
+	/** Legacy persisted V2 run id. New plans normalize this to relationship-discovery. */
+	| 'relationship-review';
+
+export type VaultScanIndexOutputId =
+	| 'fulltext'
+	| 'embeddings'
+	| 'markdown-summary'
+	| 'keywords'
+	| 'ai-topic-tags'
+	| 'functional-tags'
+	| 'context-entities'
+	| 'inferred-date'
+	| 'links-tags-folders'
+	| 'semantic-relations'
+	| 'community-signals'
+	| 'search-ranking-signals'
+	| 'pdf-text'
+	| 'canvas-text';
+
+export interface VaultScanIndexOutputPlan {
+	id: VaultScanIndexOutputId;
+	enabled: boolean;
+	availability: 'required' | 'automatic' | 'optional' | 'later';
+	operationIds: VaultScanAiOperationId[];
+}
 
 export interface VaultScanScope {
 	mode: VaultScanScopeMode;
@@ -63,6 +91,8 @@ export interface VaultScanOperationRoute {
 export interface VaultScanPlan {
 	scope: VaultScanScope;
 	enabledCheckIds: string[];
+	/** The current-run output plan; Index settings still own long-lived defaults. */
+	indexOutputs?: VaultScanIndexOutputPlan[];
 	aiOperations: VaultScanAiOperationPlan[];
 	createdAt: number;
 }
@@ -81,6 +111,10 @@ export interface VaultScanOperationState extends VaultScanAiOperationPlan {
 	currentPath: string | null;
 	usage: VaultScanUsage;
 	error: string | null;
+	/** Observable runtime facts, never a synthetic AI claim. */
+	evidence?: string[];
+	startedAt?: number | null;
+	completedAt?: number | null;
 }
 
 export interface VaultScanStageState {
@@ -127,6 +161,8 @@ export interface VaultMaintenanceAtomicItem {
 	suggestedChoiceId: string | null;
 	/** A concrete candidate supplied by the detector, never a guessed replacement. */
 	suggestedValue?: string | null;
+	/** Optional detector-supplied patch. It is only materialized after exact source matching. */
+	proposalPatch?: { beforeText: string; afterText: string; label?: string } | null;
 	ownerChoice: VaultMaintenanceOwnerChoice | null;
 }
 
@@ -196,6 +232,7 @@ export interface VaultProposalFileChange {
 	beforeContext: string;
 	afterContext: string;
 	matchCount: number;
+	selected?: boolean;
 }
 
 export interface VaultMaintenanceProposal {
@@ -219,10 +256,40 @@ export interface VaultMapTextEntry {
 	sourceFingerprint: string | null;
 	createdAt: number;
 	updatedAt: number;
+	revisions?: VaultMapTextRevision[];
+}
+
+export interface VaultMapTextRevision {
+	id: string;
+	text: string;
+	sourceFingerprint: string | null;
+	createdAt: number;
+	status: 'draft' | 'published' | 'kept' | 'superseded';
+}
+
+export interface VaultActivitySession {
+	id: string;
+	startedAt: number;
+	endedAt: number;
+	recordIds: string[];
+	objectPaths: string[];
+	reason: 'shared-object' | 'adjacent-time' | 'single-record';
+	label: string;
+}
+
+export interface VaultActivityTheme {
+	id: string;
+	label: string;
+	recordIds: string[];
+	sessionIds: string[];
+	confidence: number;
+	citations: Array<{ recordId: string; objectPath: string | null }>;
+	generatedAt: number;
+	sourceRevision: string;
 }
 
 export interface VaultIntelligencePersistedState {
-	version: 1 | 2;
+	version: 1 | 2 | 3;
 	updatedAt: number;
 	changedCursorAt: number | null;
 	activeRun: VaultScanRunState | null;
@@ -231,12 +298,13 @@ export interface VaultIntelligencePersistedState {
 	recentActivity: VaultActivityRecord[];
 	proposals?: VaultMaintenanceProposal[];
 	mapTextEntries?: VaultMapTextEntry[];
+	activityThemes?: VaultActivityTheme[];
 }
 
 export interface VaultIntelligenceEvent {
 	id: string;
 	timestamp: number;
-	type: 'run-started' | 'stage-changed' | 'operation-changed' | 'run-completed' | 'run-failed' | 'owner-choice' | 'review-decisions-saved' | 'proposal-prepared' | 'proposal-applied' | 'task-applied' | 'task-verified' | 'map-text-saved';
+	type: 'run-started' | 'stage-changed' | 'operation-changed' | 'run-completed' | 'run-failed' | 'owner-choice' | 'review-decisions-saved' | 'proposal-prepared' | 'proposal-applied' | 'task-applied' | 'task-verified' | 'map-text-saved' | 'map-text-published' | 'activity-themes-generated';
 	runId: string | null;
 	detail: string;
 }

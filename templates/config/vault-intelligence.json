@@ -2,42 +2,61 @@
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
   "checkGroups": [
-    { "id": "connections", "displayOrder": 3, "label": "Relationships & Communities", "description": "Broken references, isolated areas and fragile paths between knowledge regions.", "checks": [
-      { "checkId": "S-ISLAND-CLUSTER", "label": "Island Communities", "description": "Find knowledge regions with no verified connection to the rest of the Vault." },
-      { "checkId": "S-FRAGILE-BRIDGE", "label": "Fragile bridges", "description": "Find important regions connected through too few notes or references." },
-      { "checkId": "S-MISSING-BACKLINK", "label": "Missing backlinks", "description": "Find one-way references that are missing expected return context." },
-      { "checkId": "S-SOFT-ORPHAN", "label": "Weakly connected notes", "description": "Find notes whose current connections provide little usable context." },
-      { "checkId": "S-ORPHAN", "label": "Unconnected notes", "description": "Find notes outside the current verified knowledge structure." },
-      { "checkId": "S-BROKEN-LINK", "label": "Broken links", "description": "Find references whose exact target cannot be resolved." }
+    { "id": "knowledge-index", "displayOrder": 1, "label": "Knowledge Index", "description": "Five rebuildable Index layers. The detailed output plan below owns their individual enablement.", "checks": [
+      { "checkId": "index-core", "checkIds": [], "label": "Core Search", "description": "Keep full-text passages and extraction readiness visible for this run." },
+      { "checkId": "index-embeddings", "checkIds": [], "label": "Embeddings", "description": "Refresh semantic retrieval only for eligible indexed text." },
+      { "checkId": "index-summaries", "checkIds": [], "label": "Machine summaries", "description": "Refresh Peak-owned summaries without writing Markdown." },
+      { "checkId": "G-UNTAGGED", "checkIds": ["G-UNTAGGED"], "label": "Tag coverage", "description": "Check the user-metadata policy separately from machine AI tags." },
+      { "checkId": "G-TAG-EXPLOSION", "checkIds": ["G-TAG-EXPLOSION"], "label": "Tag density", "description": "Find metadata that needs an owner-reviewed taxonomy decision." }
     ] },
-    { "id": "content", "displayOrder": 2, "label": "Content health", "description": "Readable content, note shape, metadata and duplicated material.", "checks": [
-      { "checkId": "C-EMPTY", "label": "Empty notes", "description": "Find notes with no meaningful readable content." },
-      { "checkId": "C-OVERSIZED", "label": "Oversized notes", "description": "Find notes large enough to benefit from an owner-reviewed split." },
-      { "checkId": "C-FRONTMATTER-MISSING", "label": "Missing properties", "description": "Find notes that do not have the expected frontmatter block." },
-      { "checkId": "C-NAMING-VIOLATION", "label": "Unclear names", "description": "Find temporary or malformed note names that need owner intent." },
-      { "checkId": "C-DUPLICATE", "label": "Duplicate content", "description": "Find notes with substantially duplicated readable content." },
-      { "checkId": "C-STUB", "label": "Incomplete notes", "description": "Find short notes that appear unfinished rather than intentionally concise." }
+    { "id": "content", "displayOrder": 2, "label": "Content health", "description": "Four owner-readable checks for note shape and source quality.", "checks": [
+      { "checkId": "C-EMPTY", "checkIds": ["C-EMPTY", "C-STUB"], "label": "Empty & incomplete", "description": "Find notes with no meaningful content or a clearly unfinished body." },
+      { "checkId": "C-OVERSIZED", "checkIds": ["C-OVERSIZED"], "label": "Oversized notes", "description": "Find sources that may need an owner-reviewed split." },
+      { "checkId": "C-DUPLICATE", "checkIds": ["C-DUPLICATE"], "label": "Duplicate content", "description": "Find substantially duplicated readable material." },
+      { "checkId": "C-FRONTMATTER-MISSING", "checkIds": ["C-FRONTMATTER-MISSING", "C-NAMING-VIOLATION"], "label": "Properties & names", "description": "Keep metadata and naming issues together until an explicit proposal exists." }
     ] },
-    { "id": "tags", "displayOrder": 1, "label": "Knowledge Index", "description": "Deterministic tag-shape tasks that complement rebuildable machine Index outputs.", "checks": [
-      { "checkId": "G-TAG-EXPLOSION", "label": "Too many tags", "description": "Find notes whose tag count is far above the Vault baseline." },
-      { "checkId": "G-UNTAGGED", "label": "Untagged notes", "description": "Find notes without user-authored tags where the current policy expects them." }
+    { "id": "connections", "displayOrder": 3, "label": "Relationships & Communities", "description": "Eight structural facts and review signals across links, Communities, bridges and drift.", "checks": [
+      { "checkId": "S-BROKEN-LINK", "checkIds": ["S-BROKEN-LINK"], "label": "Broken links", "description": "Find exact references whose target cannot be resolved." },
+      { "checkId": "S-MISSING-BACKLINK", "checkIds": ["S-MISSING-BACKLINK"], "label": "Missing backlinks", "description": "Find one-way references missing expected return context." },
+      { "checkId": "S-ORPHAN", "checkIds": ["S-ORPHAN"], "label": "Unconnected notes", "description": "Find notes outside the current verified structure." },
+      { "checkId": "S-SOFT-ORPHAN", "checkIds": ["S-SOFT-ORPHAN"], "label": "Weakly connected notes", "description": "Find notes whose current links provide little usable context." },
+      { "checkId": "S-ISLAND-CLUSTER", "checkIds": ["S-ISLAND-CLUSTER"], "label": "Island Communities", "description": "Find knowledge regions disconnected from the rest of the Vault." },
+      { "checkId": "S-FRAGILE-BRIDGE", "checkIds": ["S-FRAGILE-BRIDGE"], "label": "Fragile bridges", "description": "Find important regions connected through too few notes." },
+      { "checkId": "T-DECAYING-BRIDGE", "checkIds": ["T-DECAYING-BRIDGE"], "label": "Decaying bridges", "description": "Find cross-Community connections losing current support." },
+      { "checkId": "T-RECENT-DRIFT", "checkIds": ["T-RECENT-DRIFT"], "label": "Recent drift", "description": "Find recently changed notes moving away from their established region." }
     ] },
-    { "id": "aging", "displayOrder": 4, "label": "Reviewable follow-up", "description": "Stale folders, Communities, bridges and Hub summaries that may require owner review.", "checks": [
-      { "checkId": "T-ABANDONED-FOLDER", "label": "Inactive folders", "description": "Find folders whose contents have not changed within the configured window." },
-      { "checkId": "T-ABANDONED-CLUSTER", "label": "Inactive Communities", "description": "Find knowledge regions whose members have stopped changing." },
-      { "checkId": "T-RECENT-DRIFT", "label": "Recent drift", "description": "Find recent notes moving away from their established knowledge region." },
-      { "checkId": "T-DECAYING-BRIDGE", "label": "Decaying bridges", "description": "Find important cross-Community connections losing current support." },
-      { "checkId": "T-STALE-HUB", "label": "Stale Hub notes", "description": "Find Community index notes that no longer reflect their current members." }
+    { "id": "follow-up", "displayOrder": 4, "label": "Reviewable follow-up", "description": "Two grouped owner paths: freshness decisions and recoverable readiness failures.", "checks": [
+      { "checkId": "T-STALE-HUB", "checkIds": ["T-STALE-HUB", "T-ABANDONED-FOLDER", "T-ABANDONED-CLUSTER"], "label": "Freshness & lifecycle", "description": "Group stale Hubs, inactive folders and inactive Communities into owner decisions." },
+      { "checkId": "recovery-readiness", "checkIds": [], "label": "Recovery readiness", "description": "Retain parse and Index exceptions as retryable follow-up instead of hiding partial success." }
     ] }
   ],
   "scanOperations": [
+    { "id": "plan-scan", "group": "plan", "label": "Plan scan", "description": "Freeze the selected scope, affected context and approved routes before work begins.", "defaultEnabled": true, "model": "Local planning", "provider": "Peak", "estimatedTokens": 0, "estimatedCostUsd": 0 },
     { "id": "embedding-refresh", "group": "index", "label": "Embedding refresh", "description": "Build vectors after full-text passages and chunks are ready.", "defaultEnabled": true, "model": "Configured embedding model", "provider": "Configured provider", "estimatedTokens": 0, "estimatedCostUsd": 0 },
     { "id": "file-summaries", "group": "index", "label": "File summaries", "description": "Refresh machine summaries used by Search and maintenance context.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimatedTokens": 16800, "estimatedCostUsd": 0.046 },
     { "id": "ai-tags", "group": "index", "label": "AI Tags and entities", "description": "Generate rebuildable machine-only knowledge without editing Markdown or YAML.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimatedTokens": 12200, "estimatedCostUsd": 0.034 },
-    { "id": "relationship-review", "group": "vault", "label": "Relationship review", "description": "Review changed sources and cross-Community connections.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 21600, "estimatedCostUsd": 0.061 },
-    { "id": "community-analysis", "group": "vault", "label": "Community analysis", "description": "Explain current Communities, Hubs and bridge evidence.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 19400, "estimatedCostUsd": 0.055 },
+    { "id": "relationship-discovery", "group": "relations", "label": "Relationship discovery", "description": "Compare changed and known content for cited candidate relationships.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 30000, "estimatedCostUsd": 0.110 },
+    { "id": "semantic-review", "group": "relations", "label": "Semantic review", "description": "Retain or reject candidates against cited source and current history.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 18000, "estimatedCostUsd": 0.070 },
+    { "id": "community-analysis", "group": "structure", "label": "Community analysis", "description": "Compare Community identity, boundary drift and current graph evidence.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 22000, "estimatedCostUsd": 0.090 },
+    { "id": "hub-bridge-analysis", "group": "structure", "label": "Hub & bridge analysis", "description": "Inspect central notes, stale Hubs and cross-Community bridge facts.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 13000, "estimatedCostUsd": 0.050 },
     { "id": "file-proposals", "group": "follow-up", "label": "Proposal evidence", "description": "Generate review evidence that may support a later file proposal; this Run does not create or apply a writable diff.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 8000, "estimatedCostUsd": 0.01 },
     { "id": "maintenance-synthesis", "group": "follow-up", "label": "Maintenance synthesis", "description": "Keep only follow-up with a real owner action.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 8000, "estimatedCostUsd": 0.01 }
+  ],
+  "indexOutputs": [
+    { "id": "fulltext", "label": "Full-text index", "group": "core", "description": "Keyword and exact-phrase retrieval.", "availability": "required", "operationIds": [] },
+    { "id": "embeddings", "label": "Embeddings", "group": "core", "description": "Semantic Search and similar notes.", "availability": "optional", "operationIds": ["embedding-refresh"] },
+    { "id": "markdown-summary", "label": "Markdown summaries", "group": "summaries", "description": "Short machine summaries for supported Markdown text.", "availability": "optional", "operationIds": ["file-summaries"] },
+    { "id": "keywords", "label": "Keywords & key sentences", "group": "tags", "description": "Deterministic local extraction.", "availability": "automatic", "operationIds": [] },
+    { "id": "ai-topic-tags", "label": "AI topic tags", "group": "tags", "description": "Peak-owned concepts for discovery and grouping.", "availability": "optional", "operationIds": ["ai-tags"] },
+    { "id": "functional-tags", "label": "Functional tags", "group": "tags", "description": "Machine document roles such as plans and decisions.", "availability": "optional", "operationIds": ["ai-tags"] },
+    { "id": "context-entities", "label": "People, places & dates", "group": "tags", "description": "Evidence-backed entities from supported text.", "availability": "optional", "operationIds": ["ai-tags"] },
+    { "id": "inferred-date", "label": "Inferred document date", "group": "tags", "description": "Only when source evidence supports a date.", "availability": "optional", "operationIds": ["ai-tags"] },
+    { "id": "links-tags-folders", "label": "Links, tags & folders", "group": "relationships", "description": "Existing deterministic relations.", "availability": "automatic", "operationIds": [] },
+    { "id": "semantic-relations", "label": "Semantic similarities", "group": "relationships", "description": "Evidence-backed candidate relationships.", "availability": "optional", "operationIds": ["relationship-discovery", "semantic-review"] },
+    { "id": "community-signals", "label": "Communities & Hub signals", "group": "relationships", "description": "Community and Hub review evidence.", "availability": "optional", "operationIds": ["community-analysis", "hub-bridge-analysis"] },
+    { "id": "search-ranking-signals", "label": "Search ranking signals", "group": "relationships", "description": "Local relationship-aware ranking facts.", "availability": "automatic", "operationIds": [] },
+    { "id": "pdf-text", "label": "PDF text extraction", "group": "content", "description": "Read embedded text from supported PDFs.", "availability": "automatic", "operationIds": [] },
+    { "id": "canvas-text", "label": "Canvas & Excalidraw text", "group": "content", "description": "Read visible text and references from supported canvases.", "availability": "automatic", "operationIds": [] }
   ],
   "tasks": [
     { "kind": "file-properties", "category": "review", "initialState": "needs-choice", "title": "Review note property findings", "typeLabel": "Notes · Properties", "impact": "medium", "signalIds": ["C-FRONTMATTER-MISSING"], "choices": [

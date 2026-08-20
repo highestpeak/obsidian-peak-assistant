@@ -306,7 +306,7 @@ function VaultMap({ snapshot, runtime, config, initialSurface, initialDate, init
 			<Button variant="ghost" className={surface === 'contents' ? 'is-active' : ''} onClick={() => setSurface('contents')}>Vault contents</Button>
 			<Button variant="ghost" className={surface === 'activity' ? 'is-active' : ''} onClick={() => setSurface('activity')}>Activity</Button>
 		</div>
-		{surface === 'contents' ? <VaultContents snapshot={snapshot} runtime={runtime} config={config} initialExtension={initialExtension} onOpenTask={onOpenTask} onOpenMapText={onOpenMapText} /> : <ActivityView snapshot={snapshot} initialDate={initialDate} />}
+		{surface === 'contents' ? <VaultContents snapshot={snapshot} runtime={runtime} config={config} initialExtension={initialExtension} onOpenTask={onOpenTask} onOpenMapText={onOpenMapText} /> : <ActivityView snapshot={snapshot} runtime={runtime} initialDate={initialDate} />}
 	</div>;
 }
 
@@ -351,10 +351,12 @@ function MapTextWorkspace({ snapshot, runtime, extension, onBack }: {
 	useEffect(() => { setText(snapshot.mapTextEntries.find((candidate) => candidate.communityId === communityId)?.text ?? ''); }, [communityId, snapshot.mapTextEntries]);
 	if (communities.length === 0) return <div className="pk-vi-page"><Breadcrumb items={[{ label: 'Vault Intelligence', action: () => onBack(extension) }, { label: 'Map text' }]} /><div className="pk-vi-empty">Build the Knowledge Index before adding a Community map description.</div></div>;
 	const community = communities.find((candidate) => candidate.id === communityId) ?? communities[0]!;
+	const revisions = [...(entry?.revisions ?? [])].sort((left, right) => right.createdAt - left.createdAt);
+	const latestRevision = revisions[0] ?? null;
 	return <div className="pk-vi-page pk-vi-map-text-workspace">
 		<Breadcrumb items={[{ label: 'Vault Intelligence', action: () => onBack(extension) }, { label: 'Vault map', action: () => onBack(extension) }, { label: 'Map text' }]} />
 		<div className="pk-vi-page-head"><div><span className="pk-vi-page-title">Map text</span><span className="pk-vi-page-description">Describe what a real indexed Community represents. This annotation lives in Peak state and records the index fingerprint it was based on.</span></div><span className="pk-vi-map-freshness">{entry?.sourceFingerprint === snapshot.digest?.fingerprint.fingerprint ? 'Matches current Index' : entry ? 'Index changed since this text' : 'Not described yet'}</span></div>
-		<div className="pk-vi-map-text-layout"><section className="pk-vi-card pk-vi-community-list"><span className="pk-vi-card-title">Communities</span>{communities.map((candidate) => <Button key={candidate.id} variant="ghost" className={candidate.id === community.id ? 'is-active' : ''} onClick={() => setCommunityId(candidate.id)}><span><strong>{candidate.label}</strong><small>{candidate.memberCount} notes · {candidate.dominantTopics.slice(0, 2).join(' · ') || 'No topics recorded'}</small></span><ChevronRight size={15} /></Button>)}</section><section className="pk-vi-card pk-vi-map-text-editor"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">{community.label}</span><span className="pk-vi-card-caption">{community.memberCount} indexed notes · current structure is evidence only.</span></div></div><label><span>Map description</span><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="Write a grounded description for this Community…" /></label><div className="pk-vi-map-text-facts"><span><small>Topics</small><strong>{community.dominantTopics.join(' · ') || 'No topics recorded'}</strong></span><span><small>Stored revision</small><strong>{entry ? formatDateTime(entry.updatedAt) : 'None'}</strong></span></div><div className="pk-vi-footer-actions"><Button variant="ghost" onClick={() => onBack(extension)}>Cancel</Button><Button className="pk-vi-primary" onClick={() => void runtime.saveMapText(community.id, text)}>Save map text</Button></div></section></div>
+		<div className="pk-vi-map-text-layout"><section className="pk-vi-card pk-vi-community-list"><span className="pk-vi-card-title">Communities</span>{communities.map((candidate) => <Button key={candidate.id} variant="ghost" className={candidate.id === community.id ? 'is-active' : ''} onClick={() => setCommunityId(candidate.id)}><span><strong>{candidate.label}</strong><small>{candidate.memberCount} notes · {candidate.dominantTopics.slice(0, 2).join(' · ') || 'No topics recorded'}</small></span><ChevronRight size={15} /></Button>)}</section><section className="pk-vi-card pk-vi-map-text-editor"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">{community.label}</span><span className="pk-vi-card-caption">{community.memberCount} indexed notes · current structure is evidence only.</span></div><span className={`pk-vi-map-text-state is-${latestRevision?.status ?? 'draft'}`}>{latestRevision?.status ?? 'draft'}</span></div><label><span>Map description</span><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="Write a grounded description for this Community…" /></label><div className="pk-vi-map-text-facts"><span><small>Topics</small><strong>{community.dominantTopics.join(' · ') || 'No topics recorded'}</strong></span><span><small>Stored revision</small><strong>{entry ? formatDateTime(entry.updatedAt) : 'None'}</strong></span><span><small>Index fingerprint</small><strong>{entry?.sourceFingerprint === snapshot.digest?.fingerprint.fingerprint ? 'Current' : entry ? 'Changed' : 'None'}</strong></span></div><details className="pk-vi-map-text-history"><summary><span><strong>Version history</strong><small>{revisions.length} stored revisions · drafts, published text, and keep decisions are distinct</small></span><ChevronDown size={15} /></summary><div>{revisions.length === 0 ? <span className="pk-vi-empty">No stored revision yet.</span> : revisions.map((revision) => <article key={revision.id}><span><strong>{revision.status}</strong><small>{formatDateTime(revision.createdAt)} · {revision.sourceFingerprint === snapshot.digest?.fingerprint.fingerprint ? 'current Index' : 'older Index'}</small></span><p>{revision.text || 'Empty description'}</p></article>)}</div></details><div className="pk-vi-footer-actions"><Button variant="ghost" onClick={() => onBack(extension)}>Cancel</Button><Button variant="ghost" disabled={!entry} onClick={() => void runtime.keepMapText(community.id)}>Keep current</Button><Button variant="ghost" disabled={!entry} onClick={() => void runtime.publishMapText(community.id)}>Publish revision</Button><Button className="pk-vi-primary" onClick={() => void runtime.saveMapText(community.id, text)}>Save draft</Button></div></section></div>
 	</div>;
 }
 
@@ -422,8 +424,9 @@ function KnowledgeGraph({ snapshot, runtime, selectedExtension }: {
 	</div>;
 }
 
-function ActivityView({ snapshot, initialDate }: { snapshot: VaultIntelligenceSnapshot; initialDate: string | null }) {
+function ActivityView({ snapshot, runtime, initialDate }: { snapshot: VaultIntelligenceSnapshot; runtime: VaultIntelligenceWorkspaceRuntime; initialDate: string | null }) {
 	const [range, setRange] = useState<ActivityRange>(365);
+	const [mode, setMode] = useState<'recorded' | 'themes'>('recorded');
 	const [focusedDate, setFocusedDate] = useState<string | null>(initialDate);
 	useEffect(() => { setFocusedDate(initialDate); }, [initialDate]);
 	const records = allRecordedActivity(snapshot);
@@ -436,25 +439,22 @@ function ActivityView({ snapshot, initialDate }: { snapshot: VaultIntelligenceSn
 	const maxVault = Math.max(1, ...buckets.map((bucket) => bucket.vaultCount));
 	const maxChat = Math.max(1, ...buckets.map((bucket) => bucket.chatCount));
 	const maxComposer = Math.max(1, ...buckets.map((bucket) => bucket.composerCount));
-	const sessions = buildRecordedSessions(periodRecords).slice(0, 6);
+	const sessions = snapshot.activitySessions.filter((session) => session.endedAt >= Date.now() - range * 86_400_000).slice(0, 6);
+	const themes = snapshot.activityThemes.filter((theme) => theme.citations.some((citation) => periodRecords.some((record) => record.id === citation.recordId)));
 	const activeDays = calendar.filter((day) => day.count > 0).length;
 	const focusedRecords = focusedDate ? periodRecords.filter((record) => toLocalDateKey(new Date(record.timestamp)) === focusedDate) : [];
-	return <div className="pk-vi-activity-workspace">
-		<section className="pk-vi-activity-mode"><div className="pk-vi-segmented"><Button variant="ghost" className="is-active">Recorded activity</Button><Button variant="ghost" disabled title="No Activity analysis run is stored">AI themes · Not analyzed</Button></div><span>Each lane declares its source: file mtimes, durable chat/composer records, and Vault Intelligence receipts. Project history has no registered event stream yet.</span></section>
+	const rangeStart = Date.now() - range * 86_400_000;
+	return <div className="pk-vi-activity-workspace pk-vi-activity-grid">
+		<section className="pk-vi-activity-mode"><div className="pk-vi-segmented"><Button variant="ghost" className={mode === 'recorded' ? 'is-active' : ''} onClick={() => setMode('recorded')}>Recorded activity</Button><Button variant="ghost" className={mode === 'themes' ? 'is-active' : ''} onClick={() => setMode('themes')}>Evidence themes{themes.length ? ` · ${themes.length}` : ''}</Button></div><span>Each lane declares its source: file mtimes, durable chat/composer records, and Vault Intelligence receipts. Themes are generated only from those citations and remain Peak-owned annotations.</span></section>
 		<div className="pk-vi-activity-layout">
 			<section className="pk-vi-card pk-vi-activity-timeline">
 				<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Recorded source timeline</span><span className="pk-vi-card-caption">Each lane keeps its source contract visible. Empty space means no recorded evidence.</span></div><div className="pk-vi-segmented" aria-label="Activity range">{([[30, '30d'], [90, '90d'], [183, '6m'], [365, '1y']] as const).map(([value, label]) => <Button key={value} variant="ghost" className={range === value ? 'is-active' : ''} onClick={() => setRange(value)}>{label}</Button>)}</div></div>
-				<div className="pk-vi-timeline-axis"><span>{buckets[0]?.label ?? 'Start'}</span><span>{buckets[Math.floor(buckets.length / 2)]?.label ?? ''}</span><span>{buckets[buckets.length - 1]?.label ?? 'Today'}</span></div>
-				<ActivityLane label="File edits" detail="Latest file modification timestamp" buckets={buckets} value={(bucket) => bucket.fileCount} max={maxFile} tone="files" />
-				<ActivityLane label="Chats" detail="Durable conversation message events" buckets={buckets} value={(bucket) => bucket.chatCount} max={maxChat} tone="chat" />
-				<ActivityLane label="Composer" detail="Durable workspace events with a timestamp" buckets={buckets} value={(bucket) => bucket.composerCount} max={maxComposer} tone="composer" />
-				<ActivityLane label="Vault Intelligence" detail="Scan and owner-action receipts" buckets={buckets} value={(bucket) => bucket.vaultCount} max={maxVault} tone="receipts" />
-				<div className="pk-vi-activity-gap"><FolderKanban size={15} /><span><strong>Projects</strong><small>No project-history event stream is registered, so this lane remains intentionally empty.</small></span></div>
+				{mode === 'recorded' ? <><div className="pk-vi-timeline-axis"><span>{buckets[0]?.label ?? 'Start'}</span><span>{buckets[Math.floor(buckets.length / 2)]?.label ?? ''}</span><span>{buckets[buckets.length - 1]?.label ?? 'Today'}</span></div><ActivityLane label="File edits" detail="Latest file modification timestamp" buckets={buckets} value={(bucket) => bucket.fileCount} max={maxFile} tone="files" /><ActivityLane label="Chats" detail="Durable conversation message events" buckets={buckets} value={(bucket) => bucket.chatCount} max={maxChat} tone="chat" /><ActivityLane label="Composer" detail="Durable workspace events with a timestamp" buckets={buckets} value={(bucket) => bucket.composerCount} max={maxComposer} tone="composer" /><ActivityLane label="Vault Intelligence" detail="Scan and owner-action receipts" buckets={buckets} value={(bucket) => bucket.vaultCount} max={maxVault} tone="receipts" /><div className="pk-vi-activity-gap"><FolderKanban size={15} /><span><strong>Projects</strong><small>No project-history event stream is registered, so this lane remains intentionally empty.</small></span></div></> : <div className="pk-vi-theme-results">{themes.length === 0 ? <div className="pk-vi-empty"><strong>No evidence themes for this range</strong><span>Run the explicit analysis to create cited Peak-owned annotations. It never reads content outside the recorded activity selection.</span><Button className="pk-vi-primary" onClick={() => void runtime.analyzeActivityThemes(rangeStart, Date.now())}>Analyze recorded evidence</Button></div> : themes.map((theme) => <article key={theme.id}><span className="pk-vi-context-label"><Sparkles size={15} />Evidence theme</span><strong>{theme.label}</strong><small>{theme.citations.length} cited records · {Math.round(theme.confidence * 100)}% grouping confidence · {formatDateTime(theme.generatedAt)}</small><div>{theme.citations.slice(0, 4).map((citation) => <span key={citation.recordId}>{citation.objectPath ?? citation.recordId}</span>)}</div></article>)}</div>}
 			</section>
 			<aside className="pk-vi-activity-aside">
 				<section className="pk-vi-card pk-vi-period-card"><div className="pk-vi-card-head"><span className="pk-vi-card-title">Period summary</span></div><div className="pk-vi-period-stats"><span><small>Range</small><strong>{range === 365 ? '1 year' : `${range} days`}</strong></span><span><small>Active days</small><strong>{formatNumber(activeDays)}</strong></span><span><small>File edits</small><strong>{formatNumber(periodFileChanges)}</strong></span><span><small>Recorded events</small><strong>{formatNumber(periodRecords.length)}</strong></span></div></section>
-				<section className="pk-vi-card pk-vi-session-card"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Recorded work sessions</span><span className="pk-vi-card-caption">Grouped from durable events and Vault Intelligence receipts, never inferred from content.</span></div></div><div className="pk-vi-session-list">{sessions.map((session) => <div key={session.key}><span><strong>{session.label}</strong><small>{session.summary}</small></span><b>{session.count}</b></div>)}{sessions.length === 0 && <div className="pk-vi-empty">No timestamped event records in this range.</div>}</div></section>
-				<section className="pk-vi-card pk-vi-theme-card"><div className="pk-vi-context-label"><Sparkles size={16} />AI themes</div><strong>Not analyzed</strong><span>Run an explicit analysis before Peak publishes themes for this period.</span></section>
+				<section className="pk-vi-card pk-vi-session-card"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Recorded work sessions</span><span className="pk-vi-card-caption">Grouped by adjacent time or a shared object from durable events; session reasons are visible.</span></div></div><div className="pk-vi-session-list">{sessions.map((session) => <div key={session.id}><span><strong>{session.label}</strong><small>{formatDateTime(session.startedAt)} – {formatDateTime(session.endedAt)} · {session.reason.replace('-', ' ')}</small></span><b>{session.recordIds.length}</b></div>)}{sessions.length === 0 && <div className="pk-vi-empty">No timestamped event records in this range.</div>}</div></section>
+				<section className="pk-vi-card pk-vi-theme-card"><div className="pk-vi-context-label"><Sparkles size={16} />Evidence themes</div><strong>{themes.length ? `${themes.length} generated` : 'Not analyzed'}</strong><span>{themes.length ? 'Each theme stores citations and its source revision.' : 'Use the explicit analysis action; no topic is inferred from blank timeline space.'}</span>{!themes.length && <Button variant="ghost" size="sm" onClick={() => void runtime.analyzeActivityThemes(rangeStart, Date.now())}>Analyze range</Button>}</section>
 				{focusedDate && <section className="pk-vi-card pk-vi-focused-activity"><div className="pk-vi-card-head"><span className="pk-vi-card-title">{focusedDate}</span><Button variant="ghost" size="sm" onClick={() => setFocusedDate(null)}>Clear<X size={14} /></Button></div><span className="pk-vi-card-caption">{focusedRecords.length} durable Chat, Composer or Vault Intelligence records selected from the Overview heatmap. File mtimes remain in the file lane.</span></section>}
 			</aside>
 		</div>
@@ -499,11 +499,18 @@ function ScanSetup({ snapshot, config, onBack, onStart }: {
 	const displayedCheckGroups = [...config.checkGroups].sort(
 		(left, right) => (left.displayOrder ?? 99) - (right.displayOrder ?? 99),
 	);
-	const [checkIds, setCheckIds] = useState(() => new Set(allChecks.map((check) => check.checkId)));
+	const [selectedCheckKeys, setSelectedCheckKeys] = useState(() => new Set(allChecks.map((check) => check.checkId)));
 	const [operations, setOperations] = useState<VaultScanAiOperationPlan[]>(() => resolvedOperationPlans(config, snapshot));
+	const [indexOutputs, setIndexOutputs] = useState(() => config.indexOutputs.map((output) => ({
+		id: output.id,
+		enabled: output.availability !== 'later',
+		availability: output.availability,
+		operationIds: output.operationIds,
+	})));
 	useEffect(() => {
-		setCheckIds(new Set(config.checkGroups.flatMap((group) => group.checks.map((check) => check.checkId))));
+		setSelectedCheckKeys(new Set(config.checkGroups.flatMap((group) => group.checks.map((check) => check.checkId))));
 		setOperations(resolvedOperationPlans(config, snapshot));
+		setIndexOutputs(config.indexOutputs.map((output) => ({ id: output.id, enabled: output.availability !== 'later', availability: output.availability, operationIds: output.operationIds })));
 	}, [config, snapshot.operationRoutes]);
 	const matchingPaths = pathQuery.trim() ? snapshot.availablePaths.filter((path) => path.toLocaleLowerCase().includes(pathQuery.toLocaleLowerCase())).slice(0, 8) : [];
 	const folderScopes = useMemo(() => uniqueStrings(snapshot.availablePaths.map((path) => path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : 'Vault root'))
@@ -524,19 +531,32 @@ function ScanSetup({ snapshot, config, onBack, onStart }: {
 		: 0;
 	const plannedOperations = operations.map((operation) => ({
 		...operation,
-		enabled: operation.enabled && operationAvailableForScope(operation.id, scopeMode),
+		enabled: operation.enabled
+			&& operationAvailableForScope(operation.id, scopeMode)
+			&& (indexOutputs.filter((output) => output.operationIds.includes(operation.id)).length === 0
+				|| indexOutputs.some((output) => output.enabled && output.operationIds.includes(operation.id))),
 		estimatedTokens: Math.round(operation.estimatedTokens * estimateScale),
 		estimatedCostUsd: operation.estimatedCostUsd * estimateScale,
 	}));
 	const selectedOps = plannedOperations.filter((operation) => operation.enabled);
 	const estimatedTokens = selectedOps.reduce((sum, operation) => sum + operation.estimatedTokens, 0);
 	const estimatedCost = selectedOps.reduce((sum, operation) => sum + operation.estimatedCostUsd, 0);
+	const enabledCheckIds = uniqueStrings(displayedCheckGroups.flatMap((group) => group.checks
+		.filter((check) => selectedCheckKeys.has(check.checkId))
+		.flatMap((check) => check.checkIds ?? [check.checkId])));
+	const setGroupSelected = (checks: typeof allChecks, selected: boolean) => setSelectedCheckKeys((current) => {
+		const next = new Set(current);
+		for (const check of checks) selected ? next.add(check.checkId) : next.delete(check.checkId);
+		return next;
+	});
+	const toggleOutput = (id: typeof indexOutputs[number]['id']) => setIndexOutputs((current) => current.map((output) => output.id === id && output.availability === 'optional' ? { ...output, enabled: !output.enabled } : output));
 	const start = () => onStart({
 			scope: { mode: scopeMode, selectedPaths, selectors },
-		enabledCheckIds: [...checkIds],
-		aiOperations: plannedOperations,
-		createdAt: Date.now(),
-	});
+			enabledCheckIds,
+			indexOutputs,
+			aiOperations: plannedOperations,
+			createdAt: Date.now(),
+		});
 	return <div className="pk-vi-page pk-vi-scan-setup">
 		<Breadcrumb items={[{ label: 'Vault Intelligence', action: onBack }, { label: 'Scan setup' }]} />
 		<section className="pk-vi-scan-hero"><div><span className="pk-vi-ready-mark"><ShieldCheck size={22} /></span><span><strong>Prepare a safe Vault scan</strong><small>Choose what Peak should examine, then review AI models and estimated usage. Your current Vault stays available while it runs.</small></span></div><div className="pk-vi-safety-facts"><span><small>Last successful scan</small><strong>{snapshot.changedCursorAt ? formatDateTime(snapshot.changedCursorAt) : 'First full Scan required'}</strong></span><span><small>Current Vault view</small><strong>Stays usable until publish</strong></span><span><small>User files</small><strong>No automatic edits</strong></span></div></section>
@@ -548,17 +568,45 @@ function ScanSetup({ snapshot, config, onBack, onStart }: {
 			] as const).map(([id, label, description]) => <Button key={id} variant="ghost" disabled={id === 'changed' && !snapshot.changedCursorAt} className={scopeMode === id ? 'is-active' : ''} onClick={() => setScopeMode(id)}><strong>{label}</strong><span>{description}</span></Button>)}</div>
 			{scopeMode === 'selected' && <div className="pk-vi-path-picker"><label><Search size={15} /><input value={pathQuery} onChange={(event) => setPathQuery(event.target.value)} placeholder="Search Vault files" /></label>{matchingPaths.length > 0 && <div className="pk-vi-path-results">{matchingPaths.map((path) => <Button key={path} variant="ghost" onClick={() => { addSelector({ id: `file:${path}`, kind: 'file', label: path, paths: [path] }); setPathQuery(''); }}><FileText size={14} /><span>{path}</span><Check size={14} /></Button>)}</div>}<div className="pk-vi-scope-shortcuts"><span>Add a saved scope</span><div>{folderScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Folder · {selector.label}</Button>)}{communityScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Community · {selector.label}</Button>)}{savedWorkScope.paths.length > 0 && <Button variant="ghost" onClick={() => addSelector(savedWorkScope)}>Saved work · {savedWorkScope.label}</Button>}</div></div><div className="pk-vi-selected-paths">{selectors.map((selector) => <span key={selector.id}>{selector.kind} · {selector.label} · {selector.paths.length} files<Button variant="ghost" size="icon" onClick={() => { setSelectors((current) => current.filter((candidate) => candidate.id !== selector.id)); setSelectedPaths((current) => current.filter((path) => !selector.paths.includes(path) || selectors.some((candidate) => candidate.id !== selector.id && candidate.paths.includes(path)))); }} aria-label={`Remove ${selector.label}`}><X size={13} /></Button></span>)}</div></div>}
 		</SetupSection>
-		<SetupSection number="2" title="Choose scan tasks" status={`${checkIds.size} of ${allChecks.length} checks selected`}>
-			<span className="pk-vi-section-description">Select deterministic checks, not work-queue categories. Each group expands so its coverage and disabled state stay visible.</span>
-			<div className="pk-vi-check-group-grid">{displayedCheckGroups.map((group) => { const selectedCount = group.checks.filter((check) => checkIds.has(check.checkId)).length; const selected = selectedCount === group.checks.length; return <section key={group.id} className={`pk-vi-check-group-card ${selected ? 'is-active' : ''}`}><Button variant="ghost" onClick={() => setCheckIds((current) => { const next = new Set(current); for (const check of group.checks) { if (selected) next.delete(check.checkId); else next.add(check.checkId); } return next; })}><span className="pk-vi-check-mark">{selected && <Check size={14} />}</span><strong>{group.label}</strong><small>{selectedCount}/{group.checks.length} checks</small></Button><div>{group.checks.map((check) => <label key={check.checkId}><input type="checkbox" checked={checkIds.has(check.checkId)} onChange={() => setCheckIds((current) => { const next = new Set(current); if (next.has(check.checkId)) next.delete(check.checkId); else next.add(check.checkId); return next; })} />{check.label}</label>)}</div></section>; })}</div>
-			<div className="pk-vi-scan-plan-row"><Search size={16} /><span><strong>Knowledge Index plan</strong><small>Full-text + Embeddings · {allChecks.length} deterministic tasks · reviewable follow-up remains guarded</small></span><strong>{scopeObjectCount} objects</strong><ChevronRight size={15} /></div>
+		<SetupSection number="2" title="Choose scan tasks" status={`${selectedCheckKeys.size} of 19 tasks selected`}>
+			<span className="pk-vi-section-description">These four owner-facing groups are the V2 contract: Knowledge Index 5, Content 4, Relationships 8, and Reviewable follow-up 2. The groups below keep every underlying detector or safe local output visible.</span>
+			<div className="pk-vi-check-group-grid">{displayedCheckGroups.map((group) => { const selectedCount = group.checks.filter((check) => selectedCheckKeys.has(check.checkId)).length; const selected = selectedCount === group.checks.length; return <section key={group.id} className={`pk-vi-check-group-card ${selected ? 'is-active' : ''}`}><Button variant="ghost" onClick={() => setGroupSelected(group.checks, !selected)}><span className="pk-vi-check-mark">{selected && <Check size={14} />}</span><strong>{group.label}</strong><small>{selectedCount}/{group.checks.length} tasks</small></Button><div>{group.checks.map((check) => <label key={check.checkId}><input type="checkbox" checked={selectedCheckKeys.has(check.checkId)} onChange={() => setSelectedCheckKeys((current) => { const next = new Set(current); if (next.has(check.checkId)) next.delete(check.checkId); else next.add(check.checkId); return next; })} /><span><strong>{check.label}</strong><small>{check.description}</small></span></label>)}</div></section>; })}</div>
+			<IndexOutputPlan config={config} outputs={indexOutputs} scopeObjectCount={scopeObjectCount} onToggle={toggleOutput} />
 		</SetupSection>
 		<SetupSection number="3" title="Review AI operations" status={`${selectedOps.length} enabled`}>
-			<div className="pk-vi-operation-groups">{(['index', 'vault', 'follow-up'] as const).map((group) => <section key={group} className="pk-vi-operation-group"><div className="pk-vi-operation-group-head"><strong>{operationGroupLabel(group)}</strong><span>{operationGroupDescription(group)}</span></div><div className="pk-vi-operation-list">{config.scanOperations.filter((definition) => definition.group === group).map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const routeAvailable = snapshot.operationRoutes[operation.id]?.available ?? true; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const available = routeAvailable && scopeAvailable; const shared = sharedExecutionLabel(operation.id); return <div key={definition.id} className={`pk-vi-operation-row ${available ? '' : 'is-unavailable'}`}><div><strong>{definition.label}</strong><span>{definition.description}{shared ? ` · ${shared}` : ''}</span></div><div className="pk-vi-operation-route"><strong>{operation.model}</strong><span>{operation.provider}</span></div><span>{formatCompactNumber(operation.estimatedTokens)} · {formatMoney(operation.estimatedCostUsd)}</span><Button variant="ghost" disabled={!available} className={operation.enabled ? 'is-on' : ''} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!routeAvailable ? 'Unavailable' : !scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div></section>)}</div>
+			<div className="pk-vi-operation-groups">{(['plan', 'index', 'relations', 'structure', 'follow-up'] as const).map((group) => <section key={group} className="pk-vi-operation-group"><div className="pk-vi-operation-group-head"><strong>{operationGroupLabel(group)}</strong><span>{operationGroupDescription(group)}</span></div><div className="pk-vi-operation-list">{config.scanOperations.filter((definition) => definition.group === group).map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const routeAvailable = snapshot.operationRoutes[operation.id]?.available ?? true; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const available = routeAvailable && scopeAvailable; const shared = sharedExecutionLabel(operation.id); return <div key={definition.id} className={`pk-vi-operation-row ${available ? '' : 'is-unavailable'}`}><div><strong>{definition.label}</strong><span>{definition.description}{shared ? ` · ${shared}` : ''}</span></div><div className="pk-vi-operation-route"><strong>{operation.model}</strong><span>{operation.provider}</span></div><span>{formatCompactNumber(operation.estimatedTokens)} · {formatMoney(operation.estimatedCostUsd)}</span><Button variant="ghost" disabled={!available} className={operation.enabled ? 'is-on' : ''} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!routeAvailable ? 'Unavailable' : !scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div></section>)}</div>
 		</SetupSection>
 		<section className="pk-vi-estimate"><div><Clock3 size={18} /><span><strong>Current run estimate</strong><small>Planning estimate scaled from the frozen scope, enabled outputs and selected routes; the receipt records actual usage.</small></span></div><div><span><small>Scope</small><strong>{scopeObjectCount} objects</strong></span><span><small>AI tokens</small><strong>~{formatCompactNumber(estimatedTokens)}</strong></span><span><small>AI cost</small><strong>~{formatMoney(estimatedCost)}</strong></span></div></section>
 		<div className="pk-vi-footer-actions"><Button variant="ghost" onClick={onBack}>Cancel</Button><Button className="pk-vi-primary" onClick={start} disabled={scopeMode === 'selected' && selectedPaths.length === 0}><ScanSearch size={16} />Start Scan</Button></div>
 	</div>;
+}
+
+function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
+	config: VaultIntelligenceConfig;
+	outputs: Array<{ id: VaultIntelligenceConfig['indexOutputs'][number]['id']; enabled: boolean; availability: 'required' | 'automatic' | 'optional' | 'later'; operationIds: VaultScanAiOperationPlan['id'][] }>;
+	scopeObjectCount: number;
+	onToggle: (id: VaultIntelligenceConfig['indexOutputs'][number]['id']) => void;
+}) {
+	const [expanded, setExpanded] = useState(false);
+	const selected = outputs.filter((output) => output.enabled).length;
+	return <section className={`pk-vi-index-plan ${expanded ? 'is-expanded' : ''}`}>
+		<Button variant="ghost" className="pk-vi-index-plan-trigger" onClick={() => setExpanded((current) => !current)} aria-expanded={expanded}>
+			<Search size={16} /><span><strong>Knowledge Index plan</strong><small>Core Search + {selected} enabled outputs · inherits the Step 1 scope</small></span><span>{scopeObjectCount} objects</span><ChevronDown size={16} />
+		</Button>
+		{expanded && <div className="pk-vi-index-output-groups">{(['core', 'summaries', 'tags', 'relationships', 'content'] as const).map((group) => {
+			const entries = config.indexOutputs.filter((output) => output.group === group);
+			if (entries.length === 0) return null;
+			return <section key={group}><div><strong>{indexOutputGroupLabel(group)}</strong><span>{entries.filter((entry) => outputs.find((output) => output.id === entry.id)?.enabled).length} enabled</span></div>{entries.map((entry) => { const output = outputs.find((candidate) => candidate.id === entry.id)!; const canToggle = entry.availability === 'optional'; return <label key={entry.id} className={`pk-vi-index-output is-${entry.availability}`}><input type="checkbox" checked={output.enabled} disabled={!canToggle} onChange={() => onToggle(entry.id)} /><span><strong>{entry.label}</strong><small>{entry.description}</small></span><em>{entry.availability === 'automatic' ? 'Automatic' : entry.availability === 'required' ? 'Required' : entry.availability === 'later' ? 'Later' : 'Optional'}</em></label>; })}</section>;
+		})}</div>}
+	</section>;
+}
+
+function indexOutputGroupLabel(group: 'core' | 'summaries' | 'tags' | 'relationships' | 'content'): string {
+	if (group === 'core') return 'Core Search';
+	if (group === 'summaries') return 'Summaries';
+	if (group === 'tags') return 'Tags & entities';
+	if (group === 'relationships') return 'Relationships';
+	return 'Content understanding';
 }
 
 function SetupSection({ number, title, status, children }: { number: string; title: string; status: string; children: React.ReactNode }) {
@@ -589,7 +637,7 @@ function RunProgress({ snapshot, runtime, onBack, onCompleted }: {
 			<div className="pk-vi-card pk-vi-current-work"><small>Current object</small><strong>{currentOperation?.currentPath ?? 'No object in flight'}</strong><span>{currentOperation ? operationLabel(currentOperation.id) : currentStage ? stageLabel(currentStage.id) : 'Waiting'}</span></div>
 		</section>
 		<div className="pk-vi-stage-list">{run.stages.map((stage, index) => <Button key={stage.id} variant="ghost" className={`pk-vi-card pk-vi-stage is-${stage.status} ${focusedStageId === stage.id ? 'is-focused' : ''}`} onClick={() => setFocusedStageId((current) => current === stage.id ? null : stage.id)}><div className="pk-vi-stage-head"><span className="pk-vi-step-number">{index + 1}</span><div><strong>{stageLabel(stage.id)}</strong><span>{stage.message}</span></div><StageState status={stage.status} /></div>{(stage.status === 'running' || focusedStageId === stage.id) && <><div className="pk-vi-progress-track"><i style={{ width: `${Math.round(progressRatio(stage) * 100)}%` }} /></div><small className="pk-vi-stage-focus-detail">{stage.processed.toLocaleString()} of {stage.total || 'unknown'} objects · click again to collapse this stage.</small></>}</Button>)}</div>
-		<section className="pk-vi-card"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">AI and Index operations</span><span className="pk-vi-card-caption">Frozen provider and model routes, live progress, and non-duplicated actual usage.</span></div></div><div className="pk-vi-run-operations">{run.operations.map((operation) => { const sharedOwner = sharedUsageOwner(operation.id); const owner = sharedOwner ? run.operations.find((candidate) => candidate.id === sharedOwner) : null; return <div key={operation.id} className="pk-vi-run-operation"><span className={`pk-vi-operation-dot is-${operation.status}`} /><div><strong>{operationLabel(operation.id)}</strong><span>{operation.currentPath ?? operation.provider}</span></div><div><strong>{operation.model}</strong><span>{operation.processed}/{operation.total || '—'}</span></div><div>{owner && owner.usage.totalTokens > 0 ? <><strong>Shared receipt</strong><span>Included in {operationLabel(owner.id)}</span></> : <><strong>{formatCompactNumber(operation.usage.totalTokens)} tokens</strong><span>{formatMoney(operation.usage.costUsd)}</span></>}</div>{operation.status === 'waiting' || operation.status === 'running' ? <Button variant="ghost" size="sm" onClick={() => runtime.skipOperation(operation.id)}>Skip</Button> : <span className="pk-vi-operation-status">{operation.status}</span>}</div>; })}</div></section>
+		<section className="pk-vi-card"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">AI and Index operations</span><span className="pk-vi-card-caption">Frozen provider and model routes, live progress, non-duplicated actual usage, and only runtime evidence.</span></div></div><div className="pk-vi-run-operations">{run.operations.map((operation) => { const sharedOwner = sharedUsageOwner(operation.id); const owner = sharedOwner ? run.operations.find((candidate) => candidate.id === sharedOwner) : null; return <details key={operation.id} className="pk-vi-run-operation"><summary><span className={`pk-vi-operation-dot is-${operation.status}`} /><div><strong>{operationLabel(operation.id)}</strong><span>{operation.currentPath ?? operation.provider}</span></div><div><strong>{operation.model}</strong><span>{operation.processed}/{operation.total || '—'}</span></div><div>{owner && owner.usage.totalTokens > 0 ? <><strong>Shared receipt</strong><span>Included in {operationLabel(owner.id)}</span></> : <><strong>{formatCompactNumber(operation.usage.totalTokens)} tokens</strong><span>{formatMoney(operation.usage.costUsd)}</span></>}</div>{operation.status === 'waiting' || operation.status === 'running' ? <Button variant="ghost" size="sm" onClick={(event) => { event.preventDefault(); void runtime.skipOperation(operation.id); }}>Skip</Button> : <span className="pk-vi-operation-status">{operation.status}</span>}<ChevronDown size={15} /></summary><div className="pk-vi-operation-evidence"><span><small>Started</small><strong>{operation.startedAt ? formatDateTime(operation.startedAt) : 'Not started'}</strong></span><span><small>Completed</small><strong>{operation.completedAt ? formatDateTime(operation.completedAt) : 'Not completed'}</strong></span><div>{operation.evidence?.length ? operation.evidence.map((fact) => <span key={fact}>{fact}</span>) : <span>No runtime evidence has been recorded yet.</span>}</div>{operation.error && <span className="pk-vi-stale-warning"><CircleAlert size={14} />{operation.error}</span>}</div></details>; })}</div></section>
 		{run.warnings.length > 0 && <section className="pk-vi-card pk-vi-warning-list"><strong>Partial results and warnings</strong>{run.warnings.map((warning) => <span key={warning}><CircleAlert size={14} />{warning}</span>)}</section>}
 	</div>;
 }
@@ -608,9 +656,9 @@ function Completed({ snapshot, onBack, onProgress, onOpenTask }: {
 			<section className="pk-vi-completed-workspace">
 				<div className="pk-vi-completed-hero"><span className="pk-vi-complete-mark"><Check size={22} /></span><div><span className="pk-vi-page-title">Scan complete</span><span>{formatDateTime(completed.completedAt)}</span></div></div>
 				<section className="pk-vi-completed-summary"><span><small>Scope</small><strong>{scopeLabel(completed.scopeMode)}</strong></span><span><small>Processed</small><strong>{formatNumber(completed.objectCount)}</strong></span><span><small>Search ready</small><strong>{completed.searchableCount === null ? '—' : formatNumber(completed.searchableCount)}</strong></span><span><small>Needs you</small><strong>{formatNumber(tasks.length)}</strong></span><span><small>Actual AI cost</small><strong>{formatMoney(completed.usage.costUsd)}</strong></span></section>
-				<WorkSurface tasks={tasks} origin="completed" onOpenTask={onOpenTask} />
-				<details className="pk-vi-disclosure"><summary><span><strong>Run details</strong><small>{completed.objectCount} objects · {elapsedLabel(completed.startedAt, completed.completedAt)} · {formatCompactNumber(completed.usage.totalTokens)} AI tokens · {formatMoney(completed.usage.costUsd)} actual</small></span><ChevronDown size={16} /></summary><div className="pk-vi-run-detail-grid"><span><small>Scope</small><strong>{completed.scopeMode}</strong></span><span><small>Searchable</small><strong>{completed.searchableCount ?? 'Unavailable'}</strong></span><span><small>Warnings</small><strong>{completed.warnings.length}</strong></span><span><small>Run ID</small><strong>{completed.runId}</strong></span></div></details>
 				<details className="pk-vi-disclosure"><summary><span><strong>Completed automatically</strong><small>{completed.searchableCount === null ? 'Search readiness unavailable' : `${completed.searchableCount} searchable`} · Map receipt recorded · {completed.receipts.filter((receipt) => receipt.status === 'completed').length} receipts complete</small></span><ChevronDown size={16} /></summary><div className="pk-vi-receipts">{completed.receipts.map((receipt) => <div key={receipt.id}><span><strong>{receipt.label}</strong><small>{receipt.detail}</small></span><span><strong>{receipt.result}</strong><small>{receipt.ownerBoundary === 'peak-owned' ? 'Peak-owned state' : 'User-file boundary'}</small></span></div>)}</div></details>
+				<details className="pk-vi-disclosure"><summary><span><strong>Run details</strong><small>{completed.objectCount} objects · {elapsedLabel(completed.startedAt, completed.completedAt)} · {formatCompactNumber(completed.usage.totalTokens)} AI tokens · {formatMoney(completed.usage.costUsd)} actual</small></span><ChevronDown size={16} /></summary><div className="pk-vi-run-detail-grid"><span><small>Scope</small><strong>{completed.scopeMode}</strong></span><span><small>Searchable</small><strong>{completed.searchableCount ?? 'Unavailable'}</strong></span><span><small>Warnings</small><strong>{completed.warnings.length}</strong></span><span><small>Run ID</small><strong>{completed.runId}</strong></span></div></details>
+				<WorkSurface tasks={tasks} origin="completed" onOpenTask={onOpenTask} />
 		</section>
 	</div>;
 }
@@ -646,11 +694,11 @@ function MaintenanceWorkspace({ task, config, communities, proposals, runtime, o
 			<div className="pk-vi-maintenance-summary"><strong>{task.affectedLabel}</strong><span>·</span><span>{task.contextLabel}</span><span>·</span><span>Source Scan {task.sourceRunId}</span></div>
 			{task.state === 'recovery' && task.kind !== 'unreadable-files' && <div className="pk-vi-stale-warning"><CircleAlert size={16} /><span><strong>Source revision changed.</strong> The saved owner choice is preserved, but the affected item must be refreshed or reselected against current evidence before any file review can continue.</span></div>}
 			<TaskSpecificWorkspace task={task} />
-			<div className="pk-vi-owner-boundary"><BrainCircuit size={17} /><span><strong>{presentation.boundaryTitle}</strong> {presentation.boundaryDescription}</span></div>
+			<div className="pk-vi-owner-boundary"><BrainCircuit size={17} /><span><strong>{presentation.boundaryTitle}</strong> {presentation.boundaryDescription} One canonical decision set is shared by the primary and file projections; source-file changes remain guarded proposals until their exact diff is selected and applied.</span></div>
 			<div className="pk-vi-maintenance-tools"><div className="pk-vi-segmented"><Button variant="ghost" className={projection === 'primary' ? 'is-active' : ''} onClick={() => setProjection('primary')}>{presentation.primaryProjection}</Button><Button variant="ghost" className={projection === 'file' ? 'is-active' : ''} onClick={() => setProjection('file')}>File</Button></div><div className="pk-vi-set-all"><span title="A Set all outcome replaces existing item overrides">Set all · replace overrides</span>{definition.choices.filter((choice) => choice.id !== 'another').map((choice) => <Button key={choice.id} variant="ghost" disabled={choice.id === 'suggested' && task.atomicItems.some((item) => item.suggestedChoiceId !== 'suggested')} className={task.defaultChoice?.choiceId === choice.id ? 'is-active' : ''} onClick={() => void runtime.choose(task.id, null, choice.id)}>{choice.label}</Button>)}{task.kind === 'community-membership' && <CommunityPicker label="Set all Community" value={task.defaultChoice?.choiceId === 'another' ? task.defaultChoice.choiceValue ?? '' : ''} communities={communities} onChange={(community) => void runtime.choose(task.id, null, 'another', community)} />}</div></div>
 				<div className="pk-vi-atomic-list">{grouped.map((group) => <section key={group.key} className="pk-vi-atomic-group"><div className="pk-vi-atomic-group-head"><strong>{group.label}</strong><span>{group.items.length} {presentation.itemLabel}{group.items.length === 1 ? '' : 's'}</span></div>{group.items.map((item) => { const choice = item.ownerChoice ?? task.defaultChoice; const choiceDefinition = definition.choices.find((candidate) => candidate.id === choice?.choiceId); return <div key={item.id} className="pk-vi-atomic-row"><div><span className="pk-vi-evidence-label">{presentation.evidenceLabel}</span><strong>{item.title}</strong><span>{item.evidence}</span>{item.filePath && <Button variant="ghost" size="sm" onClick={() => void runtime.openFile(item.filePath!)}><FileText size={14} />Open {item.filePath}</Button>}</div><div className="pk-vi-atomic-decision"><div className="pk-vi-choice-actions">{definition.choices.filter((candidate) => candidate.id !== 'another').map((candidate) => <Button key={candidate.id} variant="ghost" disabled={candidate.id === 'suggested' && item.suggestedChoiceId !== 'suggested'} className={choice?.choiceId === candidate.id ? 'is-active' : ''} onClick={() => void runtime.choose(task.id, item.id, candidate.id, candidate.id === 'redirect' ? replacementTargets[item.id] ?? item.suggestedValue ?? null : null)}>{candidate.label}{item.suggestedChoiceId === candidate.id && <small>Suggested</small>}</Button>)}{task.kind === 'broken-links' && <label className="pk-vi-replacement-target"><span>Redirect target</span><input value={replacementTargets[item.id] ?? item.suggestedValue ?? ''} placeholder="Existing note path or title" onChange={(event) => setReplacementTargets((current) => ({ ...current, [item.id]: event.target.value }))} /></label>}{task.kind === 'community-membership' && <CommunityPicker label={`Choose Community for ${item.title}`} value={choice?.choiceId === 'another' ? choice.choiceValue ?? '' : ''} communities={communities} onChange={(community) => void runtime.choose(task.id, item.id, 'another', community)} />}</div>{choiceDefinition ? <span className={`is-${choiceDefinition.boundary}`}>{choiceDefinition.description}{choice?.choiceValue ? ` Current owner choice: ${choice.choiceValue}.` : ''}</span> : <span>Choose an outcome for this {presentation.itemLabel}.</span>}</div></div>; })}</section>)}</div>
 				{proposal && <ProposalReview proposal={proposal} runtime={runtime} />}
-				<div className="pk-vi-maintenance-footer"><div><strong>{task.atomicItems.filter((item) => (item.ownerChoice ?? task.defaultChoice)?.choiceId !== undefined).length} of {task.atomicItems.length} decided</strong><span>{proposal ? 'Review the guarded per-file diff. Apply checks the source hash again and writes only these selected changes.' : appliedProposal ? 'The source change was applied. Re-index and verify the original finding before closing this work.' : hasProposal ? decisionsSaved ? 'Review decisions are saved. User files are still unchanged until a guarded diff is prepared.' : 'Source-file choices are decisions only. No Markdown or YAML changes during this step.' : 'These choices update Peak-owned maintenance state only.'}</span></div><div><Button variant="ghost" onClick={onBack}>Close</Button>{!proposal && !appliedProposal && <Button className="pk-vi-primary" disabled={!canApply} onClick={() => void runtime.applyTask(task.id)}>{hasProposal ? decisionsSaved ? 'Review decisions saved' : taskDecisionActionLabel(task) : taskDecisionActionLabel(task)}</Button>}{hasProposal && decisionsSaved && !proposal && !appliedProposal && <Button className="pk-vi-primary" disabled={task.kind !== 'broken-links'} title={task.kind === 'broken-links' ? undefined : 'This task has no safe diff materializer yet.'} onClick={() => void runtime.prepareProposal(task.id)}>Prepare guarded diff</Button>}{appliedProposal && <Button className="pk-vi-primary" onClick={() => void runtime.verifyTask(task.id)}>Re-index & verify</Button>}{!hasProposal && <Button className="pk-vi-primary" disabled={!canVerify} onClick={() => void runtime.verifyTask(task.id)}>Verify</Button>}</div></div>
+				<div className="pk-vi-maintenance-footer"><div><strong>{task.atomicItems.filter((item) => (item.ownerChoice ?? task.defaultChoice)?.choiceId !== undefined).length} of {task.atomicItems.length} decided</strong><span>{proposal ? 'Review the guarded per-file diff. Apply checks the source hash again and writes only these selected changes.' : appliedProposal ? 'The source change was applied. Re-index and verify the original finding before closing this work.' : hasProposal ? decisionsSaved ? 'Review decisions are saved. User files are still unchanged until a guarded diff is prepared.' : 'Source-file choices are decisions only. No Markdown or YAML changes during this step.' : 'These choices update Peak-owned maintenance state only.'}</span></div><div><Button variant="ghost" onClick={onBack}>Close</Button>{!proposal && !appliedProposal && <Button className="pk-vi-primary" disabled={!canApply} onClick={() => void runtime.applyTask(task.id)}>{hasProposal ? decisionsSaved ? 'Review decisions saved' : taskDecisionActionLabel(task) : taskDecisionActionLabel(task)}</Button>}{hasProposal && decisionsSaved && !proposal && !appliedProposal && <Button className="pk-vi-primary" onClick={() => void runtime.prepareProposal(task.id)}>Prepare guarded diff</Button>}{appliedProposal && <Button className="pk-vi-primary" onClick={() => void runtime.verifyTask(task.id)}>Re-index & verify</Button>}{!hasProposal && <Button className="pk-vi-primary" disabled={!canVerify} onClick={() => void runtime.verifyTask(task.id)}>Verify</Button>}</div></div>
 		</section>
 	</div>;
 }
@@ -669,21 +717,34 @@ function TaskSpecificWorkspace({ task }: { task: VaultMaintenanceTask }) {
 	return <UnusualNotesWorkspace task={task} />;
 }
 
-function TaskWorkspaceCallout({ label, detail, task }: { label: string; detail: string; task: VaultMaintenanceTask }) {
-	return <section className={`pk-vi-domain-callout is-${task.kind}`}><span>{label}</span><strong>{detail}</strong><small>{task.affectedLabel} · {task.contextLabel}</small></section>;
+function TaskWorkspaceCallout({ label, detail, evidence, boundary, task }: {
+	label: string;
+	detail: string;
+	evidence: string;
+	boundary: string;
+	task: VaultMaintenanceTask;
+}) {
+	const examples = task.atomicItems.slice(0, 3);
+	const sourceCount = new Set(task.atomicItems.map((item) => item.filePath).filter(Boolean)).size;
+	const proposalCandidates = task.atomicItems.filter((item) => item.proposalPatch).length;
+	return <section className={`pk-vi-domain-workspace is-${task.kind}`}>
+		<div className="pk-vi-domain-callout"><span>{label}</span><strong>{detail}</strong><small>{boundary}</small></div>
+		<div className="pk-vi-domain-stats"><span><small>Evidence items</small><strong>{task.atomicItems.length}</strong></span><span><small>Source files</small><strong>{sourceCount || '—'}</strong></span><span><small>Concrete diff inputs</small><strong>{proposalCandidates || '—'}</strong></span><span><small>Review state</small><strong>{task.state.replace('-', ' ')}</strong></span></div>
+		<div className="pk-vi-domain-evidence"><div><span className="pk-vi-evidence-label">{evidence}</span><strong>What this task is asking you to decide</strong><small>The per-item controls below remain the only place that records an outcome; this panel explains the domain-specific evidence and write boundary.</small></div><div>{examples.map((item) => <article key={item.id}><strong>{item.title}</strong><span>{item.evidence}</span>{item.projectionLabel && <small>{item.projectionLabel}</small>}</article>)}{examples.length === 0 && <span className="pk-vi-empty">No active items remain for this task.</span>}</div></div>
+	</section>;
 }
 
-function FilePropertiesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Property batches" detail="Compare the current metadata finding by batch or file; a YAML diff is required before any source write." />; }
-function BrokenLinksWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Link repair" detail="Choose keep, remove, or a concrete redirect target per missing reference. Only exact one-match repairs can prepare a diff." />; }
-function CommunityMembershipWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Community placement" detail="Use the indexed Community picker to place notes in Peak knowledge without rewriting frontmatter." />; }
-function KnowledgeConnectionsWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Connection evidence" detail="Keep, update, or replace a relationship claim. The graph decision remains separate from a document edit." />; }
-function RelatedNotesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Relationship decision" detail="Review related-note groups before accepting a reversible relation or requesting a merge proposal." />; }
-function NoteSplitWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Split review" detail="Keep the source note intact while deciding whether a future Composer proposal should route sections into new notes." />; }
-function CommunityStructureWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Structure review" detail="Accept, adjust, or retain a computed grouping; this records Peak-owned Community structure only." />; }
-function CommunityHubsWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Hub coverage" detail="Review Community hub evidence before requesting any explicit index-note proposal." />; }
-function ContentLifecycleWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Lifecycle state" detail="Classify active, paused, and finished material without moving, archiving, or deleting user files." />; }
-function UnreadableFilesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Index recovery" detail="Retry the existing parser and Index pipeline; no exclusion or document rewrite is implied by this workspace." />; }
-function UnusualNotesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Unusual pattern" detail="Treat unusual structure as evidence to connect, keep, or explicitly prepare for review—not as an error by default." />; }
+function FilePropertiesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Property batches" detail="Compare property values by source file and batch; accept a Peak-only categorization or request only a concrete YAML patch." evidence="Property finding" boundary="No YAML is written until a selected, source-hash-guarded patch is prepared." />; }
+function BrokenLinksWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Link repair" detail="Resolve each missing target by keeping it, removing it, or naming one exact redirect target before a diff can exist." evidence="Broken reference" boundary="Only an exact one-match replacement may cross into a Markdown diff; unresolved links stay Peak-owned." />; }
+function CommunityMembershipWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Community placement" detail="Review whether the indexed evidence supports a Community placement, with no automatic frontmatter rewrite." evidence="Membership evidence" boundary="Community membership is Peak knowledge by default; source changes need their own concrete proposal." />; }
+function KnowledgeConnectionsWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Connection evidence" detail="Review each fragile bridge as an evidence-backed relation, rather than treating graph geometry as a source-edit instruction." evidence="Connection evidence" boundary="A graph decision is reversible Peak state; document edits remain guarded proposals." />; }
+function RelatedNotesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Related-note groups" detail="Decide whether similar notes should remain related, separate, or enter a concrete merge proposal." evidence="Similarity group" boundary="Similarity never grants write permission; a merge needs an explicit per-file patch." />; }
+function NoteSplitWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Split review" detail="Keep the original note visible while deciding whether its evidence warrants a future Composer split proposal." evidence="Split evidence" boundary="No sections are routed or extracted from a source note by this review surface." />; }
+function CommunityStructureWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Structure review" detail="Inspect the current computed grouping and record whether to keep or adjust its Peak-owned structure." evidence="Structure evidence" boundary="This does not create folders, links, tags, or frontmatter in the Vault." />; }
+function CommunityHubsWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Hub coverage" detail="Review which Community evidence supports an index note, without pretending an index note has already been written." evidence="Hub evidence" boundary="An index-note edit is only possible after a separate, exact source-file proposal." />; }
+function ContentLifecycleWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Lifecycle state" detail="Classify notes as active, paused, or finished without moving, archiving, or deleting their files." evidence="Lifecycle evidence" boundary="Lifecycle is Peak-owned context; a review outcome has no filesystem side effect." />; }
+function UnreadableFilesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Index recovery" detail="Use parser and Index evidence to decide whether a document should be retried or remain in recoverable follow-up." evidence="Parser or Index error" boundary="Recovery retries the existing Index pipeline and never rewrites or excludes user content here." />; }
+function UnusualNotesWorkspace({ task }: { task: VaultMaintenanceTask }) { return <TaskWorkspaceCallout task={task} label="Unusual pattern" detail="Treat a structural anomaly as evidence to keep, connect, or prepare for source review—not as an automatic error." evidence="Unusual-pattern evidence" boundary="Peak records the choice until a separate exact diff makes a user-file change possible." />; }
 
 function taskDecisionActionLabel(task: VaultMaintenanceTask): string {
 	if (task.kind === 'file-properties') return 'Record property review';
@@ -700,11 +761,12 @@ function taskDecisionActionLabel(task: VaultMaintenanceTask): string {
 }
 
 function ProposalReview({ proposal, runtime }: { proposal: VaultMaintenanceProposal; runtime: VaultIntelligenceWorkspaceRuntime }) {
+	const selectedCount = proposal.changes.filter((change) => change.selected !== false).length;
 	return <section className="pk-vi-proposal-review" aria-label="Prepared source file diff">
 		<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Prepared source-file diff</span><span className="pk-vi-card-caption">Source content is guarded by its exact SHA-256 revision. Peak will re-check it immediately before Apply.</span></div><span className="pk-vi-task-state is-ready-review">Ready review</span></div>
-		<div className="pk-vi-proposal-change-list">{proposal.changes.map((change) => <article key={change.id} className="pk-vi-proposal-change"><div><strong>{change.path}</strong><small>One matched occurrence · source revision {change.sourceMtime ?? 'unavailable'}</small></div><div className="pk-vi-diff"><pre><del>{change.beforeContext}</del></pre><pre><ins>{change.afterContext}</ins></pre></div></article>)}</div>
+		<div className="pk-vi-proposal-change-list">{proposal.changes.map((change) => <article key={change.id} className={`pk-vi-proposal-change ${change.selected === false ? 'is-unselected' : ''}`}><label className="pk-vi-proposal-selector"><input type="checkbox" checked={change.selected !== false} onChange={(event) => void runtime.setProposalChangeSelected(proposal.id, change.id, event.target.checked)} /><span>Select this change</span></label><div><strong>{change.path}</strong><small>{change.matchCount} matched occurrence{change.matchCount === 1 ? '' : 's'} · source revision {change.sourceMtime ?? 'unavailable'}</small></div><div className="pk-vi-diff"><pre><del>{change.beforeContext}</del></pre><pre><ins>{change.afterContext}</ins></pre></div></article>)}</div>
 		{proposal.warnings.length > 0 && <div className="pk-vi-stale-warning"><CircleAlert size={16} /><span>{proposal.warnings.join(' ')}</span></div>}
-		<div className="pk-vi-proposal-actions"><Button variant="ghost" onClick={() => void runtime.rejectProposal(proposal.id)}>Reject diff</Button><Button className="pk-vi-primary" onClick={() => void runtime.applyProposal(proposal.id)}>Apply selected changes</Button></div>
+		<div className="pk-vi-proposal-actions"><span>{selectedCount} of {proposal.changes.length} changes selected</span><Button variant="ghost" onClick={() => void runtime.rejectProposal(proposal.id)}>Reject diff</Button><Button className="pk-vi-primary" disabled={selectedCount === 0} onClick={() => void runtime.applyProposal(proposal.id)}>Apply selected changes</Button></div>
 	</section>;
 }
 
@@ -914,8 +976,8 @@ function toggleOperationExecutionGroup(
 ): VaultScanAiOperationPlan[] {
 	const group = id === 'file-summaries' || id === 'ai-tags'
 		? new Set<VaultScanAiOperationPlan['id']>(['file-summaries', 'ai-tags'])
-		: id === 'relationship-review' || id === 'community-analysis' || id === 'file-proposals' || id === 'maintenance-synthesis'
-			? new Set<VaultScanAiOperationPlan['id']>(['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis'])
+		: isSharedReviewOperation(id)
+			? new Set<VaultScanAiOperationPlan['id']>(['relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis'])
 			: new Set<VaultScanAiOperationPlan['id']>([id]);
 	const enabled = !operations.find((operation) => operation.id === id)?.enabled;
 	return operations.map((operation) => group.has(operation.id) ? { ...operation, enabled } : operation);
@@ -923,21 +985,25 @@ function toggleOperationExecutionGroup(
 
 function sharedExecutionLabel(id: VaultScanAiOperationPlan['id']): string | null {
 	if (id === 'file-summaries' || id === 'ai-tags') return 'shared Index enrichment run';
-	if (id === 'relationship-review' || id === 'community-analysis' || id === 'file-proposals' || id === 'maintenance-synthesis') {
+	if (isSharedReviewOperation(id)) {
 		return 'shared Vault Review run';
 	}
 	return null;
 }
 
-function operationGroupLabel(group: 'index' | 'vault' | 'follow-up'): string {
+function operationGroupLabel(group: 'plan' | 'index' | 'relations' | 'structure' | 'follow-up'): string {
+	if (group === 'plan') return 'Run planning';
 	if (group === 'index') return 'Knowledge Index enrichment';
-	if (group === 'vault') return 'Vault-wide interpretation';
+	if (group === 'relations') return 'Relationship discovery';
+	if (group === 'structure') return 'Community and hub interpretation';
 	return 'Follow-up preparation';
 }
 
-function operationGroupDescription(group: 'index' | 'vault' | 'follow-up'): string {
+function operationGroupDescription(group: 'plan' | 'index' | 'relations' | 'structure' | 'follow-up'): string {
+	if (group === 'plan') return 'Freezes the selected scope, estimated use, routes, and user-file boundary before work begins.';
 	if (group === 'index') return 'Rebuildable machine knowledge used by Search and maintenance evidence.';
-	if (group === 'vault') return 'Requires an Entire Vault scope so structural claims share one frozen baseline.';
+	if (group === 'relations') return 'The shared relationship review needs an Entire Vault baseline and produces evidence, never source-file edits.';
+	if (group === 'structure') return 'Requires an Entire Vault scope so Community and hub claims share one baseline.';
 	return 'Creates review evidence and owner actions; Scan never applies source-file changes.';
 }
 
@@ -945,10 +1011,19 @@ function operationAvailableForScope(
 	id: VaultScanAiOperationPlan['id'],
 	scope: VaultScanScopeMode,
 ): boolean {
-	if (id === 'relationship-review' || id === 'community-analysis' || id === 'file-proposals' || id === 'maintenance-synthesis') {
+	if (isSharedReviewOperation(id)) {
 		return scope === 'entire';
 	}
 	return true;
+}
+
+function isSharedReviewOperation(id: VaultScanAiOperationPlan['id']): boolean {
+	return id === 'relationship-discovery'
+		|| id === 'semantic-review'
+		|| id === 'community-analysis'
+		|| id === 'hub-bridge-analysis'
+		|| id === 'file-proposals'
+		|| id === 'maintenance-synthesis';
 }
 
 function scopeLabel(scope: VaultScanScopeMode): string {
@@ -991,8 +1066,8 @@ function sharedUsageOwner(
 	id: VaultIntelligenceSnapshot['run']['operations'][number]['id'],
 ): VaultIntelligenceSnapshot['run']['operations'][number]['id'] | null {
 	if (id === 'ai-tags') return 'file-summaries';
-	if (id === 'community-analysis' || id === 'file-proposals' || id === 'maintenance-synthesis') {
-		return 'relationship-review';
+	if (id !== 'relationship-discovery' && isSharedReviewOperation(id)) {
+		return 'relationship-discovery';
 	}
 	return null;
 }

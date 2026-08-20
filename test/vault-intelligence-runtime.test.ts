@@ -175,6 +175,11 @@ async function main(): Promise<void> {
 	assert.equal(prepared.status, 'ready-review');
 	assert.equal(prepared.changes[0]?.beforeText, '[[Missing]]');
 	assert.equal(prepared.changes[0]?.afterText, '[[Resolved]]');
+	await materializedProposalRuntime.setProposalChangeSelected(prepared.id, prepared.changes[0]!.id, false);
+	await materializedProposalRuntime.applyProposal(prepared.id);
+	assert.equal(sourceContent.get(file.path), 'A real source note with [[Missing]].', 'an unselected diff must never be applied implicitly');
+	assert.match(materializedProposalRuntime.getSnapshot().error ?? '', /Select at least one source-file change/, 'Apply must fail closed when review selects no source changes');
+	await materializedProposalRuntime.setProposalChangeSelected(prepared.id, prepared.changes[0]!.id, true);
 	await materializedProposalRuntime.applyProposal(prepared.id);
 	assert.equal(sourceContent.get(file.path), 'A real source note with [[Resolved]].');
 	assert.equal(materializedProposalRuntime.getSnapshot().proposals[0]?.status, 'applied');
@@ -254,6 +259,10 @@ async function main(): Promise<void> {
 	await entireRuntime.startScan(entirePlan);
 	assert.notEqual(entireRuntime.getSnapshot().changedCursorAt, null);
 	assert.equal(entireRuntime.getSnapshot().changedSinceScan, 0, 'an entire Vault Scan advances the changed-since cursor');
+	await entireRuntime.analyzeActivityThemes(0, Number.MAX_SAFE_INTEGER);
+	assert.ok(entireRuntime.getSnapshot().activityThemes.length > 0, 'explicit evidence analysis must create theme records only from timestamped activity');
+	assert.ok(entireRuntime.getSnapshot().activityThemes.every((theme) => theme.citations.length > 0), 'every generated theme must preserve cited record evidence');
+	assert.equal(entireRuntime.getSnapshot().events.at(-1)?.type, 'activity-themes-generated');
 
 	const coupledRuntime = createRuntime();
 	const inconsistentPlan = planFor('broken-links');
@@ -269,10 +278,10 @@ async function main(): Promise<void> {
 	const partialReviewPlan = planFor('broken-links');
 	partialReviewPlan.aiOperations = partialReviewPlan.aiOperations.map((operation) => ({
 		...operation,
-		enabled: ['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis'].includes(operation.id),
+		enabled: ['relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis'].includes(operation.id),
 	}));
 	await reviewRuntime.startScan(partialReviewPlan);
-	for (const id of ['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis']) {
+	for (const id of ['relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis']) {
 		assert.equal(
 			reviewRuntime.getSnapshot().run.operations.find((operation) => operation.id === id)?.status,
 			'skipped',
@@ -319,11 +328,11 @@ async function main(): Promise<void> {
 	cancellablePlan.scope = { mode: 'entire', selectedPaths: [] };
 	cancellablePlan.aiOperations = cancellablePlan.aiOperations.map((operation) => ({
 		...operation,
-		enabled: ['relationship-review', 'community-analysis', 'file-proposals', 'maintenance-synthesis'].includes(operation.id),
+		enabled: ['relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis'].includes(operation.id),
 	}));
 	const cancellableScan = skippedReviewRuntime.startScan(cancellablePlan);
 	await reviewEntered;
-	skippedReviewRuntime.skipOperation('relationship-review');
+	skippedReviewRuntime.skipOperation('relationship-discovery');
 	await cancellableScan;
 	assert.equal(skippedReviewRuntime.getSnapshot().run.status, 'completed', 'skipping an active shared Review must not fail the Scan');
 	assert.equal(skippedReviewRuntime.getSnapshot().run.stages.find((stage) => stage.id === 'ai')?.status, 'completed');

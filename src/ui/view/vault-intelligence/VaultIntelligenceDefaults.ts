@@ -10,6 +10,7 @@ import type {
 	VaultMaintenanceTaskKind,
 	VaultMaintenanceTaskState,
 	VaultScanAiOperationId,
+	VaultScanIndexOutputId,
 } from '@/core/types/vault-intelligence';
 
 export interface VaultMaintenanceChoiceDefinition {
@@ -32,7 +33,7 @@ export interface VaultMaintenanceTaskDefinition {
 
 export interface VaultScanOperationDefinition {
 	id: VaultScanAiOperationId;
-	group: 'index' | 'vault' | 'follow-up';
+	group: 'plan' | 'index' | 'relations' | 'structure' | 'follow-up';
 	label: string;
 	description: string;
 	defaultEnabled: boolean;
@@ -44,12 +45,23 @@ export interface VaultScanOperationDefinition {
 
 export interface VaultScanCheckDefinition {
 	checkId: string;
+	/** One owner-facing task can route to multiple deterministic signals. */
+	checkIds?: string[];
 	label: string;
 	description: string;
 }
 
+export interface VaultScanIndexOutputDefinition {
+	id: VaultScanIndexOutputId;
+	label: string;
+	group: 'core' | 'summaries' | 'tags' | 'relationships' | 'content';
+	description: string;
+	availability: 'required' | 'automatic' | 'optional' | 'later';
+	operationIds: VaultScanAiOperationId[];
+}
+
 export interface VaultScanCheckGroupDefinition {
-	id: 'connections' | 'content' | 'tags' | 'aging';
+	id: 'knowledge-index' | 'content' | 'connections' | 'follow-up';
 	displayOrder?: number;
 	label: string;
 	description: string;
@@ -62,6 +74,7 @@ export interface VaultIntelligenceConfig {
 	checkGroups: VaultScanCheckGroupDefinition[];
 	tasks: VaultMaintenanceTaskDefinition[];
 	scanOperations: VaultScanOperationDefinition[];
+	indexOutputs: VaultScanIndexOutputDefinition[];
 }
 
 export const DEFAULT_VAULT_INTELLIGENCE_CONFIG = defaults as VaultIntelligenceConfig;
@@ -71,8 +84,8 @@ export async function loadVaultIntelligenceConfig(): Promise<VaultIntelligenceCo
 	if (!manager) return DEFAULT_VAULT_INTELLIGENCE_CONFIG;
 	try {
 		const loaded = await manager.loadJson<VaultIntelligenceConfig>(ConfigTemplateId.VaultIntelligence);
-		if (!Array.isArray(loaded.checkGroups) || !Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations)) {
-			throw new Error('checkGroups, tasks and scanOperations must be arrays');
+		if (!Array.isArray(loaded.checkGroups) || !Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations) || !Array.isArray(loaded.indexOutputs)) {
+			throw new Error('checkGroups, tasks, scanOperations and indexOutputs must be arrays');
 		}
 		return loaded;
 	} catch (error) {

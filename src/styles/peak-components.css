@@ -18010,7 +18010,334 @@
     padding: 8px;
   }
 
-  .peak-vault-intelligence-view .pk-vi-completed-summary {
+.peak-vault-intelligence-view .pk-vi-completed-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Vault Intelligence V2: setup outputs, evidence disclosure, and guarded review. */
+.peak-vault-intelligence-view .pk-vi-index-plan,
+.peak-vault-intelligence-view .pk-vi-map-text-history,
+.peak-vault-intelligence-view .pk-vi-run-operation {
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 10px;
+  background: var(--pk-vi-surface);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-plan-trigger,
+.peak-vault-intelligence-view .pk-vi-run-operation > summary,
+.peak-vault-intelligence-view .pk-vi-map-text-history > summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px !important;
+  color: var(--pk-vi-text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.peak-vault-intelligence-view .pk-vi-run-operation > summary {
+  grid-template-columns: 10px minmax(160px, 1.25fr) minmax(110px, .75fr) minmax(110px, .75fr) auto auto;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-plan-trigger::-webkit-details-marker,
+.peak-vault-intelligence-view .pk-vi-run-operation > summary::-webkit-details-marker,
+.peak-vault-intelligence-view .pk-vi-map-text-history > summary::-webkit-details-marker {
+  display: none;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-plan-trigger > span:first-of-type,
+.peak-vault-intelligence-view .pk-vi-run-operation summary > div,
+.peak-vault-intelligence-view .pk-vi-map-text-history summary > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-plan-trigger small,
+.peak-vault-intelligence-view .pk-vi-run-operation small,
+.peak-vault-intelligence-view .pk-vi-map-text-history small,
+.peak-vault-intelligence-view .pk-vi-operation-evidence small {
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-group {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--pk-vi-surface-raised);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-group > span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pk-vi-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  border-radius: 6px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output:has(input:not(:checked)) {
+  opacity: .56;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output > span {
+  display: grid;
+  gap: 2px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output small {
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output em {
+  font-size: 10px;
+  font-style: normal;
+  color: var(--pk-vi-muted);
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-operation-evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 14px 14px 34px;
+  color: var(--pk-vi-text);
+}
+
+.peak-vault-intelligence-view .pk-vi-operation-evidence > span,
+.peak-vault-intelligence-view .pk-vi-operation-evidence > div > span {
+  display: grid;
+  gap: 3px;
+}
+
+.peak-vault-intelligence-view .pk-vi-operation-evidence > div {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  padding-top: 4px;
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-state {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--pk-vi-surface-raised);
+  color: var(--pk-vi-muted);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-state.is-published {
+  background: var(--pk-vi-accent-soft);
+  color: var(--pk-vi-accent);
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-history {
+  margin-top: 12px;
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-history > summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-history > div {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-history article {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border-left: 2px solid var(--pk-vi-border-strong);
+  background: var(--pk-vi-surface-raised);
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-history article > span {
+  display: grid;
+  gap: 2px;
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-history p {
+  margin: 0;
+  color: var(--pk-vi-muted);
+  white-space: pre-wrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-theme-results {
+  display: grid;
+  gap: 10px;
+  min-height: 230px;
+}
+
+.peak-vault-intelligence-view .pk-vi-theme-results > article {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 8px;
+  background: var(--pk-vi-surface-raised);
+}
+
+.peak-vault-intelligence-view .pk-vi-theme-results > article > small {
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-theme-results > article > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.peak-vault-intelligence-view .pk-vi-theme-results > article > div span {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--pk-vi-surface);
+  color: var(--pk-vi-muted);
+  font-size: 11px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-workspace {
+  display: grid;
+  gap: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-callout {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--pk-vi-border);
+  background: var(--pk-vi-surface-raised);
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-callout > span,
+.peak-vault-intelligence-view .pk-vi-domain-callout > small {
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-stats > span {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-left: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-stats > span:first-child {
+  border-left: 0;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-stats small,
+.peak-vault-intelligence-view .pk-vi-domain-evidence small,
+.peak-vault-intelligence-view .pk-vi-domain-evidence article span {
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence {
+  display: grid;
+  grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 8px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence > div {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence > div:last-child {
+  gap: 6px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--pk-vi-surface-raised);
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence article span {
+  grid-column: 1 / -1;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence article small {
+  font-size: 11px;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-change.is-unselected {
+  opacity: .58;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-selector {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pk-vi-muted);
+  font-size: 12px;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-actions > span {
+  margin-right: auto;
+  color: var(--pk-vi-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .peak-vault-intelligence-view .pk-vi-index-output-groups,
+  .peak-vault-intelligence-view .pk-vi-domain-evidence {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .peak-vault-intelligence-view .pk-vi-run-operation > summary {
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+  }
+
+  .peak-vault-intelligence-view .pk-vi-run-operation > summary > div:nth-of-type(n + 2) {
+    display: none;
+  }
+
+  .peak-vault-intelligence-view .pk-vi-domain-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .peak-vault-intelligence-view .pk-vi-domain-stats > span:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .peak-vault-intelligence-view .pk-vi-domain-stats > span:nth-child(n + 3) {
+    border-top: 1px solid var(--pk-vi-border);
   }
 }

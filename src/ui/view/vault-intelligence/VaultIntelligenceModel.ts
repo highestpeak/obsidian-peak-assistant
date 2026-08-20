@@ -16,6 +16,8 @@ import type {
 	VaultScanRunState,
 	VaultScanScope,
 	VaultMapTextEntry,
+	VaultActivitySession,
+	VaultActivityTheme,
 } from '@/core/types/vault-intelligence';
 import type { VaultIntelligenceConfig } from './VaultIntelligenceDefaults';
 
@@ -69,6 +71,8 @@ export interface VaultIntelligenceSnapshot {
 	sourceActivity: VaultActivityRecord[];
 	proposals: VaultMaintenanceProposal[];
 	mapTextEntries: VaultMapTextEntry[];
+	activitySessions: VaultActivitySession[];
+	activityThemes: VaultActivityTheme[];
 	communityMembers: Record<string, VaultCommunityMemberProjection[]>;
 	events: VaultIntelligenceEvent[];
 }
@@ -86,8 +90,12 @@ export interface VaultIntelligenceWorkspaceRuntime {
 	prepareProposal: (taskId: string) => Promise<void>;
 	applyProposal: (proposalId: string) => Promise<void>;
 	rejectProposal: (proposalId: string) => Promise<void>;
+	setProposalChangeSelected: (proposalId: string, changeId: string, selected: boolean) => Promise<void>;
 	verifyTask: (taskId: string) => Promise<void>;
 	saveMapText: (communityId: string, text: string) => Promise<void>;
+	publishMapText: (communityId: string) => Promise<void>;
+	keepMapText: (communityId: string) => Promise<void>;
+	analyzeActivityThemes: (rangeStart: number, rangeEnd: number) => Promise<void>;
 	expandCommunity: (communityId: string) => Promise<void>;
 	openFile: (path: string) => Promise<boolean>;
 	openOwnerSurface: (surface: VaultIntelligenceObjectSummary['id']) => Promise<boolean>;
@@ -100,7 +108,13 @@ export function createVaultScanPlan(
 ): VaultScanPlan {
 	return {
 		scope,
-		enabledCheckIds: config.checkGroups.flatMap((group) => group.checks.map((check) => check.checkId)),
+		enabledCheckIds: config.checkGroups.flatMap((group) => group.checks.flatMap((check) => check.checkIds ?? [check.checkId])),
+		indexOutputs: config.indexOutputs.map((output) => ({
+			id: output.id,
+			enabled: output.availability === 'required' || output.availability === 'automatic' || output.availability === 'optional',
+			availability: output.availability,
+			operationIds: output.operationIds,
+		})),
 		aiOperations: config.scanOperations.map((operation) => ({
 			id: operation.id,
 			enabled: operation.defaultEnabled,
@@ -167,6 +181,7 @@ export function deriveVaultMaintenanceTasks(options: {
 				projectionLabel: projection.label,
 				suggestedChoiceId: suggestedChoiceFor(definition.kind, finding),
 				suggestedValue: suggestedValueFor(definition.kind, finding),
+				proposalPatch: proposalPatchFor(finding),
 				ownerChoice: previousChoices.get(finding.id) ?? null,
 			};
 		});
@@ -182,6 +197,7 @@ export function deriveVaultMaintenanceTasks(options: {
 				projectionLabel: 'Index error',
 				suggestedChoiceId: 'retry',
 				suggestedValue: null,
+				proposalPatch: null,
 				ownerChoice: previousChoices.get(`index-error:${error.path}`) ?? null,
 			}));
 		}
@@ -219,6 +235,18 @@ export function deriveVaultMaintenanceTasks(options: {
 		tasks.push(task);
 	}
 	return tasks;
+}
+
+function proposalPatchFor(finding: LintFinding): VaultMaintenanceAtomicItem['proposalPatch'] {
+	const candidate = finding.metadata.proposalPatch;
+	if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+	const patch = candidate as Record<string, unknown>;
+	if (typeof patch.beforeText !== 'string' || typeof patch.afterText !== 'string' || !patch.beforeText) return null;
+	return {
+		beforeText: patch.beforeText,
+		afterText: patch.afterText,
+		label: typeof patch.label === 'string' ? patch.label : undefined,
+	};
 }
 
 function suggestedValueFor(kind: VaultMaintenanceTask['kind'], finding: LintFinding): string | null {

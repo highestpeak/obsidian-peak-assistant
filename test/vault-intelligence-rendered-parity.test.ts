@@ -40,6 +40,8 @@ const snapshot: VaultIntelligenceSnapshot = {
 	sourceActivity: [],
 	proposals: [],
 	mapTextEntries: [],
+	activitySessions: [],
+	activityThemes: [],
 	communityMembers: {},
 	events: [],
 };
@@ -57,8 +59,12 @@ const runtime: VaultIntelligenceWorkspaceRuntime = {
 	prepareProposal: async () => undefined,
 	applyProposal: async () => undefined,
 	rejectProposal: async () => undefined,
+	setProposalChangeSelected: async () => undefined,
 	verifyTask: async () => undefined,
 	saveMapText: async () => undefined,
+	publishMapText: async () => undefined,
+	keepMapText: async () => undefined,
+	analyzeActivityThemes: async () => undefined,
 	expandCommunity: async () => undefined,
 	openFile: async () => true,
 	openOwnerSurface: async () => true,
@@ -81,6 +87,9 @@ assert.match(source, /<main ref=\{mainRef\} className="pk-vi-main">/);
 assert.match(source, /function MapTextWorkspace/, 'Map text must be a real route, not a dead label');
 assert.match(source, /function ProposalReview/, 'source-file changes must be reviewed as a diff before Apply');
 assert.match(source, /Prepare guarded diff/, 'proposal preparation must remain an explicit owner action');
+assert.match(source, /Knowledge Index plan/, 'the setup must disclose configurable Index outputs');
+assert.match(source, /Version history/, 'map text must expose draft and publication history');
+assert.match(source, /Evidence themes/, 'activity themes must state their evidence boundary');
 assert.match(source, /Expand members/, 'the graph must expose Community expansion instead of a fixed thumbnail');
 assert.match(source, /Add a saved scope/, 'Scan setup must accept selector-backed scopes beyond an exact file');
 

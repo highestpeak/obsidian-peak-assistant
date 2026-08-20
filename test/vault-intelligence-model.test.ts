@@ -34,17 +34,23 @@ function derive(findings: LintFinding[], previous: VaultMaintenanceTask[] = []) 
 }
 
 assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.tasks.length, 11, 'the owner surface must cover all 11 maintenance task kinds');
-assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.scanOperations.length, 7, 'scan setup must disclose all seven routed operations');
+assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.scanOperations.length, 10, 'scan setup must disclose every routed V2 operation');
 assert.deepEqual(
 	DEFAULT_VAULT_INTELLIGENCE_CONFIG.checkGroups.map((group) => group.id),
-	['connections', 'content', 'tags', 'aging'],
+	['knowledge-index', 'content', 'connections', 'follow-up'],
 	'Scan checks must use the four owner-facing groups from the final contract',
+);
+assert.deepEqual(
+	DEFAULT_VAULT_INTELLIGENCE_CONFIG.checkGroups.map((group) => group.checks.length),
+	[5, 4, 8, 2],
+	'Scan Setup must preserve the 5 / 4 / 8 / 2 owner-facing task contract',
 );
 assert.equal(
 	DEFAULT_VAULT_INTELLIGENCE_CONFIG.checkGroups.flatMap((group) => group.checks).length,
 	19,
 	'Scan Setup must expose the 19 deterministic checks independently of maintenance task kinds',
 );
+assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.indexOutputs.length, 14, 'the detailed Index plan must disclose each configured output');
 
 const tasks = derive([
 	finding({ id: 'broken-a', signalId: 'S-BROKEN-LINK', metadata: { brokenTarget: 'Missing note' } }),

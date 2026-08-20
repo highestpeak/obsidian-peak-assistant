@@ -562,11 +562,14 @@ export class AppContext {
 					available: binding.profile.enabled,
 				} : { model: 'Not configured', provider: 'Not configured', available: false };
 				return {
+					'plan-scan': { model: 'Local planning', provider: 'Peak', available: true },
 					'embedding-refresh': route(embedding),
 					'file-summaries': route(agent),
 					'ai-tags': route(agent),
-					'relationship-review': route(review),
+					'relationship-discovery': route(review),
+					'semantic-review': route(review),
 					'community-analysis': route(review),
+					'hub-bridge-analysis': route(review),
 					'file-proposals': route(review),
 					'maintenance-synthesis': route(review),
 				};
