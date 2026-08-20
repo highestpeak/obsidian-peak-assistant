@@ -135,7 +135,7 @@ export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProp
 			)}
 			<main ref={mainRef} className="pk-vi-main">
 				{route.kind === 'surface' && route.surface === 'overview' && (
-					<Overview snapshot={snapshot} runtime={runtime} onRoute={setRoute} />
+					<Overview snapshot={snapshot} runtime={runtime} config={config} onRoute={setRoute} />
 				)}
 				{route.kind === 'surface' && route.surface === 'map' && (
 					<VaultMap snapshot={snapshot} runtime={runtime} config={config} initialSurface={route.mapSurface ?? 'contents'} initialDate={route.mapDate ?? null} initialExtension={route.mapExtension ?? null} onOpenTask={(taskId) => setRoute({ kind: 'task', taskId, origin: 'queue' })} onOpenMapText={(extension) => setRoute({ kind: 'map-text', extension })} />
@@ -244,15 +244,16 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 	);
 }
 
-function Overview({ snapshot, runtime, onRoute }: {
+function Overview({ snapshot, runtime, config, onRoute }: {
 	snapshot: VaultIntelligenceSnapshot;
 	runtime: VaultIntelligenceWorkspaceRuntime;
+	config: VaultIntelligenceConfig;
 	onRoute: (route: Route) => void;
 }) {
 	const openTasks = rankTasks(snapshot.tasks.filter((task) => task.state !== 'verified')).slice(0, 7);
 	return (
 		<div className="pk-vi-page pk-vi-overview">
-			<ObjectInventory snapshot={snapshot} runtime={runtime} onRoute={onRoute} />
+			<ObjectInventory snapshot={snapshot} runtime={runtime} config={config} onRoute={onRoute} />
 			<section className="pk-vi-card pk-vi-continue">
 				<div className="pk-vi-card-head"><span className="pk-vi-card-title">Continue work</span><span className="pk-vi-card-head-actions"><small>Top {Math.min(7, openTasks.length)}</small><Button variant="ghost" size="sm" onClick={() => onRoute({ kind: 'surface', surface: 'queue' })}>View all {snapshot.tasks.filter((task) => task.state !== 'verified').length}<ChevronRight size={15} /></Button></span></div>
 				{snapshot.lastCompletedRun && <div className="pk-vi-continue-summary">
@@ -271,16 +272,24 @@ function Overview({ snapshot, runtime, onRoute }: {
 	);
 }
 
-function ObjectInventory({ snapshot, runtime, onRoute }: {
+function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 	snapshot: VaultIntelligenceSnapshot;
 	runtime: VaultIntelligenceWorkspaceRuntime;
+	config: VaultIntelligenceConfig;
 	onRoute: (route: Route) => void;
 }) {
 	return <section className="pk-vi-inventory-strip" aria-label="Vault object inventory">{snapshot.objects.map((object) => {
 		const Icon = object.id === 'files' ? File : object.id === 'chats' ? MessageSquare : object.id === 'projects' ? FolderKanban : PenLine;
-		const breakdown = object.id === 'files'
+		const canonicalBreakdown = object.id === 'files'
 			? snapshot.fileTypes.map((type) => ({ id: type.extension, label: fileTypeLabel(type.extension), count: type.count }))
 			: object.breakdown ?? [];
+		const breakdown = object.id === 'files'
+			? inventoryPreviewItems(canonicalBreakdown, config.inventoryPreviewTypeLimit)
+			: canonicalBreakdown;
+		const previewIsGrouped = breakdown.length < canonicalBreakdown.length;
+		const coverageNote = previewIsGrouped
+			? `${canonicalBreakdown.length} groups · largest ${Math.max(0, breakdown.length - 1)} + Other formats`
+			: object.coverageNote;
 		const open = () => object.id === 'files'
 			? onRoute({ kind: 'surface', surface: 'map', mapSurface: 'contents' })
 			: void runtime.openOwnerSurface(object.id);
@@ -288,25 +297,40 @@ function ObjectInventory({ snapshot, runtime, onRoute }: {
 			<span className="pk-vi-type-icon"><Icon size={28} /></span><span className="pk-vi-inventory-value">{formatNumber(object.count)}</span><span className="pk-vi-inventory-label">{object.label}</span>
 			<div className="pk-vi-inventory-hover" role="group" aria-label={`${object.label} distribution`}>
 				<div className="pk-vi-hover-head"><div><strong>{object.id === 'files' ? 'Files by type' : `${object.label} distribution`}</strong><span>{object.detail}. {object.coverageNote}</span></div>{snapshot.changedSinceScan !== null && object.id === 'files' && <small>{formatNumber(snapshot.changedSinceScan)} changed</small>}</div>
-				<InventoryDistribution total={object.count} label={object.label} items={breakdown} large={object.id === 'files'} />
-				<div className="pk-vi-hover-footer"><span>{object.coverageNote ?? 'Canonical records only.'}</span><Button variant="ghost" size="sm" onClick={open}>{object.id === 'files' ? 'Open full file inventory' : `Open ${object.label}`}<ChevronRight size={13} /></Button></div>
+				<InventoryDistribution total={object.count} label={object.label} items={breakdown} canonicalGroupCount={canonicalBreakdown.length} colors={config.fileTypeColors} large={object.id === 'files'} />
+				<div className="pk-vi-hover-footer"><span>{coverageNote ?? 'Canonical records only.'}</span><Button variant="ghost" size="sm" onClick={open}>{object.id === 'files' ? 'Open full file inventory' : `Open ${object.label}`}<ChevronRight size={13} /></Button></div>
 			</div>
 		</div>;
 	})}</section>;
 }
 
-function InventoryDistribution({ total, label, items, large }: { total: number; label: string; items: Array<{ id: string; label: string; count: number }>; large: boolean }) {
+function InventoryDistribution({ total, label, items, canonicalGroupCount, colors, large }: { total: number; label: string; items: Array<{ id: string; label: string; count: number }>; canonicalGroupCount: number; colors: string[]; large: boolean }) {
 	const [activeId, setActiveId] = useState<string | null>(null);
+	const palette = colors.length > 0 ? colors : DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors;
 	let offset = 0;
 	return <div className={`pk-vi-inventory-distribution ${large ? 'is-large' : ''}`}>
 		<div className="pk-vi-inventory-pie-panel"><svg className="pk-vi-inventory-pie" viewBox="0 0 100 100" role="img" aria-label={`${label} distribution`}>{items.map((item, index) => {
 			const start = total > 0 ? offset / total : 0;
 			offset += item.count;
 			const end = total > 0 ? offset / total : 0;
-			return <path key={item.id} className={`pk-vi-pie-segment ${activeId && activeId !== item.id ? 'is-muted' : ''}`} d={pieSlicePath(start, end)} style={{ fill: DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors[index % DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors.length] }} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} />;
-		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong><span>{items.length} canonical {items.length === 1 ? 'group' : 'groups'}</span></div>
-		<div className="pk-vi-inventory-legend">{items.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors[index % DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
+			return <path key={item.id} className={`pk-vi-pie-segment ${activeId && activeId !== item.id ? 'is-muted' : ''}`} d={pieSlicePath(start, end)} style={{ fill: palette[index % palette.length] }} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} />;
+		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong><span>{label === 'Files' ? `${canonicalGroupCount} actual file types · click to filter` : `${canonicalGroupCount} canonical ${canonicalGroupCount === 1 ? 'group' : 'groups'}`}</span><span className="pk-vi-pie-readout">{activeId ? items.find((item) => item.id === activeId)?.label : 'Hover a slice or type'}</span></div>
+		<div className="pk-vi-inventory-legend">{items.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[index % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
 	</div>;
+}
+
+function inventoryPreviewItems(items: Array<{ id: string; label: string; count: number }>, limit: number) {
+	const sorted = [...items].sort((left, right) => right.count - left.count);
+	const fallbackLimit = DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryPreviewTypeLimit;
+	const safeLimit = Number.isFinite(limit) ? Math.max(2, Math.floor(limit)) : fallbackLimit;
+	if (sorted.length <= safeLimit) return sorted;
+	const visible = sorted.slice(0, safeLimit - 1);
+	const remaining = sorted.slice(safeLimit - 1);
+	return [...visible, {
+		id: 'other-formats',
+		label: 'Other formats',
+		count: remaining.reduce((sum, item) => sum + item.count, 0),
+	}];
 }
 
 function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelligenceSnapshot; onOpenActivity: (date: string | null) => void }) {
@@ -345,7 +369,7 @@ function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelli
 	}, []);
 	return <section className="pk-vi-card pk-vi-overview-activity">
 		<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Vault activity</span></div><div className="pk-vi-overview-activity-actions"><div className="pk-vi-overview-range"><Button ref={rangeButtonRef} variant="outline" aria-haspopup="dialog" aria-expanded={rangeOpen} onClick={() => setRangeOpen((open) => !open)}><CalendarDays size={15} />{days[0] && lastDay ? `${formatShortDate(days[0].date)} – ${formatShortDate(lastDay.date)}` : 'No recorded range'}<ChevronDown size={13} /></Button>{rangeOpen && <div className="pk-vi-overview-range-popover" role="dialog" aria-label="Choose activity date range"><div className="pk-vi-overview-range-head"><strong>Date range</strong><Button variant="ghost" onClick={() => { setCustomApplied(false); setRange(365); setSelectedDate(null); setRangeOpen(false); }}>Clear filters</Button></div>{([7, 30, 365] as const).map((option) => <Button key={option} variant="ghost" className={!customApplied && range === option ? 'is-active' : ''} onClick={() => { setRange(option); setCustomApplied(false); setRangeOpen(false); setSelectedDate(null); }}><span>Last {option} days</span>{!customApplied && range === option && <Check size={14} />}</Button>)}<Button variant="ghost" className={customApplied ? 'is-active' : ''} onClick={() => setCustomOpen((open) => !open)}><span>Custom date</span><ChevronRight size={14} /></Button>{customOpen && <div className="pk-vi-custom-range"><div><label><span>Start</span><input type="date" value={customStart} max={customEnd} onChange={(event) => setCustomStart(event.target.value)} /></label><span>–</span><label><span>End</span><input type="date" value={customEnd} min={customStart} max={dateOffsetKey(0)} onChange={(event) => setCustomEnd(event.target.value)} /></label></div><div><small>{customError}</small><Button className="pk-vi-primary" size="sm" onClick={() => { if (!customStart || !customEnd || customStart > customEnd) { setCustomError('Choose a valid date range.'); return; } setCustomError(''); setCustomApplied(true); setRangeOpen(false); setSelectedDate(null); }}>Apply</Button></div></div>}</div>}</div><Button variant="ghost" size="sm" onClick={() => onOpenActivity(selectedDay?.date ?? null)}>Open Activity<ChevronRight size={14} /></Button></div></div>
-		<div className="pk-vi-overview-activity-body"><div className="pk-vi-overview-heatmap"><strong>{formatNumber(days.reduce((sum, day) => sum + day.count, 0))} explicit records in this range</strong><div className="pk-vi-overview-heatmap-scroll"><div className="pk-vi-overview-months" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{months.map((month) => <span key={month.key} style={{ gridColumn: month.column }}>{month.label}</span>)}</div><div className="pk-vi-overview-calendar"><div className="pk-vi-overview-weekdays"><span>Sun</span><span /><span>Tue</span><span /><span>Thu</span><span /><span>Sat</span></div><div className="pk-vi-overview-grid" role="grid" aria-label="Calendar heatmap of explicit Vault activity" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{days.map((day, index) => <Button key={day.date} variant="ghost" size="icon" className={selectedDay?.date === day.date ? 'is-selected' : ''} style={{ gridColumn: Math.floor((index + firstWeekday) / 7) + 1, gridRow: (index + firstWeekday) % 7 + 1, '--pk-vi-level': activityLevel(day.count, max) } as React.CSSProperties} title={`${day.date} · ${day.count} records`} aria-label={`${day.date}, ${day.count} records`} onClick={() => setSelectedDate(day.date)} />)}</div></div></div><div className="pk-vi-overview-evidence" aria-live="polite"><strong>{selectedDay ? `${formatLongDate(selectedDay.date)} · ${selectedDay.count} explicit records` : 'No recorded activity'}</strong><div>{selectedRecords.slice(0, 5).map((record) => <article key={record.id}><span className={`is-${record.kind}`}>{activityIcon(record.kind)}</span><div><strong>{record.label}</strong><span>{record.objectPath ?? (record.runId ? `Run ${record.runId}` : 'Peak-owned record')}</span></div><small>{record.kind}</small></article>)}{selectedRecords.length === 0 && selectedDay?.files.slice(0, 5).map((file) => <article key={file.path}><span><File size={14} /></span><div><strong>{file.path}</strong><span>Vault file modification</span></div><small>file</small></article>)}{selectedDay && selectedDay.count === 0 && <span className="pk-vi-empty">No explicit records for this date.</span>}</div></div><div className="pk-vi-overview-legend"><span>None</span>{[0, 1, 2, 3, 4].map((level) => <i key={level} style={{ '--pk-vi-level': level } as React.CSSProperties} />)}<span>More records</span></div></div>
+		<div className="pk-vi-overview-activity-body"><div className="pk-vi-overview-heatmap"><div className="pk-vi-overview-heatmap-summary"><strong>{formatNumber(days.reduce((sum, day) => sum + day.count, 0))} explicit records in this range</strong></div><div className="pk-vi-overview-heatmap-scroll"><div className="pk-vi-overview-heatmap-calendar"><div className="pk-vi-overview-months" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{months.map((month) => <span key={month.key} style={{ gridColumn: month.column }}>{month.label}</span>)}</div><div className="pk-vi-overview-calendar"><div className="pk-vi-overview-weekdays"><span>Sun</span><span /><span>Tue</span><span /><span>Thu</span><span /><span>Sat</span></div><div className="pk-vi-overview-grid" role="grid" aria-label="Calendar heatmap of explicit Vault activity" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{days.map((day, index) => <Button key={day.date} variant="ghost" size="icon" className={selectedDay?.date === day.date ? 'is-selected' : ''} style={{ gridColumn: Math.floor((index + firstWeekday) / 7) + 1, gridRow: (index + firstWeekday) % 7 + 1, '--pk-vi-level': activityLevel(day.count, max) } as React.CSSProperties} title={`${day.date} · ${day.count} records`} aria-label={`${day.date}, ${day.count} records`} onClick={() => setSelectedDate(day.date)} />)}</div></div></div></div><div className="pk-vi-overview-evidence" aria-live="polite"><strong>{selectedDay ? `${formatLongDate(selectedDay.date)} · ${selectedDay.count} explicit records` : 'No recorded activity'}</strong><div>{selectedRecords.slice(0, 5).map((record) => <article key={record.id}><span className={`is-${record.kind}`}>{activityIcon(record.kind)}</span><div><strong>{record.label}</strong><span>{record.objectPath ?? (record.runId ? `Run ${record.runId}` : 'Peak-owned record')}</span></div><small>{record.kind}</small></article>)}{selectedRecords.length === 0 && selectedDay?.files.slice(0, 5).map((file) => <article key={file.path}><span><File size={14} /></span><div><strong>{file.path}</strong><span>Vault file modification</span></div><small>file</small></article>)}{selectedDay && selectedDay.count === 0 && <span className="pk-vi-empty">No explicit records for this date.</span>}</div></div><div className="pk-vi-overview-heatmap-footer"><div className="pk-vi-overview-legend"><span>None</span>{[0, 1, 2, 3, 4].map((level) => <i key={level} style={{ '--pk-vi-level': level } as React.CSSProperties} />)}<span>More records</span></div></div></div>
 		</div>
 	</section>;
 }
@@ -353,8 +377,13 @@ function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelli
 function KnowledgeIndexOverview({ snapshot, onReview }: { snapshot: VaultIntelligenceSnapshot; onReview: () => void }) {
 	const discovered = snapshot.indexReadiness.discovered;
 	const ready = snapshot.indexReadiness.searchReady;
-	const percent = discovered > 0 && ready !== null ? Math.round(ready / discovered * 100) : 0;
-	return <section className="pk-vi-card pk-vi-index-overview"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Knowledge Index</span><span className="pk-vi-card-caption">Search and machine knowledge maintained by Vault scans</span></div><div><span className={`pk-vi-readiness-state ${snapshot.indexReadiness.isReady ? 'is-ready' : 'is-pending'}`}>{snapshot.indexReadiness.pendingOrExcluded === null ? 'Readiness unavailable' : `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} updates pending`}</span><Button variant="ghost" size="sm" onClick={onReview}>Review next Index plan<ChevronRight size={14} /></Button></div></div><div className="pk-vi-index-overview-body"><div className="pk-vi-readiness-ring" style={{ '--pk-vi-ready': `${percent * 3.6}deg` } as React.CSSProperties}><span>{percent}%</span></div><div className="pk-vi-index-meters"><IndexMeter label="Search ready" value={ready} total={discovered} /><IndexMeter label="Vectors ready" value={null} total={discovered} /><IndexMeter label="Summary ready" value={null} total={discovered} /><IndexMeter label="AI Tags ready" value={null} total={discovered} /><small>{snapshot.indexReadiness.pendingOrExcluded === null ? 'Pending and excluded counts are not reported.' : `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} pending or excluded by current Index evidence.`}</small></div><div className="pk-vi-index-impact"><strong>What this Index powers</strong><span>One maintained layer is reused across Peak instead of every feature reading the Vault again.</span><div><span><Search size={14} />Vault Search</span><span><Sparkles size={14} />AI Search</span><span><FileText size={14} />File context</span><span><GitBranch size={14} />Vault map</span></div><small>Full-text, vectors, summaries, AI Tags, and relationship signals are rebuildable Peak knowledge. Your Markdown and frontmatter stay unchanged.</small></div></div></section>;
+	const percent = discovered > 0 && ready !== null ? Math.min(100, Math.max(0, Math.round(ready / discovered * 100))) : 0;
+	const readinessNote = ready !== null && ready > discovered
+		? `${formatNumber(ready)} search records exceed ${formatNumber(discovered)} discovered objects; rebuild the Index baseline.`
+		: snapshot.indexReadiness.pendingOrExcluded === null
+			? 'Pending and excluded counts are not reported.'
+			: `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} pending or excluded by current Index evidence.`;
+	return <section className="pk-vi-card pk-vi-index-overview"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Knowledge Index</span><span className="pk-vi-card-caption">Search and machine knowledge maintained by Vault scans</span></div><div><span className={`pk-vi-readiness-state ${snapshot.indexReadiness.isReady ? 'is-ready' : 'is-pending'}`}>{snapshot.indexReadiness.pendingOrExcluded === null ? 'Readiness unavailable' : `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} updates pending`}</span><Button variant="ghost" size="sm" onClick={onReview}>Review next Index plan<ChevronRight size={14} /></Button></div></div><div className="pk-vi-index-overview-body"><div className="pk-vi-readiness-summary"><div className="pk-vi-readiness-ring" style={{ '--pk-vi-ready': `${percent * 3.6}deg` } as React.CSSProperties}><span>{percent}%</span></div></div><div className="pk-vi-index-meters"><IndexMeter label="Search ready" value={ready} total={discovered} /><IndexMeter label="Vectors ready" value={null} total={discovered} /><IndexMeter label="Summary ready" value={null} total={discovered} /><IndexMeter label="AI Tags ready" value={null} total={discovered} /><small>{readinessNote}</small></div><div className="pk-vi-index-impact"><strong>What this Index powers</strong><span>One maintained layer is reused across Peak instead of every feature reading the Vault again.</span><div><span><Search size={14} />Vault Search</span><span><Sparkles size={14} />AI Search</span><span><FileText size={14} />File context</span><span><GitBranch size={14} />Vault map</span></div><small>Full-text, vectors, summaries, AI Tags, and relationship signals are rebuildable Peak knowledge. Your Markdown and frontmatter stay unchanged.</small></div></div></section>;
 }
 
 function IndexMeter({ label, value, total }: { label: string; value: number | null; total: number }) {
@@ -377,7 +406,7 @@ function CompactTaskList({ tasks, onOpen }: { tasks: VaultMaintenanceTask[]; onO
 		<Button key={task.id} variant="ghost" className="pk-vi-compact-task" onClick={() => onOpen(task.id)}>
 			<span className="pk-vi-task-name"><small>{task.typeLabel}</small><strong>{task.title}</strong></span>
 			<span className="pk-vi-task-affected"><strong>{task.affectedLabel}</strong><span>· {task.contextLabel}</span></span>
-			<TaskStatus task={task} /><ChevronRight size={16} />
+			<TaskStatus task={task} />
 		</Button>
 	))}</div>;
 }

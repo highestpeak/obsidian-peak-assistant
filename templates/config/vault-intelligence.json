@@ -1,6 +1,7 @@
 {
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
+  "inventoryPreviewTypeLimit": 16,
   "checkGroups": [
     { "id": "knowledge-index", "displayOrder": 1, "label": "Knowledge Index", "description": "Five rebuildable Index layers. The detailed output plan below owns their individual enablement.", "checks": [
       { "checkId": "index-core", "checkIds": [], "label": "Core Search", "description": "Keep full-text passages and extraction readiness visible for this run." },

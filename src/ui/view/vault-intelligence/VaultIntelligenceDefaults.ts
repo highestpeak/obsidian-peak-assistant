@@ -71,6 +71,7 @@ export interface VaultScanCheckGroupDefinition {
 export interface VaultIntelligenceConfig {
 	activityColors: string[];
 	fileTypeColors: string[];
+	inventoryPreviewTypeLimit: number;
 	checkGroups: VaultScanCheckGroupDefinition[];
 	tasks: VaultMaintenanceTaskDefinition[];
 	scanOperations: VaultScanOperationDefinition[];

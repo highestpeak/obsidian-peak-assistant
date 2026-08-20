@@ -97,6 +97,27 @@ assert.match(source, /Evidence themes/, 'activity themes must state their eviden
 assert.match(source, /Expand members/, 'the graph must expose Community expansion instead of a fixed thumbnail');
 assert.match(source, /Add a saved scope/, 'Scan setup must accept selector-backed scopes beyond an exact file');
 
+const overflowSnapshot: VaultIntelligenceSnapshot = {
+	...snapshot,
+	fileTypes: Array.from({ length: 49 }, (_, index) => ({
+		extension: `type-${index + 1}`,
+		count: 49 - index,
+		share: (49 - index) / 1_225,
+	})),
+	objects: snapshot.objects.map((object) => object.id === 'files' ? { ...object, count: 1_225 } : object),
+	indexReadiness: { ...snapshot.indexReadiness, discovered: 100, searchReady: 528 },
+};
+const overflowRuntime: VaultIntelligenceWorkspaceRuntime = {
+	...runtime,
+	getSnapshot: () => overflowSnapshot,
+};
+const overflowHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: overflowRuntime }));
+assert.equal((overflowHtml.match(/pk-vi-pie-segment/g) ?? []).length, 16, 'the hover preview must retain the Mock sixteen-row geometry');
+assert.match(overflowHtml, /49 actual file types/);
+assert.match(overflowHtml, /Other formats/);
+assert.match(overflowHtml, />100%<\/span>/, 'readiness visuals must cap inconsistent projection counts at 100%');
+assert.match(overflowHtml, /528 search records exceed 100 discovered objects/);
+
 const css = readFileSync('src/styles/peak-components.css', 'utf8');
 const baseIndex = css.indexOf('Vault Intelligence\n   Standalone, evidence-first maintenance workspace');
 const legacyIndex = css.indexOf('Vault Intelligence production parity defense');
@@ -115,6 +136,8 @@ const exactPort = css.slice(css.indexOf('Vault Intelligence V2 exact reference p
 assert.match(exactPort, /\.pk-vi-inventory-strip\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
 assert.match(exactPort, /\.pk-vi-inventory-item\s*\{[\s\S]*?min-height:\s*76px;[\s\S]*?border-radius:\s*10px;/);
 assert.match(exactPort, /\.pk-vi-overview-grid > \.pk-btn\s*\{[\s\S]*?width:\s*17px !important;[\s\S]*?height:\s*17px !important;/);
-assert.match(exactPort, /\.pk-vi-index-overview-body\s*\{[\s\S]*?grid-template-columns:\s*150px minmax\(330px, 1fr\) minmax\(300px, \.85fr\);/);
+assert.match(exactPort, /\.pk-vi-index-overview-body\s*\{[\s\S]*?grid-template-columns:\s*154px minmax\(0, 1fr\) 300px;/);
+assert.match(exactPort, /\.pk-vi-continue-summary\s*\{[\s\S]*?grid-template-columns:\s*136px repeat\(4, minmax\(0, 1fr\)\);[\s\S]*?min-height:\s*41px;/);
+assert.match(exactPort, /\.pk-vi-readiness-ring\s*\{[\s\S]*?width:\s*92px;[\s\S]*?height:\s*92px;/);
 
 console.log('vault-intelligence-rendered-parity: passed');
