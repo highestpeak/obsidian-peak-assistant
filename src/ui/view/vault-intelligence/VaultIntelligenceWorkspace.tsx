@@ -46,6 +46,7 @@ import {
 	createVaultScanPlan,
 	toLocalDateKey,
 	type VaultActivityDay,
+	type VaultIntelligenceObjectSummary,
 	type VaultIntelligenceSnapshot,
 	type VaultIntelligenceWorkspaceRuntime,
 } from './VaultIntelligenceModel';
@@ -67,6 +68,14 @@ type Route =
 	| { kind: 'proposal'; taskId: string; origin: 'completed' | 'queue' };
 type WorkFilter = 'all' | 'choice' | 'review' | 'recovery';
 type ActivityRange = 30 | 90 | 183 | 365;
+type ActivityMode = 'recorded' | 'themes';
+type ActivitySource = 'all' | 'files' | 'chat' | 'project' | 'composer' | 'peak';
+type ActivityRangeDrag = {
+	kind: 'start' | 'end' | 'window';
+	originIndex: number;
+	start: number;
+	end: number;
+};
 
 /**
  * Keep the repository's shadcn Button boundary while giving this workspace one
@@ -99,14 +108,21 @@ const Button = React.forwardRef<HTMLButtonElement, SharedButtonProps>(({
 ));
 Button.displayName = 'VaultIntelligenceButton';
 
-export interface VaultIntelligenceWorkspaceProps {
-	runtime: VaultIntelligenceWorkspaceRuntime;
+function initialWorkspaceRoute(route: 'overview' | 'activity' | 'scan-setup'): Route {
+	if (route === 'activity') return { kind: 'surface', surface: 'map', mapSurface: 'activity' };
+	if (route === 'scan-setup') return { kind: 'setup' };
+	return { kind: 'surface', surface: 'overview' };
 }
 
-export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProps> = ({ runtime }) => {
+export interface VaultIntelligenceWorkspaceProps {
+	runtime: VaultIntelligenceWorkspaceRuntime;
+	initialRoute?: 'overview' | 'activity' | 'scan-setup';
+}
+
+export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProps> = ({ runtime, initialRoute = 'overview' }) => {
 	const snapshot = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot, runtime.getSnapshot);
 	const [config, setConfig] = useState(DEFAULT_VAULT_INTELLIGENCE_CONFIG);
-	const [route, setRoute] = useState<Route>({ kind: 'surface', surface: 'overview' });
+	const [route, setRoute] = useState<Route>(() => initialWorkspaceRoute(initialRoute));
 	const mainRef = useRef<HTMLElement>(null);
 	useEffect(() => {
 		void runtime.refresh();
@@ -256,13 +272,13 @@ function Overview({ snapshot, runtime, config, onRoute }: {
 			<ObjectInventory snapshot={snapshot} runtime={runtime} config={config} onRoute={onRoute} />
 			<section className="pk-vi-card pk-vi-continue">
 				<div className="pk-vi-card-head"><span className="pk-vi-card-title">Continue work</span><span className="pk-vi-card-head-actions"><small>Top {Math.min(7, openTasks.length)}</small><Button variant="ghost" size="sm" onClick={() => onRoute({ kind: 'surface', surface: 'queue' })}>View all {snapshot.tasks.filter((task) => task.state !== 'verified').length}<ChevronRight size={15} /></Button></span></div>
-				{snapshot.lastCompletedRun && <div className="pk-vi-continue-summary">
+				<div className="pk-vi-continue-summary">
 					<span><Clock3 size={14} /><small>Since last scan</small></span>
-					<span><strong>{snapshot.changedSinceScan === null ? '—' : formatNumber(snapshot.changedSinceScan)}</strong><small>Vault items changed</small></span>
-					<span><strong>{snapshot.digest ? `+${formatNumber(snapshot.digest.communityLinks?.length ?? 0)}` : '—'}</strong><small>current connections</small></span>
-					<span><strong>{snapshot.digest ? formatNumber(snapshot.digest.counts.orphans ?? 0) : '—'}</strong><small>notes need a home</small></span>
+					<span><strong>{snapshot.lastCompletedRun && snapshot.changedSinceScan !== null ? formatNumber(snapshot.changedSinceScan) : '0'}</strong><small>{snapshot.lastCompletedRun ? 'Vault items changed' : 'Not indexed yet'}</small></span>
+					<span><strong>{snapshot.digest ? `+${formatNumber(snapshot.digest.communityLinks?.length ?? 0)}` : '0'}</strong><small>current connections</small></span>
+					<span><strong>{snapshot.digest ? formatNumber(snapshot.digest.counts.orphans ?? 0) : '0'}</strong><small>notes need a home</small></span>
 					<span><strong>{formatNumber(snapshot.tasks.filter((task) => task.kind === 'content-lifecycle' && task.state !== 'verified').length)}</strong><small>work states need review</small></span>
-				</div>}
+				</div>
 				<CompactTaskList tasks={openTasks} onOpen={(taskId) => onRoute({ kind: 'task', taskId, origin: 'queue' })} />
 			</section>
 			<OverviewActivity snapshot={snapshot} onOpenActivity={(date) => onRoute({ kind: 'surface', surface: 'map', mapSurface: 'activity', mapDate: date })} />
@@ -278,7 +294,8 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 	config: VaultIntelligenceConfig;
 	onRoute: (route: Route) => void;
 }) {
-	return <section className="pk-vi-inventory-strip" aria-label="Vault object inventory">{snapshot.objects.map((object) => {
+	const objects = referenceObjectInventory(snapshot.objects);
+	return <section className="pk-vi-inventory-strip" aria-label="Vault object inventory">{objects.map((object) => {
 		const Icon = object.id === 'files' ? File : object.id === 'chats' ? MessageSquare : object.id === 'projects' ? FolderKanban : PenLine;
 		const canonicalBreakdown = object.id === 'files'
 			? snapshot.fileTypes.map((type) => ({ id: type.extension, label: fileTypeLabel(type.extension), count: type.count }))
@@ -333,6 +350,17 @@ function inventoryPreviewItems(items: Array<{ id: string; label: string; count: 
 	}];
 }
 
+function referenceObjectInventory(objects: VaultIntelligenceObjectSummary[]): VaultIntelligenceObjectSummary[] {
+	const byId = new Map(objects.map((object) => [object.id, object]));
+	const fallback: VaultIntelligenceObjectSummary[] = [
+		{ id: 'files', label: 'Files', count: 0, detail: 'Vault files visible to Peak', breakdown: [], coverageNote: 'No file inventory has been indexed yet.' },
+		{ id: 'chats', label: 'Chats', count: 0, detail: 'Durable Peak conversations', breakdown: [], coverageNote: 'No canonical conversations are available yet.' },
+		{ id: 'projects', label: 'Projects', count: 0, detail: 'Current Peak projects', breakdown: [], coverageNote: 'No current projects are available yet.' },
+		{ id: 'composer', label: 'Composer', count: 0, detail: 'Durable Composer activity', breakdown: [], coverageNote: 'No durable Composer records are available yet.' },
+	];
+	return fallback.map((item) => byId.get(item.id) ?? item);
+}
+
 function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelligenceSnapshot; onOpenActivity: (date: string | null) => void }) {
 	const [range, setRange] = useState<7 | 30 | 365>(365);
 	const [rangeOpen, setRangeOpen] = useState(false);
@@ -353,7 +381,10 @@ function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelli
 		window.addEventListener('keydown', closeOnEscape);
 		return () => window.removeEventListener('keydown', closeOnEscape);
 	}, [rangeOpen]);
-	const records = allRecordedActivity(snapshot);
+	const records = useMemo(
+		() => allRecordedActivity(snapshot),
+		[snapshot.recentActivity, snapshot.sourceActivity],
+	);
 	const mergedDays = mergeRecordedActivity(snapshot.activityDays, records);
 	const days = customApplied ? calendarDaysBetween(mergedDays, customStart, customEnd) : calendarDays(mergedDays, range);
 	const max = Math.max(0, ...days.map((day) => day.count));
@@ -547,39 +578,101 @@ function KnowledgeGraph({ snapshot, runtime, selectedExtension }: {
 }
 
 function ActivityView({ snapshot, runtime, initialDate }: { snapshot: VaultIntelligenceSnapshot; runtime: VaultIntelligenceWorkspaceRuntime; initialDate: string | null }) {
-	const [range, setRange] = useState<ActivityRange>(365);
-	const [mode, setMode] = useState<'recorded' | 'themes'>('recorded');
-	const [focusedDate, setFocusedDate] = useState<string | null>(initialDate);
-	useEffect(() => { setFocusedDate(initialDate); }, [initialDate]);
-	const records = allRecordedActivity(snapshot);
-	const calendar = useMemo(() => calendarDays(mergeRecordedActivity(snapshot.activityDays, records), range), [snapshot.activityDays, records, range]);
-	const calendarDates = new Set(calendar.map((day) => day.date));
-	const periodFileChanges = snapshot.activityDays.filter((day) => calendarDates.has(day.date)).reduce((sum, day) => sum + day.count, 0);
-	const periodRecords = records.filter((record) => calendarDates.has(toLocalDateKey(new Date(record.timestamp))));
-	const buckets = bucketRecordedActivity(calendar, periodRecords, 36);
+	const [mode, setMode] = useState<ActivityMode>('recorded');
+	const [source, setSource] = useState<ActivitySource>('all');
+	const [selection, setSelection] = useState({ start: 21, end: 35 });
+	const navigatorRef = useRef<HTMLDivElement>(null);
+	const dragRef = useRef<ActivityRangeDrag | null>(null);
+	const records = useMemo(
+		() => allRecordedActivity(snapshot),
+		[snapshot.recentActivity, snapshot.sourceActivity],
+	);
+	const calendar = useMemo(() => calendarDays(mergeRecordedActivity(snapshot.activityDays, records), 36), [snapshot.activityDays, records]);
+	useEffect(() => {
+		if (!initialDate) return;
+		const index = calendar.findIndex((day) => day.date === initialDate);
+		if (index < 0) return;
+		setSelection({ start: Math.max(0, index - 7), end: Math.min(calendar.length - 1, index + 7) });
+	}, [calendar, initialDate]);
+	const selectedDays = calendar.slice(selection.start, selection.end + 1);
+	const selectedDates = new Set(selectedDays.map((day) => day.date));
+	const periodRecords = records.filter((record) => selectedDates.has(toLocalDateKey(new Date(record.timestamp))));
+	const buckets = bucketRecordedActivity(calendar, records, 36);
 	const maxFile = Math.max(1, ...buckets.map((bucket) => bucket.fileCount));
 	const maxVault = Math.max(1, ...buckets.map((bucket) => bucket.vaultCount));
 	const maxChat = Math.max(1, ...buckets.map((bucket) => bucket.chatCount));
 	const maxComposer = Math.max(1, ...buckets.map((bucket) => bucket.composerCount));
-	const sessions = snapshot.activitySessions.filter((session) => session.endedAt >= Date.now() - range * 86_400_000).slice(0, 6);
+	const maxProject = Math.max(1, ...buckets.map((bucket) => bucket.projectCount));
+	const sessions = snapshot.activitySessions.filter((session) => selectedDates.has(toLocalDateKey(new Date(session.endedAt)))).slice(0, 5);
+	const derivedSessions = buildRecordedSessions(periodRecords).slice(0, 5);
 	const themes = snapshot.activityThemes.filter((theme) => theme.citations.some((citation) => periodRecords.some((record) => record.id === citation.recordId)));
-	const activeDays = calendar.filter((day) => day.count > 0).length;
-	const focusedRecords = focusedDate ? periodRecords.filter((record) => toLocalDateKey(new Date(record.timestamp)) === focusedDate) : [];
-	const rangeStart = Date.now() - range * 86_400_000;
-	return <div className="pk-vi-activity-workspace pk-vi-activity-grid">
-		<section className="pk-vi-activity-mode"><div className="pk-vi-segmented"><Button variant="ghost" className={mode === 'recorded' ? 'is-active' : ''} onClick={() => setMode('recorded')}>Recorded activity</Button><Button variant="ghost" className={mode === 'themes' ? 'is-active' : ''} onClick={() => setMode('themes')}>Evidence themes{themes.length ? ` · ${themes.length}` : ''}</Button></div><span>Each lane declares its source: file mtimes, durable chat/composer records, and Vault Intelligence receipts. Themes are generated only from those citations and remain Peak-owned annotations.</span></section>
-		<div className="pk-vi-activity-layout">
-			<section className="pk-vi-card pk-vi-activity-timeline">
-				<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Recorded source timeline</span><span className="pk-vi-card-caption">Each lane keeps its source contract visible. Empty space means no recorded evidence.</span></div><div className="pk-vi-segmented" aria-label="Activity range">{([[30, '30d'], [90, '90d'], [183, '6m'], [365, '1y']] as const).map(([value, label]) => <Button key={value} variant="ghost" className={range === value ? 'is-active' : ''} onClick={() => setRange(value)}>{label}</Button>)}</div></div>
-				{mode === 'recorded' ? <><div className="pk-vi-timeline-axis"><span>{buckets[0]?.label ?? 'Start'}</span><span>{buckets[Math.floor(buckets.length / 2)]?.label ?? ''}</span><span>{buckets[buckets.length - 1]?.label ?? 'Today'}</span></div><ActivityLane label="File edits" detail="Latest file modification timestamp" buckets={buckets} value={(bucket) => bucket.fileCount} max={maxFile} tone="files" /><ActivityLane label="Chats" detail="Durable conversation message events" buckets={buckets} value={(bucket) => bucket.chatCount} max={maxChat} tone="chat" /><ActivityLane label="Composer" detail="Durable workspace events with a timestamp" buckets={buckets} value={(bucket) => bucket.composerCount} max={maxComposer} tone="composer" /><ActivityLane label="Vault Intelligence" detail="Scan and owner-action receipts" buckets={buckets} value={(bucket) => bucket.vaultCount} max={maxVault} tone="receipts" /><div className="pk-vi-activity-gap"><FolderKanban size={15} /><span><strong>Projects</strong><small>No project-history event stream is registered, so this lane remains intentionally empty.</small></span></div></> : <div className="pk-vi-theme-results">{themes.length === 0 ? <div className="pk-vi-empty"><strong>No evidence themes for this range</strong><span>Run the explicit analysis to create cited Peak-owned annotations. It never reads content outside the recorded activity selection.</span><Button className="pk-vi-primary" onClick={() => void runtime.analyzeActivityThemes(rangeStart, Date.now())}>Analyze recorded evidence</Button></div> : themes.map((theme) => <article key={theme.id}><span className="pk-vi-context-label"><Sparkles size={15} />Evidence theme</span><strong>{theme.label}</strong><small>{theme.citations.length} cited records · {Math.round(theme.confidence * 100)}% grouping confidence · {formatDateTime(theme.generatedAt)}</small><div>{theme.citations.slice(0, 4).map((citation) => <span key={citation.recordId}>{citation.objectPath ?? citation.recordId}</span>)}</div></article>)}</div>}
-			</section>
-			<aside className="pk-vi-activity-aside">
-				<section className="pk-vi-card pk-vi-period-card"><div className="pk-vi-card-head"><span className="pk-vi-card-title">Period summary</span></div><div className="pk-vi-period-stats"><span><small>Range</small><strong>{range === 365 ? '1 year' : `${range} days`}</strong></span><span><small>Active days</small><strong>{formatNumber(activeDays)}</strong></span><span><small>File edits</small><strong>{formatNumber(periodFileChanges)}</strong></span><span><small>Recorded events</small><strong>{formatNumber(periodRecords.length)}</strong></span></div></section>
-				<section className="pk-vi-card pk-vi-session-card"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Recorded work sessions</span><span className="pk-vi-card-caption">Grouped by adjacent time or a shared object from durable events; session reasons are visible.</span></div></div><div className="pk-vi-session-list">{sessions.map((session) => <div key={session.id}><span><strong>{session.label}</strong><small>{formatDateTime(session.startedAt)} – {formatDateTime(session.endedAt)} · {session.reason.replace('-', ' ')}</small></span><b>{session.recordIds.length}</b></div>)}{sessions.length === 0 && <div className="pk-vi-empty">No timestamped event records in this range.</div>}</div></section>
-				<section className="pk-vi-card pk-vi-theme-card"><div className="pk-vi-context-label"><Sparkles size={16} />Evidence themes</div><strong>{themes.length ? `${themes.length} generated` : 'Not analyzed'}</strong><span>{themes.length ? 'Each theme stores citations and its source revision.' : 'Use the explicit analysis action; no topic is inferred from blank timeline space.'}</span>{!themes.length && <Button variant="ghost" size="sm" onClick={() => void runtime.analyzeActivityThemes(rangeStart, Date.now())}>Analyze range</Button>}</section>
-				{focusedDate && <section className="pk-vi-card pk-vi-focused-activity"><div className="pk-vi-card-head"><span className="pk-vi-card-title">{focusedDate}</span><Button variant="ghost" size="sm" onClick={() => setFocusedDate(null)}>Clear<X size={14} /></Button></div><span className="pk-vi-card-caption">{focusedRecords.length} durable Chat, Composer or Vault Intelligence records selected from the Overview heatmap. File mtimes remain in the file lane.</span></section>}
-			</aside>
-		</div>
+	const startDate = selectedDays[0]?.date ?? calendar[0]?.date ?? '';
+	const endDate = selectedDays[selectedDays.length - 1]?.date ?? calendar[calendar.length - 1]?.date ?? '';
+	const rangeStart = startDate ? new Date(`${startDate}T00:00:00`).getTime() : Date.now() - 35 * 86_400_000;
+	const rangeEnd = endDate ? new Date(`${endDate}T23:59:59`).getTime() : Date.now();
+	const totalRecords = calendar.reduce((sum, day) => sum + day.count, 0);
+	const selectedTotal = selectedDays.reduce((sum, day) => sum + day.count, 0);
+	const citedRecordIds = new Set(themes.flatMap((theme) => theme.recordIds));
+	const unclassified = Math.max(0, periodRecords.filter((record) => !citedRecordIds.has(record.id)).length);
+	const densityMax = Math.max(1, ...buckets.map((bucket) => bucket.fileCount + bucket.chatCount + bucket.projectCount + bucket.composerCount + bucket.vaultCount));
+	const sourceOptions: Array<{ id: ActivitySource; label: string }> = [
+		{ id: 'all', label: mode === 'recorded' ? 'All record types' : 'All analyzed themes' },
+		{ id: 'files', label: 'File edits' },
+		{ id: 'chat', label: 'Chat context' },
+		{ id: 'project', label: 'Project changes' },
+		{ id: 'composer', label: 'Composer activity' },
+		{ id: 'peak', label: 'Peak-native revisions' },
+	];
+	const sourceLabel = sourceOptions.find((option) => option.id === source)?.label ?? 'All record types';
+	const pointerIndex = (clientX: number) => {
+		const rect = navigatorRef.current?.getBoundingClientRect();
+		if (!rect || rect.width <= 0) return 0;
+		return Math.max(0, Math.min(calendar.length - 1, Math.round((clientX - rect.left) / rect.width * (calendar.length - 1))));
+	};
+	const beginRangeDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+		const dragTarget = (event.target as HTMLElement).closest<HTMLElement>('[data-range-drag]');
+		if (!dragTarget) return;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		dragRef.current = { kind: dragTarget.dataset.rangeDrag as ActivityRangeDrag['kind'], originIndex: pointerIndex(event.clientX), ...selection };
+	};
+	const moveRangeDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+		const drag = dragRef.current;
+		if (!drag) return;
+		const index = pointerIndex(event.clientX);
+		if (drag.kind === 'start') {
+			setSelection({ start: Math.min(index, drag.end - 1), end: drag.end });
+			return;
+		}
+		if (drag.kind === 'end') {
+			setSelection({ start: drag.start, end: Math.max(index, drag.start + 1) });
+			return;
+		}
+		const width = drag.end - drag.start;
+		const delta = index - drag.originIndex;
+		const start = Math.max(0, Math.min(calendar.length - 1 - width, drag.start + delta));
+		setSelection({ start, end: start + width });
+	};
+	const endRangeDrag = () => { dragRef.current = null; };
+	return <div className="pk-vi-activity-workspace">
+		<section className="pk-vi-card pk-vi-activity-explorer">
+			<div className="pk-vi-activity-answer-head"><div><strong>{formatNumber(totalRecords)} explicit activity records are available in this period.</strong><span>The default view shows timestamped local evidence. AI work themes are a generated layer, not historical fact.</span></div><div className="pk-vi-activity-mode-switch" role="tablist" aria-label="Activity data layer"><Button variant="ghost" className={mode === 'recorded' ? 'is-active' : ''} role="tab" aria-selected={mode === 'recorded'} onClick={() => { setMode('recorded'); setSource('all'); }}>Recorded activity</Button><Button variant="ghost" className={mode === 'themes' ? 'is-active' : ''} role="tab" aria-selected={mode === 'themes'} onClick={() => { setMode('themes'); setSource('all'); }}>AI work themes</Button></div></div>
+			<div className="pk-vi-activity-analysis-state" data-mode={mode}><div><i /><strong>{mode === 'recorded' ? 'Recorded locally' : themes.length ? `${themes.length} cited themes` : 'AI analysis not generated'}</strong><span>{mode === 'recorded' ? 'File edits, Chat context, Project changes, Composer activity, and Peak-native revisions.' : 'Themes are Peak-owned annotations generated only from the selected explicit records.'}</span></div><div><span className={`pk-vi-readiness-state ${mode === 'recorded' || themes.length ? 'is-ready' : 'is-pending'}`}>{mode === 'recorded' ? 'Always available' : themes.length ? 'Citations available' : 'Not analyzed'}</span><Button variant="ghost" onClick={() => void runtime.analyzeActivityThemes(rangeStart, rangeEnd)}>Analyze themes</Button></div></div>
+			<div className="pk-vi-activity-complete-workspace">
+				<div className="pk-vi-activity-chart-pane">
+					<div className="pk-vi-activity-toolbar"><div><details className="pk-vi-activity-source-picker"><summary>{sourceLabel}<ChevronDown size={13} /></summary><div>{sourceOptions.map((option) => <Button key={option.id} variant="ghost" className={source === option.id ? 'is-active' : ''} onClick={() => setSource(option.id)}><span>{option.label}</span>{source === option.id && <Check size={13} />}</Button>)}</div></details><Button variant="ghost" className={source === 'all' ? 'is-active' : ''} onClick={() => setSource('all')}>Show all</Button></div><span><strong>{formatNumber(selectedTotal)} records</strong><small>selected range</small></span></div>
+					<div className="pk-vi-activity-timeline-wrap"><div className="pk-vi-activity-timeline-chart"><div className="pk-vi-activity-lane-axis"><span>{mode === 'recorded' ? 'Recorded source' : 'Analyzed theme'}</span><div>{[0, 7, 14, 21, 28, 35].map((index) => <span key={index}>{calendar[index] ? formatActivityDateKey(calendar[index].date) : '—'}</span>)}</div></div><div className="pk-vi-activity-lane-list">{mode === 'recorded' ? <>
+						<ActivityLane label="File edits" detail="Vault file modification timestamps" buckets={buckets} value={(bucket) => bucket.fileCount} max={maxFile} tone="files" muted={source !== 'all' && source !== 'files'} selection={selection} />
+						<ActivityLane label="Chat context" detail="Durable conversation records" buckets={buckets} value={(bucket) => bucket.chatCount} max={maxChat} tone="chat" muted={source !== 'all' && source !== 'chat'} selection={selection} />
+						<ActivityLane label="Project changes" detail="Durable project state events" buckets={buckets} value={(bucket) => bucket.projectCount} max={maxProject} tone="project" muted={source !== 'all' && source !== 'project'} selection={selection} />
+						<ActivityLane label="Composer activity" detail="Durable Composer records" buckets={buckets} value={(bucket) => bucket.composerCount} max={maxComposer} tone="composer" muted={source !== 'all' && source !== 'composer'} selection={selection} />
+						<ActivityLane label="Peak-native revisions" detail="Scan, Apply, Verify, and graph receipts" buckets={buckets} value={(bucket) => bucket.vaultCount} max={maxVault} tone="receipts" muted={source !== 'all' && source !== 'peak'} selection={selection} />
+					</> : themes.length ? themes.map((theme) => <div key={theme.id} className="pk-vi-activity-theme-row"><span><strong>{theme.label}</strong><small>{theme.citations.length} cited records</small></span><div>{theme.citations.slice(0, 8).map((citation) => <i key={citation.recordId} title={citation.objectPath ?? citation.recordId} />)}</div></div>) : <div className="pk-vi-activity-empty-state"><strong>No AI work themes yet</strong><span>Recorded activity remains available. Analyze the selected range to add a cited interpretation layer without changing the timeline evidence.</span><Button className="pk-vi-primary" onClick={() => void runtime.analyzeActivityThemes(rangeStart, rangeEnd)}>Analyze recorded evidence</Button></div>}</div></div></div>
+					<div className="pk-vi-activity-range-control"><div><strong>Selected time range</strong><span>Drag the window or either handle</span></div><div ref={navigatorRef} className="pk-vi-activity-navigator" onPointerDown={beginRangeDrag} onPointerMove={moveRangeDrag} onPointerUp={endRangeDrag} onPointerCancel={endRangeDrag}>{buckets.map((bucket, index) => { const density = bucket.fileCount + bucket.chatCount + bucket.projectCount + bucket.composerCount + bucket.vaultCount; return <i key={bucket.key} className={index >= selection.start && index <= selection.end ? 'is-in-range' : ''} style={{ height: `${Math.max(3, density / densityMax * 42)}px` }} />; })}<span className="pk-vi-activity-range-window" data-range-drag="window" style={{ left: `${selection.start / calendar.length * 100}%`, width: `${(selection.end - selection.start + 1) / calendar.length * 100}%` }}><Button variant="ghost" aria-label="Change start date" data-range-drag="start" /><Button variant="ghost" aria-label="Change end date" data-range-drag="end" /></span></div></div>
+					<div className="pk-vi-activity-selection-summary"><strong>{startDate && endDate ? `${formatActivityDateKey(startDate)} – ${formatActivityDateKey(endDate)}` : 'No date range available'}</strong><span>{formatNumber(selectedTotal)} explicit records · {formatNumber(sessions.length || derivedSessions.length)} work sessions</span></div>
+				</div>
+				<aside className="pk-vi-activity-period-pane" aria-label="Selected period details"><div className="pk-vi-activity-period-head"><strong>{startDate && endDate ? `Selected period · ${formatActivityDateKey(startDate)} – ${formatActivityDateKey(endDate)}` : 'Selected period · Not available'}</strong><span>Everything here follows the same range shown on the left.</span></div><div className="pk-vi-activity-period-stats"><span><strong>{formatNumber(selectedTotal)}</strong><small>explicit records</small></span><span><strong>{formatNumber(sessions.length || derivedSessions.length)}</strong><small>work sessions</small></span><span><strong>{formatNumber(themes.length)}</strong><small>analyzed themes</small></span><span><strong>{formatNumber(unclassified)}</strong><small>not confidently classified</small></span></div>{mode === 'themes' && <div className="pk-vi-activity-detail-section"><div><strong>Theme mix</strong><span>AI attributed</span></div>{themes.length ? <div className="pk-vi-activity-theme-mix">{themes.map((theme) => <span key={theme.id}><strong>{theme.label}</strong><small>{theme.citations.length}</small><i><b style={{ width: `${Math.max(4, theme.citations.length / Math.max(1, periodRecords.length) * 100)}%` }} /></i></span>)}</div> : <span className="pk-vi-empty">No analyzed themes for this range.</span>}</div>}<div className="pk-vi-activity-detail-section"><div><strong>Work sessions in this period</strong><span>{sessions.length || derivedSessions.length}</span></div><div className="pk-vi-activity-event-list">{sessions.length ? sessions.map((session) => <article key={session.id}><time>{formatActivityDate(session.endedAt)}</time><div><strong>{session.label}</strong><span>{session.recordIds.length} explicit records · {session.reason.replace('-', ' ')}</span><small>{session.objectPaths.slice(0, 3).join(' · ') || 'Peak-owned records'}</small></div></article>) : derivedSessions.length ? derivedSessions.map((session) => <article key={session.key}><time>{formatActivityDate(new Date(`${session.key}T12:00:00`).getTime())}</time><div><strong>{session.summary || 'Recorded work session'}</strong><span>{session.count} explicit records</span><small>Grouped by recorded date</small></div></article>) : <div className="pk-vi-activity-period-empty"><strong>No work sessions yet</strong><span>The selected period is retained; new explicit records will appear here without changing the workspace layout.</span></div>}</div></div></aside>
+			</div>
+		</section>
 	</div>;
 }
 
@@ -629,6 +722,7 @@ function ScanSetup({ snapshot, config, onBack, onStart }: {
 		availability: output.availability,
 		operationIds: output.operationIds,
 	})));
+	const [expandedOperationGroup, setExpandedOperationGroup] = useState<'plan' | 'index' | 'relations' | 'structure' | 'follow-up' | null>(null);
 	useEffect(() => {
 		setSelectedCheckKeys(new Set(config.checkGroups.flatMap((group) => group.checks.map((check) => check.checkId))));
 		setOperations(resolvedOperationPlans(config, snapshot));
@@ -663,6 +757,7 @@ function ScanSetup({ snapshot, config, onBack, onStart }: {
 	const selectedOps = plannedOperations.filter((operation) => operation.enabled);
 	const estimatedTokens = selectedOps.reduce((sum, operation) => sum + operation.estimatedTokens, 0);
 	const estimatedCost = selectedOps.reduce((sum, operation) => sum + operation.estimatedCostUsd, 0);
+	const estimatedMinutes = scopeObjectCount > 0 ? Math.max(1, Math.ceil(scopeObjectCount / 120 + estimatedTokens / 45_000)) : null;
 	const enabledCheckIds = uniqueStrings(displayedCheckGroups.flatMap((group) => group.checks
 		.filter((check) => selectedCheckKeys.has(check.checkId))
 		.flatMap((check) => check.checkIds ?? [check.checkId])));
@@ -679,28 +774,19 @@ function ScanSetup({ snapshot, config, onBack, onStart }: {
 			aiOperations: plannedOperations,
 			createdAt: Date.now(),
 		});
-	return <div className="pk-vi-page pk-vi-scan-setup">
-		<Breadcrumb items={[{ label: 'Vault Intelligence', action: onBack }, { label: 'Scan setup' }]} />
-		<section className="pk-vi-scan-hero"><div><span className="pk-vi-ready-mark"><ShieldCheck size={22} /></span><span><strong>Prepare a safe Vault scan</strong><small>Choose what Peak should examine, then review AI models and estimated usage. Your current Vault stays available while it runs.</small></span></div><div className="pk-vi-safety-facts"><span><small>Last successful scan</small><strong>{snapshot.changedCursorAt ? formatDateTime(snapshot.changedCursorAt) : 'First full Scan required'}</strong></span><span><small>Current Vault view</small><strong>Stays usable until publish</strong></span><span><small>User files</small><strong>No automatic edits</strong></span></div></section>
-		<SetupSection number="1" title="Choose scan scope" status={scopeMode === 'selected' ? `${selectedPaths.length} selected` : scopeMode === 'changed' ? `${snapshot.changedSinceScan ?? 0} changed` : `${snapshot.availablePaths.length} files`}>
-			<div className="pk-vi-choice-grid">{([
-				['changed', 'Since last scan', snapshot.changedCursorAt ? 'Only objects changed since the latest completed Scan.' : 'Available after the first completed full Scan.'],
-				['selected', 'Choose a scope', 'Search and select exact Vault files.'],
-				['entire', 'Entire Vault', 'Rebuild the full Vault scope explicitly.'],
-			] as const).map(([id, label, description]) => <Button key={id} variant="ghost" disabled={id === 'changed' && !snapshot.changedCursorAt} className={scopeMode === id ? 'is-active' : ''} onClick={() => setScopeMode(id)}><strong>{label}</strong><span>{description}</span></Button>)}</div>
-			{scopeMode === 'selected' && <div className="pk-vi-path-picker"><label><Search size={15} /><input value={pathQuery} onChange={(event) => setPathQuery(event.target.value)} placeholder="Search Vault files" /></label>{matchingPaths.length > 0 && <div className="pk-vi-path-results">{matchingPaths.map((path) => <Button key={path} variant="ghost" onClick={() => { addSelector({ id: `file:${path}`, kind: 'file', label: path, paths: [path] }); setPathQuery(''); }}><FileText size={14} /><span>{path}</span><Check size={14} /></Button>)}</div>}<div className="pk-vi-scope-shortcuts"><span>Add a saved scope</span><div>{folderScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Folder · {selector.label}</Button>)}{communityScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Community · {selector.label}</Button>)}{savedWorkScope.paths.length > 0 && <Button variant="ghost" onClick={() => addSelector(savedWorkScope)}>Saved work · {savedWorkScope.label}</Button>}</div></div><div className="pk-vi-selected-paths">{selectors.map((selector) => <span key={selector.id}>{selector.kind} · {selector.label} · {selector.paths.length} files<Button variant="ghost" size="icon" onClick={() => { setSelectors((current) => current.filter((candidate) => candidate.id !== selector.id)); setSelectedPaths((current) => current.filter((path) => !selector.paths.includes(path) || selectors.some((candidate) => candidate.id !== selector.id && candidate.paths.includes(path)))); }} aria-label={`Remove ${selector.label}`}><X size={13} /></Button></span>)}</div></div>}
-		</SetupSection>
-		<SetupSection number="2" title="Choose scan tasks" status={`${selectedCheckKeys.size} of 19 tasks selected`}>
-			<span className="pk-vi-section-description">These four owner-facing groups are the V2 contract: Knowledge Index 5, Content 4, Relationships 8, and Reviewable follow-up 2. The groups below keep every underlying detector or safe local output visible.</span>
-			<div className="pk-vi-check-group-grid">{displayedCheckGroups.map((group) => { const selectedCount = group.checks.filter((check) => selectedCheckKeys.has(check.checkId)).length; const selected = selectedCount === group.checks.length; return <section key={group.id} className={`pk-vi-check-group-card ${selected ? 'is-active' : ''}`}><Button variant="ghost" onClick={() => setGroupSelected(group.checks, !selected)}><span className="pk-vi-check-mark">{selected && <Check size={14} />}</span><strong>{group.label}</strong><small>{selectedCount}/{group.checks.length} tasks</small></Button><div>{group.checks.map((check) => <label key={check.checkId}><input type="checkbox" checked={selectedCheckKeys.has(check.checkId)} onChange={() => setSelectedCheckKeys((current) => { const next = new Set(current); if (next.has(check.checkId)) next.delete(check.checkId); else next.add(check.checkId); return next; })} /><span><strong>{check.label}</strong><small>{check.description}</small></span></label>)}</div></section>; })}</div>
-			<IndexOutputPlan config={config} outputs={indexOutputs} scopeObjectCount={scopeObjectCount} onToggle={toggleOutput} />
-		</SetupSection>
-		<SetupSection number="3" title="Review AI operations" status={`${selectedOps.length} enabled`}>
-			<div className="pk-vi-operation-groups">{(['plan', 'index', 'relations', 'structure', 'follow-up'] as const).map((group) => <section key={group} className="pk-vi-operation-group"><div className="pk-vi-operation-group-head"><strong>{operationGroupLabel(group)}</strong><span>{operationGroupDescription(group)}</span></div><div className="pk-vi-operation-list">{config.scanOperations.filter((definition) => definition.group === group).map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const routeAvailable = snapshot.operationRoutes[operation.id]?.available ?? true; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const available = routeAvailable && scopeAvailable; const shared = sharedExecutionLabel(operation.id); return <div key={definition.id} className={`pk-vi-operation-row ${available ? '' : 'is-unavailable'}`}><div><strong>{definition.label}</strong><span>{definition.description}{shared ? ` · ${shared}` : ''}</span></div><div className="pk-vi-operation-route"><strong>{operation.model}</strong><span>{operation.provider}</span></div><span>{formatCompactNumber(operation.estimatedTokens)} · {formatMoney(operation.estimatedCostUsd)}</span><Button variant="ghost" disabled={!available} className={operation.enabled ? 'is-on' : ''} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!routeAvailable ? 'Unavailable' : !scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div></section>)}</div>
-		</SetupSection>
-		<section className="pk-vi-estimate"><div><Clock3 size={18} /><span><strong>Current run estimate</strong><small>Planning estimate scaled from the frozen scope, enabled outputs and selected routes; the receipt records actual usage.</small></span></div><div><span><small>Scope</small><strong>{scopeObjectCount} objects</strong></span><span><small>AI tokens</small><strong>~{formatCompactNumber(estimatedTokens)}</strong></span><span><small>AI cost</small><strong>~{formatMoney(estimatedCost)}</strong></span></div></section>
-		<div className="pk-vi-footer-actions"><Button variant="ghost" onClick={onBack}>Cancel</Button><Button className="pk-vi-primary" onClick={start} disabled={scopeMode === 'selected' && selectedPaths.length === 0}><ScanSearch size={16} />Start Scan</Button></div>
-	</div>;
+	const scopeStatus = scopeMode === 'selected' ? `${selectedPaths.length} selected` : scopeMode === 'changed' ? `${snapshot.changedSinceScan ?? 0} changed` : `${snapshot.availablePaths.length} objects`;
+	return <div className="pk-vi-page pk-vi-scan-setup"><section className="pk-vi-scan-setup-shell">
+		<div className="pk-vi-scan-setup-body"><section className="pk-vi-scan-setup-overview"><div className="pk-vi-scan-setup-hero"><span><ScanSearch size={23} /></span><div><strong>Prepare a safe Vault scan</strong><small>Choose what Peak should examine, then review AI models and estimated usage. Your current Vault stays available while it runs.</small></div><span className="pk-vi-readiness-state is-ready"><Check size={13} />Ready</span></div><div className="pk-vi-scan-trust-row"><span><Clock3 size={14} /><small>Last successful scan</small><strong>{snapshot.changedCursorAt ? formatDateTime(snapshot.changedCursorAt) : 'Not indexed yet'}</strong></span><span><ShieldCheck size={14} /><small>Current Vault view</small><strong>Stays usable until this scan publishes</strong></span><span><FileText size={14} /><small>User files</small><strong>No automatic edits</strong></span></div></section>
+		<div className="pk-vi-scan-setup-grid"><SetupSection number="1" title="Choose scan scope" description="Peak also checks the existing relationships and Communities affected by this scope." status="Recommended"><div className="pk-vi-scope-builder"><div className="pk-vi-scope-mode-options">{([
+			['changed', 'Since last scan', snapshot.changedCursorAt ? `${snapshot.changedSinceScan ?? 0} changed` : 'Not indexed yet'],
+			['selected', 'Choose a scope', 'Search & select'],
+			['entire', 'Entire Vault', `${snapshot.availablePaths.length} objects`],
+		] as const).map(([id, label, meta]) => <Button key={id} variant="ghost" disabled={id === 'changed' && !snapshot.changedCursorAt} className={scopeMode === id ? 'is-active' : ''} onClick={() => setScopeMode(id)}><strong>{label}</strong><span>{meta}</span></Button>)}</div><div className="pk-vi-scope-selected-row"><div><strong>Included scope</strong><span>{scopeObjectCount} objects included</span></div><span className="pk-vi-scope-token"><Check size={13} />{scopeMode === 'changed' ? 'Changes since last scan' : scopeMode === 'entire' ? 'Entire Vault' : selectors.length ? `${selectors.length} saved scopes` : 'Choose files or saved scope'} <b>{scopeObjectCount}</b></span></div>{scopeMode === 'selected' && <div className="pk-vi-path-picker"><label><Search size={15} /><input value={pathQuery} onChange={(event) => setPathQuery(event.target.value)} placeholder="Add a file, folder, Community, or saved work…" /></label>{matchingPaths.length > 0 && <div className="pk-vi-path-results">{matchingPaths.map((path) => <Button key={path} variant="ghost" onClick={() => { addSelector({ id: `file:${path}`, kind: 'file', label: path, paths: [path] }); setPathQuery(''); }}><FileText size={14} /><span>{path}</span><Check size={14} /></Button>)}</div>}<div className="pk-vi-scope-shortcuts"><span>Add a saved scope</span><div>{folderScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Folder · {selector.label}</Button>)}{communityScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Community · {selector.label}</Button>)}{savedWorkScope.paths.length > 0 && <Button variant="ghost" onClick={() => addSelector(savedWorkScope)}>Saved work · {savedWorkScope.label}</Button>}</div></div><div className="pk-vi-selected-paths">{selectors.map((selector) => <span key={selector.id}>{selector.kind} · {selector.label} · {selector.paths.length} files<Button variant="ghost" size="icon" onClick={() => { setSelectors((current) => current.filter((candidate) => candidate.id !== selector.id)); setSelectedPaths((current) => current.filter((path) => !selector.paths.includes(path) || selectors.some((candidate) => candidate.id !== selector.id && candidate.paths.includes(path)))); }} aria-label={`Remove ${selector.label}`}><X size={13} /></Button></span>)}</div></div>}<div className="pk-vi-scope-builder-foot"><GitBranch size={13} />Affected relationships and existing Community context are included automatically.</div></div></SetupSection>
+		<SetupSection number="2" title="Choose scan tasks" description="Select the maintenance task categories Peak should run." status={`${selectedCheckKeys.size} of ${allChecks.length} tasks selected`}><div className="pk-vi-scan-check-grid">{displayedCheckGroups.map((group) => { const selectedCount = group.checks.filter((check) => selectedCheckKeys.has(check.checkId)).length; const selected = selectedCount === group.checks.length; return <Button key={group.id} variant="ghost" className={selected ? 'is-active' : ''} title={group.description} onClick={() => setGroupSelected(group.checks, !selected)}><span className="pk-vi-check-mark">{selected && <Check size={13} />}</span><strong>{group.label}</strong><span>{group.checks.length} tasks</span></Button>; })}</div><IndexOutputPlan config={config} outputs={indexOutputs} scopeObjectCount={scopeObjectCount} onToggle={toggleOutput} /></SetupSection>
+		<SetupSection number="3" title="Review AI models" description="Peak mapped the selected tasks and Index outputs to AI operations. Open a row to change models or disable an individual operation." status={`${selectedOps.length} operations · ${selectedOps.length ? 'models ready' : 'no AI work'}`}><div className="pk-vi-scan-ai-groups">{(['plan', 'index', 'relations', 'structure', 'follow-up'] as const).map((group) => { const definitions = config.scanOperations.filter((definition) => definition.group === group); const groupOperations = definitions.map((definition) => plannedOperations.find((candidate) => candidate.id === definition.id)!).filter(Boolean); const enabled = groupOperations.filter((operation) => operation.enabled).length; const expanded = expandedOperationGroup === group; return <section key={group} className={expanded ? 'is-expanded' : ''}><Button variant="ghost" className="pk-vi-scan-ai-group-row" aria-expanded={expanded} onClick={() => setExpandedOperationGroup(expanded ? null : group)}><span><strong>{scanOperationGroupLabel(group)}</strong><small>{scanOperationGroupDescription(group)}</small></span><span><strong>{definitions.length} {definitions.length === 1 ? 'operation' : 'operations'}</strong><small>{scanOperationGroupSummary(group)}</small></span><span><strong>{enabled} / {definitions.length} enabled</strong><small>{groupOperations[0]?.provider ?? 'Route not available'}</small></span><ChevronRight size={15} /></Button>{expanded && <div className="pk-vi-scan-operation-list">{definitions.map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const routeAvailable = snapshot.operationRoutes[operation.id]?.available ?? true; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const available = routeAvailable && scopeAvailable; const shared = sharedExecutionLabel(operation.id); return <div key={definition.id} className={available ? '' : 'is-unavailable'}><span><strong>{definition.label}</strong><small>{definition.description}{shared ? ` · ${shared}` : ''}</small></span><span><strong>{operation.model}</strong><small>{operation.provider}</small></span><span>{formatCompactNumber(operation.estimatedTokens)} · {formatMoney(operation.estimatedCostUsd)}</span><Button variant="ghost" disabled={!available} className={operation.enabled ? 'is-on' : ''} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!routeAvailable ? 'Unavailable' : !scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div>}</section>; })}</div></SetupSection>
+		<section className="pk-vi-scan-estimate-block"><div><span><strong>Estimated run</strong><small>Recalculated from the current scope, tasks, AI operations, and models.</small></span><span className="pk-vi-readiness-state">Before start</span></div><div className="pk-vi-scan-estimate-metrics"><span><strong>{estimatedMinutes === null ? 'Not available' : `${estimatedMinutes}–${estimatedMinutes + 3} min`}</strong><small>Estimated time</small></span><span><strong>{estimatedTokens > 0 ? `~${formatCompactNumber(estimatedTokens)}` : '0'}</strong><small>Typical AI tokens</small></span><span><strong>{estimatedCost > 0 ? `~${formatMoney(estimatedCost)}` : '$0.00'}</strong><small>Typical AI cost</small></span></div><small className="pk-vi-scan-estimate-note"><Info size={13} />Progress shows actual tokens and spend for every AI operation and for the run total. Unknown provider pricing is shown as unknown, never as $0.</small></section></div></div>
+		<footer className="pk-vi-scan-setup-footer"><span><Info size={14} />The scan updates machine state and prepares review items. It never applies user-file edits. Current scope: {scopeStatus}.</span><div><Button variant="outline" onClick={onBack}>Cancel</Button><Button className="pk-vi-primary" onClick={start} disabled={scopeMode === 'selected' && selectedPaths.length === 0}><Play size={15} />Start scan</Button></div></footer>
+	</section></div>;
 }
 
 function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
@@ -731,8 +817,8 @@ function indexOutputGroupLabel(group: 'core' | 'summaries' | 'tags' | 'relations
 	return 'Content understanding';
 }
 
-function SetupSection({ number, title, status, children }: { number: string; title: string; status: string; children: React.ReactNode }) {
-	return <section className="pk-vi-card pk-vi-setup-section"><div className="pk-vi-setup-head"><span className="pk-vi-step-number">{number}</span><strong>{title}</strong><span>{status}</span></div>{children}</section>;
+function SetupSection({ number, title, description, status, children }: { number: string; title: string; description: string; status: string; children: React.ReactNode }) {
+	return <section className="pk-vi-scan-config-card"><div className="pk-vi-scan-config-head"><div><span>{number}</span><div><strong>{title}</strong><small>{description}</small></div></div><span className="pk-vi-readiness-state">{status}</span></div>{children}</section>;
 }
 
 function RunProgress({ snapshot, runtime, onBack, onCompleted }: {
@@ -972,20 +1058,23 @@ interface ActivityBucket {
 	fileCount: number;
 	vaultCount: number;
 	chatCount: number;
+	projectCount: number;
 	composerCount: number;
 }
 
-function ActivityLane({ label, detail, buckets, value, max, tone }: {
+function ActivityLane({ label, detail, buckets, value, max, tone, muted, selection }: {
 	label: string;
 	detail: string;
 	buckets: ActivityBucket[];
 	value: (bucket: ActivityBucket) => number;
 	max: number;
-	tone: 'files' | 'chat' | 'composer' | 'receipts';
+	tone: 'files' | 'chat' | 'project' | 'composer' | 'receipts';
+	muted: boolean;
+	selection: { start: number; end: number };
 }) {
-	return <div className={`pk-vi-activity-lane is-${tone}`}><span className="pk-vi-lane-label"><strong>{label}</strong><small>{detail}</small></span><div className="pk-vi-lane-bars">{buckets.map((bucket) => {
+	return <div className={`pk-vi-activity-lane-row is-${tone} ${muted ? 'is-muted' : ''}`}><span className="pk-vi-activity-lane-label"><strong>{label}</strong><small>{detail}</small></span><div className="pk-vi-activity-lane-track">{buckets.map((bucket, index) => {
 		const count = value(bucket);
-		return <span key={bucket.key} title={`${bucket.label} · ${count}`}><i style={{ height: `${count === 0 ? 2 : Math.max(8, count / max * 100)}%` }} /></span>;
+		return <span key={bucket.key} className={index < selection.start || index > selection.end ? 'is-outside-range' : ''} title={`${bucket.label} · ${count}`}><i style={{ height: `${count === 0 ? 2 : Math.max(7, count / max * 100)}%` }} /></span>;
 	})}</div></div>;
 }
 
@@ -996,11 +1085,12 @@ function bucketRecordedActivity(
 ): ActivityBucket[] {
 	if (days.length === 0) return [];
 	const size = Math.max(1, Math.ceil(days.length / maxBuckets));
-	const countsByKind = new Map<string, Partial<Record<'vaultCount' | 'chatCount' | 'composerCount', number>>>();
+	const countsByKind = new Map<string, Partial<Record<'vaultCount' | 'chatCount' | 'projectCount' | 'composerCount', number>>>();
 	for (const record of records) {
 		const date = toLocalDateKey(new Date(record.timestamp));
 		const counts = countsByKind.get(date) ?? {};
 		if (record.kind === 'chat') counts.chatCount = (counts.chatCount ?? 0) + 1;
+		else if (record.kind === 'project') counts.projectCount = (counts.projectCount ?? 0) + 1;
 		else if (record.kind === 'composer') counts.composerCount = (counts.composerCount ?? 0) + 1;
 		else counts.vaultCount = (counts.vaultCount ?? 0) + 1;
 		countsByKind.set(date, counts);
@@ -1017,6 +1107,7 @@ function bucketRecordedActivity(
 			fileCount: slice.reduce((sum, day) => sum + day.files.length, 0),
 			vaultCount: slice.reduce((sum, day) => sum + (countsByKind.get(day.date)?.vaultCount ?? 0), 0),
 			chatCount: slice.reduce((sum, day) => sum + (countsByKind.get(day.date)?.chatCount ?? 0), 0),
+			projectCount: slice.reduce((sum, day) => sum + (countsByKind.get(day.date)?.projectCount ?? 0), 0),
 			composerCount: slice.reduce((sum, day) => sum + (countsByKind.get(day.date)?.composerCount ?? 0), 0),
 		});
 	}
@@ -1166,6 +1257,30 @@ function operationGroupDescription(group: 'plan' | 'index' | 'relations' | 'stru
 	return 'Creates review evidence and owner actions; Scan never applies source-file changes.';
 }
 
+function scanOperationGroupLabel(group: 'plan' | 'index' | 'relations' | 'structure' | 'follow-up'): string {
+	if (group === 'plan') return 'Plan this scan';
+	if (group === 'index') return 'Enrich Knowledge Index';
+	if (group === 'relations') return 'Find meaning and relationships';
+	if (group === 'structure') return 'Review Communities, Hubs, and bridges';
+	return 'Prepare reviewable follow-up';
+}
+
+function scanOperationGroupDescription(group: 'plan' | 'index' | 'relations' | 'structure' | 'follow-up'): string {
+	if (group === 'plan') return 'Keep enabled AI work inside the selected scope and selected tasks.';
+	if (group === 'index') return 'Route the AI-backed Index outputs selected in Step 2.';
+	if (group === 'relations') return 'Compare changed files with affected context instead of a disconnected subset.';
+	if (group === 'structure') return 'Use the complete current graph, then overlay the changed and affected area.';
+	return 'Create safe proposals and explain what completed automatically versus what still needs you.';
+}
+
+function scanOperationGroupSummary(group: 'plan' | 'index' | 'relations' | 'structure' | 'follow-up'): string {
+	if (group === 'plan') return 'Optional AI planning';
+	if (group === 'index') return 'Embeddings · summaries · AI Tags';
+	if (group === 'relations') return 'Discovery · semantic review';
+	if (group === 'structure') return 'Community · Hub and bridge';
+	return 'File proposals · synthesis';
+}
+
 function operationAvailableForScope(
 	id: VaultScanAiOperationPlan['id'],
 	scope: VaultScanScopeMode,
@@ -1261,6 +1376,8 @@ function formatMoney(value: number): string { return new Intl.NumberFormat(undef
 function formatDateTime(timestamp: number): string { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(timestamp); }
 function formatShortDate(date: string): string { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${date}T12:00:00`)); }
 function formatLongDate(date: string): string { return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(`${date}T12:00:00`)); }
+function formatActivityDateKey(date: string): string { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(`${date}T12:00:00`)); }
+function formatActivityDate(timestamp: number): string { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(timestamp); }
 function elapsedLabel(start: number, end: number): string { const seconds = Math.max(0, Math.round((end - start) / 1000)); return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`; }
 
 VaultIntelligenceWorkspace.displayName = 'VaultIntelligenceWorkspace';

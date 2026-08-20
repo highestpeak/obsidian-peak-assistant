@@ -68,3 +68,54 @@ Coordinates are `x,y width×height` in CSS pixels. “Exact” means the audited
 - Vectors, summaries, and AI Tags remain `Not reported` where the current runtime has no trustworthy count. No display-only values were fabricated to match the Mock.
 - Native Obsidian chrome and the host system font family are intentionally outside the standalone Mock contract.
 - Post-change real-Obsidian interaction is `INTERACTION NOT VERIFIED`; this pass used the requested lightweight production harness plus the owner recording, not repeated host automation.
+
+## Structural parity correction
+
+The owner recording exposed two regions that could not be treated as visual polish.
+
+### Activity component mapping
+
+```text
+Reference .activity-explorer
+→ Production ActivityView / .pk-vi-activity-explorer
+  ├─ answer header + Recorded activity / AI work themes tabs
+  ├─ recorded/generated analysis state
+  └─ complete workspace
+     ├─ chart pane
+     │  ├─ source picker + selected-range count
+     │  ├─ five recorded source lanes or generated theme rows
+     │  ├─ draggable range navigator
+     │  └─ selected-range summary
+     └─ selected-period pane
+        ├─ four period metrics
+        ├─ optional theme mix
+        └─ work sessions / stable empty treatment
+```
+
+The old standalone `Period summary`, generic timeline card, session card, and theme card were removed. The compressed body was caused by applying the legacy heatmap class `.pk-vi-activity-grid` to the whole Activity workspace. That selector forced column auto-flow, seven grid rows, and 11px columns. The Activity root no longer carries that class. At `1512 × 982`, the corrected workspace measures `1454px` wide with `1099px + 355px` columns; the navigator is `1072 × 60px`.
+
+### Scan Setup component mapping
+
+```text
+Reference .scan-setup-shell
+→ Production ScanSetup / .pk-vi-scan-setup-shell
+  ├─ hero + three trust facts
+  ├─ Step 1 scope builder + included scope
+  ├─ Step 2 four compact task category summaries
+  │  └─ collapsed Knowledge Index plan
+  ├─ Step 3 five collapsed AI operation groups
+  │  └─ operation rows only after explicit expansion
+  ├─ estimated run block
+  └─ user-file boundary + Cancel / Start scan footer
+```
+
+Production previously rendered all 19 detector labels and every AI operation by default. The corrected default renders four category summaries with counts and five collapsed AI group rows. Real detector and operation data remain available inside the corresponding category/group interaction instead of changing the Reference information density.
+
+### Zero-data contract
+
+- `normal-data` and `zero-data` are deterministic adapters around the real Production component and CSS.
+- Overview always keeps four object cards, Continue work summary, activity heatmap, and Knowledge Index. Missing object rows are adapted to canonical zero-count presentation objects.
+- Activity always keeps five source lanes, the range navigator, selected-period metrics, and the work-session region.
+- Scan Setup always keeps all three steps, four task categories, five AI groups, estimate, boundary, and actions. Missing scan history reads `Not indexed yet` instead of removing Step 1.
+
+The browser harness verified the default collapsed state, one-at-a-time AI group expansion, Recorded/AI theme switching, and a real navigator window drag. Post-change real-Obsidian interaction remains `INTERACTION NOT VERIFIED`.

@@ -8,6 +8,7 @@ import {
 	type VaultIntelligenceSnapshot,
 	type VaultIntelligenceWorkspaceRuntime,
 } from '@/ui/view/vault-intelligence/VaultIntelligenceModel';
+import { applyVaultIntelligencePresentationFixture } from '@/ui/view/vault-intelligence/VaultIntelligencePresentationFixtures';
 
 const now = Date.now();
 const snapshot: VaultIntelligenceSnapshot = {
@@ -78,7 +79,8 @@ assert.match(
 	'production object inventory must render the reference-compatible hover-card structure',
 );
 assert.equal((html.match(/pk-vi-inventory-item/g) ?? []).length, 4);
-assert.doesNotMatch(html, /pk-vi-continue-summary/, 'first setup must not manufacture a since-last-scan delta');
+assert.match(html, /pk-vi-continue-summary/, 'zero history must retain the reference summary geometry');
+assert.match(html, /Not indexed yet/, 'zero history must explain the empty scan baseline');
 assert.match(html, /Prepare Vault/);
 assert.match(html, /pk-vi-overview-activity-body/);
 assert.match(html, /pk-vi-index-overview-body/);
@@ -93,9 +95,40 @@ assert.match(source, /function ProposalWorkspace/, 'a prepared diff must have it
 assert.match(source, /Prepare guarded diff/, 'proposal preparation must remain an explicit owner action');
 assert.match(source, /Knowledge Index plan/, 'the setup must disclose configurable Index outputs');
 assert.match(source, /Version history/, 'map text must expose draft and publication history');
-assert.match(source, /Evidence themes/, 'activity themes must state their evidence boundary');
+assert.match(source, /AI work themes/, 'activity themes must remain an explicit generated layer');
 assert.match(source, /Expand members/, 'the graph must expose Community expansion instead of a fixed thumbnail');
 assert.match(source, /Add a saved scope/, 'Scan setup must accept selector-backed scopes beyond an exact file');
+assert.doesNotMatch(source, /Period summary/, 'Activity must not retain the old standalone period-summary card');
+assert.doesNotMatch(source, /pk-vi-activity-aside/, 'Activity details must live inside the reference explorer workspace');
+assert.doesNotMatch(source, /pk-vi-check-group-card/, 'Scan Setup must not expand all detector rows by default');
+assert.doesNotMatch(source, /pk-vi-operation-groups/, 'Scan Setup must not expand all AI operation rows by default');
+
+const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snapshot);
+const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };
+const zeroOverviewHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'overview' }));
+assert.equal((zeroOverviewHtml.match(/pk-vi-inventory-item/g) ?? []).length, 4, 'zero data keeps all four object cards');
+assert.match(zeroOverviewHtml, /pk-vi-continue-summary/, 'zero data keeps Continue work summary geometry');
+assert.match(zeroOverviewHtml, /pk-vi-overview-activity-body/, 'zero data keeps the activity chart section');
+assert.match(zeroOverviewHtml, /pk-vi-index-overview-body/, 'zero data keeps Knowledge Index geometry');
+assert.match(zeroOverviewHtml, /No unresolved maintenance work/, 'zero data uses an explicit empty treatment');
+
+const zeroActivityHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'activity' }));
+assert.match(zeroActivityHtml, /pk-vi-activity-complete-workspace/, 'zero Activity keeps the complete two-pane workspace');
+assert.equal((zeroActivityHtml.match(/pk-vi-activity-lane-row/g) ?? []).length, 5, 'zero Activity keeps every recorded source lane');
+assert.match(zeroActivityHtml, /pk-vi-activity-period-pane/, 'zero Activity keeps selected-period details');
+assert.match(zeroActivityHtml, /pk-vi-activity-range-window/, 'zero Activity keeps the range navigator');
+assert.match(zeroActivityHtml, /No work sessions yet/, 'zero Activity uses a stable empty session treatment');
+
+const normalSetupHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime, initialRoute: 'scan-setup' }));
+const zeroSetupHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'scan-setup' }));
+for (const setupHtml of [normalSetupHtml, zeroSetupHtml]) {
+	assert.equal((setupHtml.match(/pk-vi-scan-check-grid/g) ?? []).length, 1, 'Setup keeps one compact category summary grid');
+	assert.equal((setupHtml.match(/pk-vi-scan-ai-group-row/g) ?? []).length, 5, 'Setup keeps five collapsed AI group rows');
+	assert.doesNotMatch(setupHtml, /pk-vi-scan-operation-list/, 'AI operation details stay collapsed by default');
+	assert.match(setupHtml, /pk-vi-scan-estimate-block/, 'Setup keeps the estimate block');
+	assert.match(setupHtml, /pk-vi-scan-setup-footer/, 'Setup keeps the boundary and primary action footer');
+}
+assert.match(zeroSetupHtml, /Not indexed yet/, 'zero Setup preserves scope cards with an explicit empty baseline');
 
 const overflowSnapshot: VaultIntelligenceSnapshot = {
 	...snapshot,
@@ -130,8 +163,9 @@ const correction = css.slice(correctionIndex);
 assert.match(correction, /\.pk-vi-object-card\.pk-btn\s*\{[\s\S]*?display:\s*grid !important;[\s\S]*?height:\s*78px !important;[\s\S]*?min-height:\s*78px !important;[\s\S]*?max-height:\s*78px !important;/);
 assert.match(correction, /\.pk-vi-work-row\.pk-btn\s*\{[\s\S]*?display:\s*grid !important;[\s\S]*?height:\s*66px !important;[\s\S]*?min-height:\s*66px !important;[\s\S]*?max-height:\s*66px !important;/);
 assert.match(correction, /\.pk-vi-task-overlay\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?place-items:\s*center;/);
-assert.match(correction, /\.pk-vi-activity-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1\.55fr\) minmax\(280px, 0\.58fr\);/);
-assert.match(correction, /\.pk-vi-check-group-card\.is-active \.pk-vi-check-mark\s*\{[\s\S]*?background:\s*var\(--pk-vi-accent\);/);
+assert.match(css, /\.pk-vi-activity-complete-workspace\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) 355px;/);
+assert.match(css, /\.pk-vi-scan-check-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
+assert.match(css, /\.pk-vi-scan-check-grid > \.pk-btn\.is-active \.pk-vi-check-mark\s*\{[\s\S]*?background:\s*var\(--pk-vi-accent\);/);
 const exactPort = css.slice(css.indexOf('Vault Intelligence V2 exact reference port'));
 assert.match(exactPort, /\.pk-vi-inventory-strip\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
 assert.match(exactPort, /\.pk-vi-inventory-item\s*\{[\s\S]*?min-height:\s*76px;[\s\S]*?border-radius:\s*10px;/);
