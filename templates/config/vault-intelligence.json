@@ -2,6 +2,32 @@
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
   "inventoryPreviewTypeLimit": 16,
+  "inventoryObjects": {
+    "files": {
+      "title": "Files by type",
+      "description": "Distribution by actual file format. Peak Sheet and AI Graph remain file types inside this inventory.",
+      "unavailableTitle": "File distribution not available",
+      "unavailableDescription": "No file inventory has been indexed yet."
+    },
+    "chats": {
+      "title": "Chats by conversation type",
+      "description": "The durable Conversation Type used by Chat Studio history and filters. Pending work is shown separately because it is a status, not a type.",
+      "unavailableTitle": "Conversation types not available",
+      "unavailableDescription": "Peak has the canonical Chat total, but the Chat store does not yet publish stable type buckets."
+    },
+    "projects": {
+      "title": "Projects by explicit state",
+      "description": "A lifecycle view of durable project state. Only an explicit blocked state becomes continuation work; inactivity is not treated as a blocker.",
+      "unavailableTitle": "Project states not available",
+      "unavailableDescription": "Peak has the canonical Project total, but the Project store does not yet publish lifecycle buckets here."
+    },
+    "composer": {
+      "title": "Composer activity by result",
+      "description": "The durable Composer history combines generation, Copilot, and document transactions. Results reveal what was applied, left for review, or became stale.",
+      "unavailableTitle": "Composer results not available",
+      "unavailableDescription": "Peak has the durable Composer event total, but the store does not yet publish stable result buckets."
+    }
+  },
   "checkGroups": [
     { "id": "knowledge-index", "displayOrder": 1, "label": "Knowledge Index", "description": "Five rebuildable Index layers. The detailed output plan below owns their individual enablement.", "checks": [
       { "checkId": "index-core", "checkIds": [], "label": "Core Search", "description": "Keep full-text passages and extraction readiness visible for this run." },

@@ -1373,9 +1373,9 @@ function buildObjectSummaries(
 ): VaultIntelligenceObjectSummary[] {
 	return [
 		{ id: 'files', label: 'Files', count: fileCount, detail: 'Vault files visible to Peak', coverageNote: 'Distribution comes from actual Vault extensions.' },
-		{ id: 'chats', label: 'Chats', count: chatCount, detail: 'Durable Peak conversations', breakdown: [{ id: 'canonical', label: 'Canonical conversations', count: chatCount }], coverageNote: 'The Chat store does not yet publish a stable type distribution.' },
-		{ id: 'projects', label: 'Projects', count: projectCount, detail: 'Current Peak projects', breakdown: [{ id: 'canonical', label: 'Current projects', count: projectCount }], coverageNote: 'The Project store does not yet publish lifecycle buckets here.' },
-		{ id: 'composer', label: 'Composer', count: composerEventCount, detail: 'Durable workspace events', breakdown: [{ id: 'canonical', label: 'Recorded events', count: composerEventCount }], coverageNote: 'Composer publishes events, not a guessed activity taxonomy.' },
+		{ id: 'chats', label: 'Chats', count: chatCount, detail: 'Durable Peak conversations', breakdown: [{ id: 'canonical', label: 'Canonical conversations', count: chatCount }], breakdownStatus: 'unavailable', coverageNote: 'The Chat store does not yet publish a stable type distribution.' },
+		{ id: 'projects', label: 'Projects', count: projectCount, detail: 'Current Peak projects', breakdown: [{ id: 'canonical', label: 'Current projects', count: projectCount }], breakdownStatus: 'unavailable', coverageNote: 'The Project store does not yet publish lifecycle buckets here.' },
+		{ id: 'composer', label: 'Composer', count: composerEventCount, detail: 'Durable workspace events', breakdown: [{ id: 'canonical', label: 'Recorded events', count: composerEventCount }], breakdownStatus: 'unavailable', coverageNote: 'Composer publishes events, not a guessed activity taxonomy.' },
 	];
 }
 

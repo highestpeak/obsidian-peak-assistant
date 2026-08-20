@@ -68,10 +68,18 @@ export interface VaultScanCheckGroupDefinition {
 	checks: VaultScanCheckDefinition[];
 }
 
+export interface VaultInventoryObjectPresentation {
+	title: string;
+	description: string;
+	unavailableTitle: string;
+	unavailableDescription: string;
+}
+
 export interface VaultIntelligenceConfig {
 	activityColors: string[];
 	fileTypeColors: string[];
 	inventoryPreviewTypeLimit: number;
+	inventoryObjects: Record<'files' | 'chats' | 'projects' | 'composer', VaultInventoryObjectPresentation>;
 	checkGroups: VaultScanCheckGroupDefinition[];
 	tasks: VaultMaintenanceTaskDefinition[];
 	scanOperations: VaultScanOperationDefinition[];
@@ -85,8 +93,8 @@ export async function loadVaultIntelligenceConfig(): Promise<VaultIntelligenceCo
 	if (!manager) return DEFAULT_VAULT_INTELLIGENCE_CONFIG;
 	try {
 		const loaded = await manager.loadJson<VaultIntelligenceConfig>(ConfigTemplateId.VaultIntelligence);
-		if (!Array.isArray(loaded.checkGroups) || !Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations) || !Array.isArray(loaded.indexOutputs)) {
-			throw new Error('checkGroups, tasks, scanOperations and indexOutputs must be arrays');
+		if (!loaded.inventoryObjects || !Array.isArray(loaded.checkGroups) || !Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations) || !Array.isArray(loaded.indexOutputs)) {
+			throw new Error('inventoryObjects must exist; checkGroups, tasks, scanOperations and indexOutputs must be arrays');
 		}
 		return loaded;
 	} catch (error) {

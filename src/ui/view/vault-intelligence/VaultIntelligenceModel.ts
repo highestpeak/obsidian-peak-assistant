@@ -40,6 +40,8 @@ export interface VaultIntelligenceObjectSummary {
 	detail: string;
 	/** Canonical presentation data only. Never synthesize categories the owning store does not publish. */
 	breakdown?: Array<{ id: string; label: string; count: number }>;
+	/** Explicitly distinguishes a real one-bucket distribution from a store that only publishes a total. */
+	breakdownStatus?: 'available' | 'unavailable';
 	coverageNote?: string;
 }
 

@@ -11,7 +11,6 @@ import {
 	CircleAlert,
 	Clock3,
 	CalendarDays,
-	File,
 	FileText,
 	FolderKanban,
 	GitBranch,
@@ -76,6 +75,31 @@ type ActivityRangeDrag = {
 	start: number;
 	end: number;
 };
+
+type VaultReferenceIconName = 'vault' | 'scan' | VaultIntelligenceObjectSummary['id'];
+
+function VaultReferenceIcon({ name, size }: { name: VaultReferenceIconName; size: number }) {
+	return <svg
+		className="pk-vi-reference-icon"
+		width={size}
+		height={size}
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="1.7"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		aria-hidden="true"
+		focusable="false"
+	>
+		{name === 'vault' && <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z" /><path d="m8 9.5 4-2.2 4 2.2v5L12 17l-4-2.5z" /></>}
+		{name === 'scan' && <><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3" /><path d="M8 12h8M12 8v8" /></>}
+		{name === 'files' && <><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v5h4" /></>}
+		{name === 'chats' && <path d="M4 5h16v11H8l-4 4z" />}
+		{name === 'projects' && <><path d="M12 12h.01" /><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M22 13a18.15 18.15 0 0 1-20 0" /><rect width="20" height="14" x="2" y="6" rx="2" /></>}
+		{name === 'composer' && <><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" /></>}
+	</svg>;
+}
 
 /**
  * Keep the repository's shadcn Button boundary while giving this workspace one
@@ -228,7 +252,7 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 		<header className="pk-vi-header">
 			<div className="pk-vi-title-row">
 				<div className="pk-vi-brand">
-					<span className="pk-vi-mark"><BrainCircuit size={20} /></span>
+					<span className="pk-vi-mark"><VaultReferenceIcon name="vault" size={20} /></span>
 					<div className="pk-vi-brand-text"><span className="pk-vi-eyebrow">PEAK ASSISTANT</span><span className="pk-vi-title">Vault Intelligence</span></div>
 					<div className="pk-vi-header-status">
 						{snapshot.lastCompletedRun ? <Button variant="ghost" onClick={() => onRoute({ kind: 'completed' })}>Last scan {formatDateTime(snapshot.lastCompletedRun.completedAt)}<ChevronRight size={13} /></Button> : <span>Not prepared</span>}
@@ -241,7 +265,7 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 						{infoOpen && <div className="pk-vi-info-popover" role="dialog" aria-label="About Vault scans"><strong>What a Vault scan does</strong><span>Discover and index current Vault objects, then publish review evidence and owner actions.</span><div><small>AI, provider and cost</small><span>The Scan plan shows every enabled AI operation, its selected provider/model and estimated use before it runs.</span></div><div><small>Write boundary</small><span>The Knowledge Index is Peak-owned and rebuildable. Markdown or frontmatter changes require a separate selected diff, Apply, and Verify.</span></div></div>}
 					</div>
 					<Button className="pk-vi-primary" onClick={onPrimary}>
-						{active ? <Activity size={17} /> : resumable ? <Play size={17} /> : <ScanSearch size={17} />}
+						{active ? <Activity size={17} /> : resumable ? <Play size={17} /> : <VaultReferenceIcon name="scan" size={17} />}
 						{active ? 'View progress' : resumable ? 'Resume scan' : prepared ? 'Scan Vault' : 'Prepare Vault'}
 					</Button>
 				</div>
@@ -297,7 +321,7 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 }) {
 	const objects = referenceObjectInventory(snapshot.objects);
 	return <section className="pk-vi-inventory-strip" aria-label="Vault object inventory">{objects.map((object) => {
-		const Icon = object.id === 'files' ? File : object.id === 'chats' ? MessageSquare : object.id === 'projects' ? FolderKanban : PenLine;
+		const presentation = config.inventoryObjects[object.id] ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryObjects[object.id];
 		const canonicalBreakdown = object.id === 'files'
 			? snapshot.fileTypes.map((type) => ({ id: type.extension, label: fileTypeLabel(type.extension), count: type.count }))
 			: object.breakdown ?? [];
@@ -308,32 +332,52 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 		const coverageNote = previewIsGrouped
 			? `${canonicalBreakdown.length} groups · largest ${Math.max(0, breakdown.length - 1)} + Other formats`
 			: object.coverageNote;
+		const distributionUnavailable = object.id !== 'files'
+			&& (object.breakdownStatus === 'unavailable' || canonicalBreakdown.length === 0);
+		const statusLabel = object.id === 'files'
+			? snapshot.changedSinceScan === null ? 'Not indexed yet' : `${formatNumber(snapshot.changedSinceScan)} changed`
+			: 'Not available';
 		const open = () => object.id === 'files'
 			? onRoute({ kind: 'surface', surface: 'map', mapSurface: 'contents' })
 			: void runtime.openOwnerSurface(object.id);
 		return <div key={object.id} className={`pk-vi-inventory-item is-${object.id} ${object.id === 'files' ? 'is-files' : ''}`} tabIndex={0} aria-label={`${formatNumber(object.count)} ${object.label}`}>
-			<span className="pk-vi-type-icon"><Icon size={28} /></span><span className="pk-vi-inventory-value">{formatNumber(object.count)}</span><span className="pk-vi-inventory-label">{object.label}</span>
+			<span className="pk-vi-type-icon"><VaultReferenceIcon name={object.id} size={28} /></span><span className="pk-vi-inventory-value">{formatNumber(object.count)}</span><span className="pk-vi-inventory-label">{object.label}</span>
 			<div className="pk-vi-inventory-hover" role="group" aria-label={`${object.label} distribution`}>
-				<div className="pk-vi-hover-head"><div><strong>{object.id === 'files' ? 'Files by type' : `${object.label} distribution`}</strong><span>{object.detail}. {object.coverageNote}</span></div>{snapshot.changedSinceScan !== null && object.id === 'files' && <small>{formatNumber(snapshot.changedSinceScan)} changed</small>}</div>
-				<InventoryDistribution total={object.count} label={object.label} items={breakdown} canonicalGroupCount={canonicalBreakdown.length} colors={config.fileTypeColors} large={object.id === 'files'} />
+				<div className="pk-vi-hover-head"><div><strong>{presentation.title}</strong><span>{presentation.description}</span></div><small className={distributionUnavailable ? 'is-unavailable' : ''}>{statusLabel}</small></div>
+				<InventoryDistribution total={object.count} label={object.label} items={breakdown} canonicalGroupCount={canonicalBreakdown.length} colors={config.fileTypeColors} large={object.id === 'files'} unavailable={distributionUnavailable} unavailableTitle={presentation.unavailableTitle} unavailableDescription={presentation.unavailableDescription} />
 				<div className="pk-vi-hover-footer"><span>{coverageNote ?? 'Canonical records only.'}</span><Button variant="ghost" size="sm" onClick={open}>{object.id === 'files' ? 'Open full file inventory' : `Open ${object.label}`}<ChevronRight size={13} /></Button></div>
 			</div>
 		</div>;
 	})}</section>;
 }
 
-function InventoryDistribution({ total, label, items, canonicalGroupCount, colors, large }: { total: number; label: string; items: Array<{ id: string; label: string; count: number }>; canonicalGroupCount: number; colors: string[]; large: boolean }) {
+function InventoryDistribution({ total, label, items, canonicalGroupCount, colors, large, unavailable, unavailableTitle, unavailableDescription }: {
+	total: number;
+	label: string;
+	items: Array<{ id: string; label: string; count: number }>;
+	canonicalGroupCount: number;
+	colors: string[];
+	large: boolean;
+	unavailable: boolean;
+	unavailableTitle: string;
+	unavailableDescription: string;
+}) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const palette = colors.length > 0 ? colors : DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors;
+	const empty = unavailable || items.length === 0;
 	let offset = 0;
-	return <div className={`pk-vi-inventory-distribution ${large ? 'is-large' : ''}`}>
-		<div className="pk-vi-inventory-pie-panel"><svg className="pk-vi-inventory-pie" viewBox="0 0 100 100" role="img" aria-label={`${label} distribution`}>{items.map((item, index) => {
+	return <div className={`pk-vi-inventory-distribution ${large ? 'is-large' : ''} ${unavailable ? 'is-unavailable' : ''}`}>
+		<div className="pk-vi-inventory-pie-panel"><svg className="pk-vi-inventory-pie" viewBox="0 0 100 100" role="img" aria-label={unavailable ? `${label} distribution not available` : `${label} distribution`}>
+			{empty && <circle className="pk-vi-pie-empty" cx="50" cy="50" r="49" />}
+			{!unavailable && items.map((item, index) => {
 			const start = total > 0 ? offset / total : 0;
 			offset += item.count;
 			const end = total > 0 ? offset / total : 0;
 			return <path key={item.id} className={`pk-vi-pie-segment ${activeId && activeId !== item.id ? 'is-muted' : ''}`} d={pieSlicePath(start, end)} style={{ fill: palette[index % palette.length] }} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} />;
-		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong><span>{label === 'Files' ? `${canonicalGroupCount} actual file types · click to filter` : `${canonicalGroupCount} canonical ${canonicalGroupCount === 1 ? 'group' : 'groups'}`}</span><span className="pk-vi-pie-readout">{activeId ? items.find((item) => item.id === activeId)?.label : 'Hover a slice or type'}</span></div>
-		<div className="pk-vi-inventory-legend">{items.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[index % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
+		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong><span>{unavailable ? 'Buckets not available' : label === 'Files' ? `${canonicalGroupCount} actual file types · click to filter` : `${canonicalGroupCount} canonical ${canonicalGroupCount === 1 ? 'group' : 'groups'}`}</span><span className="pk-vi-pie-readout">{unavailable ? 'Distribution not available' : activeId ? items.find((item) => item.id === activeId)?.label : 'Hover a slice or type'}</span></div>
+		<div className="pk-vi-inventory-legend">{unavailable
+			? <div className="pk-vi-inventory-unavailable" role="status"><strong>{unavailableTitle}</strong><span>{unavailableDescription}</span></div>
+			: items.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[index % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
 	</div>;
 }
 
@@ -355,9 +399,9 @@ function referenceObjectInventory(objects: VaultIntelligenceObjectSummary[]): Va
 	const byId = new Map(objects.map((object) => [object.id, object]));
 	const fallback: VaultIntelligenceObjectSummary[] = [
 		{ id: 'files', label: 'Files', count: 0, detail: 'Vault files visible to Peak', breakdown: [], coverageNote: 'No file inventory has been indexed yet.' },
-		{ id: 'chats', label: 'Chats', count: 0, detail: 'Durable Peak conversations', breakdown: [], coverageNote: 'No canonical conversations are available yet.' },
-		{ id: 'projects', label: 'Projects', count: 0, detail: 'Current Peak projects', breakdown: [], coverageNote: 'No current projects are available yet.' },
-		{ id: 'composer', label: 'Composer', count: 0, detail: 'Durable Composer activity', breakdown: [], coverageNote: 'No durable Composer records are available yet.' },
+		{ id: 'chats', label: 'Chats', count: 0, detail: 'Durable Peak conversations', breakdown: [], breakdownStatus: 'unavailable', coverageNote: 'No canonical conversations are available yet.' },
+		{ id: 'projects', label: 'Projects', count: 0, detail: 'Current Peak projects', breakdown: [], breakdownStatus: 'unavailable', coverageNote: 'No current projects are available yet.' },
+		{ id: 'composer', label: 'Composer', count: 0, detail: 'Durable Composer activity', breakdown: [], breakdownStatus: 'unavailable', coverageNote: 'No durable Composer records are available yet.' },
 	];
 	return fallback.map((item) => byId.get(item.id) ?? item);
 }

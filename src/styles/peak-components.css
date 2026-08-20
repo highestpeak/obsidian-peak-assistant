@@ -20667,9 +20667,23 @@
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-mark {
   width: 38px;
   height: 38px;
+  display: grid;
+  place-items: center;
+  flex: none;
   border: 1px solid #ddd8f4;
   border-radius: 9px;
+  color: #6857d9;
   background: #f0edff;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-reference-icon {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-title {
@@ -20815,6 +20829,67 @@
   padding-right: 14px;
 }
 
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-pie-empty {
+  fill: #f0eef3;
+  stroke: #e1dee6;
+  stroke-width: 1;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-legend {
+  min-width: 0;
+  display: block;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-distribution.is-large .pk-vi-inventory-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-legend > div:last-child,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-distribution.is-large .pk-vi-inventory-legend > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-distribution.is-unavailable .pk-vi-inventory-legend {
+  min-height: 130px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-item.is-chats .pk-vi-inventory-distribution.is-unavailable .pk-vi-inventory-legend {
+  min-height: 156px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-legend > .pk-vi-inventory-unavailable {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 5px;
+  min-height: 100%;
+  padding: 12px;
+  border: 1px dashed #d8d5dd;
+  border-radius: 7px;
+  color: #6f6b75;
+  background: #faf9fb;
+  cursor: default;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-unavailable > strong {
+  color: #222127;
+  font-size: 10.5px;
+  font-weight: 680;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-unavailable > span {
+  color: #6f6b75;
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+}
+
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-pie-panel > strong {
   margin-top: 8px;
 }
@@ -20847,6 +20922,11 @@
   font-size: 10px;
   font-weight: 710;
   line-height: normal;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-hover-head small.is-unavailable {
+  color: #696571;
+  background: #f0eef3;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-hover-head span {

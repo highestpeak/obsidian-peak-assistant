@@ -79,6 +79,15 @@ assert.match(
 	'production object inventory must render the reference-compatible hover-card structure',
 );
 assert.equal((html.match(/pk-vi-inventory-item/g) ?? []).length, 4);
+assert.match(html, /M4 7\.5 12 3l8 4\.5v9L12 21l-8-4\.5z/, 'Header uses the Mock Vault mark instead of a generic brain icon');
+assert.match(html, /M4 5h16v11H8l-4 4z/, 'Chat inventory uses the Mock object icon path');
+assert.match(html, /M22 13a18\.15 18\.15 0 0 1-20 0/, 'Project inventory uses the Mock briefcase icon path');
+assert.match(html, /M18\.375 2\.625a1 1 0 0 1 3 3/, 'Composer inventory uses the Mock composer icon path');
+assert.equal((html.match(/pk-vi-inventory-unavailable/g) ?? []).length, 3, 'missing object buckets retain three explicit distribution regions');
+assert.equal((html.match(/class="is-unavailable"/g) ?? []).length, 3, 'missing object status data retains the three Reference status slots');
+assert.match(html, /Conversation types not available/);
+assert.match(html, /Project states not available/);
+assert.match(html, /Composer results not available/);
 assert.match(html, /pk-vi-continue-summary/, 'zero history must retain the reference summary geometry');
 assert.match(html, /Not indexed yet/, 'zero history must explain the empty scan baseline');
 assert.match(html, /Prepare Vault/);
@@ -181,6 +190,9 @@ assert.match(css, /\.pk-vi-scan-check-grid > \.pk-btn\.is-active \.pk-vi-check-m
 const exactPort = css.slice(css.indexOf('Vault Intelligence V2 exact reference port'));
 assert.match(exactPort, /\.pk-vi-inventory-strip\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
 assert.match(exactPort, /\.pk-vi-inventory-item\s*\{[\s\S]*?min-height:\s*76px;[\s\S]*?border-radius:\s*10px;/);
+assert.match(exactPort, /\.pk-vi-inventory-legend\s*\{[\s\S]*?display:\s*block;/, 'object legends retain the Mock single-column subtree');
+assert.match(exactPort, /\.pk-vi-inventory-distribution\.is-large \.pk-vi-inventory-legend\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/, 'only the file distribution uses two legend columns');
+assert.match(exactPort, /\.pk-vi-inventory-distribution\.is-unavailable \.pk-vi-inventory-legend\s*\{[\s\S]*?min-height:\s*130px;/, 'unavailable distribution data must not collapse hover geometry');
 assert.match(exactPort, /\.pk-vi-overview-grid > \.pk-btn\s*\{[\s\S]*?width:\s*17px !important;[\s\S]*?height:\s*17px !important;/);
 assert.match(exactPort, /\.pk-vi-index-overview-body\s*\{[\s\S]*?grid-template-columns:\s*154px minmax\(0, 1fr\) 300px;/);
 assert.match(exactPort, /\.pk-vi-continue-summary\s*\{[\s\S]*?grid-template-columns:\s*136px repeat\(4, minmax\(0, 1fr\)\);[\s\S]*?min-height:\s*41px;/);
