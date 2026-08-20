@@ -88,7 +88,7 @@ Reference .activity-explorer
      │  └─ selected-range summary
      └─ selected-period pane
         ├─ four period metrics
-        ├─ optional theme mix
+        ├─ optional theme mix + previous equal-period comparison
         └─ work sessions / stable empty treatment
 ```
 
@@ -118,4 +118,4 @@ Production previously rendered all 19 detector labels and every AI operation by 
 - Activity always keeps five source lanes, the range navigator, selected-period metrics, and the work-session region.
 - Scan Setup always keeps all three steps, four task categories, five AI groups, estimate, boundary, and actions. Missing scan history reads `Not indexed yet` instead of removing Step 1.
 
-The browser harness verified the default collapsed state, one-at-a-time AI group expansion, Recorded/AI theme switching, and a real navigator window drag. Post-change real-Obsidian interaction remains `INTERACTION NOT VERIFIED`.
+The browser harness verified the searchable source/theme picker, default collapsed state, one-at-a-time AI group expansion, Recorded/AI theme switching, and a real navigator window drag. Post-change real-Obsidian interaction remains `INTERACTION NOT VERIFIED`.

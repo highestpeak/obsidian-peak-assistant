@@ -102,6 +102,8 @@ assert.doesNotMatch(source, /Period summary/, 'Activity must not retain the old 
 assert.doesNotMatch(source, /pk-vi-activity-aside/, 'Activity details must live inside the reference explorer workspace');
 assert.doesNotMatch(source, /pk-vi-check-group-card/, 'Scan Setup must not expand all detector rows by default');
 assert.doesNotMatch(source, /pk-vi-operation-groups/, 'Scan Setup must not expand all AI operation rows by default');
+assert.match(source, /Find an analyzed theme/, 'Activity keeps the Reference searchable theme picker');
+assert.match(source, /Compared with previous equal period/, 'Activity keeps the selected-period comparison region');
 
 const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snapshot);
 const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };
