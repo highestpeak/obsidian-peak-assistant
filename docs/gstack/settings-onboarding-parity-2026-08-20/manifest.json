@@ -1,0 +1,23 @@
+{
+  "viewport": { "width": 1440, "height": 900, "devicePixelRatio": 1 },
+  "settingsCapture": { "width": 1020, "height": 820 },
+  "onboardingCapture": { "width": 1080, "height": 820 },
+  "referenceSources": {
+    "settings.html": "6ae4fefa723543a2de603a77e057c7415bf4e5ef2674c46a189a1ad732923fe1",
+    "onboarding.html": "9485bfa07092520fbbd5668035c88cd047a987ffae8fbdcd09bb59b8cfe3d3cd",
+    "mock.css": "07ee45ac06acb394b7836cf71be69e80251e5dae0d75bd0deb54cb18c492873a",
+    "settings.js": "02f20182c0c3fd406d2c957b2f1390e69c2a975a00ae1d25ba814bbfdab4cbe3",
+    "onboarding.js": "a419bd657833847afdb7198197755c47af341a0b2bf0f380cdb1b82add620976"
+  },
+  "captures": {
+    "settings-reference.png": "00360815750855d3d32236e02bd4de1e9ba916aa73e2a051388dfecb7d06f8b6",
+    "settings-production.png": "89fc8ce7bd1bcc6e98bbbffc64f38d4080f70ec33e2a4d27409cec2ee9540d10",
+    "settings-overlay.png": "db5ce3716aa74b0e92332290c51a069a04836e8dc62dbe456a7d5248d7513b53",
+    "settings-diff.png": "349b090085b150be8b5ad50ca8b2bb1c79785ef5f9089edf2b839ed3beec454d",
+    "onboarding-reference.png": "f47390fcf5b670bb5394facc212fdbf083957dcd67656a9590781e992b0174da",
+    "onboarding-production.png": "83f937defee5fcfc88b68c6629bf8ef4d8dd74c5ea0c64692696ec99544687d9",
+    "onboarding-overlay.png": "66d58ae6afdad2f47028e392a5b812262441235ad859f19b38daf613b7f7ed75",
+    "onboarding-diff.png": "981c13d7d68a6dbdee802af845e5632d03a0f8c18c7c2c5c8e0375d334ffcff5"
+  },
+  "verification": "Production component and Production CSS browser harness. Real Obsidian interaction not verified because no CDP listener was available."
+}

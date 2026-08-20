@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vault Intelligence V2 Mock → Production 完整差异审计</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #24212b;
+      --ink-2: #57515f;
+      --ink-3: #7c7484;
+      --line: #e3dfe7;
+      --line-2: #d2ccd8;
+      --paper: #ffffff;
+      --wash: #f7f5f8;
+      --purple: #6651c8;
+      --purple-2: #49349e;
+      --purple-soft: #f0edfb;
+      --red: #a5384c;
+      --red-soft: #fff0f2;
+      --amber: #865d0a;
+      --amber-soft: #fff8e6;
+      --green: #277357;
+      --green-soft: #edf8f3;
+      --blue: #2f628e;
+      --blue-soft: #eef6fd;
+      --shadow: 0 16px 42px rgba(48, 39, 60, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--wash);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.62;
+    }
+    a { color: var(--purple-2); }
+    code { padding: 2px 5px; border-radius: 5px; background: #efedf1; font-size: .92em; }
+    img { display: block; max-width: 100%; }
+    strong { font-weight: 760; }
+
+    .shell { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100vh; }
+    .side {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px 18px;
+      overflow: auto;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, .94);
+      backdrop-filter: blur(12px);
+    }
+    .side-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 16px;
+      border: 1px solid #cfc6ef;
+      border-radius: 10px;
+      color: var(--purple);
+      background: var(--purple-soft);
+      font-weight: 800;
+    }
+    .side-title { margin-bottom: 4px; font-size: 14px; font-weight: 800; line-height: 1.3; }
+    .side-meta { margin-bottom: 20px; color: var(--ink-3); font-size: 11px; }
+    .side-group { margin: 16px 0 6px; color: var(--ink-3); font-size: 10px; font-weight: 800; letter-spacing: normal; }
+    .side a {
+      display: block;
+      margin: 2px 0;
+      padding: 7px 9px;
+      border-radius: 7px;
+      color: var(--ink-2);
+      font-size: 12px;
+      text-decoration: none;
+    }
+    .side a:hover, .side a.active { color: var(--purple-2); background: var(--purple-soft); }
+
+    main { width: 100%; max-width: 1480px; margin: 0 auto; padding: 38px 44px 100px; }
+    .hero {
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { color: var(--red); font-size: 11px; font-weight: 850; letter-spacing: normal; }
+    h1 { max-width: 100%; margin: 8px 0 12px; font-size: clamp(31px, 4vw, 52px); line-height: 1.08; letter-spacing: -.035em; }
+    .lead { max-width: 900px; margin: 0; color: var(--ink-2); font-size: 17px; }
+    .verdict {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .metric { padding: 14px 15px; border: 1px solid var(--line); border-radius: 10px; background: #fbfafc; }
+    .metric span { display: block; color: var(--ink-3); font-size: 10px; font-weight: 760; }
+    .metric strong { display: block; margin-top: 3px; font-size: 15px; }
+    .metric.fail { border-color: #efc8d0; background: var(--red-soft); }
+    .metric.fail strong { color: var(--red); }
+
+    section.report { scroll-margin-top: 18px; margin-top: 50px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+    h2 { margin: 0; font-size: 25px; line-height: 1.2; letter-spacing: -.02em; }
+    h3 { margin: 0 0 8px; font-size: 16px; line-height: 1.35; }
+    h4 { margin: 0 0 6px; font-size: 13px; }
+    .section-kicker { color: var(--ink-3); font-size: 11px; }
+    .section-intro { max-width: 900px; margin: -6px 0 18px; color: var(--ink-2); }
+    .card { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+    .card + .card { margin-top: 12px; }
+    .callout { padding: 15px 17px; border-left: 4px solid var(--purple); border-radius: 7px; background: var(--purple-soft); }
+    .callout.fail { border-color: var(--red); background: var(--red-soft); }
+    .callout.warn { border-color: #c18a19; background: var(--amber-soft); }
+    .callout.good { border-color: var(--green); background: var(--green-soft); }
+    .callout p { margin: 4px 0 0; color: var(--ink-2); }
+    .callout-title { font-weight: 780; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+    .flow-node { position: relative; padding: 13px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+    .flow-node:not(:last-child)::after { content: "→"; position: absolute; top: 50%; right: -9px; z-index: 2; color: var(--ink-3); transform: translateY(-50%); }
+    .flow-node strong, .flow-node span { display: block; }
+    .flow-node span { margin-top: 4px; color: var(--ink-3); font-size: 10px; }
+    .flow-node.primary { border-color: #c9bfee; background: var(--purple-soft); }
+
+    .grid-2, .grid-3, .grid-4 { display: grid; gap: 12px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .compact-list { margin: 8px 0 0; padding-left: 18px; }
+    .compact-list li { margin: 5px 0; }
+    .compact-list li::marker { color: var(--purple); }
+    .muted { color: var(--ink-3); }
+    .small { font-size: 11px; }
+
+    .screen-contract { display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 18px; }
+    .screen-contract + .screen-contract { margin-top: 12px; }
+    .screen-name { padding-right: 14px; border-right: 1px solid var(--line); }
+    .screen-name strong { display: block; }
+    .screen-name span { color: var(--ink-3); font-size: 10px; }
+    .screen-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .screen-fields strong { display: block; margin-bottom: 3px; font-size: 11px; }
+    .screen-fields span { display: block; color: var(--ink-2); font-size: 11px; }
+
+    .comparison { overflow: hidden; padding: 0; }
+    .comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .status { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+    .status.fail { color: var(--red); background: var(--red-soft); }
+    .status.partial { color: var(--amber); background: var(--amber-soft); }
+    .status.ok, .status.pass { color: var(--green); background: var(--green-soft); }
+    .status.missing { color: #823347; background: #f7e8ed; }
+    .status.unknown { color: var(--ink-2); background: #ece9ef; }
+    .images { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); }
+    figure { margin: 0; background: #f1eff3; }
+    figure img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; background: #ebe8ee; }
+    figcaption { padding: 8px 11px; border-top: 1px solid var(--line); color: var(--ink-3); background: var(--paper); font-size: 10px; }
+    .comparison-body { padding: 16px 18px 18px; }
+    .delta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .delta { padding: 11px 12px; border-radius: 8px; background: #f8f6f9; }
+    .delta strong { display: block; margin-bottom: 4px; font-size: 11px; }
+    .delta span { color: var(--ink-2); font-size: 11px; }
+
+    .matrix { width: 100%; table-layout: fixed; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); font-size: 11px; }
+    .matrix th, .matrix td { padding: 10px 11px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; line-height: 1.52; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+    .matrix th { color: var(--ink-3); background: #f5f3f6; font-size: 9px; letter-spacing: normal; }
+    .matrix tr:last-child td { border-bottom: 0; }
+    .matrix .p0 { color: var(--red); font-weight: 850; }
+    .matrix .p1 { color: var(--amber); font-weight: 850; }
+    .matrix .p2 { color: var(--blue); font-weight: 850; }
+    .matrix .pass { color: var(--green); font-weight: 850; }
+
+    .verdict-key { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 18px; }
+    .screen-audit { overflow: hidden; padding: 0; }
+    .screen-audit + .screen-audit { margin-top: 18px; }
+    .screen-audit-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; padding: 18px; border-bottom: 1px solid var(--line); }
+    .screen-audit-head h3 { margin-bottom: 4px; font-size: 19px; }
+    .screen-audit-head p { max-width: 860px; margin: 0; color: var(--ink-2); font-size: 12px; }
+    .screen-source { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 9px; color: var(--ink-3); font-size: 10px; }
+    .screen-source a { text-decoration: none; }
+    .dimension-bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 11px 18px; border-bottom: 1px solid var(--line); background: #faf9fb; }
+    .dimension { display: inline-flex; gap: 5px; align-items: center; padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-2); background: var(--paper); font-size: 9px; }
+    .dimension b { color: var(--ink); font-weight: 790; }
+    .dimension.is-fail b { color: var(--red); }
+    .dimension.is-partial b { color: var(--amber); }
+    .dimension.is-ok b, .dimension.is-pass b { color: var(--green); }
+    .dimension.is-unknown b { color: var(--ink-3); }
+    .audit-list { padding: 0 18px 18px; }
+    .audit-item { padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .audit-item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .audit-item-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-bottom: 9px; }
+    .audit-item-head strong { font-size: 12px; }
+    .audit-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .audit-cell { padding: 10px 11px; border-radius: 8px; background: #f8f6f9; }
+    .audit-cell.current { background: #f5f4f7; }
+    .audit-label { display: block; margin-bottom: 4px; color: var(--ink-3); font-size: 9px; font-weight: 790; }
+    .audit-cell p { margin: 0; color: var(--ink-2); font-size: 11px; line-height: 1.52; }
+    .audit-response { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 9px; }
+    .audit-response div { padding: 9px 11px; border-left: 3px solid #bdb4df; background: #faf9fd; }
+    .audit-response div:last-child { border-left-color: #9ebfab; background: #f7fbf9; }
+    .audit-response dt { color: var(--ink-3); font-size: 9px; font-weight: 790; }
+    .audit-response dd { margin: 2px 0 0; color: var(--ink-2); font-size: 10px; line-height: 1.5; }
+    .task-contracts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .task-contract { padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+    .task-contract-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; margin-bottom: 9px; }
+    .task-contract-head h3 { margin: 0; font-size: 14px; }
+    .task-contract dl { display: grid; gap: 8px; margin: 0; }
+    .task-contract dl div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 9px; padding-top: 8px; border-top: 1px solid var(--line); }
+    .task-contract dt { color: var(--ink-3); font-size: 9px; font-weight: 790; }
+    .task-contract dd { margin: 0; color: var(--ink-2); font-size: 10px; line-height: 1.5; }
+    .screen-rule { margin: 0 18px 18px; padding: 12px 14px; border-left: 4px solid var(--red); border-radius: 7px; color: var(--ink-2); background: var(--red-soft); font-size: 11px; line-height: 1.55; }
+    .screen-rule .screen-rule-title { font-weight: 790; }
+    .screen-rule p { margin: 4px 0 0; color: var(--ink-2); font-size: 11px; }
+
+    .acceptance { counter-reset: gate; }
+    .gate { position: relative; padding: 15px 16px 15px 54px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+    .gate + .gate { margin-top: 8px; }
+    .gate::before {
+      counter-increment: gate;
+      content: counter(gate);
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      color: var(--purple-2);
+      background: var(--purple-soft);
+      font-weight: 850;
+    }
+    .gate p { margin: 3px 0 0; color: var(--ink-2); font-size: 11px; }
+
+    .evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .evidence a { overflow-wrap: anywhere; }
+    .evidence-list { margin: 0; padding-left: 18px; }
+    .evidence-list li { margin: 7px 0; }
+    .footer-note { margin-top: 42px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 10px; }
+
+    @media (max-width: 1120px) {
+      .shell { grid-template-columns: 1fr; }
+      .side { position: static; width: 100%; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .side nav { display: flex; flex-wrap: wrap; gap: 4px; }
+      .side-group { flex-basis: 100%; }
+      .side a { display: inline-flex; }
+      .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .flow-node::after { display: none; }
+      .screen-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .verdict { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      main { padding: 22px 14px 70px; }
+      .hero { padding: 22px; }
+      .grid-2, .grid-3, .grid-4, .images, .delta-grid, .evidence, .audit-columns, .audit-response, .task-contracts { grid-template-columns: 1fr; }
+      .screen-contract { grid-template-columns: 1fr; }
+      .screen-name { padding-right: 0; padding-bottom: 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .screen-fields { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="side-mark">VI</div>
+    <div class="side-title">V2 Mock → Production<br>完整差异审计</div>
+    <div class="side-meta">约 35–45 分钟 · 逐屏实施验收规格</div>
+    <nav>
+      <div class="side-group">结论</div>
+      <a href="#verdict">审计结论</a>
+      <a href="#evidence-scope">证据与可比性</a>
+      <a href="#mental-model">核心产品模型</a>
+      <div class="side-group">完整设计</div>
+      <a href="#flow">信息架构与主流程</a>
+      <a href="#screen-inventory">页面与状态清单</a>
+      <a href="#interaction-contract">交互合同</a>
+      <a href="#layout-contract">布局合同</a>
+      <div class="side-group">逐屏验收</div>
+      <a href="#screen-shell">全局壳层</a>
+      <a href="#screen-overview">Overview</a>
+      <a href="#screen-queue">Work queue</a>
+      <a href="#screen-activity">Activity</a>
+      <a href="#screen-contents">Vault contents 与 Graph</a>
+      <a href="#screen-scan">Scan setup</a>
+      <a href="#screen-run">Run progress</a>
+      <a href="#screen-completed">Completed</a>
+      <a href="#screen-property">Property maintenance</a>
+      <a href="#screen-maintenance">其他维护任务</a>
+      <a href="#screen-map-text">Map text</a>
+      <a href="#screen-proposal">Proposal</a>
+      <div class="side-group">收敛条件</div>
+      <a href="#priority-matrix">差异优先级</a>
+      <a href="#root-causes">为什么前次改不对</a>
+      <a href="#acceptance">重新实现的验收门</a>
+      <a href="#sources">来源索引</a>
+    </nav>
+  </aside>
+
+  <main>
+    <header class="hero" id="verdict">
+      <div class="eyebrow">审计结论 · 不通过</div>
+      <h1>当前实现不是 V2 Mock 的生产化版本，只是借用了它的一部分外壳。</h1>
+      <p class="lead">20:59 视频里的 Overview、hover、Work queue、Activity、Vault contents 与原 Mock 在状态语义、数据对象、交互深度、布局结构和下一步动作上都不等价。Scan setup、Run progress、Completed、维护任务虽在确定性 harness 中“长得像”，但代码只实现了被压缩后的通用版本，仍不能称为完全一致。</p>
+      <div class="verdict">
+        <div class="metric fail"><span>总体判定</span><strong>Visual / interaction parity 失败</strong></div>
+        <div class="metric"><span>真实视频覆盖</span><strong>Overview / Queue / Map</strong></div>
+        <div class="metric"><span>补充代码审计</span><strong>Scan / Run / Completed / Task</strong></div>
+        <div class="metric"><span>正确修复顺序</span><strong>状态 → 数据 → 交互 → 布局 → 视觉</strong></div>
+      </div>
+      <div class="verdict-key" aria-label="一致性判定说明">
+        <span class="status ok">一致：同一对象与行为，且有证据</span>
+        <span class="status partial">部分一致：入口或外壳存在，合同不完整</span>
+        <span class="status fail">不一致：对象、状态或行为不同</span>
+        <span class="status missing">未实现：route、数据或交互不存在</span>
+        <span class="status unknown">证据不足：本轮不能作相同声明</span>
+      </div>
+    </header>
+
+    <section class="report" id="evidence-scope">
+      <div class="section-head"><h2>证据与可比性</h2><span class="section-kicker">先锁定什么能比较，避免继续对错对象</span></div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>设计 source of truth</h3>
+          <ul class="compact-list">
+            <li>V2 Mock 的 HTML、JS 与现有参考截图。</li>
+            <li><code>continuation-handoff.md</code> 的页面、状态和交互合同。</li>
+            <li>Scan → Follow-up → Work queue 的最终产品合同。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>当前真实产品证据</h3>
+          <ul class="compact-list">
+            <li><code>iShot_2026-08-18_20.59.21.mp4</code>，22.87 秒。</li>
+            <li>SHA-256：<code>55e977…e82aa5</code>。</li>
+            <li>真实 Obsidian 可见结果覆盖 Overview、hover、Queue、Activity、Contents/graph。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>补充证据</h3>
+          <ul class="compact-list">
+            <li>生产 TSX、model、config、tests。</li>
+            <li>确定性 harness 截图用于 Scan/Run/Completed/Task 结构比对。</li>
+            <li>harness 不是 Obsidian 交互验收，仅用于识别实现意图。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout warn" style="margin-top:12px">
+        <div class="callout-title">本次可比性边界</div>
+        <p>Mock 的本地 <code>file://</code> 页面被 in-app Browser 的安全策略阻止，因此没有宣称本轮重新执行过 Mock 的 pointer/keyboard 行为；交互结论来自 Mock 的 HTML/JS 合同、参考截图和 handoff。生产端可见行为来自真实视频。Mock 中的示例数量（如 146、11、48）是合成数据，不要求逐字相同；页面结构、状态分支、对象身份、动作含义和写入边界必须相同。</p>
+      </div>
+    </section>
+
+    <section class="report" id="mental-model">
+      <div class="section-head"><h2>原 Mock 的核心设计，不是几个页面，而是一套可信维护系统</h2></div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>用户心智</h3>
+          <ul class="compact-list">
+            <li><strong>Overview</strong> 回答“Vault 现在是什么状态，我下一步最值得做什么”。</li>
+            <li><strong>Vault map</strong> 回答“内容分布、知识结构和显式活动是什么”。</li>
+            <li><strong>Work queue</strong> 回答“哪些事情仍需要我做决定、review 或 recovery”。</li>
+            <li><strong>Scan</strong> 是一次有计划、有授权、有收据、可恢复的操作流，不是顶级栏目。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>可信边界</h3>
+          <ul class="compact-list">
+            <li>Peak-owned Index / Community / lifecycle 状态可以重建或反悔。</li>
+            <li>Markdown、YAML、链接和新文件属于 user-file write boundary。</li>
+            <li>任何文件写入都必须走：证据 → candidate → diff → revision guard → Apply → re-index → verify。</li>
+            <li>AI 是否调用、用哪个 provider/model、预计与实际 token/cost 都必须明确。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>统一状态原子</h3>
+          <ul class="compact-list">
+            <li>同一个维护原子必须有稳定 ID，所有分组、筛选、投影视图都只是重排。</li>
+            <li>优先级：当前 owner choice ＞ 当前 Peak suggestion ＞ 历史 suggestion/evidence。</li>
+            <li>Apply/Verify 后，已验证结果才成为新的事实。</li>
+            <li>切换 Batch/File、Target/File、Community/File 不能复制、重置或重计同一选择。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>深工作去 owner surface</h3>
+          <ul class="compact-list">
+            <li>Vault Intelligence 做计划、证据、选择和返回点。</li>
+            <li>真正的内容编辑在 Composer / Project / Chat / AI Graph / Proposal workspace 完成。</li>
+            <li>Queue 不是把所有功能复制一遍，而是保存“下一步做什么”和“何时算完成”。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="report" id="flow">
+      <div class="section-head"><h2>信息架构与主流程</h2><span class="section-kicker">只有三个一级页面；Scan 是穿过它们的操作链</span></div>
+      <div class="flow" aria-label="Vault Intelligence primary flow">
+        <div class="flow-node primary"><strong>Overview</strong><span>状态、对象、继续工作、活动、Index</span></div>
+        <div class="flow-node"><strong>Scan setup</strong><span>scope / tasks / AI authorization</span></div>
+        <div class="flow-node"><strong>Run progress</strong><span>discover / index / AI / publish</span></div>
+        <div class="flow-node"><strong>Completed</strong><span>自动完成 + owner follow-up</span></div>
+        <div class="flow-node primary"><strong>Work queue</strong><span>未解决且有退出条件的工作</span></div>
+        <div class="flow-node"><strong>Owner surface</strong><span>inspect / decision / proposal / recovery</span></div>
+        <div class="flow-node"><strong>Apply + Verify</strong><span>re-index 后关闭任务</span></div>
+      </div>
+      <div class="callout" style="margin-top:12px">
+        <div class="callout-title">Vault map 是并列双视图</div>
+        <p><code>Vault contents</code> 与 <code>Activity</code> 共享同一个 Vault map 一级导航；它们不是 Overview 的小组件，也不是独立顶级页。Overview 的 heatmap 只提供摘要和进入 Activity 的入口。</p>
+      </div>
+    </section>
+
+    <section class="report" id="screen-inventory">
+      <div class="section-head"><h2>完整页面、状态与进入/退出合同</h2></div>
+      <p class="section-intro">原 Mock 实际包含 9 个页面/工作区、1 个通用详情 overlay、6 个预览状态。生产 route 只覆盖 surface/setup/progress/completed/generic task，缺少 Map text、Proposal 和多种专用任务工作区。</p>
+
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Overview</strong><span>一级页面</span></div>
+        <div class="screen-fields"><div><strong>入口</strong><span>默认落点</span></div><div><strong>读取</strong><span>4 类对象、Top 7、显式活动、Index readiness</span></div><div><strong>动作</strong><span>hover inspect、View all、日期选择、Review plan、Scan</span></div><div><strong>退出</strong><span>Map / Queue / Setup / owner surface</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Vault contents</strong><span>Vault map 子视图</span></div>
+        <div class="screen-fields"><div><strong>入口</strong><span>Vault map 默认视图</span></div><div><strong>读取</strong><span>文件类型、readiness、Communities、bridges</span></div><div><strong>动作</strong><span>选类型、图布局、展开 Community、inspect、Nodes</span></div><div><strong>退出</strong><span>Map text / scoped Scan / file evidence</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Activity</strong><span>Vault map 子视图</span></div>
+        <div class="screen-fields"><div><strong>入口</strong><span>Map local nav / Overview heatmap</span></div><div><strong>读取</strong><span>5 种显式来源 → sessions → 可选 AI themes</span></div><div><strong>动作</strong><span>picker、range drag、event select、theme/compare</span></div><div><strong>退出</strong><span>来源对象或返回 Overview</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Work queue</strong><span>一级页面</span></div>
+        <div class="screen-fields"><div><strong>入口</strong><span>一级 tab / Completed / Continue work</span></div><div><strong>读取</strong><span>未解决任务、owner next action、exit condition</span></div><div><strong>动作</strong><span>filter、search、Update suggestions、单行展开</span></div><div><strong>退出</strong><span>6 类 owner workspace</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Scan setup</strong><span>操作页面</span></div>
+        <div class="screen-fields"><div><strong>状态</strong><span>Changes / First setup / Recoverable</span></div><div><strong>Step 1</strong><span>changed / selected / entire + closure</span></div><div><strong>Step 2</strong><span>19 tasks + 展开的 Index output plan</span></div><div><strong>Step 3</strong><span>10 个 operation、model route、tokens/cost</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Run progress</strong><span>操作页面</span></div>
+        <div class="screen-fields"><div><strong>阶段</strong><span>Discover / Build Index / AI / Publish</span></div><div><strong>指标</strong><span>overall + layer progress + time/throughput/usage</span></div><div><strong>动作</strong><span>Pause / Stop / per-op skip / receipts</span></div><div><strong>恢复</strong><span>同 run checkpoint，保留部分事实</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Completed</strong><span>决策页面</span></div>
+        <div class="screen-fields"><div><strong>顺序</strong><span>hero → automatic → follow-up → run details</span></div><div><strong>读取</strong><span>完成事实、receipts、真实 usage</span></div><div><strong>动作</strong><span>Update suggestions、filter、search、open task</span></div><div><strong>退出</strong><span>Queue / owner workspace</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Maintenance workspace</strong><span>专用 modal/page</span></div>
+        <div class="screen-fields"><div><strong>类型</strong><span>Property / links / Community / bridge / lifecycle…</span></div><div><strong>投影</strong><span>各自领域正确的双视图</span></div><div><strong>状态</strong><span>canonical atom + owner choice + checkpoint</span></div><div><strong>退出</strong><span>保存决定 / Proposal / Verify / Queue</span></div></div>
+      </div>
+      <div class="card screen-contract">
+        <div class="screen-name"><strong>Map text / Proposal</strong><span>专用页面</span></div>
+        <div class="screen-fields"><div><strong>Map text</strong><span>Community/Topic/Hub 的 Peak-owned 文本与历史</span></div><div><strong>Proposal</strong><span>逐文件 diff、选择、revision conflict</span></div><div><strong>Apply</strong><span>显式写入 + receipt</span></div><div><strong>Verify</strong><span>re-index + finding exit</span></div></div>
+      </div>
+    </section>
+
+    <section class="report" id="interaction-contract">
+      <div class="section-head"><h2>交互合同：Mock 里真正需要实现的行为</h2></div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Overview</h3>
+          <ul class="compact-list">
+            <li>4 张对象摘要 hover/focus 打开<strong>对象专用</strong> popover，不是通用 tooltip。</li>
+            <li>Files/Chats/Projects 使用可交互分布；Composer 指向精确 saved review checkpoint。</li>
+            <li>heatmap day hover/focus 显示证据，点击日同步 Activity。</li>
+            <li>日期 popover 支持 7/30/365/custom，清除后回到默认。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Activity</h3>
+          <ul class="compact-list">
+            <li>来源 picker 可搜索；Top N + Other + Unclassified。</li>
+            <li>拖动窗口或两端 handle 改变选区。</li>
+            <li>lanes、选中期统计、sessions、event list、theme mix、等长前期对比同步。</li>
+            <li>Recorded activity 永远可用；AI themes 有生成/stale/confidence/citation 状态。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Vault contents / graph</h3>
+          <ul class="compact-list">
+            <li>饼图 slice/legend 支持 hover、focus、click，筛选同一图和下方解释。</li>
+            <li>Community 在同一 Cytoscape 图内展开；无关项淡化；再次点击/canvas/Escape/reset 收回。</li>
+            <li>Shift inspect、I pin、Nodes list、四种 layout、Mermaid/image/fullscreen。</li>
+            <li>选择始终同步 summary、evidence、capability、next action、AI interpretation。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Scan setup</h3>
+          <ul class="compact-list">
+            <li>scope 可加入 file/folder/Community/saved work，并自动纳入 affected closure。</li>
+            <li>task hover/focus 高亮它支持的 AI groups。</li>
+            <li>Index output 与 supporting AI operation 双向同步。</li>
+            <li>model picker 是真实 route；开关实时重算时间/token/cost。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Run progress</h3>
+          <ul class="compact-list">
+            <li>stage rail 可点击定位，不把四阶段当四张静态卡。</li>
+            <li>Build Index 有 per-file 6-step rail、队列、当前文件、速度和剩余时间。</li>
+            <li>vault-wide AI timeline 与 per-doc enrichment 分开。</li>
+            <li>operation 可独立 stop/skip；running 自动展开一次但不抢滚动。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Queue / maintenance</h3>
+          <ul class="compact-list">
+            <li>一行只展开一个；filter/search/leave/Escape 关闭。</li>
+            <li>自然语言纠偏只重算未应用 suggestion，不能覆盖 owner choice。</li>
+            <li>Property/Link/Community 各有专用动作，不用一套 Accept/Reject 模板。</li>
+            <li>恢复 checkpoint、scroll、source revision；冲突项不能被 bulk Apply。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="report" id="layout-contract">
+      <div class="section-head"><h2>布局合同：哪些不是“随便排得差不多”</h2></div>
+      <div class="grid-4">
+        <div class="card"><h3>全局 shell</h3><p class="small">顶部两行：标题/状态/唯一主 CTA；下方只有 Overview / Vault map / Work queue。内容区最大宽度 1500px，操作页可以收紧。</p></div>
+        <div class="card"><h3>Overview</h3><p class="small">对象条在最上；Continue work 为紧凑列表；随后完整年度 heatmap；Knowledge Index 是可解释的 readiness/impact，不是 2×2 的装饰数字卡。</p></div>
+        <div class="card"><h3>Map</h3><p class="small">local nav 左对齐常驻。Contents 的 type distribution 在图上方；图与 Community summary/selection evidence 构成一个连续工作区，不放右侧永久 drawer。</p></div>
+        <div class="card"><h3>Scan</h3><p class="small">Scan setup 的专用最大宽度 1280px。三个步骤垂直推进；Index plan 嵌套在 Step 2，AI authorization 在 Step 3，底部才给 estimate 与 CTA。</p></div>
+        <div class="card"><h3>Run</h3><p class="small">先是横向总体进度带，再是阶段 rail，再是当前阶段的纵向 workbench。不是“两张 progress 卡 + 四张 stage 卡 + 一张表”。</p></div>
+        <div class="card"><h3>Completed</h3><p class="small">单页决策流：完成事实 → 自动完成 → owner follow-up → 运行细节。follow-up 表格是主内容，不被大号指标卡挤到首屏下方。</p></div>
+        <div class="card"><h3>Task modal</h3><p class="small">普通详情约 720px；完整维护工作区约 980px；Note split 可到 1500px。宽度跟任务复杂度走，不用一个全屏 generic modal 承载全部。</p></div>
+        <div class="card"><h3>Semantic zoom</h3><p class="small">Task → group → file → atomic change。每次展开必须出现更具体对象或 diff，不能只是重复更长的解释文字。</p></div>
+      </div>
+    </section>
+
+    <section class="report" id="screen-shell">
+      <div class="section-head"><h2>逐屏验收 1 · 全局壳层与导航状态</h2><span class="section-kicker">页面之间共享的错误必须先修，否则每屏都会继续漂移</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>全局壳层</h3><p>顶层信息架构大体保留，但 header 状态、主动作和 first-setup 语义没有实现为同一状态机。</p><div class="screen-source"><span>Mock：main nav 与 scan preview states</span><a href="../../../src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx">当前：WorkspaceHeader · lines 170–205</a><span>源码基线：HEAD b6ff0e0e，VI 最近提交 e4569931</span></div></div><span class="status partial">总体：部分一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-fail">状态 <b>不一致</b></span><span class="dimension is-ok">一级 IA <b>一致</b></span><span class="dimension is-partial">动作 <b>部分</b></span><span class="dimension is-partial">布局 <b>部分</b></span><span class="dimension is-unknown">实机交互 <b>待复核</b></span></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. 一级导航数量与名称</strong><span class="status ok">一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>仅有 Overview、Vault map、Work queue；没有 Runs、AI Review 或 Files &amp; Index 一级页。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>生产也只渲染三个一级入口，Work queue 带未验证任务数量。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>保留现有三个 surface，不新增一级页。</dd></div><div><dt>通过条件</dt><dd>三个名称、顺序、活动态和计数与同一 route 状态一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. Scan 的信息架构位置</strong><span class="status ok">一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Scan 是 Setup → Progress → Completed 的操作流，不占一级 tab。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>生产 route 也把 setup、progress、completed 放在 surface 之外。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>保留现有 route 层级，只扩充各阶段能力。</dd></div><div><dt>通过条件</dt><dd>任何 Scan 阶段都不会出现新的一级 tab。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. First setup header 状态</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>显示 Not prepared、Setup required、Set up，并把主动作改为 Prepare Vault。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只显示 Baseline not established，主动作仍是 Scan Vault；没有 Setup required 或 Set up。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>建立显式 first-setup 状态，禁止通过 lastCompletedRun 缺失临时拼文案。</dd></div><div><dt>通过条件</dt><dd>无 baseline 时，header、Overview、Queue 和 Setup 使用同一 first-setup 语义。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. 普通 changes header 状态</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Last scan 是进入最新 Completed 的紧凑入口；changes ready 指向 Review plan。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>Last scan 可进入 Completed，也显示 changed 数量，但没有 Review plan 入口和 readiness 解释。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>保留 Last scan 路由，增加 changes ready → 当前 Scan plan 的精确入口。</dd></div><div><dt>通过条件</dt><dd>点击 Last scan 与 Review plan 分别进入 Completed 和预填 Setup。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Running / Recoverable 主动作</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>运行中为 View progress；可恢复为 Resume，并保留同一个 run ID 与 checkpoint。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>按钮文案支持 View progress 与 Resume scan，但恢复事实只由 interrupted 推导。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>把 run ID、frozen inputs、completed stages、operation receipts 纳入 recoverable 状态。</dd></div><div><dt>通过条件</dt><dd>Resume 回到同 run、同输入、同 stage/operation 位置，不创建新 run。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Header 信息按钮</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>主 CTA 左侧有独立 info 按钮，解释 Scan、AI、cost 和 user-file boundary。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 info 按钮，也没有同位置的信任说明。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>增加稳定说明 surface，不把关键边界藏到 Setup 底部。</dd></div><div><dt>通过条件</dt><dd>鼠标、键盘均可打开；Escape 关闭并恢复焦点。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. Header 与页面主动作唯一性</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>同一上下文只有一个 Scan 主动作；Queue 不复制全局 Scan CTA。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>真实 Queue 同时出现 header、页面和 empty-state 三个 Scan Vault。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>页面只保留本页动作；Scan 的全局入口由 header 独占。</dd></div><div><dt>通过条件</dt><dd>每个 viewport 同时只存在一个主要 Scan/Prepare/Resume CTA。</dd></div></dl></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="report" id="screen-overview">
+      <div class="section-head"><h2>逐屏验收 2 · Overview</h2><span class="section-kicker">真实视频 00:00.8–00:05.0</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Overview 主页面与四类对象 hover/focus</h3><p>当前保留了对象条和 Continue work，但对象专用解释、显式活动和完整 Knowledge Index 设计没有实现。</p><div class="screen-source"><a href="../../gstack/vault-intelligence-workspace-2026-08-12-v2/index.html">Mock：data-screen="overview"</a><a href="../../../src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx">当前：Overview · lines 207–262</a><span>真实证据：视频 00:00.8 / 00:02.8</span></div></div><span class="status fail">总体：不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-fail">状态 <b>不一致</b></span><span class="dimension is-fail">数据 <b>不一致</b></span><span class="dimension is-partial">结构 <b>部分</b></span><span class="dimension is-fail">交互 <b>不一致</b></span><span class="dimension is-partial">边界 <b>部分</b></span><span class="dimension is-partial">视觉 <b>部分</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-overview.png" alt="V2 Mock Overview"><figcaption>V2 Mock · 页面结构和交互为合同，数量为合成数据</figcaption></figure><figure><img loading="lazy" src="assets/vault-intelligence-parity-2026-08-18/actual-overview.png" alt="Actual Obsidian Overview"><figcaption>真实 Obsidian · 00:00.8</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. 首屏阅读顺序</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>对象条 → Continue work → 全年活动 → Knowledge Index，按“现在有什么、接着做什么、发生过什么、机器准备度”阅读。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>对象条与 Continue work 后进入四张 secondary 卡：Index、Priority now、What changed、mini activity。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>删除 Priority now/What changed 作为独立重复卡；恢复完整 activity 和 Index 顺序。</dd></div><div><dt>通过条件</dt><dd>同 viewport 中的模块顺序、宽度和信息密度与 Mock 同构。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. 四类对象摘要条</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Files、Chats、Projects、Composer 四个稳定对象，AI Graph 与 Peak Sheet 归入 Files。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>四个对象和顺序存在，但 snapshot 只有 id、label、count、detail，无法表达各自分布与 retained work。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>把四类对象改为各自 typed summary，而不是扩展 generic detail 字符串。</dd></div><div><dt>通过条件</dt><dd>对象数量与专用明细来自同一查询，AI Graph/Peak Sheet 不成为第五、第六张卡。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Files hover/focus</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>显示 16 个真实格式的交互饼图、人类名称、扩展名、数量和 changed 状态；点击类型进入 Contents 并保持筛选。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 Files、detail 和 Open owner surface；点击直接调用 openOwnerSurface。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>实现 Files 专用 popover 与 selected file type handoff。</dd></div><div><dt>通过条件</dt><dd>hover、focus、slice/legend click 均可操作；进入 Contents 后类型选择保持。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Chats hover/focus</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>按 durable Conversation Type 分布；pending work 单独显示，因为 pending 是状态，不是类型。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 chat 总数和通用 detail，没有 conversation types 或 pending 状态分离。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>读取 Chat Studio 的 canonical type 与 pending records，禁止从最后更新时间推断 pending。</dd></div><div><dt>通过条件</dt><dd>类型总和等于 chat 总数；pending 数量不参与类型总和。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Projects hover/focus</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>按 Active、Completed、Planned、Blocked、Archived 等显式 lifecycle state 分布；只有 Blocked 进入 continuation。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 project 总数和通用 detail，无法区分 blocked 与单纯 inactivity。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>使用 Project canonical lifecycle，不用 mtime 或 inactivity 代替 blocked。</dd></div><div><dt>通过条件</dt><dd>Blocked continuation 可追到精确 Project；inactive 项不会误入 Queue。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Composer hover/focus 与精确 handoff</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>按 Applied、Completed/no change、Pending review、Not adopted、Stale 分布；pending 记录保存 session、Change Set、file scope 和 revisions。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 composer 总数和通用 Open owner surface，不能恢复某个 saved review。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>建立 durable Composer result summary 与精确 locator；过期 locator 在 Overview 显示 recovery。</dd></div><div><dt>通过条件</dt><dd>Open saved review 恢复原 session/Change Set，不创建空白 Composer。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. 对象摘要的默认点击行为</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>摘要本身用于 inspect；只有 popover 内明确动作才跨到 Contents、Activity 或 owner surface。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>整张对象卡都是按钮，点击即打开 owner surface。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>分离 summary inspect 与 explicit handoff，避免误导航。</dd></div><div><dt>通过条件</dt><dd>点击/键盘打开明细不会立即离开；只有明确 CTA 执行 handoff。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>8. Continue work Top 7</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>显示 Top 7、View all、来源、新/保留原因、next action，并与 Queue 使用同一任务身份。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>Top 7 与 View all 存在，也复用 snapshot.tasks；行只显示 type/title/affected/state，缺 provenance 与 retained reason。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>保留 shared tasks，补 sourceRun/provenance/retainedReason/nextAction，而不是复制第二套列表。</dd></div><div><dt>通过条件</dt><dd>Overview 与 Queue 对同 task ID 的状态、数量和 owner choice 完全一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>9. Since last scan 变化条</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>只在有 completed baseline 时显示 changed objects、new connections、notes need a home、work states changed。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>无 baseline 时仍渲染 Since last scan；视频还出现 Search ready 大于 Discovered 的单位冲突。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>所有 delta 必须依赖同一个 baseline revision；files、chunks、records 分开命名。</dd></div><div><dt>通过条件</dt><dd>first setup 不出现 Since last scan；每个数字可追到单位和基线。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>10. 全年显式活动 heatmap</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>完整 365-day calendar、month/week labels、强度图例、当日证据区；点击日期同步 Activity。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只渲染 365 个小方块的 MiniActivity，没有日期选择、证据区或同步选择。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Overview heatmap 与 Activity 共享 range/selected day，不另造聚合规则。</dd></div><div><dt>通过条件</dt><dd>hover/focus 显示同日证据；点击后 Activity 选区和事件列表同步。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>11. Activity 日期范围交互</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>支持 Last 7 days、Last 30 days、Last 365 days、Custom date 和 Clear filters。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>Overview 没有范围控件；只能点击 Open activity 离开。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>使用同一 activity range model；自定义范围需校验 start/end。</dd></div><div><dt>通过条件</dt><dd>范围变更更新总数、calendar 和 evidence，关闭 popover 后焦点回触发器。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>12. Knowledge Index readiness 与影响解释</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>readiness ring + Search/vectors/Summary/AI Tags meters + exclusions/failures + What this Index powers + Review next Index plan。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 Discovered、Search ready、Pending/excluded 三个数字与 built time；无层级 readiness、影响或 plan 入口。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>扩充 typed readiness layers，并明确 Index 为 Peak-owned rebuildable knowledge。</dd></div><div><dt>通过条件</dt><dd>每层有 ready/total/failure/exclusion；Review plan 定位到 Setup 的 Index plan。</dd></div></dl></div>
+        </div>
+        <div class="screen-rule"><div class="screen-rule-title">Overview 的完成判定</div><p>仅恢复四张对象卡和间距不能通过。必须同时满足对象专用 hover、canonical continuation、完整显式活动、分层 Index readiness、first-setup/changes 状态一致。</p></div>
+      </article>
+    </section>
+
+    <section class="report" id="screen-queue">
+      <div class="section-head"><h2>逐屏验收 3 · Work queue</h2><span class="section-kicker">真实视频 00:06.8</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Work queue 主页面、空状态与任务展开</h3><p>当前共享了任务数组和基础筛选，但缺少 owner guidance、inline detail、专用 owner surface 与唯一主动作。</p><div class="screen-source"><a href="../../gstack/vault-intelligence-workspace-2026-08-12-v2/index.html">Mock：data-screen="queue"</a><a href="../../../src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx">当前：WorkQueue / WorkSurface · lines 397–420</a><span>真实证据：视频 00:06.8</span></div></div><span class="status fail">总体：不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-partial">任务身份 <b>部分</b></span><span class="dimension is-partial">筛选 <b>部分</b></span><span class="dimension is-fail">展开交互 <b>不一致</b></span><span class="dimension is-fail">owner surface <b>不一致</b></span><span class="dimension is-unknown">空态像素 <b>不可比</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-work-queue.png" alt="V2 Mock Work queue"><figcaption>V2 Mock · populated queue</figcaption></figure><figure><img loading="lazy" src="assets/vault-intelligence-parity-2026-08-18/actual-work-queue.png" alt="Actual empty Work queue"><figcaption>真实 Obsidian · empty queue，Mock 无最终空态像素稿</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. 页面职责</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>只收 durable unresolved work；每项必须有 owner next action 和可验证 exit condition。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>显示所有未 verified tasks，但 task model 不能证明每项已有可执行 owner surface 或真实 exit check。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>任务入队 gate 必须校验 owner action、owner surface、exit condition。</dd></div><div><dt>通过条件</dt><dd>没有下一步动作或退出条件的 finding 不进入 Queue。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. 筛选名称与含义</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>All、Needs your choice、Ready for review、Needs recovery；筛选不是任务 taxonomy。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>生产存在对应四个过滤状态，但 needs-proposal 被并入 choice，ready-apply 的标签映射也不完整。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>按 owner next step 投影 filter，不按 detector/category 生成新 tab。</dd></div><div><dt>通过条件</dt><dd>每个 task 只计入一个当前 filter；状态切换后计数即时同步。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. 搜索</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>搜索 Task、Affected、来源和领域对象；搜索变化会关闭当前 inline detail。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>有 Search tasks，但只围绕 task 文本；没有 inline detail 状态可关闭。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>搜索索引包含 title/type/affected/object labels；query 是共享 work-surface state。</dd></div><div><dt>通过条件</dt><dd>搜索后列表、计数、展开状态和 Completed 同步。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Owner guidance / Update suggestions</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>自然语言纠偏后重算当前未应用 suggestions；历史 evidence、completed receipts、owner choices 和 user files 不变。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有输入框、model preflight、usage estimate、revision 或 suggestions refresh。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>新增 suggestion revision；owner choice 优先于新 suggestion，已选择项变更后进入 needs reconfirmation。</dd></div><div><dt>通过条件</dt><dd>Update 后 task ID 不变、owner choice 不丢、用户文件不写、实际 AI usage 有 receipt。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. 三列行结构</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Task / Affected / State；一行只保留一个主 affected count，不重复 badge、impact 和解释。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>生产也有三列基础结构，但行内状态、impact、affected/context 仍存在重复表达。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>行只负责扫描；证据、解释和选择进入下一层 semantic zoom。</dd></div><div><dt>通过条件</dt><dd>每行只有一个标题区、一个 affected 主数、一个 state/next-action 区。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Inline detail 与关闭规则</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>行在表内展开；同时只展开一个；filter/search/leave/Escape 均关闭。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>点击直接切到全屏 generic MaintenanceWorkspace；没有表内展开和同页上下文。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>实现轻量 inline preview；深工作再进入专用 workspace，保留返回行与滚动位置。</dd></div><div><dt>通过条件</dt><dd>上述四种关闭方式通过；返回 Queue 时原行、filter、query、scroll 恢复。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. Queue 与 Completed 的 canonical state</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>两处投影同一 task/atom 集合，改变分组或选择不会复制、重置或重计。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>两处都读取 snapshot.tasks，这是正确基础；但没有 suggestion revision、checkpoint 和专用原子可验证。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>保留 shared task store，扩充 canonical atom，不在 Completed 创建第二份 task state。</dd></div><div><dt>通过条件</dt><dd>任一 surface 做 choice 后，另一 surface 无刷新即可显示同一结果。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>8. 深工作路由</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>根据任务进入 saved-work、inspect、AI run、decision、recovery 或 Proposal 六类 owner surface。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>所有任务只进入一个 task route 和同一个 MaintenanceWorkspace。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>route 必须承载 interaction archetype 与 exact owner object，不只传 taskId。</dd></div><div><dt>通过条件</dt><dd>11 类任务分别进入领域正确的动作和退出条件，返回点一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>9. Empty state 与 Scan CTA</strong><span class="status unknown">像素不可比 / 行为不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>没有最终 zero-task 像素稿；但全局规则明确 Queue 不复制 Scan 主动作。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>真实空态同时显示三个 Scan Vault 入口。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>空态只解释“没有 unresolved owner work”和下次任务如何出现。</dd></div><div><dt>通过条件</dt><dd>像素验收标记 NOT COMPARABLE；动作验收要求页面内无重复 Scan CTA。</dd></div></dl></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="report" id="screen-activity">
+      <div class="section-head"><h2>逐屏验收 4 · Activity</h2><span class="section-kicker">真实视频 00:12.8，可判定当前静态布局；拖动、键盘与主题生成仍需真实交互验收</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Activity · 记录事实与主题解释的联动工作区</h3><p class="screen-source">Mock reference + 真实 Obsidian 视频 + 当前 source</p></div><span class="status fail">整体不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-fail">来源 <b>不一致</b></span><span class="dimension is-fail">选区 <b>不一致</b></span><span class="dimension is-fail">联动 <b>不一致</b></span><span class="dimension is-missing">AI themes <b>未实现</b></span><span class="dimension is-partial">隐私边界 <b>部分</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-activity.png" alt="V2 Mock Activity"><figcaption>V2 Mock · 5 source lanes 与 linked selected period</figcaption></figure><figure><img loading="lazy" src="assets/vault-intelligence-parity-2026-08-18/actual-activity.png" alt="Actual Activity"><figcaption>真实 Obsidian · 2 lanes 与固定范围按钮</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. 页面职责与信息边界</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>先呈现可核查的 Recorded facts，再把 AI themes 作为可选解释；不推断生产力、注意力或工时。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>页面以事件数量和最近活动为主，未出现越界推断；但 Recorded 与 AI explanation 的分层尚未形成。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Recorded 数据永远可见；AI themes 独立标注生成状态、来源与更新时间。</dd></div><div><dt>通过条件</dt><dd>关闭 AI 后完整浏览真实事件；页面不出现 productivity、focus 或 time-spent 结论。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. 来源 lanes</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>File edits、Chat contexts、Composer、Project changes、Peak-native revisions 五条来源 lane。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 File edits 与 VI receipts；Chat、Composer、Project 三类 durable activity 缺失，Peak-native revisions 也被窄化成 VI receipts。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>先定义统一 activity record 与 source adapters，再渲染五条 lane；未知来源进入 Unclassified，不静默丢弃。</dd></div><div><dt>通过条件</dt><dd>同一 fixture 中五类记录均能出现；关闭任一来源只改变投影，不删除事实。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. 时间范围入口</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>支持 7 / 30 / 365 天与 Custom；日期 picker、overview navigator 和选中窗口指向同一个 range state。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 30d / 90d / 6m / 1y 四个固定按钮，没有 Custom picker，也没有共享 selected-range atom。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>以 start/end 为 canonical range；preset 只是写入该范围的快捷方式。</dd></div><div><dt>通过条件</dt><dd>按钮、picker、navigator 任一处变更后，其余控件、标题和数据同步到同一日期区间。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Overview navigator 与拖动窗口</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>全局 timeline 上有可拖动选区和左右 handles，可移动或缩放选中期间。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 navigator、drag window、handles、hover/focus 状态或键盘微调。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>拖动只改 selected range；须提供 pointer capture、最小范围与可访问键盘操作。</dd></div><div><dt>通过条件</dt><dd>拖动窗口、拖动两端和键盘调整均更新同一 range，且不会误选文本或丢失焦点。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Session 聚合与事件列表</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>raw records 先按确定性规则聚合 work sessions；下方同时展示 sessions 与组成事件，选择关系可追溯。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有固定期间摘要和 VI sessions，无法从 session 回到五来源原始事件。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>session 必须保存 constituent event IDs 和聚合规则版本；AI 不参与 Recorded session 边界。</dd></div><div><dt>通过条件</dt><dd>点击 session 能列出完整组成事件；同一输入与规则版本重复构建结果一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Linked workspace 同步</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>lanes、统计、session/event 列表、theme mix 与比较期共同响应当前选区和所选事件。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>range 只触发静态数据重投影，没有 event selection，也没有跨模块联动状态。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>range、source filter、selected event/session 是共享 Activity view state，不在各卡片内复制。</dd></div><div><dt>通过条件</dt><dd>选中一天、一个 session 或一个 event 后，所有相关模块同步高亮且统计口径一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. Source / theme 搜索与筛选</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>可搜索并选择 source/theme；主题分布显示 Top N、Other 与 Unclassified，避免长尾被隐藏。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>无 source picker、theme picker、搜索或 Unclassified 投影。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>筛选只影响显示；Other 与 Unclassified 必须保持可展开和可追溯。</dd></div><div><dt>通过条件</dt><dd>任一主题可追到 evidence events；清空筛选恢复相同的总记录数。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>8. AI themes 状态与证据</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>区分 Not generated、Generating、Ready、Stale、Unclassified；每个主题带 citations、confidence、revision 和 generated time。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有禁用式 AI interpretation 文案，没有生成动作、状态机、引用或 receipt。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>生成前显示 provider/model/cost 预估与 consent；选区或 evidence revision 变化后标 Stale，不自动覆盖。</dd></div><div><dt>通过条件</dt><dd>每个 Ready theme 可打开引用；实际 usage 有 receipt；Stale theme 保留旧结果并提示重新生成。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>9. 等长前期比较</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>当前选区可与紧邻的等长前期比较；统计、主题与事件变化使用同一比较口径。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 previous-period state 或 comparison presentation。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>previous range 由当前 start/end 确定性计算；不足数据明确标记，不补造趋势。</dd></div><div><dt>通过条件</dt><dd>调整 range 后比较期长度始终相等；所有 delta 可追到两段原始计数。</dd></div></dl></div>
+        </div>
+        <p class="screen-rule"><strong>完成判定：</strong>五类来源、一个 canonical range、一个 event/session selection 必须共同驱动整页；真实 Obsidian 中需录制拖动 handles、event selection、AI generate/stale 的短视频。</p>
+      </article>
+    </section>
+
+    <section class="report" id="screen-contents">
+      <div class="section-head"><h2>逐屏验收 5 · Vault contents 与 Knowledge graph</h2><span class="section-kicker">同一对象筛选必须同时投影到分布图、知识图和解释区</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Vault contents · 内容口径与类型分布</h3><p class="screen-source">Mock reference + 真实 Obsidian 视频 00:16.8 + 当前 source</p></div><span class="status fail">整体不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-pass">局部导航 <b>一致</b></span><span class="dimension is-fail">指标 <b>不一致</b></span><span class="dimension is-fail">分布图 <b>不一致</b></span><span class="dimension is-missing">页面动作 <b>未实现</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-vault-map.png" alt="V2 Mock Vault contents"><figcaption>V2 Mock · solid pie、human labels、contextual graph</figcaption></figure><figure><img loading="lazy" src="assets/vault-intelligence-parity-2026-08-18/actual-vault-contents.png" alt="Actual Vault contents"><figcaption>真实 Obsidian · donut、raw extensions、缺页面动作</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. Contents / Activity 局部导航</strong><span class="status pass">一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Vault map 下只保留 Contents 与 Activity 两个局部页面。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>生产已实现同名两项局部导航，层级位置与基本职责一致。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>保留当前局部导航，不把 Graph 或 Map text 提升为第四个全局 tab。</dd></div><div><dt>通过条件</dt><dd>切换 Contents/Activity 时全局 Vault map 仍保持 active，返回状态可恢复。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. 页面级动作</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>右上有 Manage map text；选择类型后出现 Scan selected type，范围继承当前 type selection。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>两项动作都不存在，也没有通往 Map text 或 scoped Scan Setup 的 route。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Manage map text 打开独立 Peak-owned workspace；Scan selected type 写入 Scan scope，不直接开始扫描。</dd></div><div><dt>通过条件</dt><dd>两个动作 route、返回点和 scope 均可验证；未选择类型时不显示 scoped Scan CTA。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Summary 指标口径</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Discovered、Readable by policy、Search ready、Not used by policy、Failed to parse，五项可加总解释。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>使用 Discovered、Search ready、Pending/excluded、Actual file types、Unreadable；policy exclusion 与 processing failure 被混在一起。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>每个文件由同一 ingest policy/result 投影到五个互斥或明确重叠的指标。</dd></div><div><dt>通过条件</dt><dd>指标 tooltip 说明 denominator；Not used 与 Failed parse 可分别展开到具体文件和原因。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. 分布图几何</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>实心 SVG pie，slice、legend 和 selection 使用同一颜色与高亮语义。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>使用 conic-gradient donut；中心留白、标签布局和命中区域均与 Mock 不同。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>按 Mock 重建可交互实心 pie；命中区域绑定真实 type ID，而不是按颜色反查。</dd></div><div><dt>通过条件</dt><dd>同 viewport normalized overlay 几何一致；slice/legend hover、focus、click 互相同步。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. 类型命名与长尾</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>显示 human-readable type、extension 与 count；长尾合并为 Other 但可展开。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>直接显示 <code>.{extension}</code>，最多截取 16 项；未知和长尾类型的去向不透明。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>类型 label 来自受配置管理的映射；保留原 extension 与未知类型证据。</dd></div><div><dt>通过条件</dt><dd>所有 discovered files 均计入某个可追溯 type；Other 展开后的合计等于聚合值。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. 类型选择与跨区投影</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>点击 slice 或 legend 后，同一 selected type 过滤 graph、Community summary、evidence 与 page action。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>图例有 selected state，但 KnowledgeGraph 仍由整个 digest 构建，未证明 selection 能过滤 graph 与解释。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>selectedType 是 Contents page state；所有下游 projection 显式接收它。</dd></div><div><dt>通过条件</dt><dd>选择任一类型后 node set、summary、evidence count 和 Scan selected type scope 同步；清除选择恢复全图。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. 可访问性与零数据</strong><span class="status unknown">证据不足</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>颜色之外还用文字、count 和 selection treatment；零数据时解释为什么没有可用类型。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>源码存在 selected class，但视频不能证明键盘遍历、读屏名称或 zero-data recovery。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>slice 与 legend 可键盘操作并共享 accessible name；零数据给出 policy/parse/scan 的下一步。</dd></div><div><dt>通过条件</dt><dd>Tab、Enter、Escape 通过；无颜色也能辨认选中类型；空态不呈现空白图表。</dd></div></dl></div>
+        </div>
+      </article>
+
+      <article class="card screen-audit" style="margin-top:12px">
+        <div class="screen-audit-head"><div><h3>Knowledge graph · 稳定对象投影与临时语义缩放</h3><p class="screen-source">已复用 AtlasGraphCanvas；数据、交互与解释层尚未达到 Mock</p></div><span class="status fail">渲染栈一致 / 产品合同不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-pass">渲染栈 <b>一致</b></span><span class="dimension is-fail">数据投影 <b>不一致</b></span><span class="dimension is-missing">展开交互 <b>未实现</b></span><span class="dimension is-missing">证据解释 <b>未实现</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-vault-map.png" alt="V2 Mock contextual graph"><figcaption>V2 Mock · 18-object resting skeleton 与 Community summary</figcaption></figure><figure><img loading="lazy" src="assets/vault-intelligence-parity-2026-08-18/actual-graph.png" alt="Actual graph area"><figcaption>真实 Obsidian · 当前数据下为空图，无法进入交互链</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. 共享 graph renderer</strong><span class="status pass">一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock / 治理</span><p>所有交互式 node-edge graph 使用 Cytoscape 与共享 AtlasGraphCanvas。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>KnowledgeGraph 已使用 AtlasGraphCanvas，没有扩展 React Flow legacy。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>继续在共享栈补行为与样式，不创建第二个 graph runtime。</dd></div><div><dt>通过条件</dt><dd>新增交互不引入 <code>@xyflow/react</code> consumer，通用 toolbar 行为仍由共享层提供。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. Resting projection</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>默认稳定呈现 18 个真实对象：5 Communities、9 representative topics、4 real bridge docs。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p><code>buildVaultIntelligenceGraph(snapshot.digest)</code> 在 digest/clusters 为空时返回 null；没有稳定 skeleton 或原因解释。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>由 canonical digest projection 生成三类对象；数据不足时明确显示缺失条件与可执行恢复，不伪造节点。</dd></div><div><dt>通过条件</dt><dd>canonical fixture 命中 5/9/4 结构；空数据出现可解释 empty state，而不是空画布。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Authored 与 semantic edges</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>用户 authored links 与可选 AI semantic links 视觉不同；semantic edge 使用虚线并可关闭。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有可验证的 edge provenance、overlay toggle 或 legend。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>edge model 保存 provenance 与 evidence；AI overlay 不写回用户文件。</dd></div><div><dt>通过条件</dt><dd>toggle 只隐藏 semantic edges；authored links 始终保留；任一 semantic edge 可打开依据。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Community inline expand / collapse</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>点击 Community 原地临时展开成员；再次点击、canvas、Escape 或 Reset collapse 恢复 resting graph。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>点击节点只更新下方简单 selection card，没有 graph 内 semantic zoom。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>展开是 transient scene state，不改 canonical graph，也不新开永久 drawer。</dd></div><div><dt>通过条件</dt><dd>四种 collapse 路径均恢复相同节点/viewport；切换 Community 不累积旧成员。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Layout presets</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Constellation、Flow LR、Flow TB、Orbit 四种布局作用于同一个 node/edge set。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>已有四个对应 preset，这是正确基础；但空图无法证明切换是否保留 selection、expanded state 与数据集合。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>layout 只改 scene positions；selectedType、selection、edge overlays 不重置。</dd></div><div><dt>通过条件</dt><dd>四次切换前后 node/edge IDs 完全相同，selection 仍在，viewport 有受控 fit。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Hover、Inspect、Pin 与 Escape 顺序</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>hover 显示邻域；Shift 进入 inspect；I pin；Escape 按 pin/inspect/expand/selection 的规定顺序回退。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有基础 node selection；没有邻域 hover、inspect/pin 状态或可验证 Escape 栈。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>把 transient modes 建成明确状态机；快捷键只在 graph focus scope 生效。</dd></div><div><dt>通过条件</dt><dd>真实 pointer + keyboard 视频证明完整顺序；activeElement、selected/pinned IDs 和 DOM 状态逐步断言。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. Shared toolbar 与导出</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>使用共享 toolbar，支持 Nodes、Mermaid、image、fullscreen，并保留当前布局/selection 语境。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>共享 Canvas 提供部分通用能力，但当前页面未证明 Nodes/Mermaid/image/fullscreen 全部存在且与 selection 一致。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>复用共享能力；导出数据来自当前可见 projection，并带来源/时间元数据。</dd></div><div><dt>通过条件</dt><dd>四个入口可用；导出的 node/edge 集合与当前 filters/overlays 一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>8. Community summary、证据与 AI interpretation</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>图下方展示 Community summary、当前 selection/evidence、capability/next action；AI interpretation 独立生成并带依据。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有简单 selected node card 和 “AI interpretation Not generated”，无证据、动作或生成合同。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>解释区由当前 graph selection 投影；AI 生成不改变 graph truth，并遵循 provider/cost/receipt 约束。</dd></div><div><dt>通过条件</dt><dd>选节点后 summary/evidence/action 同步；AI 关闭时所有 Recorded graph facts 仍完整可用。</dd></div></dl></div>
+        </div>
+        <p class="screen-rule"><strong>完成判定：</strong>先让 canonical fixture 得到稳定真实 projection，再验收交互和像素；空图、synthetic nodes 或只有静态截图均不能算 graph parity。</p>
+      </article>
+    </section>
+
+    <section class="report" id="screen-scan">
+      <div class="section-head"><h2>逐屏验收 6 · Scan setup</h2><span class="section-kicker">截图来自 deterministic harness；状态转换和控件交互仍标记 INTERACTION NOT VERIFIED</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Scan setup · 扫什么、做什么、AI 会做什么</h3><p class="screen-source">Mock reference + production harness + 当前 source/config</p></div><span class="status fail">外壳部分一致 / 能力合同不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-fail">状态分支 <b>不一致</b></span><span class="dimension is-partial">Scope <b>部分</b></span><span class="dimension is-fail">19 checks <b>不一致</b></span><span class="dimension is-missing">Index plan <b>未实现</b></span><span class="dimension is-fail">AI ops <b>不一致</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-scan-setup.png" alt="V2 Mock Scan setup"><figcaption>V2 Mock · 三步 setup 与完整影响合同</figcaption></figure><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/production-scan-setup.png" alt="Production harness Scan setup"><figcaption>Production harness · 外壳可比，非真实交互证据</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. Changes / First setup / Recoverable 三态</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>三个显式状态分别决定标题、说明、默认 scope、primary CTA 和 run/checkpoint 语义。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>主要根据 changedCursor 推断 changed 或 entire；没有稳定的 first/recoverable route contract。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>由 canonical scan lifecycle 推导 setup mode，不让 UI 自行猜测。</dd></div><div><dt>通过条件</dt><dd>三态 fixture 各自只出现正确标题、scope 与 CTA；Recoverable 保留同一 run ID/checkpoint。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. Step 1 Scope 基本选择</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Changed since last scan、Selected scope、Entire Vault，且解释每种范围的影响。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>已有 changed/selected/entire 三个基础选项，结构正确；但 availability 和 default 未完整跟随三态。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>scope value 与 setup mode 分离；无 baseline 时禁用 changed 并说明原因。</dd></div><div><dt>通过条件</dt><dd>scope 切换实时更新 affected count、Index outputs、AI estimates 与 CTA 摘要。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Selected scope 对象与 closure</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>可选择 file、folder、Community、saved work；明确显示直接对象与依赖 closure。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只对 exact Vault file paths 搜索；没有 folder/community/saved-work token 或 closure preview。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>scope atom 保存 selector kind/id 与 resolved closure revision；运行前冻结解析结果。</dd></div><div><dt>通过条件</dt><dd>四类 selector 都能解析；预览 count 与 run receipt 的实际 resolved objects 对得上。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Step 2 最终 19 checks 分组</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock / 最终合同</span><p>四组 5 / 4 / 8 / 2；每项名称、自动/需确认边界与产物明确。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>config 总数同为 19，但分组为 2 / 6 / 6 / 5，检查身份与设计合同不相同。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>以最终检查 ID 和语义为准，不能用“总数 19”冒充一致；配置、run stage 与 completion receipt 共用 ID。</dd></div><div><dt>通过条件</dt><dd>UI 分组为 5/4/8/2；逐项可追到执行器、输出、失败处理和 Completed result。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Expanded Index plan</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Core Search 与 Generated Knowledge 分层；matrix 展示 automatic、optional、later 及继承 scope。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有一行 Knowledge Index plan 摘要，无法看到输出、成本边界或何时可用于 Search。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Index outputs 绑定 operation IDs 与 publish condition；Core Search 不依赖可选 AI 成功。</dd></div><div><dt>通过条件</dt><dd>展开后每个输出显示 mode、scope、依赖和预计资源；切 scope 后 matrix 同步。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Step 3 五组十个 AI operations</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock / 最终合同</span><p>十个独立 operation 分为五组；每项可单独启用、选路由，并与输出矩阵双向定位。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>类型与 config 只有 7 个 operation IDs；多个最终能力被合并或缺失。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>十个 stable IDs 分别记录 capability、inputs、output、provider/model route、estimate 与 receipt。</dd></div><div><dt>通过条件</dt><dd>UI 正好呈现最终十项；点 output 可定位 operation，点 operation 可高亮其 outputs。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. Model/provider picker 与成本同意</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>使用真实 model picker，展示 provider、模型、隐私/路由提示和实时 token/cost estimate。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>route 主要以文字显示，没有可验证 picker、capability preflight 或 operation-level consent。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>复用统一 picker 与 AI gateway；estimate 随 scope/model/operation 变更，实际费用进入 receipt。</dd></div><div><dt>通过条件</dt><dd>不可用模型在启动前阻断并解释；选择结果进入 run plan，实际 route 与 receipt 一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>8. Primary CTA 与启动前摘要</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>First setup 为 Prepare Vault，Changes 为 Scan Vault，Recoverable 为 Resume；旁边汇总 scope、checks、AI 与预计写入边界。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>footer 始终 Start Scan，不能区分建立基线、增量扫描和恢复同一运行。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>CTA 文案与 command 由 mode 显式映射；启动前不写用户文件。</dd></div><div><dt>通过条件</dt><dd>三态 primary action 调用不同且正确的 runtime command；重复点击不能创建重复 run。</dd></div></dl></div>
+        </div>
+        <p class="screen-rule"><strong>完成判定：</strong>不能只对齐三步外观；三态、四类 selected selector、19 个最终 checks、Index matrix、10 个 AI operations 和真实 picker 必须同时成立。</p>
+      </article>
+    </section>
+
+    <section class="report" id="screen-run">
+      <div class="section-head"><h2>逐屏验收 7 · Run progress</h2><span class="section-kicker">这是可控制、可解释、可恢复的运行工作台，不是四张静态状态卡</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Run progress · Overall、Index 与 AI 的连续执行视图</h3><p class="screen-source">Mock reference + production harness + 当前 runtime source</p></div><span class="status fail">整体不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-fail">总体带 <b>不一致</b></span><span class="dimension is-fail">Stage rail <b>不一致</b></span><span class="dimension is-missing">Index workbench <b>未实现</b></span><span class="dimension is-fail">AI scope <b>不一致</b></span><span class="dimension is-fail">控制 <b>不一致</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-run-progress.png" alt="V2 Mock Run progress"><figcaption>V2 Mock · overall band、rail 与 stage workbench</figcaption></figure><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/production-run-progress.png" alt="Production harness Run progress"><figcaption>Production harness · 静态 stage cards 与 operation table</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. Overall progress band</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>首屏同一带显示 overall %、processed/total objects、elapsed/remaining、throughput 和 actual AI usage/cost。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有两张进度卡与 current object；没有时间、objects/min、actual spend 或 receipt 入口。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>全部指标从同一 run snapshot/receipts 推导；未知 remaining 明确显示 estimating。</dd></div><div><dt>通过条件</dt><dd>每次 stage 更新后 band 数值单调合理；usage 与 operation receipts 汇总值一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. Clickable stage rail 与 overlap</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>stage rail 可点击聚焦，表达 Waiting/Running/Complete/Failed/Skipped；Index 与 AI 可重叠执行。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>四个 stage 只是静态卡片，视觉上呈串行；不能聚焦到对应 workbench。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>rail 是 run DAG 的投影，不是假进度 stepper；点击只改变 focused stage。</dd></div><div><dt>通过条件</dt><dd>并行 stage 可同时 Running；点击任一 stage 展示正确详情且不暂停执行。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Overall 与 Index 两层进度</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Overall 表达整次 scan；Index 独立表达 Core Search readiness 和 AI-enriched coverage。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>页面把 processing 和 indexing 压成两张简单卡，无法解释 Core Search 已可用但可选 AI 仍在跑。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Core Search publish condition 与 optional enrichment completion 分离。</dd></div><div><dt>通过条件</dt><dd>可选 AI 失败时 Core Search 仍能发布 ready；页面准确显示两层状态而非整体 failed。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Build Index per-file workbench</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>每个文件有六步状态、document queue、current file、remaining/ETA 与 throughput；可定位失败文件。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 current object 与聚合数量，没有 per-file steps、queue 或文件级 recovery。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>文档 processing atom 保存 step/state/attempt/error/source revision；UI 只做投影。</dd></div><div><dt>通过条件</dt><dd>任选文件可查看六步及失败证据；retry 不重跑已经验证成功且 revision 未变的步骤。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. AI per-document enrichment</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>文件级 summary/tag/embedding 等 enrichment 随文档处理显示，绑定当前文件与输入证据。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>所有 AI 操作都进入统一 operation table，无法分辨 per-document scope 与当前 document。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>operation run 保存 scope kind、input object IDs 和 source revisions。</dd></div><div><dt>通过条件</dt><dd>点击文件能看到对应 AI steps/model/usage；结果 revision 与该文件输入匹配。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Vault-wide AI timeline</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>vault-wide operations 以 evidence → candidates → review → follow-up timeline 呈现，与文件级 enrichment 分开。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>统一表只显示 processed、model、tokens 与 Skip，没有 candidate/review/follow-up 阶段。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>按 operation contract 显示 inputs、evidence、current step、outputs、owner-review destination。</dd></div><div><dt>通过条件</dt><dd>每个 vault-wide operation 可追到输入集合、候选数量、输出 task IDs 和 receipt。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. 自动展开与滚动稳定</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>新进入 Running 的节点只自动展开一次；用户手动折叠或滚动后不抢 scroll。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 stage workbench expansion model，无法满足一次性自动展开和 scroll ownership。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>记录 autoExpanded stage IDs 与 user interaction epoch；状态更新不直接调用无条件 scrollIntoView。</dd></div><div><dt>通过条件</dt><dd>长运行录屏中每 stage 最多自动展开一次；用户滚走后 subsequent ticks 不夺回位置。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>8. Pause、Stop、Resume、Skip</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Pause 保存 checkpoint；Resume 继续同 run；Stop scan 明确终止；可选 operation 可独立 Stop/Skip。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>Stop safely 调用 requestStop；resumable 时有 Resume，但 Pause 与 Stop 没有独立产品语义。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>四类 command 具有不同 runtime transition；Skip 只适用于 optional operation。</dd></div><div><dt>通过条件</dt><dd>真实交互视频证明 pause→resume 保持 run ID、stop 不自动恢复、skip 不阻断 Core Search。</dd></div></dl></div>
+        </div>
+        <p class="screen-rule"><strong>完成判定：</strong>必须从同一 run state 同时解释整体、每个文件、每个 AI operation 与实际费用；仅有 progress cards 或绿色 build 不算通过。</p>
+      </article>
+    </section>
+
+    <section class="report" id="screen-completed">
+      <div class="section-head"><h2>逐屏验收 8 · Completed</h2><span class="section-kicker">Completed 的主职责是把自动结果交代清楚，并把剩余 owner decisions 放到可继续的工作区</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Completed · 自动完成、人工 follow-up 与运行证据</h3><p class="screen-source">Mock reference + production harness + 当前 source</p></div><span class="status partial">骨架部分一致 / 主工作流不一致</span></div>
+        <div class="dimension-bar"><span class="dimension is-fail">阅读顺序 <b>不一致</b></span><span class="dimension is-partial">自动结果 <b>部分</b></span><span class="dimension is-partial">共享任务 <b>部分</b></span><span class="dimension is-missing">Guidance <b>未实现</b></span><span class="dimension is-fail">Deep routes <b>不一致</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-completed.png" alt="V2 Mock Completed"><figcaption>V2 Mock · follow-up 是主要继续工作区</figcaption></figure><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/production-completed.png" alt="Production harness Completed"><figcaption>Production harness · metrics 与 Run details 提前</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. 阅读顺序</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Hero → Completed automatically → Needs your attention / follow-ups → Run details。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>Hero 后先放五个 summary metrics 和 Run details，再到 automatic 与 follow-up；owner next action 被压到下方。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>恢复 Mock 的决策优先级；运行诊断信息后置但可深链。</dd></div><div><dt>通过条件</dt><dd>标准 viewport 首屏能同时看到自动结果摘要和 follow-up 入口；Run details 不截断 owner flow。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. Hero 事实</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>明确 scan 完成、follow-up count、自动完成 count，以及此次 user files changed 数量。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>有完成标题和任务/receipt 汇总，但 user-file write count 需要从其他区域推断。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>写入数来自 materialization receipts；0 也必须明确显示，不把 Peak-owned index 更新算成 user-file write。</dd></div><div><dt>通过条件</dt><dd>Hero 的四个事实可与 run/task/write receipts 对账。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Completed automatically 内容</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>按 Core Search、file understanding、map、deterministic repairs、receipts 说明成果，并给 revision/re-index/verify 证据。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>已有 Completed automatically 区域，但主要是数量与简要结果，缺能力状态和验证链。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>每项自动结果绑定 output ID、revision、publish/verify state 与 receipt。</dd></div><div><dt>通过条件</dt><dd>用户能从结果直接判断 Search 是否 ready、哪些能力可用、哪些失败且是否影响主结果。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Follow-up 与 Queue 共享 canonical tasks</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Completed 与 Work queue 投影同一 atoms；choice、filter、search 和 state 不复制。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>两处都读取 snapshot.tasks，这是正确基础；但 atom 缺 revision、candidate/diff/checkpoint 和建议版本。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>扩充 shared task atom，不在 Completed 建第二套数据或组件内局部 truth。</dd></div><div><dt>通过条件</dt><dd>任一处选择后另一处即时更新；task ID、affected count 与 state 完全相同。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Owner guidance / Update suggestions</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>自然语言纠偏当前未应用 suggestions，并保留 owner choices、evidence、receipts 和完成历史。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 guidance 输入、preflight、suggestion revision、usage 或 reconfirmation。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Completed 与 Queue 复用同一 guidance command 和 suggestion revision。</dd></div><div><dt>通过条件</dt><dd>Update suggestions 后两页面同步；已选择且候选变化的 atom 标 needs reconfirmation，不静默覆盖。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. 六类 interaction archetypes</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Follow-up 根据 saved-work、inspect、AI run、decision、recovery、Proposal 六类交互进入正确 owner surface。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>所有任务都打开同一 MaintenanceWorkspace，route 只携带 taskId。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>task definition 显式声明 archetype、route payload、exit condition 和 return checkpoint。</dd></div><div><dt>通过条件</dt><dd>11 类任务逐一打开正确领域 surface，并能恢复 Completed 原 filter/scroll/row。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. Run details 与数字稳定性</strong><span class="status partial">部分一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Run details 后置，展示计划/实际 usage、失败、receipts 与 run identity；合成截图数字不作为产品合同。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>已有 Run details 基础；Mock/截图中 11、48 等 follow-up 数字有漂移，生产也可能依赖 fixture。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>验收固定结构、任务身份和对账公式，不追合成数字；真实数全部来自同一 completed snapshot。</dd></div><div><dt>通过条件</dt><dd>task totals、automatic totals、failed/skipped、usage 与 receipts 可对账且没有重复计数。</dd></div></dl></div>
+        </div>
+        <p class="screen-rule"><strong>完成判定：</strong>Completed 不能只是 scan report；它必须是自动结果的证据页和未解决 owner work 的连续入口。</p>
+      </article>
+    </section>
+
+    <section class="report" id="screen-property">
+      <div class="section-head"><h2>逐屏验收 9 · Property maintenance</h2><span class="section-kicker">Property 是完整差异审阅工作区，也是验证 canonical maintenance atom 是否足够的基准任务</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Property maintenance · 从真实 current value 到可安全应用的 combined diff</h3><p class="screen-source">Mock reference + production harness + 当前 task atom/runtime</p></div><span class="status fail">不是同一任务模型</span></div>
+        <div class="dimension-bar"><span class="dimension is-fail">Change atom <b>不一致</b></span><span class="dimension is-missing">多级决策 <b>未实现</b></span><span class="dimension is-missing">Conflict <b>未实现</b></span><span class="dimension is-missing">Combined diff <b>未实现</b></span><span class="dimension is-missing">Checkpoint <b>未实现</b></span></div>
+        <div class="images"><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/reference-mock-property-task.png" alt="V2 Mock Property maintenance"><figcaption>V2 Mock · current → proposed、conflicts 与多级 Accept/Reject</figcaption></figure><figure><img loading="lazy" src="../../../.dev/harness/shots/vault-intelligence-parity-20260818-200016/production-maintenance-modal.png" alt="Production generic maintenance modal"><figcaption>Production harness · generic finding 与 choice buttons</figcaption></figure></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. Workspace header 与 checkpoint</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>显示 Previous Scan checkpoint、文件进度如 7 of 12、未应用选择数和 source revision 状态。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>generic dialog 只显示 task 标题和进度摘要；没有恢复文件、滚动位置或 revision checkpoint。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>workspace checkpoint 保存 task revision、projection、focused file/item、scroll anchor 与 choices。</dd></div><div><dt>通过条件</dt><dd>关闭重开后恢复同一文件/条目/滚动；source revision 改变时进入 conflict 而非继续旧选择。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. Update suggestions</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>允许 owner 用自然语言纠偏尚未应用的 property suggestions，并保留已做 choices。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 guidance、suggestion revision、AI preflight 或 reconfirmation。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>新候选形成新 suggestion revision；owner choice 不自动覆盖。</dd></div><div><dt>通过条件</dt><dd>更新后 unchanged atoms 保持选择，changed atoms 标 needs reconfirmation，用户文件不写。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Batch / File 与 All / Pending / Conflicts</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Batch/File 两个 projection；All/Pending/Conflicts 三个 filter 都投影同一 change atoms。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有 primary/file projections 与通用状态；没有 conflict filter 或同一原子的多视图一致性。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>projection 只改变分组，不复制 selection truth。</dd></div><div><dt>通过条件</dt><dd>切换五种视图后 atom 数、choice 和 conflict count 保持一致。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Property change atom</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>原子至少含 file、property、current value、proposed value、evidence、source revision、decision 和 conflict。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>原子主要是 id/finding/file/title/evidence/projection/suggestedChoice/ownerChoice，无法表达真实 diff。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>candidate/diff/guard/verify 字段成为领域 atom，不把 current/proposed 拼进 title 文本。</dd></div><div><dt>通过条件</dt><dd>每个可应用选择都能生成确定性 file edit，并在 source revision 不匹配时拒绝应用。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Group / File / Item 三级 Accept/Reject</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>组、文件和单项均可 Accept/Reject；上层是对当前可操作子项的批量命令，混合状态可见。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>只有一排 generic choice buttons 与 Set all，无法表达层级、partial 或 conflict skip。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>批量动作只写 child atom choices；父状态由 children 计算。</dd></div><div><dt>通过条件</dt><dd>层级动作、mixed state、Undo 均正确；Accept all 自动跳过 conflicts 并报告数量。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Current → Proposed 视觉与语义</strong><span class="status fail">不一致</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>每项明确展示实际 current value 与 proposed value，空值、删除、多值和类型变化有不同 treatment。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>以 title/evidence 和 Request proposal/Reject/Decide later 呈现，候选本身没有成为审阅对象。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>使用结构化 property value renderer；决策词只使用 Accept/Reject，不把“请求候选”当成最终 review。</dd></div><div><dt>通过条件</dt><dd>标量、数组、空值、删除和 key rename fixture 均能无歧义显示实际变化。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. Conflict 与 source revision guard</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>源文件变化后 atom 进入 conflict；展示原 revision、当前值与候选，不能被 Accept all 应用。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>task atom 没有完整 source hash/revision 与 conflict resolution surface。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Apply 前逐文件校验 source revision；冲突需 Refresh、Keep current 或重新选择。</dd></div><div><dt>通过条件</dt><dd>修改 fixture 文件后旧候选被阻断；无冲突文件仍可单独应用。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>8. Combined per-file diff 与 Apply</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Apply 前按文件合并所有 accepted atoms，展示最终 diff、selected count、expected writes 与安全提示。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>runtime 只有 generic applyTask；界面明确缺 real proposed value 与 per-file diff。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Proposal 是唯一 user-file write boundary；Apply 后 re-index、verify 并记录 receipt。</dd></div><div><dt>通过条件</dt><dd>只有 accepted 且 revision-matched atoms 进入 diff；写入文件数与 receipt/hero 对账。</dd></div></dl></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="report" id="screen-maintenance">
+      <div class="section-head"><h2>逐任务验收 10 · 其余十类 maintenance owner surface</h2><span class="section-kicker">当前 11 类任务全部进入同一 generic MaintenanceWorkspace；下面逐类规定为什么不一致，以及必须实现什么</span></div>
+      <div class="callout fail"><div class="callout-title">共同判定：当前全部不一致</div><p>generic title/evidence/choice 可以复用外壳，但不能替代领域原子、领域动词、真实 diff、冲突 guard、Apply/Verify 与恢复点。以下十类任务必须分别满足自己的 owner truth 和 exit condition。</p></div>
+      <div class="task-contracts">
+        <article class="task-contract"><div class="audit-item-head"><strong>1. Broken links</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>Target/File 两种 projection；target default → file override → exact occurrence。动作是 Redirect、Create、Remove、Keep unresolved；逐 occurrence 显示 line、excerpt、diff；已自动修复 21 项单列。</dd></div><div><dt>当前</dt><dd>generic findings + config choices，缺 target inheritance、occurrence atom、真实 link diff 与自动修复分区。</dd></div><div><dt>实施</dt><dd>原子保存 source file/revision、link range、raw target、resolved candidate、decision source；Create/Remove 必须进入 Proposal。</dd></div><div><dt>通过</dt><dd>上层 default 可被 file/occurrence 覆盖；Apply 后 exact range 正确，Keep unresolved 仍留在 Queue 且有原因。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>2. Community membership</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>Community/File projections；选择 Suggested、Another Community、No Community、Edit source；组与 note 使用同一 Community picker，证据可在 File Atlas 检查。</dd></div><div><dt>当前</dt><dd>generic choice 无 Community ID、候选排名、membership evidence 或 File Atlas handoff。</dd></div><div><dt>实施</dt><dd>默认更新 Peak-owned membership version；只有 Edit source 才形成 user-file proposal。</dd></div><div><dt>通过</dt><dd>同一 note 在两 projection 选择一致；No Community 可保留；Peak-owned 更新不修改 Markdown。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>3. Knowledge connections</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>展示 connection owner、source、bridge evidence；动作 Keep、Update、Replace、Retire；graph state 与 file proposal 明确分开。</dd></div><div><dt>当前</dt><dd>finding/evidence 文本无法表达 edge provenance、bridge object、替换候选或写入载体。</dd></div><div><dt>实施</dt><dd>connection atom 保存 edge ID/type/provenance/evidence/revision；Peak-owned graph edit 与 authored-link Proposal 使用不同 command。</dd></div><div><dt>通过</dt><dd>四个动作均有确定性结果；Retire semantic edge 不删除 authored link；文件修改必须先看 diff。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>4. Related notes</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>Group/File projections；动作 Merge、Keep both、Alias；显示各 note role、evidence 与预期保留内容。</dd></div><div><dt>当前</dt><dd>generic choice 不知道 note pair/group、canonical candidate 或 merge content。</dd></div><div><dt>实施</dt><dd>关系判断留在 task atom；Merge/Alias 生成 per-file Proposal，Keep both 记录 owner truth。</dd></div><div><dt>通过</dt><dd>选择在两 projection 一致；Merge 不丢独有段落/links/properties；Apply 后 re-index/verify。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>5. Note split</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>显示 source、destination 与 line routing；进入 Composer Change Set，逐行审阅分配与最终多文件 diff。</dd></div><div><dt>当前</dt><dd>generic dialog 只有 finding 与 suggested choice，没有内容切分模型或 Composer handoff。</dd></div><div><dt>实施</dt><dd>task route 携带 source revision 与 split plan，复用 Composer Change Set，不在 VI 另造编辑器。</dd></div><div><dt>通过</dt><dd>所有源行恰好进入保留/目标之一；返回时保留 choices；Apply 是显式且可撤销的多文件写入。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>6. Community structure</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>动作 Merge、Split、Rename；审阅 Communities 与成员迁移，产物是 Peak-owned membership version。</dd></div><div><dt>当前</dt><dd>generic choices 无 source/target Communities、member reassignment 或 version diff。</dd></div><div><dt>实施</dt><dd>提供结构预览、受影响成员与旧/新 version；默认不写用户文件。</dd></div><div><dt>通过</dt><dd>成员总数守恒；旧 version 可查；应用后 graph/Contents 同 revision 刷新且 Markdown SHA 不变。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>7. Community hubs</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>动作 Create、Refresh、Retire index note；显示 hub scope、freshness、source Communities 与预期内容。</dd></div><div><dt>当前</dt><dd>generic task 无 index-note candidate、freshness guard 或 materialization route。</dd></div><div><dt>实施</dt><dd>先生成 hub proposal；只有明确 Apply 才创建/刷新/退役用户可见 index note。</dd></div><div><dt>通过</dt><dd>Proposal 展示完整文件 diff；source changed 时阻断；写入后 re-index 并验证 hub freshness。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>8. Content lifecycle</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>动作 Revisit、Archive、Snooze；明确这是当前工作状态，不是根据“不活跃”推断内容价值。</dd></div><div><dt>当前</dt><dd>generic finding/choice 缺 owner state、snooze until、archive destination 与非推断说明。</dd></div><div><dt>实施</dt><dd>Revisit/Snooze 写 Peak-owned state；Archive 必须生成 Proposal 并展示路径/links 影响。</dd></div><div><dt>通过</dt><dd>Snooze 到期再入 Queue；不因 inactivity 自动 archive；Archive 前后文件/链接变化可核查。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>9. Unusual notes</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>动作 Reintegrate、Mark intentional、Dismiss with reason；规则可限定 scope，不等同 generic connect/keep/proposal。</dd></div><div><dt>当前</dt><dd>通用 choices 无 intentional/dismiss reason、规则作用域或 reintegration destination。</dd></div><div><dt>实施</dt><dd>保存 owner reason 与 scoped exception；Reintegrate 根据实际动作进入 File Atlas、Community 或 Proposal。</dd></div><div><dt>通过</dt><dd>Mark intentional 后同 revision/规则不重复出现；Dismiss 有可审计原因；扩大规则 scope 需显式确认。</dd></div></dl></article>
+        <article class="task-contract"><div class="audit-item-head"><strong>10. Unreadable files</strong><span class="status fail">不一致</span></div><dl><div><dt>Mock</dt><dd>动作 Retry、Exclude、Repair parser/setup；显示失败 stage、parser、错误、partial success 与受影响能力。</dd></div><div><dt>当前</dt><dd>generic choice 无 parse attempt、stage/error、exclusion policy 或部分结果保留语义。</dd></div><div><dt>实施</dt><dd>恢复型 workspace 只操作 Peak ingest/index state；绝不直接编辑 unreadable user file。</dd></div><div><dt>通过</dt><dd>Retry 只重跑失败步骤；Exclude 有 policy receipt；successful partial outputs 保留；恢复后 Search readiness 更新。</dd></div></dl></article>
+      </div>
+      <p class="screen-rule"><strong>完成判定：</strong>11 类任务（Property + 上述十类）都要有稳定领域 atom、正确动词、owner surface、return checkpoint、Apply boundary 和 verify exit condition；一个换文案的 generic modal 不算实现。</p>
+    </section>
+
+    <section class="report" id="screen-map-text">
+      <div class="section-head"><h2>逐屏验收 11 · Manage map text</h2><span class="section-kicker">独立的 Peak-owned 知识编辑页，不是 Work queue 里的通用文字任务</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Map text · Community、Topic 与 Hub 的可版本化说明</h3><p class="screen-source">Mock 有独立 <code>data-screen=community-review</code>；生产 route/runtime 均缺失</p></div><span class="status missing">整屏未实现</span></div>
+        <div class="dimension-bar"><span class="dimension is-missing">Route <b>未实现</b></span><span class="dimension is-missing">三类对象 <b>未实现</b></span><span class="dimension is-missing">Edit/History <b>未实现</b></span><span class="dimension is-missing">Version <b>未实现</b></span></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. Entry、route 与返回点</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>从 Vault contents 的 Manage map text 进入独立 screen，返回时恢复 type/graph selection 与 scroll。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>Contents 无入口；route union 只有 surface/setup/progress/completed/task。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>新增明确 Map text route，不占用 maintenance task route。</dd></div><div><dt>通过条件</dt><dd>deep link、back、refresh 后状态正确；返回 Contents 恢复原上下文。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. 三类对象与分区</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Community descriptions、Topic labels、Hub descriptions 三类对象分别浏览与编辑。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有对应数据投影、对象 count、搜索或筛选。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>对象 ID 对齐 graph/digest canonical IDs，不以展示文字作为 identity。</dd></div><div><dt>通过条件</dt><dd>三类对象数量可与当前 graph/map revision 对账；搜索不改变对象身份。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Current text、Edit 与 Show more</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>默认显示当前版本摘要；长文本可 Show more；Edit 明确进入单对象编辑状态。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 current text renderer 或 edit state。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>编辑 draft 与 current version 分离；取消不产生新版本。</dd></div><div><dt>通过条件</dt><dd>展开不改 layout context；保存生成新 version，取消后 byte-identical 保留旧值。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. History 与版本证据</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>每项可查看 History，知道版本、更新时间、来源与 owner/AI 变更。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 version model、history view 或 receipt。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>版本不可变；保存 author kind、source revision、generation receipt 与 supersedes ID。</dd></div><div><dt>通过条件</dt><dd>可打开任意历史版本并比较；恢复旧内容会创建新版本，不覆写历史。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Peak-owned 写入边界</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Map text 属于 Peak-owned knowledge，可自动/人工更新，不直接改 Markdown。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 route，因此也没有可验证 carrier、sync/index policy 或 materialization rule。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>注册 canonical output 和版本载体；只有另行明确 materialize 才进入 Proposal。</dd></div><div><dt>通过条件</dt><dd>编辑前后 Vault Markdown SHA 不变；graph/summary 使用新 version 并保留旧 evidence。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. AI suggestion 与人工文本</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>可基于证据生成候选，但 AI 文本与当前 owner-approved text、revision 和 citations 明确区分。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>无候选、preflight、provider/cost、citations 或 accept flow。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>AI 只创建 candidate；Accept 后才成为 current version，实际 usage 有 receipt。</dd></div><div><dt>通过条件</dt><dd>未接受候选不影响 graph；candidate 可追到 evidence；owner 编辑永远不会被后台生成静默覆盖。</dd></div></dl></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="report" id="screen-proposal">
+      <div class="section-head"><h2>逐屏验收 12 · Proposal workspace</h2><span class="section-kicker">所有 user-file changes 的唯一显式审阅与 Apply 边界</span></div>
+      <article class="card screen-audit">
+        <div class="screen-audit-head"><div><h3>Proposal · 按文件核查、选择、冲突保护、Apply、re-index 与 verify</h3><p class="screen-source">Mock 有独立 <code>data-screen=proposal</code>；生产 route 及 runtime command 缺失</p></div><span class="status missing">整屏未实现</span></div>
+        <div class="dimension-bar"><span class="dimension is-missing">Route <b>未实现</b></span><span class="dimension is-missing">File diff <b>未实现</b></span><span class="dimension is-missing">Revision guard <b>未实现</b></span><span class="dimension is-missing">Apply safety <b>未实现</b></span><span class="dimension is-missing">Verify <b>未实现</b></span></div>
+        <div class="audit-list">
+          <div class="audit-item"><div class="audit-item-head"><strong>1. Route 与 proposal identity</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>任务先形成 immutable proposal/revision，再由独立 workspace 审阅；可 deep link 并回到来源 task。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>route union 无 proposal；runtime 只有 generic applyTask，不能指定 proposal revision。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>route payload 至少包含 proposal ID/revision、source task 与 return checkpoint。</dd></div><div><dt>通过条件</dt><dd>刷新或重开仍显示同一 proposal revision；新候选不会静默替换当前审阅内容。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>2. Per-file diff 与选择</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>每个文件显示完整 combined diff 与 checkbox；可逐文件或全选，明确 unchanged/created/updated/retired。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>generic task dialog 没有真实 proposed bytes、file group 或 checkbox selection。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>diff 由 accepted atoms 确定性生成；selection 是 proposal review state，不改 task candidate。</dd></div><div><dt>通过条件</dt><dd>勾选数、expected writes 与实际文件集合相同；合并后 diff 不遗漏多个 atom 对同一文件的交互。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>3. Source revision match / conflict</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>每文件显示 Revision matches 或 Source changed；冲突文件不能勾选应用，可 refresh proposal。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 per-file source hash guard 或 conflict UI。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>proposal 保存 source hash；Apply 前再次读取并比较，不依赖 UI 首次打开时的旧判断。</dd></div><div><dt>通过条件</dt><dd>审阅期间修改文件会即时或 Apply 时阻断该文件；其他 matched 文件仍可安全应用。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>4. Apply safety 与写入边界</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>明确说明 Apply 才会写用户文件；展示 selected files、expected writes、backup/receipt 与不可逆风险。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>generic applyTask 无独立 safety summary，用户无法确认实际写入文件和 bytes。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Review 阶段只写 Peak-owned proposal state；user-file mutation 仅由显式 Apply command 触发。</dd></div><div><dt>通过条件</dt><dd>打开、选择、更新 suggestions 均不改用户文件；Apply receipt 精确列出 changed paths 与 source/result hashes。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>5. Primary action 与零选择状态</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Primary action 是 Apply selected；零选择时 disabled 并解释，没有第二个含义模糊的写入按钮。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 Proposal 页面或 selection-aware action。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>按钮 label 包含作用范围；点击后使用当前 proposal revision 与 selection snapshot。</dd></div><div><dt>通过条件</dt><dd>零选择不调用 writer；double click/idempotent retry 不产生重复写入或重复 receipt。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>6. Apply 结果、re-index 与 verify</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>Apply 后逐文件显示 Applied/Failed/Skipped；自动 re-index 并执行 task exit verification。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>generic runtime 暴露 verifyTask，但无 proposal-level result、re-index chain 或 per-file partial failure。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>Apply、index refresh 与 verify 是有 receipt 的连续状态机；失败不抹掉成功文件事实。</dd></div><div><dt>通过条件</dt><dd>成功文件使用新 revision 进入 index；失败文件留在 recovery；task 仅在 exit check 通过后 verified。</dd></div></dl></div>
+          <div class="audit-item"><div class="audit-item-head"><strong>7. 返回 owner task 与历史</strong><span class="status missing">未实现</span></div><div class="audit-columns"><div class="audit-cell"><span class="audit-label">Mock</span><p>完成或取消后回到来源 task/Queue/Completed，保留 checkpoint；历史 proposal 与 apply receipts 可查看。</p></div><div class="audit-cell current"><span class="audit-label">当前</span><p>没有 proposal identity/history，因此无法恢复来源上下文或审计旧 revision。</p></div></div><dl class="audit-response"><div><dt>实施依据</dt><dd>return checkpoint 与 proposal history 都是 canonical state；旧 proposal immutable。</dd></div><div><dt>通过条件</dt><dd>返回后原 filter/row/scroll 恢复；可从 task 打开已应用 proposal、diff、receipt 和 verify result。</dd></div></dl></div>
+        </div>
+        <p class="screen-rule"><strong>完成判定：</strong>没有独立 Proposal route、真实 per-file combined diff、source revision guard、显式 Apply 和 re-index/verify 链，就不能声称任何 maintenance user-file workflow 已闭环。</p>
+      </article>
+    </section>
+
+    <section class="report" id="priority-matrix">
+      <div class="section-head"><h2>完整差异优先级：先修产品事实，再修像素</h2></div>
+      <table class="matrix">
+        <colgroup><col style="width:68px"><col style="width:148px"><col style="width:24%"><col><col style="width:22%"></colgroup>
+        <thead><tr><th>优先级</th><th>区域</th><th>当前差异</th><th>必须达到的状态</th><th>验收证据</th></tr></thead>
+        <tbody>
+          <tr><td class="p0">P0</td><td>全局状态机</td><td>Baseline/changed/scan/run/completed 信息可互相矛盾</td><td>First setup / Changes / Recoverable / Running / Completed 从同一事实模型推导</td><td>每个状态真实 Obsidian DOM + screenshot + transition</td></tr>
+          <tr><td class="p0">P0</td><td>对象数据合同</td><td>4 类 object 使用 generic count/detail</td><td>每类对象有专用 distribution、pending/retained reason、exact checkpoint</td><td>hover/focus/click 录屏 + DOM assertions</td></tr>
+          <tr><td class="p0">P0</td><td>Activity</td><td>2 lanes、固定 range、无 linked selection</td><td>5 source lanes、picker、drag range、session/event/theme/compare 同步</td><td>pointer drag 视频 + range/state assertions</td></tr>
+          <tr><td class="p0">P0</td><td>Contents/graph</td><td>donut/raw extension、digest 空则无图、无 selection contract</td><td>solid pie、human types、稳定 projection、inline Community expand、evidence/actions</td><td>同 fixture 的 graph interactions + screenshot set</td></tr>
+          <tr><td class="p0">P0</td><td>Scan plan</td><td>scope/Index outputs/AI ops 被压缩</td><td>3-state setup、closure scope、19-task final grouping、Index matrix、10 ops/model routes</td><td>state matrix + estimate recalculation + recovery transition</td></tr>
+          <tr><td class="p0">P0</td><td>Run model</td><td>静态 dashboard，无 per-doc workbench/AI timeline</td><td>overall + index layers + per-file steps + two-scope AI + pause/stop/resume</td><td>短视频覆盖 pause/resume/skip 与 usage receipts</td></tr>
+          <tr><td class="p0">P0</td><td>Canonical maintenance atom</td><td>title/evidence/choice 不能承载 diff/revision/checkpoint</td><td>每类任务有稳定 atom、投影、owner truth、candidate/diff/guard/verify</td><td>切换投影不丢选择；冲突/Apply/Verify 自动测试</td></tr>
+          <tr><td class="p0">P0</td><td>Owner surfaces</td><td>所有任务落同一 generic modal；Proposal/Map text 不存在</td><td>六类 archetype 与 Proposal/Map text route 完整</td><td>逐 task deep-link 和返回点验证</td></tr>
+          <tr><td class="p1">P1</td><td>页面层级</td><td>Overview/Completed 被大卡片重新排版</td><td>按 Mock 的阅读优先级与密度恢复</td><td>同 viewport normalized overlay</td></tr>
+          <tr><td class="p1">P1</td><td>组件几何</td><td>部分尺寸接近，局部仍使用生产自造组件</td><td>对象条、filters、rails、rows、modal hierarchy 与 Mock 同构</td><td>computed geometry + screenshot diff</td></tr>
+          <tr><td class="p2">P2</td><td>视觉 polish</td><td>颜色、border、shadow、type scale 有漂移</td><td>在 P0/P1 完成后做 normalized pixel diff 收敛</td><td>reference/current/normalized/overlay/manifest</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="report" id="root-causes">
+      <div class="section-head"><h2>为什么前一次“改了很多 CSS”仍然八竿子打不着</h2></div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. 把 parity 当成了 shell restyling</h3>
+          <p class="small">前次变更大量集中在 CSS 和同一个 865 行 workspace 组件，保留了原来的 route、snapshot、activity、graph 和 task model。结果只能让 header/card/spacing 接近，不能产生 Mock 里的对象、状态与交互。</p>
+        </div>
+        <div class="card">
+          <h3>2. 用 synthetic harness 代替真实状态契约</h3>
+          <p class="small">harness 可以喂出好看的 286 objects、5 tasks 和 running state，但真实 Vault 出现 baseline 未建立、changed 摘要、超出 discovered 的 Search ready。fixture 证明渲染，不证明事实口径和 transition 正确。</p>
+        </div>
+        <div class="card">
+          <h3>3. 测试只锁了“卡片存在和高度”</h3>
+          <p class="small">当前 parity test 主要检查 object-card class/count、CSS 顺序、78/66px 高度、overlay、Activity 2-column。它反而把错误的 2-lane/通用卡片结构固化了，没有覆盖 hover 内容、range drag、graph selection、state transitions 或 proposal diff。</p>
+        </div>
+        <div class="card">
+          <h3>4. 过早做通用化</h3>
+          <p class="small">一个 generic MaintenanceWorkspace 试图承载 11 种任务。通用外壳可以共享，但领域对象、投影、动作、diff 和退出条件不能共用一组 choice buttons。Mock 的设计正是为了避免这种“每个任务都像同一个表单”。</p>
+        </div>
+      </div>
+      <div class="callout fail" style="margin-top:12px"><div class="callout-title">因此，下一轮不能从 CSS 开始</div><p>正确顺序是：锁定最终状态矩阵和 canonical atoms → 补数据端口与 routes → 实现交互闭环 → 恢复页面布局 → 最后用真实 Obsidian 做 normalized overlay/pixel diff。否则还会再次出现“截图看似整齐，但产品完全不是同一个”。</p></div>
+    </section>
+
+    <section class="report" id="acceptance">
+      <div class="section-head"><h2>重新实现前必须写进计划的验收门</h2></div>
+      <div class="acceptance">
+        <div class="gate"><strong>Gate 1 · State matrix</strong><p>为 First setup、Changes、Recoverable、Indexing、AI work、Completed 建立明确 fixture 和 transition；Header、Overview、Queue、Scan CTA 必须从同一状态推导，不得各自猜。</p></div>
+        <div class="gate"><strong>Gate 2 · Screen inventory complete</strong><p>9 个页面/工作区和 overlay/archetypes 都有 route、entry、back/return point；Proposal 与 Map text 不得再写成“未来 owner surface”占位文案。</p></div>
+        <div class="gate"><strong>Gate 3 · Data contracts before visuals</strong><p>对象 popover、5-source Activity、file readiness、Community graph、maintenance atoms 都能由 production ports 提供；数量单位必须标明 files/chunks/records，不允许混用。</p></div>
+        <div class="gate"><strong>Gate 4 · Interaction replay</strong><p>Mock 的 hover/focus/click、date range、Activity drag、graph expand/inspect/pin/Escape、Scan output sync、pause/resume、task projection 与 Apply/Verify 都有可重复脚本或明确人工录屏。</p></div>
+        <div class="gate"><strong>Gate 5 · Real Obsidian parity evidence</strong><p>同 Vault source SHA、theme、zoom、viewport、DPR、scroll anchor、interaction state；保存 reference + real current + normalized + overlay/diff + manifest。Harness 只能做预检查。</p></div>
+        <div class="gate"><strong>Gate 6 · Per-screen acceptance</strong><p>全局壳层、Overview、Queue、Activity、Contents、Graph、Setup、Run、Completed、Property、其余十类 maintenance、Map text、Proposal 必须逐项通过本报告的验收条目；不能用“总体更接近”掩盖任一未实现页面或任务。</p></div>
+        <div class="gate"><strong>Gate 7 · Claim discipline</strong><p>只有页面结构、状态、数据、交互、布局和视觉都通过时才写 “parity”。若只完成 CSS 或 harness，应准确标为 shell alignment / partial implementation / interaction not verified。</p></div>
+      </div>
+    </section>
+
+    <section class="report" id="sources">
+      <div class="section-head"><h2>来源与证据索引</h2></div>
+      <div class="evidence">
+        <div class="card">
+          <h3>设计合同</h3>
+          <ul class="evidence-list small">
+            <li><a href="../../gstack/vault-intelligence-workspace-2026-08-12-v2/index.html">V2 interactive Mock</a></li>
+            <li><a href="../../gstack/vault-intelligence-workspace-2026-08-12-v2/continuation-handoff.md">Continuation handoff</a></li>
+            <li><a href="../../gstack/vault-intelligence-workspace-2026-08-12-v2/activity-and-run-result-model.md">Activity and run result model</a></li>
+            <li><a href="../specs/2026-08-15-vault-scan-follow-up-and-work-queue-contract.md">Scan / Follow-up / Work queue contract</a></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>生产实现</h3>
+          <ul class="evidence-list small">
+            <li><a href="../../../src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx">VaultIntelligenceWorkspace.tsx</a></li>
+            <li><a href="../../../src/ui/view/vault-intelligence/VaultIntelligenceModel.ts">VaultIntelligenceModel.ts</a></li>
+            <li><a href="../../../src/core/types/vault-intelligence.ts">vault-intelligence.ts</a></li>
+            <li><a href="../../../templates/config/vault-intelligence.json">vault-intelligence.json</a></li>
+            <li><a href="../../../test/vault-intelligence-rendered-parity.test.ts">rendered parity test</a></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>真实视频帧</h3>
+          <ul class="evidence-list small">
+            <li><a href="assets/vault-intelligence-parity-2026-08-18/actual-overview.png">Overview · 00:00.8</a></li>
+            <li><a href="assets/vault-intelligence-parity-2026-08-18/actual-object-hover.png">Object hover · 00:02.8</a></li>
+            <li><a href="assets/vault-intelligence-parity-2026-08-18/actual-work-queue.png">Work queue · 00:06.8</a></li>
+            <li><a href="assets/vault-intelligence-parity-2026-08-18/actual-activity.png">Activity · 00:12.8</a></li>
+            <li><a href="assets/vault-intelligence-parity-2026-08-18/actual-vault-contents.png">Vault contents · 00:16.8</a></li>
+            <li><a href="assets/vault-intelligence-parity-2026-08-18/actual-graph.png">Graph · 00:18.2</a></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>证据状态</h3>
+          <ul class="evidence-list small">
+            <li><strong>真实可见：</strong>20:59 视频覆盖的 6 个状态。</li>
+            <li><strong>Source verified：</strong>Mock contract 与 production code。</li>
+            <li><strong>Harness only：</strong>Scan/Run/Completed/Maintenance 截图。</li>
+            <li><strong>INTERACTION NOT VERIFIED：</strong>本轮未重新执行的 Mock pointer/keyboard 与真实 Obsidian 深层任务交互。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-note">这份文件是设计合同与差异审计，不是实现完成声明。其目的，是让下一轮计划逐项覆盖原 Mock 已经做出的产品决定，避免再次以局部 CSS 对齐冒充完整 parity。</div>
+  </main>
+</div>
+
+<script>
+  const links = [...document.querySelectorAll('.side a[href^="#"]')];
+  const sections = links.map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    if (!visible) return;
+    links.forEach((link) => link.classList.toggle('active', link.getAttribute('href') === `#${visible.target.id}`));
+  }, { rootMargin: '-15% 0px -72% 0px', threshold: [0, .25, .6] });
+  sections.forEach((section) => observer.observe(section));
+</script>
+</body>
+</html>

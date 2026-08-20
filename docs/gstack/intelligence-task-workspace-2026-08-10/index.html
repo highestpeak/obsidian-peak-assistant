@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Intelligence · Task Workspace Mock</title>
+  <link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-stack" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m12 2 9 5-9 5-9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5h6l2 2h10v12H3Z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6M12 7v5l3 2"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5h14v11H8l-3 3Z"/><path d="M9 9h6M9 12h4"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 8.2A7 7 0 0 1 18.6 7M17.8 15.8A7 7 0 0 1 5.4 17"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m20 6-11 11-5-5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m4 3 7.4 17 2.1-6.5L20 11Z"/><path d="m13.5 13.5 4.5 4.5"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 17v5M7 3h10l-2 7 3 3H6l3-3Z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.1.1l2-2A5 5 0 0 0 12 4l-1 1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1-1"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18M8 9h13"/></symbol>
+    <symbol id="i-atlas" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 7 3 3M17 7l-3 3M7 17l3-3M17 17l-3-3"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v17H5.5A2.5 2.5 0 0 0 3 22Z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H13v17h5.5A2.5 2.5 0 0 1 21 22Z"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M14 5l-4 14"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16l-6 7v5l-4 2v-7Z"/></symbol>
+    <symbol id="i-list-end" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h12M4 12h9M4 18h12M19 5v14M16 16l3 3 3-3"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></symbol>
+    <symbol id="i-tree" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v6M5 15v6M19 15v6M12 9H5v6M12 9h7v6"/><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="2" y="14" width="6" height="4" rx="1"/><rect x="16" y="14" width="6" height="4" rx="1"/></symbol>
+    <symbol id="i-wide" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5v14M19 5v14"/><path d="m9 9-3 3 3 3M15 9l3 3-3 3"/></symbol>
+    <symbol id="i-readable" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 5v14M16 5v14"/><path d="m4 9 3 3-3 3M20 9l-3 3 3 3"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+  </svg>
+
+  <main class="app-shell">
+    <aside class="app-rail" aria-label="Peak navigation">
+      <span class="peak-mark"><svg><use href="#i-sparkles"/></svg></span>
+      <button type="button" aria-label="Search"><svg><use href="#i-search"/></svg></button>
+      <button type="button" aria-label="File Atlas"><svg><use href="#i-atlas"/></svg></button>
+      <button type="button" class="is-active" aria-label="Composer"><svg><use href="#i-layout"/></svg></button>
+      <span class="rail-spacer"></span>
+      <button type="button" aria-label="More"><svg><use href="#i-more"/></svg></button>
+    </aside>
+
+    <section class="workspace-shell">
+      <header class="workspace-tabs">
+        <button type="button" class="workspace-tab is-active"><svg><use href="#i-file"/></svg><span data-workspace-active-label>AI-peakAssistant-M…</span><svg class="tab-x"><use href="#i-x"/></svg></button>
+        <button type="button" class="workspace-tab"><svg><use href="#i-file"/></svg><span>Provider 能力评测</span></button>
+        <button type="button" class="workspace-tab"><svg><use href="#i-file"/></svg><span>Peak Home</span></button>
+        <button type="button" class="workspace-add" aria-label="New tab"><svg><use href="#i-plus"/></svg></button>
+      </header>
+
+      <div class="workspace-main">
+        <section class="composer-surface" aria-label="Peak Composer document">
+          <header class="composer-toolbar">
+            <div class="composer-toolbar-left">
+              <nav class="workspace-history-nav" aria-label="工作区导航">
+                <button type="button" data-workspace-back aria-label="后退" title="后退"><svg class="icon-left"><use href="#i-chevron"/></svg></button>
+                <button type="button" data-workspace-forward aria-label="前进" title="前进" disabled><svg><use href="#i-chevron"/></svg></button>
+              </nav>
+              <nav class="view-switcher" aria-label="Document view">
+                <button type="button" class="is-active" data-document-view="composer"><svg><use href="#i-edit"/></svg><span>编辑</span></button>
+                <button type="button" data-document-view="reading"><svg><use href="#i-book"/></svg><span>阅读</span></button>
+                <button type="button" data-document-view="native"><svg><use href="#i-code"/></svg><span>原生 Markdown</span></button>
+              </nav>
+              <button type="button" class="content-width-toggle" data-content-width-toggle aria-label="切换为宽屏" aria-pressed="false" title="切换为宽屏">
+                <svg><use data-content-width-icon href="#i-wide"/></svg>
+              </button>
+            </div>
+            <div class="review-island-anchor" data-review-anchor>
+              <div class="multi-file-review-bar" data-review-controls aria-label="Copilot 多文件改动审阅" hidden>
+                <div class="review-nav-group" aria-label="当前文件内改动">
+                  <button type="button" data-review-prev-change aria-label="上一处改动" title="上一处改动"><svg class="icon-left"><use href="#i-chevron"/></svg></button>
+                  <strong data-review-change-position>1 / 2</strong>
+                  <button type="button" data-review-next-change aria-label="下一处改动" title="下一处改动"><svg><use href="#i-chevron"/></svg></button>
+                </div>
+                <div class="review-decision-group" aria-label="处理当前改动">
+                  <button type="button" class="review-decision review-reject" data-review-reject><svg><use href="#i-x"/></svg><span>拒绝</span></button>
+                  <button type="button" class="review-decision review-accept" data-review-accept><svg><use href="#i-check"/></svg><span>接受</span></button>
+                </div>
+              </div>
+              <div class="review-docs-group" data-review-docs-group>
+                <div class="review-file-nav" data-review-file-controls hidden aria-label="Change Set 文件导航">
+                  <button type="button" data-review-prev-file aria-label="上一个文件" title="上一个文件"><svg class="icon-left"><use href="#i-chevron"/></svg></button>
+                  <strong data-review-file-position>2 / 4</strong>
+                  <button type="button" data-review-next-file aria-label="下一个文件" title="下一个文件"><svg><use href="#i-chevron"/></svg></button>
+                  <i aria-hidden="true"></i>
+                </div>
+                <button type="button" class="header-task-docs" data-members-button title="任务文档：只读上下文"><svg><use href="#i-stack"/></svg><span>任务文档 · <strong data-scope-count>6</strong></span></button>
+              </div>
+              <section class="task-docs-review-popover" data-review-popover aria-hidden="true">
+                <header class="change-set-review-head">
+                  <div><span>当前 Change Set</span><strong data-review-summary>8 个文件 · 11 处待审改动</strong></div>
+                  <small data-review-progress-label>0 / 11 已审</small>
+                </header>
+                <div class="change-set-progress"><i><b data-review-progress-bar></b></i></div>
+                <div class="current-change-set-list" data-change-set-list></div>
+                <div class="task-context-only" data-task-context-section>
+                  <span>任务上下文 · 未在当前 Change Set 中 <b data-context-document-count>3</b></span>
+                  <div class="task-document-list" data-task-document-list></div>
+                </div>
+                <button type="button" class="add-current-document" data-add-member><svg><use href="#i-plus"/></svg>加入当前文档</button>
+                <footer><span data-member-receipt>成员变化会显示在这里</span><small>加入任务只授予读取上下文，不授予写入权限。</small></footer>
+              </section>
+            </div>
+            <div class="toolbar-actions">
+              <button type="button" class="toolbar-button" title="评论"><svg><use href="#i-message"/></svg><span>3</span></button>
+              <button type="button" class="toolbar-button intelligence-toggle is-active" title="Composer Intelligence"><svg><use href="#i-sparkles"/></svg><span class="toolbar-button-label">Intelligence</span></button>
+              <nav class="document-transaction-nav" aria-label="文档撤销与重做">
+                <button type="button" data-document-undo aria-label="撤销" title="撤销"><svg><use href="#i-undo"/></svg></button>
+                <button type="button" data-document-redo aria-label="重做" title="重做" disabled><svg><use href="#i-redo"/></svg></button>
+              </nav>
+            </div>
+          </header>
+
+          <div class="document-scroll" data-document-panel="composer">
+            <section class="composer-reuse-surface" data-default-document>
+              <span>Implementation boundary</span>
+              <strong>复用现有 Composer</strong>
+              <small>正文渲染、编辑行为、文档 Schema 与 Diff UI 不在本 Mock 范围内。</small>
+            </section>
+
+            <section class="composer-reuse-surface" data-review-document hidden>
+              <span>Implementation boundary</span>
+              <strong>复用现有 Composer Review</strong>
+              <small>当前文件、Diff 锚点、选择状态与写回行为全部沿用已有实现；这里只设计顶部导航和 Intelligence 面板。</small>
+            </section>
+          </div>
+
+          <div class="native-markdown-scroll" data-document-panel="native" hidden>
+            <section class="composer-reuse-surface">
+              <span>Host boundary</span>
+              <strong>复用 Obsidian 原生 Markdown</strong>
+              <small>原生编辑器本身不在本 Mock 范围内；这里只定义通过顶部 Intelligence 唤起 Modal companion。</small>
+            </section>
+          </div>
+        </section>
+
+        <aside class="intelligence-pane" aria-label="Intelligence task workspace">
+          <div class="session-chrome" data-session-chrome="sidecar">
+            <div class="task-list" data-task-list="sidecar" role="tablist" aria-label="Task sessions"></div>
+            <button type="button" class="new-task-button" data-open-create aria-label="新建任务 Session"><svg><use href="#i-plus"/></svg></button>
+            <button type="button" class="chrome-action" data-close-pane title="关闭" aria-label="关闭"><svg><use href="#i-x"/></svg></button>
+          </div>
+
+          <div class="sidecar-nav-row">
+            <nav class="surface-tabs" aria-label="Selected task surfaces">
+              <button type="button" class="is-active" data-host="sidecar" data-view="suggestions">建议</button>
+              <button type="button" data-host="sidecar" data-view="talk">对话</button>
+              <button type="button" data-host="sidecar" data-view="history">History <b data-history-count>3</b></button>
+            </nav>
+            <div class="sidecar-context-actions">
+              <button type="button" class="update-policy" data-policy-button title="建议更新策略"><svg><use href="#i-refresh"/></svg><span data-update-policy>停笔后更新</span><svg><use href="#i-down"/></svg></button>
+              <section class="policy-popover" data-policy-popover hidden>
+                <header><span>什么时候检查新建议</span><button type="button" data-close-policy aria-label="关闭"><svg><use href="#i-x"/></svg></button></header>
+                <button type="button" data-policy="仅手动"><span><strong>仅手动</strong><small>只在点击“更新建议”时检查</small></span><i><svg><use href="#i-check"/></svg></i></button>
+                <button type="button" data-policy="停笔后更新"><span><strong>停笔后更新 <em>推荐</em></strong><small>切换文件或停止编辑后检查</small></span><i><svg><use href="#i-check"/></svg></i></button>
+                <button type="button" data-policy="编辑时更新"><span><strong>编辑时定期更新</strong><small>编辑期间定期检查；消耗更多 token</small></span><i><svg><use href="#i-check"/></svg></i></button>
+                <span class="policy-secondary-label">发现新建议后</span>
+                <button type="button" class="auto-prepare" data-auto-prepare role="checkbox" aria-checked="false"><span><strong>自动准备待审改动</strong><small>符合规则时生成候选；仍需你审阅</small></span><i></i></button>
+                <small class="policy-safety">任何设置都不会自动接受或写入正文。</small>
+              </section>
+            </div>
+          </div>
+
+          <section class="sidecar-body">
+            <div class="sidecar-panel sidecar-suggestions is-active" data-sidecar-panel="suggestions">
+              <header class="brief-head">
+                <div class="brief-meta"><span><i></i>正在为此任务收集</span><time data-last-update>17:35 更新</time></div>
+                <div class="brief-title" data-brief-title>把 Intelligence 变成可持续的任务工作台</div>
+                <small class="brief-description" data-brief-description>建议只进入当前任务；不会因为切换正文而改变归属。</small>
+                <div class="brief-head-actions">
+                  <button type="button" data-open-ai-graphs title="打开 AI Graphs"><svg><use href="#i-tree"/></svg></button>
+                  <button type="button" class="is-primary" data-start-copilot><svg><use href="#i-sparkles"/></svg>问 Copilot</button>
+                  <button type="button" data-refresh-suggestions><svg><use href="#i-refresh"/></svg>更新建议</button>
+                </div>
+              </header>
+
+              <section class="brief-section">
+                <header class="section-head"><span>接下来可能要做 <b data-suggestion-count>6</b></span><small>按影响与正文顺序排序</small></header>
+                <div class="suggestion-list" data-sidecar-suggestions></div>
+                <button type="button" class="section-more" data-toggle-suggestions>查看全部 <span data-suggestion-count>6</span> 条建议</button>
+              </section>
+
+              <section class="brief-section materials-section">
+                <header class="section-head"><span>相关材料 <b data-material-count>5</b></span><small>作为建议依据，不直接改正文</small><button type="button" data-refresh-materials><svg><use href="#i-refresh"/></svg>更新相关材料</button></header>
+                <div class="material-browser-compact">
+                  <header><strong>支持当前建议的材料</strong><span>悬浮预览 · 点击固定</span></header>
+                  <div class="material-list" data-sidecar-materials></div>
+                  <div class="material-preview" data-material-preview></div>
+                </div>
+              </section>
+
+              <section class="brief-section thoughts-section">
+                <header class="section-head"><span>还没安放的想法 <b data-thought-count>2</b></span><small>不是待办，由你决定是否写入</small></header>
+                <div class="thought-list" data-sidecar-thoughts></div>
+              </section>
+            </div>
+
+            <div class="sidecar-panel sidecar-talk" data-sidecar-panel="talk" hidden>
+              <header class="sidecar-talk-head">
+                <span>对话 · <strong data-sidecar-talk-title>Provider 测评</strong></span>
+                <i>上下文已就绪</i>
+              </header>
+              <div class="sidecar-talk-thread" data-talk-conversation>
+                <article class="message user"><strong>你</strong><span data-user-message>我希望多个任务 Session 可以保留，但一次只追踪其中一个。</span></article>
+                <article class="message assistant">
+                  <strong>Copilot</strong>
+                  <span data-assistant-message>对话会留在当前 Sidecar，不需要打开另一个窗口。</span>
+                  <button type="button" class="change-set-receipt" data-open-review>
+                    <span><small>Change Set</small><strong data-review-receipt-title>计划修改 4 个文件</strong><em data-review-receipt-meta>7 处改动 · 尚未写入</em><i><b data-chat-review-progress></b></i></span>
+                    <b data-review-receipt-action>在 Composer 中审阅</b>
+                  </button>
+                  <footer><button type="button" data-receipt-tab="sources">Sources · 4</button><button type="button" data-receipt-tab="trace">Trace</button></footer>
+                </article>
+              </div>
+
+              <footer class="prompt-composer sidecar-prompt-composer" data-talk-composer>
+                <div class="prompt-context"><i></i>任务：<span data-prompt-task>Provider 测评</span> · <span data-prompt-context-status>上下文已就绪</span></div>
+                <div class="capability-strip"><button type="button" class="is-active">改短标题</button><button type="button">润色文本</button><button type="button">补提纲</button><button type="button" data-all-capabilities>全部能力 <svg><use href="#i-down"/></svg></button></div>
+                <div class="capability-menu" data-capability-menu hidden><header><strong>全部 Copilot 能力</strong><small>选择后加入本轮，不会自动运行</small></header><button type="button">总结当前段落</button><button type="button">校验来源</button><button type="button">生成表格</button><button type="button">解释结构</button></div>
+                <div class="prompt-box">
+                  <span class="prompt-origin">Auto · <span data-prompt-task>Provider 测评</span></span>
+                  <textarea data-sidecar-prompt aria-label="Sidecar conversation message" placeholder="描述你想做什么…">继续把这条建议讲清楚。</textarea>
+                  <footer><button type="button" data-attach-context aria-label="添加附件"><svg><use href="#i-paperclip"/></svg></button><button type="button" class="model-select"><svg><use href="#i-sparkles"/></svg><span data-model-label>Auto model</span><svg><use href="#i-down"/></svg></button><button type="button" class="send-prompt" data-send-sidecar-prompt aria-label="发送"><svg><use href="#i-send"/></svg></button></footer>
+                </div>
+              </footer>
+            </div>
+
+            <div class="sidecar-panel" data-sidecar-panel="history" hidden>
+              <header class="history-heading"><div><strong>活动历史</strong><small>生成、Copilot 与真正写入正文的编辑都在这里，未采用内容也会保留。</small></div><span><b data-history-filtered-count>4</b> 条活动</span></header>
+              <div class="history-filter-bar">
+                <div class="history-source-filters" data-history-source-filters></div>
+                <button type="button" class="history-more-filter" data-history-more><svg><use href="#i-filter"/></svg>更多 <b data-history-active-filter-count hidden>0</b></button>
+                <section class="history-filter-popover" data-history-filter-popover hidden>
+                  <header><strong>筛选历史</strong><span>仅显示当前历史中存在的选项</span></header>
+                  <div data-history-facets></div>
+                  <footer><span>显示 <b data-history-filter-showing>4</b> 条</span><button type="button" data-history-filter-reset hidden>清除筛选</button><button type="button" data-history-filter-done>完成</button></footer>
+                </section>
+              </div>
+              <div class="history-list" data-sidecar-history></div>
+            </div>
+          </section>
+
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <section class="new-task-scrim" data-create-popover hidden>
+    <div class="new-task-dialog" role="dialog" aria-modal="true" aria-label="新建任务 Session">
+      <header><span>新建任务 Session</span><button type="button" data-close-create aria-label="关闭"><svg><use href="#i-x"/></svg></button></header>
+      <label class="task-name-field"><span>任务名称</span><input data-new-task-name value="整理 Provider 评测" aria-label="任务名称"></label>
+      <p>从当前文档 <strong>AI-peakAssistant-M…</strong> 开始；之后可以继续加入相关文档。创建后，它会成为唯一正在追踪的 Session，其他 Session 保留状态但暂停。</p>
+      <footer><button type="button" class="ghost-action" data-close-create>取消</button><button type="button" class="primary-action" data-create-task>创建</button></footer>
+    </div>
+  </section>
+
+  <section class="related-materials-scrim" data-related-materials-modal hidden>
+    <div class="related-materials-modal" role="dialog" aria-modal="true" aria-label="全部相关材料">
+      <header><div><strong>相关材料</strong><small>浏览当前 Session 已冻结的材料集合，不会重新搜索。</small></div><button type="button" data-close-related-modal aria-label="关闭"><svg><use href="#i-x"/></svg></button></header>
+      <div class="related-modal-search"><svg><use href="#i-search"/></svg><input data-related-filter placeholder="在当前材料中筛选…"></div>
+      <nav class="related-modal-toolbar"><button type="button" class="is-active" data-related-view="list">列表</button><button type="button" data-related-view="tree">文件夹</button><button type="button" data-related-view="graph">图谱</button><span></span><button type="button" data-related-semantic>Semantic</button><button type="button" data-related-fit>适合画布</button></nav>
+      <div class="related-modal-content">
+        <section class="related-projection" data-related-projection></section>
+        <aside class="related-inspector" data-related-inspector></aside>
+      </div>
+      <footer><span>同一份材料快照 · 视图切换不运行 AI</span><button type="button" data-related-bring>带入协作</button></footer>
+    </div>
+  </section>
+
+  <section class="history-detail-scrim" data-history-detail-modal hidden>
+    <div class="history-detail-modal" role="dialog" aria-modal="true" aria-label="历史详情">
+      <header><div><strong data-history-detail-title>历史详情</strong><small data-history-detail-meta>Copilot · 已完成</small></div><button type="button" data-close-history-detail aria-label="关闭"><svg><use href="#i-x"/></svg></button></header>
+      <section><span>当时的指令</span><p data-history-detail-instruction></p></section>
+      <section><span>当时差异</span><div class="history-diff before" data-history-detail-before></div><div class="history-diff after" data-history-detail-after></div></section>
+      <footer><button type="button" data-history-detail-run>查看 Run</button><button type="button" data-history-detail-locate>定位正文</button></footer>
+    </div>
+  </section>
+
+  <section class="modal-scrim" data-modal-scrim hidden>
+    <div class="intelligence-modal" role="dialog" aria-modal="true" aria-label="Native Markdown Intelligence companion">
+      <header class="native-modal-head">
+        <svg><use href="#i-sparkles"/></svg>
+        <strong>Intelligence · <span data-modal-task-title>Provider 测评</span></strong>
+        <small>原生 Markdown</small>
+        <button type="button" data-close-modal aria-label="关闭"><svg><use href="#i-x"/></svg></button>
+      </header>
+
+      <nav class="modal-surface-tabs" aria-label="Native Markdown Intelligence views">
+        <button type="button" class="is-active" data-host="modal" data-view="suggestions">建议</button>
+        <button type="button" data-host="modal" data-view="talk">对话</button>
+      </nav>
+
+      <section class="native-modal-body modal-panel is-active" data-modal-panel="suggestions">
+        <div class="suggestion-list" data-modal-suggestions></div>
+      </section>
+
+      <section class="native-modal-body modal-panel" data-modal-panel="talk" hidden>
+        <div class="modal-chat-thread">
+          <article class="message user"><span data-user-message>我希望多个任务 Session 可以保留，但一次只追踪其中一个。</span></article>
+          <article class="message assistant"><strong>Copilot</strong><span data-assistant-message>这是同一 Session 在原生 Markdown 中的 companion。</span></article>
+          <button type="button" class="change-set-receipt compact" data-open-review><span><small>Change Set</small><strong data-review-receipt-title>计划修改 4 个文件</strong><em data-review-receipt-meta>7 处改动 · 尚未写入</em></span></button>
+        </div>
+        <div class="modal-prompt"><textarea data-modal-prompt aria-label="继续对话" placeholder="继续对话…">把这个方案整理成一个清楚的产品决策。</textarea><button type="button" data-send-prompt>发送</button></div>
+      </section>
+
+      <footer class="native-modal-foot"><span>复杂写回或多文件审阅需要回到编辑视图。</span><button type="button" data-open-review>切换到编辑视图</button></footer>
+    </div>
+  </section>
+
+  <script src="./mock.js"></script>
+</body>
+</html>

@@ -83,7 +83,7 @@
       <h1>状态快照：里程碑、待建、调研、远期</h1>
       <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>；尚未升级为里程碑的局部需求登记在 <a href="planned-requirements.html"><code>planned-requirements.html</code></a>。</p>
       <div class="meta">
-        <span>Status: current · 2026-08-12</span>
+        <span>Status: current · 2026-08-13</span>
         <span>Scope: milestone-level only</span>
         <span>Updated: 手动维护 + session-end 补关键节点</span>
       </div>
@@ -98,7 +98,7 @@
         <strong>路线段</strong>
         <a href="#how-to-read">怎么读这个 roadmap</a>
         <a href="#done">已完成的关键里程碑</a>
-        <a href="#decided">已决策待建</a>
+        <a href="#decided">已决策未闭环</a>
         <a href="#researching">调研候选</a>
         <a href="#backlog">远期 Backlog</a>
         <a href="#update-rule">如何维护本表</a>
@@ -108,8 +108,8 @@
       <div class="content">
         <section id="how-to-read">
           <h2>怎么读这个 roadmap</h2>
-          <p class="lead">四段自上而下就是项目在时间轴上的位置：<strong>过去里程碑 → 已决策待建 → 调研候选 → 远期想法</strong>。每一段都是状态快照，不是承诺。</p>
-          <p class="prose">"已决策"意味着有 spec、有共识、只等排期；"调研候选"意味着 <code>docs/research/</code> 里有报告但决策未落；"远期 Backlog"是无 spec 的想法，不承担交付责任。</p>
+          <p class="lead">四段自上而下就是项目在时间轴上的位置：<strong>过去里程碑 → 已决策未闭环 → 调研候选 → 远期想法</strong>。每一段都是状态快照，不是承诺。</p>
+          <p class="prose">"已决策未闭环"包括尚未实施、部分实现、产品收口未完成和真实环境验收未完成的事项；"调研候选"已有研究结论但尚未形成产品决策；"远期 Backlog"仍是没有实施承诺的想法。</p>
         </section>
 
         <section id="done">
@@ -225,13 +225,43 @@
               <tr><td><strong>Search Highlight Vault-first 源改造</strong></td><td>3 阶段一次 landed：<code>chunkId</code> 贯通 retriever → <code>SearchResultItem</code>；<code>HighlightSourceResolver</code> 按 <code>DocumentType</code> 分流——Vault-readable（markdown / txt / canvas / excalidraw / json / html / xml / csv）走 <code>vault.cachedRead</code> + <code>hintOffset</code>，binary/derived（PDF/DOCX/Image/URL）走 <code>doc_chunk.content_raw</code>；索引侧对 Vault-readable 停写 <code>content_raw</code>、全表停写 <code>content_fts_norm</code>；一次性 SQL 迁移 + VACUUM 清存量。真机验证抓到 retriever 未 propagate <code>docType</code> 的 bug——4 个 retriever SQL 加 <code>json_extract(attributes_json,'$.docType')</code>，resolver 加 path-suffix defense-in-depth；Vault-readable 读盘失败改走 <code>title/path</code> 标签，绝不落回 normalized。用户 confirmed OK；189/189 tests。</td><td>2026-07-07 · <a href="superpowers/specs/2026-07-07-search-highlight-vault-first.md">Vault-first spec</a>（supersedes <a href="superpowers/specs/2026-07-06-search-highlight-original-text-repair.md">2026-07-06 spec</a>）</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Vault Search Heading Mode + Result Graph View</strong></td><td>Quick Search 两次结构性升级一次性 land：<strong>Heading Mode</strong>（<code>#</code> 前缀）呈现整份文档 heading 树 + 右侧 section detail pane，行显示 <code>12-34</code> 无 <code>L</code> 前缀 + match badge，typing 过滤靠 dim 非命中而非删行，两 zone 键盘 + 双 Enter 语义；<strong>Result Graph View</strong> 是结果集 ≤100 个 result node 的 ReactFlow 投影——community 背景 wash + 结构性 reference 边 + toggle 的 semantic dashed 边 + toggle 的 folder boundary + hub anchor 节点（<code>HubConstituentRepo</code>）+ 右侧 Isolated Matches rail + sparse-fallback banner；<strong>Hub Reference block</strong> 在 Inspector 底部展示 top-5 hubs by constituent count + <code>+N more</code>，Cmd+click 或 Waypoints icon 打开 hub graph subview（结果集 pin 到该 hub 的 constituents）。legacy <code>Line</code>/<code>Folder</code> 两个 parser + panel 全删；<code>QuickSearchMode</code> 缩到 <code>all|heading|help</code>。T8 集成 polish 把 <code>ResultGraphView</code> 的 subgraph deps 从 <code>@/app/**</code> 迁到 <code>ServiceContext.resultSubgraph</code> 端口 + 新增 <code>core/ports/HeadingModePort</code> 修回 UI→app boundary（floor 从 17 提到 19）；graph single click resultDoc 现在也更新 Inspector。9 tracks / 10 commits；191/191 tests。</td><td>2026-07-07 · <a href="superpowers/specs/2026-07-07-vault-search-heading-graph-navigation.md">Heading + Graph spec</a> · <a href="superpowers/plans/2026-07-07-vault-search-heading-and-result-graph.md">plan</a></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Result Graph View V2 · Cytoscape + Preset UX</strong></td><td>V1 真机试用暴露的三条根子问题（ReactFlow 无 native compound、暴露 8 个 toggle 让用户学 graph-viz 名词、<code>hub_constituent</code> 虚线纯噪音）走"sandbox → 定稿 → 移植"一天做完。渲染栈换 <strong>Cytoscape.js</strong>（+ fcose/cise/cola/dagre 扩展）；配置面收敛到 <strong>5 个 named preset</strong>：Constellation（fcose）· Flow ↓（dagre TB）· Flow →（dagre LR）· Folder tree（cola + full-depth 路径 compound）· Orbit（concentric hubs + semantic 默认开）；Semantic 独立 toggle 叠加。3 个"永远开"（isolated 分区 / hover 高亮 / 保留 isolated）从 UI 消失。Header 走 <strong>Variant A</strong>：Graph view filled/outlined pill → 竖分隔线 → macOS 段控件（active 白 pill + 微阴影）→ 真开关（30×16 track + 12×12 圆头滑动）。<code>hub_constituent</code> 边全渲染路径 + isolation 判定路径都去。Isolated 底部 grid 按 label 字典序（zh collation）稳定不乱窜。Node label 不再 truncate（wrap 到 360 px）。Hover 永远保留祖先 folder 面包屑，compound hover 整个子树高亮。Reference 边 hover 实线静态、Semantic 边 hover 虚线蚁行（rAF time-based，帧率无关）。Copy 按钮改吐 <strong>Mermaid</strong>（LLM 友好），拷完 Check 反馈 1.5s。Modal 高度：<code>useEffect</code> 走 <code>closest('.modal')</code> imperative 改 Obsidian 外框 <code>height</code>（进 graph view 顶满 <code>calc(100vh - 160px)</code>，退回清空）。删掉 6 个 xyflow 卫星组件，191/191 tests。Sandbox 保留在 <code>docs/research/2026-07-07-result-graph-layout/</code>——后续 layout 改动先在 sandbox 迭代再回插件。</td><td>2026-07-08 · <a href="superpowers/specs/2026-07-08-result-graph-view-v2-cytoscape.md">V2 spec</a> · <a href="research/2026-07-07-result-graph-layout/index.html">sandbox</a></td><td><span class="pill green">shipped</span></td></tr>
+              <tr>
+                <td><strong>生成产物与存储治理</strong></td>
+                <td>Phase 0–5 已完成生产切换：Typed Artifact Registry、JSON snapshot / 分片 JSONL / immutable artifact、SQLite projection rebuild、Chat / Project / Resource / Profile / receipts、virtual-first Hub、AI Graph 与旧 Review writer 退役均已落地。legacy Markdown 只读导入且不自动移动、覆盖或删除。当前 writer coverage gate 新发现 Custom Prompt writer 未登记；真实 Vault migration、Hub Materialize 与第二 Vault 同步演练仍待验收。</td>
+                <td><a href="conventions/generated-artifact-registry.md">Artifact Registry</a><br><a href="superpowers/plans/2026-08-02-generated-artifact-storage-governance-phases-2-5-implementation-note.md">Phase 2–5 实施记录</a></td>
+                <td><span class="pill gold">implemented · registry regression open · live migration QA pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>Chat Runtime 与生成能力闭环</strong></td>
+                <td>Chat 主 turn 已统一到流式 Harness AgentLoop；ToolAvailability、MCP permission、Assistant 配置、媒体生成、durable async job、artifact receipt、Settings 与 Usage 打点已经进入生产实现，并由提交 <code>8d18281c</code> 纳入当前历史。缺少真实付费 provider key 时，video/music、跨域下载与外部媒体服务仍只能验证诚实降级，不能冒充真实端到端生成验收。</td>
+                <td><a href="superpowers/plans/2026-07-21-chat-runtime-capability-closure-delivery.md">交付报告</a><br><a href="testing/chat-studio-capability-checklist.md">能力清单</a></td>
+                <td><span class="pill gold">implemented · paid-provider live QA pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>Obsidian Plugin Command Gateway</strong></td>
+                <td>第三方 command 发现、Scan / review、人工 Allow、strict Skill 编译、单一 <code>obsidian_command_execute</code> ToolDef、PermissionGuard、RunEnvelope 副作用观测与 DR-20 JSONL receipt 已写回当前生产树。默认全关，AI 不能自行授权；unknown、destructive 与 modal-only command 保持系统拒绝。</td>
+                <td><a href="superpowers/specs/2026-07-31-obsidian-plugin-command-gateway-implementation-design.md">实现设计</a><br><a href="superpowers/plans/2026-07-31-obsidian-plugin-command-gateway-implementation-plan.md">验收计划</a></td>
+                <td><span class="pill gold">implemented · focused verified · interaction QA pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>全键盘导航与 Key Tips</strong></td>
+                <td>app-owned <code>PeakKeyboardRuntime</code> 已接入 Vault Search、AI Search、File Atlas、Chat Studio 与 Composer。macOS Option / Windows/Linux Alt 就地 Key Tips、roving focus、方向键、Escape、IME 与 detached-window guards 已进入生产代码并通过 focused contracts。真实 Obsidian 的按键、IME、detached window 与位置验收仍未完成。</td>
+                <td><a href="superpowers/specs/2026-08-06-peak-modifier-key-tips-navigation.md">现行设计</a><br><a href="superpowers/plans/2026-07-31-keyboard-navigation-kernel-phase-1-implementation-note.md">实施记录</a></td>
+                <td><span class="pill gold">implemented · focused verified · live QA pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>Peak Command Center Launcher + Home</strong></td>
+                <td>个人导航 Launcher、共享 Home ItemView、Link Matrix、Icon Grid、Overflow、连续 Customize 目录、membership、Rename、图标、Home pin、拖动排序和已配置内容搜索均已实现。原生 Command Palette 保持独立。真实键盘、焦点、拖动和可见 geometry 仍待 Obsidian CDP 验收。</td>
+                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">设计与实施记录</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">可交互原型</a></td>
+                <td><span class="pill gold">implemented · focused verified · live QA pending</span></td>
+              </tr>
             </tbody>
           </table>
         </section>
 
         <section id="decided">
-          <h2>已决策待建</h2>
-          <p class="lead">有 spec 或强共识，等排期或等前置依赖。这是"下一步做什么"的短名单。</p>
+          <h2>已决策未闭环</h2>
+          <p class="lead">方向已经确定，但实现、产品收口或真实环境验收仍未完成。这是下一步工作的短名单。</p>
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
@@ -240,28 +270,15 @@
             <tbody>
               <tr>
                 <td><strong>架构收口 A0-A4</strong></td>
-                <td>按 2026-07-27 依赖/模块化审计的路线执行。<strong>A0 四把守卫锁</strong>（service 域间依赖矩阵 floor 测试锁 chat↔agents 等 5 组循环；非 AppContext 单例 getInstance 用量锁基线 100；facade 绕行检测起点 capabilities 域 2 处违规；<code>tsc --noEmit</code> 进测试锁 355 既有类型错误 floor）→ <strong>A1</strong> 模型路由归一 <code>resolveSlot</code>（消灭 requireActiveProfile / resolveCopilotProfileAndModel / getActiveAgentFastConfig 直读×2 / resolveFastLookupBinding 手写版四套并行；裁决失效的 promptModelMap）→ <strong>A2</strong> 数据层收口（修 <code>mobius_operation</code> 双写：AIAnalysisHistoryService.ts:58 直写 vs SessionContextService 事件写二选一；图存储非 search 域 17 个直连文件改走 Index*Port 注入）→ <strong>A3</strong> 假存在大扫除（copilot 面板 10,092 行无入口、LLM rerank 不可达、BackendStrategyRegistry 零消费、harness_reflection 死表、Models* 死注册、buildChatTools 等零调用函数逐项裁决；与下方 AI Capability Gateway 决策合并推进）→ <strong>A4</strong> 低成本收敛（图片 layout pk-/peak- 双格式 bug、slugify 中文 untitled bug、7 Modal 迁 ReactModalHost、18 处 config loader 工厂化、13 处 TemplateManager 直连恢复 PromptService 用户覆写）。</td>
-                <td><a href="research/2026-07-27-dependency-modularity-audit/README.md">审计判决 §四</a></td>
-                <td><span class="pill gold">decided · queued（A0 起步）</span></td>
+                <td>守卫与依赖方向已经取得实质进展：当前 boundary baseline 为 19 个 lower-layer type edge，<code>service → ui/app</code>、service/core Obsidian side effect 与 UI 外 Zustand store 均为 0；service boundary、React modal、Prompt override 和 Agent SDK retirement guards 已存在。剩余工作不再照搬 7 月清单，而是围绕 19 个 core→service 类型反向依赖、非 app 层 <code>AppContext.getInstance</code>、重复模型/provider resolver、旧 Copilot / Ambient / Heading Mode 产品岛与到期兼容链重新建立当前 candidate matrix。</td>
+                <td><a href="research/2026-07-27-dependency-modularity-audit/README.md">原审计判决</a><br><a href="superpowers/audits/2026-08-06-aggressive-code-retirement-modularity-audit.md">当前退役审计</a></td>
+                <td><span class="pill gold">partial · guards landed · retirement/convergence pending</span></td>
               </tr>
               <tr>
                 <td><strong>六能力功能收口 P0×7</strong></td>
-                <td>按 2026-07-27 产品能力矩阵执行。头号：<strong>Document Copilot 收口三件套</strong>（sidecar 会话执行器——mark* 零调用死路；Ambient→Brief finding producer——ingestFinding 零调用；Composer 原生 ambient 触发源——CM editor-change 在自绘视图不触发）。其余：入口整顿（ribbon 指向 Chat Studio、旧三 leaf 布局定去留、Quick Search 快捷键）；Usage Dashboard 死按钮群接线或摘除；Onboarding System Check 接真实 readiness；Ambient 旧四载体维护冻结 + 去留决策（晨间简报留给 Command Center）；copilot 面板树定去留；Atlas "Send to Copilot" 做完或摘除。Ambient 与 Document Copilot 定位为 Composer 内能力。</td>
-                <td><a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/capability-matrix.md">能力矩阵 §三</a></td>
-                <td><span class="pill gold">decided · queued</span></td>
-              </tr>
-              <tr>
-                <td><strong>生成产物与存储治理</strong></td>
-                <td>建立全量 Artifact Registry：Markdown/native 只保留用户拥有、显式创建、导出或物化的产物；昂贵且不可廉价重建的机器事实使用 JSON snapshot / 分片 JSONL 并同步；SQLite、全文索引、embedding、cache、telemetry 是本地可重建状态。Project machine state 与 Brief 分离；Resource Summary 改 durable JSON；Hub 默认 virtual、需要原生 Obsidian Graph 或用户编辑时才物化 Markdown。实施按 registry guard → shared store/rebuild → Resource/Profile/Project/receipts → Chat cutover → Hub/AI Graph → legacy retirement 推进，现有文件不自动删除。</td>
-                <td><a href="conventions/generated-artifact-registry.md">Artifact Registry</a><br><a href="superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md">Implementation design</a><br><a href="superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md">Earlier JSONL design</a></td>
-                <td><span class="pill gold">accepted · phased implementation pending</span></td>
-              </tr>
-              <!-- Chat Studio 完整生产实现 2026-07-20 shipped as commits a7ad6cd1/70e3283d/726f494a — see #done -->
-              <tr>
-                <td><strong>Chat Runtime 与生成能力闭环</strong></td>
-                <td>Chat 主 turn 从 Vercel SDK tool loop 迁到唯一的流式 Harness <code>AgentLoop</code>（run id / 状态 / trace / receipt 贯通，error 与 abort 端到端修复）；ToolAvailability 合同 + MCP 工具进 Chat（PermissionGuard ask 双向挂起）；Assistant 四字段（instructions / knowledgeRefs / toolPolicy / preferredModel）真实生效；媒体生成三路由（fal / OpenAI native image / Auto，preflight 一次性决策不静默换计费方）+ image 同步闭环 + video/music durable async job（成本确认 / 取消 / 重试 / 重启恢复）+ 真实 <code>ChatArtifactReceipt</code> 驱动 gallery/Resources；Settings 新增 Media Generation 区 + Configure 跳转闭环。11 任务 SDD 流程逐个 review，终审 Ready to merge；239/239 tests + build 绿 + 实机截图验收（缺 key 诚实态 / Validate / 统一运行时 turn）。真实付费生成与 CORS 因无 key 未实测（精确阻塞已记录）。2026-07-21 追补：fal endpoint 按官方文档核实修正（veo3→veo3.1、duration 枚举、TTS 字段名、lyria2 固定 30s、成本表校准，见 <a href="research/2026-07-21-fal-endpoint-verification/README.md">核查报告</a>）；媒体 usage 打点接入 Usage Dashboard（estimated 语义）；音乐授权说明落 Settings；MEDIA-03 门槛全项满足，video/music 升 <code>AVAILABLE</code>（待实机验收）。</td>
-                <td><a href="superpowers/plans/2026-07-20-chat-runtime-capability-closure-claude-handoff.md">Handoff spec</a><br><a href="superpowers/plans/2026-07-21-chat-runtime-capability-closure-delivery.md">交付报告</a><br><a href="testing/chat-studio-capability-checklist.md">能力清单（状态已迁移）</a></td>
-                <td><span class="pill gold">built · 未 commit（待 owner 审 diff）</span></td>
+                <td>7 月矩阵中的部分缺口已经关闭：Composer 已有 production finding producer，核心入口与运行时也经历了后续收口。当前剩余的是可见的产品闭环：退役旧 Document Copilot、Related Notes、Morning Briefing 与旧 Heading Mode；把 Ambient sensing 真正接入 Composer Brief；为 Onboarding System Check 补真实 readiness；完成或移除 File Atlas 中仍禁用的 “Send to Copilot”；逐项裁决 Usage Dashboard 无效动作与旧 Copilot panel 依赖。</td>
+                <td><a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/capability-matrix.md">原能力矩阵</a><br><a href="superpowers/audits/2026-08-06-aggressive-code-retirement-modularity-audit.md">当前产品边界审计</a></td>
+                <td><span class="pill gold">partial · retirement and product wiring pending</span></td>
               </tr>
               <tr>
                 <td><strong>AI Capability Gateway / Provider Platform</strong></td>
@@ -270,22 +287,10 @@
                 <td><span class="pill gold">SDK retired · gateway convergence pending</span></td>
               </tr>
               <tr>
-                <td><strong>T12 Obsidian Plugin Command Gateway</strong></td>
-                <td>已写回 owner checkout：发现启用的第三方插件 command → 单一 Scan 完成确定性分类与可选 AI 解释 → Settings / Tools 人工开关或按筛选批量 Allow → 绑定 source hash + curator-draft hash 编译 strict Skill → 单一 <code>obsidian_command_execute</code> ToolDef 注入现有 Chat/Copilot Harness → PermissionGuard → RunEnvelope → workspace/vault/modal 副作用观测 → 已登记 DR-20 的 DataStore JSONL receipt。默认全关，AI 永不授权，unknown/destructive/modal-only 系统显示为 Unavailable；没有新建 Command Center 或第二套 agent runtime。</td>
-                <td><a href="superpowers/specs/2026-06-03-obsidian-plugin-command-gateway-capstone-review.html">Capstone spec</a><br><a href="superpowers/specs/2026-07-31-obsidian-plugin-command-gateway-implementation-design.md">implementation design</a><br><a href="superpowers/plans/2026-07-31-obsidian-plugin-command-gateway-implementation-plan.md">verification plan</a></td>
-                <td><span class="pill green">written back · focused/build verified · INTERACTION NOT VERIFIED</span></td>
-              </tr>
-              <tr>
-                <td><strong>Ambient Push Current Work State 升级</strong></td>
-                <td>从 Related Notes 升级为 Current Work State / Session Thought Trace（产品评审已过）。</td>
-                <td><a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Product/Technical Review</a></td>
-                <td><span class="pill gold">decided</span></td>
-              </tr>
-              <tr>
                 <td><strong>Composer Intelligence Surface + Block AI Contract</strong></td>
-                <td>13 个生产实现 track 已集成：按 Markdown / Base / Canvas / Excalidraw 类型注册固定操作，source-range transaction、候选历史、对象级 review、Composer-owned Intelligence runtime 与共享 Result Browser 均已落地；顶层 dock 仅保留 Copilot / History。视觉 shell 已在 owner 纠偏后按设计稿重做，并完成真实 Obsidian 宽屏/窄屏截图回归。Markdown/native file 继续是唯一 source of truth。收口仍为 PARTIAL：当前没有 production finding producer，Ambient 尚未接成 Brief 数据，related refresh 真机仍为 0，owner-involved QA#2 未完成；旧 Copilot 三类活跃调用因 parity 证据不足判定 NO-GO、未强删。</td>
-                <td><a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI contract</a><br><a href="superpowers/specs/2026-07-09-peak-composer-editing-view.md">Composer design</a><br><a href="gstack/peak-composer-editing-view-2026-07-09/index.html">Interactive mock</a><br><a href="superpowers/plans/2026-07-27-peak-composer-implementation-note.md">96-ID implementation note + §19 report</a><br><a href="superpowers/plans/2026-07-25-composer-wave-execution-log.md">Execution log</a></td>
-                <td><span class="pill gold">shell corrected · data/QA partial</span></td>
+                <td>固定 Block AI 操作、source-range transaction、候选历史、对象级 review、Composer-owned runtime、共享 Result Browser 与 Markdown/native source-of-truth 已落地。后续又补齐了基于未完成任务的 deterministic production finding producer，以及持久化 task session、Suggestions / Talk / History、Task Documents 和跨文件 review workspace。当前仍缺 Ambient-backed Brief finding、显式 multi-block target / context-slot Agent 链路，以及 task switching、hover corridor、跨文件 review、IME / bitmap / drag 等真实 Obsidian 验收；旧 Copilot 删除仍受 parity gate 保护。</td>
+                <td><a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI contract</a><br><a href="superpowers/specs/2026-08-12-composer-intelligence-task-workspace-design.md">Task workspace design</a><br><a href="superpowers/plans/2026-08-12-composer-intelligence-task-workspace-implementation.md">当前实施记录</a><br><a href="superpowers/plans/2026-07-27-peak-composer-implementation-note.md">原 closure checkpoint</a></td>
+                <td><span class="pill gold">producer/task workspace landed · Ambient/multi-block/live QA pending</span></td>
               </tr>
               <tr>
                 <td><strong>Composer 多块选择、合并与上下文感知 AI 操作</strong></td>
@@ -295,33 +300,15 @@
               </tr>
               <tr>
                 <td><strong>Peak File Workspace · 多文件预览与 AI 编辑</strong></td>
-                <td>把 Image、HTML、PDF 从“可读取的附件”提升为一等文件工作区：共享 file surface registry、AI sidecar、candidate review 与版本保存。统一能力模型进一步锁定 Code Source Workspace（Python/TypeScript 等 native file 单独打开、跨文件 reference context、multi-file review）、CSV/XLSX → Peak Sheet、TXT 复用纯文本能力、Canvas/Excalidraw native companion，以及 DOCX/PPTX 产品不支持边界。Jupyter 只保留规划位、暂不实施；JSONL 已作为内部 durable machine record carrier，不重复建设用户 Workspace。默认不覆盖原文件，也不复制 AI runtime。</td>
+                <td>已有能力不再是纯设计：Composer 支持 native preview、任务级跨文件 review 导航；Peak Sheet 已提供 file-native Dataset 工作面；跨格式能力边界和 HTML / Image / Code 方向也已形成正式设计。尚未完成的是统一 app-owned File Surface Registry、独立 Code Source Workspace、HTML / PDF / Image 的一致打开与 candidate review、跨文件 source patch / version save，以及这些 surface 在真实 Obsidian 中的统一验收。默认仍不覆盖原文件，也不复制 AI runtime。</td>
                 <td><a href="superpowers/specs/2026-07-24-peak-file-workspace.md">正式方案</a><br><a href="superpowers/specs/2026-08-09-file-surface-ai-capability-model.md">跨格式 AI 能力模型</a><br><a href="research/2026-07-31-file-format-capability-audit/index.html">全格式能力矩阵</a><br><a href="gstack/peak-file-workspace-2026-07-24/index.html">视觉方案</a><br><a href="research/2026-07-24-peak-file-workspace/README.md">能力审计</a></td>
-                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+                <td><span class="pill gold">partial implementation · registry/code workspace pending</span></td>
               </tr>
               <tr>
                 <td><strong>AI Control Center 与 My Content</strong></td>
                 <td>两个生产 <code>ItemView</code>、Command Gateway / Command Center 入口、Prompt override、Custom Prompt / Chat Assistant 创建编辑，以及 My Content 的用户产物投影和类型/来源/时间筛选已经落地。Control Center 只投影确实拥有可编辑 Prompt 的 Copilot action；My Content 只列 registry 可验证的用户拥有或显式 materialize 产物，不扫描普通 Vault 文件或机器状态。当前仍缺全产品 action-policy resolver（模型、输出、工具、审批、预算）和 user-selected export 的显式 record projection；真实 Obsidian 打开、编辑、保存流程也尚未验收。</td>
                 <td><a href="superpowers/specs/2026-07-30-ai-control-center-design.md">正式设计</a><br><a href="superpowers/plans/2026-08-04-ai-control-center-and-my-content-production-plan.md">当前生产实施计划</a><br><a href="superpowers/audits/2026-07-30-ai-capability-run-inventory.md">全仓 AI 运行链审计</a><br><a href="gstack/ai-control-center-2026-07-30/index.html">Control Center Mock</a><br><a href="gstack/data-storage-2026-08-04/index.html">My Content Mock</a></td>
                 <td><span class="pill gold">implementation started · production closure pending</span></td>
-              </tr>
-              <tr>
-                <td><strong>全键盘导航与可访问性系统</strong></td>
-                <td>由 app 层统一拥有的 <code>PeakKeyboardRuntime</code> 已接入 Vault Search、AI Search、File Atlas、Chat Studio 与 Composer。现行交互不再使用 <code>F6</code> 区域循环，而是按下 macOS <code>Option</code> 或 Windows/Linux <code>Alt</code> 显示就地 Key Tips，再直接跳转或执行目标控件；列表、树、tab、toolbar、消息和图谱复用 roving focus、方向键导航、Escape 恢复与 IME / detached-window guards。focused tests、DOM contracts 与 production build 已通过；真实 Obsidian 中的 Option/Alt、IME、detached window 和视觉位置仍待验收。</td>
-                <td><a href="superpowers/specs/2026-08-06-peak-modifier-key-tips-navigation.md">现行 Key Tips 设计</a><br><a href="superpowers/plans/2026-07-31-keyboard-navigation-kernel-phase-1-implementation-note.md">实施记录</a><br><a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">原系统设计</a><br><a href="research/2026-07-24-peak-keyboard-navigation/README.md">研究报告</a></td>
-                <td><span class="pill green">implemented · focused/build verified · live QA pending</span></td>
-              </tr>
-              <tr>
-                <td><strong>Peak Command Center Launcher + Home</strong></td>
-                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的个人导航入口。2026-08-02 已实现单排 user group tabs 与三级 projection：Home、Dashboard、Vault document、Bookmark、Workspace 等 destination 位于最多三列、约三行并可随宽度降为两列或一列的紧凑 Link Matrix；Composer、Chat Studio 等常用 command 位于最多两行的五列 Icon Grid；超出部分保持配置顺序进入 Overflow List。Customize 使用一张不拆 Added / Available 的连续目录，并提供原地 membership、Rename、Lucide / Emoji / No icon、显示模式、Home pin 与拖动排序；Home 是共享同一配置和 action identity 的主区 <code>ItemView</code>。运行态 Search 只过滤已配置内容，原生 Command Palette 保持不变。source contracts、focused tests 与 production build 已通过；因当次无 Obsidian CDP listener，真实键盘、焦点、拖动与可见 geometry 仍待实机验收。</td>
-                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计与实施记录</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">V19 可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
-                <td><span class="pill green">implemented · build verified · live QA pending</span></td>
-              </tr>
-              <tr>
-                <td><strong>AN / AO / AP 收尾</strong></td>
-                <td>三批 UI 改动已在 <code>codex/peak-modernization-refactor</code> 分支 landed，尚待真机 QA；见 progress.md Next § "Pending"。</td>
-                <td><a href="progress.md">progress.md</a></td>
-                <td><span class="pill red">landed 未验证</span></td>
               </tr>
               <!-- Search Highlight Vault-first 源改造 2026-07-07 shipped — see #done -->
 
@@ -346,6 +333,12 @@
                 <td><strong>Peak External Intelligence Protocol</strong>（Codex / Claude Code 订阅计算通道，暂定名）</td>
                 <td><strong>远期研究候选，不是上线事项或当前实现承诺。</strong>把 Vault Intelligence、Composer、Hub / AI Graph 等智能能力表达为版本化 capability contract，让用户在自有 Codex / Claude Code 客户端中使用已有订阅或账户额度完成批量任务，再由 Peak 接收结果。建议从 Skill / plugin 规范 + export / import run package 起步，长期可演进为本地 MCP server；外部 Agent 提交带 vault / run / scope / source hash / schema / provenance / status 的 JSON / JSONL 结果或 proposal，Peak 负责校验、canonical persistence、stale / quarantine 与 SQLite projection rebuild。正式边界：不允许把 raw SQLite write 作为公开协议；确定性 lint、FTS、chunk、PageRank 继续由 Peak 本地计算；embedding 不视为 Codex / Claude Code 通用能力；Markdown 变更必须经过 proposal、revision guard 与显式 Apply。该方向不替代插件内 Harness / AI Capability Gateway：外部客户端拥有本次 run，Peak 仍拥有结果接收、权限和数据完整性。</td>
                 <td><span class="pill gold">future research · not launch scope</span></td>
+              </tr>
+              <tr>
+                <td>2026-08-10</td>
+                <td><strong>工作流历史数据挖掘 2026-03→08</strong>（过程调研，非产品功能）</td>
+                <td>对 298 个 Codex 会话（16GB）+ 27 个 Claude 转录 + 1745 commits 的全量数据分析：清洗出 1188 条真实输入 / 66 个活跃日，还原六阶段演化（ideation → Claude 猛建 → 功能爆发 → 大重构 → 双工具派单峰值 → 录屏 QA 收敛）。量化口头禅词典（"不要/别"16% 居首、"不要改代码"8 月升至 16%）、双峰作息（午后 + 深夜）、Claude=调度/提交/托管 vs Codex=实现/视觉验收的分工实证；新发现 Codex Desktop fork 重放风暴（原始消息 3 倍膨胀）、同一设计任务跨 5-7 天重启、截图循环慢被抱怨 6 天未立项。与 07-28 诊断互补。</td>
+                <td><a href="research/2026-08-10-workflow-history-data-mining/README.md">研究报告</a></td>
               </tr>
               <tr>
                 <td>2026-07-28</td>

@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Note split · Markdown line diff</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f4f4f6; --surface: #fff; --soft: #faf9fc; --line: #dedce4; --line-strong: #c9c5d0;
+      --text: #28262d; --muted: #77727e; --quiet: #9c97a3; --accent: #6551d9; --accent-soft: #eeeaff;
+      --removed: #fff1f2; --removed-line: #ffe2e6; --removed-text: #9d3548;
+      --added: #eaf8f0; --added-line: #d9f1e4; --added-text: #176d51;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--text); background: var(--page); }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    [hidden] { display: none !important; }
+    .page-shell { min-height: 100vh; padding: 42px 28px 70px; }
+    .workspace { width: min(1560px, calc(100vw - 56px)); margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 22px 68px rgba(32,28,43,.13); overflow: hidden; }
+    .topbar { display: flex; justify-content: space-between; gap: 24px; padding: 22px 28px 18px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--accent); font-size: 12px; font-weight: 760; letter-spacing: .035em; }
+    h1 { margin: 5px 0 0; font-size: 25px; line-height: 1.2; letter-spacing: -.025em; }
+    .top-actions { display: flex; align-items: flex-start; gap: 10px; }
+    .pill { padding: 6px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+    .icon-button { width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; cursor: pointer; font-size: 21px; line-height: 1; }
+    .icon-button:hover { background: var(--soft); }
+    .summary { display: flex; align-items: center; gap: 12px; min-height: 55px; padding: 0 28px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .summary strong { font-size: 15px; }
+    .muted { color: var(--muted); }
+    .guidance { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; padding: 13px 28px; border-bottom: 1px solid var(--line); }
+    input[type="text"], select { height: 38px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--text); padding: 0 11px; outline: none; }
+    input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(101,81,217,.12); }
+    .button { height: 38px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); font-weight: 680; cursor: pointer; }
+    .button:hover { border-color: #aaa4b4; }
+    .button.primary { color: #fff; border-color: var(--accent); background: var(--accent); }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 28px; border-bottom: 1px solid var(--line); }
+    .toolbar-side { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .toolbar-label { color: var(--muted); font-size: 13px; font-weight: 650; white-space: nowrap; }
+    .toolbar select { min-width: 244px; }
+    .selection-count { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .select-visible { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .diff-shell { margin: 20px 28px 24px; border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+    .file-head { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 224px; min-height: 54px; background: #f8f7fa; border-bottom: 1px solid var(--line-strong); }
+    .file-side { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 16px; }
+    .file-side + .file-side { border-left: 1px solid var(--line-strong); }
+    .file-mark { color: var(--muted); font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 12px; }
+    .file-name { color: var(--accent); font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 14px; font-weight: 720; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-note { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .folded-gap { display: grid; grid-template-columns: 1fr 1fr; min-height: 32px; color: var(--muted); background: #f5f3fa; border-bottom: 1px solid var(--line); font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 12px; }
+    .gap-side { display: flex; align-items: center; justify-content: center; padding: 5px 12px; }
+    .gap-side + .gap-side { border-left: 1px solid var(--line-strong); }
+    .hunk { border-bottom: 1px solid var(--line-strong); }
+    .hunk:last-child { border-bottom: 0; }
+    .hunk-head { display: grid; grid-template-columns: minmax(0,1fr) 224px; align-items: center; min-height: 42px; padding: 5px 0 5px 12px; background: #f7f5fd; border-bottom: 1px solid var(--line); }
+    .hunk-identity { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .hunk-identity input { margin: 0; }
+    .hunk-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 720; }
+    .range { color: var(--muted); font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 11px; white-space: nowrap; }
+    .route-control { display: flex; align-items: center; align-self: stretch; min-width: 0; padding: 3px 8px; border-left: 1px solid var(--line-strong); background: #fff; }
+    .route-select { width: 100%; height: 28px; min-width: 0; padding: 0 26px 0 9px; border-color: transparent; background: transparent; color: var(--accent); font-size: 12px; font-weight: 690; text-overflow: ellipsis; }
+    .route-select:hover { border-color: var(--line-strong); background: var(--soft); }
+    .diff-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 224px; min-height: 29px; font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size: 12.5px; line-height: 1.55; }
+    .rewrite-row { display: grid; grid-template-columns: minmax(0,1fr) 224px; font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size: 12.5px; line-height: 1.55; }
+    .rewrite-stack { min-width: 0; }
+    .rewrite-stack .diff-side + .diff-side { border-left: 0; border-top: 1px solid var(--line-strong); }
+    .diff-side { display: grid; grid-template-columns: 46px 25px minmax(0,1fr); min-width: 0; border-bottom: 1px solid rgba(222,220,228,.55); }
+    .diff-side + .diff-side { border-left: 1px solid var(--line-strong); }
+    .diff-side.removed { background: var(--removed); }
+    .diff-side.added { background: var(--added); }
+    .diff-side.unchanged { background: var(--surface); }
+    .diff-side.empty { background: #fafafa; color: var(--quiet); }
+    .move-row { display: grid; grid-template-columns: 46px 25px minmax(0,1fr) 54px 224px; min-height: 34px; border-bottom: 1px solid rgba(222,220,228,.7); background: #f8f7fc; font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size: 12.5px; line-height: 1.55; }
+    .move-row .line-no { background: #f0eef8; color: #766c8a; }
+    .move-arrow { display: flex; align-items: center; justify-content: center; color: var(--accent); font-weight: 780; user-select: none; }
+    .move-code { min-width: 0; padding: 3px 10px 3px 5px; color: #393342; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .move-target-line { display: flex; align-items: center; justify-content: flex-end; padding: 3px 10px 3px 4px; border-left: 1px solid var(--line); color: #766c8a; background: #f0eef8; user-select: none; }
+    .line-route-cell { display: flex; align-items: center; min-width: 0; padding: 4px 8px; border-left: 1px solid var(--line-strong); background: #fff; font-family: Inter,ui-sans-serif,sans-serif; }
+    .line-route-select { width: 100%; height: 28px; min-width: 0; padding: 0 26px 0 9px; border-color: transparent; background: transparent; color: var(--accent); font-size: 12px; font-weight: 690; text-overflow: ellipsis; }
+    .line-route-select:hover { border-color: var(--line-strong); background: var(--soft); }
+    .line-route-select.is-override { border-color: #d5cef8; background: var(--accent-soft); }
+    .line-gap { display: grid; grid-template-columns: minmax(0,1fr) 224px; min-height: 28px; border-bottom: 1px solid var(--line); background: #f5f3fa; color: var(--muted); font: 12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .line-gap-copy { display: flex; align-items: center; justify-content: center; padding: 5px 12px; }
+    .line-gap-route { border-left: 1px solid var(--line-strong); }
+    .line-no { display: flex; align-items: center; justify-content: flex-end; padding: 3px 8px 3px 4px; color: var(--quiet); background: rgba(0,0,0,.025); user-select: none; }
+    .removed .line-no { background: var(--removed-line); color: #a86470; }
+    .added .line-no { background: var(--added-line); color: #4f8c76; }
+    .sign { display: flex; align-items: center; justify-content: center; color: var(--quiet); user-select: none; }
+    .removed .sign { color: var(--removed-text); }
+    .added .sign { color: var(--added-text); }
+    .line-code { min-width: 0; padding: 3px 10px 3px 5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .removed .line-code { color: #713844; }
+    .added .line-code { color: #165e48; }
+    .md-marker { color: #7763d9; font-weight: 780; }
+    .md-link { color: var(--accent); text-decoration: underline; text-decoration-color: #c5bdf3; text-underline-offset: 2px; }
+    .empty-message { color: var(--quiet); font-family: Inter,ui-sans-serif,sans-serif; font-style: italic; }
+    .footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 66px; padding: 12px 28px; border-top: 1px solid var(--line); background: #fcfbfd; }
+    .footer-copy { color: var(--muted); font-size: 13px; }
+    .footer-copy strong { color: var(--text); }
+    .footer-actions { display: flex; align-items: center; gap: 9px; }
+    .toast { position: fixed; left: 50%; bottom: 28px; translate: -50% 12px; opacity: 0; pointer-events: none; padding: 10px 15px; border-radius: 8px; background: #2d2935; color: #fff; font-size: 13px; box-shadow: 0 12px 30px rgba(0,0,0,.22); transition: .18s ease; }
+    .toast.show { opacity: 1; translate: -50% 0; }
+    @media (max-width: 980px) {
+      .page-shell { padding: 0; } .workspace { width: 100%; border-radius: 0; border-left: 0; border-right: 0; }
+      .toolbar { align-items: flex-start; flex-direction: column; } .toolbar-side { width: 100%; flex-wrap: wrap; } .toolbar select { flex: 1; min-width: 210px; }
+      .hunk-head { grid-template-columns: 1fr; padding: 6px 12px; } .route-control { padding: 6px 0 0; border-left: 0; border-top: 1px solid var(--line); } .route-select { width: 100%; max-width: none; }
+      .diff-row, .rewrite-row, .file-head, .folded-gap { grid-template-columns: 1fr; }
+      .move-row { grid-template-columns: 42px 24px minmax(0,1fr) 46px; }
+      .move-row .line-route-cell { grid-column: 1 / -1; }
+      .line-route-cell { min-height: 38px; border-left: 0; border-top: 1px solid var(--line); }
+      .line-gap { grid-template-columns: 1fr; }
+      .line-gap-route { display: none; }
+      .diff-side + .diff-side, .file-side + .file-side, .gap-side + .gap-side { border-left: 0; border-top: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <section class="workspace">
+      <header class="topbar">
+        <div><div class="eyebrow">Note split review</div><h1>Route the original Markdown into focused notes</h1></div>
+        <div class="top-actions"><span class="pill">1 source note</span><button class="icon-button" aria-label="Close">×</button></div>
+      </header>
+      <div class="summary"><strong id="summary-primary">12 Markdown blocks in this split</strong><span class="muted" id="summary-secondary">9 routed · 2 remain in source · 1 unresolved</span></div>
+      <div class="guidance"><input id="guidance" type="text" placeholder="Tell Peak how this split should change" /><button class="button" id="update-plan">Update split plan</button></div>
+      <div class="toolbar">
+        <div class="toolbar-side"><span class="toolbar-label">Show</span><select id="target-filter" aria-label="Filter the diff by destination note"></select><label class="select-visible"><input id="select-visible" type="checkbox" /> Select visible</label><span class="selection-count" id="selection-count">0 selected</span></div>
+        <div class="toolbar-side"><span class="toolbar-label">Route selected to</span><select id="bulk-route" aria-label="Route selected Markdown blocks"><option value="">Choose destination…</option><option value="suggested">Peak's suggested destinations</option><option value="overview">Research overview.md</option><option value="decisions">Research decisions.md</option><option value="evidence">Research evidence.md</option><option value="source">Keep in Research synthesis.md</option><option value="new">Create a new note…</option></select></div>
+      </div>
+      <section class="diff-shell" aria-label="Markdown split line diff">
+        <div class="file-head">
+          <div class="file-side"><span class="file-mark">source</span><span class="file-name">Research synthesis.md</span><span class="file-note">original Markdown</span></div>
+          <div class="file-side"><span class="file-mark">after split</span><span class="file-name" id="destination-file-name">All destination notes</span><span class="file-note" id="destination-file-note">proposed Markdown</span></div>
+          <div class="file-side"><span class="file-mark">line destination</span><span class="file-note">change any line</span></div>
+        </div>
+        <div id="diff-stream"></div>
+      </section>
+      <footer class="footer"><div class="footer-copy"><strong id="footer-count">11 routes ready</strong> · Nothing changes until the combined Change Set is applied and verified.</div><div class="footer-actions"><button class="button" id="keep-source">Keep as one note</button><button class="button primary" id="review-change-set">Review split Change Set</button></div></footer>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    const routes = {
+      overview: { name: 'Research overview.md' }, decisions: { name: 'Research decisions.md' },
+      evidence: { name: 'Research evidence.md' }, source: { name: 'Research synthesis.md' },
+    };
+    const blocks = [
+      { id:1, from:1, suggested:'overview', route:'overview', target:1, lines:['# Research purpose','','This note tracks the evidence, decisions, and open questions for the August research cycle.'] },
+      { id:2, from:5, suggested:'overview', route:'overview', target:5, lines:['## Current question','','How should Peak help people maintain a knowledge base without hiding the evidence?'] },
+      { id:3, from:9, suggested:'overview', route:'overview', target:9, lines:['> The product should make maintenance decisions visible, reversible, and easy to verify.'] },
+      { id:4, from:11, suggested:'evidence', route:'evidence', target:1, lines:['## Interview evidence','','- 17 of 21 participants lost trust when an AI changed files silently.','- 14 wanted to see the exact source before accepting a suggestion.'] },
+      { id:5, from:16, suggested:'overview', route:'overview', target:12, lines:['## Product direction','','The main loop is **Scan → review → verify**.'], targetLines:['## Product direction','','The main loop is **Scan → understand → decide → verify**.'] },
+      { id:6, from:20, suggested:'decisions', route:'decisions', target:1, lines:['## Decision: keep user files guarded','','Peak may update machine knowledge automatically, but Markdown edits require explicit Apply.'] },
+      { id:7, from:24, suggested:'evidence', route:'evidence', target:6, lines:['## Supporting records','','- [[Interview synthesis]]','- [[Research evidence map]]','- [[Model routing decisions]]'] },
+      { id:8, from:30, suggested:'overview', route:'overview', target:16, lineRoutes:{2:'decisions'}, lines:['## Open questions','','1. How should the Work queue summarize evidence?','2. When should AI suggestions be refreshed?'] },
+      { id:9, from:35, suggested:'source', route:'source', target:null, lines:['## Working scratchpad','','- Compare two alternative labels for Community membership.','- Revisit the cost estimate after model routing is final.'] },
+      { id:10, from:40, suggested:'decisions', route:'decisions', target:5, lines:['## Decision: Community identity remains stable','','Changed notes are compared with the complete current graph, not treated as an isolated subset.'] },
+      { id:11, from:44, suggested:'source', route:'source', target:null, lines:['<!-- owner note: preserve this paragraph until the next planning review -->'] },
+      { id:12, from:46, suggested:'evidence', route:null, target:11, lines:['## Imported meeting evidence','','The 21 imported notes share one receipt, related subjects, and the same August objective.'] },
+    ];
+    const selected = new Set(); let currentFilter = 'all'; let newNoteCounter = 1; let toastTimer;
+    const filter = document.getElementById('target-filter'); const stream = document.getElementById('diff-stream'); const selectVisible = document.getElementById('select-visible'); const bulkRoute = document.getElementById('bulk-route');
+
+    function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[character]); }
+    function markdownMarkup(line) {
+      let safe = escapeHtml(line || ' ');
+      safe = safe.replace(/(\[\[[^\]]+\]\])/g, '<span class="md-link">$1</span>');
+      safe = safe.replace(/^(#{1,6}|&gt;|-|\d+\.)\s/, '<span class="md-marker">$1</span> ');
+      safe = safe.replace(/(\*\*|`)([^`*]+)(\*\*|`)/g, '<span class="md-marker">$1</span>$2<span class="md-marker">$3</span>');
+      return safe || '&nbsp;';
+    }
+    function routeValues() {
+      const values = [['','Choose destination…'],['overview',routes.overview.name],['decisions',routes.decisions.name],['evidence',routes.evidence.name],['source','Keep in Research synthesis.md']];
+      Object.entries(routes).forEach(([id,route]) => { if (!['overview','decisions','evidence','source'].includes(id)) values.push([id,route.name]); });
+      values.push(['new','Create a new note…']);
+      return values;
+    }
+    function routeOptionMarkup(block) {
+      return routeValues().map(([value,label]) => `<option value="${escapeHtml(value)}" ${String(block.route || '') === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+    }
+    function effectiveRoute(block,index) {
+      if (Object.prototype.hasOwnProperty.call(block.lineRoutes || {},index)) return block.lineRoutes[index];
+      return block.route;
+    }
+    function hasLineOverride(block,index) { return Object.prototype.hasOwnProperty.call(block.lineRoutes || {},index); }
+    function visibleLineIndexes(block) {
+      const indexes = block.lines.map((_,index) => index);
+      return currentFilter === 'all' ? indexes : indexes.filter(index => effectiveRoute(block,index) === currentFilter);
+    }
+    function visibleBlocks() { return blocks.filter(block => visibleLineIndexes(block).length > 0); }
+    function lineRouteOptionMarkup(block,index) {
+      const routeId = effectiveRoute(block,index);
+      return routeValues().map(([value,label]) => `<option value="${escapeHtml(value)}" ${String(routeId || '') === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+    }
+    function lineRouteCell(block,index) {
+      const override = hasLineOverride(block,index) ? ' is-override' : '';
+      return `<div class="line-route-cell"><select class="line-route-select${override}" data-line-block="${block.id}" data-line-index="${index}" aria-label="Destination for source line ${block.from + index}">${lineRouteOptionMarkup(block,index)}</select></div>`;
+    }
+    function destinationLineNumber(block,index,routeId) {
+      if (!routeId || routeId === 'source') return '';
+      let lineNumber = 0;
+      for (const candidate of blocks) {
+        for (let candidateIndex = 0; candidateIndex < candidate.lines.length; candidateIndex += 1) {
+          if (effectiveRoute(candidate,candidateIndex) === routeId) lineNumber += 1;
+          if (candidate.id === block.id && candidateIndex === index) return lineNumber;
+        }
+      }
+      return '';
+    }
+    function renderFilter() {
+      const options = [['all','All destination notes'],['overview',routes.overview.name],['decisions',routes.decisions.name],['evidence',routes.evidence.name],['source','Kept in Research synthesis.md']];
+      Object.entries(routes).forEach(([id,route]) => { if (!['overview','decisions','evidence','source'].includes(id)) options.push([id,route.name]); });
+      filter.innerHTML = options.map(([id,label]) => `<option value="${escapeHtml(id)}" ${currentFilter === id ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+      const route = routes[currentFilter]; document.getElementById('destination-file-name').textContent = currentFilter === 'all' ? 'All destination notes' : route.name;
+      const routedLines = blocks.reduce((count,block) => count + block.lines.filter((_,index) => effectiveRoute(block,index) === currentFilter).length,0);
+      document.getElementById('destination-file-note').textContent = currentFilter === 'all' ? 'proposed Markdown' : `${routedLines} routed lines`;
+    }
+    function diffSide(kind, number, sign, content) { return `<div class="diff-side ${kind}"><span class="line-no">${number || ''}</span><span class="sign">${sign}</span><span class="line-code">${content}</span></div>`; }
+    function movedLine(block,index,source,destination,content) { return `<div class="move-row" data-line-mode="moved"><span class="line-no">${source}</span><span class="move-arrow">→</span><span class="move-code">${content}</span><span class="move-target-line">${destination}</span>${lineRouteCell(block,index)}</div>`; }
+    function renderLine(block,line,index) {
+      const source = block.from + index; const routeId = effectiveRoute(block,index); const destination = destinationLineNumber(block,index,routeId); const targetLine = block.targetLines?.[index] ?? line; const content = markdownMarkup(line);
+      if (routeId === 'source') return `<div class="diff-row">${diffSide('unchanged',source,' ',content)}${diffSide('empty','','','<span class="empty-message">Stays in source</span>')}${lineRouteCell(block,index)}</div>`;
+      if (!routeId) return `<div class="diff-row">${diffSide('unchanged',source,' ',content)}${diffSide('empty','','','<span class="empty-message">Choose a destination</span>')}${lineRouteCell(block,index)}</div>`;
+      if (line === targetLine) return movedLine(block,index,source,destination,content);
+      return `<div class="rewrite-row" data-line-mode="rewritten"><div class="rewrite-stack">${diffSide('removed',source,'−',content)}${diffSide('added',destination,'+',markdownMarkup(targetLine))}</div>${lineRouteCell(block,index)}</div>`;
+    }
+    function renderLineGap(count) { return `<div class="line-gap"><div class="line-gap-copy">⋯ ${count} source line${count === 1 ? '' : 's'} routed to another note</div><div class="line-gap-route"></div></div>`; }
+    function renderHunkLines(block) {
+      const indexes = visibleLineIndexes(block); let previous = -1; let markup = '';
+      indexes.forEach(index => {
+        if (currentFilter !== 'all' && index - previous > 1) markup += renderLineGap(index - previous - 1);
+        markup += renderLine(block,block.lines[index],index); previous = index;
+      });
+      if (currentFilter !== 'all' && previous < block.lines.length - 1) markup += renderLineGap(block.lines.length - previous - 1);
+      return markup;
+    }
+    function renderGap(previous,block) {
+      if (currentFilter === 'all' || !previous) return '';
+      const previousEnd = previous.from + previous.lines.length - 1; const hiddenLines = block.from - previousEnd - 1;
+      if (hiddenLines <= 0) return '';
+      const hiddenBlocks = blocks.filter(candidate => candidate.from > previousEnd && candidate.from < block.from).length;
+      return `<div class="folded-gap"><div class="gap-side">⋯ ${hiddenLines} source lines folded · ${hiddenBlocks} block${hiddenBlocks === 1 ? '' : 's'} routed elsewhere</div><div class="gap-side">⋯ non-contiguous Markdown omitted from this target</div></div>`;
+    }
+    function renderHunk(block) {
+      const sourceEnd = block.from + block.lines.length - 1;
+      return `<section class="hunk" data-block="${block.id}"><div class="hunk-head"><div class="hunk-identity"><input class="block-check" type="checkbox" data-id="${block.id}" ${selected.has(block.id) ? 'checked' : ''} /><span class="range">@@ −${block.from},${block.lines.length}</span><span class="hunk-title">${escapeHtml(block.lines.find(line => line.trim()) || `Source lines ${block.from}–${sourceEnd}`)}</span></div><div class="route-control"><select class="route-select" data-route-id="${block.id}" aria-label="Default destination for this Markdown block">${routeOptionMarkup(block)}</select></div></div>${renderHunkLines(block)}</section>`;
+    }
+    function renderStream() {
+      const visible = visibleBlocks(); let previous = null;
+      stream.innerHTML = visible.map(block => { const gap = renderGap(previous,block); previous = block; return gap + renderHunk(block); }).join('') || '<div class="folded-gap"><div class="gap-side">No Markdown blocks use this destination.</div><div class="gap-side">Choose another target or update the split plan.</div></div>';
+      stream.querySelectorAll('.block-check').forEach(input => input.addEventListener('change', () => { const id = Number(input.dataset.id); input.checked ? selected.add(id) : selected.delete(id); updateControls(); }));
+      stream.querySelectorAll('.route-select').forEach(select => select.addEventListener('change', () => changeRoute(Number(select.dataset.routeId),select.value)));
+      stream.querySelectorAll('.line-route-select').forEach(select => select.addEventListener('change', () => changeLineRoute(Number(select.dataset.lineBlock),Number(select.dataset.lineIndex),select.value)));
+      updateControls();
+    }
+    function createNewRoute() {
+      const name = window.prompt('Name the new Markdown note',`Research follow-up ${newNoteCounter}.md`); if (!name) return null;
+      const routeId = `new-${newNoteCounter++}`; routes[routeId] = { name:name.endsWith('.md') ? name : `${name}.md` }; return routeId;
+    }
+    function changeRoute(id,routeId) {
+      if (routeId === 'new') { routeId = createNewRoute(); if (!routeId) { renderStream(); return; } }
+      const block = blocks.find(candidate => candidate.id === id); if (!block) return; block.route = routeId || null; block.lineRoutes = {}; selected.delete(id); renderAll();
+    }
+    function changeLineRoute(blockId,index,routeId) {
+      if (routeId === 'new') { routeId = createNewRoute(); if (!routeId) { renderStream(); return; } }
+      const block = blocks.find(candidate => candidate.id === blockId); if (!block) return;
+      const nextRoute = routeId || null; block.lineRoutes ||= {};
+      if (nextRoute === block.route) delete block.lineRoutes[index]; else block.lineRoutes[index] = nextRoute;
+      renderAll();
+    }
+    function updateControls() {
+      const visible = visibleBlocks(); const selectedVisible = visible.filter(block => selected.has(block.id)).length;
+      selectVisible.checked = visible.length > 0 && selectedVisible === visible.length; selectVisible.indeterminate = selectedVisible > 0 && selectedVisible < visible.length;
+      document.getElementById('selection-count').textContent = `${selected.size} selected`;
+      const lineRoutes = blocks.flatMap(block => block.lines.map((_,index) => effectiveRoute(block,index))); const unresolved = lineRoutes.filter(routeId => !routeId).length; const moved = lineRoutes.filter(routeId => routeId && routeId !== 'source').length; const kept = lineRoutes.filter(routeId => routeId === 'source').length;
+      document.getElementById('summary-secondary').textContent = `${moved} lines routed · ${kept} stay in source · ${unresolved} unresolved`;
+      document.getElementById('footer-count').textContent = unresolved ? `${lineRoutes.length - unresolved} of ${lineRoutes.length} line routes ready` : 'All line routes ready';
+    }
+    function renderAll() { renderFilter(); renderStream(); }
+    filter.addEventListener('change', () => { currentFilter = filter.value; selected.clear(); renderAll(); });
+    selectVisible.addEventListener('change', () => { visibleBlocks().forEach(block => selectVisible.checked ? selected.add(block.id) : selected.delete(block.id)); renderStream(); });
+    bulkRoute.addEventListener('change', () => {
+      if (!bulkRoute.value) return; let routeId = bulkRoute.value; const targets = selected.size ? [...selected] : visibleBlocks().map(block => block.id);
+      if (routeId === 'new') { routeId = createNewRoute(); if (!routeId) { bulkRoute.value=''; return; } }
+      targets.forEach(id => { const block=blocks.find(candidate => candidate.id === id); if (block) { block.route = routeId === 'suggested' ? block.suggested : routeId; block.lineRoutes = {}; } });
+      selected.clear(); bulkRoute.value=''; currentFilter='all'; renderAll(); showToast(`${targets.length} Markdown block${targets.length === 1 ? '' : 's'} updated.`);
+    });
+    document.getElementById('update-plan').addEventListener('click', () => { const input=document.getElementById('guidance'); if (!input.value.trim()) { showToast('Add guidance before updating the split plan.'); return; } showToast('Split suggestions refreshed. Existing choices were preserved.'); });
+    document.getElementById('keep-source').addEventListener('click', () => { blocks.forEach(block => { block.route='source'; block.lineRoutes={}; }); selected.clear(); currentFilter='all'; renderAll(); showToast('All Markdown remains in Research synthesis.md for final review.'); });
+    document.getElementById('review-change-set').addEventListener('click', () => showToast('Opening the combined file and backlink diff.'));
+    document.querySelector('.icon-button').addEventListener('click', () => showToast('Concept Mock: close is not connected to the main workspace.'));
+    function showToast(message) { const toast=document.getElementById('toast'); toast.textContent=message; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(() => toast.classList.remove('show'),2200); }
+    renderAll();
+  </script>
+</body>
+</html>

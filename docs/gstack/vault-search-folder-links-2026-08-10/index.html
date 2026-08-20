@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant · Folder Tree Graph Layout</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #eceef1;
+      --surface: #ffffff;
+      --surface-soft: #f8f7f9;
+      --border: #e5e2e9;
+      --text: #2d2933;
+      --muted: #77717e;
+      --faint: #aaa5af;
+      --purple: #7c3aed;
+      --purple-strong: #6422c7;
+      --purple-soft: #f2eafd;
+      --purple-faint: #fbf9fe;
+      --purple-line: #9566df;
+      --incoming: #0f9d83;
+      --green: #26967d;
+      --structure: #d9d5de;
+      --shadow: 0 18px 50px rgba(43, 38, 52, 0.16);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-width: 1220px; min-height: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: auto;
+      color: var(--text);
+      background: var(--page);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button:focus-visible { outline: 2px solid rgba(124, 58, 237, 0.42); outline-offset: 2px; }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(1536px, calc(100vw - 48px));
+      min-width: 1172px;
+      height: min(940px, calc(100vh - 48px));
+      min-height: 820px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: 56px 72px 58px 44px 1fr 46px;
+      border: 1px solid #d6d3db;
+      border-radius: 17px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+      background: #f1f1f2;
+    }
+
+    .tab {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #53505a;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .tab.active { color: var(--purple); background: #fff; }
+    .tab.active::after { content: ""; position: absolute; inset: auto 0 -1px; height: 2px; background: var(--purple); }
+
+    .icon {
+      width: 15px;
+      height: 15px;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 12px 20px 8px;
+    }
+
+    .search-shell {
+      flex: 1;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border: 1px solid #ece9ef;
+      border-radius: 24px;
+      background: #faf9fb;
+      box-shadow: inset 0 1px 2px rgba(31, 26, 39, 0.04);
+    }
+
+    .search-shell input { width: 100%; border: 0; outline: 0; background: transparent; color: #45404c; font-size: 16px; }
+    .refine { height: 36px; padding: 0 10px; border: 0; border-radius: 8px; color: var(--purple); background: transparent; font-weight: 680; cursor: pointer; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 7px 20px 10px;
+      border-bottom: 1px solid #efedf1;
+    }
+
+    .segmented {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #f6f5f7;
+    }
+
+    .segmented button {
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 13px;
+      border: 0;
+      border-radius: 999px;
+      color: #77727e;
+      background: transparent;
+      font-weight: 640;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .segmented button.active { color: #fff; background: var(--purple); box-shadow: 0 3px 10px rgba(124, 58, 237, 0.24); }
+    .toolbar-right { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+    .layouts button { padding-inline: 12px; }
+
+    .semantic { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; color: #716d77; background: transparent; font-size: 14px; font-weight: 610; white-space: nowrap; cursor: pointer; }
+    .switch { width: 34px; height: 20px; padding: 2px; border-radius: 999px; background: #d9d6dd; }
+    .switch::after { content: ""; display: block; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.16); transition: transform 140ms ease; }
+    .semantic.active { color: #5f2ca4; }
+    .semantic.active .switch { background: var(--purple); }
+    .semantic.active .switch::after { transform: translateX(14px); }
+
+    .canvas-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px 0 21px;
+      border-bottom: 1px solid #f0eef2;
+      background: #fff;
+    }
+
+    .layout-note { display: flex; align-items: center; gap: 9px; color: #77717e; font-size: 12px; font-weight: 570; }
+    .layout-note i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(38,150,125,.1); }
+    .layout-note strong { color: #4a4550; font-weight: 680; }
+
+    .graph-canvas {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 66% 48%, rgba(124,58,237,.025), transparent 32%),
+        linear-gradient(#fff, #fff);
+    }
+
+    .cluster { display: none; }
+
+    #graph-svg { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+
+    .structure-edge { fill: none; stroke: #e9e5ec; stroke-width: 1; opacity: .9; stroke-linecap: round; stroke-linejoin: round; }
+    .structure-edge.active { stroke: #d6c3ec; opacity: .95; }
+    .link-edge { fill: none; stroke: var(--purple-line); stroke-width: 1.8; opacity: .84; }
+    .link-edge.incoming { stroke: var(--incoming); stroke-width: 2; opacity: .9; }
+    .link-edge.mutual { stroke-width: 1.9; }
+    .link-edge.semantic-edge { stroke-dasharray: 8 7; stroke-linecap: round; animation: semantic-flow 900ms linear infinite; }
+    .link-edge.trunk { stroke-width: 1.5; opacity: .58; }
+    .link-junction { fill: var(--purple-line); opacity: .82; }
+    .link-junction.incoming { fill: var(--incoming); }
+
+    @keyframes semantic-flow {
+      to { stroke-dashoffset: -30; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .link-edge.semantic-edge { animation: none; }
+    }
+
+    .nodes { position: absolute; inset: 0; z-index: 2; }
+
+    .graph-node {
+      position: absolute;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 6px;
+      color: #4d4853;
+      background: #fbfafc;
+      box-shadow: 0 1px 4px rgba(45, 38, 55, .055);
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+    }
+
+    .graph-node:hover { background: #f6f2fa; box-shadow: 0 2px 7px rgba(54, 43, 67, .09); }
+    .graph-node.folder { width: max-content; min-width: 136px; max-width: 220px; color: #51475e; background: #faf7fd; font-size: 11px; font-weight: 680; }
+    .graph-node.folder.root { min-width: 158px; height: 27px; background: #f3ecfd; color: #5b2d96; box-shadow: 0 2px 7px rgba(82,49,120,.075); }
+    .graph-node.folder.ancestor { color: #5b2d96; background: #f4edfc; box-shadow: 0 2px 7px rgba(82,49,120,.07); }
+    .graph-node.folder.group-folder { color: #6433a2; background: #f1e8fb; }
+    .graph-node.folder.selected-folder { color: #fff; background: var(--purple); box-shadow: 0 4px 13px rgba(124,58,237,.2); }
+    .graph-node.file { width: max-content; min-width: 190px; max-width: 270px; font-size: 10.8px; }
+    .graph-node.file.dimmed { opacity: .65; }
+    .graph-node.file.connected { color: #51475e; background: #f8f3fe; box-shadow: 0 1px 5px rgba(93, 60, 132, .07); }
+    .graph-node.file.group-selected { color: #5b2d96; background: #eee3fb; box-shadow: 0 2px 7px rgba(82,49,120,.09); opacity: 1; }
+    .graph-node.file.selected { min-width: 240px; color: #fff; border-radius: 6px; background: var(--purple); box-shadow: 0 4px 13px rgba(124,58,237,.2); opacity: 1; }
+
+    .node-label { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .folder .node-label { font-weight: 680; }
+    .node-icon { color: #8a8490; }
+    .folder .node-icon { color: var(--purple); }
+    .root .node-icon, .selected .node-icon, .selected-folder .node-icon { color: currentColor; }
+
+    .node-count { min-width: 19px; height: 17px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; border-radius: 99px; color: #8450c4; background: rgba(124,58,237,.08); font-size: 9.5px; font-weight: 740; }
+    .root .node-count { color: #fff; background: var(--purple); }
+    .selected-folder .node-count { color: var(--purple); background: #fff; }
+    .link-count { height: 17px; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px; border-radius: 99px; color: #88818e; background: rgba(77,65,88,.045); font-size: 9px; font-weight: 700; }
+    .connected .link-count { color: #6937ad; background: rgba(124,58,237,.09); }
+    .selected .link-count { color: #fff; background: rgba(255,255,255,.18); }
+
+    .port { display: none; position: absolute; top: 50%; width: 6px; height: 6px; transform: translateY(-50%); border: 0; border-radius: 50%; background: #cec8d2; box-shadow: 0 0 0 2px #fff; }
+    .port.in { display: none; left: -3px; }
+    .port.out { right: -4px; }
+    .root .port.in, .folder .port.in { display: none; }
+    .folder .port.out { display: none; }
+    .selected .port { background: #fff; box-shadow: 0 0 0 1px var(--purple); }
+    .selected .port.out, .connected .port.out, .group-selected .port.out { display: block; }
+    .connected .port.out { background: #a378df; box-shadow: 0 0 0 1px #a378df; }
+    .group-selected .port.out { background: #8d5dcc; box-shadow: 0 0 0 1px #8d5dcc; }
+
+    .legend {
+      position: absolute;
+      right: 18px;
+      bottom: 17px;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 9px;
+      color: #79737f;
+      background: rgba(255,255,255,.82);
+      box-shadow: none;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 23px; height: 10px; display: inline-block; position: relative; }
+    .legend i::after { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 1px; background: var(--structure); }
+    .legend .curve::after { height: 8px; top: 0; border-top: 2px solid var(--purple-line); border-radius: 50%; background: transparent; }
+    .legend .outgoing-key::before { content: ""; position: absolute; z-index: 1; right: -1px; top: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid var(--purple-line); }
+    .legend .incoming-key::after { border-color: var(--incoming); }
+    .legend .incoming-key::before { content: ""; position: absolute; z-index: 1; right: 0; top: 1px; width: 6px; height: 6px; border-top: 2px solid var(--incoming); border-right: 2px solid var(--incoming); transform: rotate(45deg); }
+    .legend .semantic-key::after { border-top-style: dashed; border-radius: 0; }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-top: 1px solid #efedf1;
+      color: #a19ca7;
+      background: rgba(255,255,255,.97);
+      font-size: 12px;
+    }
+
+    .shortcuts { display: flex; align-items: center; gap: 15px; }
+    .shortcut { display: inline-flex; align-items: center; gap: 6px; }
+    .key { min-width: 26px; height: 22px; display: inline-flex; align-items: center; justify-content: center; padding: 0 7px; border: 1px solid #ece9ee; border-radius: 5px; color: #85808b; background: #faf9fb; }
+    .result-count { color: #918b97; }
+    .result-count strong { color: #4c4752; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="app" aria-label="Vault Search folder tree graph layout concept">
+      <div class="tabs">
+        <div class="tab active">Vault Search</div>
+        <div class="tab">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m12 3-1.3 3.7L7 8l3.7 1.3L12 13l1.3-3.7L17 8l-3.7-1.3L12 3Z"/><path d="m18 14-.8 2.2L15 17l2.2.8L18 20l.8-2.2L21 17l-2.2-.8L18 14Z"/></svg>
+          AI Search
+        </div>
+      </div>
+
+      <div class="search-row">
+        <label class="search-shell"><input value="assistant" aria-label="Search Vault" /></label>
+        <button class="refine" type="button">Refine</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="segmented" aria-label="Result view">
+          <button type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>List</button>
+          <button type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M3 12h6M3 6h10M3 18h10M13 12h8M17 6v12"/></svg>Tree</button>
+          <button class="active" type="button"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><path d="M9 6h6M18 9v6M9 8l6 7"/></svg>Graph</button>
+        </div>
+        <div class="toolbar-right">
+          <div class="segmented layouts" aria-label="Graph layout">
+            <button type="button">Constellation</button>
+            <button type="button">Flow ↓</button>
+            <button type="button">Flow →</button>
+            <button class="active" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h5M4 12h5M4 19h5M9 5h4v14M13 8h7M13 16h7"/></svg>Folder tree</button>
+            <button type="button">Orbit</button>
+          </div>
+          <button class="semantic active" type="button" aria-pressed="true" data-semantic-toggle><span class="switch" aria-hidden="true"></span>Semantic</button>
+        </div>
+      </div>
+
+      <div class="canvas-head">
+        <div class="layout-note"><i></i><span><strong>Vertical tree order</strong> · click a file or folder to focus, click again to clear</span></div>
+      </div>
+
+      <div class="graph-canvas" id="graph-canvas">
+        <svg id="graph-svg" aria-hidden="true">
+          <defs>
+            <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#9566df"/></marker>
+            <marker id="arrow-incoming" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#0f9d83" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></marker>
+          </defs>
+          <g id="structure-layer"></g>
+          <g id="relation-layer"></g>
+        </svg>
+        <div class="nodes" id="nodes"></div>
+        <div class="legend">
+          <span><i class="curve outgoing-key"></i>Outgoing</span>
+          <span><i class="curve incoming-key"></i>Incoming</span>
+          <span><i class="curve semantic-key"></i>Semantic · dashed</span>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <div class="shortcuts">
+          <span class="shortcut"><span class="key">↑ ↓ ← →</span>navigate graph</span>
+          <span class="shortcut"><span class="key">Enter</span>open</span>
+          <span class="shortcut"><span class="key">Space</span>focus links</span>
+        </div>
+        <span class="result-count">50 results&nbsp; · &nbsp;<strong>646ms</strong></span>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const icon = {
+      folder: '<svg class="icon node-icon" viewBox="0 0 24 24"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-11Z"/></svg>',
+      file: '<svg class="icon node-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>',
+      link: '<svg class="icon" viewBox="0 0 24 24" style="width:10px;height:10px"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1"/></svg>'
+    };
+
+    const graphNodes = [
+      { id: 'kb1', type: 'folder', root: true, label: 'kb1-life-notes', count: 9, x: 3, y: 10 },
+      { id: 'jobs', type: 'folder', label: 'D-26年找工作', count: 2, parent: 'kb1', x: 7.5, y: 36 },
+      { id: 'story', type: 'file', label: '2-Story Cards-3-Peak Assistant-Search Agent Redesign', links: 1, parent: 'jobs', x: 12, y: 62 },
+      { id: 'd26-index', type: 'file', label: '0-Index', links: 0, parent: 'jobs', x: 12, y: 88 },
+      { id: 'diary', type: 'folder', label: 'E-日记', count: 7, parent: 'kb1', x: 7.5, y: 114 },
+      { id: 'diary-2025', type: 'folder', label: '2025-1111-25S2结束后', count: 6, parent: 'diary', x: 12, y: 140 },
+      { id: 'experience', type: 'file', label: '1118-peak-assistant体会', links: 1, parent: 'diary-2025', x: 16.5, y: 166 },
+      { id: 'dev-log', type: 'file', label: '1203-PeakAssistant-开发日志', links: 4, parent: 'diary-2025', x: 16.5, y: 192 },
+      { id: 'why-slow', type: 'file', label: 'peakassistant-whySubmitPathSoSlow', links: 2, parent: 'diary-2025', x: 16.5, y: 218 },
+      { id: 'diary-2026', type: 'folder', label: '2026-01', count: 1, parent: 'diary', x: 12, y: 244 },
+      { id: 'cleanup', type: 'file', label: '0611-全面整理PeakAssistant', links: 2, parent: 'diary-2026', x: 16.5, y: 270 },
+
+      { id: 'kb2', type: 'folder', root: true, label: 'kb2-learn-prd', count: 31, x: 3, y: 318 },
+      { id: 'ideas-root', type: 'folder', label: 'B-2-创意和想法管理', count: 11, parent: 'kb2', x: 7.5, y: 344 },
+      { id: 'ideas', type: 'folder', label: 'A-All Ideas', count: 1, parent: 'ideas-root', x: 12, y: 370 },
+      { id: 'peak-idea', type: 'file', label: 'AI-peak-assistant-obsidian', links: 5, parent: 'ideas', x: 16.5, y: 396 },
+      { id: 'requirements', type: 'folder', label: 'B-All Requirements', count: 9, parent: 'ideas-root', x: 12, y: 422 },
+      { id: 'chatbot', type: 'file', label: 'AI-peakAssistant-Chatbot', links: 3, parent: 'requirements', x: 16.5, y: 448 },
+      { id: 'more-features', type: 'file', label: 'AI-peakAssistant-MoreFeaturesList', links: 1, parent: 'requirements', x: 16.5, y: 474 },
+      { id: 'search-rag', type: 'file', label: 'AI-peakAssistant-Search-RAG', links: 4, parent: 'requirements', x: 16.5, y: 500 },
+      { id: 'storage', type: 'file', label: 'AI-peakAssistant-storage', links: 3, parent: 'requirements', x: 16.5, y: 526 },
+      { id: 'user-value', type: 'file', label: 'AI-peakAssistant-UserValue', links: 3, parent: 'requirements', x: 16.5, y: 552 },
+      { id: 'bad-case', type: 'file', label: 'AI-peakAssistant-VaultSearchBadCase', links: 2, parent: 'requirements', x: 16.5, y: 578 },
+      { id: 'mess', type: 'folder', label: 'B-Z-mess', count: 20, parent: 'kb2', x: 7.5, y: 604 },
+      { id: 'rank', type: 'file', label: 'peakassistant-refRank', links: 3, parent: 'mess', x: 12, y: 630 }
+    ];
+
+    const relations = [
+      { from: 'dev-log', to: 'peak-idea', lane: 0 },
+      { from: 'peak-idea', to: 'chatbot', lane: 1 },
+      { from: 'peak-idea', to: 'search-rag', lane: 2, mutual: true, semantic: true },
+      { from: 'peak-idea', to: 'storage', lane: 3 },
+      { from: 'peak-idea', to: 'user-value', lane: 4, semantic: true },
+      { from: 'experience', to: 'dev-log', lane: 1 },
+      { from: 'why-slow', to: 'dev-log', lane: 2, mutual: true },
+      { from: 'chatbot', to: 'user-value', lane: 0, mutual: true },
+      { from: 'more-features', to: 'chatbot', lane: 1 },
+      { from: 'search-rag', to: 'bad-case', lane: 2 },
+      { from: 'storage', to: 'bad-case', lane: 3 },
+      { from: 'search-rag', to: 'storage', lane: 4, mutual: true },
+      { from: 'rank', to: 'search-rag', lane: 0, semantic: true },
+      { from: 'cleanup', to: 'dev-log', lane: 3, semantic: true }
+    ];
+
+    const state = { selected: null, semantic: true };
+    const canvas = document.querySelector('#graph-canvas');
+    const nodesLayer = document.querySelector('#nodes');
+    const structureLayer = document.querySelector('#structure-layer');
+    const relationLayer = document.querySelector('#relation-layer');
+
+    function availableRelations() {
+      return state.semantic ? relations : relations.filter((edge) => !edge.semantic);
+    }
+
+    function descendantIds(folderId) {
+      const ids = new Set();
+      const queue = [folderId];
+      while (queue.length > 0) {
+        const parentId = queue.shift();
+        graphNodes.filter((node) => node.parent === parentId).forEach((child) => {
+          ids.add(child.id);
+          if (child.type === 'folder') queue.push(child.id);
+        });
+      }
+      return ids;
+    }
+
+    function selectedFileIds() {
+      const ids = new Set();
+      if (!state.selected) return ids;
+      const selectedNode = graphNodes.find((node) => node.id === state.selected);
+      if (!selectedNode) return ids;
+      if (selectedNode.type === 'file') {
+        ids.add(selectedNode.id);
+        return ids;
+      }
+      descendantIds(selectedNode.id).forEach((id) => {
+        if (graphNodes.find((node) => node.id === id)?.type === 'file') ids.add(id);
+      });
+      return ids;
+    }
+
+    function selectedRelations() {
+      const selectedFiles = selectedFileIds();
+      return availableRelations().filter((edge) => selectedFiles.has(edge.from) || selectedFiles.has(edge.to));
+    }
+
+    function visibleRelations() {
+      return state.selected ? selectedRelations() : availableRelations();
+    }
+
+    function connectedIds() {
+      const ids = selectedFileIds();
+      if (!state.selected) return ids;
+      selectedRelations().forEach((edge) => { ids.add(edge.from); ids.add(edge.to); });
+      return ids;
+    }
+
+    function ancestorIds(id) {
+      const ids = new Set();
+      let cursor = graphNodes.find((node) => node.id === id);
+      while (cursor?.parent) {
+        ids.add(cursor.parent);
+        cursor = graphNodes.find((node) => node.id === cursor.parent);
+      }
+      return ids;
+    }
+
+    function renderNodes() {
+      const connected = connectedIds();
+      const ancestors = ancestorIds(state.selected);
+      const selectedNode = graphNodes.find((node) => node.id === state.selected);
+      const selectedFiles = selectedFileIds();
+      const groupScope = selectedNode?.type === 'folder' ? descendantIds(selectedNode.id) : new Set();
+      nodesLayer.innerHTML = graphNodes.map((node) => {
+        const classes = ['graph-node', node.type];
+        if (node.root) classes.push('root');
+        if (node.type === 'folder' && node.id === state.selected) classes.push('selected-folder');
+        else if (node.type === 'folder' && groupScope.has(node.id)) classes.push('group-folder');
+        else if (node.type === 'folder' && ancestors.has(node.id)) classes.push('ancestor');
+        if (node.type === 'file' && selectedNode?.type === 'file' && node.id === state.selected) classes.push('selected');
+        else if (node.type === 'file' && selectedNode?.type === 'folder' && selectedFiles.has(node.id)) classes.push('group-selected');
+        else if (node.type === 'file' && connected.has(node.id)) classes.push('connected');
+        else if (node.type === 'file' && state.selected) classes.push('dimmed');
+        const badge = node.type === 'folder'
+          ? `<span class="node-count">${node.count}</span>`
+          : `<span class="link-count">${icon.link}${node.links}</span>`;
+        return `
+          <div class="${classes.join(' ')}" data-node="${node.id}" data-type="${node.type}" role="button" aria-pressed="${node.id === state.selected}" tabindex="0" style="left:${node.x}%;top:${node.y}px" title="${node.label}">
+            <span class="port in"></span>
+            ${icon[node.type]}
+            <span class="node-label">${node.label}</span>
+            ${badge}
+            <span class="port out"></span>
+          </div>
+        `;
+      }).join('');
+
+      nodesLayer.querySelectorAll('[data-node]').forEach((node) => {
+        function select() {
+          state.selected = state.selected === node.dataset.node ? null : node.dataset.node;
+          render();
+        }
+        node.addEventListener('click', select);
+        node.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(); } });
+      });
+    }
+
+    function point(id, side) {
+      const node = nodesLayer.querySelector(`[data-node="${id}"]`);
+      if (!node) return null;
+      const nodeRect = node.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      return {
+        x: (side === 'left' ? nodeRect.left : nodeRect.right) - canvasRect.left,
+        y: nodeRect.top - canvasRect.top + nodeRect.height / 2
+      };
+    }
+
+    function drawStructure() {
+      const canvasRect = canvas.getBoundingClientRect();
+      const activeAncestors = ancestorIds(state.selected);
+      const selectedNode = graphNodes.find((node) => node.id === state.selected);
+      const groupScope = selectedNode?.type === 'folder'
+        ? new Set([selectedNode.id, ...descendantIds(selectedNode.id)])
+        : new Set();
+      const parts = [];
+
+      graphNodes.filter((node) => node.type === 'folder').forEach((parent) => {
+        const children = graphNodes.filter((node) => node.parent === parent.id);
+        if (children.length === 0) return;
+        const parentElement = nodesLayer.querySelector(`[data-node="${parent.id}"]`);
+        if (!parentElement) return;
+
+        const childRects = children.map((child) => {
+          const element = nodesLayer.querySelector(`[data-node="${child.id}"]`);
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          return {
+            child,
+            left: rect.left - canvasRect.left,
+            centerY: rect.top - canvasRect.top + rect.height / 2,
+          };
+        }).filter(Boolean);
+        if (childRects.length === 0) return;
+
+        const parentRect = parentElement.getBoundingClientRect();
+        const railX = Math.min(...childRects.map((entry) => entry.left)) - 13;
+        const railStartY = parentRect.bottom - canvasRect.top + 1;
+        const railEndY = Math.max(...childRects.map((entry) => entry.centerY));
+        const railActive = activeAncestors.has(parent.id) || groupScope.has(parent.id);
+        const railClass = railActive ? 'structure-edge active' : 'structure-edge';
+        parts.push(`<path class="${railClass}" d="M ${railX} ${railStartY} V ${railEndY}" />`);
+
+        childRects.forEach(({ child, left, centerY }) => {
+          const branchActive = child.id === state.selected || activeAncestors.has(child.id) || groupScope.has(child.id);
+          const branchClass = branchActive ? 'structure-edge active' : 'structure-edge';
+          parts.push(`<path class="${branchClass}" d="M ${railX} ${centerY} H ${left}" />`);
+        });
+      });
+
+      structureLayer.innerHTML = parts.join('');
+    }
+
+    function drawRelations() {
+      const selectedFiles = selectedFileIds();
+      const hasSelection = Boolean(state.selected);
+      relationLayer.innerHTML = visibleRelations().map((edge) => {
+        const start = point(edge.from, 'right');
+        const end = point(edge.to, 'right');
+        if (!start || !end) return '';
+        const fromSelected = selectedFiles.has(edge.from);
+        const toSelected = selectedFiles.has(edge.to);
+        const incoming = hasSelection && !fromSelected && toSelected;
+        const verticalDistance = Math.abs(end.y - start.y);
+        const rightmostEndpoint = Math.max(start.x, end.x);
+        const arcDepth = Math.min(240, Math.max(100, 88 + verticalDistance * 0.22 + edge.lane * 14));
+        const routeX = Math.min(canvas.clientWidth - 54, rightmostEndpoint + arcDepth);
+        const classes = ['link-edge'];
+        if (incoming) classes.push('incoming');
+        if (edge.mutual) classes.push('mutual');
+        if (edge.semantic) classes.push('semantic-edge');
+        const endMarker = incoming ? 'arrow-incoming' : 'arrow-purple';
+        const startMarker = incoming ? 'arrow-purple' : 'arrow-incoming';
+        const markerStart = edge.mutual ? `marker-start="url(#${startMarker})"` : '';
+        return `<path class="${classes.join(' ')}" d="M ${start.x} ${start.y} C ${routeX} ${start.y}, ${routeX} ${end.y}, ${end.x} ${end.y}" marker-end="url(#${endMarker})" ${markerStart} />`;
+      }).join('');
+    }
+
+    function render() {
+      renderNodes();
+      requestAnimationFrame(() => { drawStructure(); drawRelations(); });
+    }
+
+    document.querySelector('[data-semantic-toggle]').addEventListener('click', (event) => {
+      state.semantic = !state.semantic;
+      event.currentTarget.classList.toggle('active', state.semantic);
+      event.currentTarget.setAttribute('aria-pressed', String(state.semantic));
+      render();
+    });
+
+    window.addEventListener('resize', () => requestAnimationFrame(() => { drawStructure(); drawRelations(); }));
+    render();
+  </script>
+</body>
+</html>
