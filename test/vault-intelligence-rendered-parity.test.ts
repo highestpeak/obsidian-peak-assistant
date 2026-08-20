@@ -104,6 +104,8 @@ assert.doesNotMatch(source, /pk-vi-check-group-card/, 'Scan Setup must not expan
 assert.doesNotMatch(source, /pk-vi-operation-groups/, 'Scan Setup must not expand all AI operation rows by default');
 assert.match(source, /Find an analyzed theme/, 'Activity keeps the Reference searchable theme picker');
 assert.match(source, /Compared with previous equal period/, 'Activity keeps the selected-period comparison region');
+assert.match(source, /pk-vi-activity-event-kinds/, 'Activity work-session evidence keeps the Reference tag grouping');
+assert.match(source, /scopeMode === 'selected' \? ' is-custom-scope' : ''/, 'custom scope details must follow the Reference state boundary');
 
 const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snapshot);
 const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };
@@ -129,6 +131,7 @@ for (const setupHtml of [normalSetupHtml, zeroSetupHtml]) {
 	assert.doesNotMatch(setupHtml, /pk-vi-scan-operation-list/, 'AI operation details stay collapsed by default');
 	assert.match(setupHtml, /pk-vi-scan-estimate-block/, 'Setup keeps the estimate block');
 	assert.match(setupHtml, /pk-vi-scan-setup-footer/, 'Setup keeps the boundary and primary action footer');
+	assert.match(setupHtml, /pk-vi-scope-selected-row/, 'Setup keeps custom-scope geometry mounted for the selected state');
 }
 assert.match(zeroSetupHtml, /Not indexed yet/, 'zero Setup preserves scope cards with an explicit empty baseline');
 

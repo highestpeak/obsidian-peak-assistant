@@ -90,10 +90,10 @@ assert.match(
 assert.match(styles, /\.cm-scroller\s*\{[\s\S]*?scrollbar-width:\s*none;/);
 assert.match(styles, /\.cm-scroller::\-webkit-scrollbar[\s\S]*?display:\s*none;/);
 
-assert(vaultIntelligence.includes('pk-vi-object-grid'));
+assert(vaultIntelligence.includes('pk-vi-inventory-strip'));
 assert(vaultIntelligence.includes('pk-vi-work-surface'));
 assert(vaultIntelligence.includes('pk-vi-graph-canvas'));
-assert(vaultIntelligence.includes('pk-vi-activity-grid'));
+assert(vaultIntelligence.includes('pk-vi-activity-complete-workspace'));
 assert(vaultIntelligence.includes('pk-vi-maintenance'));
 assert(!vaultIntelligence.includes("['runs', 'Runs']"));
 assert(!vaultIntelligence.includes('@xyflow/react'));
