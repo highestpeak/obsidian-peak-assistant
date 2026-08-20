@@ -21010,6 +21010,18 @@
 .peak-vault-intelligence-view .pk-vi-activity-compare > span small.is-up { color: #24765f; }
 .peak-vault-intelligence-view .pk-vi-activity-compare > span small.is-down { color: #9a5a35; }
 
+.peak-vault-intelligence-view .pk-vi-map-text-empty {
+  display: flex;
+  min-height: 150px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-map-text-empty strong { color: var(--text-normal); font-size: 12px; }
+.peak-vault-intelligence-view .pk-vi-map-text-empty small { font-size: 10px; line-height: 1.45; }
+
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-scan-setup {
   width: min(1280px, 100%);
 }

@@ -117,5 +117,6 @@ Production previously rendered all 19 detector labels and every AI operation by 
 - Overview always keeps four object cards, Continue work summary, activity heatmap, and Knowledge Index. Missing object rows are adapted to canonical zero-count presentation objects.
 - Activity always keeps five source lanes, the range navigator, selected-period metrics, and the work-session region.
 - Scan Setup always keeps all three steps, four task categories, five AI groups, estimate, boundary, and actions. Missing scan history reads `Not indexed yet` instead of removing Step 1.
+- Map text always keeps the Community rail, editor, evidence facts, version history, and actions. With no indexed Community, those controls are explicitly unavailable instead of replacing the workspace with one line of text.
 
 The browser harness verified the searchable source/theme picker, default collapsed state, one-at-a-time AI group expansion, Recorded/AI theme switching, and a real navigator window drag. Post-change real-Obsidian interaction remains `INTERACTION NOT VERIFIED`.

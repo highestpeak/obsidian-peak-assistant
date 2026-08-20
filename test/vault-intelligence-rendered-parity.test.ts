@@ -132,6 +132,13 @@ for (const setupHtml of [normalSetupHtml, zeroSetupHtml]) {
 }
 assert.match(zeroSetupHtml, /Not indexed yet/, 'zero Setup preserves scope cards with an explicit empty baseline');
 
+const zeroMapTextHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'map-text' }));
+assert.match(zeroMapTextHtml, /pk-vi-map-text-layout/, 'zero Map text keeps its two-column workspace');
+assert.match(zeroMapTextHtml, /pk-vi-community-list/, 'zero Map text keeps the Community region');
+assert.match(zeroMapTextHtml, /pk-vi-map-text-editor/, 'zero Map text keeps the editor, facts, history, and actions');
+assert.match(zeroMapTextHtml, /No Communities yet/, 'zero Map text explains why the editor is unavailable');
+assert.match(zeroMapTextHtml, /Version history/, 'zero Map text retains version-history geometry');
+
 const overflowSnapshot: VaultIntelligenceSnapshot = {
 	...snapshot,
 	fileTypes: Array.from({ length: 49 }, (_, index) => ({
