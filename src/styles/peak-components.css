@@ -2266,6 +2266,888 @@
   .pkchat-context-receipt__grid { grid-template-columns: 1fr; }
 }
 
+/* Vault Intelligence V2 exact reference port.
+   Geometry and surface values below are direct translations from
+   docs/gstack/vault-intelligence-workspace-2026-08-12-v2/index.html.
+   The view scope also neutralizes Obsidian's inherited button/font/box rules. */
+.peak-vault-intelligence-view {
+  --pk-vi-accent: #6857d9;
+  --pk-vi-accent-soft: #f0edff;
+  --pk-vi-border: #e6e4e9;
+  --pk-vi-border-strong: #d8d5dd;
+  --pk-vi-muted: #6f6b75;
+  --pk-vi-canvas: #f3f3f5;
+  --pk-vi-surface: #fff;
+  --pk-vi-surface-raised: #f8f8fa;
+  --text-normal: #222127;
+  --text-muted: #6f6b75;
+  --background-primary: #fff;
+  --background-secondary: #f8f8fa;
+  color: #222127;
+  font-family: Inter, var(--font-interface), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.peak-vault-intelligence-view,
+.peak-vault-intelligence-view * {
+  box-sizing: border-box;
+}
+
+.peak-vault-intelligence-view .pk-vi-shell {
+  display: grid;
+  grid-template-rows: 125px minmax(0, 1fr);
+  min-width: 1180px;
+  background: var(--pk-vi-surface);
+}
+
+.peak-vault-intelligence-view .pk-vi-header {
+  display: grid;
+  grid-template-rows: 80px 45px;
+  height: 125px;
+  padding: 0;
+  border: 0;
+  background: var(--pk-vi-surface);
+}
+
+.peak-vault-intelligence-view .pk-vi-title-row {
+  min-height: 80px;
+  padding: 15px 28px 14px;
+  gap: 24px;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-brand,
+.peak-vault-intelligence-view .pk-vi-brand-text,
+.peak-vault-intelligence-view .pk-vi-top-actions,
+.peak-vault-intelligence-view .pk-vi-title-lockup {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.peak-vault-intelligence-view .pk-vi-brand {
+  gap: 12px;
+}
+
+.peak-vault-intelligence-view .pk-vi-brand-text {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.peak-vault-intelligence-view .pk-vi-eyebrow {
+  display: none;
+  margin-bottom: 4px;
+  color: var(--pk-vi-muted);
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 780;
+}
+
+.peak-vault-intelligence-view .pk-vi-mark {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #ddd8f4;
+  border-radius: 9px;
+  color: var(--pk-vi-accent);
+  background: var(--pk-vi-accent-soft);
+}
+
+.peak-vault-intelligence-view .pk-vi-title {
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 720;
+  letter-spacing: -.025em;
+}
+
+.peak-vault-intelligence-view .pk-vi-header-status {
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  color: var(--pk-vi-muted);
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-header-status > .pk-btn {
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  padding: 0 6px !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-header-status > .pk-vi-change-status.pk-btn {
+  gap: 5px;
+  color: #6a4a28 !important;
+  background: #fffaf2 !important;
+  font-weight: 700;
+}
+
+.peak-vault-intelligence-view .pk-vi-change-status strong {
+  color: #5545bf;
+}
+
+.peak-vault-intelligence-view .pk-vi-top-actions {
+  gap: 8px;
+}
+
+.peak-vault-intelligence-view .pk-vi-info-wrap,
+.peak-vault-intelligence-view .pk-vi-overview-range {
+  position: relative;
+}
+
+.peak-vault-intelligence-view .pk-vi-icon-button.pk-btn {
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  padding: 0 !important;
+  border: 1px solid var(--pk-vi-border-strong) !important;
+  border-radius: 8px !important;
+  background: var(--pk-vi-surface) !important;
+}
+
+.peak-vault-intelligence-view .pk-vi-primary.pk-btn,
+.peak-vault-intelligence-view .pk-btn--primary {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+}
+
+.peak-vault-intelligence-view .pk-vi-info-popover {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  z-index: 80;
+  width: 340px;
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 9px;
+  background: var(--pk-vi-surface);
+  box-shadow: 0 16px 42px rgba(36, 31, 49, .1), 0 2px 6px rgba(36, 31, 49, .05);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.peak-vault-intelligence-view .pk-vi-info-popover > span,
+.peak-vault-intelligence-view .pk-vi-info-popover div span {
+  display: block;
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-info-popover div small {
+  display: block;
+  margin-bottom: 2px;
+  color: #5545bf;
+  font-weight: 720;
+}
+
+.peak-vault-intelligence-view .pk-vi-nav {
+  min-height: 45px;
+  height: 45px;
+  margin: 0;
+  padding: 0 28px;
+  gap: 26px;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-nav > .pk-btn {
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  padding: 0 1px !important;
+  font-size: 12px;
+  font-weight: 690;
+}
+
+.peak-vault-intelligence-view .pk-vi-main {
+  min-height: 0;
+  overflow: auto;
+  background: var(--pk-vi-canvas);
+}
+
+.peak-vault-intelligence-view .pk-vi-page {
+  width: 100%;
+  max-width: 1556px;
+  margin: 0 auto;
+  padding: 21px 28px 34px;
+}
+
+.peak-vault-intelligence-view .pk-vi-card,
+.peak-vault-intelligence-view .pk-vi-work-surface,
+.peak-vault-intelligence-view .pk-vi-maintenance {
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 10px;
+  background: var(--pk-vi-surface);
+  box-shadow: 0 1px 2px rgba(35, 31, 43, .025);
+}
+
+.peak-vault-intelligence-view .pk-vi-card-head {
+  min-height: 52px;
+  margin: 0;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-card-title {
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-strip {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 14px;
+  overflow: visible;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 76px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 15px 20px;
+  border: 1px solid #e4e1e8;
+  border-radius: 10px;
+  background: #f8f7fa;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-item:hover {
+  background: #f2f0f5;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-item:focus-visible {
+  z-index: 32;
+  outline: 2px solid rgba(104, 87, 217, .28);
+  outline-offset: -2px;
+}
+
+.peak-vault-intelligence-view .pk-vi-type-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: #6555c6;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-value {
+  font-size: 23px;
+  line-height: 1;
+  font-weight: 760;
+  letter-spacing: -.025em;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-label {
+  color: #55525c;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 680;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-hover {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 8px;
+  z-index: 40;
+  width: 430px;
+  padding: 13px;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 9px;
+  background: var(--pk-vi-surface);
+  box-shadow: 0 14px 36px rgba(34, 30, 43, .14), 0 2px 7px rgba(34, 30, 43, .05);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-hover::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: 9px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-item:nth-child(n + 3) .pk-vi-inventory-hover {
+  right: 8px;
+  left: auto;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-item.is-files .pk-vi-inventory-hover {
+  width: 650px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-item:hover .pk-vi-inventory-hover,
+.peak-vault-intelligence-view .pk-vi-inventory-item:focus-within .pk-vi-inventory-hover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.peak-vault-intelligence-view .pk-vi-hover-head,
+.peak-vault-intelligence-view .pk-vi-hover-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.peak-vault-intelligence-view .pk-vi-hover-head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-hover-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.peak-vault-intelligence-view .pk-vi-hover-head strong {
+  font-size: 11px;
+}
+
+.peak-vault-intelligence-view .pk-vi-hover-head span,
+.peak-vault-intelligence-view .pk-vi-hover-footer > span {
+  color: var(--pk-vi-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.peak-vault-intelligence-view .pk-vi-hover-head small {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #9b5d19;
+  background: #fff4e5;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-distribution {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding-top: 11px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-distribution.is-large {
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 15px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-pie-panel {
+  display: grid;
+  justify-items: center;
+  padding-right: 13px;
+  border-right: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-pie {
+  width: 92px;
+  height: 92px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 4px rgba(42, 37, 52, .09));
+}
+
+.peak-vault-intelligence-view .is-large .pk-vi-inventory-pie {
+  width: 112px;
+  height: 112px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-pie-panel > strong {
+  margin-top: 7px;
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-pie-panel > span {
+  margin-top: 2px;
+  color: var(--pk-vi-muted);
+  font-size: 7.5px;
+}
+
+.peak-vault-intelligence-view .pk-vi-pie-segment {
+  stroke: #fff;
+  stroke-width: .65;
+  transition: opacity 110ms ease, transform 110ms ease;
+}
+
+.peak-vault-intelligence-view .pk-vi-pie-segment.is-muted,
+.peak-vault-intelligence-view .pk-vi-inventory-legend > div.is-muted {
+  opacity: .24;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-legend > div {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  min-height: 27px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--pk-vi-border);
+  border-radius: 5px;
+  font-size: 8.4px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-legend > div.is-active {
+  background: #f1eefc;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.peak-vault-intelligence-view .pk-vi-inventory-legend span {
+  color: var(--pk-vi-muted);
+  font-size: 7.5px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-hover-footer {
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-continue {
+  margin-bottom: 14px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-activity {
+  margin-bottom: 14px;
+  padding: 0;
+  overflow: visible;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-activity-actions,
+.peak-vault-intelligence-view .pk-vi-index-overview .pk-vi-card-head > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-range > .pk-btn {
+  height: 29px !important;
+  min-height: 29px !important;
+  max-height: 29px !important;
+  padding: 0 9px !important;
+  border: 1px solid var(--pk-vi-border-strong) !important;
+  border-radius: 7px !important;
+  background: #fff !important;
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-range-popover {
+  position: absolute;
+  top: 35px;
+  right: 0;
+  z-index: 50;
+  width: 230px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(34, 30, 43, .14);
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-range-popover > strong {
+  padding: 4px 6px 7px;
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-range-popover > .pk-btn {
+  display: flex !important;
+  width: 100% !important;
+  min-height: 30px !important;
+  padding: 0 7px !important;
+  justify-content: space-between;
+  border-radius: 5px;
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-range-popover > .pk-btn.is-active {
+  color: #5545bf;
+  background: var(--pk-vi-accent-soft);
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-activity-body {
+  display: grid;
+  grid-template-columns: minmax(720px, 1fr) minmax(280px, 35%);
+  gap: 18px;
+  padding: 15px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-heatmap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-heatmap > strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-months {
+  display: grid;
+  gap: 3px;
+  margin-left: 32px;
+  min-width: max-content;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-months span {
+  color: var(--pk-vi-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-calendar {
+  display: flex;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-weekdays {
+  width: 26px;
+  display: grid;
+  grid-template-rows: repeat(7, 13px);
+  gap: 3px;
+  color: var(--pk-vi-muted);
+  font-size: 7px;
+  line-height: 13px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 13px);
+  grid-auto-flow: column;
+  gap: 3px;
+  min-width: max-content;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-grid > .pk-btn {
+  width: 13px !important;
+  min-width: 13px !important;
+  max-width: 13px !important;
+  height: 13px !important;
+  min-height: 13px !important;
+  max-height: 13px !important;
+  padding: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 2px !important;
+  background: color-mix(in srgb, #5d49bd calc(var(--pk-vi-level) * 19%), #f0eef3) !important;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-grid > .pk-btn.is-selected {
+  border-color: #5545bf !important;
+  box-shadow: 0 0 0 1px #fff inset;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 10px;
+  color: var(--pk-vi-muted);
+  font-size: 7.5px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-legend i {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: color-mix(in srgb, #5d49bd calc(var(--pk-vi-level) * 19%), #f0eef3);
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence {
+  min-width: 0;
+  padding-left: 18px;
+  border-left: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence > strong {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence > div {
+  display: grid;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence article {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  border-bottom: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence article > span:first-child {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #5545bf;
+  background: var(--pk-vi-accent-soft);
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence article > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence article strong,
+.peak-vault-intelligence-view .pk-vi-overview-evidence article span,
+.peak-vault-intelligence-view .pk-vi-overview-evidence article small {
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-overview-evidence article > div > span,
+.peak-vault-intelligence-view .pk-vi-overview-evidence article > small {
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-overview {
+  padding: 0;
+  overflow: hidden;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-overview-body {
+  display: grid;
+  grid-template-columns: 150px minmax(330px, 1fr) minmax(300px, .85fr);
+  gap: 24px;
+  align-items: center;
+  padding: 18px;
+}
+
+.peak-vault-intelligence-view .pk-vi-readiness-ring {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  border-radius: 50%;
+  background: conic-gradient(var(--pk-vi-accent) var(--pk-vi-ready), #ece9f1 0);
+}
+
+.peak-vault-intelligence-view .pk-vi-readiness-ring::before {
+  content: "";
+  width: 78px;
+  height: 78px;
+  grid-area: 1 / 1;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view .pk-vi-readiness-ring span {
+  z-index: 1;
+  grid-area: 1 / 1;
+  font-size: 20px;
+  font-weight: 760;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-meters {
+  display: grid;
+  gap: 9px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-meter {
+  display: grid;
+  grid-template-columns: 92px minmax(120px, 1fr) 112px;
+  gap: 9px;
+  align-items: center;
+  font-size: 9px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-meter > i {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ece9f1;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-meter b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pk-vi-accent);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-meter > strong {
+  font-size: 8px;
+  text-align: right;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-meters > small {
+  color: var(--pk-vi-muted);
+  font-size: 8px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-impact {
+  display: grid;
+  gap: 7px;
+  padding-left: 22px;
+  border-left: 1px solid var(--pk-vi-border);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-impact > span,
+.peak-vault-intelligence-view .pk-vi-index-impact > small {
+  color: var(--pk-vi-muted);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-impact > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-impact > div > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 6px;
+  background: var(--pk-vi-surface-raised);
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-page {
+  max-width: 1380px;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  gap: 16px;
+  align-items: start;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-review {
+  margin: 0;
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-safety {
+  display: grid;
+  gap: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-safety section {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 9px;
+  color: #5545bf;
+  background: #faf9fe;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-safety div {
+  display: grid;
+  gap: 4px;
+  color: #222127;
+}
+
+.peak-vault-intelligence-view .pk-vi-proposal-safety span {
+  color: var(--pk-vi-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.peak-vault-intelligence-view .pk-vi-atomic-group > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.peak-vault-intelligence-view .pk-vi-atomic-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.peak-vault-intelligence-view .pk-vi-atomic-group-head > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.peak-vault-intelligence-view .pk-vi-atomic-group:not([open]) .pk-vi-atomic-group-head svg {
+  transform: rotate(-90deg);
+}
+
+.peak-vault-intelligence-view .pk-vi-segmented > span:first-child {
+  margin-right: 4px;
+  color: var(--pk-vi-muted);
+  font-size: 10px;
+}
+
+@media (max-width: 1180px) {
+  .peak-vault-intelligence-view .pk-vi-shell {
+    min-width: 0;
+  }
+
+  .peak-vault-intelligence-view .pk-vi-inventory-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .peak-vault-intelligence-view .pk-vi-overview-activity-body,
+  .peak-vault-intelligence-view .pk-vi-index-overview-body,
+  .peak-vault-intelligence-view .pk-vi-proposal-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .peak-vault-intelligence-view .pk-vi-overview-evidence,
+  .peak-vault-intelligence-view .pk-vi-index-impact {
+    padding-top: 14px;
+    padding-left: 0;
+    border-top: 1px solid var(--pk-vi-border);
+    border-left: 0;
+  }
+}
+
 /* Vault Intelligence V2: inspect-first objects, guarded proposal review, and Map text. */
 .peak-vault-intelligence-view .pk-vi-object-card.is-selected {
   outline: 2px solid color-mix(in srgb, var(--interactive-accent) 62%, transparent);
@@ -18730,5 +19612,438 @@
 
   .peak-vault-intelligence-view .pk-vi-domain-stats > span:nth-child(n + 3) {
     border-top: 1px solid var(--pk-vi-border);
+  }
+}
+
+/* Cascade lock: this file contains earlier compatibility generations for the
+   same workspace. Keep the reference port authoritative at the end of the
+   production stylesheet instead of compensating with layout magic numbers. */
+.peak-vault-intelligence-view.peak-vault-intelligence-view {
+  --pk-vi-accent: #6857d9;
+  --pk-vi-accent-soft: #f0edff;
+  --pk-vi-border: #e6e4e9;
+  --pk-vi-border-strong: #d8d5dd;
+  --pk-vi-muted: #6f6b75;
+  --pk-vi-canvas: #f3f3f5;
+  --pk-vi-surface: #fff;
+  --pk-vi-surface-raised: #f8f8fa;
+  --text-normal: #222127;
+  --text-muted: #6f6b75;
+  --background-primary: #fff;
+  --background-secondary: #f8f8fa;
+  color: #222127;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-shell {
+  display: grid;
+  grid-template-rows: 125px minmax(0, 1fr);
+  min-width: 1180px;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-header {
+  display: grid;
+  grid-template-rows: 80px 45px;
+  height: 125px;
+  padding: 0;
+  border: 0;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-title-row {
+  min-height: 80px;
+  padding: 15px 28px 14px;
+  gap: 24px;
+  justify-content: space-between;
+  border-bottom: 1px solid #e6e4e9;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-mark {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #ddd8f4;
+  border-radius: 9px;
+  background: #f0edff;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-title {
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 720;
+  letter-spacing: -.025em;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-header-status {
+  flex: none;
+  margin-left: 10px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav {
+  height: 45px;
+  min-height: 45px;
+  margin: 0;
+  padding: 0 28px;
+  gap: 26px;
+  align-items: flex-end;
+  border-bottom: 1px solid #e6e4e9;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn {
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  padding: 0 1px !important;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-main {
+  min-height: 0;
+  overflow: auto;
+  background: #f3f3f5;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-page {
+  width: 100%;
+  max-width: 1556px;
+  margin: 0 auto;
+  padding: 21px 28px 34px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-card,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-work-surface,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-maintenance {
+  border-color: #e6e4e9;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(35, 31, 43, .025);
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-card-head {
+  min-height: 52px;
+  margin: 0;
+  padding: 12px 15px;
+  border-bottom: 1px solid #e6e4e9;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-continue {
+  margin-bottom: 14px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-activity-body {
+  display: block;
+  padding: 14px 15px 15px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-heatmap-scroll {
+  overflow-x: auto;
+  padding: 2px 0 5px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-months {
+  width: max-content;
+  min-width: 100%;
+  gap: 4px;
+  margin: 0 auto 7px;
+  padding-left: 31px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-calendar {
+  width: max-content;
+  margin: 0 auto;
+  gap: 4px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-weekdays {
+  width: 27px;
+  grid-template-rows: repeat(7, 17px);
+  gap: 4px;
+  line-height: 17px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-grid {
+  grid-template-rows: repeat(7, 17px);
+  gap: 4px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-grid > .pk-btn {
+  width: 17px !important;
+  min-width: 17px !important;
+  max-width: 17px !important;
+  height: 17px !important;
+  min-height: 17px !important;
+  max-height: 17px !important;
+  border-radius: 3px !important;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence {
+  margin-top: 10px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e6e4e9;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence > strong {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 7px 10px;
+  border-bottom: 1px solid #e6e4e9;
+  background: #fbfbfc;
+  font-size: 11px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence > div {
+  padding: 3px 12px 5px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article {
+  min-height: 58px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 11px;
+  padding: 8px 0;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article > span:first-child {
+  width: 29px;
+  height: 29px;
+  border: 1px solid #d9d3e7;
+  border-radius: 50%;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article strong {
+  font-size: 11px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article > div > span {
+  margin-top: 3px;
+  font-size: 9.5px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article > small {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f0eff4;
+  font-size: 8.5px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-popover {
+  width: 308px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 13px 10px;
+  border-bottom: 1px solid #e6e4e9;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-head > .pk-btn {
+  padding: 0 !important;
+  color: #5545bf;
+  font-size: 9px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-popover > .pk-btn {
+  min-height: 38px !important;
+  padding: 0 15px !important;
+  border-radius: 0;
+}
+
+.peak-vault-intelligence-view .pk-vi-custom-range {
+  padding: 12px 13px 13px;
+  border-top: 1px solid #e6e4e9;
+  background: #fbfbfc;
+}
+
+.peak-vault-intelligence-view .pk-vi-custom-range > div:first-child {
+  display: grid;
+  grid-template-columns: 1fr 12px 1fr;
+  gap: 7px;
+  align-items: end;
+}
+
+.peak-vault-intelligence-view .pk-vi-custom-range label {
+  display: grid;
+  gap: 5px;
+  color: #6f6b75;
+  font-size: 8px;
+  font-weight: 680;
+}
+
+.peak-vault-intelligence-view .pk-vi-custom-range input {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d8d5dd;
+  border-radius: 6px;
+  color: #55525c;
+  background: #fff;
+  font: inherit;
+  font-size: 9px;
+}
+
+.peak-vault-intelligence-view .pk-vi-custom-range > div:last-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-custom-range small {
+  color: #a34b4b;
+  font-size: 8px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-document {
+  display: grid;
+  grid-template-columns: minmax(240px, .65fr) minmax(0, 1.35fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e6e4e9;
+  border-radius: 8px;
+  background: #fbfbfc;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-document > div:first-child {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid #e6e4e9;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-document > div:last-child,
+.peak-vault-intelligence-view .pk-vi-domain-recovery {
+  display: grid;
+  gap: 7px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-document article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  padding: 10px;
+  border-left: 3px solid #8d7bd3;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-document article > span {
+  grid-row: 1 / 3;
+  color: #5545bf;
+  font-size: 9px;
+  font-weight: 720;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-document article > small {
+  color: #6f6b75;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-lanes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e6e4e9;
+  border-radius: 8px;
+  background: #fbfbfc;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-lanes section {
+  min-height: 84px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 11px;
+  border: 1px solid #e6e4e9;
+  border-top: 3px solid #8d7bd3;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-lanes section > span,
+.peak-vault-intelligence-view .pk-vi-domain-lanes section > small {
+  color: #6f6b75;
+  font-size: 9px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-lanes section > strong {
+  font-size: 18px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-recovery {
+  padding: 12px;
+  border: 1px solid #ead3c0;
+  border-radius: 8px;
+  background: #fffaf2;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-recovery article {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 9px;
+  border-radius: 6px;
+  color: #9b5d19;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-recovery article > div {
+  display: grid;
+  gap: 3px;
+  color: #222127;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-recovery article span,
+.peak-vault-intelligence-view .pk-vi-domain-recovery article small {
+  color: #6f6b75;
+  font-size: 9px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence.is-relationship > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.peak-vault-intelligence-view .pk-vi-domain-evidence.is-relationship article {
+  grid-template-columns: minmax(0, 1fr);
+  border-top: 3px solid #8d7bd3;
+}
+
+@media (max-width: 900px) {
+  .peak-vault-intelligence-view .pk-vi-domain-document,
+  .peak-vault-intelligence-view .pk-vi-domain-lanes,
+  .peak-vault-intelligence-view .pk-vi-domain-evidence.is-relationship > div:last-child {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-proposal-review {
+  margin: 0;
+  border: 1px solid #e6e4e9;
+  border-radius: 10px;
+  background: #fff;
+}
+
+@media (max-width: 1180px) {
+  .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-shell {
+    min-width: 0;
   }
 }

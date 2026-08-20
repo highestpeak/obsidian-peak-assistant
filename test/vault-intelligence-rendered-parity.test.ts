@@ -74,18 +74,22 @@ const html = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace
 const source = readFileSync('src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx', 'utf8');
 assert.match(
 	html,
-	/class="[^"]*pk-btn[^"]*pk-vi-object-card[^"]*"/,
-	'production object cards must render the class that owns their fixed geometry',
+	/class="[^"]*pk-vi-inventory-item[^"]*"/,
+	'production object inventory must render the reference-compatible hover-card structure',
 );
-assert.equal((html.match(/pk-vi-object-card/g) ?? []).length, 4);
+assert.equal((html.match(/pk-vi-inventory-item/g) ?? []).length, 4);
 assert.doesNotMatch(html, /pk-vi-continue-summary/, 'first setup must not manufacture a since-last-scan delta');
-assert.match(html, /Set up Vault/);
-assert.match(html, /pk-vi-overview-secondary/);
+assert.match(html, /Prepare Vault/);
+assert.match(html, /pk-vi-overview-activity-body/);
+assert.match(html, /pk-vi-index-overview-body/);
+assert.doesNotMatch(html, /pk-vi-overview-secondary/);
+assert.doesNotMatch(html, /Vault map preview/);
 assert.doesNotMatch(html, /pktw-bg-primary/);
 assert.match(source, /main\.scrollTop = 0;/, 'route changes must not preserve a stale page scroll anchor');
 assert.match(source, /<main ref=\{mainRef\} className="pk-vi-main">/);
 assert.match(source, /function MapTextWorkspace/, 'Map text must be a real route, not a dead label');
 assert.match(source, /function ProposalReview/, 'source-file changes must be reviewed as a diff before Apply');
+assert.match(source, /function ProposalWorkspace/, 'a prepared diff must have its own route instead of being nested in the task dialog');
 assert.match(source, /Prepare guarded diff/, 'proposal preparation must remain an explicit owner action');
 assert.match(source, /Knowledge Index plan/, 'the setup must disclose configurable Index outputs');
 assert.match(source, /Version history/, 'map text must expose draft and publication history');
@@ -107,5 +111,10 @@ assert.match(correction, /\.pk-vi-work-row\.pk-btn\s*\{[\s\S]*?display:\s*grid !
 assert.match(correction, /\.pk-vi-task-overlay\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?place-items:\s*center;/);
 assert.match(correction, /\.pk-vi-activity-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1\.55fr\) minmax\(280px, 0\.58fr\);/);
 assert.match(correction, /\.pk-vi-check-group-card\.is-active \.pk-vi-check-mark\s*\{[\s\S]*?background:\s*var\(--pk-vi-accent\);/);
+const exactPort = css.slice(css.indexOf('Vault Intelligence V2 exact reference port'));
+assert.match(exactPort, /\.pk-vi-inventory-strip\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
+assert.match(exactPort, /\.pk-vi-inventory-item\s*\{[\s\S]*?min-height:\s*76px;[\s\S]*?border-radius:\s*10px;/);
+assert.match(exactPort, /\.pk-vi-overview-grid > \.pk-btn\s*\{[\s\S]*?width:\s*17px !important;[\s\S]*?height:\s*17px !important;/);
+assert.match(exactPort, /\.pk-vi-index-overview-body\s*\{[\s\S]*?grid-template-columns:\s*150px minmax\(330px, 1fr\) minmax\(300px, \.85fr\);/);
 
 console.log('vault-intelligence-rendered-parity: passed');

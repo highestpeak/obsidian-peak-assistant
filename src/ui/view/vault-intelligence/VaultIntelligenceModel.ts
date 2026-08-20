@@ -38,6 +38,9 @@ export interface VaultIntelligenceObjectSummary {
 	label: string;
 	count: number;
 	detail: string;
+	/** Canonical presentation data only. Never synthesize categories the owning store does not publish. */
+	breakdown?: Array<{ id: string; label: string; count: number }>;
+	coverageNote?: string;
 }
 
 export interface VaultCommunityMemberProjection {
