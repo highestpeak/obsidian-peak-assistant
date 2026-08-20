@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import {
 	Bot, ChevronDown, ChevronRight, Database, FileImage, FileText, Image,
-	MessageSquare, Network, RefreshCw, Search, Settings2, Wand2,
+	MessageSquare, Network, RefreshCw, Search, Settings2, Wand2, X,
 } from 'lucide-react';
 import type { MyPluginSettings, ModelAssignment } from '@/core/config/settingsTypes';
-import type { RoleConfig } from '@/core/profiles/types';
+import type { Profile, ProfileKind, RoleConfig } from '@/core/profiles/types';
 import type { LLMOutputControlSettings } from '@/core/providers/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { PRODUCT_MODEL_FEATURES, type ProductModelFeature } from '@/core/settings/peakSettingsContract';
@@ -15,6 +15,7 @@ import { Button } from '@/ui/components/primitives';
 import { ProfilesTab } from '../ProfilesTab';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { UnifiedModelPicker } from '../components/UnifiedModelPicker';
+import { PROVIDER_LABELS } from '../components/ProviderIcon';
 import { uiHttpClient } from '@/ui/util/uiHttpClient';
 
 const FEATURE_ICONS = {
@@ -37,6 +38,7 @@ export function AIModelsTab({
 	onOpenAIControlCenter: () => void | Promise<void>;
 }) {
 	const [, refreshProfiles] = useState(0);
+	const [connectionsOpen, setConnectionsOpen] = useState(false);
 	const profiles = ProfileRegistry.getInstance().getAllProfiles();
 	const routing = settings.modelRouting;
 
@@ -59,18 +61,28 @@ export function AIModelsTab({
 				<span className="pk-settings-page__intro">Connect services, then choose a model only where Peak's automatic choice is not what you want.</span>
 			</header>
 
+			<div className="pk-reference-relationship pk-reference-relationship--steps">
+				<span><i>1</i><span><strong>Connections</strong><small>Who Peak can call</small></span></span><b>→</b>
+				<span><i>2</i><span><strong>Available models</strong><small>What each connection provides</small></span></span><b>→</b>
+				<span><i>3</i><span><strong>Task defaults</strong><small>What each feature uses</small></span></span>
+			</div>
+
 			<section className="pk-settings-section">
 				<div className="pk-settings-section__heading">
-					<span><strong>Connections</strong><small>Services and local runtimes Peak can call.</small></span>
+					<span><strong>Primary connections</strong><small>Services and local runtimes Peak can call.</small></span>
+					<Button variant="secondary" onClick={() => setConnectionsOpen(true)}>Add connection</Button>
 				</div>
-				<ProfilesTab
+				<ConnectionOverview
+					profiles={profiles}
 					settings={settings}
 					settingsUpdates={settingsUpdates}
-					hideStatusBar
-					hideAdvancedControls
+					managerOpen={connectionsOpen}
+					setManagerOpen={setConnectionsOpen}
 					onProfilesChange={() => refreshProfiles((tick) => tick + 1)}
 				/>
 			</section>
+
+			<CatalogManager settings={settings} settingsUpdates={settingsUpdates} profiles={profiles} />
 
 			<AutomaticPolicy settings={settings} onChange={updateRouting} />
 
@@ -99,8 +111,6 @@ export function AIModelsTab({
 				</div>
 			</section>
 
-			<CatalogManager settings={settings} settingsUpdates={settingsUpdates} profiles={profiles} />
-
 			<section className="pk-settings-section pk-settings-section--last">
 				<div className="pk-settings-link-row">
 					<span><Settings2 size={18} /><span><strong>AI Control Center</strong><small>Prompts, actions, task bindings and detailed model behavior.</small></span></span>
@@ -109,6 +119,56 @@ export function AIModelsTab({
 			</section>
 		</div>
 	);
+}
+
+const PRIMARY_CONNECTIONS: ProfileKind[] = ['openai', 'anthropic', 'openrouter', 'ollama', 'codex', 'claude-code'];
+const MORE_CONNECTIONS: ProfileKind[] = ['google', 'perplexity', 'litellm', 'custom'];
+
+function ConnectionOverview({ profiles, settings, settingsUpdates, managerOpen, setManagerOpen, onProfilesChange }: {
+	profiles: Profile[];
+	settings: MyPluginSettings;
+	settingsUpdates: SettingsUpdates;
+	managerOpen: boolean;
+	setManagerOpen: (open: boolean) => void;
+	onProfilesChange: () => void;
+}) {
+	const [moreOpen, setMoreOpen] = useState(false);
+	function connectionCard(kind: ProfileKind) {
+		const matches = profiles.filter((profile) => profile.kind === kind);
+		const ready = matches.some((profile) => profile.enabled && (kind === 'ollama' || kind === 'codex' || kind === 'claude-code' || Boolean(profile.apiKey)));
+		const status = ready ? (kind === 'ollama' ? 'Local' : 'Ready') : matches.length > 0 ? 'Needs attention' : kind === 'codex' || kind === 'claude-code' ? 'Setup' : 'Not set';
+		return (
+			<Button key={kind} variant="ghost" className="pk-connection-card" onClick={() => setManagerOpen(true)}>
+				<span className="pk-connection-card__fallback">{providerMonogram(kind)}</span>
+				<span><strong>{PROVIDER_LABELS[kind].label}</strong><small>{PROVIDER_LABELS[kind].desc}</small></span>
+				<span className="pk-connection-card__status" data-ready={ready ? 'true' : 'false'}>{status}</span>
+			</Button>
+		);
+	}
+	return (
+		<>
+			<div className="pk-connection-grid">{PRIMARY_CONNECTIONS.map(connectionCard)}</div>
+			<div className="pk-more-connections__heading"><span><strong>More connections</strong><small>Still supported, but kept out of the first setup decision.</small></span><span>5 connection types</span></div>
+			<Button variant="ghost" className="pk-settings-disclosure pk-more-connections" onClick={() => setMoreOpen((value) => !value)} aria-expanded={moreOpen}>
+				<span><span><strong>Google, Perplexity, gateways and media</strong><small>Open only when your preferred service is not in Primary connections.</small></span></span>
+				{moreOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+			</Button>
+			{moreOpen && <div className="pk-connection-grid pk-connection-grid--more">{MORE_CONNECTIONS.map(connectionCard)}<Button variant="ghost" className="pk-connection-card" onClick={() => setManagerOpen(true)}><span className="pk-connection-card__fallback">f</span><span><strong>fal.ai</strong><small>Image, video, speech & music</small></span><span className="pk-connection-card__status" data-ready={settings.falApiKey ? 'true' : 'false'}>{settings.falApiKey ? 'Connected' : 'Not set'}</span></Button></div>}
+			{managerOpen && <div className="pk-reference-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setManagerOpen(false); }}><div className="pk-reference-modal" role="dialog" aria-modal="true" aria-label="Manage AI connections"><header><span><strong>Manage AI connections</strong><small>Add, repair or remove provider profiles. Changes are saved to Peak settings.</small></span><Button variant="ghost" className="pk-reference-modal__close" onClick={() => setManagerOpen(false)} aria-label="Close"><X size={17} /></Button></header><div className="pk-reference-modal__body"><ProfilesTab settings={settings} settingsUpdates={settingsUpdates} hideStatusBar hideAdvancedControls onProfilesChange={onProfilesChange} /></div></div></div>}
+		</>
+	);
+}
+
+function providerMonogram(kind: ProfileKind): string {
+	if (kind === 'openai') return 'OA';
+	if (kind === 'anthropic') return 'AN';
+	if (kind === 'openrouter') return 'OR';
+	if (kind === 'ollama') return 'OL';
+	if (kind === 'codex') return 'CX';
+	if (kind === 'claude-code') return 'CC';
+	if (kind === 'perplexity') return 'PX';
+	if (kind === 'litellm') return 'LL';
+	return kind === 'google' ? 'GG' : 'AI';
 }
 
 function AutomaticPolicy({
@@ -197,9 +257,9 @@ function FeatureModelRow({
 						const key = `${feature.id}/${action.id}`;
 						const child = settings.modelRouting.assignments[key];
 						return (
-							<div className="pk-feature-model__action" key={action.id}>
-								<span>{action.label}</span>
-								<UnifiedModelPicker
+							<div className="pk-feature-model__action" key={action.id} data-group={action.group ?? undefined}>
+								<span><strong>{action.label}</strong>{action.detail && <small>{action.detail}</small>}</span>
+								{action.localOnly ? <span className="pk-feature-model__local">Local action · No AI model</span> : <UnifiedModelPicker
 									profiles={profiles}
 									value={child?.mode === 'fixed' ? child.config : null}
 									requirement={action.requiredCapabilities}
@@ -207,7 +267,7 @@ function FeatureModelRow({
 									onChange={(config) => onAssignment(key, config)}
 									aliases={settings.modelCatalog.aliases}
 									hiddenModels={settings.modelCatalog.hiddenModels}
-								/>
+								/>}
 							</div>
 						);
 					})}
@@ -251,6 +311,7 @@ function AdvancedControls({ assignmentKey, value, onChange }: { assignmentKey: s
 }
 
 function CatalogManager({ settings, settingsUpdates, profiles }: { settings: MyPluginSettings; settingsUpdates: SettingsUpdates; profiles: ReturnType<ProfileRegistry['getAllProfiles']> }) {
+	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const [catalogRevision, setCatalogRevision] = useState(0);
 	const [checking, setChecking] = useState(false);
@@ -272,12 +333,17 @@ function CatalogManager({ settings, settingsUpdates, profiles }: { settings: MyP
 	}
 	return (
 		<section className="pk-settings-section">
-			<details className="pk-settings-native-details">
-				<summary><span><strong>Model catalog</strong><small>OpenRouter source, hidden models and aliases.</small></span><span>{settings.modelCatalog.hiddenModels.length} hidden</span></summary>
-				<div className="pk-catalog-manager">
+			<Button variant="ghost" className="pk-settings-link-row pk-catalog-entry" onClick={() => setOpen(true)}>
+				<span><Settings2 size={18} /><span><strong>Manage model catalog</strong><small>Search available models, aliases, capabilities and visibility.</small></span></span>
+				<span>{choices.length} models · {settings.modelCatalog.hiddenModels.length} hidden</span>
+			</Button>
+			{open && <div className="pk-reference-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setOpen(false); }}><div className="pk-reference-modal pk-reference-modal--catalog" role="dialog" aria-modal="true" aria-label="Manage model catalog">
+				<header><span><strong>Manage model catalog</strong><small>Models stay grouped by connection. Hidden models remain available to existing fixed assignments.</small></span><Button variant="ghost" className="pk-reference-modal__close" onClick={() => setOpen(false)} aria-label="Close"><X size={17} /></Button></header>
+				<div className="pk-reference-modal__body pk-catalog-manager">
 					<label className="pk-settings-field-row"><span><strong>OpenRouter catalog JSON</strong><small>{catalogStatus(settings.modelCatalog)}</small></span><span className="pk-catalog-source"><input value={settings.modelCatalog.openRouterCatalogUrl} onChange={(event) => update({ openRouterCatalogUrl: event.target.value, lastError: null })} placeholder="Project URL or GitHub Gist raw URL" /><Button variant="secondary" onClick={() => void checkCatalog()} disabled={checking}>{checking ? <RefreshCw size={15} className="pk-spin" /> : <RefreshCw size={15} />} {checking ? 'Checking…' : 'Check now'}</Button></span></label>
 					<input className="pk-catalog-manager__search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search models to hide or rename" />
 					<div className="pk-catalog-manager__list">
+						{filtered.length === 0 && <div className="pk-reference-empty">No models match this filter.</div>}
 						{filtered.map((choice) => {
 							const key = `${choice.profileId}/${choice.modelId}`;
 							const hidden = settings.modelCatalog.hiddenModels.includes(key);
@@ -285,7 +351,7 @@ function CatalogManager({ settings, settingsUpdates, profiles }: { settings: MyP
 						})}
 					</div>
 				</div>
-			</details>
+			</div></div>}
 		</section>
 	);
 }

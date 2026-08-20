@@ -26,7 +26,8 @@ assert.match(
 );
 
 assert.match(modalSource, /width: '1080px'/, 'Setup should use the readable five-step assistant width');
-assert.doesNotMatch(wizardSource, /step\.summary/, 'progress navigation must not render tiny repeated summaries');
+assert.match(wizardSource, /step\.summary/, 'progress navigation must preserve the reference step summaries');
+assert.match(wizardSource, /pk-onboarding__step-meta/, 'progress navigation must preserve the active step metadata row');
 assert.doesNotMatch(wizardSource, /<i data-complete=/, 'progress navigation must not depend on decorative connector lines');
 assert.doesNotMatch(wizardSource, /Finish setup/, 'completion must remain tied to launching a real first task');
 assert.match(

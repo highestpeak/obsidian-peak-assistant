@@ -140,7 +140,7 @@ export function AddProviderForm({
                         onClick={() => { setSelectedKind(kind); setTestResult(null); setChoosingProvider(false); }}
                         className="pk-onboarding-provider-kind"
                     >
-                        <ProviderIcon kind={kind} size={32} />
+                        <span className="pk-onboarding-provider-monogram">{providerMonogram(kind)}</span>
                         <span><strong>{label}</strong><small>{desc}</small></span>
                         {effectiveKind === kind ? <Check size={16} /> : null}
                     </Button>
@@ -155,7 +155,7 @@ export function AddProviderForm({
         <div className="pk-onboarding-provider-form">
 			<div className="pk-onboarding-provider-form__header">
 				<Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={() => setChoosingProvider(true)}>Back</Button>
-				<ProviderIcon kind={effectiveKind} size={32} />
+                <span className="pk-onboarding-provider-monogram">{providerMonogram(effectiveKind)}</span>
 				<span><strong>Connect {selectedOption.label}</strong><small>{requiresKey ? 'Paste a key, then run the same safe connection check.' : 'Peak will verify this local or authenticated connection.'}</small></span>
 			</div>
 
@@ -211,6 +211,16 @@ export function AddProviderForm({
 			{onCancel ? <Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={onCancel}>Back to saved connections</Button> : null}
         </div>
     );
+}
+
+function providerMonogram(kind: ProfileKind): string {
+	if (kind === 'openai') return 'OA';
+	if (kind === 'anthropic') return 'AN';
+	if (kind === 'openrouter') return 'OR';
+	if (kind === 'ollama') return 'OL';
+	if (kind === 'codex') return 'CX';
+	if (kind === 'claude-code') return 'CC';
+	return kind.slice(0, 2).toUpperCase();
 }
 
 export interface SavedProfileRowProps {

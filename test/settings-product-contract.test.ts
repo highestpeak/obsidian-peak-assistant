@@ -40,7 +40,8 @@ const agent = PRODUCT_MODEL_FEATURES.find((feature) => feature.id === 'agent-wiz
 
 assert.ok(chat?.actions.some((action) => action.id === 'attachments'));
 assert.ok(chat?.actions.some((action) => action.id === 'image-generation'));
-assert.ok(composer?.actions.some((action) => action.id === 'selected-text-rewrite'));
+assert.ok(composer?.actions.some((action) => action.id === 'whole-document'));
+assert.ok(composer?.actions.some((action) => action.localOnly), 'local actions remain visible without a model picker');
 assert.equal(agent?.requiredCapabilities.tools, true, 'Peak Hermes requires a tool-capable model');
 
 console.log('settings-product-contract: all assertions passed');

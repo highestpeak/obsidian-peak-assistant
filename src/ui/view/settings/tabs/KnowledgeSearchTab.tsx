@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
 	Database, File, FileImage, FileJson, FileSearch, FileText, FolderSearch,
 	Network, RefreshCw, Search, Settings2,
@@ -12,6 +12,8 @@ import { ModelType } from '@/core/providers/types';
 import { Button, Toggle } from '@/ui/components/primitives';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { UnifiedModelPicker } from '../components/UnifiedModelPicker';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import type { IndexReadinessProjection } from '@/core/ports/IndexRunCoordinatorPort';
 
 export function KnowledgeSearchTab({ settings, settingsUpdates, onOpenIndexWorkspace }: {
 	settings: MyPluginSettings;
@@ -20,11 +22,24 @@ export function KnowledgeSearchTab({ settings, settingsUpdates, onOpenIndexWorks
 }) {
 	const [typesOpen, setTypesOpen] = useState(false);
 	const [scopeOpen, setScopeOpen] = useState(false);
+	const [readiness, setReadiness] = useState<IndexReadinessProjection>({ fullText: 'missing', activeRunId: null, indexedDocuments: 0, failures: 0 });
+	const { settingsActions } = useServiceContext();
 	const search = settings.search;
 	const maintenance = search.maintenance;
 	const inspector = search.inspectorLinks ?? DEFAULT_INSPECTOR_LINKS_SETTINGS;
 	const profiles = ProfileRegistry.getInstance().getAllProfiles();
 	const enabledTypeCount = INDEXABLE_FILE_TYPES.filter(({ type }) => search.includeDocumentTypes[type]).length;
+	useEffect(() => {
+		let cancelled = false;
+		void settingsActions.knowledgeIndex.getReadiness().then((next) => {
+			if (!cancelled) setReadiness(next);
+		}).catch(() => {
+			if (!cancelled) setReadiness({ fullText: 'failed', activeRunId: null, indexedDocuments: 0, failures: 0 });
+		});
+		return () => { cancelled = true; };
+	}, [settingsActions.knowledgeIndex]);
+	const readinessLabel = readiness.fullText === 'ready' ? 'Ready' : readiness.fullText === 'building' ? 'Building' : readiness.fullText === 'failed' ? 'Needs attention' : 'Not indexed yet';
+	const readinessPercent = readiness.fullText === 'ready' ? 100 : readiness.fullText === 'building' ? 45 : 0;
 
 	function updateSearch<K extends keyof MyPluginSettings['search']>(key: K, value: MyPluginSettings['search'][K]) {
 		void settingsUpdates.updateSearch(key, value);
@@ -46,11 +61,11 @@ export function KnowledgeSearchTab({ settings, settingsUpdates, onOpenIndexWorks
 
 			<section className="pk-index-readiness-card">
 				<div className="pk-index-readiness-card__top">
-					<span><Database size={20} /><span><strong>Knowledge index</strong><small>Full-text search is available; generated knowledge can continue in the background.</small></span></span>
+					<span><Database size={20} /><span><strong>Knowledge index</strong><small>{readiness.fullText === 'ready' ? 'Full-text search is available; generated knowledge can continue in the background.' : readiness.fullText === 'building' ? 'Full-text search is being prepared in the active run.' : readiness.fullText === 'failed' ? 'The last index run needs attention. Open the workspace to review it.' : 'No full-text index exists yet. Open the workspace to prepare one.'}</small></span></span>
 					<Button variant="secondary" onClick={() => void onOpenIndexWorkspace()}>Open index workspace</Button>
 				</div>
-				<div className="pk-index-readiness-card__meter"><span style={{ width: '100%' }} /></div>
-				<div className="pk-index-readiness-card__stats"><span><strong>Ready</strong><small>Search status</small></span><span><strong>{enabledTypeCount}</strong><small>File types</small></span><span><strong>Automatic</strong><small>Changed files</small></span></div>
+				<div className="pk-index-readiness-card__meter"><span style={{ width: `${readinessPercent}%` }} /></div>
+				<div className="pk-index-readiness-card__stats"><span><strong>{readinessLabel}</strong><small>Search status</small></span><span><strong>{readiness.indexedDocuments.toLocaleString()}</strong><small>Indexed documents</small></span><span><strong>{readiness.failures}</strong><small>Needs attention</small></span><span><strong>{enabledTypeCount}</strong><small>File types</small></span></div>
 			</section>
 
 			<section className="pk-settings-section">

@@ -14550,6 +14550,228 @@
   }
 }
 
+/* Settings + onboarding reference parity.
+ * Geometry below is ported from docs/gstack/settings-onboarding-unified-2026-08-12/mock.css.
+ * Host variables supply color; the scoped roots own layout, type and native-control sizing. */
+:is(.pktw-root, .peak-design-root) .pk-settings-root,
+:is(.pktw-root, .peak-design-root) .pk-onboarding {
+  box-sizing: border-box;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-settings-root *,
+:is(.pktw-root, .peak-design-root) .pk-onboarding * { box-sizing: border-box; }
+
+:is(.pktw-root, .peak-design-root) .pk-settings-tabs { gap: 28px; padding: 0 32px; }
+:is(.pktw-root, .peak-design-root) button.pk-settings-tabs__tab {
+  min-height: 43px !important;
+  padding: 0 1px !important;
+  font-size: 9.5px;
+  letter-spacing: .01em;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-settings-page {
+  width: min(100% - 64px, 820px);
+  padding: 32px 0 60px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-settings-page__header { gap: 4px; margin-bottom: 24px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page__eyebrow { font-size: 8.5px; letter-spacing: .12em; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page__title { font-size: 24px; line-height: 1.2; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page__intro { max-width: 590px; font-size: 12px; line-height: 1.45; }
+:is(.pktw-root, .peak-design-root) .pk-settings-section { margin-bottom: 24px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-section__heading { margin-bottom: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-section__heading strong { font-size: 14px; }
+:is(.pktw-root, .peak-design-root) small { font-size: 10px; line-height: 1.38; }
+
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -10px 0 22px;
+  color: var(--pk-text-tertiary);
+  font-size: 9px;
+}
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship span { color: var(--pk-accent-text); }
+
+:is(.pktw-root, .peak-design-root) .pk-connection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+:is(.pktw-root, .peak-design-root) button.pk-connection-card {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 56px !important;
+  padding: 8px 10px !important;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: 8px;
+  background: var(--pk-surface);
+  text-align: left;
+}
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:hover { border-color: var(--pk-border-strong); background: var(--pk-state-hover); }
+:is(.pktw-root, .peak-design-root) .pk-connection-card > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card strong { font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status { color: var(--pk-text-tertiary); font-size: 8.5px; white-space: nowrap; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status[data-ready="true"] { color: var(--pk-success-text); }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__fallback { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: #e96838; color: white; font-weight: 750; }
+:is(.pktw-root, .peak-design-root) button.pk-more-connections { min-height: 42px !important; margin-top: 8px; border-color: var(--pk-border-soft); }
+:is(.pktw-root, .peak-design-root) .pk-connection-grid--more { margin-top: 8px; }
+
+:is(.pktw-root, .peak-design-root) .pk-settings-field-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-toggle-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-link-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-info-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-model-row { min-height: 52px; padding: 8px 7px; font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-toggle-row strong,
+:is(.pktw-root, .peak-design-root) .pk-settings-field-row strong,
+:is(.pktw-root, .peak-design-root) .pk-settings-link-row strong,
+:is(.pktw-root, .peak-design-root) .pk-settings-model-row strong { font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-disclosure,
+:is(.pktw-root, .peak-design-root) .pk-safety-current,
+:is(.pktw-root, .peak-design-root) .pk-settings-native-details > summary { min-height: 52px; padding: 8px 7px; }
+
+:is(.pktw-root, .peak-design-root) .pk-feature-model__main { grid-template-columns: minmax(0, 1fr) 244px; min-height: 58px; }
+:is(.pktw-root, .peak-design-root) button.pk-feature-model__identity { min-height: 58px !important; padding: 7px !important; }
+:is(.pktw-root, .peak-design-root) .pk-feature-model__action { grid-template-columns: minmax(0, 1fr) 232px; min-height: 46px; font-size: 10.5px; }
+:is(.pktw-root, .peak-design-root) .pk-feature-model__action > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+:is(.pktw-root, .peak-design-root) .pk-feature-model__local { justify-self: end; color: var(--pk-text-tertiary); font-size: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-model-trigger { min-height: 38px !important; padding: 6px 9px !important; }
+:is(.pktw-root, .peak-design-root) .pk-model-trigger__provider { font-size: 10px; }
+:is(.pktw-root, .peak-design-root) .pk-model-trigger__model { font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-model-picker { width: min(480px, calc(100vw - 36px)); max-height: min(560px, calc(100vh - 80px)); }
+
+:is(.pktw-root, .peak-design-root) button.pk-catalog-entry { width: 100% !important; border-top: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); text-align: left; }
+:is(.pktw-root, .peak-design-root) .pk-reference-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--pk-z-modal) + 10);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(22 24 29 / 42%);
+}
+:is(.pktw-root, .peak-design-root) .pk-reference-modal {
+  display: flex;
+  width: min(760px, calc(100vw - 48px));
+  max-height: min(720px, calc(100vh - 48px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--pk-border);
+  border-radius: 12px;
+  background: var(--pk-surface-overlay);
+  box-shadow: var(--pk-shadow-popover);
+}
+:is(.pktw-root, .peak-design-root) .pk-reference-modal--catalog { width: min(820px, calc(100vw - 48px)); }
+:is(.pktw-root, .peak-design-root) .pk-reference-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 58px; padding: 10px 16px; border-bottom: 1px solid var(--pk-border-soft); }
+:is(.pktw-root, .peak-design-root) .pk-reference-modal > header > span { display: flex; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) button.pk-reference-modal__close { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; max-width: 32px !important; max-height: 32px !important; padding: 0 !important; }
+:is(.pktw-root, .peak-design-root) .pk-reference-modal__body { min-height: 0; padding: 14px 16px; overflow: auto; }
+:is(.pktw-root, .peak-design-root) .pk-reference-empty { min-height: 64px; padding: 22px; color: var(--pk-text-tertiary); text-align: center; }
+
+:is(.pktw-root, .peak-design-root) .pk-agent-readiness { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 58px; margin: -8px 0 22px; padding: 9px 11px; border: 1px solid var(--pk-border-soft); border-radius: 9px; background: var(--pk-surface-sunken); }
+:is(.pktw-root, .peak-design-root) .pk-agent-readiness > span:nth-child(2) { display: flex; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) .pk-agent-readiness > span:last-child { color: var(--pk-text-tertiary); font-size: 9px; }
+
+:is(.pktw-root, .peak-design-root).pkonb-modal { width: min(1080px, calc(100vw - 32px)); height: min(820px, calc(100vh - 32px)); }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__topbar { min-height: 54px; padding: 0 20px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__footer { min-height: 62px; padding: 0 20px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__progress { padding: 17px 38px 12px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__steps { width: min(100%, 940px); }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step { min-height: 52px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:first-child { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid var(--pk-border-strong); border-radius: 999px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:nth-child(2) { display: flex; width: auto; height: auto; min-width: 0; flex-direction: column; align-items: flex-start; border: 0; border-radius: 0; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step strong { font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step small { margin-top: 2px; font-size: 8.5px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__step-meta { display: flex; justify-content: space-between; width: min(100%, 940px); margin: 5px auto 0; padding-top: 8px; border-top: 1px solid var(--pk-border-soft); color: var(--pk-text-tertiary); font-size: 9px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__content { padding: 26px 56px 30px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step-content { width: min(100%, 820px); gap: 5px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step-content__title { font-size: 25px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step-content__intro { margin-bottom: 14px; font-size: 12.5px; line-height: 1.45; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; min-height: 46px; margin: 0 0 28px; padding: 7px 13px; border: 1px solid color-mix(in srgb, var(--pk-accent) 24%, var(--pk-border)); border-radius: 9px; background: var(--pk-accent-tint); }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps > span { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 8px; color: var(--pk-text-primary); }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps > span > span { display: flex; min-width: 0; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps i { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid color-mix(in srgb, var(--pk-accent) 25%, var(--pk-border)); border-radius: 999px; background: var(--pk-surface); color: var(--pk-accent-text); font-size: 8px; font-style: normal; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps b { color: var(--pk-accent-text); font-size: 12px; font-weight: 500; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps strong { font-size: 9.5px; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps small { font-size: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-connection-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; overflow: hidden; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card { min-height: 68px !important; padding: 9px 12px !important; border: 0; border-bottom: 1px solid var(--pk-border); border-radius: 0; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-child(odd) { border-right: 1px solid var(--pk-border); }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-last-child(-n + 2) { border-bottom: 0; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__fallback { width: 34px; height: 34px; border: 1px solid var(--pk-border); border-radius: 8px; background: var(--pk-surface-sunken); color: var(--pk-text-secondary); font-size: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status { padding: 3px 7px; border-radius: 999px; background: var(--pk-surface-sunken); }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status[data-ready="true"] { background: var(--pk-success-bg); }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading { display: flex; align-items: end; justify-content: space-between; margin: 26px 0 8px; }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading > span:first-child { display: flex; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading strong { font-size: 13px; }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading > span:last-child { color: var(--pk-text-tertiary); font-size: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-more-connections { min-height: 58px !important; margin-top: 0; padding: 8px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-catalog-entry,
+:is(.pktw-root, .peak-design-root) .pk-settings-section > button.pk-settings-disclosure:not(.pk-more-connections) { min-height: 64px !important; padding: 9px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 66px; padding: 10px 13px; border-style: solid; background: var(--pk-surface-sunken); text-align: left; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent > span { display: flex; flex-direction: column; gap: 2px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form { gap: 0; padding: 0; border: 0; border-radius: 0; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-kinds { overflow: hidden; border-top: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); border-radius: 0; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind { min-height: 62px !important; padding: 8px 10px !important; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-cancel { min-height: 38px !important; margin-top: 6px; }
+
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  margin: 0 0 28px;
+  padding: 7px 13px;
+  border: 1px solid color-mix(in srgb, var(--pk-accent) 24%, var(--pk-border));
+  border-radius: 9px;
+  background: var(--pk-accent-tint);
+}
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps > span { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 8px; color: var(--pk-text-primary); }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps > span > span { display: flex; min-width: 0; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps i { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid color-mix(in srgb, var(--pk-accent) 25%, var(--pk-border)); border-radius: 999px; background: var(--pk-surface); color: var(--pk-accent-text); font-size: 8px; font-style: normal; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps b { color: var(--pk-accent-text); font-size: 12px; font-weight: 500; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps strong { font-size: 9.5px; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps small { font-size: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-connection-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; overflow: hidden; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card { min-height: 68px !important; padding: 9px 12px !important; border: 0; border-bottom: 1px solid var(--pk-border-soft); border-radius: 0; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-child(odd) { border-right: 1px solid var(--pk-border-soft); }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-last-child(-n + 2) { border-bottom: 0; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__fallback { width: 34px; height: 34px; border: 1px solid var(--pk-border); border-radius: 8px; background: var(--pk-surface-sunken); color: var(--pk-text-secondary); font-size: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status { padding: 3px 7px; border-radius: 999px; background: var(--pk-surface-sunken); }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status[data-ready="true"] { background: var(--pk-success-bg); }
+:is(.pktw-root, .peak-design-root) button.pk-more-connections { min-height: 58px !important; margin-top: 10px; padding: 8px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 66px; padding: 10px 13px; border-style: solid; background: var(--pk-surface-sunken); text-align: left; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent > span { display: flex; flex-direction: column; gap: 2px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form { gap: 0; padding: 0; border: 0; border-radius: 0; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-kinds { overflow: hidden; border-top: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); border-radius: 0; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind { min-height: 62px !important; padding: 8px 10px !important; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-cancel { min-height: 38px !important; margin-top: 6px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty { padding: 18px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent { margin-bottom: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-check-columns { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(230px, .75fr); gap: 12px; align-items: start; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks { margin: 0; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks > div { margin: 8px 0; border-top: 1px solid var(--pk-border-soft); border-bottom: 1px solid var(--pk-border-soft); }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-index-progress { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 68px; padding: 10px 12px; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-index-progress > span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-index-progress i { display: block; height: 4px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: var(--pk-surface-sunken); }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-index-progress b { display: block; height: 100%; border-radius: inherit; background: var(--pk-accent); }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-index-progress em { color: var(--pk-text-tertiary); font-size: 9px; font-style: normal; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-launchpad > button[disabled] { opacity: .58; }
+
+@media (max-width: 820px) {
+  :is(.pktw-root, .peak-design-root) .pk-connection-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(.pktw-root, .peak-design-root) .pk-onboarding-check-columns { grid-template-columns: minmax(0, 1fr); }
+  :is(.pktw-root, .peak-design-root) .pk-onboarding-step small,
+  :is(.pktw-root, .peak-design-root) .pk-onboarding__step-meta span { display: none; }
+}
+
 /* --------------------------------------------------------------------------
    Vault Intelligence
    Standalone, evidence-first maintenance workspace. The three global surfaces
@@ -21469,3 +21691,86 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Reference parity cascade lock: keep the ported mock geometry after later
+ * feature stylesheet blocks. New component-only rules live with the full port. */
+:is(.pktw-root, .peak-design-root) .pk-settings-tabs { gap: 28px; padding: 0 32px; }
+:is(.pktw-root, .peak-design-root) button.pk-settings-tabs__tab { min-height: 43px !important; padding: 0 1px !important; font-size: 9.5px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page { width: min(100% - 64px, 820px); padding: 32px 0 60px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page__header { gap: 4px; margin-bottom: 24px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page__eyebrow { font-size: 8.5px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page__title { font-size: 24px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-page__intro { max-width: 590px; font-size: 12px; line-height: 1.45; }
+:is(.pktw-root, .peak-design-root) .pk-settings-section { margin-bottom: 24px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-section__heading { margin-bottom: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-section__heading strong { font-size: 14px; }
+:is(.pktw-root, .peak-design-root) small { font-size: 10px; line-height: 1.38; }
+:is(.pktw-root, .peak-design-root) .pk-settings-field-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-toggle-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-link-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-info-row,
+:is(.pktw-root, .peak-design-root) .pk-settings-model-row { min-height: 52px; padding: 8px 7px; font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-toggle-row strong,
+:is(.pktw-root, .peak-design-root) .pk-settings-field-row strong,
+:is(.pktw-root, .peak-design-root) .pk-settings-link-row strong,
+:is(.pktw-root, .peak-design-root) .pk-settings-model-row strong { font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-settings-disclosure,
+:is(.pktw-root, .peak-design-root) .pk-safety-current,
+:is(.pktw-root, .peak-design-root) .pk-settings-native-details > summary { min-height: 52px; padding: 8px 7px; }
+:is(.pktw-root, .peak-design-root) .pk-feature-model__main { grid-template-columns: minmax(0, 1fr) 244px; min-height: 58px; }
+:is(.pktw-root, .peak-design-root) button.pk-feature-model__identity { min-height: 58px !important; padding: 7px !important; }
+:is(.pktw-root, .peak-design-root) .pk-feature-model__action { grid-template-columns: minmax(0, 1fr) 232px; min-height: 46px; font-size: 10.5px; }
+:is(.pktw-root, .peak-design-root) button.pk-model-trigger { min-height: 38px !important; padding: 6px 9px !important; }
+:is(.pktw-root, .peak-design-root) .pk-model-trigger__provider { font-size: 10px; }
+:is(.pktw-root, .peak-design-root) .pk-model-trigger__model { font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-model-picker { width: min(480px, calc(100vw - 36px)); max-height: min(560px, calc(100vh - 80px)); }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__topbar { min-height: 54px; padding: 0 20px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__footer { min-height: 62px; padding: 0 20px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__progress { padding: 17px 38px 12px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__steps { width: min(100%, 940px); }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step { min-height: 52px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:first-child { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid var(--pk-border-strong); border-radius: 999px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:nth-child(2) { display: flex; width: auto; height: auto; min-width: 0; flex-direction: column; align-items: flex-start; border: 0; border-radius: 0; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step strong { font-size: 11px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step small { margin-top: 2px; font-size: 8.5px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding__content { padding: 26px 56px 30px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step-content { width: min(100%, 820px); gap: 5px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step-content__title { font-size: 25px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step-content__intro { margin-bottom: 14px; font-size: 12.5px; line-height: 1.45; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 12px; min-height: 46px; margin: 0 0 28px; padding: 7px 13px; border: 1px solid color-mix(in srgb,var(--pk-accent) 24%,var(--pk-border)); border-radius: 9px; background: var(--pk-accent-tint); }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps > span { display: grid; grid-template-columns: 22px minmax(0,1fr); align-items: center; gap: 8px; color: var(--pk-text-primary); }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps > span > span { display: flex; min-width: 0; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps i { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid var(--pk-border); border-radius: 999px; background: var(--pk-surface); color: var(--pk-accent-text); font-size: 8px; font-style: normal; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps b { color: var(--pk-accent-text); font-size: 12px; font-weight: 500; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps strong { font-size: 9.5px; }
+:is(.pktw-root, .peak-design-root) .pk-reference-relationship--steps small { font-size: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-connection-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0; overflow: hidden; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card { min-height: 68px !important; padding: 9px 12px !important; border: 0; border-bottom: 1px solid var(--pk-border); border-radius: 0; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-child(odd) { border-right: 1px solid var(--pk-border); }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-last-child(-n+2) { border-bottom: 0; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__fallback { width: 34px; height: 34px; border: 1px solid var(--pk-border); border-radius: 8px; background: var(--pk-surface-sunken); color: var(--pk-text-secondary); font-size: 8px; }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status { padding: 3px 7px; border-radius: 999px; background: var(--pk-surface-sunken); }
+:is(.pktw-root, .peak-design-root) .pk-connection-card__status[data-ready="true"] { background: var(--pk-success-bg); }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading { display: flex; align-items: end; justify-content: space-between; margin: 26px 0 8px; }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading > span:first-child { display: flex; flex-direction: column; }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading strong { font-size: 13px; }
+:is(.pktw-root, .peak-design-root) .pk-more-connections__heading > span:last-child { color: var(--pk-text-tertiary); font-size: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-more-connections { min-height: 58px !important; margin-top: 0; padding: 8px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) button.pk-catalog-entry,
+:is(.pktw-root, .peak-design-root) .pk-settings-section > button.pk-settings-disclosure:not(.pk-more-connections) { min-height: 64px !important; padding: 9px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent { display: grid; grid-template-columns: 36px minmax(0,1fr); align-items: center; gap: 12px; min-height: 66px; padding: 10px 13px; border-style: solid; background: var(--pk-surface-sunken); text-align: left; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent > span { display: flex; flex-direction: column; gap: 2px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form { gap: 0; padding: 0; border: 0; border-radius: 0; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-kinds { overflow: hidden; border-top: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); border-radius: 0; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind { min-height: 62px !important; padding: 8px 10px !important; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-cancel { min-height: 38px !important; margin-top: 6px; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card { border-bottom: 1px solid var(--pk-border) !important; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-child(odd) { border-right: 1px solid var(--pk-border) !important; }
+:is(.pktw-root, .peak-design-root) button.pk-connection-card:nth-last-child(-n+2) { border-bottom: 0 !important; }
+:is(.pktw-root, .peak-design-root) button.pk-more-connections,
+:is(.pktw-root, .peak-design-root) button.pk-catalog-entry,
+:is(.pktw-root, .peak-design-root) .pk-settings-section > button.pk-settings-disclosure:not(.pk-more-connections) { border: 1px solid var(--pk-border) !important; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-monogram { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--pk-border); border-radius: 8px; background: var(--pk-surface-sunken); color: var(--pk-text-secondary); font-size: 8px; font-weight: 650; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind { border-bottom: 1px solid var(--pk-border) !important; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-child(odd) { border-right: 1px solid var(--pk-border) !important; }
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-last-child(-n+2) { border-bottom: 0 !important; }

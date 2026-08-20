@@ -20,6 +20,13 @@ export interface OnboardingRoleModels {
 
 export type OnboardingCheckState = 'idle' | 'checking' | 'ready' | 'building' | 'needs-attention' | 'failed';
 
+export interface OnboardingIndexMetrics {
+	indexedDocuments: number;
+	totalDocuments: number | null;
+	failures: number;
+	percent: number | null;
+}
+
 export interface OnboardingState {
 	step: PrimaryStep;
 	isReRun: boolean;
@@ -31,6 +38,7 @@ export interface OnboardingState {
 	betterSqliteMessage: string;
 	fastIndex: 'not-started' | 'starting' | 'running' | 'ready' | 'error';
 	fastIndexMessage: string;
+	indexMetrics: OnboardingIndexMetrics;
 	systemChecks: {
 		connection: OnboardingCheckState;
 		conversation: OnboardingCheckState;
@@ -56,7 +64,7 @@ export type OnboardingEvent =
 	| { type: 'model-check'; role: keyof OnboardingRoleModels; status: OnboardingCheckState }
 	| { type: 'sqlite-repairing' }
 	| { type: 'sqlite-result'; ready: boolean; message: string }
-	| { type: 'index-status'; status: OnboardingState['fastIndex']; message?: string }
+	| { type: 'index-status'; status: OnboardingState['fastIndex']; message?: string; metrics?: OnboardingIndexMetrics }
 	| { type: 'system-check'; check: keyof OnboardingState['systemChecks']; status: OnboardingCheckState }
 	| { type: 'operation'; id: number; kind: OnboardingState['operation']['kind']; message?: string | null }
 	| { type: 'finish' };
@@ -92,6 +100,7 @@ export function initialState(options: InitialStateOptions = {}): OnboardingState
 		betterSqliteMessage: '',
 		fastIndex: options.indexReady ? 'ready' : 'not-started',
 		fastIndexMessage: options.indexReady ? 'Existing full-text index is ready.' : '',
+		indexMetrics: { indexedDocuments: 0, totalDocuments: null, failures: 0, percent: null },
 		systemChecks: {
 			connection: 'idle', conversation: 'idle', knowledge: 'idle', agent: 'idle', hermes: 'idle',
 			sqlite: 'idle', fullText: options.indexReady ? 'ready' : 'idle', storage: 'idle', safety: 'idle',
@@ -112,6 +121,7 @@ export function reduce(state: OnboardingState, event: OnboardingEvent): Onboardi
 		...state,
 		fastIndex: event.status,
 		fastIndexMessage: event.message ?? state.fastIndexMessage,
+		indexMetrics: event.metrics ?? state.indexMetrics,
 	};
 	if (event.type === 'system-check') return { ...state, systemChecks: { ...state.systemChecks, [event.check]: event.status } };
 	if (event.type === 'operation') {

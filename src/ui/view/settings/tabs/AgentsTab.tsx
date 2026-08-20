@@ -33,6 +33,8 @@ export function AgentsTab({ settings, settingsUpdates, onOpenCommandGateway }: {
 				<span className="pk-settings-page__title">Agents</span>
 				<span className="pk-settings-page__intro">Choose how Peak Hermes works, which capabilities it may use and where it must ask first.</span>
 			</header>
+			<div className="pk-reference-relationship">Safety mode <span>→</span> Peak Hermes <span>→</span> Tools <span>→</span> Permissions</div>
+			<div className="pk-agent-readiness" data-ready={profiles.length > 0 ? 'true' : 'false'}><Bot size={20} /><span><strong>{profiles.length > 0 ? 'Peak Hermes is ready to configure' : 'Peak Hermes needs an AI connection'}</strong><small>One runtime owns planning, tools, confirmations, receipts and recovery.</small></span><span>{profiles.length > 0 ? `${profiles.length} connection${profiles.length === 1 ? '' : 's'}` : 'Not available yet'}</span></div>
 
 			<SafetyMode harness={harness} onChange={(defaultPermissionMode) => update({ defaultPermissionMode })} />
 

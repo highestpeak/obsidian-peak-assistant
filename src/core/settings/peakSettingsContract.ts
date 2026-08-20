@@ -48,6 +48,9 @@ export type ProductModelAction = {
 	id: string;
 	label: string;
 	requiredCapabilities: ModelCapabilityRequirement;
+	detail?: string;
+	group?: string;
+	localOnly?: boolean;
 };
 
 export type ProductModelFeature = {
@@ -65,41 +68,49 @@ export const PRODUCT_MODEL_FEATURES: readonly ProductModelFeature[] = [
 			{ id: 'conversation', label: 'Everyday conversation', requiredCapabilities: {} },
 			{ id: 'quick-answer', label: 'Quick answers & follow-ups', requiredCapabilities: {} },
 			{ id: 'deep-research', label: 'Deep research', requiredCapabilities: { tools: true } },
-			{ id: 'attachments', label: 'Attachments', requiredCapabilities: { vision: true, pdfInput: true } },
-			{ id: 'image-generation', label: 'Image generation', requiredCapabilities: { imageGeneration: true } },
+			{ id: 'attachments', label: 'Web and attachment tasks', requiredCapabilities: { vision: true, pdfInput: true } },
+			{ id: 'image-understanding', label: 'Understand images & documents', requiredCapabilities: { vision: true } },
+			{ id: 'image-generation', label: 'Generate images', requiredCapabilities: { imageGeneration: true } },
 		],
 	},
 	{
 		id: 'composer-copilot', label: 'Composer & Copilot', summary: 'Writing, structured blocks, selections and multi-file changes', requiredCapabilities: {},
 		actions: [
 			{ id: 'copilot-conversation', label: 'Copilot conversation', requiredCapabilities: {} },
-			{ id: 'selected-text-rewrite', label: 'Selected-text rewrite', requiredCapabilities: {} },
-			{ id: 'structured-blocks', label: 'Structured block actions', requiredCapabilities: { tools: true } },
+			{ id: 'whole-document', label: 'Whole-document rewrite & structure', requiredCapabilities: {} },
+			{ id: 'text-blocks', label: 'Text, headings, lists & tasks', detail: 'Rewrite, explain, continue and restructure', group: 'Content block actions', requiredCapabilities: {} },
+			{ id: 'structured-blocks', label: 'Tables, formulas & charts', detail: 'Explain, transform and produce structured patches', group: 'Content block actions', requiredCapabilities: { tools: true } },
+			{ id: 'native-objects', label: 'Code, Mermaid & native objects', detail: 'Review, explain and generate typed changes', group: 'Content block actions', requiredCapabilities: { tools: true } },
+			{ id: 'image-properties', label: 'Images & document properties', detail: 'Understand media or update guarded metadata', group: 'Content block actions', requiredCapabilities: { vision: true } },
 			{ id: 'multi-file-change', label: 'Multi-file change sets', requiredCapabilities: { tools: true } },
-			{ id: 'media-generation', label: 'Media generation', requiredCapabilities: { imageGeneration: true } },
+			{ id: 'media-generation', label: 'Generate images & covers', requiredCapabilities: { imageGeneration: true } },
+			{ id: 'markdown-formatting', label: 'Markdown formatting', requiredCapabilities: {}, localOnly: true },
 		],
 	},
 	{
 		id: 'vault-search', label: 'Vault Search & AI Search', summary: 'Local retrieval plus evidence-based analysis', requiredCapabilities: {},
 		actions: [
-			{ id: 'query-rewrite', label: 'Query rewrite', requiredCapabilities: {} },
-			{ id: 'analysis', label: 'AI analysis', requiredCapabilities: { tools: true } },
-			{ id: 'report', label: 'Research report', requiredCapabilities: { tools: true } },
+			{ id: 'full-text', label: 'Full-text search & filters', requiredCapabilities: {}, localOnly: true },
+			{ id: 'query-rewrite', label: 'Query understanding', requiredCapabilities: {} },
+			{ id: 'analysis', label: 'Answer from evidence', requiredCapabilities: {} },
+			{ id: 'report', label: 'Deep AI Search', requiredCapabilities: { tools: true } },
 		],
 	},
 	{
 		id: 'knowledge-index', label: 'Knowledge Index', summary: 'Embeddings and generated knowledge', requiredCapabilities: {},
 		actions: [
-			{ id: 'embedding', label: 'Embeddings', requiredCapabilities: {} },
-			{ id: 'summary', label: 'Summaries', requiredCapabilities: {} },
+			{ id: 'full-text', label: 'Full-text index maintenance', requiredCapabilities: {}, localOnly: true },
+			{ id: 'embedding', label: 'Embeddings', requiredCapabilities: { modelType: ModelType.EMBEDDING } },
+			{ id: 'summary', label: 'Document summaries', requiredCapabilities: {} },
 			{ id: 'tags-entities', label: 'Tags & entities', requiredCapabilities: {} },
-			{ id: 'relationships', label: 'Relationships', requiredCapabilities: {} },
+			{ id: 'relationships', label: 'Relationship discovery', requiredCapabilities: {} },
 			{ id: 'vision-ocr', label: 'Vision & OCR', requiredCapabilities: { vision: true } },
 		],
 	},
 	{
 		id: 'file-atlas', label: 'File Atlas & AI Graph', summary: 'Browse and explain document relationships', requiredCapabilities: {},
 		actions: [
+			{ id: 'browse', label: 'Browse files, links & local graph', requiredCapabilities: {}, localOnly: true },
 			{ id: 'graph-explanation', label: 'Graph explanations', requiredCapabilities: {} },
 			{ id: 'graph-generation', label: 'AI Graph generation', requiredCapabilities: { tools: true } },
 		],
@@ -117,8 +128,8 @@ export const PRODUCT_MODEL_FEATURES: readonly ProductModelFeature[] = [
 		actions: [
 			{ id: 'image', label: 'Image generation', requiredCapabilities: { modelType: ModelType.IMAGE } },
 			{ id: 'video', label: 'Video generation', requiredCapabilities: { modelType: ModelType.VIDEO } },
-			{ id: 'music', label: 'Music generation', requiredCapabilities: { modelType: ModelType.SOUND } },
 			{ id: 'speech', label: 'Speech generation', requiredCapabilities: { modelType: ModelType.SOUND } },
+			{ id: 'music', label: 'Music generation', requiredCapabilities: { modelType: ModelType.SOUND } },
 		],
 	},
 ] as const;

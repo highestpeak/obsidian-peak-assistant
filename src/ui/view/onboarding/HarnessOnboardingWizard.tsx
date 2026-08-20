@@ -190,11 +190,11 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 		void settingsActions.knowledgeIndex.getReadiness().then((readiness) => {
 			if (cancelled) return;
 			if (readiness.fullText === 'ready') {
-				dispatch({ type: 'index-status', status: 'ready', message: indexReadinessMessage(readiness, 'Existing fast search is ready to use.') });
+				dispatch({ type: 'index-status', status: 'ready', message: indexReadinessMessage(readiness, 'Existing fast search is ready to use.'), metrics: indexReadinessMetrics(readiness) });
 				return;
 			}
 			if (readiness.fullText === 'building') {
-				dispatch({ type: 'index-status', status: 'running', message: indexReadinessMessage(readiness, 'Attached to the active indexing run.') });
+				dispatch({ type: 'index-status', status: 'running', message: indexReadinessMessage(readiness, 'Attached to the active indexing run.'), metrics: indexReadinessMetrics(readiness) });
 				return;
 			}
 			if (readiness.fullText === 'failed') {
@@ -216,14 +216,14 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 				const readiness = await settingsActions.knowledgeIndex.getReadiness();
 				if (cancelled) return;
 				if (readiness.fullText === 'ready') {
-					dispatch({ type: 'index-status', status: 'ready', message: indexReadinessMessage(readiness, 'Fast local search is ready.') });
+				dispatch({ type: 'index-status', status: 'ready', message: indexReadinessMessage(readiness, 'Fast local search is ready.'), metrics: indexReadinessMetrics(readiness) });
 					return;
 				}
 				if (readiness.fullText === 'failed') {
-					dispatch({ type: 'index-status', status: 'error', message: indexReadinessMessage(readiness, 'The active indexing run needs attention.') });
+				dispatch({ type: 'index-status', status: 'error', message: indexReadinessMessage(readiness, 'The active indexing run needs attention.'), metrics: indexReadinessMetrics(readiness) });
 					return;
 				}
-				dispatch({ type: 'index-status', status: 'running', message: indexReadinessMessage(readiness, 'Fast local search is still being prepared.') });
+				dispatch({ type: 'index-status', status: 'running', message: indexReadinessMessage(readiness, 'Fast local search is still being prepared.'), metrics: indexReadinessMetrics(readiness) });
 			} catch (error) {
 				if (!cancelled) dispatch({ type: 'index-status', status: 'error', message: errorMessage(error) });
 			}
@@ -300,7 +300,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 						? 'failed'
 						: 'building';
 				dispatch({ type: 'system-check', check: 'fullText', status });
-				dispatch({ type: 'index-status', status: status === 'ready' ? 'ready' : status === 'failed' ? 'error' : 'running' });
+				dispatch({ type: 'index-status', status: status === 'ready' ? 'ready' : status === 'failed' ? 'error' : 'running', metrics: indexReadinessMetrics(readiness) });
 			} catch {
 				if (!cancelled) dispatch({ type: 'system-check', check: 'fullText', status: 'failed' });
 			}
@@ -360,6 +360,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 				dispatch({
 					type: 'index-status',
 					status: ready ? 'ready' : 'running',
+					metrics: indexReadinessMetrics(result.readiness),
 					message: indexReadinessMessage(
 						result.readiness,
 						result.disposition === 'reused'
@@ -496,17 +497,19 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 
 function ProgressHeader({ state }: { state: OnboardingState }) {
 	const active = PRIMARY_STEPS.indexOf(state.step);
+	const activeStep = ONBOARDING_STEPS[active];
 	return (
 		<div className="pk-onboarding__progress">
 			<div className="pk-onboarding__steps">
 				{ONBOARDING_STEPS.map((step, index) => <React.Fragment key={step.id}>
 					<div className="pk-onboarding-step" data-state={index < active ? 'complete' : index === active ? 'active' : 'future'}>
 						<span>{index < active ? <Check size={15} /> : index + 1}</span>
-						<strong>{step.label}</strong>
+						<span><strong>{step.label}</strong><small>{step.summary}</small></span>
 					</div>
 					{index < ONBOARDING_STEPS.length - 1 ? <i className="pk-onboarding-step-connector" data-state={index < active ? 'complete' : 'future'} /> : null}
 				</React.Fragment>)}
 			</div>
+			<div className="pk-onboarding__step-meta"><strong>Step {active + 1} of {ONBOARDING_STEPS.length} · {activeStep.label}</strong><span>Only setup that affects first use is required here.</span></div>
 		</div>
 	);
 }
@@ -522,7 +525,7 @@ function ConnectAIStep({ state, dispatch, profiles, evidence, onProfilesChange }
 	const selectedEvidence = state.selectedProfileId ? evidence[state.selectedProfileId] : undefined;
 	return (
 		<StepShell step={1} title="Connect AI to Peak" intro="Choose one service to begin. Peak checks the connection before anything else depends on it.">
-			{profiles.length === 0 && !adding ? <div className="pk-onboarding-empty"><Cpu size={25} /><strong>No AI connection yet</strong><span>Connect one service now. You can add or change the rest later in AI &amp; Models.</span><Button className="pk-onboarding-empty-action" onClick={() => setAdding(true)}><Plus size={18} /> Choose a service</Button></div> : null}
+			{profiles.length === 0 ? <div className="pk-onboarding-empty pk-onboarding-empty--persistent"><Cpu size={25} /><span><strong>No AI connection yet</strong><small>Connect one service now. You can add or change the rest later in AI &amp; Models.</small></span></div> : null}
 			{!adding ? (
 				profiles.length > 0 ? <div className="pk-onboarding-provider-list">
 					{profiles.map((profile) => (
@@ -595,6 +598,7 @@ function AssignmentPicker({ role, state, dispatch, profiles, settings, portalCon
 function PrepareVaultStep({ state, onRetry }: { state: OnboardingState; onRetry: () => void }) {
 	const indexState = state.fastIndex === 'ready' ? 'ready' : state.fastIndex === 'running' || state.fastIndex === 'starting' ? 'repairing' : state.fastIndex === 'error' ? 'error' : 'unchecked';
 	const indexWorking = state.fastIndex === 'running' || state.fastIndex === 'starting';
+	const progress = state.indexMetrics.percent ?? (state.fastIndex === 'ready' ? 100 : 0);
 	return (
 		<StepShell step={3} title="Make this vault searchable quickly" intro="Peak recommends a fast local full-text index first. It reuses the index you already have and never starts a second run for the same vault.">
 			<div className="pk-onboarding-sqlite-gate" data-state={state.betterSqlite}>
@@ -609,10 +613,13 @@ function PrepareVaultStep({ state, onRetry }: { state: OnboardingState; onRetry:
 					<PreflightRow icon={Search} title="Semantic search" state="optional" detail="Add embeddings for meaning-based results later in Knowledge & Search." />
 					<PreflightRow icon={Sparkles} title="Generated knowledge" state="optional" detail="Choose summaries, tags and relationships per run later." />
 				</div>
-				<div className="pk-onboarding-index-facts"><span><strong>Whole vault</strong><small>Saved scope</small></span><span><strong>Local first</strong><small>Fast index</small></span><span><strong>Supported files</strong><small>Configured in Settings</small></span></div>
+				<div className="pk-onboarding-index-facts"><span><strong>{state.indexMetrics.indexedDocuments.toLocaleString()}</strong><small>Indexed documents</small></span><span><strong>{state.indexMetrics.totalDocuments === null ? 'Not available' : state.indexMetrics.totalDocuments.toLocaleString()}</strong><small>Discovered total</small></span><span><strong>{state.indexMetrics.failures}</strong><small>Needs attention</small></span></div>
 			</div>
-			{indexWorking ? <div className="pk-onboarding-index-progress"><Loader2 size={20} /><span><strong>Fast search is being prepared</strong><small>{state.fastIndexMessage || 'Peak is watching this single run. You can continue when full-text search is ready.'}</small></span></div> : null}
-			{state.fastIndex === 'ready' ? <div className="pk-onboarding-index-progress" data-state="ready"><CheckCircle2 size={20} /><span><strong>Fast local search is ready</strong><small>{state.fastIndexMessage || 'Peak will reuse this index.'}</small></span></div> : null}
+			<div className="pk-onboarding-index-progress" data-state={state.fastIndex}>
+				{indexWorking ? <Loader2 size={20} /> : state.fastIndex === 'ready' ? <CheckCircle2 size={20} /> : <FileSearch size={20} />}
+				<span><strong>{indexWorking ? 'Fast search is being prepared' : state.fastIndex === 'ready' ? 'Fast local search is ready' : state.fastIndex === 'error' ? 'Fast search needs attention' : 'Fast search has not started yet'}</strong><small>{state.fastIndexMessage || 'Peak will reuse an existing run or start one when you continue.'}</small><i><b style={{ width: `${progress}%` }} /></i></span>
+				<em>{state.indexMetrics.percent === null && state.fastIndex !== 'ready' ? 'Progress not available' : `${progress}%`}</em>
+			</div>
 			{state.betterSqlite === 'error' ? <Button variant="secondary" onClick={onRetry}>Retry database repair</Button> : null}
 			<div className="pk-onboarding-note"><ShieldCheck size={18} /><span>Your files are never changed by indexing. Full-text search comes before summaries, tags, relations or embeddings.</span></div>
 		</StepShell>
@@ -642,8 +649,10 @@ function SystemCheckStep({ state, mediaRouteAvailable, onRunAgain }: { state: On
 				<span>{settled === rows.length ? <CheckCircle2 size={19} /> : <Loader2 size={19} />}{settled === rows.length ? (hasProblem ? 'Review one or more items' : 'Everything required is ready') : 'Checking your setup'}</span>
 				<span>{settled} of {rows.length} <Button variant="ghost" className="pk-onboarding-run-again" onClick={onRunAgain}>Run again</Button></span>
 			</div>
-			<div className="pk-onboarding-system-check"><div className="pk-onboarding-system-check__label"><strong>Required for first use</strong><span>All must pass</span></div>{rows.map((row) => <SystemCheckRow key={row.id} icon={row.icon} label={row.label} detail={row.detail} status={row.status} />)}</div>
-			<div className="pk-onboarding-optional-checks"><strong>Optional connections</strong><span>Live web search — configure later in Settings</span>{mediaRouteAvailable ? <span>Media route — a compatible service is connected</span> : <span>Media route — add a compatible provider later if you need it</span>}</div>
+			<div className="pk-onboarding-check-columns">
+				<div className="pk-onboarding-system-check"><div className="pk-onboarding-system-check__label"><strong>Required for first use</strong><span>All must pass</span></div>{rows.filter((row) => row.id !== 'safety').map((row) => <SystemCheckRow key={row.id} icon={row.icon} label={row.label} detail={row.detail} status={row.status} />)}</div>
+				<div className="pk-onboarding-optional-checks"><strong>Optional & policy checks</strong><SystemCheckRow icon={ShieldCheck} label="Safety defaults" detail="Peak asks before risky or costly actions" status={state.systemChecks.safety} /><span>Live web search — configure later in Settings</span><span>{mediaRouteAvailable ? 'Media route — a compatible service is connected' : 'Media route — not available yet; setup stays visible in Settings'}</span></div>
+			</div>
 			<div className="pk-onboarding-note"><ShieldCheck size={18} /><span><strong>Safe default:</strong> Agents ask before writes, commands, network access and costly actions. Existing expert bypass settings are shown as needing attention.</span></div>
 		</StepShell>
 	);
@@ -665,7 +674,7 @@ function TryPeakStep({ launchError, mediaRouteAvailable, onLaunch }: {
 				<LaunchCard icon={Network} title="Open File Atlas" detail="Explore documents and relationships" onClick={() => onLaunch('file-atlas')} />
 				<LaunchCard icon={Network} title="Open AI Graph" detail="Open the graph search workspace" onClick={() => onLaunch('ai-graph')} />
 				<LaunchCard icon={Bot} title="Start Agent & Wizard" detail="Open Peak Hermes Command Center" onClick={() => onLaunch('agent-wizard')} />
-				{mediaRouteAvailable ? <LaunchCard icon={Sparkles} title="Create media" detail="Open Chat Studio's media actions" onClick={() => onLaunch('create-media')} /> : null}
+				<LaunchCard icon={Sparkles} title="Create media" detail={mediaRouteAvailable ? "Open Chat Studio's media actions" : 'Not available yet · connect OpenAI, OpenRouter or fal.ai'} disabled={!mediaRouteAvailable} onClick={() => onLaunch('create-media')} />
 				<LaunchCard icon={Pencil} title="Open Composer" detail="Open Composer for the active Markdown note" onClick={() => onLaunch('composer')} />
 			</div>
 		</StepShell>
@@ -704,8 +713,8 @@ function SystemCheckRow({ icon: Icon, label, detail, status }: { icon: LucideIco
 	return <div data-state={status}><span>{status === 'checking' || status === 'building' ? <Loader2 size={19} /> : status === 'ready' ? <CheckCircle2 size={19} /> : status === 'needs-attention' || status === 'failed' ? <CircleAlert size={19} /> : <Icon size={19} />}<span><strong>{label}</strong><small>{detail}</small></span></span><span>{result}</span></div>;
 }
 
-function LaunchCard({ icon: Icon, title, detail, onClick }: { icon: LucideIcon; title: string; detail: string; onClick: () => void }) {
-	return <Button variant="ghost" onClick={onClick}><Icon size={22} /><span><strong>{title}</strong><small>{detail}</small></span><ChevronRight size={18} /></Button>;
+function LaunchCard({ icon: Icon, title, detail, disabled = false, onClick }: { icon: LucideIcon; title: string; detail: string; disabled?: boolean; onClick: () => void }) {
+	return <Button variant="ghost" disabled={disabled} data-available={disabled ? 'false' : 'true'} onClick={onClick}><Icon size={22} /><span><strong>{title}</strong><small>{detail}</small></span><ChevronRight size={18} /></Button>;
 }
 
 function assignmentIsUsable(assignment: ModelAssignment, profiles: Profile[], requirement: ModelCapabilityRequirement): boolean {
@@ -769,6 +778,15 @@ function combineCheckStatus(statuses: OnboardingCheckState[]): OnboardingCheckSt
 function indexReadinessMessage(readiness: IndexReadinessProjection, fallback: string): string {
 	if (readiness.indexedDocuments > 0) return `${readiness.indexedDocuments.toLocaleString()} documents are available or being prepared. ${fallback}`;
 	return fallback;
+}
+
+function indexReadinessMetrics(readiness: IndexReadinessProjection) {
+	return {
+		indexedDocuments: readiness.indexedDocuments,
+		totalDocuments: null,
+		failures: readiness.failures,
+		percent: readiness.fullText === 'ready' ? 100 : null,
+	};
 }
 
 function errorMessage(error: unknown): string {

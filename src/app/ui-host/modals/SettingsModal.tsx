@@ -7,7 +7,7 @@ import type { AppContext } from '@/app/context/AppContext';
 export class SettingsModal extends ReactModalHost {
 	protected readonly shell: ReactModalShellOptions = {
 		contentClasses: ['peak-settings-modal', 'peak-design-root', 'pktw-root'],
-		width: '980px',
+		width: '1020px',
 		maxHeight: 'calc(100vh - 72px)',
 	};
 
