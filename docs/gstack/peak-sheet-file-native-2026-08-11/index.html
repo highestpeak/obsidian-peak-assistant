@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Sheet · File-native V3</title>
+  <title>Peak Sheet · Grid-native V4</title>
   <link rel="stylesheet" href="./mock.css">
 </head>
 <body>
@@ -27,6 +27,8 @@
     <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5Z"/><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7Z"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m4 4 17 8-17 8 3-8Z"/><path d="M7 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
   </svg>
 
   <div class="app-shell">
@@ -83,26 +85,26 @@
             <button type="button" class="icon-button" aria-label="撤销"><svg><use href="#i-undo"/></svg></button>
             <button type="button" class="icon-button is-muted" aria-label="重做"><svg><use href="#i-redo"/></svg></button>
           </div>
-          <button type="button" class="primary-tool" id="toolbar-add-record"><svg><use href="#i-plus"/></svg>Record</button>
+          <button type="button" class="primary-tool" id="toolbar-add-record" title="一键在数据末尾添加行"><svg><use href="#i-plus"/></svg>Row</button>
           <label class="table-search"><svg><use href="#i-search"/></svg><input id="table-search" type="search" placeholder="Search this view"><small id="record-count">8</small></label>
           <button type="button" class="tool-button"><svg><use href="#i-filter"/></svg>Filter</button>
           <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>Sort</button>
           <button type="button" class="tool-button"><svg><use href="#i-group"/></svg>Group</button>
           <button type="button" class="tool-button"><svg><use href="#i-eye"/></svg>Fields</button>
           <span class="toolbar-spacer"></span>
-          <button type="button" class="ai-button"><svg><use href="#i-sparkles"/></svg>Ask AI</button>
+          <button type="button" class="ai-button" id="ask-ai-button"><span class="ai-button-orbit"></span><svg><use href="#i-sparkles"/></svg>Ask AI</button>
           <button type="button" class="icon-button" aria-label="更多"><svg><use href="#i-more"/></svg></button>
         </div>
 
         <div class="formula-bar">
-          <span id="cell-reference">D4</span><strong>ƒx</strong><input id="formula-input" value="Doing" aria-label="Formula or cell value"><span class="formula-hint"><svg><use href="#i-sparkles"/></svg>输入自然语言可生成分析或公式</span>
+          <span id="cell-reference">D4</span><strong>ƒx</strong><input id="formula-input" value="Doing" aria-label="Formula or cell value"><span class="formula-hint"><svg><use href="#i-sparkles"/></svg>拖选范围后 Ask AI，可生成分析或公式</span>
         </div>
 
         <section class="view-stage">
           <div class="view-panel is-active" id="table-view" data-panel="table">
             <div class="grid-scroll" id="grid-scroll">
               <table class="data-grid" id="data-grid" aria-label="Peak Sheet table"></table>
-              <button type="button" class="bottom-add-record" id="bottom-add-record"><svg><use href="#i-plus"/></svg><span>New record</span><small>Enter in the last cell also creates a row</small></button>
+              <button type="button" class="bottom-add-record" id="bottom-add-record"><svg><use href="#i-plus"/></svg><span>Add row</span><small>one click · always appended after the last record</small></button>
             </div>
           </div>
           <div class="view-panel" id="board-view" data-panel="board"></div>
@@ -112,11 +114,66 @@
 
         <footer class="status-bar">
           <span id="selection-status"><i></i> D4 · 1 cell selected</span>
+          <span class="selection-help">Drag · Shift-click · Shift + arrow</span>
           <span class="status-spacer"></span>
           <span id="file-status">Product/Launch/Launch Tracker.peaksheet</span>
           <span>JSON canonical</span>
           <span>revision <strong id="revision">18</strong></span>
         </footer>
+
+        <aside class="ai-drawer" id="ai-drawer" hidden aria-label="Ask Peak AI">
+          <header class="ai-drawer-head">
+            <span class="ai-mark"><span class="ai-mark-orbit"></span><svg><use href="#i-sparkles"/></svg></span>
+            <span><strong>Ask Peak AI</strong><small>Works on this file and your current selection</small></span>
+            <button type="button" id="close-ai" aria-label="Close Ask AI"><svg><use href="#i-x"/></svg></button>
+          </header>
+          <div class="ai-context-strip">
+            <span>Context</span>
+            <strong id="ai-selection-label">D4 · 1 selected cell</strong>
+            <small id="ai-file-label">Launch Tracker.peaksheet</small>
+          </div>
+          <div class="ai-thread">
+            <div class="ai-welcome" id="ai-welcome">
+              <span class="ai-welcome-icon"><svg><use href="#i-sparkles"/></svg></span>
+              <strong>Ask about the data, or build with it.</strong>
+              <small>Peak can summarize the selected range, create a chart, or write a checked formula column.</small>
+            </div>
+            <div class="ai-user-message" id="ai-user-message" hidden></div>
+            <section class="ai-run-card" id="ai-run-card" hidden>
+              <header><span class="ai-running-dot"></span><strong id="ai-run-status">Reading selected cells</strong><small id="ai-run-count">1 / 3</small></header>
+              <div class="ai-progress"><i id="ai-progress-bar"></i></div>
+              <ol class="ai-run-steps">
+                <li id="ai-step-read"><span></span>Read fields and selected rows</li>
+                <li id="ai-step-plan"><span></span>Choose a safe formula plan</li>
+                <li id="ai-step-check"><span></span>Check results before insertion</li>
+              </ol>
+            </section>
+            <section class="ai-formula-card" id="ai-formula-card" hidden>
+              <header><span><svg><use href="#i-check"/></svg>Formula ready</span><small id="ai-formula-check-count">8 rows checked</small></header>
+              <div class="ai-formula-name"><span>New column</span><strong>Days left</strong><small>Formula</small></div>
+              <code id="ai-formula-code"></code>
+              <div class="ai-result-preview"><span>Preview</span><strong>1, 1, 2, 3, 4, —, 5, 7</strong></div>
+              <div class="ai-formula-actions"><button type="button" id="ai-cancel-formula">Discard</button><button type="button" id="ai-apply-formula"><svg><use href="#i-plus"/></svg>Insert formula column</button></div>
+            </section>
+            <section class="ai-summary-card" id="ai-summary-card" hidden>
+              <header><span><svg><use href="#i-check"/></svg>Analysis ready</span><small>Grounded in selected rows</small></header>
+              <strong>Three issues currently put the release at risk</strong>
+              <ol>
+                <li><span>P0</span><p><b>Provider routing lacks a live receipt.</b><small>Release evidence is incomplete until a real-provider run is captured.</small></p></li>
+                <li><span>P0</span><p><b>Composer IME still needs real Obsidian QA.</b><small>The regression is unresolved without the interaction recording.</small></p></li>
+                <li><span>P0</span><p><b>Release candidate depends on open blockers.</b><small>Freeze only after the recovery exercise and blocker closure.</small></p></li>
+              </ol>
+            </section>
+          </div>
+          <footer class="ai-composer">
+            <div class="ai-suggestions" id="ai-suggestions">
+              <button type="button" data-ai-mode="formula" data-ai-prompt="Add a Days left formula column for unfinished tasks">Generate formula column</button>
+              <button type="button" data-ai-prompt="Summarize the selected release blockers">Summarize selection</button>
+            </div>
+            <label><textarea id="ai-prompt" rows="2" placeholder="Ask about this sheet or selected cells…"></textarea><button type="button" id="ai-submit" aria-label="Run Ask AI"><svg><use href="#i-send"/></svg></button></label>
+            <small>AI changes are previewed before they touch the file.</small>
+          </footer>
+        </aside>
       </article>
     </main>
   </div>
@@ -138,7 +195,7 @@
   <section class="popover field-editor" id="field-editor" hidden aria-label="Edit field">
     <header><strong id="field-editor-title">Edit field</strong><button type="button" class="close-popover" aria-label="关闭">×</button></header>
     <label>Field name<input id="field-name-input" value=""></label>
-    <label>Field type<select id="field-type-select"><option value="text">Text</option><option value="singleSelect">Single select</option><option value="number">Number</option><option value="date">Date</option><option value="checkbox">Checkbox</option><option value="link">Link</option><option value="file">File</option></select></label>
+    <label>Field type<select id="field-type-select"><option value="text">Text</option><option value="singleSelect">Single select</option><option value="number">Number</option><option value="date">Date</option><option value="checkbox">Checkbox</option><option value="link">Link</option><option value="file">File</option><option value="formula">Formula</option></select></label>
     <div class="field-editor-actions"><button type="button" class="secondary close-popover">Cancel</button><button type="button" class="primary" id="save-field">Save field</button></div>
   </section>
 
