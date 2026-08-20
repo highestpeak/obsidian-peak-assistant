@@ -35,7 +35,7 @@ const ALL_KINDS: ProfileKind[] = ['simulator', 'anthropic', 'openai', 'google', 
 
 function SectionTitle({ label }: { label: string }) {
     return (
-        <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mt-4 pktw-mb-2">
+        <div className="pk-profile-card__section-title pktw-flex pktw-items-center pktw-gap-2 pktw-mt-4 pktw-mb-2">
             <span className="pktw-text-pk-sm pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint pktw-whitespace-nowrap">
                 {label}
             </span>
@@ -44,7 +44,7 @@ function SectionTitle({ label }: { label: string }) {
     );
 }
 
-const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
+const INPUT_CLS = 'pk-profile-control pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
 function getCredentialLabel(profile: Profile): string {
     if (profile.kind === 'simulator') return SIMULATOR_DEFAULTS.ui.credentialLabel;
@@ -216,30 +216,32 @@ function MoreMenu({ profile, onToggleEnabled, onDelete }: {
     }, [open]);
 
     return (
-        <div ref={ref} className="pktw-relative">
+        <div ref={ref} className="pk-profile-card__menu pktw-relative">
             <Button
                 variant="ghost" size="icon"
-                className="pktw-size-7 pktw-text-pk-muted-foreground"
+                className="pk-profile-card__menu-trigger pktw-size-7 pktw-text-pk-muted-foreground"
                 onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
             >
                 <MoreHorizontal size={14} />
             </Button>
             {open && (
-                <div className="pktw-absolute pktw-right-0 pktw-top-full pktw-mt-1 pktw-z-50 pktw-min-w-[130px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg pktw-py-1">
-                    <button
-                        type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-accent-muted"
+                <div className="pk-profile-card__menu-popover pktw-absolute pktw-right-0 pktw-top-full pktw-mt-1 pktw-z-50 pktw-min-w-[130px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg pktw-py-1">
+                    <Button
+                        variant="unstyled"
+                        size="xs"
+                        className="pk-profile-card__menu-item pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-accent-muted"
                         onClick={(e) => { e.stopPropagation(); onToggleEnabled(profile.id); setOpen(false); }}
                     >
                         {profile.enabled ? 'Disable' : 'Enable'}
-                    </button>
-                    <button
-                        type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-pk-error pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-error-muted"
+                    </Button>
+                    <Button
+                        variant="unstyled"
+                        size="xs"
+                        className="pk-profile-card__menu-item pk-profile-card__menu-item--danger pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-pk-error pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-error-muted"
                         onClick={(e) => { e.stopPropagation(); onDelete(profile.id); setOpen(false); }}
                     >
                         Delete
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>
@@ -280,17 +282,17 @@ export function ProfileCard({
 
     return (
         <div className={cn(
-            'pktw-border pktw-rounded-lg pktw-transition-all pktw-border-pk-border',
+            'pk-profile-card pktw-border pktw-rounded-lg pktw-transition-all pktw-border-pk-border',
             !profile.enabled && 'pktw-opacity-45',
         )}>
             {/* ── Header ──────────────────────────────────────────────── */}
             <div
-                className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
+                className="pk-profile-card__header pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
                 onClick={() => setIsExpanded((v) => !v)}
             >
                 <ProviderIcon kind={profile.kind} size={30} />
 
-                <div className="pktw-flex-1 pktw-min-w-0">
+                <div className="pk-profile-card__summary pktw-flex-1 pktw-min-w-0">
                     <div className="pktw-flex pktw-items-center pktw-gap-2">
                         <span className="pktw-text-sm pktw-font-bold pktw-truncate">{profile.name}</span>
                     </div>
@@ -300,7 +302,7 @@ export function ProfileCard({
                 <Button
                     variant="ghost" size="sm"
                     className={cn(
-                        'pktw-text-xs pktw-gap-1 pktw-shrink-0',
+                        'pk-profile-card__test pktw-text-xs pktw-gap-1 pktw-shrink-0',
                         testResult === 'success' && 'pktw-text-pk-success',
                         testResult === 'fail' && 'pktw-text-pk-error',
                         !testResult && 'pktw-text-pk-muted-foreground',
@@ -331,7 +333,7 @@ export function ProfileCard({
 
             {/* ── Body (expanded) ─────────────────────────────────────── */}
             {isExpanded && (
-                <div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border">
+                <div className="pk-profile-card__body pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border">
                     {isSimulator ? (
                         <SimulatorFields
                             baseUrl={profile.baseUrl}

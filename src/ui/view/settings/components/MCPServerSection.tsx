@@ -70,14 +70,14 @@ export function MCPServerSection({ settings, settingsUpdates }: MCPServerSection
 	};
 
 	return (
-		<div className="pktw-space-y-4">
+		<div className="pk-mcp-manager pktw-space-y-4">
 			{/* Heading intentionally omitted — ToolsTab already renders the
 			    section title + sub for this surface. Keeping it here produced
 			    a duplicate "External tools" header. */}
 
 			{/* Server cards */}
 			{servers.length === 0 && (
-				<div className="pktw-text-sm pktw-text-pk-muted-foreground pktw-text-center pktw-py-8">
+				<div className="pk-mcp-manager__empty pktw-text-sm pktw-text-pk-muted-foreground pktw-text-center pktw-py-8">
 					{copy.emptyHint}
 				</div>
 			)}
@@ -93,7 +93,7 @@ export function MCPServerSection({ settings, settingsUpdates }: MCPServerSection
 			{/* Add button */}
 			<Button
 				variant="outline"
-				className="pktw-w-full pktw-border-dashed pktw-border-pk-border pktw-text-pk-muted-foreground pktw-h-11 pktw-gap-1.5"
+				className="pk-mcp-manager__add pktw-w-full pktw-border-dashed pktw-border-pk-border pktw-text-pk-muted-foreground pktw-h-11 pktw-gap-1.5"
 				onClick={handleAdd}
 			>
 				<Plus size={16} />

@@ -18,10 +18,9 @@ import {
     Loader2,
     X,
     ChevronRight,
-    ExternalLink,
+    Server,
     Trash2,
 } from 'lucide-react';
-import { cn } from '@/ui/react/lib/utils';
 
 export interface ProviderOption {
     kind: ProfileKind;
@@ -128,7 +127,7 @@ export function AddProviderForm({
 
     if (choosingProvider) {
 		return (
-			<div className="pk-onboarding-provider-form">
+			<div className="pk-onboarding-provider-chooser">
 				<div className="pk-onboarding-provider-kinds" role="radiogroup" aria-label="Choose an AI service">
                 {visibleOptions.map(({ kind, label, desc }) => (
                     <Button
@@ -149,67 +148,57 @@ export function AddProviderForm({
 				{onCancel ? <Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={onCancel}>Back to saved connections</Button> : null}
 			</div>
 		);
-	}
+    }
 
     return (
-        <div className="pk-onboarding-provider-form">
-			<div className="pk-onboarding-provider-form__header">
-				<Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={() => setChoosingProvider(true)}>Back</Button>
+        <section className="pk-onboarding-connection-card">
+			<header className="pk-onboarding-connection-card__header">
+				<Button variant="ghost" className="pk-onboarding-connection-back" onClick={() => setChoosingProvider(true)}>‹ Back</Button>
                 <span className="pk-onboarding-provider-monogram">{providerMonogram(effectiveKind)}</span>
 				<span><strong>Connect {selectedOption.label}</strong><small>{requiresKey ? 'Paste a key, then run the same safe connection check.' : 'Peak will verify this local or authenticated connection.'}</small></span>
-			</div>
+			</header>
 
-            {/* Platform link */}
-            {selectedOption.keyUrl && (
-                <a
-                    href={selectedOption.keyUrl}
-                    className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-text-xs pktw-text-[--text-accent] hover:pktw-underline pktw-w-fit"
-                >
-                    <ExternalLink size={11} />
-                    {selectedOption.keyUrlLabel} — {selectedOption.label}
-                </a>
-            )}
-
-            {/* API Key input */}
-            <div className="pktw-flex pktw-gap-2">
+            {requiresKey ? <label className="pk-onboarding-connection-field">
+				<span>API key</span>
                 <input
                     type="password"
-                    placeholder={requiresKey ? 'sk-...' : '(no key required)'}
+                    placeholder="sk-..."
                     value={apiKey}
-                    disabled={!requiresKey}
                     onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
-                    className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary] pktw-text-[--text-normal] focus:pktw-outline-none focus:pktw-ring-1 focus:pktw-ring-[--interactive-accent] disabled:pktw-opacity-50"
                 />
-                <Button onClick={() => void handleTestAndUse()} disabled={(requiresKey && !apiKey.trim()) || !effectiveBaseUrl || testing} className="pktw-gap-1.5">
-                    {testing ? <Loader2 size={14} className="pktw-animate-spin" /> : null}
-                    Test and use
-                </Button>
-            </div>
+			</label> : <div className="pk-onboarding-connection-local-note">
+				<Server size={18} />
+				<span><strong>{selectedOption.label} connection</strong><small>No API key is required. Peak will verify the local or authenticated adapter.</small></span>
+			</div>}
 
-            <label className="pktw-flex pktw-flex-col pktw-gap-1">
-				<span className="pktw-text-xs pktw-text-[--text-muted]">Base URL</span>
+			{(effectiveKind === 'custom' || effectiveKind === 'litellm') ? <label className="pk-onboarding-connection-field">
+				<span>Base URL</span>
 				<input
 					type="url"
 					value={effectiveBaseUrl}
 					onChange={(event) => { setBaseUrl(event.target.value); setTestResult(null); }}
-					className="pktw-w-full pktw-px-3 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary] pktw-text-[--text-normal]"
 				/>
-			</label>
+			</label> : null}
 
             {/* Test result */}
             {testResult?.ready && (
-                <span className="pktw-text-xs pktw-text-pk-success pktw-flex pktw-items-center pktw-gap-1">
+                <span className="pk-onboarding-connection-result" data-state="ready">
                     <Check size={12} /> Connection successful
                 </span>
             )}
             {testResult && !testResult.ready && (
-                <span className="pktw-text-xs pktw-text-pk-error pktw-flex pktw-items-center pktw-gap-1">
+                <span className="pk-onboarding-connection-result" data-state="error">
                     <X size={12} /> {testResult.catalog.message || testResult.authentication.message}
                 </span>
             )}
-			<span className="pk-onboarding-provider-form__receipt">No Vault content is used by this connection test.</span>
-			{onCancel ? <Button variant="ghost" className="pk-onboarding-provider-cancel" onClick={onCancel}>Back to saved connections</Button> : null}
-        </div>
+			<footer className="pk-onboarding-connection-card__footer">
+				<span>No Vault content is used by this connection test.</span>
+				<Button variant="primary" className="pk-onboarding-connection-submit" onClick={() => void handleTestAndUse()} disabled={(requiresKey && !apiKey.trim()) || !effectiveBaseUrl || testing}>
+					{testing ? <Loader2 size={14} className="pk-spin" /> : null}
+					Test and use
+				</Button>
+			</footer>
+        </section>
     );
 }
 
@@ -277,11 +266,11 @@ export function SavedProfileRow({ profile, onDelete, onChange, onSelect, selecte
     }
 
     return (
-        <div className="pktw-rounded-md pktw-border pktw-border-[--background-modifier-border] pktw-overflow-hidden">
+        <div className="pk-onboarding-saved-profile">
             {/* Header row — click to expand */}
             <div
 				data-selected={selected ? 'true' : 'false'}
-                className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2 pktw-cursor-pointer hover:pktw-bg-[--background-modifier-hover] pktw-transition-colors"
+                className="pk-onboarding-saved-profile__header"
             >
 				<Button
 					variant="ghost"
@@ -293,48 +282,48 @@ export function SavedProfileRow({ profile, onDelete, onChange, onSelect, selecte
 					aria-pressed={selected}
 				>
                 <ProviderIcon kind={profile.kind} size={32} />
-                <span className="pktw-flex-1 pktw-text-sm pktw-text-[--text-normal] pktw-truncate">{profile.name}</span>
+				<span className="pk-onboarding-saved-profile__name">{profile.name}</span>
 				<span className="pk-onboarding-provider-state" data-state={status}>{status === 'checking' ? 'Checking' : status === 'ready' ? 'Ready' : status === 'error' ? 'Needs attention' : isActive ? 'Default' : 'Not tested'}</span>
 				</Button>
-				<Button variant="ghost" className="pk-onboarding-provider-edit" aria-label={expanded ? `Cancel editing ${profile.name}` : `Edit ${profile.name}`} onClick={() => expanded ? cancelEdit() : setExpanded(true)}><ChevronRight size={16} className={cn('pktw-transition-transform', expanded && 'pktw-rotate-90')} /></Button>
+				<Button variant="ghost" className="pk-onboarding-provider-edit" data-expanded={expanded ? 'true' : 'false'} aria-label={expanded ? `Cancel editing ${profile.name}` : `Edit ${profile.name}`} onClick={() => expanded ? cancelEdit() : setExpanded(true)}><ChevronRight size={16} /></Button>
             </div>
 
             {/* Expanded edit form */}
             {expanded && (
-                <div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-px-3 pktw-pb-3 pktw-pt-1 pktw-border-t pktw-border-[--background-modifier-border]">
+                <div className="pk-onboarding-saved-profile__body">
                     {option?.keyUrl && (
-                        <a href={option.keyUrl} className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-text-xs pktw-text-[--text-accent] hover:pktw-underline pktw-w-fit">
-                            <ExternalLink size={11} />
+                        <a href={option.keyUrl} className="pk-onboarding-saved-profile__link">
                             {option.keyUrlLabel}
                         </a>
                     )}
-                    <div className="pktw-flex pktw-gap-2">
+					<label className="pk-onboarding-saved-profile__field"><span>API key</span>
+						<div className="pk-onboarding-saved-profile__control-row">
                         <input
                             type="password"
                             placeholder="sk-..."
                             value={apiKey}
                             onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
-                            className="pktw-flex-1 pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary] pktw-text-[--text-normal] focus:pktw-outline-none focus:pktw-ring-1 focus:pktw-ring-[--interactive-accent]"
                         />
-                        <Button variant="secondary" size="sm" onClick={() => void handleTest()} disabled={testing} className="pktw-gap-1">
-                            {testing ? <Loader2 size={12} className="pktw-animate-spin" /> : null}
+						<Button variant="secondary" size="sm" className="pk-onboarding-saved-profile__action" onClick={() => void handleTest()} disabled={testing}>
+							{testing ? <Loader2 size={12} className="pk-spin" /> : null}
                             Test
                         </Button>
-                        <Button size="sm" onClick={handleSave} disabled={!testResult?.ready}>Save</Button>
-                    </div>
-                    <input type="url" value={baseUrl} onChange={(event) => { setBaseUrl(event.target.value); setTestResult(null); }} className="pktw-w-full pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-border pktw-border-[--background-modifier-border] pktw-rounded-md pktw-bg-[--background-primary]" />
+						<Button variant="primary" size="sm" className="pk-onboarding-saved-profile__action" onClick={handleSave} disabled={!testResult?.ready}>Save</Button>
+						</div>
+					</label>
+					<label className="pk-onboarding-saved-profile__field"><span>Base URL</span><input type="url" value={baseUrl} onChange={(event) => { setBaseUrl(event.target.value); setTestResult(null); }} /></label>
                     {testResult?.ready && (
-                        <span className="pktw-text-xs pktw-text-pk-success pktw-flex pktw-items-center pktw-gap-1"><Check size={12} /> OK</span>
+						<span className="pk-onboarding-connection-result" data-state="ready"><Check size={12} /> OK</span>
                     )}
                     {testResult && !testResult.ready && (
-                        <span className="pktw-text-xs pktw-text-pk-error pktw-flex pktw-items-center pktw-gap-1"><X size={12} /> {testResult.catalog.message}</span>
+						<span className="pk-onboarding-connection-result" data-state="error"><X size={12} /> {testResult.catalog.message}</span>
                     )}
-                    <div className="pktw-flex pktw-gap-2 pktw-pt-1">
-						<Button variant="ghost" size="sm" onClick={cancelEdit}>Cancel</Button>
+					<div className="pk-onboarding-saved-profile__footer">
+						<Button variant="ghost" size="sm" className="pk-onboarding-saved-profile__footer-action" onClick={cancelEdit}>Cancel</Button>
                         {!isActive && (
-                            <Button variant="ghost" size="sm" onClick={handleSetActive} className="pktw-text-xs">Set Active</Button>
+                            <Button variant="ghost" size="sm" className="pk-onboarding-saved-profile__footer-action" onClick={handleSetActive}>Set Active</Button>
                         )}
-                        {onDelete && <Button variant="ghost" size="sm" onClick={onDelete} className="pktw-text-xs pktw-text-pk-error hover:pktw-text-pk-error-text pktw-gap-1">
+                        {onDelete && <Button variant="ghost" size="sm" data-tone="danger" className="pk-onboarding-saved-profile__footer-action" onClick={onDelete}>
                             <Trash2 size={12} /> Delete
 						</Button>}
                     </div>

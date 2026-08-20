@@ -17,7 +17,7 @@ export interface FieldRowProps {
  */
 export function FieldRow({ label, children, labelWidth = '130px' }: FieldRowProps) {
 	return (
-		<div className="pktw-grid pktw-items-center pktw-gap-3" style={{ gridTemplateColumns: `${labelWidth} 1fr` }}>
+		<div className="pk-profile-field-row pktw-grid pktw-items-center pktw-gap-3" style={{ gridTemplateColumns: `${labelWidth} 1fr` }}>
 			<span className="pktw-text-xs pktw-text-pk-foreground-faint">{label}</span>
 			{children}
 		</div>

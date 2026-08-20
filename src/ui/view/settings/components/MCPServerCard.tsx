@@ -17,7 +17,7 @@ export interface MCPServerCardProps {
 	onDelete: (id: string) => void;
 }
 
-const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
+const INPUT_CLS = 'pk-mcp-control pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
 // ---------------------------------------------------------------------------
 // Status indicator
@@ -93,10 +93,10 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 	};
 
 	return (
-		<div className="pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
+		<div className="pk-mcp-card pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
 			{/* Header */}
 			<div
-				className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
+				className="pk-mcp-card__header pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
 				onClick={() => setExpanded(v => !v)}
 			>
 				<ChevronRight
@@ -118,7 +118,7 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 
 			{/* Expanded body */}
 			{expanded && (
-				<div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border pktw-space-y-3 pktw-pt-3">
+				<div className="pk-mcp-card__body pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border pktw-space-y-3 pktw-pt-3">
 					<FieldRow label="Name">
 						<input
 							className={INPUT_CLS}
@@ -171,13 +171,13 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 					)}
 
 					{/* Actions */}
-					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mt-3">
+					<div className="pk-mcp-card__actions pktw-flex pktw-items-center pktw-gap-2 pktw-mt-3">
 						{connStatus === 'connected' ? (
 							<Button
 								variant="outline"
 								size="sm"
 								onClick={handleDisconnect}
-								className="pktw-gap-1.5"
+								className="pk-mcp-card__action pktw-gap-1.5"
 							>
 								<PowerOff size={14} />
 								Disconnect
@@ -188,7 +188,7 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 								size="sm"
 								onClick={handleConnect}
 								disabled={connecting}
-								className="pktw-gap-1.5"
+								className="pk-mcp-card__action pktw-gap-1.5"
 							>
 								<Power size={14} />
 								Connect
@@ -198,6 +198,7 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 						<Button
 							variant="outline"
 							size="sm"
+							className="pk-mcp-card__action"
 							onClick={() => onUpdate(config.id, { enabled: !config.enabled })}
 						>
 							{config.enabled ? 'Disable' : 'Enable'}
@@ -209,7 +210,7 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 							variant="ghost"
 							size="sm"
 							onClick={() => onDelete(config.id)}
-							className="pktw-text-pk-error hover:pktw-text-pk-error-text hover:pktw-bg-pk-error-bg"
+							className="pk-mcp-card__action pk-mcp-card__action--delete pktw-text-pk-error hover:pktw-text-pk-error-text hover:pktw-bg-pk-error-bg"
 						>
 							<Trash2 size={14} />
 						</Button>

@@ -14716,7 +14716,6 @@
 :is(.pktw-root, .peak-design-root) .pk-settings-section > button.pk-settings-disclosure:not(.pk-more-connections) { min-height: 64px !important; padding: 9px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 66px; padding: 10px 13px; border-style: solid; background: var(--pk-surface-sunken); text-align: left; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent > span { display: flex; flex-direction: column; gap: 2px; }
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form { gap: 0; padding: 0; border: 0; border-radius: 0; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-provider-kinds { overflow: hidden; border-top: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); border-radius: 0; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind { min-height: 62px !important; padding: 8px 10px !important; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-cancel { min-height: 38px !important; margin-top: 6px; }
@@ -14749,7 +14748,6 @@
 :is(.pktw-root, .peak-design-root) button.pk-more-connections { min-height: 58px !important; margin-top: 10px; padding: 8px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 66px; padding: 10px 13px; border-style: solid; background: var(--pk-surface-sunken); text-align: left; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent > span { display: flex; flex-direction: column; gap: 2px; }
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form { gap: 0; padding: 0; border: 0; border-radius: 0; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-provider-kinds { overflow: hidden; border-top: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); border-radius: 0; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind { min-height: 62px !important; padding: 8px 10px !important; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-cancel { min-height: 38px !important; margin-top: 6px; }
@@ -17661,6 +17659,531 @@
   text-align: right;
 }
 
+/* Connection manager shared by Settings and onboarding repair surfaces.
+ * Geometry is intentionally owned here instead of by Tailwind utilities:
+ * these controls render inside an Obsidian Modal, where bare input/button
+ * rules otherwise change their dimensions and alignment. */
+:is(.pktw-root, .peak-design-root) .pk-profile-manager {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-manager__list {
+  display: grid;
+  gap: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-manager__empty {
+  padding: 28px 16px;
+  color: var(--pk-text-secondary);
+  text-align: center;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-manager__add {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  padding: 0 14px !important;
+  border: 1px dashed var(--pk-border) !important;
+  border-radius: 7px !important;
+  background: var(--pk-surface) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card,
+:is(.pktw-root, .peak-design-root) .pk-profile-manager__advanced,
+:is(.pktw-root, .peak-design-root) .pk-profile-add-grid {
+  overflow: hidden;
+  border: 1px solid var(--pk-border);
+  border-radius: 9px;
+  background: var(--pk-surface);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__header,
+:is(.pktw-root, .peak-design-root) .pk-profile-manager__advanced-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__header:hover,
+:is(.pktw-root, .peak-design-root) .pk-profile-manager__advanced-header:hover {
+  background: var(--pk-accent-tint);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__summary {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__summary strong,
+:is(.pktw-root, .peak-design-root) .pk-profile-card__summary > div > span {
+  overflow: hidden;
+  color: var(--pk-text-primary);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__summary > span {
+  overflow: hidden;
+  color: var(--pk-text-secondary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-card__test {
+  width: auto !important;
+  min-width: 76px !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 9px !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-card__test:hover {
+  background: var(--pk-accent-tint) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__body,
+:is(.pktw-root, .peak-design-root) .pk-profile-manager__advanced-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 8px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__section-title > div {
+  height: 1px;
+  flex: 1 1 auto;
+  background: var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-field-row {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-field-row > :last-child {
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-control {
+  box-sizing: border-box;
+  display: block;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: 7px !important;
+  outline: 0 !important;
+  background: var(--pk-surface) !important;
+  color: var(--pk-text-primary) !important;
+  font: inherit;
+  font-size: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-control:focus {
+  border-color: var(--pk-accent) !important;
+  box-shadow: 0 0 0 2px var(--pk-accent-tint) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-manager input[type="range"] {
+  width: 100% !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+  accent-color: var(--pk-accent);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-manager input[type="checkbox"] {
+  width: 16px !important;
+  min-width: 16px !important;
+  max-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  max-height: 16px !important;
+  -webkit-appearance: checkbox !important;
+  appearance: checkbox !important;
+  accent-color: var(--pk-accent);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-card__menu-trigger {
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-card__menu-trigger:hover {
+  background: var(--pk-surface-sunken) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-card__menu-popover {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 130px;
+  padding: 4px 0;
+  border: 1px solid var(--pk-border);
+  border-radius: 7px;
+  background: var(--pk-surface-overlay);
+  box-shadow: var(--pk-shadow-card);
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-card__menu-item {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 11px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  justify-content: flex-start;
+  color: var(--pk-text-primary);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-card__menu-item:hover {
+  background: var(--pk-accent-tint) !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-card__menu-item--danger {
+  color: var(--pk-error-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-model-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-model-combobox__label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--pk-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-model-combobox__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: 7px !important;
+  background: var(--pk-surface) !important;
+  color: var(--pk-text-primary);
+  text-align: left;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-model-combobox__trigger:hover {
+  border-color: var(--pk-accent) !important;
+  background: var(--pk-surface) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-model-combobox__input {
+  box-sizing: border-box;
+  display: block;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--pk-accent) !important;
+  border-radius: 7px !important;
+  background: var(--pk-surface) !important;
+  color: var(--pk-text-primary) !important;
+  font: 11px var(--pk-font-mono);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-model-combobox__popover {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--pk-border);
+  border-radius: 7px;
+  background: var(--pk-surface-overlay);
+  box-shadow: var(--pk-shadow-card);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-model-combobox__group {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--pk-surface-overlay);
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-model-combobox__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--pk-text-primary);
+  text-align: left;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-model-combobox__option[data-highlighted="true"] {
+  background: var(--pk-accent-tint) !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-model-combobox__option[data-selected="true"] {
+  font-weight: 650;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-model-combobox__empty {
+  padding: 12px;
+  color: var(--pk-text-secondary);
+  font-size: 11px;
+  text-align: center;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-add-grid {
+  padding: 14px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-add-grid__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-add-grid__cancel {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 7px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-profile-add-grid__options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-add-grid__option {
+  display: flex;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 104px !important;
+  min-height: 104px !important;
+  max-height: 104px !important;
+  padding: 10px !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: 8px !important;
+  background: var(--pk-surface) !important;
+  text-align: center;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-add-grid__option:hover {
+  border-color: var(--pk-accent) !important;
+  background: var(--pk-accent-tint) !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-profile-add-grid__show-all {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  margin-top: 10px;
+  padding: 0 8px !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-manager {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-manager__empty {
+  padding: 24px 12px;
+  color: var(--pk-text-secondary);
+  text-align: center;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-mcp-manager__add {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  padding: 0 14px !important;
+  border: 1px dashed var(--pk-border) !important;
+  border-radius: 7px !important;
+  background: var(--pk-surface) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-card {
+  overflow: hidden;
+  border: 1px solid var(--pk-border);
+  border-radius: 8px;
+  background: var(--pk-surface);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-card__header:hover {
+  background: var(--pk-accent-tint);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-card__body {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-control {
+  box-sizing: border-box;
+  display: block;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: 7px !important;
+  outline: 0 !important;
+  background: var(--pk-surface) !important;
+  color: var(--pk-text-primary) !important;
+  font: inherit;
+  font-size: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-control:focus {
+  border-color: var(--pk-accent) !important;
+  box-shadow: 0 0 0 2px var(--pk-accent-tint) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-mcp-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-mcp-card__action {
+  width: auto !important;
+  min-width: 68px !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: 7px !important;
+  background: var(--pk-surface) !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-mcp-card__action--delete {
+  min-width: 32px !important;
+  padding: 0 !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--pk-error-text) !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-mcp-card__action--delete:hover {
+  background: var(--pk-error-bg) !important;
+}
+
 :is(.pktw-root, .peak-design-root) .pk-onboarding-provider-list,
 :is(.pktw-root, .peak-design-root) .pk-onboarding-role-list,
 :is(.pktw-root, .peak-design-root) .pk-onboarding-preflight,
@@ -17694,46 +18217,174 @@
   text-align: left;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-chooser {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 16px;
-  border: 1px solid var(--pk-border);
-  border-radius: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card {
+  overflow: hidden;
+  border: 1px solid var(--pk-border-strong);
+  border-radius: 9px;
   background: var(--pk-surface);
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form__header {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__header {
   display: grid;
-  grid-template-columns: auto 34px minmax(0, 1fr);
+  grid-template-columns: auto 36px minmax(0, 1fr);
   align-items: center;
-  gap: 11px;
-  min-height: 48px;
-  padding-bottom: 4px;
+  gap: 10px;
+  min-height: 62px;
+  padding: 13px;
+  border-bottom: 1px solid var(--pk-border);
+  background: var(--pk-surface-sunken);
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form__header > span {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__header > span:last-child {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form__header strong {
-  font-size: 15px;
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__header strong {
+  font-size: 12px;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form__header small {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__header small {
   color: var(--pk-text-secondary);
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 10px;
+  line-height: 1.4;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form__receipt {
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-connection-back {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 7px !important;
+  justify-content: flex-start;
   color: var(--pk-text-secondary);
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 10.5px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-field {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  color: var(--pk-text-primary);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-field + .pk-onboarding-connection-field {
+  border-top: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-field input,
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__field input {
+  box-sizing: border-box;
+  display: block;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 11px !important;
+  border: 1px solid var(--pk-border-strong) !important;
+  border-radius: 7px !important;
+  outline: 0 !important;
+  background: var(--pk-surface) !important;
+  color: var(--pk-text-secondary) !important;
+  font: inherit;
+  cursor: text;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-field input:focus,
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__field input:focus {
+  border-color: var(--pk-accent) !important;
+  box-shadow: 0 0 0 2px var(--pk-accent-tint) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-local-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px;
+  padding: 12px;
+  border: 1px solid var(--pk-border);
+  border-radius: 8px;
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-local-note > svg {
+  flex: 0 0 auto;
+  color: var(--pk-success-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-local-note > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-local-note strong {
+  font-size: 11.5px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-local-note small {
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-result {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 16px 12px;
+  color: var(--pk-text-secondary);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-result[data-state="ready"] {
+  color: var(--pk-success-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-result[data-state="error"] {
+  color: var(--pk-error-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__footer {
+  display: flex;
+  min-height: 54px;
+  padding: 0 13px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--pk-border);
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__footer > span {
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-connection-submit {
+  width: auto !important;
+  min-width: 98px !important;
+  max-width: none !important;
+  height: 33px !important;
+  min-height: 33px !important;
+  max-height: 33px !important;
+  padding: 0 13px !important;
 }
 
 :is(.pktw-root, .peak-design-root) .pk-onboarding-provider-kinds {
@@ -17777,11 +18428,6 @@
   min-width: 0;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form input {
-  min-height: 42px;
-  font-size: 14px;
-}
-
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-cancel {
   align-self: flex-start;
   min-height: 40px !important;
@@ -17822,6 +18468,98 @@
   white-space: normal;
 }
 
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile {
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--pk-surface);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__header {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  background: var(--pk-surface);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__header[data-selected="true"] {
+  background: var(--pk-accent-tint);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--pk-text-primary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--pk-border-soft);
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__link {
+  align-self: flex-start;
+  color: var(--pk-accent-text);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__field {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: var(--pk-text-secondary);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-saved-profile__action {
+  width: auto !important;
+  min-width: 62px !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 10px !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 2px;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-saved-profile__footer-action {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 8px !important;
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-saved-profile__footer-action[data-tone="danger"] {
+  color: var(--pk-error-text);
+}
+
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-select[aria-pressed="true"] {
   background: var(--pk-surface);
   color: var(--pk-text-primary);
@@ -17836,6 +18574,14 @@
   min-height: 40px !important;
   max-height: 40px !important;
   padding: 0 !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-edit > svg {
+  transition: transform var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-edit[data-expanded="true"] > svg {
+  transform: rotate(90deg);
 }
 
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-connect-another {
@@ -18423,6 +19169,42 @@
 }
 
 @media (max-width: 720px) {
+	:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__header {
+		grid-template-columns: auto 34px minmax(0, 1fr);
+	}
+
+	:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-field,
+	:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__field {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 7px;
+	}
+
+	:is(.pktw-root, .peak-design-root) .pk-onboarding-connection-card__footer {
+		align-items: stretch;
+		flex-direction: column;
+		padding: 10px 13px;
+	}
+
+	:is(.pktw-root, .peak-design-root) button.pk-onboarding-connection-submit {
+		width: 100% !important;
+	}
+
+	:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__control-row {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	:is(.pktw-root, .peak-design-root) .pk-onboarding-saved-profile__control-row button:last-child {
+		grid-column: 2;
+	}
+
+	:is(.pktw-root, .peak-design-root) .pk-profile-add-grid__options {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	:is(.pktw-root, .peak-design-root) .pk-profile-field-row {
+		grid-template-columns: minmax(0, 1fr) !important;
+	}
+
   :is(.pktw-root, .peak-design-root) .pk-onboarding__steps {
     overflow-x: auto;
     padding-bottom: 2px;
@@ -21760,7 +22542,7 @@
 :is(.pktw-root, .peak-design-root) .pk-settings-section > button.pk-settings-disclosure:not(.pk-more-connections) { min-height: 64px !important; padding: 9px 12px !important; border: 1px solid var(--pk-border); border-radius: 9px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent { display: grid; grid-template-columns: 36px minmax(0,1fr); align-items: center; gap: 12px; min-height: 66px; padding: 10px 13px; border-style: solid; background: var(--pk-surface-sunken); text-align: left; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-empty--persistent > span { display: flex; flex-direction: column; gap: 2px; }
-:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-form { gap: 0; padding: 0; border: 0; border-radius: 0; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-provider-chooser { gap: 0; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-provider-kinds { overflow: hidden; border-top: 1px solid var(--pk-border); border-bottom: 1px solid var(--pk-border); border-radius: 0; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind { min-height: 62px !important; padding: 8px 10px !important; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-cancel { min-height: 38px !important; margin-top: 6px; }

@@ -6,6 +6,7 @@ import type { ProfileKind } from '@/core/profiles/types';
 import type { ModelCapabilities } from '@/core/providers/types';
 import { CapTags, highlightMatch } from './model-display-utils';
 import { ChevronDown } from 'lucide-react';
+import { Button } from '@/ui/component/shared-ui/button';
 
 export interface ModelComboboxProps {
 	value: string;
@@ -161,16 +162,17 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 	let flatIdx = 0;
 
 	return (
-		<div ref={containerRef} className="pktw-relative">
+		<div ref={containerRef} className="pk-profile-model-combobox pktw-relative">
 			{label && (
-				<span className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1.5">{label}</span>
+				<span className="pk-profile-model-combobox__label pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1.5">{label}</span>
 			)}
 			{/* Closed / trigger state */}
 			{!open && (
-				<button
-					type="button"
+				<Button
+					variant="unstyled"
 					onClick={handleOpen}
 					className={cn(
+						'pk-profile-model-combobox__trigger',
 						'pktw-flex pktw-items-center pktw-w-full pktw-gap-2 pktw-px-3 pktw-py-2',
 						'pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background',
 						'pktw-text-sm pktw-text-left pktw-cursor-pointer',
@@ -182,7 +184,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 					</span>
 					<CapTags caps={currentModel?.capabilities} />
 					<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-pk-muted-foreground pktw-shrink-0" />
-				</button>
+				</Button>
 			)}
 			{/* Open / editing state */}
 			{open && (
@@ -195,6 +197,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 						onKeyDown={handleKeyDown}
 						placeholder={value || placeholder || 'Type to filter...'}
 						className={cn(
+							'pk-profile-model-combobox__input',
 							'pktw-w-full pktw-px-3 pktw-py-2 pktw-rounded-md',
 							'pktw-border pktw-border-pk-accent pktw-bg-pk-background',
 							'pktw-text-sm pktw-font-mono pktw-text-xs',
@@ -204,6 +207,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 					<div
 						ref={listRef}
 						className={cn(
+							'pk-profile-model-combobox__popover',
 							'pktw-absolute pktw-z-50 pktw-left-0 pktw-right-0 pktw-mt-1',
 							'pktw-max-h-[280px] pktw-overflow-y-auto',
 							'pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-popover',
@@ -213,7 +217,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 						{groups.map((group) => (
 							<div key={group.label ?? '__flat'}>
 								{group.label && (
-									<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-sticky pktw-top-0 pktw-bg-popover">
+									<div className="pk-profile-model-combobox__group pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-sticky pktw-top-0 pktw-bg-popover">
 										<span className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-pk-accent" />
 										<span className="pktw-text-pk-xs pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-muted-foreground">
 											{group.label}
@@ -223,13 +227,17 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 								{group.items.map((item) => {
 									const idx = flatIdx++;
 									return (
-										<button
+										<Button
 											key={item.id}
-											type="button"
+											variant="unstyled"
+											size="xs"
 											data-idx={idx}
+											data-highlighted={idx === highlightIdx ? 'true' : 'false'}
+											data-selected={item.id === value ? 'true' : 'false'}
 											onClick={() => select(item.id)}
 											onMouseEnter={() => setHighlightIdx(idx)}
 											className={cn(
+												'pk-profile-model-combobox__option',
 												'pktw-flex pktw-items-center pktw-w-full pktw-gap-2 pktw-px-3 pktw-py-1.5',
 												'pktw-text-left pktw-text-sm pktw-cursor-pointer pktw-transition-colors',
 												idx === highlightIdx && 'pktw-bg-pk-accent-tint',
@@ -240,13 +248,13 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 												{highlightMatch(item.id, query)}
 											</span>
 											<CapTags caps={item.capabilities} />
-										</button>
+										</Button>
 									);
 								})}
 							</div>
 						))}
 						{flatFiltered.length === 0 && (
-							<div className="pktw-px-3 pktw-py-3 pktw-text-xs pktw-text-pk-muted-foreground pktw-text-center">
+							<div className="pk-profile-model-combobox__empty pktw-px-3 pktw-py-3 pktw-text-xs pktw-text-pk-muted-foreground pktw-text-center">
 								{allowFreeText && query.trim()
 									? (<>No matches &mdash; press <kbd className="pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-pk-border/40 pktw-text-pk-xs">Enter</kbd> to use <span className="pktw-font-mono pktw-text-pk-accent">{query.trim()}</span></>)
 									: 'No models found'

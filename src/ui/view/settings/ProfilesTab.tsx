@@ -19,7 +19,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
+const INPUT_CLS = 'pk-profile-control pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
 // ProfilesTab keeps a 160px label column (wider than the 130px default) until
 // the settings label-column width is unified by design.
@@ -117,15 +117,15 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
     };
 
     return (
-        <div className="pktw-space-y-4">
+        <div className="pk-profile-manager pktw-space-y-4">
             {/* Status bar — opt-out via hideStatusBar (AI Setup tab uses
                 the higher-level AI Behavior section instead). */}
             {!hideStatusBar && <StatusBar />}
 
             {/* Profile cards */}
-            <div className="pktw-space-y-3">
+            <div className="pk-profile-manager__list pktw-space-y-3">
                 {profiles.length === 0 && (
-                    <div className="pktw-text-sm pktw-text-pk-muted-foreground pktw-text-center pktw-py-8">
+                    <div className="pk-profile-manager__empty pktw-text-sm pktw-text-pk-muted-foreground pktw-text-center pktw-py-8">
                         No profiles configured. Add one to get started.
                     </div>
                 )}
@@ -150,7 +150,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
             ) : (
                 <Button
                     variant="outline"
-                    className="pktw-w-full pktw-border-dashed pktw-border-pk-border pktw-text-pk-muted-foreground pktw-h-11 pktw-gap-1.5"
+                    className="pk-profile-manager__add pktw-w-full pktw-border-dashed pktw-border-pk-border pktw-text-pk-muted-foreground pktw-h-11 pktw-gap-1.5"
                     onClick={() => setShowAddGrid(true)}
                 >
                     <Plus size={16} />
@@ -165,9 +165,9 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
                 service-manager runtime; only the dedicated UI block is gone. */}
 
             {/* Advanced model controls disclosure */}
-            {!hideAdvancedControls && <div className="pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
+            {!hideAdvancedControls && <div className="pk-profile-manager__advanced pktw-border pktw-border-pk-border pktw-rounded-lg pktw-overflow-hidden">
                 <div
-                    className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
+                    className="pk-profile-manager__advanced-header pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-transition-colors"
                     onClick={() => setAdvancedOpen((v) => !v)}
                 >
                     <ChevronRight
@@ -191,7 +191,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
                 </div>
 
                 {advancedOpen && (
-                    <div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border pktw-space-y-4">
+                    <div className="pk-profile-manager__advanced-body pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border pktw-space-y-4">
                         {/* LLM Output Control */}
                         <div className="pktw-mt-4">
                             <span className="pktw-text-xs pktw-font-semibold pktw-text-pk-foreground">
