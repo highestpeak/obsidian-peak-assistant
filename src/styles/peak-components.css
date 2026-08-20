@@ -14687,8 +14687,8 @@
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step { min-height: 52px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:first-child { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid var(--pk-border-strong); border-radius: 999px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:nth-child(2) { display: flex; width: auto; height: auto; min-width: 0; flex-direction: column; align-items: flex-start; border: 0; border-radius: 0; }
-:is(.pktw-root, .peak-design-root) .pk-onboarding-step strong { font-size: 11px; }
-:is(.pktw-root, .peak-design-root) .pk-onboarding-step small { margin-top: 2px; font-size: 8.5px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step strong { font-size: 12.5px; line-height: 1.25; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step small { margin-top: 3px; font-size: 10.5px; line-height: 1.3; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding__step-meta { display: flex; justify-content: space-between; width: min(100%, 940px); margin: 5px auto 0; padding-top: 8px; border-top: 1px solid var(--pk-border-soft); color: var(--pk-text-tertiary); font-size: 9px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding__content { padding: 26px 56px 30px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step-content { width: min(100%, 820px); gap: 5px; }
@@ -17464,6 +17464,7 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pk-onboarding__footer {
+  grid-template-columns: auto minmax(0, 1fr) auto;
   border-top: 1px solid var(--pk-border-soft);
 }
 
@@ -17477,6 +17478,64 @@
   min-height: 42px !important;
   padding: 8px 14px !important;
   font-size: 14px;
+}
+
+.pkonb-modal-shell .modal-close-button {
+  position: absolute !important;
+  z-index: 4;
+  top: 10px !important;
+  right: 12px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-finish-later {
+  justify-self: end;
+  width: auto !important;
+  min-width: 92px !important;
+  max-width: none !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  margin-right: 38px;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-footer-back,
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-footer-continue {
+  width: auto !important;
+  max-width: none !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-footer-back {
+  justify-self: start;
+  min-width: 88px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-footer-continue {
+  justify-self: end;
+  min-width: 110px !important;
 }
 
 :is(.pktw-root, .peak-design-root) .pk-onboarding__brand {
@@ -17540,7 +17599,7 @@
   padding: 3px 0;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-step > span {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:first-child {
   display: grid;
   place-items: center;
   width: 29px;
@@ -17564,12 +17623,12 @@
   color: var(--pk-accent-text);
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-step[data-state="active"] > span {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step[data-state="active"] > span:first-child {
   border-color: var(--pk-accent);
   color: var(--pk-accent-text);
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-step[data-state="complete"] > span {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step[data-state="complete"] > span:first-child {
   border-color: var(--pk-success-border);
   background: var(--pk-success-bg);
   color: var(--pk-success-text);
@@ -18935,6 +18994,16 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+:is(.pktw-root, .peak-design-root) .pk-onboarding-system-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--pk-border-soft);
+}
+
 :is(.pktw-root, .peak-design-root) .pk-onboarding-system-check > div > span:first-child {
   display: flex;
   align-items: center;
@@ -18974,24 +19043,112 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px 14px;
-  margin: 12px 2px 0;
+  overflow: hidden;
+  margin: 0;
+  border-top: 1px solid var(--pk-border);
   color: var(--pk-text-secondary);
   font-size: 13px;
   line-height: 1.4;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks strong {
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks > header {
+  display: flex;
+  min-height: 38px;
+  padding: 0 12px;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks > header strong {
   color: var(--pk-text-primary);
   font-size: 13px;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks span + span {
-  padding-left: 14px;
-  border-left: 1px solid var(--pk-border-soft);
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks > header span {
+  color: var(--pk-text-tertiary);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks .pk-onboarding-system-row > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks .pk-onboarding-system-row > span:first-child > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-checks .pk-onboarding-system-row small {
+  color: var(--pk-text-secondary);
+  font-size: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-system-row__result {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--pk-text-secondary);
+  font-size: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-system-row__result > em {
+  color: inherit;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-system-row[data-state="ready"] .pk-onboarding-system-row__result > em {
+  color: var(--pk-success-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-system-row[data-state="failed"] .pk-onboarding-system-row__result > em {
+  color: var(--pk-error-text);
+}
+
+:is(.pktw-root, .peak-design-root) button.pk-onboarding-system-row__action {
+  width: auto !important;
+  min-width: 88px !important;
+  max-width: none !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 8px !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: 6px !important;
+  background: var(--pk-surface) !important;
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-notes {
+  display: grid;
+  gap: 0;
+  padding: 0 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-notes > span {
+  display: flex;
+  min-height: 48px;
+  padding: 7px 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-notes strong {
+  color: var(--pk-text-primary);
+  font-size: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-optional-notes small {
+  color: var(--pk-text-secondary);
+  font-size: 11px;
 }
 
 :is(.pktw-root, .peak-design-root) .pk-onboarding-note {
@@ -19099,6 +19256,34 @@
   color: var(--pk-text-secondary);
   font-size: 13px;
   text-align: center;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-footer-message {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-footer-message strong {
+  color: var(--pk-text-primary);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-footer-message small {
+  overflow: hidden;
+  max-width: 620px;
+  color: var(--pk-text-secondary);
+  font-size: 10.5px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-onboarding-footer-message[data-state="blocked"] strong {
+  color: var(--pk-warning-text);
 }
 
 :is(.pktw-root, .peak-design-root) .pk-onboarding__first-success-hint {
@@ -22652,8 +22837,8 @@
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step { min-height: 52px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:first-child { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid var(--pk-border-strong); border-radius: 999px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step > span:nth-child(2) { display: flex; width: auto; height: auto; min-width: 0; flex-direction: column; align-items: flex-start; border: 0; border-radius: 0; }
-:is(.pktw-root, .peak-design-root) .pk-onboarding-step strong { font-size: 11px; }
-:is(.pktw-root, .peak-design-root) .pk-onboarding-step small { margin-top: 2px; font-size: 8.5px; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step strong { font-size: 12.5px; line-height: 1.25; }
+:is(.pktw-root, .peak-design-root) .pk-onboarding-step small { margin-top: 3px; font-size: 10.5px; line-height: 1.3; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding__content { padding: 26px 56px 30px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step-content { width: min(100%, 820px); gap: 5px; }
 :is(.pktw-root, .peak-design-root) .pk-onboarding-step-content__title { font-size: 25px; }

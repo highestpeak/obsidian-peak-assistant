@@ -20,6 +20,26 @@ export interface OnboardingRoleModels {
 
 export type OnboardingCheckState = 'idle' | 'checking' | 'ready' | 'building' | 'needs-attention' | 'failed';
 
+export type OnboardingSystemCheckId =
+	| 'connection'
+	| 'conversation'
+	| 'knowledge'
+	| 'agent'
+	| 'hermes'
+	| 'sqlite'
+	| 'fullText'
+	| 'storage'
+	| 'safety';
+
+export type OnboardingBlockerId =
+	| 'operation'
+	| 'checks'
+	| 'connection'
+	| 'models'
+	| 'sqlite'
+	| 'index'
+	| OnboardingSystemCheckId;
+
 export interface OnboardingIndexMetrics {
 	indexedDocuments: number;
 	totalDocuments: number | null;
@@ -50,6 +70,7 @@ export interface OnboardingState {
 		storage: OnboardingCheckState;
 		safety: OnboardingCheckState;
 	};
+	systemCheckMessages: Partial<Record<OnboardingSystemCheckId, string>>;
 	operation: { id: number; kind: 'idle' | 'saving' | 'continuing' | 'launching'; message: string | null };
 	done: boolean;
 }
@@ -65,7 +86,7 @@ export type OnboardingEvent =
 	| { type: 'sqlite-repairing' }
 	| { type: 'sqlite-result'; ready: boolean; message: string }
 	| { type: 'index-status'; status: OnboardingState['fastIndex']; message?: string; metrics?: OnboardingIndexMetrics }
-	| { type: 'system-check'; check: keyof OnboardingState['systemChecks']; status: OnboardingCheckState }
+	| { type: 'system-check'; check: OnboardingSystemCheckId; status: OnboardingCheckState; message?: string }
 	| { type: 'operation'; id: number; kind: OnboardingState['operation']['kind']; message?: string | null }
 	| { type: 'finish' };
 
@@ -105,6 +126,7 @@ export function initialState(options: InitialStateOptions = {}): OnboardingState
 			connection: 'idle', conversation: 'idle', knowledge: 'idle', agent: 'idle', hermes: 'idle',
 			sqlite: 'idle', fullText: options.indexReady ? 'ready' : 'idle', storage: 'idle', safety: 'idle',
 		},
+		systemCheckMessages: {},
 		operation: { id: 0, kind: 'idle', message: null },
 		done: false,
 	};
@@ -123,7 +145,13 @@ export function reduce(state: OnboardingState, event: OnboardingEvent): Onboardi
 		fastIndexMessage: event.message ?? state.fastIndexMessage,
 		indexMetrics: event.metrics ?? state.indexMetrics,
 	};
-	if (event.type === 'system-check') return { ...state, systemChecks: { ...state.systemChecks, [event.check]: event.status } };
+	if (event.type === 'system-check') return {
+		...state,
+		systemChecks: { ...state.systemChecks, [event.check]: event.status },
+		systemCheckMessages: event.message === undefined
+			? state.systemCheckMessages
+			: { ...state.systemCheckMessages, [event.check]: event.message },
+	};
 	if (event.type === 'operation') {
 		if (event.id < state.operation.id) return state;
 		return { ...state, operation: { id: event.id, kind: event.kind, message: event.message ?? null } };
@@ -147,7 +175,7 @@ export function canContinue(state: OnboardingState): boolean {
 	if (state.step === 'connect-ai') return Object.values(state.connectionChecks).some((status) => status === 'ready');
 	if (state.step === 'core-models') return Object.values(state.modelChecks).every((status) => status === 'ready');
 	if (state.step === 'prepare-vault') {
-		return state.betterSqlite === 'ready' && state.fastIndex !== 'starting' && state.fastIndex !== 'running';
+		return state.betterSqlite === 'ready' && state.fastIndex !== 'starting';
 	}
 	if (state.step === 'system-check') {
 		return Object.entries(state.systemChecks).every(([key, status]) =>
@@ -155,6 +183,29 @@ export function canContinue(state: OnboardingState): boolean {
 		);
 	}
 	return state.step === 'try-peak';
+}
+
+export function continueBlocker(state: OnboardingState): OnboardingBlockerId | null {
+	if (state.operation.kind !== 'idle') return 'operation';
+	if (state.step === 'connect-ai') {
+		return Object.values(state.connectionChecks).some((status) => status === 'ready') ? null : 'connection';
+	}
+	if (state.step === 'core-models') {
+		return Object.values(state.modelChecks).every((status) => status === 'ready') ? null : 'models';
+	}
+	if (state.step === 'prepare-vault') {
+		if (state.betterSqlite !== 'ready') return 'sqlite';
+		return state.fastIndex === 'starting' ? 'index' : null;
+	}
+	if (state.step === 'system-check') {
+		if (Object.values(state.systemChecks).some((status) => status === 'idle' || status === 'checking')) return 'checks';
+		for (const [check, status] of Object.entries(state.systemChecks) as Array<[OnboardingSystemCheckId, OnboardingCheckState]>) {
+			if (status === 'ready' || status === 'building') continue;
+			if (check === 'safety' && status === 'needs-attention') continue;
+			return check;
+		}
+	}
+	return null;
 }
 
 export function primaryStepIndex(step: PrimaryStep): number {

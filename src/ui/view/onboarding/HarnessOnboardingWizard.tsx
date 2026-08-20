@@ -50,7 +50,9 @@ import { uiHttpClient } from '@/ui/util/uiHttpClient';
 import {
 	PRIMARY_STEPS,
 	canContinue,
+	continueBlocker,
 	type OnboardingEvent,
+	type OnboardingBlockerId,
 	type OnboardingCheckState,
 	type OnboardingRoleModels,
 	type OnboardingState,
@@ -250,44 +252,42 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 			const checks: Array<{
 				key: keyof OnboardingState['systemChecks'];
 				status: OnboardingState['systemChecks'][keyof OnboardingState['systemChecks']];
+				message: string;
 			}> = [
-				{ key: 'connection', status: readyProfiles.length > 0 ? 'ready' : 'failed' },
-				{ key: 'conversation', status: assignmentIsUsable(state.models.conversation, readyProfiles, ROLE_REQUIREMENTS.conversation) ? 'ready' : 'failed' },
-				{ key: 'knowledge', status: assignmentIsUsable(state.models.knowledge, readyProfiles, ROLE_REQUIREMENTS.knowledge) ? 'ready' : 'failed' },
-				{ key: 'agent', status: assignmentIsUsable(state.models.agent, readyProfiles, ROLE_REQUIREMENTS.agent) ? 'ready' : 'failed' },
-				{ key: 'sqlite', status: state.betterSqlite === 'ready' ? 'ready' : 'failed' },
+				{ key: 'connection', status: readyProfiles.length > 0 ? 'ready' : 'failed', message: readyProfiles.length > 0 ? 'One verified AI service is available.' : 'No verified AI service is available. Return to Connect AI and test one connection.' },
+				{ key: 'conversation', status: assignmentIsUsable(state.models.conversation, readyProfiles, ROLE_REQUIREMENTS.conversation) ? 'ready' : 'failed', message: 'Chat & writing needs a compatible model from a verified connection.' },
+				{ key: 'knowledge', status: assignmentIsUsable(state.models.knowledge, readyProfiles, ROLE_REQUIREMENTS.knowledge) ? 'ready' : 'failed', message: 'Search & analysis needs a compatible reasoning model.' },
+				{ key: 'agent', status: assignmentIsUsable(state.models.agent, readyProfiles, ROLE_REQUIREMENTS.agent) ? 'ready' : 'failed', message: 'Agent & tools needs a model that supports tool use.' },
+				{ key: 'sqlite', status: state.betterSqlite === 'ready' ? 'ready' : 'failed', message: state.betterSqliteMessage || 'Better SQLite has not passed its compatibility and read/write checks.' },
 			];
 			for (const check of checks) {
 				if (cancelled) return;
-				dispatch({ type: 'system-check', check: check.key, status: 'checking' });
-				await delay(220);
+				dispatch({ type: 'system-check', check: check.key, status: 'checking', message: '' });
 				if (cancelled) return;
-				dispatch({ type: 'system-check', check: check.key, status: check.status });
+				dispatch({ type: 'system-check', check: check.key, status: check.status, message: check.message });
 			}
-			dispatch({ type: 'system-check', check: 'hermes', status: 'checking' });
-			await delay(220);
+			dispatch({ type: 'system-check', check: 'hermes', status: 'checking', message: '' });
 			try {
 				const hermes = await settingsActions.setup.verifyPeakHermes();
 				if (cancelled) return;
-				dispatch({ type: 'system-check', check: 'hermes', status: hermes.ready ? 'ready' : 'failed' });
-			} catch {
-				if (!cancelled) dispatch({ type: 'system-check', check: 'hermes', status: 'failed' });
+				dispatch({ type: 'system-check', check: 'hermes', status: hermes.ready ? 'ready' : 'failed', message: hermes.message });
+			} catch (error) {
+				if (!cancelled) dispatch({ type: 'system-check', check: 'hermes', status: 'failed', message: errorMessage(error) });
 			}
 			if (cancelled) return;
 			await refreshFullTextCheck();
 			if (cancelled) return;
-			dispatch({ type: 'system-check', check: 'storage', status: 'checking' });
-			await delay(220);
+			dispatch({ type: 'system-check', check: 'storage', status: 'checking', message: '' });
 			try {
 				const storage = await settingsActions.setup.verifyPeakStorage();
 				if (cancelled) return;
-				dispatch({ type: 'system-check', check: 'storage', status: storage.ready ? 'ready' : 'failed' });
-			} catch {
-				if (!cancelled) dispatch({ type: 'system-check', check: 'storage', status: 'failed' });
+				dispatch({ type: 'system-check', check: 'storage', status: storage.ready ? 'ready' : 'failed', message: storage.message });
+			} catch (error) {
+				if (!cancelled) dispatch({ type: 'system-check', check: 'storage', status: 'failed', message: errorMessage(error) });
 			}
 			if (cancelled) return;
 			const mode = settingsActions.settings.current().harnessSettings?.defaultPermissionMode ?? 'ask';
-			dispatch({ type: 'system-check', check: 'safety', status: mode === 'bypassPermissions' ? 'needs-attention' : 'ready' });
+			dispatch({ type: 'system-check', check: 'safety', status: mode === 'bypassPermissions' ? 'needs-attention' : 'ready', message: mode === 'bypassPermissions' ? 'Expert bypass is enabled. Review Safety in Agents if this is not intentional.' : 'Peak will ask before risky or costly actions.' });
 		}
 
 		async function refreshFullTextCheck() {
@@ -299,10 +299,10 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 					: readiness.fullText === 'failed'
 						? 'failed'
 						: 'building';
-				dispatch({ type: 'system-check', check: 'fullText', status });
+				dispatch({ type: 'system-check', check: 'fullText', status, message: indexReadinessMessage(readiness, status === 'ready' ? 'Fast local search is ready.' : status === 'failed' ? 'Fast local search needs attention. Return to Prepare vault and retry.' : 'Fast local search is continuing in the background.') });
 				dispatch({ type: 'index-status', status: status === 'ready' ? 'ready' : status === 'failed' ? 'error' : 'running', metrics: indexReadinessMetrics(readiness) });
-			} catch {
-				if (!cancelled) dispatch({ type: 'system-check', check: 'fullText', status: 'failed' });
+			} catch (error) {
+				if (!cancelled) dispatch({ type: 'system-check', check: 'fullText', status: 'failed', message: errorMessage(error) });
 			}
 		}
 	}, [dispatch, readyProfiles, settingsActions.knowledgeIndex, settingsActions.settings, settingsActions.setup, state.betterSqlite, state.models, state.step, systemCheckRefresh]);
@@ -342,9 +342,6 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 		dispatch({ type: 'operation', id, kind: 'continuing' });
 		try {
 			if (currentStep === 'core-models') {
-				// Persist role bindings in the background. The next screen owns the
-				// readiness work, so the Continue button must never look frozen while
-				// a settings write is in flight.
 				if (nextStep) dispatch({ type: 'jump', step: nextStep });
 				dispatch({ type: 'operation', id, kind: 'idle' });
 				busyRef.current = false;
@@ -355,27 +352,40 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 			}
 			if (currentStep === 'prepare-vault') {
 				dispatch({ type: 'index-status', status: 'starting', message: 'Checking the existing fast search before starting anything new…' });
-				const result = await settingsActions.knowledgeIndex.prepareFastIndex();
-				const ready = result.readiness.fullText === 'ready';
-				dispatch({
-					type: 'index-status',
-					status: ready ? 'ready' : 'running',
-					metrics: indexReadinessMetrics(result.readiness),
-					message: indexReadinessMessage(
-						result.readiness,
-						result.disposition === 'reused'
-							? 'Existing fast search was reused.'
-							: result.disposition === 'attached'
-								? 'Attached to the active indexing run.'
-								: 'Fast local search is starting.',
-					),
+				if (nextStep) dispatch({ type: 'jump', step: nextStep });
+				dispatch({ type: 'operation', id, kind: 'idle' });
+				busyRef.current = false;
+				void settingsActions.knowledgeIndex.prepareFastIndex().then((result) => {
+					const ready = result.readiness.fullText === 'ready';
+					dispatch({
+						type: 'index-status',
+						status: ready ? 'ready' : 'running',
+						metrics: indexReadinessMetrics(result.readiness),
+						message: indexReadinessMessage(
+							result.readiness,
+							result.disposition === 'reused'
+								? 'Existing fast search was reused.'
+								: result.disposition === 'attached'
+									? 'Attached to the active indexing run.'
+									: 'Fast local search is continuing in the background.',
+						),
+					});
+				}).catch((error) => {
+					dispatch({ type: 'index-status', status: 'error', message: errorMessage(error) });
+					dispatch({ type: 'system-check', check: 'fullText', status: 'failed', message: errorMessage(error) });
 				});
-				if (!ready) {
-					dispatch({ type: 'operation', id, kind: 'idle' });
-					return;
-				}
+				return;
 			}
-			if (currentStep === 'system-check') await markConfigurationComplete(settingsActions);
+			if (currentStep === 'system-check') {
+				if (nextStep) dispatch({ type: 'jump', step: nextStep });
+				dispatch({ type: 'operation', id, kind: 'idle' });
+				busyRef.current = false;
+				void markConfigurationComplete(settingsActions).catch((error) => {
+					setSaveState('failed');
+					dispatch({ type: 'operation', id, kind: 'idle', message: errorMessage(error) });
+				});
+				return;
+			}
 			dispatch({ type: 'operation', id, kind: 'idle' });
 			if (nextStep) dispatch({ type: 'jump', step: nextStep });
 		} catch (error) {
@@ -451,6 +461,9 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 		}
 	}
 
+	const blocker = continueBlocker(state);
+	const footerGuidance = blocker ? blockerGuidance(blocker, state) : null;
+
 	return (
 		<div ref={onboardingRef} className="pk-onboarding">
 			<header className="pk-onboarding__topbar">
@@ -459,7 +472,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 					{saveState === 'saving' ? <Loader2 size={16} /> : saveState === 'failed' ? <CircleAlert size={16} /> : <Check size={16} />}
 					{saveState === 'saving' ? 'Saving progress…' : saveState === 'failed' ? 'Progress not saved' : 'Progress saved'}
 				</span>
-				<Button variant="ghost" disabled={saveState === 'saving'} onClick={() => void finishLater()}>Finish later</Button>
+				<Button variant="ghost" className="pk-onboarding-finish-later" disabled={saveState === 'saving'} onClick={() => void finishLater()}>Finish later</Button>
 			</header>
 			<ProgressHeader state={state} />
 			<div className="pk-onboarding__content">
@@ -474,18 +487,18 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 				) : null}
 				{state.step === 'core-models' ? <CoreModelsStep state={state} dispatch={dispatch} profiles={readyProfiles} settings={settings} portalContainer={modelPickerPortal} /> : null}
 				{state.step === 'prepare-vault' ? <PrepareVaultStep state={state} onRetry={() => void repairSqlite()} /> : null}
-				{state.step === 'system-check' ? <SystemCheckStep state={state} mediaRouteAvailable={mediaRouteAvailable} onRunAgain={() => setSystemCheckRefresh((current) => current + 1)} /> : null}
+				{state.step === 'system-check' ? <SystemCheckStep state={state} mediaRouteAvailable={mediaRouteAvailable} onRunAgain={() => setSystemCheckRefresh((current) => current + 1)} onGoToStep={(step) => dispatch({ type: 'jump', step })} onOpenSettings={(tab) => settingsActions.openSettings({ tab })} /> : null}
 				{state.step === 'try-peak' ? <TryPeakStep launchError={launchError} mediaRouteAvailable={mediaRouteAvailable} onLaunch={(target) => void launch(target)} /> : null}
 			</div>
 			<footer className="pk-onboarding__footer">
-				<Button variant="ghost" disabled={state.step === PRIMARY_STEPS[0] || state.operation.kind !== 'idle'} onClick={() => dispatch({ type: 'back' })}>
+				<Button variant="ghost" className="pk-onboarding-footer-back" disabled={state.step === PRIMARY_STEPS[0] || state.operation.kind !== 'idle'} onClick={() => dispatch({ type: 'back' })}>
 					<ChevronLeft size={17} /> Back
 				</Button>
-				<span>{state.operation.message || stepFooterHint(state)}</span>
+				<span className="pk-onboarding-footer-message" data-state={footerGuidance ? 'blocked' : state.operation.kind}>{footerGuidance ? <><strong>{footerGuidance.title}</strong><small>{footerGuidance.detail}</small></> : state.operation.message || stepFooterHint(state)}</span>
 				{state.step === 'try-peak' ? (
 					<span className="pk-onboarding__first-success-hint">Choose a task above to finish setup.</span>
 				) : (
-					<Button disabled={!canContinue(state)} onClick={() => void continueFlow()}>
+					<Button className="pk-onboarding-footer-continue" disabled={!canContinue(state)} onClick={() => void continueFlow()}>
 						{state.operation.kind === 'continuing' ? <Loader2 size={17} /> : null}
 						Continue <ChevronRight size={17} />
 					</Button>
@@ -626,32 +639,56 @@ function PrepareVaultStep({ state, onRetry }: { state: OnboardingState; onRetry:
 	);
 }
 
-function SystemCheckStep({ state, mediaRouteAvailable, onRunAgain }: { state: OnboardingState; mediaRouteAvailable: boolean; onRunAgain: () => void }) {
+function SystemCheckStep({ state, mediaRouteAvailable, onRunAgain, onGoToStep, onOpenSettings }: {
+	state: OnboardingState;
+	mediaRouteAvailable: boolean;
+	onRunAgain: () => void;
+	onGoToStep: (step: PrimaryStep) => void;
+	onOpenSettings: (tab: 'aiModels' | 'agents' | 'knowledgeSearch' | 'advanced') => void;
+}) {
 	const coreRoleStatus = combineCheckStatus([
 		state.systemChecks.conversation,
 		state.systemChecks.knowledge,
 		state.systemChecks.agent,
 	]);
-	const rows: Array<{ id: string; label: string; detail: string; icon: LucideIcon; status: OnboardingCheckState }> = [
-		{ id: 'connection', label: 'AI connection', detail: 'One verified service is available', icon: Cpu, status: state.systemChecks.connection },
-		{ id: 'roles', label: 'Core model roles', detail: 'Chat, search and tool-capable Agent routes are valid', icon: Network, status: coreRoleStatus },
-		{ id: 'hermes', label: 'Peak Hermes', detail: 'Runtime, tool registry, receipts and recovery are available', icon: Bot, status: state.systemChecks.hermes },
-		{ id: 'sqlite', label: 'Local search engine', detail: 'Better SQLite opened and its read/write probe passed', icon: Database, status: state.systemChecks.sqlite },
-		{ id: 'fullText', label: 'Vault search', detail: 'The local full-text index can answer searches now', icon: FileSearch, status: state.systemChecks.fullText },
-		{ id: 'storage', label: 'Local storage', detail: 'Peak can safely create and read its own data root', icon: FolderOpen, status: state.systemChecks.storage },
-		{ id: 'safety', label: 'Safety defaults', detail: 'Peak asks before risky writes, commands, network and costly actions', icon: ShieldCheck, status: state.systemChecks.safety },
+	const roleFailureDetail = (['conversation', 'knowledge', 'agent'] as const)
+		.filter((role) => state.systemChecks[role] === 'failed')
+		.map((role) => state.systemCheckMessages[role])
+		.filter((message): message is string => !!message)
+		.join(' ');
+	const requiredRows: SystemCheckRowModel[] = [
+		{ id: 'connection', label: 'AI connection', detail: state.systemCheckMessages.connection || 'One verified service is available', icon: Cpu, status: state.systemChecks.connection, action: state.systemChecks.connection === 'failed' ? { label: 'Review connection', run: () => onGoToStep('connect-ai') } : undefined },
+		{ id: 'roles', label: 'Core model roles', detail: roleFailureDetail || 'Chat, search and tool-capable Agent routes are valid', icon: Network, status: coreRoleStatus, action: coreRoleStatus === 'failed' ? { label: 'Review models', run: () => onGoToStep('core-models') } : undefined },
+		{ id: 'hermes', label: 'Peak Hermes', detail: state.systemCheckMessages.hermes || 'Runtime, tool registry, receipts and recovery are available', icon: Bot, status: state.systemChecks.hermes, action: state.systemChecks.hermes === 'failed' ? { label: 'Run again', run: onRunAgain } : undefined },
+		{ id: 'sqlite', label: 'Local search engine', detail: state.systemCheckMessages.sqlite || 'Better SQLite opened and its read/write probe passed', icon: Database, status: state.systemChecks.sqlite, action: state.systemChecks.sqlite === 'failed' ? { label: 'Repair database', run: () => onGoToStep('prepare-vault') } : undefined },
+		{ id: 'fullText', label: 'Vault search', detail: state.systemCheckMessages.fullText || 'The local full-text index can answer searches now', icon: FileSearch, status: state.systemChecks.fullText, action: state.systemChecks.fullText === 'failed' ? { label: 'Review search', run: () => onGoToStep('prepare-vault') } : undefined },
+		{ id: 'storage', label: 'Local storage', detail: state.systemCheckMessages.storage || 'Peak can safely create and read its own data root', icon: FolderOpen, status: state.systemChecks.storage, action: state.systemChecks.storage === 'failed' ? { label: 'Open storage settings', run: () => onOpenSettings('advanced') } : undefined },
 	];
-	const settled = rows.filter((row) => row.status !== 'idle' && row.status !== 'checking').length;
-	const hasProblem = rows.some((row) => row.status === 'failed' || row.status === 'needs-attention');
+	const safetyRow: SystemCheckRowModel = {
+		id: 'safety',
+		label: 'Safety defaults',
+		detail: state.systemCheckMessages.safety || 'Peak asks before risky or costly actions',
+		icon: ShieldCheck,
+		status: state.systemChecks.safety,
+		action: state.systemChecks.safety === 'needs-attention' ? { label: 'Review safety', run: () => onOpenSettings('agents') } : undefined,
+	};
+	const settledRequired = requiredRows.filter((row) => row.status !== 'idle' && row.status !== 'checking').length;
+	const failedRequired = requiredRows.filter((row) => row.status === 'failed').length;
+	const checksRunning = settledRequired !== requiredRows.length;
+	const summaryTitle = checksRunning
+		? 'Checking your setup'
+		: failedRequired > 0
+			? `${failedRequired} required ${failedRequired === 1 ? 'item needs' : 'items need'} attention`
+			: 'Everything required is ready';
 	return (
 		<StepShell step={4} title="Check the parts Peak depends on" intro="This is a real pre-flight check, not a settings summary. You can watch each check complete, run it again, and fix anything that needs attention.">
-			<div className="pk-onboarding-system-summary" data-state={hasProblem ? 'attention' : settled === rows.length ? 'ready' : 'checking'}>
-				<span>{settled === rows.length ? <CheckCircle2 size={19} /> : <Loader2 size={19} />}{settled === rows.length ? (hasProblem ? 'Review one or more items' : 'Everything required is ready') : 'Checking your setup'}</span>
-				<span>{settled} of {rows.length} <Button variant="ghost" className="pk-onboarding-run-again" onClick={onRunAgain}>Run again</Button></span>
+			<div className="pk-onboarding-system-summary" data-state={checksRunning ? 'checking' : failedRequired > 0 ? 'attention' : 'ready'}>
+				<span>{checksRunning ? <Loader2 size={19} /> : failedRequired > 0 ? <CircleAlert size={19} /> : <CheckCircle2 size={19} />}{summaryTitle}</span>
+				<span>{settledRequired} of {requiredRows.length} required <Button variant="ghost" className="pk-onboarding-run-again" onClick={onRunAgain}>Run again</Button></span>
 			</div>
 			<div className="pk-onboarding-check-columns">
-				<div className="pk-onboarding-system-check"><div className="pk-onboarding-system-check__label"><strong>Required for first use</strong><span>All must pass</span></div>{rows.filter((row) => row.id !== 'safety').map((row) => <SystemCheckRow key={row.id} icon={row.icon} label={row.label} detail={row.detail} status={row.status} />)}</div>
-				<div className="pk-onboarding-optional-checks"><strong>Optional & policy checks</strong><SystemCheckRow icon={ShieldCheck} label="Safety defaults" detail="Peak asks before risky or costly actions" status={state.systemChecks.safety} /><span>Live web search — configure later in Settings</span><span>{mediaRouteAvailable ? 'Media route — a compatible service is connected' : 'Media route — not available yet; setup stays visible in Settings'}</span></div>
+				<section className="pk-onboarding-system-check"><header className="pk-onboarding-system-check__label"><strong>Required for first use</strong><span>All must pass</span></header>{requiredRows.map((row) => <SystemCheckRow key={row.id} row={row} />)}</section>
+				<section className="pk-onboarding-optional-checks"><header><strong>Optional &amp; policy checks</strong><span>Do not block setup</span></header><SystemCheckRow row={safetyRow} /><div className="pk-onboarding-optional-notes"><span><strong>Live web search</strong><small>Configure later in Settings</small></span><span><strong>Media route</strong><small>{mediaRouteAvailable ? 'A compatible service is connected' : 'Not available yet; setup stays visible in Settings'}</small></span></div></section>
 			</div>
 			<div className="pk-onboarding-note"><ShieldCheck size={18} /><span><strong>Safe default:</strong> Agents ask before writes, commands, network access and costly actions. Existing expert bypass settings are shown as needing attention.</span></div>
 		</StepShell>
@@ -708,9 +745,19 @@ function PreflightRow({ icon: Icon, title, state, detail }: {
 	return <div data-state={state}><Icon size={20} /><span><strong>{title}</strong><small>{detail}</small></span><span>{state === 'repairing' ? <><Loader2 size={17} /> Working…</> : state === 'ready' ? <><Check size={17} /> Ready</> : state === 'error' ? 'Needs attention' : state === 'optional' ? 'Later' : 'Automatic'}</span></div>;
 }
 
-function SystemCheckRow({ icon: Icon, label, detail, status }: { icon: LucideIcon; label: string; detail: string; status: OnboardingState['systemChecks'][keyof OnboardingState['systemChecks']] }) {
-	const result = status === 'ready' ? 'Ready' : status === 'checking' ? 'Checking…' : status === 'building' ? 'Finishing in background' : status === 'needs-attention' ? 'Review recommended' : status === 'failed' ? 'Needs attention' : 'Waiting';
-	return <div data-state={status}><span>{status === 'checking' || status === 'building' ? <Loader2 size={19} /> : status === 'ready' ? <CheckCircle2 size={19} /> : status === 'needs-attention' || status === 'failed' ? <CircleAlert size={19} /> : <Icon size={19} />}<span><strong>{label}</strong><small>{detail}</small></span></span><span>{result}</span></div>;
+interface SystemCheckRowModel {
+	id: string;
+	label: string;
+	detail: string;
+	icon: LucideIcon;
+	status: OnboardingCheckState;
+	action?: { label: string; run: () => void };
+}
+
+function SystemCheckRow({ row }: { row: SystemCheckRowModel }) {
+	const Icon = row.icon;
+	const result = row.status === 'ready' ? 'Ready' : row.status === 'checking' ? 'Checking…' : row.status === 'building' ? 'Finishing in background' : row.status === 'needs-attention' ? 'Review recommended' : row.status === 'failed' ? 'Needs attention' : 'Waiting';
+	return <div className="pk-onboarding-system-row" data-state={row.status}><span>{row.status === 'checking' || row.status === 'building' ? <Loader2 size={19} /> : row.status === 'ready' ? <CheckCircle2 size={19} /> : row.status === 'needs-attention' || row.status === 'failed' ? <CircleAlert size={19} /> : <Icon size={19} />}<span><strong>{row.label}</strong><small>{row.detail}</small></span></span><span className="pk-onboarding-system-row__result"><em>{result}</em>{row.action ? <Button variant="secondary" className="pk-onboarding-system-row__action" onClick={row.action.run}>{row.action.label}</Button> : null}</span></div>;
 }
 
 function LaunchCard({ icon: Icon, title, detail, disabled = false, onClick }: { icon: LucideIcon; title: string; detail: string; disabled?: boolean; onClick: () => void }) {
@@ -766,6 +813,19 @@ function stepFooterHint(state: OnboardingState): string {
 	return '';
 }
 
+function blockerGuidance(blocker: OnboardingBlockerId, state: OnboardingState): { title: string; detail: string } {
+	if (blocker === 'operation') return { title: 'Moving to the next step…', detail: 'The current action has started. You do not need to click Continue again.' };
+	if (blocker === 'checks') return { title: 'Checks are still running', detail: 'Continue becomes available as soon as every required check has a result.' };
+	if (blocker === 'connection') return { title: 'Verify one AI connection to continue', detail: state.systemCheckMessages.connection || 'Choose a connection, run its test, and confirm that it is Ready.' };
+	if (blocker === 'models' || blocker === 'conversation' || blocker === 'knowledge' || blocker === 'agent') return { title: 'Choose compatible core models to continue', detail: 'Review Chat, Search and Agent roles. Agent & tools must use a tool-capable model.' };
+	if (blocker === 'sqlite') return { title: 'Repair the local search engine to continue', detail: state.systemCheckMessages.sqlite || state.betterSqliteMessage || 'Better SQLite must pass compatibility and read/write checks.' };
+	if (blocker === 'index' || blocker === 'fullText') return { title: 'Fast local search needs attention', detail: state.systemCheckMessages.fullText || state.fastIndexMessage || 'Return to Prepare vault and retry the fast local index.' };
+	if (blocker === 'hermes') return { title: 'Peak Hermes is not ready yet', detail: state.systemCheckMessages.hermes || 'Wait a moment, then run the system check again.' };
+	if (blocker === 'storage') return { title: 'Choose a writable Peak data root to continue', detail: state.systemCheckMessages.storage || 'Open Storage settings, choose a Vault-relative folder, then run the check again.' };
+	if (blocker === 'safety') return { title: 'Review the current safety policy', detail: state.systemCheckMessages.safety || 'Open Agents settings and confirm the permission mode.' };
+	return { title: 'Setup needs attention', detail: 'Review the highlighted item, then run the check again.' };
+}
+
 function combineCheckStatus(statuses: OnboardingCheckState[]): OnboardingCheckState {
 	if (statuses.some((status) => status === 'failed')) return 'failed';
 	if (statuses.some((status) => status === 'needs-attention')) return 'needs-attention';
@@ -791,8 +851,4 @@ function indexReadinessMetrics(readiness: IndexReadinessProjection) {
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
-}
-
-function delay(ms: number): Promise<void> {
-	return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

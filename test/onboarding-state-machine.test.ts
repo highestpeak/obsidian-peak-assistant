@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { canContinue, initialState, PRIMARY_STEPS, reduce } from '@/ui/view/onboarding/OnboardingStateMachine';
+import { canContinue, continueBlocker, initialState, PRIMARY_STEPS, reduce } from '@/ui/view/onboarding/OnboardingStateMachine';
 
 assert.deepEqual(PRIMARY_STEPS, ['connect-ai', 'core-models', 'prepare-vault', 'system-check', 'try-peak']);
 
@@ -27,14 +27,20 @@ assert.equal(canContinue(state), false, 'Better SQLite is a hard gate');
 
 state = reduce(state, { type: 'sqlite-result', ready: true, message: 'ready' });
 state = reduce(state, { type: 'index-status', status: 'running', message: 'Attached to the active run.' });
-assert.equal(canContinue(state), false, 'an active run remains on the vault screen instead of advancing with an unfinished index');
-state = reduce(state, { type: 'index-status', status: 'ready', message: 'Existing index reused.' });
-assert.equal(state.fastIndexMessage, 'Existing index reused.');
+assert.equal(canContinue(state), true, 'an attached index run must continue in the background instead of trapping setup');
 state = reduce(state, { type: 'next' });
 assert.equal(state.step, 'system-check');
 for (const check of ['connection', 'conversation', 'knowledge', 'agent', 'hermes', 'sqlite', 'fullText', 'storage', 'safety'] as const) {
-	state = reduce(state, { type: 'system-check', check, status: check === 'fullText' ? 'building' : 'ready' });
+	state = reduce(state, { type: 'system-check', check, status: check === 'fullText' ? 'building' : 'ready', message: `${check} result` });
 }
+assert.equal(state.systemCheckMessages.storage, 'storage result', 'real check guidance must survive the status projection');
+assert.equal(continueBlocker(state), null, 'background indexing and safe defaults do not block first use');
+
+state = reduce(state, { type: 'system-check', check: 'storage', status: 'failed', message: 'Data root is not writable.' });
+assert.equal(canContinue(state), false);
+assert.equal(continueBlocker(state), 'storage');
+assert.equal(state.systemCheckMessages.storage, 'Data root is not writable.');
+state = reduce(state, { type: 'system-check', check: 'storage', status: 'ready', message: 'Storage probe passed.' });
 state = reduce(state, { type: 'next' });
 assert.equal(state.step, 'try-peak');
 state = reduce(state, { type: 'next' });

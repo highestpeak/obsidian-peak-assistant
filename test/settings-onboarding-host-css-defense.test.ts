@@ -2,6 +2,7 @@ import assert from 'assert';
 import { readFileSync } from 'fs';
 
 const providerForm = readFileSync('src/ui/view/modals/onboarding/ProviderForm.tsx', 'utf8');
+const onboardingWizard = readFileSync('src/ui/view/onboarding/HarnessOnboardingWizard.tsx', 'utf8');
 const profilesTab = readFileSync('src/ui/view/settings/ProfilesTab.tsx', 'utf8');
 const profileCard = readFileSync('src/ui/view/settings/components/ProfileCard.tsx', 'utf8');
 const addProfileGrid = readFileSync('src/ui/view/settings/components/AddProfileGrid.tsx', 'utf8');
@@ -45,6 +46,10 @@ assert.match(
 );
 
 for (const className of [
+	'pk-onboarding-finish-later',
+	'pk-onboarding-footer-back',
+	'pk-onboarding-footer-continue',
+	'pk-onboarding-system-row__action',
 	'pk-onboarding-connection-back',
 	'pk-onboarding-connection-submit',
 	'pk-onboarding-saved-profile__action',
@@ -65,6 +70,11 @@ for (const className of [
 	const rule = new RegExp(`button\\.${escaped}[^\\{]*\\{[\\s\\S]*?height:\\s*[^;]+!important;[\\s\\S]*?min-height:\\s*[^;]+!important;[\\s\\S]*?max-height:\\s*[^;]+!important;[\\s\\S]*?padding:\\s*[^;]+!important;`);
 	assert.match(css, rule, `${className} must retain fixed geometry under the Obsidian button reset`);
 }
+
+assert.match(onboardingWizard, /className="pk-onboarding-optional-checks"><header>/, 'optional checks must keep the Mock header and row hierarchy');
+assert.match(onboardingWizard, /Open storage settings/, 'a failed storage probe must expose its repair route');
+assert.match(css, /\.pkonb-modal-shell \.modal-close-button\s*\{[\s\S]*?width:\s*32px !important;[\s\S]*?height:\s*32px !important;/, 'the native Obsidian close control needs owned geometry');
+assert.doesNotMatch(css, /\.pk-onboarding-step\[data-state="complete"\]\s*>\s*span\s*\{/, 'complete-state color must only target the numbered circle, never the copy column');
 
 assert.match(
 	css,

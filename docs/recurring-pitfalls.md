@@ -546,6 +546,30 @@ complete ComposerDocumentSession
 
 ---
 
+## 11. Disabled primary action without a blocker contract
+
+### Symptom
+- The primary button is disabled or appears to wait indefinitely after a click.
+- The page says only “Needs attention”, while the runtime already has a precise error message.
+- Users cannot tell whether to wait, retry, go back, or open Settings.
+
+### Mechanism
+1. Readiness state stores only a status enum and discards the runtime message.
+2. `canContinue` correctly returns `false`, but the footer renders only a generic hint.
+3. Long work such as indexing or settings persistence is awaited before navigation even though the next step can safely observe it in the background.
+4. The disabled control therefore carries both product policy and asynchronous progress without explaining either.
+
+### Instance
+- 2026-08-21 · Five-step onboarding: Local storage failed with no repair route, and Prepare vault/System check awaited background work before advancing.
+
+### Prevention checklist
+- Preserve `{ status, message, action }` or an equivalent typed projection for every blocking check.
+- A disabled primary action must have a visible reason in the same viewport and a concrete next action on the failing row.
+- Start/attach background work, project it into the next screen, and navigate immediately when that screen owns the ongoing status.
+- Test both the blocker ID/message and source ordering: navigation dispatch must precede awaiting non-critical persistence or background preparation.
+
+---
+
 ## How to consult this doc
 
 - Bug feels familiar? `grep` this file for the symptom phrase before re-deriving the root cause.
