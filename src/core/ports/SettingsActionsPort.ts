@@ -24,6 +24,10 @@ export interface SettingsSetupActions {
 	openHarnessWizard(): void;
 	/** Ensure the required native SQLite component matches the current Electron ABI. */
 	repairBetterSqlite(): Promise<{ ready: boolean; message: string; checks: string[] }>;
+	/** Verify that Peak's own data root can be created, read and cleaned up. */
+	verifyPeakStorage(): Promise<{ ready: boolean; message: string }>;
+	/** Verify that the single Peak Hermes runtime is composed and available. */
+	verifyPeakHermes(): Promise<{ ready: boolean; message: string }>;
 	/**
 	 * Probe the user's environment for the Curator (RAM, profiles, vault
 	 * language ratio, Ollama). The adapter binds `app` from `AppContext`;
@@ -86,7 +90,11 @@ export interface SettingsKnowledgeIndexActions {
 export interface SettingsLaunchActions {
 	openChatStudio(): Promise<{ opened: boolean; message?: string }>;
 	openVaultSearch(): Promise<{ opened: boolean; message?: string }>;
+	openAiSearch(): Promise<{ opened: boolean; message?: string }>;
 	openFileAtlas(): Promise<{ opened: boolean; message?: string }>;
+	openAiGraph(): Promise<{ opened: boolean; message?: string }>;
+	openAgentWizard(): Promise<{ opened: boolean; message?: string }>;
+	openMediaCreation(): Promise<{ opened: boolean; message?: string }>;
 	openComposer(): Promise<{ opened: boolean; message?: string }>;
 	openRecentNote(): Promise<{ opened: boolean; message?: string }>;
 }

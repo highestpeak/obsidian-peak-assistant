@@ -20,6 +20,12 @@ export interface UnifiedModelPickerProps {
 	aliases?: Record<string, string>;
 	hiddenModels?: string[];
 	align?: 'start' | 'center' | 'end';
+	/**
+	 * When a picker lives inside an Obsidian modal, keep its interactive portal
+	 * inside that modal. Portalling to the document host makes Obsidian treat a
+	 * click in the menu as outside the active modal and immediately dismiss it.
+	 */
+	portalContainer?: HTMLElement | null;
 }
 
 const CAPABILITY_FILTERS: Array<{ id: keyof ModelCapabilities; label: string }> = [
@@ -38,6 +44,7 @@ export function UnifiedModelPicker({
 	aliases = {},
 	hiddenModels = [],
 	align = 'end',
+	portalContainer,
 }: UnifiedModelPickerProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
@@ -104,6 +111,7 @@ export function UnifiedModelPicker({
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent
+				container={portalContainer}
 				align={align}
 				sideOffset={8}
 				collisionPadding={18}

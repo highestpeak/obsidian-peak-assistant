@@ -356,7 +356,17 @@ export interface OnboardingProgressSettings {
 	updatedAt: number;
 	completedAt: number | null;
 	firstSuccessAt: number | null;
-	firstSuccessTarget: 'chat-studio' | 'vault-search' | 'file-atlas' | 'recent-note' | 'composer' | null;
+	firstSuccessTarget:
+		| 'chat-studio'
+		| 'vault-search'
+		| 'ai-search'
+		| 'file-atlas'
+		| 'ai-graph'
+		| 'agent-wizard'
+		| 'create-media'
+		| 'recent-note'
+		| 'composer'
+		| null;
 }
 
 export interface AgentToolSettings {

@@ -36,8 +36,10 @@ export interface OnboardingState {
 		conversation: OnboardingCheckState;
 		knowledge: OnboardingCheckState;
 		agent: OnboardingCheckState;
+		hermes: OnboardingCheckState;
 		sqlite: OnboardingCheckState;
 		fullText: OnboardingCheckState;
+		storage: OnboardingCheckState;
 		safety: OnboardingCheckState;
 	};
 	operation: { id: number; kind: 'idle' | 'saving' | 'continuing' | 'launching'; message: string | null };
@@ -91,8 +93,8 @@ export function initialState(options: InitialStateOptions = {}): OnboardingState
 		fastIndex: options.indexReady ? 'ready' : 'not-started',
 		fastIndexMessage: options.indexReady ? 'Existing full-text index is ready.' : '',
 		systemChecks: {
-			connection: 'idle', conversation: 'idle', knowledge: 'idle', agent: 'idle',
-			sqlite: 'idle', fullText: options.indexReady ? 'ready' : 'idle', safety: 'idle',
+			connection: 'idle', conversation: 'idle', knowledge: 'idle', agent: 'idle', hermes: 'idle',
+			sqlite: 'idle', fullText: options.indexReady ? 'ready' : 'idle', storage: 'idle', safety: 'idle',
 		},
 		operation: { id: 0, kind: 'idle', message: null },
 		done: false,
@@ -134,7 +136,9 @@ export function canContinue(state: OnboardingState): boolean {
 	if (state.operation.kind !== 'idle') return false;
 	if (state.step === 'connect-ai') return Object.values(state.connectionChecks).some((status) => status === 'ready');
 	if (state.step === 'core-models') return Object.values(state.modelChecks).every((status) => status === 'ready');
-	if (state.step === 'prepare-vault') return state.betterSqlite === 'ready';
+	if (state.step === 'prepare-vault') {
+		return state.betterSqlite === 'ready' && state.fastIndex !== 'starting' && state.fastIndex !== 'running';
+	}
 	if (state.step === 'system-check') {
 		return Object.entries(state.systemChecks).every(([key, status]) =>
 			status === 'ready' || status === 'building' || (key === 'safety' && status === 'needs-attention'),

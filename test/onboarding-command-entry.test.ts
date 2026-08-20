@@ -25,8 +25,20 @@ assert.match(
 	'the Setup Wizard command must remain registered',
 );
 
-assert.match(modalSource, /width: '920px'/, 'Setup should use the compact assistant width');
+assert.match(modalSource, /width: '1080px'/, 'Setup should use the readable five-step assistant width');
 assert.doesNotMatch(wizardSource, /step\.summary/, 'progress navigation must not render tiny repeated summaries');
 assert.doesNotMatch(wizardSource, /<i data-complete=/, 'progress navigation must not depend on decorative connector lines');
+assert.doesNotMatch(wizardSource, /Finish setup/, 'completion must remain tied to launching a real first task');
+assert.match(
+	wizardSource,
+	/if \(currentStep === 'core-models'\) \{[\s\S]*?dispatch\(\{ type: 'jump', step: nextStep \}\);[\s\S]*?void saveCoreModels/,
+	'core model persistence must not block entry into the Better SQLite preparation screen',
+);
+assert.match(wizardSource, /portalContainer=\{modelPickerPortal\}/, 'model choices inside Setup must stay inside the active modal');
+assert.match(
+	readFileSync('src/ui/view/settings/components/UnifiedModelPicker.tsx', 'utf8'),
+	/container=\{portalContainer\}/,
+	'UnifiedModelPicker must accept a modal-scoped portal container so its menu does not dismiss immediately',
+);
 
 console.log('onboarding-command-entry: all assertions passed');

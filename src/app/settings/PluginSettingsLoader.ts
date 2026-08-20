@@ -457,7 +457,7 @@ function normalizeOnboarding(raw: unknown): MyPluginSettings['onboarding'] {
 		updatedAt: typeof source.updatedAt === 'number' ? source.updatedAt : 0,
 		completedAt: typeof source.completedAt === 'number' ? source.completedAt : null,
 		firstSuccessAt: typeof source.firstSuccessAt === 'number' ? source.firstSuccessAt : null,
-		firstSuccessTarget: ['chat-studio', 'vault-search', 'file-atlas', 'recent-note', 'composer'].includes(String(source.firstSuccessTarget))
+		firstSuccessTarget: ['chat-studio', 'vault-search', 'ai-search', 'file-atlas', 'ai-graph', 'agent-wizard', 'create-media', 'recent-note', 'composer'].includes(String(source.firstSuccessTarget))
 			? source.firstSuccessTarget as MyPluginSettings['onboarding']['firstSuccessTarget']
 			: null,
 	};
