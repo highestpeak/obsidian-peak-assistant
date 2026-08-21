@@ -116,7 +116,7 @@ export function createVaultScanPlan(
 		enabledCheckIds: config.checkGroups.flatMap((group) => group.checks.flatMap((check) => check.checkIds ?? [check.checkId])),
 		indexOutputs: config.indexOutputs.map((output) => ({
 			id: output.id,
-			enabled: output.availability === 'required' || output.availability === 'automatic' || output.availability === 'optional',
+			enabled: defaultIndexOutputEnabled(output),
 			availability: output.availability,
 			operationIds: output.operationIds,
 		})),
@@ -130,6 +130,12 @@ export function createVaultScanPlan(
 		})),
 		createdAt: now,
 	};
+}
+
+function defaultIndexOutputEnabled(output: VaultIntelligenceConfig['indexOutputs'][number]): boolean {
+	if (output.availability === 'required' || output.availability === 'automatic') return true;
+	if (output.availability !== 'optional') return false;
+	return output.defaultEnabled ?? true;
 }
 
 export function createEmptyVaultScanRun(): VaultScanRunState {

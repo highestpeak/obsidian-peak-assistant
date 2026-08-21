@@ -20606,16 +20606,87 @@
 }
 
 .peak-vault-intelligence-view .pk-vi-index-output {
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 7px;
-  border-radius: 6px;
+  min-height: 46px;
+  padding: 8px 9px;
+  border-bottom: 1px solid var(--pk-vi-border);
+  border-radius: 0;
+  background: rgba(255, 255, 255, .5);
+  cursor: pointer;
 }
 
-.peak-vault-intelligence-view .pk-vi-index-output:has(input:not(:checked)) {
-  opacity: .56;
+.peak-vault-intelligence-view .pk-vi-index-output:hover,
+.peak-vault-intelligence-view .pk-vi-index-output:focus-within {
+  background: #fff;
+  box-shadow: inset 2px 0 0 #b8aceb;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output.is-automatic,
+.peak-vault-intelligence-view .pk-vi-index-output.is-required,
+.peak-vault-intelligence-view .pk-vi-index-output.is-later {
+  cursor: default;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-toggle {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: #cbc7d0;
+  transition: background 140ms ease;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(25, 22, 35, .16);
+  transition: transform 140ms ease;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output input:checked + .pk-vi-index-output-toggle {
+  background: var(--pk-vi-accent);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output input:checked + .pk-vi-index-output-toggle::after {
+  transform: translateX(12px);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-state {
+  display: inline-grid;
+  place-items: center;
+  min-width: 25px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  color: var(--pk-vi-muted);
+  background: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 730;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-state.is-automatic,
+.peak-vault-intelligence-view .pk-vi-index-output-state.is-required {
+  color: var(--pk-vi-accent);
+  background: var(--pk-vi-accent-soft);
 }
 
 .peak-vault-intelligence-view .pk-vi-index-output > span {
@@ -22759,13 +22830,56 @@
 }
 
 .peak-vault-intelligence-view .pk-vi-scan-operation-list > div:last-child { border-bottom: 0; }
-.peak-vault-intelligence-view .pk-vi-scan-operation-list > div.is-unavailable { opacity: .56; }
+.peak-vault-intelligence-view .pk-vi-scan-operation-list > div.is-scope-unavailable { opacity: .56; }
 .peak-vault-intelligence-view .pk-vi-scan-operation-list > div > span strong,
 .peak-vault-intelligence-view .pk-vi-scan-operation-list > div > span small { display: block; }
 .peak-vault-intelligence-view .pk-vi-scan-operation-list > div > span small { margin-top: 3px; color: var(--pk-vi-muted); font-size: 9.5px; }
 .peak-vault-intelligence-view .pk-vi-scan-operation-list > div > span:nth-child(3) { color: var(--pk-vi-muted); font-size: 10px; }
+.peak-vault-intelligence-view .pk-vi-scan-model-field { min-width: 0; }
+.peak-vault-intelligence-view .pk-vi-scan-model-field select {
+  width: 100%;
+  height: 34px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--pk-vi-border) !important;
+  border-radius: 8px;
+  color: var(--pk-vi-ink) !important;
+  background: #fff !important;
+  font-size: 11.5px;
+}
+.peak-vault-intelligence-view .pk-vi-scan-model-field select:disabled { opacity: .65; }
+.peak-vault-intelligence-view .pk-vi-scan-model-field small { display: block; margin-top: 3px; color: var(--pk-vi-muted); font-size: 9.5px; }
+.peak-vault-intelligence-view .pk-vi-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .peak-vault-intelligence-view .pk-vi-scan-operation-list > div > .pk-btn { min-height: 28px !important; padding: 0 8px !important; border: 1px solid var(--pk-vi-border) !important; background: #fff !important; }
 .peak-vault-intelligence-view .pk-vi-scan-operation-list > div > .pk-btn.is-on { color: var(--pk-vi-accent); background: var(--pk-vi-accent-soft) !important; }
+.peak-vault-intelligence-view .pk-vi-scan-operation-list > div > .pk-vi-scan-operation-toggle.pk-btn {
+  position: relative;
+  justify-self: end;
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: transparent !important;
+  background: #cbc7d0 !important;
+}
+.peak-vault-intelligence-view .pk-vi-scan-operation-list > div > .pk-vi-scan-operation-toggle.pk-btn::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(25, 22, 35, .16);
+  transition: transform 140ms ease;
+}
+.peak-vault-intelligence-view .pk-vi-scan-operation-list > div > .pk-vi-scan-operation-toggle.pk-btn.is-on { background: var(--pk-vi-accent) !important; }
+.peak-vault-intelligence-view .pk-vi-scan-operation-list > div > .pk-vi-scan-operation-toggle.pk-btn.is-on::after { transform: translateX(12px); }
 
 .peak-vault-intelligence-view .pk-vi-scan-estimate-block > div:first-child {
   display: flex;

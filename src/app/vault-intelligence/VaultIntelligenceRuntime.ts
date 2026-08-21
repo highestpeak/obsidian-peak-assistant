@@ -1308,7 +1308,7 @@ function normalizeIndexOutputs(plan: VaultScanPlan, config: VaultIntelligenceCon
 			id: definition.id,
 			enabled: definition.availability === 'required' || definition.availability === 'automatic'
 				? true
-				: (current?.enabled ?? definition.availability === 'optional'),
+				: (current?.enabled ?? (definition.availability === 'optional' && (definition.defaultEnabled ?? true))),
 			availability: definition.availability,
 			operationIds: definition.operationIds,
 		};

@@ -57,6 +57,8 @@ export interface VaultScanIndexOutputDefinition {
 	group: 'core' | 'summaries' | 'tags' | 'relationships' | 'content';
 	description: string;
 	availability: 'required' | 'automatic' | 'optional' | 'later';
+	/** The reference setup can leave an optional output off without making it unavailable. */
+	defaultEnabled?: boolean;
 	operationIds: VaultScanAiOperationId[];
 }
 

@@ -103,6 +103,9 @@ assert.match(source, /function ProposalReview/, 'source-file changes must be rev
 assert.match(source, /function ProposalWorkspace/, 'a prepared diff must have its own route instead of being nested in the task dialog');
 assert.match(source, /Prepare guarded diff/, 'proposal preparation must remain an explicit owner action');
 assert.match(source, /Knowledge Index plan/, 'the setup must disclose configurable Index outputs');
+assert.match(source, /pk-vi-index-output-toggle/, 'optional Index outputs must retain the Mock toggle subtree');
+assert.match(source, /pk-vi-scan-operation-toggle/, 'AI operation enablement must retain the Mock switch subtree');
+assert.match(source, /Configure a model in Peak settings/, 'an unavailable route must explain its configuration boundary instead of hiding selection controls');
 assert.match(source, /Version history/, 'map text must expose draft and publication history');
 assert.match(source, /AI work themes/, 'activity themes must remain an explicit generated layer');
 assert.match(source, /Expand members/, 'the graph must expose Community expansion instead of a fixed thumbnail');
@@ -202,6 +205,8 @@ assert.match(correction, /\.pk-vi-task-overlay\s*\{[\s\S]*?position:\s*absolute;
 assert.match(css, /\.pk-vi-activity-complete-workspace\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) 355px;/);
 assert.match(css, /\.pk-vi-scan-check-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
 assert.match(css, /\.pk-vi-scan-check-grid > \.pk-btn\.is-active \.pk-vi-check-mark\s*\{[\s\S]*?background:\s*var\(--pk-vi-accent\);/);
+assert.match(css, /\.pk-vi-index-output-toggle\s*\{[\s\S]*?width:\s*30px;[\s\S]*?height:\s*18px;/, 'optional output toggles preserve the Mock 30 × 18 geometry');
+assert.match(css, /\.pk-vi-scan-operation-toggle\.pk-btn\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*18px !important;/, 'AI operation switches defend their fixed Mock geometry from host button resets');
 const exactPort = css.slice(css.indexOf('Vault Intelligence V2 exact reference port'));
 assert.match(exactPort, /\.pk-vi-inventory-strip\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
 assert.match(exactPort, /\.pk-vi-inventory-item\s*\{[\s\S]*?min-height:\s*76px;[\s\S]*?border-radius:\s*10px;/);
