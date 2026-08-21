@@ -124,6 +124,7 @@ assert.match(source, /Find an analyzed theme/, 'Activity keeps the Reference sea
 assert.match(source, /Compared with previous equal period/, 'Activity keeps the selected-period comparison region');
 assert.match(source, /pk-vi-activity-event-kinds/, 'Activity work-session evidence keeps the Reference tag grouping');
 assert.match(source, /scopeMode === 'selected' \? ' is-custom-scope' : ''/, 'custom scope details must follow the Reference state boundary');
+assert.ok(source.indexOf('<strong>Run details</strong>') < source.indexOf('<strong>Completed automatically</strong>'), 'Completed keeps the Mock disclosure order: run receipt before automatic effects');
 
 const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snapshot);
 const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };
