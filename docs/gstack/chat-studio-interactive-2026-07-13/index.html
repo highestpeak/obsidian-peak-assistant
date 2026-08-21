@@ -77,6 +77,7 @@
         </div>
         <div class="right-tabs" role="tablist" aria-label="对话索引视图">
           <button class="right-tab is-active" type="button" role="tab" aria-selected="true" data-tab="outline"><span>大纲</span></button>
+          <button class="right-tab" type="button" role="tab" aria-selected="false" data-tab="starred"><span>收藏</span></button>
           <button class="right-tab" type="button" role="tab" aria-selected="false" data-tab="resources"><span>资源</span></button>
         </div>
         <div class="right-filterbar">
@@ -192,7 +193,8 @@
     </div>
 
     <section id="context-stack-popover" class="context-stack-popover" role="dialog" aria-label="下一条消息的 Context stack" aria-hidden="true">
-      <header class="context-stack-popover__head"><span><strong>下一条消息的 Context stack</strong><small>发送前预览；明确范围会在发送时冻结。</small></span><button id="context-stack-close" class="icon-button" type="button" aria-label="关闭 Context stack" data-icon-button="x"></button></header>
+      <header class="context-stack-popover__head"><span><strong>Context stack</strong><small>下一条消息为预计范围；发送后以回执为准。</small></span><button id="context-stack-close" class="icon-button" type="button" aria-label="关闭 Context stack" data-icon-button="x"></button></header>
+      <div class="context-stack-tabs" role="tablist" aria-label="Context stack 视图"><button class="context-stack-tab is-active" type="button" role="tab" aria-selected="true" data-context-stack-mode="next">下一条消息</button><button class="context-stack-tab" type="button" role="tab" aria-selected="false" data-context-stack-mode="receipt">最近一次回执</button></div>
       <div id="context-stack-popover-body" class="context-stack-popover__body"></div>
     </section>
 

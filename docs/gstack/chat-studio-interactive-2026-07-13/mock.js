@@ -47,6 +47,7 @@
     rawMessageText: '',
     composerFocused: false,
     contextDetailId: null,
+    contextStackMode: 'next',
     drafts: {}
   };
 
@@ -610,8 +611,10 @@
       { group: 'Conversation & work', id: 'history', title: 'Recent history', summary: '当前 active variant 的最近消息。', state: 'Required', source: 'conversation history', reason: '保持本轮上下文连续', treatment: 'May be compressed to fit budget' },
       { group: 'Conversation & work', id: 'working', title: 'Working context', summary: state.view === 'catalog' ? 'Chat Studio UI/UX 项目与当前资料。' : '面试准备项目与当前文档。', state: 'Included', source: 'project + active note', reason: '当前工作空间', treatment: 'Preview only' },
       { group: 'Conversation & work', id: 'summary', title: 'Conversation summary', summary: '已持久化的较早对话压缩摘要。', state: 'Included', source: 'conversation summary', reason: '补足窗口外历史', treatment: 'Compressed' },
+      { group: 'Conversation & work', id: 'activity-index', title: 'Activity index', summary: '本对话已生成的关键活动与可定位结果。', state: 'Included', source: 'conversation activity index', reason: '避免重复查找已完成工作', treatment: 'Preview only' },
       { group: 'Personal context', id: 'profile', title: 'User profile', summary: '中文优先、引用证据、保持边界清楚。', state: 'Included', source: 'user profile', reason: '长期表达偏好', treatment: 'Preview only' },
-      { group: 'Retrieval & this turn', id: 'resources', title: `${resources} resources`, summary: state.addedDocument ? `显式文件：${state.addedDocument}` : '项目资料与显式引用。', state: 'Included', source: 'attachments + explicit refs', reason: '本轮选择的资料', treatment: 'Actual consulted sources appear in receipt' }
+      { group: 'Retrieval & this turn', id: 'previous-analysis', title: 'Previous analysis', summary: '当前 active variant 的最近分析结论。', state: 'Included', source: 'active variant', reason: '延续已验证的判断', treatment: 'Preview only' },
+      { group: 'Retrieval & this turn', id: 'resources', title: `${resources} resource index`, summary: state.addedDocument ? `显式文件：${state.addedDocument}` : '项目资料与显式引用。', state: 'Included', source: 'attachments + explicit refs', reason: '本轮选择的资料', treatment: 'Actual consulted sources appear in receipt' }
     ];
   }
 
@@ -619,12 +622,16 @@
     const layers = contextStackLayers();
     const groups = new Map();
     layers.forEach((layer) => groups.set(layer.group, [...(groups.get(layer.group) || []), layer]));
+    const frozen = state.view === 'streaming' || state.view === 'tool-run';
     const layerRows = [...groups.entries()].map(([group, rows]) => `<div class="context-stack-group">${escapeHtml(group)}</div>${rows.map((layer, index) => {
       const open = state.contextDetailId === layer.id;
       return `<button class="context-stack-row ${open ? 'is-open' : ''}" type="button" data-context-layer="${layer.id}" aria-expanded="${open}"><span class="context-stack-row__order">${String(index + 1).padStart(2, '0')}</span><span class="context-stack-row__copy"><strong>${escapeHtml(layer.title)}</strong><small>${escapeHtml(layer.summary)}</small></span><span class="context-stack-state">${escapeHtml(layer.state)}</span></button>${open ? `<section class="context-stack-detail"><p>${escapeHtml(layer.summary)}</p><dl><dt>来源</dt><dd>${escapeHtml(layer.source)}</dd><dt>为何包含</dt><dd>${escapeHtml(layer.reason)}</dd><dt>处理</dt><dd>${escapeHtml(layer.treatment)}</dd></dl></section>` : ''}`;
     }).join('')}`).join('');
-    elements.contextStackPopoverBody.innerHTML = `<div class="context-stack-list">${layerRows}</div><aside class="context-stack-excluded"><strong>不在本轮</strong><small>明确排除能避免“整个 Vault 都会自动送进模型”的误解。</small><div>整个 Vault：只会经 Vault Search 检索后进入。</div><div>未选择的文档与未执行的 Web 结果。</div><div>Inactive variants 与 parent branch 的非 active history。</div></aside>`;
     const active = layers.filter((layer) => layer.state !== 'Empty').length;
+    const receipt = `<div class="context-stack-receipt"><div class="context-stack-receipt__summary"><strong>Last receipt</strong><span>已冻结 · ${active} 个层级</span></div><dl><dt>Model</dt><dd>GPT-5 · OpenAI</dd><dt>Context</dt><dd>${active} 个显式层级；资源按实际检索写入</dd><dt>Outcome</dt><dd>发送后可从消息回执复查实际使用的资源。</dd></dl></div>`;
+    elements.contextStackPopoverBody.innerHTML = state.contextStackMode === 'receipt'
+      ? `<div class="context-stack-list">${receipt}</div><aside class="context-stack-excluded"><strong>回执边界</strong><small>这是已发生的运行记录，不会反过来改变下一条消息的预计范围。</small><div>未使用的候选资料不会出现在回执中。</div><div>模型、工具与实际资源以发送时冻结结果为准。</div></aside>`
+      : `<div class="context-stack-list"><div class="context-stack-metrics"><strong>${frozen ? 'Frozen' : 'Expected'}</strong><span>${active} 个 active layers · 自动预算</span></div>${layerRows}</div><aside class="context-stack-excluded"><strong>不在本轮</strong><small>明确排除能避免“整个 Vault 都会自动送进模型”的误解。</small><div>整个 Vault：只会经 Vault Search 检索后进入。</div><div>未选择的文档与未执行的 Web 结果。</div><div>Inactive variants 与 parent branch 的非 active history。</div></aside>`;
     elements.contextStackCount.textContent = `${active} 项`;
     elements.compactContextCount.textContent = String(active);
   }
@@ -679,6 +686,10 @@
 
   function activeTopics() {
     return state.view === 'catalog' || state.activeConversationId === 'conversation-catalog' ? fixtures.catalogTopics : fixtures.topics;
+  }
+
+  function activeStarredTopics() {
+    return activeTopics().map((topic) => ({ ...topic, rows: topic.rows.filter((row) => row.starred) })).filter((topic) => topic.rows.length > 0);
   }
 
   function activeArtifacts() {
@@ -765,6 +776,18 @@
         return `<section class="artifact-group"><div class="section-label"><span>${label}</span><span>${items.length}</span></div>${items.map((resource) => `<button class="artifact-row" type="button" data-index-target="${resource.target}" data-resource-direction="${direction}" data-resource-type="${resource.type}"><span class="artifact-icon">${icon(resource.kind)}</span><span class="artifact-meta"><span class="artifact-title">${escapeHtml(resource.title)}</span><span class="artifact-type">${escapeHtml(resource.meta)}</span></span></button>`).join('')}</section>`;
       }).join('') || '<div class="empty-state"><div><strong>没有匹配资源</strong><span>调整方向或类型筛选。</span></div></div>';
       elements.indexCount.textContent = `${resources.length} 项资源`;
+      return;
+    }
+    if (state.rightTab === 'starred') {
+      let rowCount = 0;
+      const topics = activeStarredTopics().map((topic) => {
+        const rows = topic.rows.filter((row) => !query || row.title.toLocaleLowerCase().includes(query));
+        if (!rows.length) return '';
+        rowCount += rows.length;
+        return `<section class="topic"><div class="topic-head is-static"><span>${escapeHtml(topic.title)}</span><span class="topic-count">${rows.length}</span></div>${rows.map((row) => `<button class="index-row" type="button" data-index-target="${targetForRow(row.title)}"><span class="index-kind">${icon(row.kind)}</span><span class="index-copy"><span class="index-title">${escapeHtml(row.title)}</span><span class="index-time">${escapeHtml(row.time)}</span></span></button>`).join('')}</section>`;
+      }).join('');
+      elements.rightContent.innerHTML = topics || '<div class="empty-state"><div><strong>还没有收藏</strong><span>在对话中收藏一条内容后，它会在这里保留。</span></div></div>';
+      elements.indexCount.textContent = `${rowCount} 条收藏`;
       return;
     }
     let rowCount = 0;
@@ -1719,6 +1742,17 @@
     });
     elements.contextStackClose.addEventListener('click', () => closeSurfaces());
     elements.contextStackPopover.addEventListener('click', (event) => {
+      const mode = event.target.closest('[data-context-stack-mode]');
+      if (mode) {
+        state.contextStackMode = mode.dataset.contextStackMode;
+        document.querySelectorAll('[data-context-stack-mode]').forEach((tab) => {
+          const active = tab.dataset.contextStackMode === state.contextStackMode;
+          tab.classList.toggle('is-active', active);
+          tab.setAttribute('aria-selected', String(active));
+        });
+        renderContextStack();
+        return;
+      }
       const layer = event.target.closest('[data-context-layer]');
       if (!layer) return;
       state.contextDetailId = state.contextDetailId === layer.dataset.contextLayer ? null : layer.dataset.contextLayer;

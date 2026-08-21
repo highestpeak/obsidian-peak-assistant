@@ -42,6 +42,10 @@ for (const id of requiredIds) {
   if (!html.includes(`id="${id}"`)) failures.push(`Missing required shell node: #${id}`);
 }
 
+for (const requiredContract of ['data-tab="starred"', 'data-context-stack-mode="next"', 'data-context-stack-mode="receipt"']) {
+  if (!html.includes(requiredContract)) failures.push(`Missing Chat Studio interaction contract: ${requiredContract}`);
+}
+
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);

@@ -142,7 +142,7 @@
         open: true,
         rows: [
           { kind: 'message-user', title: 'Story Cards 的目标与边界', time: '10:38' },
-          { kind: 'message', title: '证据索引的三层结构', time: '10:38' },
+          { kind: 'message', title: '证据索引的三层结构', time: '10:38', starred: true },
           { kind: 'message-user', title: '筛选最完整经历', time: '10:42' },
           { kind: 'message', title: '证据完整度分组', time: '10:43' }
         ]
@@ -153,7 +153,7 @@
         count: 2,
         open: false,
         rows: [
-          { kind: 'message', title: '建议的整理顺序', time: '10:44' },
+          { kind: 'message', title: '建议的整理顺序', time: '10:44', starred: true },
           { kind: 'message-user', title: '先从性能优化开始', time: '10:45' }
         ]
       }
@@ -179,7 +179,7 @@
         open: true,
         rows: [
           { kind: 'table', title: '表格与结构化数据', time: 'Table' },
-          { kind: 'code', title: '代码与 Diff', time: 'Code' },
+          { kind: 'code', title: '代码与 Diff', time: 'Code', starred: true },
           { kind: 'diagram', title: 'Mermaid / 图表', time: 'Diagram' },
           { kind: 'image', title: '生成图片', time: 'Image' },
           { kind: 'file', title: '生成文档', time: 'Document' },

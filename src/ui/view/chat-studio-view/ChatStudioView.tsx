@@ -3,7 +3,7 @@ import { ProjectListViewComponent } from '@/ui/view/project-list-view/ProjectLis
 import { ConversationIndex } from '@/ui/view/chat-view/components/ConversationIndex';
 import { ChatViewComponent } from '@/ui/view/chat-view/ChatViewComponent';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import { useChatViewStore, ViewMode } from '@/ui/view/chat-view/store/chatViewStore';
 import { PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import { ChatStudioStringsProvider, useChatStudioStrings } from '@/ui/view/chat-view/chatStudioStringsContext';
@@ -34,10 +34,9 @@ const STUDIO_CENTRE_MIN_WIDTH_PX = 440;
  * Left:   ProjectListViewComponent — New chat / Search / Pinned / Projects / Recent.
  * Middle: ChatViewComponent — full router (Messages / AllProjects /
  *         ProjectOverview / etc). Entry lands on the new-chat start state.
- * Right:  ConversationIndex — Outline / Resources; visible ONLY when there is
- *         an active conversation (SHELL-04). On the new-chat start state /
- *         project-overview the right column is unmounted, so no splitter is
- *         focusable and no space is wasted.
+ * Right:  ConversationIndex — Outline / Starred / Resources. New and empty
+ *         conversation states retain this slot with truthful empty states;
+ *         only project-owned full-page routes suppress it.
  *
  * All three columns share `chatViewStore` + `chatDataStore` (Zustand
  * singletons), so navigation and selection stay coherent across columns
@@ -48,8 +47,9 @@ const ChatStudioPanelInner: React.FC = () => {
 	const leftDrawerRef = useRef<HTMLDivElement | null>(null);
 	const leftDrawerTriggerRef = useRef<HTMLDivElement | null>(null);
 	usePeakKeyboardSurface('chat-studio', rootRef);
-	const activeConversation = useChatDataStore((s) => s.activeConversation);
-	const rightColumnVisible = activeConversation !== null;
+	const viewMode = useChatViewStore((s) => s.viewMode);
+	const rightColumnVisible = viewMode !== ViewMode.PROJECT_OVERVIEW
+		&& viewMode !== ViewMode.PROJECT_CONVERSATIONS_LIST;
 	// Shell chrome strings (drawer toggles + splitter aria-labels) come from the
 	// runtime-loaded chat-studio config, never hard-coded literals.
 	const shell = useChatStudioStrings().shell;
@@ -101,7 +101,8 @@ const ChatStudioPanelInner: React.FC = () => {
 	);
 
 	// Effective layout state — user pref layered onto responsive decision.
-	// Right column is force-hidden when there is no active conversation.
+	// Only project-owned full-page routes hide the right slot; a missing active
+	// conversation is data state, not permission to collapse the reference UI.
 	const leftDrawerOnly = responsive.leftForcedDrawer;
 	const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
 	const leftVisible = leftDrawerOnly ? leftDrawerOpen : !pref.leftCollapsed;

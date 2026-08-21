@@ -11,6 +11,7 @@ function source(path: string): string {
 function run(): void {
 	const messages = source('src/ui/view/chat-view/view-Messages.tsx');
 	const project = source('src/ui/view/chat-view/view-ProjectOverview.tsx');
+	const studio = source('src/ui/view/chat-studio-view/ChatStudioView.tsx');
 	const styles = source('src/styles/peak-components.css');
 
 	assert.match(messages, /const EmptyThreadHero[\s\S]*?<Composer \/>/,
@@ -29,6 +30,12 @@ function run(): void {
 		'project tabs remain visible but must not pretend to be actionable without project data');
 	assert.match(styles, /\.pkchat-project-unavailable\s*\{[\s\S]*?var\(--pk-chat-reading-width\)/,
 		'missing project state must stay on the same reading rail as the reference content');
+	assert.match(studio, /viewMode !== ViewMode\.PROJECT_OVERVIEW[\s\S]*?viewMode !== ViewMode\.PROJECT_CONVERSATIONS_LIST/,
+		'new and empty conversation states must retain the reference right-index slot');
+	assert.match(styles, /\.pkchat-idx-row__action\s*\{[\s\S]*?width:\s*28px !important;[\s\S]*?height:\s*28px !important;/,
+		'right-index open action must defend its compact hit geometry against host button styles');
+	assert.match(styles, /\.pkchat-idx-row--artifact\s*\{[\s\S]*?background:\s*transparent !important;[\s\S]*?box-shadow:\s*none !important;/,
+		'generated-resource rows must remain neutral until the user selects one');
 
 	console.log('chat-studio-reference-state-parity: all guards passed');
 }

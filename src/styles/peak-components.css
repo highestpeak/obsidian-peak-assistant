@@ -8493,6 +8493,8 @@
   position: relative;
   min-height: 44px !important;
   padding: 6px var(--pk-space-2);
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 /* [R3] Collapsible topic head (mock .topic-head) — replaces the old orphan
@@ -9875,13 +9877,40 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__action {
+  display: inline-flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  background: transparent !important;
+  color: var(--pk-text-tertiary);
+  cursor: pointer;
   opacity: 0;
   transition: opacity var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row__action > svg {
+  width: 15px;
+  height: 15px;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row:hover .pkchat-idx-row__action,
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row:focus-within .pkchat-idx-row__action {
   opacity: 1;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row__action:hover,
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row__action:focus-visible {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-hover) !important;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx-target-flash {
