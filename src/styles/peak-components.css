@@ -21819,7 +21819,7 @@
   gap: 10px;
   margin-top: 9px;
   padding-top: 9px;
-  border-top: 1px solid #e6e4e9;
+  border-top: 0;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-legend {

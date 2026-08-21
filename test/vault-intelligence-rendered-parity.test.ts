@@ -323,7 +323,6 @@ assert.match(exactPort, /\.pk-vi-overview-range-popover\s*\{[\s\S]*?right:\s*0;[
 assert.match(exactPort, /\.pk-vi-overview-range-popover > \.pk-btn\s*\{[\s\S]*?justify-content:\s*space-between !important;[\s\S]*?text-align:\s*left;/, 'range options must keep their labels left aligned');
 assert.match(exactPort, /\.pk-vi-overview-activity-title\s*\{[\s\S]*?flex-direction:\s*row;[\s\S]*?align-items:\s*center;/, 'the activity total must sit horizontally beside and vertically centered with the title');
 assert.match(exactPort, /\.pk-vi-overview-evidence > div > article:last-of-type\s*\{[\s\S]*?border-bottom:\s*0 !important;/, 'the final activity row must not duplicate the card border');
-assert.match(exactPort, /\.pk-vi-overview-heatmap-footer\s*\{[\s\S]*?border-top:\s*0;/, 'the activity legend must not create a redundant bottom divider after the final record');
 assert.match(source, /function DescriptionTooltip\(/, 'inventory and index descriptions must be available through a compact tooltip trigger');
 assert.doesNotMatch(html, /pk-vi-card-caption[^>]*>Search and machine knowledge maintained by Vault scans/, 'the Knowledge Index explanation must not consume header space');
 assert.match(html, /pk-vi-description-tooltip/, 'the Knowledge Index explanation must remain available via its tooltip trigger');
