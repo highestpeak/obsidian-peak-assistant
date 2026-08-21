@@ -33,9 +33,12 @@ import {
 } from '@/ui/component/shared-ui/button';
 import { AtlasGraphCanvas, type AtlasGraphPreset } from '@/ui/component/graph/AtlasGraphCanvas';
 import { cn } from '@/ui/react/lib/utils';
-import { UnifiedModelPicker } from '@/ui/view/settings/components/UnifiedModelPicker';
+import { ComposerModelSelector } from '@/ui/view/chat-view/components/composer/ComposerModelSelector';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
+import { modelRegistry } from '@/core/providers/model-registry';
+import { ModelType } from '@/core/providers/types';
+import type { ModelSelection } from '@/core/types/chat-studio';
 import type {
 	VaultMaintenanceTask,
 	VaultMaintenanceProposal,
@@ -245,7 +248,6 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 	const currentSurface = route.kind === 'surface' ? route.surface : null;
 	const active = snapshot.run.status === 'running' || snapshot.run.status === 'stopping';
 	const resumable = snapshot.run.status === 'interrupted';
-	const prepared = Boolean(snapshot.lastCompletedRun);
 	const [infoOpen, setInfoOpen] = useState(false);
 	const infoButtonRef = useRef<HTMLButtonElement>(null);
 	useEffect(() => {
@@ -276,7 +278,7 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 					</div>
 					<Button className="pk-vi-primary" onClick={onPrimary}>
 						{active ? <Activity size={17} /> : resumable ? <Play size={17} /> : <VaultReferenceIcon name="scan" size={17} />}
-						{active ? 'View progress' : resumable ? 'Resume scan' : prepared ? 'Scan Vault' : 'Prepare Vault'}
+						{active ? 'View progress' : resumable ? 'Resume scan' : 'Prepare Vault'}
 					</Button>
 				</div>
 			</div>
@@ -424,7 +426,8 @@ function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelli
 	const [customError, setCustomError] = useState('');
 	const [customStart, setCustomStart] = useState(() => dateOffsetKey(29));
 	const [customEnd, setCustomEnd] = useState(() => dateOffsetKey(0));
-	const [selectedDate, setSelectedDate] = useState<string | null>(null);
+	const [pinnedDate, setPinnedDate] = useState<string | null>(null);
+	const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 	const rangeButtonRef = useRef<HTMLButtonElement>(null);
 	useEffect(() => {
 		if (!rangeOpen) return;
@@ -444,6 +447,7 @@ function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelli
 	const days = customApplied ? calendarDaysBetween(mergedDays, customStart, customEnd) : calendarDays(mergedDays, range);
 	const max = Math.max(0, ...days.map((day) => day.count));
 	const lastDay = days[days.length - 1] ?? null;
+	const selectedDate = hoveredDate ?? pinnedDate;
 	const selectedDay = days.find((day) => day.date === selectedDate) ?? [...days].reverse().find((day) => day.count > 0) ?? lastDay;
 	const selectedRecords = selectedDay ? records.filter((record) => toLocalDateKey(new Date(record.timestamp)) === selectedDay.date) : [];
 	const firstWeekday = days[0] ? new Date(`${days[0].date}T12:00:00`).getDay() : 0;
@@ -454,8 +458,8 @@ function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelli
 		return [...result, { key, label: new Intl.DateTimeFormat(undefined, { month: 'short' }).format(date), column: Math.floor((index + firstWeekday) / 7) + 1 }];
 	}, []);
 	return <section className="pk-vi-card pk-vi-overview-activity">
-		<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Vault activity</span></div><div className="pk-vi-overview-activity-actions"><div className="pk-vi-overview-range"><Button ref={rangeButtonRef} variant="outline" aria-haspopup="dialog" aria-expanded={rangeOpen} onClick={() => setRangeOpen((open) => !open)}><CalendarDays size={15} />{days[0] && lastDay ? `${formatShortDate(days[0].date)} – ${formatShortDate(lastDay.date)}` : 'No recorded range'}<ChevronDown size={13} /></Button>{rangeOpen && <div className="pk-vi-overview-range-popover" role="dialog" aria-label="Choose activity date range"><div className="pk-vi-overview-range-head"><strong>Date range</strong><Button variant="ghost" onClick={() => { setCustomApplied(false); setRange(365); setSelectedDate(null); setRangeOpen(false); }}>Clear filters</Button></div>{([7, 30, 365] as const).map((option) => <Button key={option} variant="ghost" className={!customApplied && range === option ? 'is-active' : ''} onClick={() => { setRange(option); setCustomApplied(false); setRangeOpen(false); setSelectedDate(null); }}><span>Last {option} days</span>{!customApplied && range === option && <Check size={14} />}</Button>)}<Button variant="ghost" className={customApplied ? 'is-active' : ''} onClick={() => setCustomOpen((open) => !open)}><span>Custom date</span><ChevronRight size={14} /></Button>{customOpen && <div className="pk-vi-custom-range"><div><label><span>Start</span><input type="date" value={customStart} max={customEnd} onChange={(event) => setCustomStart(event.target.value)} /></label><span>–</span><label><span>End</span><input type="date" value={customEnd} min={customStart} max={dateOffsetKey(0)} onChange={(event) => setCustomEnd(event.target.value)} /></label></div><div><small>{customError}</small><Button className="pk-vi-primary" size="sm" onClick={() => { if (!customStart || !customEnd || customStart > customEnd) { setCustomError('Choose a valid date range.'); return; } setCustomError(''); setCustomApplied(true); setRangeOpen(false); setSelectedDate(null); }}>Apply</Button></div></div>}</div>}</div><Button variant="ghost" size="sm" onClick={() => onOpenActivity(selectedDay?.date ?? null)}>Open Activity<ChevronRight size={14} /></Button></div></div>
-		<div className="pk-vi-overview-activity-body"><div className="pk-vi-overview-heatmap"><div className="pk-vi-overview-heatmap-summary"><strong>{formatNumber(days.reduce((sum, day) => sum + day.count, 0))} explicit records in this range</strong></div><div className="pk-vi-overview-heatmap-scroll"><div className="pk-vi-overview-heatmap-calendar"><div className="pk-vi-overview-months" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{months.map((month) => <span key={month.key} style={{ gridColumn: month.column }}>{month.label}</span>)}</div><div className="pk-vi-overview-calendar"><div className="pk-vi-overview-weekdays"><span>Sun</span><span /><span>Tue</span><span /><span>Thu</span><span /><span>Sat</span></div><div className="pk-vi-overview-grid" role="grid" aria-label="Calendar heatmap of explicit Vault activity" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{days.map((day, index) => <Button key={day.date} variant="ghost" size="icon" className={selectedDay?.date === day.date ? 'is-selected' : ''} style={{ gridColumn: Math.floor((index + firstWeekday) / 7) + 1, gridRow: (index + firstWeekday) % 7 + 1, '--pk-vi-level': activityLevel(day.count, max) } as React.CSSProperties} title={`${day.date} · ${day.count} records`} aria-label={`${day.date}, ${day.count} records`} onClick={() => setSelectedDate(day.date)} />)}</div></div></div></div><div className="pk-vi-overview-evidence" aria-live="polite"><strong>{selectedDay ? `${formatLongDate(selectedDay.date)} · ${selectedDay.count} explicit records` : 'No recorded activity'}</strong><div>{selectedRecords.slice(0, 5).map((record) => <article key={record.id}><span className={`is-${record.kind}`}>{activityIcon(record.kind)}</span><div><strong>{record.label}</strong><span>{record.objectPath ?? (record.runId ? `Run ${record.runId}` : 'Peak-owned record')}</span></div><small>{record.kind}</small></article>)}{selectedRecords.length === 0 && selectedDay?.files.slice(0, 5).map((file) => <article key={file.path}><span><File size={14} /></span><div><strong>{file.path}</strong><span>Vault file modification</span></div><small>file</small></article>)}{selectedDay && selectedDay.count === 0 && <span className="pk-vi-empty">No explicit records for this date.</span>}</div></div><div className="pk-vi-overview-heatmap-footer"><div className="pk-vi-overview-legend"><span>None</span>{[0, 1, 2, 3, 4].map((level) => <i key={level} style={{ '--pk-vi-level': level } as React.CSSProperties} />)}<span>More records</span></div></div></div>
+		<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Vault activity</span></div><div className="pk-vi-overview-activity-actions"><div className="pk-vi-overview-range"><Button ref={rangeButtonRef} variant="outline" aria-haspopup="dialog" aria-expanded={rangeOpen} onClick={() => setRangeOpen((open) => !open)}><CalendarDays size={15} />{days[0] && lastDay ? `${formatShortDate(days[0].date)} – ${formatShortDate(lastDay.date)}` : 'No recorded range'}<ChevronDown size={13} /></Button>{rangeOpen && <div className="pk-vi-overview-range-popover" role="dialog" aria-label="Choose activity date range"><div className="pk-vi-overview-range-head"><strong>Date range</strong><Button variant="ghost" onClick={() => { setCustomApplied(false); setRange(365); setPinnedDate(null); setRangeOpen(false); }}>Clear filters</Button></div>{([7, 30, 365] as const).map((option) => <Button key={option} variant="ghost" className={!customApplied && range === option ? 'is-active' : ''} onClick={() => { setRange(option); setCustomApplied(false); setRangeOpen(false); setPinnedDate(null); }}><span>Last {option} days</span>{!customApplied && range === option && <Check size={14} />}</Button>)}<Button variant="ghost" className={customApplied ? 'is-active' : ''} onClick={() => setCustomOpen((open) => !open)}><span>Custom date</span><ChevronRight size={14} /></Button>{customOpen && <div className="pk-vi-custom-range"><div><label><span>Start</span><input type="date" value={customStart} max={customEnd} onChange={(event) => setCustomStart(event.target.value)} /></label><span>–</span><label><span>End</span><input type="date" value={customEnd} min={customStart} max={dateOffsetKey(0)} onChange={(event) => setCustomEnd(event.target.value)} /></label></div><div><small>{customError}</small><Button className="pk-vi-primary" size="sm" onClick={() => { if (!customStart || !customEnd || customStart > customEnd) { setCustomError('Choose a valid date range.'); return; } setCustomError(''); setCustomApplied(true); setRangeOpen(false); setPinnedDate(null); }}>Apply</Button></div></div>}</div>}</div><Button variant="ghost" size="sm" onClick={() => onOpenActivity(selectedDay?.date ?? null)}>Open Activity<ChevronRight size={14} /></Button></div></div>
+		<div className="pk-vi-overview-activity-body"><div className="pk-vi-overview-heatmap"><div className="pk-vi-overview-heatmap-summary"><strong>{formatNumber(days.reduce((sum, day) => sum + day.count, 0))} explicit records in this range</strong></div><div className="pk-vi-overview-heatmap-scroll"><div className="pk-vi-overview-heatmap-calendar"><div className="pk-vi-overview-months" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{months.map((month) => <span key={month.key} style={{ gridColumn: month.column }}>{month.label}</span>)}</div><div className="pk-vi-overview-calendar"><div className="pk-vi-overview-weekdays"><span>Sun</span><span /><span>Tue</span><span /><span>Thu</span><span /><span>Sat</span></div><div className="pk-vi-overview-grid" role="grid" aria-label="Calendar heatmap of explicit Vault activity" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.ceil((days.length + firstWeekday) / 7))}, 17px)` }}>{days.map((day, index) => <Button key={day.date} variant="ghost" size="icon" className={selectedDay?.date === day.date ? 'is-selected' : ''} style={{ gridColumn: Math.floor((index + firstWeekday) / 7) + 1, gridRow: (index + firstWeekday) % 7 + 1, '--pk-vi-level': activityLevel(day.count, max) } as React.CSSProperties} title={`${day.date} · ${day.count} records`} aria-label={`${day.date}, ${day.count} records${pinnedDate === day.date ? ', pinned' : ''}`} aria-pressed={pinnedDate === day.date} onMouseEnter={() => setHoveredDate(day.date)} onMouseLeave={() => setHoveredDate(null)} onFocus={() => setHoveredDate(day.date)} onBlur={() => setHoveredDate(null)} onClick={() => setPinnedDate((current) => current === day.date ? null : day.date)} />)}</div></div></div></div><div className="pk-vi-overview-evidence" aria-live="polite"><strong>{selectedDay ? `${formatLongDate(selectedDay.date)} · ${selectedDay.count} explicit records` : 'No recorded activity'}</strong><div>{selectedRecords.slice(0, 5).map((record) => <article key={record.id}><span className={`is-${record.kind}`}>{activityIcon(record.kind)}</span><div><strong>{record.label}</strong><span>{record.objectPath ?? (record.runId ? `Run ${record.runId}` : 'Peak-owned record')}</span></div><small>{record.kind}</small></article>)}{selectedRecords.length === 0 && selectedDay?.files.slice(0, 5).map((file) => <article key={file.path}><span><File size={14} /></span><div><strong>{file.path}</strong><span>Vault file modification</span></div><small>file</small></article>)}{selectedDay && selectedDay.count === 0 && <span className="pk-vi-empty">No explicit records for this date.</span>}</div></div><div className="pk-vi-overview-heatmap-footer"><div className="pk-vi-overview-legend"><span>None</span>{[0, 1, 2, 3, 4].map((level) => <i key={level} style={{ '--pk-vi-level': level } as React.CSSProperties} />)}<span>More records</span></div></div></div>
 		</div>
 	</section>;
 }
@@ -588,8 +592,10 @@ function FileTypeDistribution({ snapshot, config, selected, onSelect }: {
 	selected: string | null;
 	onSelect: (extension: string | null) => void;
 }) {
+	const [hovered, setHovered] = useState<string | null>(null);
 	const shown = snapshot.fileTypes.slice(0, 16);
 	const total = snapshot.fileTypes.reduce((sum, type) => sum + type.count, 0);
+	const active = hovered ?? selected;
 	let cursor = 0;
 	const slices = shown.map((type, index) => {
 		const start = cursor;
@@ -599,8 +605,8 @@ function FileTypeDistribution({ snapshot, config, selected, onSelect }: {
 	return <section className="pk-vi-card pk-vi-file-types">
 		<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Files by actual type</span><span className="pk-vi-card-caption">Select a type to focus the knowledge map without changing the source Vault.</span></div><Button variant="ghost" size="sm" onClick={() => onSelect(null)} className={!selected ? 'is-active' : ''}>All files</Button></div>
 			<div className="pk-vi-file-type-body">
-				<div className="pk-vi-donut"><svg viewBox="0 0 100 100" aria-label="File type distribution">{slices.map((slice) => <path key={slice.type.extension} d={pieSlicePath(slice.start, slice.end)} fill={slice.color} />)}{cursor < 1 && <path d={pieSlicePath(cursor, 1)} fill="#dedce4" />}</svg><span><strong>{formatNumber(total)}</strong><small>files</small></span></div>
-				<div className="pk-vi-file-type-list">{shown.map((type, index) => <Button key={type.extension} variant="ghost" className={selected === type.extension ? 'is-active' : ''} onClick={() => onSelect(selected === type.extension ? null : type.extension)}>
+				<div className="pk-vi-donut"><svg viewBox="0 0 100 100" aria-label="File type distribution" onMouseLeave={() => setHovered(null)}>{slices.map((slice) => <path key={slice.type.extension} className={`${active === slice.type.extension ? 'is-active' : ''} ${active && active !== slice.type.extension ? 'is-muted' : ''}`} d={pieSlicePath(slice.start, slice.end)} fill={slice.color} onMouseEnter={() => setHovered(slice.type.extension)} onFocus={() => setHovered(slice.type.extension)} onBlur={() => setHovered(null)} tabIndex={0} />)}{cursor < 1 && <path d={pieSlicePath(cursor, 1)} fill="#dedce4" />}</svg><span><strong>{formatNumber(total)}</strong><small>{active ? fileTypeLabel(active) : 'files'}</small></span></div>
+				<div className="pk-vi-file-type-list">{shown.map((type, index) => <Button key={type.extension} variant="ghost" className={`${active === type.extension ? 'is-active' : ''} ${active && active !== type.extension ? 'is-muted' : ''}`} aria-pressed={selected === type.extension} onMouseEnter={() => setHovered(type.extension)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(type.extension)} onBlur={() => setHovered(null)} onClick={() => onSelect(selected === type.extension ? null : type.extension)}>
 					<i style={{ backgroundColor: config.fileTypeColors[index % config.fileTypeColors.length] }} /><span>{fileTypeLabel(type.extension)}</span><strong>{formatNumber(type.count)}</strong><small>{Math.round(type.share * 100)}%</small>
 			</Button>)}</div>
 		</div>
@@ -851,8 +857,15 @@ function ScanSetup({ snapshot, config, initialSelector, onBack, onStart, onSelec
 	const selectedOps = plannedOperations.filter((operation) => operation.enabled);
 	const hasUnconfiguredEnabledOperation = selectedOps.some((operation) => snapshot.operationRoutes[operation.id]?.available === false);
 	const estimatedTokens = selectedOps.reduce((sum, operation) => sum + operation.estimatedTokens, 0);
-	const estimatedCost = selectedOps.reduce((sum, operation) => sum + operation.estimatedCostUsd, 0);
-	const estimatedMinutes = scopeObjectCount > 0 ? Math.max(1, Math.ceil(scopeObjectCount / 120 + estimatedTokens / 45_000)) : null;
+	const operationCosts = selectedOps.map((operation) => estimateOperationCostUsd(operation));
+	const hasUnknownCost = operationCosts.some((cost) => cost === null);
+	const estimatedCost = operationCosts.reduce<number>((sum, cost) => sum + (cost ?? 0), 0);
+	const localMinutes = scopeObjectCount > 0 ? scopeObjectCount / 120 : 0;
+	const longestAiMinutes = selectedOps.reduce((longest, operation) => Math.max(longest, operation.estimatedTokens / 45_000), 0);
+	const queuedAiMinutes = estimatedTokens / 450_000;
+	const estimatedMinutes = scopeObjectCount > 0
+		? Math.max(0.1, Math.ceil((localMinutes + longestAiMinutes * .4 + queuedAiMinutes) * 10) / 10)
+		: null;
 	const enabledCheckIds = uniqueStrings(displayedCheckGroups.flatMap((group) => group.checks
 		.filter((check) => selectedCheckKeys.has(check.checkId))
 		.flatMap((check) => check.checkIds ?? [check.checkId])));
@@ -878,8 +891,8 @@ function ScanSetup({ snapshot, config, initialSelector, onBack, onStart, onSelec
 			['entire', 'Entire Vault', `${snapshot.availablePaths.length} objects`],
 		] as const).map(([id, label, meta]) => <Button key={id} variant="ghost" disabled={id === 'changed' && !snapshot.changedCursorAt} className={scopeMode === id ? 'is-active' : ''} onClick={() => setScopeMode(id)}><strong>{label}</strong><span>{meta}</span></Button>)}</div><div className="pk-vi-scope-selected-row"><div><strong>Included scope</strong><span>{scopeObjectCount} objects included</span></div><span className="pk-vi-scope-token"><Check size={13} />{scopeMode === 'changed' ? 'Changes since last scan' : scopeMode === 'entire' ? 'Entire Vault' : selectors.length === 1 ? selectors[0].label : selectors.length ? `${selectors.length} selected scopes` : 'Choose files or saved scope'} <b>{scopeObjectCount}</b></span></div>{scopeMode === 'selected' && <div className="pk-vi-path-picker"><label><Search size={15} /><input value={pathQuery} onChange={(event) => setPathQuery(event.target.value)} placeholder="Add a file, folder, Community, or saved work…" /></label>{matchingPaths.length > 0 && <div className="pk-vi-path-results">{matchingPaths.map((path) => <Button key={path} variant="ghost" onClick={() => { addSelector({ id: `file:${path}`, kind: 'file', label: path, paths: [path] }); setPathQuery(''); }}><FileText size={14} /><span>{path}</span><Check size={14} /></Button>)}</div>}<div className="pk-vi-scope-shortcuts"><span>Add a saved scope</span><div>{folderScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Folder · {selector.label}</Button>)}{communityScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Community · {selector.label}</Button>)}{savedWorkScope.paths.length > 0 && <Button variant="ghost" onClick={() => addSelector(savedWorkScope)}>Saved work · {savedWorkScope.label}</Button>}</div></div><div className="pk-vi-selected-paths">{selectors.map((selector) => <span key={selector.id}>{selector.kind} · {selector.label} · {selector.paths.length} files<Button variant="ghost" size="icon" onClick={() => { setSelectors((current) => current.filter((candidate) => candidate.id !== selector.id)); setSelectedPaths((current) => current.filter((path) => !selector.paths.includes(path) || selectors.some((candidate) => candidate.id !== selector.id && candidate.paths.includes(path)))); }} aria-label={`Remove ${selector.label}`}><X size={13} /></Button></span>)}</div></div>}<div className="pk-vi-scope-builder-foot"><GitBranch size={13} />Affected relationships and existing Community context are included automatically.</div></div></SetupSection>
 		<SetupSection number="2" title="Choose scan tasks" description="Select the maintenance task categories Peak should run." status={`${selectedCheckKeys.size} of ${allChecks.length} tasks selected`}><div className="pk-vi-scan-check-grid">{displayedCheckGroups.map((group) => { const selectedCount = group.checks.filter((check) => selectedCheckKeys.has(check.checkId)).length; const selected = selectedCount === group.checks.length; return <Button key={group.id} variant="ghost" className={selected ? 'is-active' : ''} title={group.description} onClick={() => setGroupSelected(group.checks, !selected)}><span className="pk-vi-check-mark">{selected && <Check size={13} />}</span><strong>{group.label}</strong><span>{group.checks.length} tasks</span></Button>; })}</div><IndexOutputPlan config={config} outputs={indexOutputs} scopeObjectCount={scopeObjectCount} onToggle={toggleOutput} /></SetupSection>
-		<SetupSection number="3" title="Review AI models" description="Peak mapped the selected tasks and Index outputs to AI operations. Open a row to change models or disable an individual operation." status={`${selectedOps.length} operations · ${hasUnconfiguredEnabledOperation ? 'configuration needed' : selectedOps.length ? 'models ready' : 'no AI work'}`}><div className="pk-vi-scan-ai-groups">{(['plan', 'index', 'relations', 'structure', 'follow-up'] as const).map((group) => { const definitions = config.scanOperations.filter((definition) => definition.group === group); const groupOperations = definitions.map((candidate) => plannedOperations.find((operation) => operation.id === candidate.id)!).filter(Boolean); const enabled = groupOperations.filter((operation) => operation.enabled).length; const expanded = expandedOperationGroup === group; return <section key={group} className={expanded ? 'is-expanded' : ''}><Button variant="ghost" className="pk-vi-scan-ai-group-row" aria-expanded={expanded} onClick={() => setExpandedOperationGroup(expanded ? null : group)}><span><strong>{scanOperationGroupLabel(group)}</strong><small>{scanOperationGroupDescription(group)}</small></span><span><strong>{definitions.length} {definitions.length === 1 ? 'operation' : 'operations'}</strong><small>{scanOperationGroupSummary(group)}</small></span><span><strong>{enabled} / {definitions.length} enabled</strong><small>{groupOperations.some((operation) => snapshot.operationRoutes[operation.id]?.available === false) ? 'Configure model' : groupOperations[0]?.provider ?? 'Route not available'}</small></span><ChevronRight size={15} /></Button>{expanded && <div className="pk-vi-scan-operation-list">{definitions.map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const route = snapshot.operationRoutes[operation.id]; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const shared = sharedExecutionLabel(operation.id); return <div key={definition.id} className={!scopeAvailable ? 'is-scope-unavailable' : ''}><span><strong>{definition.label}</strong><small>{definition.description}{shared ? ` · ${shared}` : ''}</small></span><OperationModelPicker operation={operation} route={route} profiles={modelProfiles} onChange={(candidate) => { setOperations((current) => current.map((item) => item.id === operation.id ? { ...item, model: candidate.model, provider: candidate.provider } : item)); onSelectOperationRoute(operation.id, candidate); }} /><span>{formatCompactNumber(operation.estimatedTokens)} · {formatMoney(operation.estimatedCostUsd)}</span><Button variant="ghost" disabled={!scopeAvailable} className={`pk-vi-scan-operation-toggle ${operation.enabled ? 'is-on' : ''}`} aria-label={`${operation.enabled ? 'Disable' : 'Enable'} ${definition.label}`} aria-pressed={operation.enabled} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div>}</section>; })}</div></SetupSection>
-		<section className="pk-vi-scan-estimate-block"><div><span><strong>Estimated run</strong><small>Recalculated from the current scope, tasks, AI operations, and models.</small></span><span className="pk-vi-readiness-state">Before start</span></div><div className="pk-vi-scan-estimate-metrics"><span><strong>{estimatedMinutes === null ? 'Not available' : `${estimatedMinutes}–${estimatedMinutes + 3} min`}</strong><small>Estimated time</small></span><span><strong>{estimatedTokens > 0 ? `~${formatCompactNumber(estimatedTokens)}` : '0'}</strong><small>Typical AI tokens</small></span><span><strong>{estimatedCost > 0 ? `~${formatMoney(estimatedCost)}` : '$0.00'}</strong><small>Typical AI cost</small></span></div><small className="pk-vi-scan-estimate-note"><Info size={13} />Progress shows actual tokens and spend for every AI operation and for the run total. Unknown provider pricing is shown as unknown, never as $0.</small></section></div></div>
+		<SetupSection number="3" title="Review AI models" description="Peak mapped the selected tasks and Index outputs to AI operations. Open a row to change models or disable an individual operation." status={`${selectedOps.length} operations · ${hasUnconfiguredEnabledOperation ? 'configuration needed' : selectedOps.length ? 'models ready' : 'no AI work'}`}><div className="pk-vi-scan-ai-groups">{(['plan', 'index', 'relations', 'structure', 'follow-up'] as const).map((group) => { const definitions = config.scanOperations.filter((definition) => definition.group === group); const groupOperations = definitions.map((candidate) => plannedOperations.find((operation) => operation.id === candidate.id)!).filter(Boolean); const enabled = groupOperations.filter((operation) => operation.enabled).length; const expanded = expandedOperationGroup === group; return <section key={group} className={expanded ? 'is-expanded' : ''}><Button variant="ghost" className="pk-vi-scan-ai-group-row" aria-expanded={expanded} onClick={() => setExpandedOperationGroup(expanded ? null : group)}><span><strong>{scanOperationGroupLabel(group)}</strong><small>{scanOperationGroupDescription(group)}</small></span><span><strong>{definitions.length} {definitions.length === 1 ? 'operation' : 'operations'}</strong><small>{scanOperationGroupSummary(group)}</small></span><span><strong>{enabled} / {definitions.length} enabled</strong><small>{groupOperations.some((operation) => snapshot.operationRoutes[operation.id]?.available === false) ? 'Configure model' : groupOperations[0]?.provider ?? 'Route not available'}</small></span><ChevronRight size={15} /></Button>{expanded && <div className="pk-vi-scan-operation-list">{definitions.map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const route = snapshot.operationRoutes[operation.id]; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const shared = sharedExecutionLabel(operation.id); const operationCost = estimateOperationCostUsd(operation); return <div key={definition.id} className={!scopeAvailable ? 'is-scope-unavailable' : ''}><span><strong>{definition.label}</strong><small>{definition.description}{shared ? ` · ${shared}` : ''}</small></span><OperationModelPicker operation={operation} route={route} profiles={modelProfiles} onChange={(candidate) => { setOperations((current) => current.map((item) => item.id === operation.id ? { ...item, model: candidate.model, provider: candidate.provider } : item)); onSelectOperationRoute(operation.id, candidate); }} /><span>{formatCompactNumber(operation.estimatedTokens)} · {operationCost === null ? 'Cost unknown' : formatMoney(operationCost)}</span><Button variant="ghost" disabled={!scopeAvailable} className={`pk-vi-scan-operation-toggle ${operation.enabled ? 'is-on' : ''}`} aria-label={`${operation.enabled ? 'Disable' : 'Enable'} ${definition.label}`} aria-pressed={operation.enabled} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div>}</section>; })}</div></SetupSection>
+		<section className="pk-vi-scan-estimate-block"><div><span><strong>Estimated run</strong><small>Recalculated from the current scope, tasks, AI operations, and models.</small></span><span className="pk-vi-readiness-state">Before start</span></div><div className="pk-vi-scan-estimate-metrics"><span><span className="pk-vi-estimate-value"><strong>{estimatedMinutes === null ? 'Not available' : `${estimatedMinutes.toFixed(1)}–${(estimatedMinutes + 3).toFixed(1)} min`}</strong><EstimateHelp label="How estimated time is calculated" lines={['Local work · objects ÷ measured or conservative throughput', 'Parallel path · 40% × longest enabled AI operation', 'Queue share · 10% × all enabled AI work']} /></span><small>Estimated time</small></span><span><span className="pk-vi-estimate-value"><strong>{estimatedTokens > 0 ? `~${formatCompactNumber(estimatedTokens)}` : '0'}</strong><EstimateHelp label="How AI tokens are calculated" lines={['Configured operation allowance', '× included-scope factor', '+ embedding input when enabled']} /></span><small>Typical AI tokens</small></span><span><span className="pk-vi-estimate-value"><strong>{hasUnknownCost ? 'Not available' : estimatedCost > 0 ? `~${formatMoney(estimatedCost)}` : '$0.00'}</strong><EstimateHelp label="How AI cost is calculated" lines={['Estimated input/output tokens × catalog prices', '+ every enabled AI operation', 'Local models remain $0; missing prices remain unknown']} /></span><small>Typical AI cost</small></span></div><small className="pk-vi-scan-estimate-note"><Info size={13} />Progress shows actual tokens and spend for every AI operation and for the run total. Unknown provider pricing is shown as unknown, never as $0.</small></section></div></div>
 		<footer className="pk-vi-scan-setup-footer"><span><Info size={14} />The scan updates machine state and prepares review items. It never applies user-file edits. Current scope: {scopeStatus}.{hasUnconfiguredEnabledOperation ? ' Configure or turn off the unavailable AI operations before starting.' : ''}</span><div><Button variant="outline" onClick={onBack}>Cancel</Button><Button className="pk-vi-primary" onClick={start} disabled={(scopeMode === 'selected' && selectedPaths.length === 0) || hasUnconfiguredEnabledOperation}><Play size={15} />Start scan</Button></div></footer>
 	</section></div>;
 }
@@ -890,22 +903,22 @@ function OperationModelPicker({ operation, route, profiles, onChange }: {
 	profiles: Profile[];
 	onChange: (candidate: VaultScanOperationRouteCandidate) => void;
 }) {
-	const selected = route?.profileId ? { profileId: route.profileId, modelId: operation.model } : null;
-	const candidateCount = route?.candidates?.length ?? 0;
+	const selection: ModelSelection = route?.profileId
+		? { mode: 'fixed', profileId: route.profileId, modelId: route.model }
+		: { mode: 'auto' };
 	return <div className="pk-vi-scan-model-field">
-		<UnifiedModelPicker
+		<ComposerModelSelector
 			profiles={profiles}
-			value={selected}
-			automaticLabel="Not configured"
-			allowAutomatic={false}
-			onChange={(next) => {
-				if (!next) return;
+			modelType={operation.id === 'embedding-refresh' ? ModelType.EMBEDDING : ModelType.LLM}
+			selection={selection}
+			onSelect={(next) => {
+				if (next.mode !== 'fixed') return;
 				const profile = profiles.find((candidate) => candidate.id === next.profileId);
 				if (!profile) return;
 				onChange({ profileId: next.profileId, model: next.modelId, provider: profile.kind });
 			}}
 		/>
-		<small>{candidateCount ? 'Search enabled Profiles and local models' : 'Configure a model in Peak settings'}</small>
+		{route?.available === false && <small>Configure a model in Peak settings</small>}
 	</div>;
 }
 
@@ -916,6 +929,7 @@ function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
 	onToggle: (id: VaultIntelligenceConfig['indexOutputs'][number]['id']) => void;
 }) {
 	const [expanded, setExpanded] = useState(false);
+	const [focusedOutputId, setFocusedOutputId] = useState<VaultIntelligenceConfig['indexOutputs'][number]['id']>('pdf-summary');
 	const selected = outputs.filter((output) => output.enabled).length;
 	const coreOutputs = config.indexOutputs.filter((output) => output.group === 'core');
 	const generatedGroups = ['summaries', 'tags', 'relationships', 'content'] as const;
@@ -924,15 +938,18 @@ function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
 		const canToggle = entry.availability === 'optional';
 		const state = entry.availability === 'automatic' ? 'Automatic' : entry.availability === 'required' ? 'Required' : entry.availability === 'later' ? 'Later' : null;
 		const className = compact ? `pk-vi-index-core-row is-${entry.availability}` : `pk-vi-index-output is-${entry.availability}`;
-		const toggle = () => onToggle(entry.id);
-		return <label key={entry.id} className={className} onClick={canToggle ? (event) => { event.preventDefault(); toggle(); } : undefined} onKeyDown={canToggle ? (event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); toggle(); } } : undefined}>
-			<span><strong>{entry.label}</strong><small>{entry.description}</small></span>
-			{compact && state && <em>{state}</em>}
-			<input type="checkbox" checked={output.enabled} disabled={!canToggle} readOnly aria-label={`${output.enabled ? 'Disable' : 'Enable'} ${entry.label}`} />
-			{canToggle ? <i className="pk-vi-index-output-toggle" aria-hidden="true" /> : <i className={`pk-vi-index-output-state is-${entry.availability}`} aria-hidden="true">{entry.availability === 'automatic' || entry.availability === 'required' ? '✓' : state}</i>}
-			{!compact && entry.availability === 'later' && state && <em>{state}</em>}
-		</label>;
+		const content = <><span><strong>{entry.label}</strong>{compact && <small>{entry.description}</small>}</span>{compact && state && <em>{state}</em>}{canToggle ? <i className={`pk-vi-index-output-toggle ${output.enabled ? 'is-on' : ''}`} aria-hidden="true" /> : <i className={`pk-vi-index-output-state is-${entry.availability}`} aria-hidden="true">{entry.availability === 'automatic' || entry.availability === 'required' ? '✓' : state}</i>}</>;
+		if (canToggle) return <Button key={entry.id} variant="ghost" className={className} aria-pressed={output.enabled} onMouseEnter={() => setFocusedOutputId(entry.id)} onFocus={() => setFocusedOutputId(entry.id)} onClick={() => onToggle(entry.id)}>{content}</Button>;
+		return <div key={entry.id} className={className} tabIndex={0} onMouseEnter={() => setFocusedOutputId(entry.id)} onFocus={() => setFocusedOutputId(entry.id)}>{content}</div>;
 	};
+	const focusedOutput = config.indexOutputs.find((output) => output.id === focusedOutputId) ?? config.indexOutputs[0];
+	const focusedState = focusedOutput?.availability === 'later'
+		? 'Runtime not available'
+		: focusedOutput?.availability === 'automatic' || focusedOutput?.availability === 'required'
+			? 'Local · always on'
+			: focusedOutput?.operationIds.length
+				? `Configured in Step 3 · ${focusedOutput.operationIds.length} AI ${focusedOutput.operationIds.length === 1 ? 'operation' : 'operations'}`
+				: 'Optional for this run';
 	return <section className={`pk-vi-index-plan ${expanded ? 'is-expanded' : ''}`}>
 		<Button variant="ghost" className="pk-vi-index-plan-trigger" onClick={() => setExpanded((current) => !current)} aria-expanded={expanded}>
 			<Search size={16} /><span><strong>Knowledge Index plan</strong><small>Core Search + {selected} enabled outputs · inherits the Step 1 scope</small></span><span>{scopeObjectCount} objects</span><ChevronDown size={16} />
@@ -947,6 +964,8 @@ function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
 				if (entries.length === 0) return null;
 				return <section key={group} className="pk-vi-index-output-group"><div className="pk-vi-index-output-head"><strong>{indexOutputGroupLabel(group)}</strong><span>{entries.filter((entry) => outputs.find((output) => output.id === entry.id)?.enabled).length} enabled</span></div><div className="pk-vi-index-output-list">{entries.map((entry) => renderOutputRow(entry))}</div></section>;
 			})}</div>
+			{focusedOutput && <div className="pk-vi-index-output-explainer" role="status"><Info size={14} /><span><strong>{focusedOutput.label}</strong><small>{focusedOutput.description}</small></span><b>{focusedState}</b></div>}
+			<div className="pk-vi-index-plan-foot"><span>Background refresh, batching, retry, chunking, and default model policies remain in Knowledge Index settings.</span></div>
 		</div>}
 	</section>;
 }
@@ -961,6 +980,23 @@ function indexOutputGroupLabel(group: 'core' | 'summaries' | 'tags' | 'relations
 
 function SetupSection({ number, title, description, status, children }: { number: string; title: string; description: string; status: string; children: React.ReactNode }) {
 	return <section className="pk-vi-scan-config-card"><div className="pk-vi-scan-config-head"><div><span>{number}</span><div><strong>{title}</strong><small>{description}</small></div></div><span className="pk-vi-readiness-state">{status}</span></div>{children}</section>;
+}
+
+function EstimateHelp({ label, lines }: { label: string; lines: string[] }) {
+	return <details className="pk-vi-estimate-help"><summary aria-label={label}><Info size={13} /></summary><span role="tooltip"><strong>{label}</strong>{lines.map((line) => <small key={line}>{line}</small>)}</span></details>;
+}
+
+function estimateOperationCostUsd(operation: VaultScanAiOperationPlan): number | null {
+	if (operation.estimatedTokens <= 0 || operation.provider === 'Peak') return 0;
+	if (operation.provider === 'ollama' || operation.provider === 'lmstudio') return 0;
+	const model = modelRegistry.getModelsForProvider(operation.provider).find((candidate) => candidate.id === operation.model);
+	if (!model || model.costInput === undefined || model.costOutput === undefined) return null;
+	const inputPrice = Number(model.costInput);
+	const outputPrice = Number(model.costOutput);
+	if (!Number.isFinite(inputPrice) || !Number.isFinite(outputPrice) || inputPrice + outputPrice <= 0) return null;
+	const estimatedInput = operation.estimatedTokens * .8;
+	const estimatedOutput = operation.estimatedTokens * .2;
+	return estimatedInput / 1_000_000 * inputPrice + estimatedOutput / 1_000_000 * outputPrice;
 }
 
 function RunProgress({ snapshot, runtime, onBack, onCompleted }: {

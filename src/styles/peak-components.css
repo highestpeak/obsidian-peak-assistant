@@ -23425,3 +23425,163 @@
 :is(.pktw-root, .peak-design-root) .pk-vi-work-adjust > span { grid-column:1/-1; color:var(--pk-text-tertiary); font-size:10px; line-height:1.4; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-child(odd) { border-right: 1px solid var(--pk-border) !important; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-last-child(-n+2) { border-bottom: 0 !important; }
+
+/* Vault Intelligence precision-parity closure.
+   These overrides intentionally live after the historical VI layers: they
+   neutralize the host button fill without changing the reference geometry. */
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn:hover,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn.is-active {
+  color: #222127;
+  background: transparent !important;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-primary.pk-btn:hover:not(:disabled),
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-btn--primary:hover:not(:disabled) {
+  border-color: #5542c8 !important;
+  color: #fff;
+  background: #5542c8 !important;
+}
+
+.peak-vault-intelligence-view .pk-vi-donut path {
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 120ms ease, filter 120ms ease, transform 120ms ease;
+}
+
+.peak-vault-intelligence-view .pk-vi-donut path.is-active {
+  filter: saturate(1.08);
+  transform: scale(1.025);
+}
+
+.peak-vault-intelligence-view .pk-vi-donut path.is-muted,
+.peak-vault-intelligence-view .pk-vi-file-type-list .pk-btn.is-muted {
+  opacity: .42;
+}
+
+.peak-vault-intelligence-view .pk-vi-file-type-list .pk-btn:hover,
+.peak-vault-intelligence-view .pk-vi-file-type-list .pk-btn:focus-visible,
+.peak-vault-intelligence-view .pk-vi-file-type-list .pk-btn.is-active {
+  color: var(--pk-vi-ink);
+  background: var(--pk-vi-accent-soft) !important;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-core-row.pk-btn,
+.peak-vault-intelligence-view .pk-vi-index-output.pk-btn {
+  justify-content: stretch !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--pk-vi-ink);
+  background: transparent !important;
+  text-align: left;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-core-row.pk-btn {
+  width: 100% !important;
+  min-height: 58px !important;
+  padding: 9px 12px !important;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-list .pk-vi-index-output.pk-btn {
+  width: 100% !important;
+  min-height: 46px !important;
+  padding: 8px 9px !important;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-core-row.pk-btn:hover,
+.peak-vault-intelligence-view .pk-vi-index-output.pk-btn:hover,
+.peak-vault-intelligence-view .pk-vi-index-output.pk-btn:focus-visible {
+  background: #fff !important;
+  box-shadow: inset 2px 0 0 #b8aceb;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-toggle.is-on {
+  background: var(--pk-vi-accent);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-toggle.is-on::after {
+  transform: translateX(12px);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-explainer {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-explainer > span {
+  display: grid;
+  gap: 2px;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-output-explainer strong,
+.peak-vault-intelligence-view .pk-vi-index-output-explainer b { font-size: 10.5px; }
+.peak-vault-intelligence-view .pk-vi-index-output-explainer small { color: var(--pk-vi-muted); font-size: 9.5px; }
+.peak-vault-intelligence-view .pk-vi-index-output-explainer b { color: var(--pk-vi-accent); white-space: nowrap; }
+.peak-vault-intelligence-view .pk-vi-index-plan-foot { padding: 7px 0 0; color: var(--pk-vi-muted); font-size: 9.5px; }
+
+.peak-vault-intelligence-view .pk-vi-scan-model-field .pkchat-run-chip {
+  display: grid;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  padding: 0 10px !important;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+}
+
+.peak-vault-intelligence-view .pk-vi-scan-model-field .pkchat-run-chip__label,
+.peak-vault-intelligence-view .pk-vi-scan-model-field .pkchat-run-chip__mid {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-estimate-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.peak-vault-intelligence-view .pk-vi-estimate-help { position: relative; }
+.peak-vault-intelligence-view .pk-vi-estimate-help summary {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--pk-vi-muted);
+  cursor: help;
+  list-style: none;
+}
+.peak-vault-intelligence-view .pk-vi-estimate-help summary::-webkit-details-marker { display: none; }
+.peak-vault-intelligence-view .pk-vi-estimate-help[open] summary { color: var(--pk-vi-accent); background: var(--pk-vi-accent-soft); }
+.peak-vault-intelligence-view .pk-vi-estimate-help > span {
+  position: absolute;
+  z-index: 24;
+  top: 24px;
+  left: 50%;
+  display: grid;
+  width: 270px;
+  gap: 4px;
+  padding: 10px 11px;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(25, 22, 35, .14);
+  transform: translateX(-50%);
+  text-align: left;
+}
+.peak-vault-intelligence-view .pk-vi-estimate-help > span small { color: var(--pk-vi-muted); font-size: 9.5px; font-weight: 400; }

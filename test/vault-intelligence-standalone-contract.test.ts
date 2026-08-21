@@ -43,7 +43,9 @@ assert.match(workspace, /disabled=\{id === 'changed' && !snapshot\.changedCursor
 assert.match(workspace, /Choose a scope/);
 assert.match(workspace, /Entire Vault/);
 assert.match(workspace, /same canonical decisions/);
-assert.match(workspace, /UnifiedModelPicker/);
+assert.match(workspace, /ComposerModelSelector/);
+assert.match(workspace, /ModelType\.EMBEDDING/);
+assert.doesNotMatch(workspace, /UnifiedModelPicker/);
 assert.doesNotMatch(workspace, /<select value=\{operation\.model\}/);
 assert.match(workspace, /No Markdown or YAML changes during this step/);
 assert.match(workspace, /Only unresolved work with an owner action and a verifiable exit condition belongs here/);

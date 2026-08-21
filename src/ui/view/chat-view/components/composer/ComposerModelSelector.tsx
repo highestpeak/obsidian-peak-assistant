@@ -20,6 +20,7 @@ import {
 } from '@/ui/component/model-picker/modelPickerData';
 import type { ModelSelection } from '@/core/types/chat-studio';
 import type { Profile } from '@/core/profiles/types';
+import type { ModelType } from '@/core/providers/types';
 import { useChatStudioStrings } from '../../chatStudioStringsContext';
 import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
@@ -44,6 +45,8 @@ export interface ComposerModelSelectorProps {
 	 * the Profiles their runtime can actually execute.
 	 */
 	profiles?: readonly Profile[];
+	/** Restrict a shared picker instance to one catalog model type. */
+	modelType?: ModelType;
 	onSurfaceOpenChange?: (open: boolean) => void;
 }
 
@@ -63,6 +66,7 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 	selection,
 	onSelect,
 	profiles,
+	modelType,
 	onSurfaceOpenChange,
 }) => {
 	const strings = useChatStudioStrings();
@@ -92,8 +96,8 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 	}, [open, profileCatalogKey]);
 
 	const allItems = useMemo(
-		() => buildProfileModelItems(resolvedProfiles),
-		[resolvedProfiles, profileCatalogKey, catalogRevision],
+		() => buildProfileModelItems(resolvedProfiles).filter((item) => !modelType || item.modelType === modelType),
+		[resolvedProfiles, profileCatalogKey, catalogRevision, modelType],
 	);
 	const filtered = useMemo(() => filterProfileModelItems(allItems, filter), [allItems, filter]);
 	const groups = useMemo(() => groupByProfile(filtered), [filtered]);
