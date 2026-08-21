@@ -4,11 +4,13 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { VaultIntelligenceWorkspace } from '@/ui/view/vault-intelligence/VaultIntelligenceWorkspace';
 import {
+	buildVaultIntelligenceGraph,
 	createEmptyVaultScanRun,
 	type VaultIntelligenceSnapshot,
 	type VaultIntelligenceWorkspaceRuntime,
 } from '@/ui/view/vault-intelligence/VaultIntelligenceModel';
 import { applyVaultIntelligencePresentationFixture } from '@/ui/view/vault-intelligence/VaultIntelligencePresentationFixtures';
+import type { VaultDigest } from '@/service/copilot/vault/VaultDigestService';
 
 const now = Date.now();
 const snapshot: VaultIntelligenceSnapshot = {
@@ -153,6 +155,37 @@ assert.equal((zeroActivityHtml.match(/pk-vi-activity-lane-row/g) ?? []).length, 
 assert.match(zeroActivityHtml, /pk-vi-activity-period-pane/, 'zero Activity keeps selected-period details');
 assert.match(zeroActivityHtml, /pk-vi-activity-range-window/, 'zero Activity keeps the range navigator');
 assert.match(zeroActivityHtml, /No work sessions yet/, 'zero Activity uses a stable empty session treatment');
+
+const normalDigest: VaultDigest = {
+	fingerprint: { fingerprint: 'rendered-parity-normal-fixture', fileCount: 12, totalWordCount: 2_400, lastMaxMtime: now, computedAt: now },
+	counts: { notes: 12, words: 2_400, clusters: 2, hubs: 2, orphans: 0, danglingRefs: 0 },
+	health: null,
+	clusters: [
+		{ id: 'research', label: 'Research', memberCount: 7, internalDensity: 0.6, dominantTopics: ['evidence'], topNodes: [{ path: 'Research/evidence.md', label: 'Evidence' }] },
+		{ id: 'projects', label: 'Projects', memberCount: 5, internalDensity: 0.5, dominantTopics: ['planning'], topNodes: [{ path: 'Projects/roadmap.md', label: 'Roadmap' }] },
+	],
+	communityLinks: [{ communityAId: 'research', communityBId: 'projects', referenceCount: 3 }],
+	structuralHoles: [],
+	hubs: [],
+	staleHubs: [],
+	orphans: [],
+	dangling: [],
+	recentActivity: { createdLast30d: 2, modifiedLast30d: 4, dormantClusters: [] },
+	tags: [],
+	computedAt: now,
+};
+const normalDataSnapshot: VaultIntelligenceSnapshot = {
+	...snapshot,
+	digest: normalDigest,
+	sourceActivity: [{ id: 'normal-file-edit', timestamp: now - 86_400_000, kind: 'file-change', label: 'Edited Research/evidence.md', objectPath: 'Research/evidence.md', runId: null }],
+	activitySessions: [{ id: 'normal-session', startedAt: now - 2 * 86_400_000, endedAt: now - 86_400_000, recordIds: ['normal-file-edit'], objectPaths: ['Research/evidence.md'], reason: 'single-record', label: 'Research evidence session' }],
+	activityThemes: [{ id: 'normal-theme', label: 'Research synthesis', recordIds: ['normal-file-edit'], sessionIds: ['normal-session'], confidence: 0.9, citations: [{ recordId: 'normal-file-edit', objectPath: 'Research/evidence.md' }], generatedAt: now, sourceRevision: normalDigest.fingerprint.fingerprint }],
+	communityMembers: { research: [{ path: 'Research/evidence.md', label: 'Evidence', score: 0.8 }], projects: [{ path: 'Projects/roadmap.md', label: 'Roadmap', score: 0.7 }] },
+};
+const normalGraph = buildVaultIntelligenceGraph(normalDataSnapshot.digest, { communityMembers: normalDataSnapshot.communityMembers });
+assert.ok(normalGraph && normalGraph.nodes.length >= 4 && normalGraph.edges.length >= 3, 'normal data must exercise the evidence-backed Map rather than only its empty state');
+const normalActivityHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: { ...runtime, getSnapshot: () => normalDataSnapshot }, initialRoute: 'activity' }));
+assert.match(normalActivityHtml, /Research evidence session/, 'normal Activity keeps real session evidence in the selected-period pane');
 
 const normalSetupHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime, initialRoute: 'scan-setup' }));
 const zeroSetupHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'scan-setup' }));
