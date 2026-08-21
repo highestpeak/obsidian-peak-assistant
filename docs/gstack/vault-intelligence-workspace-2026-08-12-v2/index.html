@@ -189,7 +189,8 @@
 
     .main-nav {
       display: flex;
-      align-items: end;
+      align-items: center;
+      min-height: 52px;
       gap: 26px;
       padding: 0 28px;
       border-bottom: 1px solid var(--line);
@@ -197,30 +198,24 @@
     }
     .nav-btn {
       position: relative;
-      height: 44px;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      padding: 0 1px;
+      padding: 0 12px;
       border: 0;
+      border-radius: 999px;
       color: var(--ink-3);
       background: transparent;
       font-size: 12px;
       font-weight: 690;
       cursor: pointer;
     }
-    .nav-btn:hover { color: var(--ink-2); }
-    .nav-btn.active { color: var(--ink); }
+    .nav-btn:hover,
+    .nav-btn:focus-visible,
+    .nav-btn.active { color: var(--accent-2); background: var(--accent-soft); outline: 0; }
     .nav-btn > .icon { display: none; }
-    .nav-btn.active::after {
-      content: "";
-      position: absolute;
-      right: 0;
-      bottom: -1px;
-      left: 0;
-      height: 2px;
-      background: var(--accent);
-    }
+    .nav-btn.active::after { display: none; }
     .nav-count {
       min-width: 19px;
       height: 18px;
