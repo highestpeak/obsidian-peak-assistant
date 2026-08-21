@@ -337,7 +337,7 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 			: object.breakdown?.length ? object.breakdown : [{ id: 'canonical', label: canonicalObjectBucketLabel(object.id), count: object.count }];
 		const breakdown = object.id === 'files'
 			? inventoryPreviewItems(canonicalBreakdown, config.inventoryPreviewTypeLimit, config.inventoryTypeGroups ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryTypeGroups)
-			: canonicalBreakdown;
+			: [...canonicalBreakdown].sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 		const distributionUnavailable = object.id !== 'files'
 			&& (object.breakdownStatus === 'unavailable' || canonicalBreakdown.length === 0);
 		const statusLabel = object.id === 'files'
@@ -346,11 +346,11 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 		const open = () => object.id === 'files'
 			? onRoute({ kind: 'surface', surface: 'map', mapSurface: 'contents' })
 			: void runtime.openOwnerSurface(object.id);
-		return <div key={object.id} className={`pk-vi-inventory-item is-${object.id} ${object.id === 'files' ? 'is-files' : ''}`} tabIndex={0} aria-label={`${formatNumber(object.count)} ${object.label}`}>
+		return <div key={object.id} className={`pk-vi-inventory-item is-${object.id} ${object.id === 'files' ? 'is-files' : ''}`}>
 			<span className="pk-vi-type-icon"><VaultReferenceIcon name={object.id} size={28} /></span><span className="pk-vi-inventory-value">{formatNumber(object.count)}</span><span className="pk-vi-inventory-label">{object.label}</span>
 			<div className="pk-vi-inventory-hover" role="group" aria-label={`${object.label} distribution`}>
-				<div className="pk-vi-hover-head"><div><strong>{presentation.title}</strong><span>{presentation.description}</span></div><small className={distributionUnavailable ? 'is-unavailable' : ''}>{statusLabel}</small></div>
-				<InventoryDistribution total={object.count} label={object.label} items={breakdown} canonicalGroupCount={canonicalBreakdown.length} colors={config.fileTypeColors} large={object.id === 'files'} unavailable={distributionUnavailable} unavailableTitle={presentation.unavailableTitle} unavailableDescription={presentation.unavailableDescription} />
+				<div className="pk-vi-hover-head"><div><strong>{presentation.title}</strong><DescriptionTooltip text={presentation.description} /></div><small className={distributionUnavailable ? 'is-unavailable' : ''}>{statusLabel}</small></div>
+				<InventoryDistribution total={object.count} label={object.label} items={breakdown} colors={config.fileTypeColors} large={object.id === 'files'} unavailable={distributionUnavailable} unavailableTitle={presentation.unavailableTitle} unavailableDescription={presentation.unavailableDescription} />
 				<div className="pk-vi-hover-footer"><Button variant="ghost" size="sm" onClick={open}>{object.id === 'files' ? 'Open full file inventory' : `Open ${object.label}`}<ChevronRight size={13} /></Button></div>
 			</div>
 		</div>;
@@ -359,19 +359,23 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 		const canonicalBreakdown = object.breakdown?.length ? object.breakdown : [{ id: 'canonical', label: canonicalObjectBucketLabel(object.id), count: object.count }];
 		const distributionUnavailable = object.breakdownStatus === 'unavailable' || canonicalBreakdown.length === 0;
 		const statusLabel = object.count > 0 ? 'Recorded' : 'No records';
-		return <div key={object.id} className={`pk-vi-inventory-item is-${object.id}`} tabIndex={0} aria-label={`${formatNumber(object.count)} ${object.label}`}>
+		return <div key={object.id} className={`pk-vi-inventory-item is-${object.id}`}>
 			<span className="pk-vi-type-icon"><VaultReferenceIcon name={object.id} size={28} /></span><span className="pk-vi-inventory-value">{formatNumber(object.count)}</span><span className="pk-vi-inventory-label">{object.label}</span>
 			<div className="pk-vi-inventory-hover" role="group" aria-label={`${object.label} distribution`}>
-				<div className="pk-vi-hover-head"><div><strong>{presentation.title}</strong><span>{presentation.description}</span></div><small className={distributionUnavailable ? 'is-unavailable' : ''}>{statusLabel}</small></div>
-				<InventoryDistribution total={object.count} label={object.label} items={canonicalBreakdown} canonicalGroupCount={canonicalBreakdown.length} colors={config.fileTypeColors} large={false} unavailable={distributionUnavailable} unavailableTitle={presentation.unavailableTitle} unavailableDescription={presentation.unavailableDescription} />
+				<div className="pk-vi-hover-head"><div><strong>{presentation.title}</strong><DescriptionTooltip text={presentation.description} /></div><small className={distributionUnavailable ? 'is-unavailable' : ''}>{statusLabel}</small></div>
+				<InventoryDistribution total={object.count} label={object.label} items={canonicalBreakdown} colors={config.fileTypeColors} large={false} unavailable={distributionUnavailable} unavailableTitle={presentation.unavailableTitle} unavailableDescription={presentation.unavailableDescription} />
 				<div className="pk-vi-hover-footer"><span>{object.coverageNote ?? 'Canonical records only.'}</span><Button variant="ghost" size="sm" onClick={() => void runtime.openOwnerSurface(object.id)}>Open {object.label}<ChevronRight size={13} /></Button></div>
 			</div>
 		</div>;
 	})}</section>;
 }
 
+function DescriptionTooltip({ text }: { text: string }) {
+	return <span className="pk-vi-description-tooltip" tabIndex={0} aria-label={text}><Info size={14} /></span>;
+}
+
 function PlannedSessionCard() {
-	return <div className="pk-vi-inventory-item is-sessions is-planned" aria-label="Sessions planned, not implemented">
+	return <div className="pk-vi-inventory-item is-sessions is-planned">
 		<span className="pk-vi-type-icon"><Clock3 size={28} /></span><span className="pk-vi-inventory-value">—</span><span className="pk-vi-inventory-label">Sessions</span>
 		<div className="pk-vi-inventory-hover" role="note" aria-label="Sessions availability">
 			<div className="pk-vi-hover-head"><div><strong>Sessions</strong><span>A separate future concept; it does not reuse activity sessions or any existing runtime count.</span></div><small className="is-unavailable">Planned</small></div>
@@ -388,11 +392,10 @@ function canonicalObjectBucketLabel(id: VaultIntelligenceObjectSummary['id']): s
 	return 'Recorded files';
 }
 
-function InventoryDistribution({ total, label, items, canonicalGroupCount, colors, large, unavailable, unavailableTitle, unavailableDescription }: {
+function InventoryDistribution({ total, label, items, colors, large, unavailable, unavailableTitle, unavailableDescription }: {
 	total: number;
 	label: string;
 	items: Array<{ id: string; label: string; count: number }>;
-	canonicalGroupCount: number;
 	colors: string[];
 	large: boolean;
 	unavailable: boolean;
@@ -401,12 +404,13 @@ function InventoryDistribution({ total, label, items, canonicalGroupCount, color
 }) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const palette = colors.length > 0 ? colors : DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors;
-	const empty = unavailable || items.length === 0;
+	const rankedItems = [...items].sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+	const empty = unavailable || rankedItems.length === 0;
 	let offset = 0;
 	return <div className={`pk-vi-inventory-distribution ${large ? 'is-large' : ''} ${unavailable ? 'is-unavailable' : ''}`}>
 		<div className="pk-vi-inventory-pie-panel"><svg className="pk-vi-inventory-pie" viewBox="0 0 100 100" role="img" aria-label={unavailable ? `${label} distribution not available` : `${label} distribution`}>
 			{empty && <circle className="pk-vi-pie-empty" cx="50" cy="50" r="49" />}
-			{!unavailable && items.map((item, index) => {
+			{!unavailable && rankedItems.map((item, index) => {
 			const start = total > 0 ? offset / total : 0;
 			offset += item.count;
 			const end = total > 0 ? offset / total : 0;
@@ -414,7 +418,7 @@ function InventoryDistribution({ total, label, items, canonicalGroupCount, color
 		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong></div>
 		<div className="pk-vi-inventory-legend">{unavailable
 			? <div className="pk-vi-inventory-unavailable" role="status"><strong>{unavailableTitle}</strong><span>{unavailableDescription}</span></div>
-			: items.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[index % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
+			: rankedItems.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[index % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
 	</div>;
 }
 
@@ -430,19 +434,19 @@ function inventoryPreviewItems(items: Array<{ id: string; label: string; count: 
 	const otherCount = items
 		.filter((item) => !groupedExtensions.has(item.id.toLowerCase()))
 		.reduce((sum, item) => sum + item.count, 0);
-	const sorted = otherCount > 0
+	const ranked = (otherCount > 0
 		? [...grouped, { id: 'other-formats', label: 'Other formats', count: otherCount }]
-		: grouped;
+		: grouped).sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 	const fallbackLimit = DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryPreviewTypeLimit;
 	const safeLimit = Number.isFinite(limit) ? Math.max(2, Math.floor(limit)) : fallbackLimit;
-	if (sorted.length <= safeLimit) return sorted;
-	const visible = sorted.slice(0, safeLimit - 1);
-	const remaining = sorted.slice(safeLimit - 1);
+	if (ranked.length <= safeLimit) return ranked;
+	const visible = ranked.slice(0, safeLimit - 1);
+	const remaining = ranked.slice(safeLimit - 1);
 	return [...visible, {
 		id: 'other-formats',
 		label: 'Other formats',
 		count: remaining.reduce((sum, item) => sum + item.count, 0),
-	}];
+	}].sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 }
 
 function referenceObjectInventory(objects: VaultIntelligenceObjectSummary[]): VaultIntelligenceObjectSummary[] {
@@ -528,7 +532,7 @@ function KnowledgeIndexOverview({ snapshot, onReview }: { snapshot: VaultIntelli
 		: snapshot.indexReadiness.pendingOrExcluded === null
 			? 'Pending and excluded counts are not reported.'
 			: `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} pending or excluded by current Index evidence.`;
-	return <section className="pk-vi-card pk-vi-index-overview"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Knowledge Index</span><span className="pk-vi-card-caption">Search and machine knowledge maintained by Vault scans</span></div><div><span className={`pk-vi-readiness-state ${snapshot.indexReadiness.isReady ? 'is-ready' : 'is-pending'}`}>{snapshot.indexReadiness.pendingOrExcluded === null ? 'Readiness unavailable' : `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} updates pending`}</span><Button variant="ghost" size="sm" onClick={onReview}>Review next Index plan<ChevronRight size={14} /></Button></div></div><div className="pk-vi-index-overview-body"><div className="pk-vi-readiness-summary"><div className="pk-vi-readiness-ring" style={{ '--pk-vi-ready': `${percent * 3.6}deg` } as React.CSSProperties}><span>{percent}%</span></div></div><div className="pk-vi-index-meters"><IndexMeter label="Search ready" value={ready} total={discovered} /><IndexMeter label="Vectors ready" value={null} total={discovered} /><IndexMeter label="Summary ready" value={null} total={discovered} /><IndexMeter label="AI Tags ready" value={null} total={discovered} /><small>{readinessNote}</small></div><div className="pk-vi-index-impact"><strong>What this Index powers</strong><span>One maintained layer is reused across Peak instead of every feature reading the Vault again.</span><div><span><Search size={14} />Vault Search</span><span><Sparkles size={14} />AI Search</span><span><FileText size={14} />File context</span><span><GitBranch size={14} />Vault map</span></div><small>Full-text, vectors, summaries, AI Tags, and relationship signals are rebuildable Peak knowledge. Your Markdown and frontmatter stay unchanged.</small></div></div></section>;
+	return <section className="pk-vi-card pk-vi-index-overview"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Knowledge Index</span><DescriptionTooltip text="Search and machine knowledge maintained by Vault scans" /></div><div><span className={`pk-vi-readiness-state ${snapshot.indexReadiness.isReady ? 'is-ready' : 'is-pending'}`}>{snapshot.indexReadiness.pendingOrExcluded === null ? 'Readiness unavailable' : `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} updates pending`}</span><Button variant="ghost" size="sm" onClick={onReview}>Review next Index plan<ChevronRight size={14} /></Button></div></div><div className="pk-vi-index-overview-body"><div className="pk-vi-readiness-summary"><div className="pk-vi-readiness-ring" style={{ '--pk-vi-ready': `${percent * 3.6}deg` } as React.CSSProperties}><span>{percent}%</span></div></div><div className="pk-vi-index-meters"><IndexMeter label="Search ready" value={ready} total={discovered} /><IndexMeter label="Vectors ready" value={null} total={discovered} /><IndexMeter label="Summary ready" value={null} total={discovered} /><IndexMeter label="AI Tags ready" value={null} total={discovered} /><small>{readinessNote}</small></div><div className="pk-vi-index-impact"><strong>What this Index powers</strong><span>One maintained layer is reused across Peak instead of every feature reading the Vault again.</span><div><span><Search size={14} />Vault Search</span><span><Sparkles size={14} />AI Search</span><span><FileText size={14} />File context</span><span><GitBranch size={14} />Vault map</span></div><small>Full-text, vectors, summaries, AI Tags, and relationship signals are rebuildable Peak knowledge. Your Markdown and frontmatter stay unchanged.</small></div></div></section>;
 }
 
 function IndexMeter({ label, value, total }: { label: string; value: number | null; total: number }) {

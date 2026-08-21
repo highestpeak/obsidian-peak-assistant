@@ -321,8 +321,12 @@ assert.match(exactPort, /\.pk-vi-inventory-distribution\.is-unavailable \.pk-vi-
 assert.match(exactPort, /\.pk-vi-overview-grid > \.pk-btn\s*\{[\s\S]*?width:\s*17px !important;[\s\S]*?height:\s*17px !important;/);
 assert.match(exactPort, /\.pk-vi-overview-range-popover\s*\{[\s\S]*?right:\s*0;[\s\S]*?left:\s*auto;[\s\S]*?transform:\s*none;/, 'the date menu must stay aligned to the left edge of its option content, without a centered popover offset');
 assert.match(exactPort, /\.pk-vi-overview-range-popover > \.pk-btn\s*\{[\s\S]*?justify-content:\s*space-between !important;[\s\S]*?text-align:\s*left;/, 'range options must keep their labels left aligned');
-assert.match(exactPort, /\.pk-vi-overview-activity-title\s*\{[\s\S]*?align-items:\s*center;/, 'the activity total must be vertically centered with the title');
-assert.match(exactPort, /\.pk-vi-overview-evidence article:last-child\s*\{[\s\S]*?border-bottom:\s*0;/, 'the final activity row must not duplicate the card border');
+assert.match(exactPort, /\.pk-vi-overview-activity-title\s*\{[\s\S]*?flex-direction:\s*row;[\s\S]*?align-items:\s*center;/, 'the activity total must sit horizontally beside and vertically centered with the title');
+assert.match(exactPort, /\.pk-vi-overview-evidence > div > article:last-of-type\s*\{[\s\S]*?border-bottom:\s*0 !important;/, 'the final activity row must not duplicate the card border');
+assert.match(source, /function DescriptionTooltip\(/, 'inventory and index descriptions must be available through a compact tooltip trigger');
+assert.doesNotMatch(html, /pk-vi-card-caption[^>]*>Search and machine knowledge maintained by Vault scans/, 'the Knowledge Index explanation must not consume header space');
+assert.match(html, /pk-vi-description-tooltip/, 'the Knowledge Index explanation must remain available via its tooltip trigger');
+assert.match(exactPort, /\.pk-vi-description-tooltip\s*\{[\s\S]*?cursor:\s*help;/, 'description tooltip triggers need a visible affordance');
 assert.match(css, /\.pk-vi-overview-evidence\s*\{[\s\S]*?min-height:\s*160px;/, 'activity evidence preserves the Mock empty/short-data geometry');
 assert.match(exactPort, /\.pk-vi-index-overview-body\s*\{[\s\S]*?grid-template-columns:\s*154px minmax\(0, 1fr\) 300px;/);
 assert.match(exactPort, /\.pk-vi-continue-summary\s*\{[\s\S]*?grid-template-columns:\s*136px repeat\(4, minmax\(0, 1fr\)\);[\s\S]*?min-height:\s*41px;/);

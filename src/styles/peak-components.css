@@ -21435,7 +21435,9 @@
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-hover-head > div {
   min-width: 0;
   flex: 1;
-  gap: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-pie-panel {
@@ -21530,9 +21532,27 @@
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-hover-head strong {
-  display: block;
+  display: inline;
   font-size: 11px;
   font-weight: 720;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-description-tooltip {
+  display: inline-grid;
+  flex: 0 0 18px;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--pk-vi-muted);
+  cursor: help;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-description-tooltip:hover,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-description-tooltip:focus-visible {
+  outline: none;
+  color: #5545bf;
+  background: #f0edff;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-hover-head small {
@@ -21557,6 +21577,19 @@
   margin-top: 4px;
   font-size: 10.5px;
   line-height: 1.45;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-hover-head .pk-vi-description-tooltip {
+  display: inline-grid;
+  margin-top: 0;
+  font-size: inherit;
+  line-height: 1;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-overview > .pk-vi-card-head > div:first-child {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-hover-footer {
@@ -21947,6 +21980,7 @@
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-activity-title {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   min-height: 40px;
@@ -21978,7 +22012,11 @@
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article:last-child {
-  border-bottom: 0;
+  border-bottom: 0 !important;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence > div > article:last-of-type {
+  border-bottom: 0 !important;
 }
 
 .peak-vault-intelligence-view .pk-vi-custom-range {
