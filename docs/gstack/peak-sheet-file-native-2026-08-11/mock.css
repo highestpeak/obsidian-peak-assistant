@@ -61,8 +61,8 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .vault-tip span { color: var(--ink-faint); font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; }
 .vault-tip strong { font-size: 11px; font-weight: 600; }
 
-.workspace { display: flex; min-width: 0; flex-direction: column; background: var(--paper); }
-.tab-strip { display: flex; align-items: end; height: 38px; border-bottom: 1px solid var(--line); background: var(--canvas); }
+.workspace { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--paper); }
+.tab-strip { display: flex; align-items: end; flex: none; height: 38px; border-bottom: 1px solid var(--line); background: var(--canvas); }
 .tab { display: flex; align-items: center; height: 33px; min-width: 145px; max-width: 220px; padding: 0 12px; gap: 7px; border: 1px solid transparent; border-bottom: 0; color: var(--ink-soft); font-size: 11px; }
 .tab.is-active { height: 35px; border-color: var(--line); border-radius: 5px 5px 0 0; background: var(--paper); color: var(--ink); }
 .tab svg { width: 13px; height: 13px; color: var(--accent); }
@@ -70,7 +70,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .new-tab { display: grid; width: 34px; height: 33px; place-items: center; color: var(--ink-soft); }
 .new-tab svg { width: 13px; height: 13px; }
 
-.sheet-document { position: relative; display: grid; min-width: 0; min-height: 0; flex: 1; grid-template-rows: 66px 39px 39px 33px minmax(0, 1fr) 27px; background: var(--paper); }
+.sheet-document { position: relative; display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: hidden; grid-template-rows: 66px 39px 39px 33px minmax(0, 1fr) 27px; background: var(--paper); }
 .document-head { display: grid; align-items: center; min-width: 0; grid-template-columns: minmax(0, 1fr) max-content; padding: 0 18px 0 22px; gap: 16px; border-bottom: 1px solid var(--line); }
 .document-identity { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
 .file-path { display: flex; align-items: center; min-width: 0; gap: 6px; color: var(--ink-faint); font-size: 9.5px; letter-spacing: .01em; white-space: nowrap; }
@@ -388,7 +388,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 
 .ai-drawer { position: absolute; z-index: 15; top: 151px; right: 10px; bottom: 35px; display: grid; width: min(372px, calc(100% - 20px)); grid-template-rows: auto auto minmax(0, 1fr) auto; border: 1px solid #ccc6d8; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,.985); box-shadow: -6px 10px 36px rgba(38,32,47,.16), 0 2px 8px rgba(38,32,47,.08); animation: ai-drawer-in 180ms cubic-bezier(.2,.8,.2,1); }
 .ai-drawer[hidden] { display: none; }
-@keyframes ai-drawer-in { from { opacity: 0; transform: translateX(12px) scale(.99); } }
+@keyframes ai-drawer-in { from { opacity: 0; transform: translateX(8px); } }
 .ai-drawer-head { display: grid; align-items: center; min-height: 58px; grid-template-columns: 32px minmax(0, 1fr) 28px; padding: 0 12px; gap: 9px; border-bottom: 1px solid var(--line); }
 .ai-drawer-head > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .ai-drawer-head strong { font-size: 11.5px; }

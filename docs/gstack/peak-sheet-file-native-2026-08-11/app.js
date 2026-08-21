@@ -953,7 +953,8 @@ function renderGroupPreview() {
 }
 
 function openAiDrawer() {
-  openOverlay('ai-drawer', byId('ask-ai-button'), syncAiContext, 'ai-prompt');
+  // Opening AI must preserve the user's grid viewport; focus moves to the composer only on explicit user intent.
+  openOverlay('ai-drawer', byId('ask-ai-button'), syncAiContext);
 }
 
 function closeAiDrawer() {

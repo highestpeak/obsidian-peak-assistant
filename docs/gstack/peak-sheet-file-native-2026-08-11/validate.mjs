@@ -53,6 +53,7 @@ const checks = [
   ['unified overlay state machine', js.includes('let overlayState = { id: null, trigger: null }') && js.includes('function openOverlay') && js.includes('function closeOverlay') && js.includes("overlayState.id === id && overlayState.trigger === trigger")],
   ['overlay close and focus contract', js.includes("event.key !== 'Escape'") && js.includes('overlay?.contains(event.target)') && js.includes("trigger.focus({ preventScroll: true })")],
   ['host boundary and fixture checklist', css.includes('.peak-sheet-root, .peak-sheet-root *') && readme.includes('### 极端 fixture 检查表') && readme.includes('file://')],
+  ['ask ai preserves the grid viewport', css.includes('.workspace { display: flex; min-width: 0; min-height: 0') && css.includes('.sheet-document { position: relative; display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: hidden') && js.includes("openOverlay('ai-drawer', byId('ask-ai-button'), syncAiContext);") && !js.includes("openOverlay('ai-drawer', byId('ask-ai-button'), syncAiContext, 'ai-prompt')")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

@@ -72,6 +72,7 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 - **字段头**：列字母是固定内容，字段名才是唯一可收缩槽；配置槽固定 24px，resize handle 置于列边缘且不参与宽度分配。拖动或键盘 Arrow/Home/End 调整列宽，不改变行高、内容位置或其他字段的宽度合同。
 - **文字策略**：标题、文件路径、自由文本可以截断；状态、badge、日期、计数、按钮和菜单项保持单行且拥有语义最小宽度。Location card 的超长路径采用受控换行，而不是把真实路径变成 `…`。
 - **Overlay 状态机**：全部 transient surface 共用 `closed | open(id, trigger)`：同一 trigger 再次点击会关闭；另一个 trigger 会切换；外部 pointerdown 和 Escape 会关闭；关闭后返回 trigger 焦点。Field menu、field editor、row menu、Group、location card、Ask AI、Scripts 和 PeakShare 同时只会打开一个。
+- **Ask AI viewport 保持**：打开 AI 不会自动 focus composer，也不会要求浏览器把输入框滚进视口；workspace / document 明确收紧为 `min-height: 0 + overflow: hidden`，只有 grid body 与 AI thread 自己拥有滚动。用户点击 composer 后才开始输入。
 - **滚动 ownership**：Scripts 与 Ask AI 都是 `header + context + minmax(0, scroll body) + footer`；body 有末端安全内边距和 `overscroll-behavior: contain`，footer 不会覆盖最后一个操作或历史条目。
 - **宿主隔离**：`.peak-sheet-root` 在根边界固定 box sizing、字体、line-height 和 form control 继承，避免嵌入 Obsidian 时的 button/input 默认几何污染。
 
