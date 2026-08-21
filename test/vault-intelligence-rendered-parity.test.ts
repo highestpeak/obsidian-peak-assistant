@@ -125,6 +125,11 @@ assert.match(source, /Compared with previous equal period/, 'Activity keeps the 
 assert.match(source, /pk-vi-activity-event-kinds/, 'Activity work-session evidence keeps the Reference tag grouping');
 assert.match(source, /scopeMode === 'selected' \? ' is-custom-scope' : ''/, 'custom scope details must follow the Reference state boundary');
 assert.ok(source.indexOf('<strong>Run details</strong>') < source.indexOf('<strong>Completed automatically</strong>'), 'Completed keeps the Mock disclosure order: run receipt before automatic effects');
+assert.match(source, /pk-vi-run-stage-tabs/, 'Run Progress must keep the Mock stage-tab subtree rather than generic independent cards');
+assert.match(source, /role="tablist" aria-label="Scan stages"/, 'Run Progress stages must be a selectable tab set');
+assert.match(source, /pk-vi-run-stage-workspace/, 'Run Progress must render exactly one selected-stage workspace');
+assert.match(source, /pk-vi-run-events/, 'Run Progress must retain the Reference runtime event stream');
+assert.doesNotMatch(source, /pk-vi-stage-list/, 'Run Progress must not retain the old generic expanded-card subtree');
 
 const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snapshot);
 const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };
