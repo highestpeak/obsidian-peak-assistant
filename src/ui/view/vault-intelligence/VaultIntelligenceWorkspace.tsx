@@ -944,7 +944,7 @@ function ScanSetup({ snapshot, config, initialSelector, onBack, onStart }: {
 	</section></div>;
 }
 
-function OperationModelPicker({ operation, route, onChange }: {
+function OperationModelPicker({ operation, route, onChange, disabledReason }: {
 	operation: VaultScanAiOperationPlan;
 	route: VaultIntelligenceSnapshot['operationRoutes'][VaultScanAiOperationPlan['id']] | undefined;
 	onChange: (candidate: VaultScanOperationRouteCandidate) => void;
