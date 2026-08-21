@@ -23355,6 +23355,27 @@
 .peak-vault-intelligence-view .pk-vi-scan-ai-group-row > span:not(:first-child) small { margin-top: 3px; color: var(--pk-vi-muted); font-size: 9.5px; }
 .peak-vault-intelligence-view .pk-vi-scan-ai-group-row > span:nth-child(3) small { display: none; }
 .peak-vault-intelligence-view .pk-vi-scan-ai-groups > section.is-expanded .pk-vi-scan-ai-group-row > svg { transform: rotate(90deg); }
+.peak-vault-intelligence-view .pk-vi-scan-ai-group-row > svg { transition: transform 180ms ease; }
+
+/* Keep the body mounted and animate its grid track; conditional rendering
+ * cannot produce a collapse animation and also drops picker state abruptly. */
+.peak-vault-intelligence-view .pk-vi-scan-operation-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: grid-template-rows 220ms cubic-bezier(.2, .8, .2, 1), opacity 150ms ease, visibility 0s linear 220ms;
+}
+.peak-vault-intelligence-view .pk-vi-scan-ai-groups > section.is-expanded .pk-vi-scan-operation-disclosure {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: grid-template-rows 220ms cubic-bezier(.2, .8, .2, 1), opacity 150ms ease;
+}
+.peak-vault-intelligence-view .pk-vi-scan-operation-disclosure > .pk-vi-scan-operation-list { min-height: 0; }
 
 .peak-vault-intelligence-view .pk-vi-scan-operation-list {
   display: grid;
