@@ -297,7 +297,10 @@ assert.match(exactPort, /\.pk-vi-inventory-legend\s*\{[\s\S]*?display:\s*block;/
 assert.match(exactPort, /\.pk-vi-inventory-distribution\.is-large \.pk-vi-inventory-legend\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/, 'only the file distribution uses two legend columns');
 assert.match(exactPort, /\.pk-vi-inventory-distribution\.is-unavailable \.pk-vi-inventory-legend\s*\{[\s\S]*?min-height:\s*130px;/, 'unavailable distribution data must not collapse hover geometry');
 assert.match(exactPort, /\.pk-vi-overview-grid > \.pk-btn\s*\{[\s\S]*?width:\s*17px !important;[\s\S]*?height:\s*17px !important;/);
-assert.match(exactPort, /\.pk-vi-overview-range-popover\s*\{[\s\S]*?left:\s*50%;[\s\S]*?transform:\s*translateX\(-50%\);/, 'the date menu must be centered under its trigger rather than right-aligned');
+assert.match(exactPort, /\.pk-vi-overview-range-popover\s*\{[\s\S]*?right:\s*0;[\s\S]*?left:\s*auto;[\s\S]*?transform:\s*none;/, 'the date menu must stay aligned to the left edge of its option content, without a centered popover offset');
+assert.match(exactPort, /\.pk-vi-overview-range-popover > \.pk-btn\s*\{[\s\S]*?justify-content:\s*space-between !important;[\s\S]*?text-align:\s*left;/, 'range options must keep their labels left aligned');
+assert.match(exactPort, /\.pk-vi-overview-activity-title\s*\{[\s\S]*?align-items:\s*center;/, 'the activity total must be vertically centered with the title');
+assert.match(exactPort, /\.pk-vi-overview-evidence article:last-child\s*\{[\s\S]*?border-bottom:\s*0;/, 'the final activity row must not duplicate the card border');
 assert.match(css, /\.pk-vi-overview-evidence\s*\{[\s\S]*?min-height:\s*160px;/, 'activity evidence preserves the Mock empty/short-data geometry');
 assert.match(exactPort, /\.pk-vi-index-overview-body\s*\{[\s\S]*?grid-template-columns:\s*154px minmax\(0, 1fr\) 300px;/);
 assert.match(exactPort, /\.pk-vi-continue-summary\s*\{[\s\S]*?grid-template-columns:\s*136px repeat\(4, minmax\(0, 1fr\)\);[\s\S]*?min-height:\s*41px;/);

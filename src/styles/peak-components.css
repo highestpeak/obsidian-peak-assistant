@@ -21899,9 +21899,9 @@
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-popover {
   width: 320px;
-  right: auto;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
+  left: auto;
+  transform: none;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-head {
@@ -21920,6 +21920,21 @@
   min-height: 50px !important;
   padding: 0 20px !important;
   font-size: 14px;
+  justify-content: space-between !important;
+  text-align: left;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-activity-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-activity-title > span:last-child {
+  color: var(--pk-vi-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-popover > .pk-btn.is-active {
@@ -21939,6 +21954,10 @@
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article > small {
   font-size: 10px;
   font-weight: 650;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-evidence article:last-child {
+  border-bottom: 0;
 }
 
 .peak-vault-intelligence-view .pk-vi-custom-range {
