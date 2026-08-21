@@ -17,6 +17,7 @@ export interface UnifiedModelPickerProps {
 	requirement?: ModelCapabilityRequirement;
 	onChange: (value: RoleConfig | null) => void;
 	automaticLabel?: string;
+	allowAutomatic?: boolean;
 	aliases?: Record<string, string>;
 	hiddenModels?: string[];
 	align?: 'start' | 'center' | 'end';
@@ -41,6 +42,7 @@ export function UnifiedModelPicker({
 	requirement = {},
 	onChange,
 	automaticLabel = 'Automatic',
+	allowAutomatic = true,
 	aliases = {},
 	hiddenModels = [],
 	align = 'end',
@@ -149,10 +151,10 @@ export function UnifiedModelPicker({
 					))}
 				</div>
 				<div className="pk-model-picker__list" role="listbox" aria-label="Available models">
-					<Button variant="ghost" role="option" aria-selected={!value} className="pk-model-picker__automatic" onClick={() => choose(null)}>
+					{allowAutomatic && <Button variant="ghost" role="option" aria-selected={!value} className="pk-model-picker__automatic" onClick={() => choose(null)}>
 						<span><strong>{automaticLabel}</strong><small>Peak selects a compatible ready model</small></span>
 						{!value && <Check size={16} />}
-					</Button>
+					</Button>}
 					{groups.map((group) => (
 						<div className="pk-model-picker__group" key={group[0]?.profileId}>
 							<div className="pk-model-picker__group-title">

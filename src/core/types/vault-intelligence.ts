@@ -89,6 +89,7 @@ export interface VaultScanAiOperationPlan {
 }
 
 export interface VaultScanOperationRoute {
+	profileId: string | null;
 	model: string;
 	provider: string;
 	available: boolean;

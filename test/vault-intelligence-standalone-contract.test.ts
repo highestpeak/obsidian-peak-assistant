@@ -43,6 +43,8 @@ assert.match(workspace, /disabled=\{id === 'changed' && !snapshot\.changedCursor
 assert.match(workspace, /Choose a scope/);
 assert.match(workspace, /Entire Vault/);
 assert.match(workspace, /same canonical decisions/);
+assert.match(workspace, /UnifiedModelPicker/);
+assert.doesNotMatch(workspace, /<select value=\{operation\.model\}/);
 assert.match(workspace, /No Markdown or YAML changes during this step/);
 assert.match(workspace, /Only unresolved work with an owner action and a verifiable exit condition belongs here/);
 assert.match(workspace, /Needs your choice/);
@@ -99,7 +101,7 @@ assert.equal((config.match(/\"kind\":/g) ?? []).length, 11);
 assert.equal((config.match(/\"checkId\":/g) ?? []).length, 19);
 assert.equal((config.match(/\"id\": \"(?:knowledge-index|content|connections|follow-up)\"/g) ?? []).length, 4);
 assert.equal((config.match(/\"id\": \"(?:plan-scan|embedding-refresh|file-summaries|ai-tags|relationship-discovery|semantic-review|community-analysis|hub-bridge-analysis|file-proposals|maintenance-synthesis)\"/g) ?? []).length, 10);
-assert.equal((config.match(/\"availability\":/g) ?? []).length, 14);
+assert.equal((config.match(/\"availability\":/g) ?? []).length, 20);
 
 assert.match(quickSearch, /onOpenVaultIntelligence/);
 assert.doesNotMatch(quickSearch, /import .*VaultIntelligenceWorkspace/);

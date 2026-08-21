@@ -1,5 +1,6 @@
 import type { Profile } from '@/core/profiles/types';
 import { ModelType, type ModelCapabilities, type ModelMetaData } from '@/core/providers/types';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 
 export type ModelCapabilityRequirement = Partial<ModelCapabilities> & {
 	modelType?: ModelType;
@@ -66,7 +67,7 @@ export function buildUnifiedModelChoices(
 	const choices: UnifiedModelChoice[] = [];
 	for (const profile of profiles) {
 		if (!profile.enabled) continue;
-		const providerCatalogId = PROFILE_CATALOG_IDS[profile.kind];
+		const providerCatalogId = profileModelCatalogId(profile) ?? PROFILE_CATALOG_IDS[profile.kind];
 		const catalogModels: ModelMetaData[] = providerCatalogId
 			? registry.getModelsForProvider(providerCatalogId)
 			: Array.from(new Set([profile.primaryModel, profile.fastModel]))

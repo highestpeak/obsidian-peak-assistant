@@ -577,13 +577,14 @@ export class AppContext {
 					provider: model.profileKind,
 				}));
 				const route = (binding: typeof agent) => binding ? {
+					profileId: binding.profile.id,
 					model: binding.modelId,
 					provider: binding.profile.kind,
 					available: binding.profile.enabled,
 					candidates,
-				} : { model: 'Not configured', provider: 'Not configured', available: false, candidates };
+				} : { profileId: null, model: 'Not configured', provider: 'Not configured', available: false, candidates };
 				return {
-					'plan-scan': { model: 'Local planning', provider: 'Peak', available: true, candidates: [] },
+					'plan-scan': { profileId: null, model: 'Local planning', provider: 'Peak', available: true, candidates: [] },
 					'embedding-refresh': route(embedding),
 					'file-summaries': route(agent),
 					'ai-tags': route(agent),

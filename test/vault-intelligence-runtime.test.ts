@@ -105,8 +105,8 @@ function createRuntime(indexService: object | null = null, reviewRuntime: object
 		resolveProjectCount: async () => 0,
 		refreshOperationRouteCandidates: async () => { routeCandidatesRefreshed += 1; },
 		resolveOperationRoutes: () => ({
-			'embedding-refresh': { model: 'embed-test', provider: 'openai', available: true },
-			'file-summaries': { model: 'agent-test', provider: 'openai', available: true },
+			'embedding-refresh': { profileId: 'openai', model: 'embed-test', provider: 'openai', available: true },
+			'file-summaries': { profileId: 'openai', model: 'agent-test', provider: 'openai', available: true },
 		}),
 		calculateCostUsd: async () => 0.12,
 		now: () => now++,
