@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { Notice } from 'obsidian';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
+import { isSameLocalProfileConnection } from '@/core/profiles/profile-connection-identity';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { inspectProviderConnection, type ConnectionEvidence } from '@/core/providers/testProviderConnection';
 import { uiHttpClient } from '@/ui/util/uiHttpClient';
@@ -109,6 +110,15 @@ export function AddProviderForm({
     function addVerifiedProfile(testResult: ConnectionEvidence) {
         const registry = ProfileRegistry.getInstance();
         const profile = createPresetProfile(effectiveKind, { apiKey: apiKey || null, baseUrl: effectiveBaseUrl });
+		const existing = registry.getAllProfiles().find((candidate) => isSameLocalProfileConnection(candidate, profile));
+		if (existing) {
+			registry.updateProfile(existing.id, { enabled: true });
+			new Notice(`${existing.name} is already connected at this local address`);
+			setApiKey('');
+			setTestResult(null);
+			onAdded(existing.id, { ...testResult, profileId: existing.id });
+			return;
+		}
         registry.addProfile(profile);
         if (setActiveOnFirst && !registry.getActiveAgentProfile()) {
             registry.setActiveAgentProfile(profile.id);

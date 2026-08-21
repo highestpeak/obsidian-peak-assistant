@@ -33,6 +33,7 @@ import {
 } from '@/core/providers/model-selection';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
+import { collapseDuplicateLocalProfiles, localProfileConnectionIdentity } from '@/core/profiles/profile-connection-identity';
 import type { IndexReadinessProjection } from '@/core/ports/IndexRunCoordinatorPort';
 import {
 	inspectProviderConnection,
@@ -119,9 +120,13 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 	const [modelPickerPortal, setModelPickerPortal] = useState<HTMLElement | null>(null);
 	const operationRef = useRef(0);
 	const busyRef = useRef(false);
-	const launchProfiles = useMemo(
+	const eligibleLaunchProfiles = useMemo(
 		() => profiles.filter((profile) => profile.enabled && (LAUNCH_PROVIDER_KINDS as readonly string[]).includes(profile.kind)),
 		[profiles],
+	);
+	const launchProfiles = useMemo(
+		() => collapseDuplicateLocalProfiles(eligibleLaunchProfiles, state.connectionChecks),
+		[eligibleLaunchProfiles, state.connectionChecks],
 	);
 	const readyProfiles = useMemo(
 		() => launchProfiles.filter((profile) => state.connectionChecks[profile.id] === 'ready'),
@@ -135,6 +140,13 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 	useEffect(() => {
 		setModelPickerPortal(onboardingRef.current?.closest('.modal-content') as HTMLElement | null);
 	}, []);
+
+	useEffect(() => {
+		const selected = state.selectedProfileId ? eligibleLaunchProfiles.find((profile) => profile.id === state.selectedProfileId) : null;
+		const identity = selected ? localProfileConnectionIdentity(selected) : null;
+		const canonical = identity ? launchProfiles.find((profile) => localProfileConnectionIdentity(profile) === identity) : null;
+		if (canonical && canonical.id !== state.selectedProfileId) dispatch({ type: 'select-profile', profileId: canonical.id });
+	}, [dispatch, eligibleLaunchProfiles, launchProfiles, state.selectedProfileId]);
 
 	useEffect(() => {
 		const selected = launchProfiles.find((candidate) => candidate.id === state.selectedProfileId);
