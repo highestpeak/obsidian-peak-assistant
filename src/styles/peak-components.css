@@ -23130,5 +23130,8 @@
 :is(.pktw-root, .peak-design-root) .pk-vi-map-copy-editor > section { display:flex; width:min(620px,100%); flex-direction:column; gap:14px; padding:18px; border:1px solid var(--pk-border); border-radius:10px; background:var(--pk-surface); box-shadow:var(--pk-shadow-modal); }
 :is(.pktw-root, .peak-design-root) .pk-vi-map-copy-editor > section > div,.pk-vi-map-copy-editor footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 :is(.pktw-root, .peak-design-root) .pk-vi-map-copy-editor textarea { width:100%; min-height:150px; resize:vertical; padding:10px; border:1px solid var(--pk-border); border-radius:8px; background:var(--pk-surface); color:var(--pk-text-primary); }
+:is(.pktw-root, .peak-design-root) .pk-vi-work-adjust { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; padding:12px; border-bottom:1px solid var(--pk-border); background:var(--pk-surface-sunken); }
+:is(.pktw-root, .peak-design-root) .pk-vi-work-adjust input { min-width:0; height:32px; padding:0 10px; border:1px solid var(--pk-border); border-radius:8px; background:var(--pk-surface); color:var(--pk-text-primary); }
+:is(.pktw-root, .peak-design-root) .pk-vi-work-adjust > span { grid-column:1/-1; color:var(--pk-text-tertiary); font-size:10px; line-height:1.4; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-child(odd) { border-right: 1px solid var(--pk-border) !important; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-last-child(-n+2) { border-bottom: 0 !important; }

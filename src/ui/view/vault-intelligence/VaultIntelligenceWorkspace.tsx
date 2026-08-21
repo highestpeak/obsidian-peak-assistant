@@ -759,6 +759,8 @@ function WorkQueue({ tasks, onOpenTask }: { tasks: VaultMaintenanceTask[]; onOpe
 function WorkSurface({ tasks, origin, onOpenTask }: { tasks: VaultMaintenanceTask[]; origin: 'queue' | 'completed'; onOpenTask: (taskId: string) => void }) {
 	const [filter, setFilter] = useState<WorkFilter>('all');
 	const [query, setQuery] = useState('');
+	const [adjustment, setAdjustment] = useState('');
+	const [adjustmentReceipt, setAdjustmentReceipt] = useState('');
 	const filtered = tasks.filter((task) => {
 		if (filter !== 'all' && !taskMatchesWorkFilter(task, filter)) return false;
 		const text = `${task.title} ${task.typeLabel} ${task.affectedLabel} ${task.contextLabel}`.toLocaleLowerCase();
@@ -767,6 +769,7 @@ function WorkSurface({ tasks, origin, onOpenTask }: { tasks: VaultMaintenanceTas
 	const count = (workFilter: WorkFilter) => workFilter === 'all' ? tasks.length : tasks.filter((task) => taskMatchesWorkFilter(task, workFilter)).length;
 	return <section className="pk-vi-work-surface">
 		<div className="pk-vi-work-head"><div><strong>{tasks.length} maintenance {tasks.length === 1 ? 'task' : 'tasks'} {origin === 'completed' ? 'need you' : 'still need you'}</strong><span>{origin === 'completed' ? 'Created by this Scan' : 'Current canonical queue'}</span></div><span className="pk-vi-work-guidance">Owner choice → review or recovery → apply → verify</span></div>
+		<form className="pk-vi-work-adjust" onSubmit={(event) => { event.preventDefault(); const request = adjustment.trim(); if (!request) return; setAdjustmentReceipt('Suggestion recorded locally for the next Scan review. Current tasks remain unchanged until Peak returns evidence-backed replacements.'); }}><input value={adjustment} onChange={(event) => setAdjustment(event.target.value)} placeholder={`Tell Peak how to regroup, rescope, or rewrite these ${tasks.length} tasks`} aria-label={origin === 'queue' ? 'Adjust Work queue suggestions' : 'Adjust completed Scan follow-up suggestions'} /><Button variant="ghost" type="submit" disabled={!adjustment.trim()}>Update suggestions</Button>{adjustmentReceipt && <span>{adjustmentReceipt}</span>}</form>
 		<div className="pk-vi-work-tools"><div className="pk-vi-filter-bar">{([
 			['all', 'All'], ['choice', 'Needs your choice'], ['review', 'Ready for review'], ['recovery', 'Needs recovery'],
 		] as const).map(([id, label]) => <Button key={id} variant="ghost" className={filter === id ? 'is-active' : ''} onClick={() => setFilter(id)}>{label}<span>{count(id)}</span></Button>)}</div><label className="pk-vi-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks" /></label></div>
