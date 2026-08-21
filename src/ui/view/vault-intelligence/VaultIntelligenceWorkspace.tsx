@@ -870,10 +870,11 @@ function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
 		const canToggle = entry.availability === 'optional';
 		const state = entry.availability === 'automatic' ? 'Automatic' : entry.availability === 'required' ? 'Required' : entry.availability === 'later' ? 'Later' : null;
 		const className = compact ? `pk-vi-index-core-row is-${entry.availability}` : `pk-vi-index-output is-${entry.availability}`;
-		return <label key={entry.id} className={className}>
+		const toggle = () => onToggle(entry.id);
+		return <label key={entry.id} className={className} onClick={canToggle ? (event) => { event.preventDefault(); toggle(); } : undefined} onKeyDown={canToggle ? (event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); toggle(); } } : undefined}>
 			<span><strong>{entry.label}</strong><small>{entry.description}</small></span>
 			{compact && state && <em>{state}</em>}
-			<input type="checkbox" checked={output.enabled} disabled={!canToggle} onChange={() => onToggle(entry.id)} />
+			<input type="checkbox" checked={output.enabled} disabled={!canToggle} readOnly aria-label={`${output.enabled ? 'Disable' : 'Enable'} ${entry.label}`} />
 			{canToggle ? <i className="pk-vi-index-output-toggle" aria-hidden="true" /> : <i className={`pk-vi-index-output-state is-${entry.availability}`} aria-hidden="true">{entry.availability === 'automatic' || entry.availability === 'required' ? '✓' : state}</i>}
 			{!compact && entry.availability === 'later' && state && <em>{state}</em>}
 		</label>;
