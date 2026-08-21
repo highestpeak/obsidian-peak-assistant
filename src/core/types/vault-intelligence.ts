@@ -36,6 +36,9 @@ export type VaultScanIndexOutputId =
 	| 'fulltext'
 	| 'embeddings'
 	| 'markdown-summary'
+	| 'pdf-summary'
+	| 'image-summary'
+	| 'canvas-summary'
 	| 'keywords'
 	| 'ai-topic-tags'
 	| 'functional-tags'
@@ -46,7 +49,10 @@ export type VaultScanIndexOutputId =
 	| 'community-signals'
 	| 'search-ranking-signals'
 	| 'pdf-text'
-	| 'canvas-text';
+	| 'canvas-text'
+	| 'pdf-ocr'
+	| 'image-ocr'
+	| 'image-description';
 
 export interface VaultScanIndexOutputPlan {
 	id: VaultScanIndexOutputId;
@@ -86,6 +92,13 @@ export interface VaultScanOperationRoute {
 	model: string;
 	provider: string;
 	available: boolean;
+	candidates?: VaultScanOperationRouteCandidate[];
+}
+
+export interface VaultScanOperationRouteCandidate {
+	profileId: string;
+	model: string;
+	provider: string;
 }
 
 export interface VaultScanPlan {

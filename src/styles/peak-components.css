@@ -20631,7 +20631,8 @@
   cursor: default;
 }
 
-.peak-vault-intelligence-view .pk-vi-index-output input {
+.peak-vault-intelligence-view .pk-vi-index-output input,
+.peak-vault-intelligence-view .pk-vi-index-core-row input {
   position: absolute;
   width: 1px;
   height: 1px;

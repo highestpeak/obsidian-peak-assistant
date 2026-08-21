@@ -18,6 +18,7 @@ import type {
 	VaultScanOperationState,
 	VaultScanPlan,
 	VaultScanOperationRoute,
+	VaultScanOperationRouteCandidate,
 	VaultScanRunState,
 	VaultScanScopeMode,
 	VaultScanStageId,
@@ -55,6 +56,7 @@ export interface VaultIntelligenceRuntimeDeps {
 	resolveProjectCount: () => Promise<number>;
 	openOwnerSurface?: (surface: VaultIntelligenceObjectSummary['id']) => Promise<void>;
 	resolveOperationRoutes: () => Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>>;
+	selectOperationRoute: (operationId: VaultScanAiOperationId, candidate: VaultScanOperationRouteCandidate) => void | Promise<void>;
 	calculateCostUsd: (provider: string, model: string, usage: VaultScanUsage) => Promise<number>;
 	now?: () => number;
 	idFactory?: () => string;
@@ -208,6 +210,11 @@ export class VaultIntelligenceRuntime {
 		await this.recordEvent('run-started', runId, 'Vault Scan started with a frozen plan.');
 		await this.flushPersist();
 		await this.executeRun();
+	}
+
+	async selectOperationRoute(operationId: VaultScanAiOperationId, candidate: VaultScanOperationRouteCandidate): Promise<void> {
+		await this.deps.selectOperationRoute(operationId, candidate);
+		this.patch({ operationRoutes: this.deps.resolveOperationRoutes() });
 	}
 
 	async resumeScan(): Promise<void> {

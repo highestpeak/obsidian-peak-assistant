@@ -50,7 +50,7 @@ assert.equal(
 	19,
 	'Scan Setup must expose the 19 deterministic checks independently of maintenance task kinds',
 );
-assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.indexOutputs.length, 14, 'the detailed Index plan must disclose each configured output');
+assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.indexOutputs.length, 20, 'the detailed Index plan must retain every Reference output, including Later rows');
 
 const tasks = derive([
 	finding({ id: 'broken-a', signalId: 'S-BROKEN-LINK', metadata: { brokenTarget: 'Missing note' } }),

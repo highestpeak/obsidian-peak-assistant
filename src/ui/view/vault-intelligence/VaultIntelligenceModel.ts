@@ -13,6 +13,7 @@ import type {
 	VaultMaintenanceTaskState,
 	VaultScanPlan,
 	VaultScanOperationRoute,
+	VaultScanOperationRouteCandidate,
 	VaultScanRunState,
 	VaultScanScope,
 	VaultMapTextEntry,
@@ -86,6 +87,7 @@ export interface VaultIntelligenceWorkspaceRuntime {
 	getSnapshot: () => VaultIntelligenceSnapshot;
 	subscribe: (listener: () => void) => () => void;
 	refresh: () => Promise<void>;
+	selectOperationRoute: (operationId: VaultScanRunState['operations'][number]['id'], candidate: VaultScanOperationRouteCandidate) => Promise<void>;
 	startScan: (plan: VaultScanPlan) => Promise<void>;
 	resumeScan: () => Promise<void>;
 	requestStop: () => void;

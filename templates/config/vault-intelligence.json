@@ -73,6 +73,9 @@
     { "id": "fulltext", "label": "Full-text index", "group": "core", "description": "Keyword and exact-phrase retrieval.", "availability": "required", "operationIds": [] },
     { "id": "embeddings", "label": "Embeddings", "group": "core", "description": "Semantic Search and similar notes.", "availability": "optional", "operationIds": ["embedding-refresh"] },
     { "id": "markdown-summary", "label": "Markdown summaries", "group": "summaries", "description": "Short machine summaries for supported Markdown text.", "availability": "optional", "operationIds": ["file-summaries"] },
+    { "id": "pdf-summary", "label": "PDF summaries", "group": "summaries", "description": "Generate summaries from extracted PDF text rather than filenames or placeholders.", "availability": "later", "operationIds": [] },
+    { "id": "image-summary", "label": "Image summaries", "group": "summaries", "description": "Build image summaries from OCR and actual visual understanding.", "availability": "later", "operationIds": [] },
+    { "id": "canvas-summary", "label": "Canvas & Excalidraw", "group": "summaries", "description": "Summarize readable text, references, and structure from Canvas and Excalidraw files.", "availability": "later", "operationIds": [] },
     { "id": "keywords", "label": "Keywords & key sentences", "group": "tags", "description": "Deterministic local extraction.", "availability": "automatic", "operationIds": [] },
     { "id": "ai-topic-tags", "label": "AI topic tags", "group": "tags", "description": "Peak-owned concepts for discovery and grouping.", "availability": "optional", "operationIds": ["ai-tags"] },
     { "id": "functional-tags", "label": "Functional tags", "group": "tags", "description": "Machine document roles such as plans and decisions.", "availability": "optional", "defaultEnabled": false, "operationIds": ["ai-tags"] },
@@ -83,7 +86,10 @@
     { "id": "community-signals", "label": "Communities & Hub signals", "group": "relationships", "description": "Community and Hub review evidence.", "availability": "optional", "operationIds": ["community-analysis", "hub-bridge-analysis"] },
     { "id": "search-ranking-signals", "label": "Search ranking signals", "group": "relationships", "description": "Local relationship-aware ranking facts.", "availability": "automatic", "operationIds": [] },
     { "id": "pdf-text", "label": "PDF text extraction", "group": "content", "description": "Read embedded text from supported PDFs.", "availability": "automatic", "operationIds": [] },
-    { "id": "canvas-text", "label": "Canvas & Excalidraw text", "group": "content", "description": "Read visible text and references from supported canvases.", "availability": "automatic", "operationIds": [] }
+    { "id": "canvas-text", "label": "Canvas & Excalidraw text", "group": "content", "description": "Read visible text and references from supported canvases.", "availability": "automatic", "operationIds": [] },
+    { "id": "pdf-ocr", "label": "Scanned PDF OCR", "group": "content", "description": "Recognize text when a PDF contains scanned pages instead of embedded text.", "availability": "later", "operationIds": [] },
+    { "id": "image-ocr", "label": "Image OCR", "group": "content", "description": "Recognize readable text inside image files.", "availability": "later", "operationIds": [] },
+    { "id": "image-description", "label": "Image visual description", "group": "content", "description": "Describe actual image content with a vision-capable model.", "availability": "later", "operationIds": [] }
   ],
   "tasks": [
     { "kind": "file-properties", "category": "review", "initialState": "needs-choice", "title": "Review note property findings", "typeLabel": "Notes · Properties", "impact": "medium", "signalIds": ["C-FRONTMATTER-MISSING"], "choices": [

@@ -556,13 +556,18 @@ export class AppContext {
 				const embedding = profiles.resolveSlot('knowledgeIndex');
 				const agent = profiles.getActiveAgentConfig();
 				const review = profiles.getActiveAgentFastConfig() ?? agent;
+				const candidates = profiles.getAllProfiles().filter((profile) => profile.enabled).flatMap((profile) => {
+					const models = [...new Set([profile.primaryModel, profile.fastModel, profile.embeddingModel].filter((model): model is string => Boolean(model)))];
+					return models.map((model) => ({ profileId: profile.id, model, provider: profile.kind }));
+				});
 				const route = (binding: typeof agent) => binding ? {
 					model: binding.modelId,
 					provider: binding.profile.kind,
 					available: binding.profile.enabled,
-				} : { model: 'Not configured', provider: 'Not configured', available: false };
+					candidates,
+				} : { model: 'Not configured', provider: 'Not configured', available: false, candidates };
 				return {
-					'plan-scan': { model: 'Local planning', provider: 'Peak', available: true },
+					'plan-scan': { model: 'Local planning', provider: 'Peak', available: true, candidates: [] },
 					'embedding-refresh': route(embedding),
 					'file-summaries': route(agent),
 					'ai-tags': route(agent),
@@ -573,6 +578,18 @@ export class AppContext {
 					'file-proposals': route(review),
 					'maintenance-synthesis': route(review),
 				};
+			},
+			selectOperationRoute: (operationId, candidate) => {
+				const profiles = ProfileRegistry.getInstance();
+				if (operationId === 'embedding-refresh') {
+					profiles.setActiveEmbeddingConfig({ profileId: candidate.profileId, modelId: candidate.model });
+					return;
+				}
+				if (operationId === 'file-summaries' || operationId === 'ai-tags') {
+					profiles.setActiveAgentConfig({ profileId: candidate.profileId, modelId: candidate.model });
+					return;
+				}
+				if (operationId !== 'plan-scan') profiles.setActiveAgentFastConfig({ profileId: candidate.profileId, modelId: candidate.model });
 			},
 			calculateCostUsd: async (provider, model, usage) => {
 				const info = await manager.getModelInfo(model, provider);

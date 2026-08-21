@@ -51,6 +51,7 @@ const runtime: VaultIntelligenceWorkspaceRuntime = {
 	getSnapshot: () => snapshot,
 	subscribe: () => () => undefined,
 	refresh: async () => undefined,
+	selectOperationRoute: async () => undefined,
 	startScan: async () => undefined,
 	resumeScan: async () => undefined,
 	requestStop: () => undefined,
@@ -106,6 +107,7 @@ assert.match(source, /Knowledge Index plan/, 'the setup must disclose configurab
 assert.match(source, /pk-vi-index-output-toggle/, 'optional Index outputs must retain the Mock toggle subtree');
 assert.match(source, /pk-vi-scan-operation-toggle/, 'AI operation enablement must retain the Mock switch subtree');
 assert.match(source, /Configure a model in Peak settings/, 'an unavailable route must explain its configuration boundary instead of hiding selection controls');
+assert.match(source, /onSelectOperationRoute/, 'model selection must dispatch through the production runtime adapter');
 assert.match(source, /pk-vi-index-core/, 'Index setup must retain the dedicated two-column Core Search subtree');
 assert.match(source, /pk-vi-index-output-grid/, 'generated Index outputs must retain the reference four-card grid');
 assert.match(source, /Version history/, 'map text must expose draft and publication history');
@@ -211,6 +213,7 @@ assert.match(css, /\.pk-vi-index-output-toggle\s*\{[\s\S]*?width:\s*30px;[\s\S]*
 assert.match(css, /\.pk-vi-scan-operation-toggle\.pk-btn\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*18px !important;/, 'AI operation switches defend their fixed Mock geometry from host button resets');
 assert.match(css, /\.pk-vi-index-output-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/, 'generated Index output groups keep the Mock four-column geometry');
 assert.match(css, /\.pk-vi-index-core\s*\{[\s\S]*?grid-template-columns:\s*1fr 1fr;/, 'Core Search keeps its own two-column geometry');
+assert.match(css, /\.pk-vi-index-core-row input\s*\{[\s\S]*?position:\s*absolute;/, 'Core Search native inputs cannot participate in the reference grid');
 assert.match(css, /\.pk-vi-scan-operation-list > div\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) 255px 104px 34px;/, 'AI operation rows keep the Mock label/model/estimate/switch columns');
 const exactPort = css.slice(css.indexOf('Vault Intelligence V2 exact reference port'));
 assert.match(exactPort, /\.pk-vi-inventory-strip\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
