@@ -299,20 +299,23 @@ function Overview({ snapshot, runtime, config, onRoute }: {
 	onRoute: (route: Route) => void;
 }) {
 	const openTasks = rankTasks(snapshot.tasks.filter((task) => task.state !== 'verified')).slice(0, 7);
+	const hasLastScan = snapshot.lastCompletedRun !== null;
+	const hasContinueWork = openTasks.length > 0;
 	return (
 		<div className="pk-vi-page pk-vi-overview">
 			<ObjectInventory snapshot={snapshot} runtime={runtime} config={config} onRoute={onRoute} />
-			<section className="pk-vi-card pk-vi-continue">
-				<div className="pk-vi-card-head"><span className="pk-vi-card-title">Continue work</span><span className="pk-vi-card-head-actions"><small>Top {Math.min(7, openTasks.length)}</small><Button variant="ghost" size="sm" onClick={() => onRoute({ kind: 'surface', surface: 'queue' })}>View all {snapshot.tasks.filter((task) => task.state !== 'verified').length}<ChevronRight size={15} /></Button></span></div>
+			{hasLastScan && <section className={`pk-vi-card pk-vi-continue${hasContinueWork ? ' has-work' : ' is-scan-only'}`}>
+				{hasContinueWork && <div className="pk-vi-card-head"><span className="pk-vi-card-title">Continue work</span><span className="pk-vi-card-head-actions"><small>Top {Math.min(7, openTasks.length)}</small><Button variant="ghost" size="sm" onClick={() => onRoute({ kind: 'surface', surface: 'queue' })}>View all {snapshot.tasks.filter((task) => task.state !== 'verified').length}<ChevronRight size={15} /></Button></span></div>}
 				<div className="pk-vi-continue-summary">
 					<span><Clock3 size={14} /><small>Since last scan</small></span>
-					<span><strong>{snapshot.lastCompletedRun && snapshot.changedSinceScan !== null ? formatNumber(snapshot.changedSinceScan) : '0'}</strong><small>{snapshot.lastCompletedRun ? 'Vault items changed' : 'Not indexed yet'}</small></span>
+					<span><strong>{snapshot.changedSinceScan !== null ? formatNumber(snapshot.changedSinceScan) : 'No'}</strong><small>{snapshot.changedSinceScan !== null ? 'Vault items changed' : 'Change count unavailable'}</small></span>
 					<span><strong>{snapshot.digest && (snapshot.digest.communityLinks?.length ?? 0) > 0 ? formatNumber(snapshot.digest.communityLinks?.length ?? 0) : 'No'}</strong><small>current connections</small></span>
 					<span><strong>{snapshot.digest ? formatNumber(snapshot.digest.counts.orphans ?? 0) : '0'}</strong><small>notes need a home</small></span>
 					<span><strong>{formatNumber(snapshot.tasks.filter((task) => task.kind === 'content-lifecycle' && task.state !== 'verified').length)}</strong><small>work states need review</small></span>
 				</div>
-				<CompactTaskList tasks={openTasks} onOpen={(taskId) => onRoute({ kind: 'task', taskId, origin: 'queue' })} />
+				{hasContinueWork && <CompactTaskList tasks={openTasks} onOpen={(taskId) => onRoute({ kind: 'task', taskId, origin: 'queue' })} />}
 			</section>
+			}
 			<OverviewActivity snapshot={snapshot} onOpenActivity={(date) => onRoute({ kind: 'surface', surface: 'map', mapSurface: 'activity', mapDate: date })} />
 			<KnowledgeIndexOverview snapshot={snapshot} onReview={() => onRoute({ kind: 'setup' })} />
 			{snapshot.loading && <div className="pk-vi-loading"><RefreshCw size={18} className="pk-vi-spin" />Reading current Vault state…</div>}
@@ -327,7 +330,7 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 	onRoute: (route: Route) => void;
 }) {
 	const objects = referenceObjectInventory(snapshot.objects);
-	return <section className="pk-vi-inventory-strip" aria-label="Vault object inventory">{objects.map((object) => {
+	return <section className="pk-vi-inventory-strip" aria-label="Vault object inventory">{objects.slice(0, 2).map((object) => {
 		const presentation = config.inventoryObjects[object.id] ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryObjects[object.id];
 		const canonicalBreakdown = object.id === 'files'
 			? snapshot.fileTypes.map((type) => ({ id: type.extension, label: fileTypeLabel(type.extension), count: type.count }))
@@ -355,7 +358,31 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 				<div className="pk-vi-hover-footer"><span>{coverageNote ?? 'Canonical records only.'}</span><Button variant="ghost" size="sm" onClick={open}>{object.id === 'files' ? 'Open full file inventory' : `Open ${object.label}`}<ChevronRight size={13} /></Button></div>
 			</div>
 		</div>;
+	})}<PlannedSessionCard />{objects.slice(2).map((object) => {
+		const presentation = config.inventoryObjects[object.id] ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryObjects[object.id];
+		const canonicalBreakdown = object.breakdown?.length ? object.breakdown : [{ id: 'canonical', label: canonicalObjectBucketLabel(object.id), count: object.count }];
+		const distributionUnavailable = object.breakdownStatus === 'unavailable' || canonicalBreakdown.length === 0;
+		const statusLabel = object.count > 0 ? 'Recorded' : 'No records';
+		return <div key={object.id} className={`pk-vi-inventory-item is-${object.id}`} tabIndex={0} aria-label={`${formatNumber(object.count)} ${object.label}`}>
+			<span className="pk-vi-type-icon"><VaultReferenceIcon name={object.id} size={28} /></span><span className="pk-vi-inventory-value">{formatNumber(object.count)}</span><span className="pk-vi-inventory-label">{object.label}</span>
+			<div className="pk-vi-inventory-hover" role="group" aria-label={`${object.label} distribution`}>
+				<div className="pk-vi-hover-head"><div><strong>{presentation.title}</strong><span>{presentation.description}</span></div><small className={distributionUnavailable ? 'is-unavailable' : ''}>{statusLabel}</small></div>
+				<InventoryDistribution total={object.count} label={object.label} items={canonicalBreakdown} canonicalGroupCount={canonicalBreakdown.length} colors={config.fileTypeColors} large={false} unavailable={distributionUnavailable} unavailableTitle={presentation.unavailableTitle} unavailableDescription={presentation.unavailableDescription} />
+				<div className="pk-vi-hover-footer"><span>{object.coverageNote ?? 'Canonical records only.'}</span><Button variant="ghost" size="sm" onClick={() => void runtime.openOwnerSurface(object.id)}>Open {object.label}<ChevronRight size={13} /></Button></div>
+			</div>
+		</div>;
 	})}</section>;
+}
+
+function PlannedSessionCard() {
+	return <div className="pk-vi-inventory-item is-sessions is-planned" aria-label="Sessions planned, not implemented">
+		<span className="pk-vi-type-icon"><Clock3 size={28} /></span><span className="pk-vi-inventory-value">—</span><span className="pk-vi-inventory-label">Sessions</span>
+		<div className="pk-vi-inventory-hover" role="note" aria-label="Sessions availability">
+			<div className="pk-vi-hover-head"><div><strong>Sessions</strong><span>A separate future concept; it does not reuse activity sessions or any existing runtime count.</span></div><small className="is-unavailable">Planned</small></div>
+			<div className="pk-vi-inventory-unavailable"><strong>Sessions not implemented</strong><span>This card intentionally has no data or action until its own product and persistence contract exists.</span></div>
+			<div className="pk-vi-hover-footer"><span>Recorded in the Roadmap and pre-launch scope review.</span></div>
+		</div>
+	</div>;
 }
 
 function canonicalObjectBucketLabel(id: VaultIntelligenceObjectSummary['id']): string {
@@ -430,7 +457,23 @@ function referenceObjectInventory(objects: VaultIntelligenceObjectSummary[]): Va
 		{ id: 'projects', label: 'Projects', count: 0, detail: 'Current Peak projects', breakdown: [{ id: 'canonical', label: 'Current projects', count: 0 }], breakdownStatus: 'available', coverageNote: 'Lifecycle state is shown only when the Project store publishes it explicitly.' },
 		{ id: 'composer', label: 'Composer', count: 0, detail: 'Durable Composer activity', breakdown: [{ id: 'canonical', label: 'Recorded workspace events', count: 0 }], breakdownStatus: 'available', coverageNote: 'Result state is shown only when Composer history publishes it explicitly.' },
 	];
-	return fallback.map((item) => byId.get(item.id) ?? item);
+	const files = byId.get('files') ?? fallback[0];
+	const chats = byId.get('chats') ?? fallback[1];
+	const projects = byId.get('projects') ?? fallback[2];
+	const composer = byId.get('composer') ?? fallback[3];
+	return [
+		files,
+		{
+			...chats,
+			breakdown: [
+				{ id: 'conversations', label: 'Chats', count: chats.count },
+				{ id: 'projects', label: 'Projects', count: projects.count },
+			],
+			breakdownStatus: 'available',
+			coverageNote: 'Projects are organized within Chats; they are not a separate Vault Intelligence object card.',
+		},
+		composer,
+	];
 }
 
 function OverviewActivity({ snapshot, onOpenActivity }: { snapshot: VaultIntelligenceSnapshot; onOpenActivity: (date: string | null) => void }) {

@@ -28,6 +28,9 @@
 - [ ] **P0 · 功能收口** · [16 · 剩余功能完成与 Release Candidate 冻结](pre-launch/16-remaining-feature-closure.md)
   - 只完成审计后明确进入首次公开版本的剩余功能、历史任务和真实验收。
   - 功能范围稳定后再开始 Landing Page、README 和公开材料定稿。
+- [ ] **P2 · 范围判决** · Session 独立产品对象
+  - 当前 Sessions 卡是 planned 占位，未实现数据合同、持久化、详情或动作；不能将现有 Chat、Project、Composer 或 activity session 计数挪作 Session 数字。
+  - 在 Release Candidate 范围冻结时，明确决定其延后并保持“planned”，或补齐独立合同与真实验收后再纳入公开功能。
 - [ ] **P1 · 模型基础设施** · [23 · 在线模型目录与能力证据收口](pre-launch/23-online-model-catalog-and-capability-registry.md)
   - 把当前 bundled catalog、未接线的 server sync 骨架和 Ollama 探测收口成可缓存、可回滚、可解释的统一目录。
   - 提供模型隐藏、别名、能力证据与新鲜度的唯一 AI & Models 管理入口，并为 Peak Hermes 提供 fail-closed capability gate。

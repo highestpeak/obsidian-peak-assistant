@@ -21388,6 +21388,18 @@
   font-weight: 690;
 }
 
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-continue.is-scan-only {
+  min-height: 41px;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-item.is-planned {
+  cursor: default;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-item.is-planned .pk-vi-inventory-value {
+  color: var(--pk-vi-muted);
+}
+
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-compact-tasks {
   padding: 0;
 }

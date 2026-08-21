@@ -25,7 +25,7 @@
     },
     "chats": {
       "title": "Chats",
-      "description": "The canonical conversation total currently stored by Chat Studio. Conversation type is only shown when it is explicitly published.",
+      "description": "The canonical conversation total currently stored by Chat Studio. Projects are grouped here as conversation containers, never as a separate inventory card.",
       "unavailableTitle": "No Chats recorded",
       "unavailableDescription": "Chat Studio has not published a durable conversation record yet."
     },

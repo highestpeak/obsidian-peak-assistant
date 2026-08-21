@@ -85,18 +85,19 @@ assert.match(
 assert.equal((html.match(/pk-vi-inventory-item/g) ?? []).length, 4);
 assert.match(html, /M4 7\.5 12 3l8 4\.5v9L12 21l-8-4\.5z/, 'Header uses the Mock Vault mark instead of a generic brain icon');
 assert.match(html, /M4 5h16v11H8l-4 4z/, 'Chat inventory uses the Mock object icon path');
-assert.match(html, /M22 13a18\.15 18\.15 0 0 1-20 0/, 'Project inventory uses the Mock briefcase icon path');
 assert.match(html, /M18\.375 2\.625a1 1 0 0 1 3 3/, 'Composer inventory uses the Mock composer icon path');
-assert.equal((html.match(/pk-vi-inventory-unavailable/g) ?? []).length, 0, 'a published object total must render as actual data, not an unavailable placeholder');
-assert.match(html, /Recorded conversations/);
-assert.match(html, /Current projects/);
+assert.doesNotMatch(html, /pk-vi-inventory-item is-projects/, 'Projects must not remain a standalone inventory card');
+assert.match(html, /Projects are organized within Chats/, 'Projects must appear as a Chats grouping, not a separate product object');
+assert.match(html, /Sessions not implemented/, 'the new Session card must remain explicitly unavailable until its own contract exists');
+assert.equal((html.match(/pk-vi-inventory-unavailable/g) ?? []).length, 1, 'only the explicitly planned Session card may be unavailable');
+assert.match(html, />Chats</);
+assert.match(html, />Projects</);
 assert.match(html, /Recorded workspace events/);
 assert.match(source, /inventoryTypeGroups/, 'the inventory must derive owner-facing groups from the capability configuration');
 assert.match(source, /Other formats/, 'unsupported extensions must be grouped honestly instead of becoming product file types');
 assert.match(source, /: 'No'.*current connections/, 'a zero connection count must not render as a misleading signed number');
 assert.match(runtimeSource, /activityTextPreview/, 'Activity must receive a readable chat preview instead of a raw conversation identifier');
-assert.match(html, /pk-vi-continue-summary/, 'zero history must retain the reference summary geometry');
-assert.match(html, /Not indexed yet/, 'zero history must explain the empty scan baseline');
+assert.doesNotMatch(html, /pk-vi-continue-summary/, 'an absent last scan must not invent a Continue work summary');
 assert.match(html, /Prepare Vault/);
 assert.match(html, /pk-vi-overview-activity-body/);
 assert.match(html, /pk-vi-index-overview-body/);
@@ -152,10 +153,28 @@ const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snap
 const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };
 const zeroOverviewHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'overview' }));
 assert.equal((zeroOverviewHtml.match(/pk-vi-inventory-item/g) ?? []).length, 4, 'zero data keeps all four object cards');
-assert.match(zeroOverviewHtml, /pk-vi-continue-summary/, 'zero data keeps Continue work summary geometry');
+assert.doesNotMatch(zeroOverviewHtml, /pk-vi-continue-summary/, 'zero data without a last scan hides Continue work completely');
 assert.match(zeroOverviewHtml, /pk-vi-overview-activity-body/, 'zero data keeps the activity chart section');
 assert.match(zeroOverviewHtml, /pk-vi-index-overview-body/, 'zero data keeps Knowledge Index geometry');
-assert.match(zeroOverviewHtml, /No unresolved maintenance work/, 'zero data uses an explicit empty treatment');
+
+const lastScanSnapshot: VaultIntelligenceSnapshot = {
+	...snapshot,
+	lastCompletedRun: {
+		runId: 'last-scan',
+		startedAt: now - 2_000,
+		completedAt: now - 1_000,
+		scopeMode: 'entire',
+		objectCount: 12,
+		searchableCount: 12,
+		usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 },
+		receipts: [],
+		maintenanceTaskIds: [],
+		warnings: [],
+	},
+};
+const lastScanHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: { ...runtime, getSnapshot: () => lastScanSnapshot } }));
+assert.match(lastScanHtml, /pk-vi-continue-summary/, 'a completed scan keeps the Since last scan summary');
+assert.doesNotMatch(lastScanHtml, />Continue work</, 'a completed scan without tasks must not show the Continue work heading');
 
 const fileActivitySnapshot: VaultIntelligenceSnapshot = {
 	...snapshot,
