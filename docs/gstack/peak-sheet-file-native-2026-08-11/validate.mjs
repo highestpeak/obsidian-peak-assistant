@@ -54,6 +54,10 @@ const checks = [
   ['overlay close and focus contract', js.includes("event.key !== 'Escape'") && js.includes('overlay?.contains(event.target)') && js.includes("trigger.focus({ preventScroll: true })")],
   ['host boundary and fixture checklist', css.includes('.peak-sheet-root, .peak-sheet-root *') && readme.includes('### 极端 fixture 检查表') && readme.includes('file://')],
   ['ask ai preserves the grid viewport', css.includes('.workspace { display: flex; min-width: 0; min-height: 0') && css.includes('.sheet-document { position: relative; display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: hidden') && js.includes("openOverlay('ai-drawer', byId('ask-ai-button'), syncAiContext);") && !js.includes("openOverlay('ai-drawer', byId('ask-ai-button'), syncAiContext, 'ai-prompt')")],
+  ['board is a draggable status projection', js.includes('function bindBoardEvents') && js.includes("event.dataTransfer.effectAllowed = 'move'") && js.includes('function moveBoardRecord') && js.includes('class="board-lane-body"')],
+  ['calendar is the same date projection', js.includes('function parseSheetDate') && js.includes('function openRecordFromProjection') && html.includes('id="add-record"') && readme.includes('## 同一 Dataset 的多视图（V5.3）')],
+  ['calendar has view-native actions', js.includes("data-calendar-action=\"previous\"") && js.includes("data-calendar-action=\"today\"") && js.includes("data-calendar-action=\"new\"")],
+  ['command menu has no legacy button chrome', css.includes('appearance: none') && css.includes('background: transparent !important') && !html.includes('Show location') && !html.includes('id="location-card"')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

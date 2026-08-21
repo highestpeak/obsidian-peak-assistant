@@ -74,7 +74,7 @@
             <div class="file-path"><span id="file-folder">Product / Launch</span><span>/</span><strong id="file-name">Launch Tracker.peaksheet</strong></div>
             <div class="title-line"><svg><use href="#i-grid"/></svg><input id="sheet-title" value="Launch Tracker" aria-label="Sheet title"><span class="format-badge">PEAK SHEET</span></div>
           </div>
-          <div class="save-state"><span class="local-badge"><span class="save-dot"></span>Local</span><span>Saved to Vault</span><button type="button" id="location-button" data-overlay-trigger="location-card" aria-haspopup="dialog" aria-controls="location-card" aria-expanded="false">Show location</button><button type="button" class="share-button" id="share-button" data-overlay-trigger="peakshare-card" aria-haspopup="dialog" aria-controls="peakshare-card" aria-expanded="false"><svg><use href="#i-cloud"/></svg>Share via PeakShare</button></div>
+          <div class="save-state"><span class="local-badge"><span class="save-dot"></span>Local</span><span>Saved to Vault</span><button type="button" class="share-button" id="share-button" data-overlay-trigger="peakshare-card" aria-haspopup="dialog" aria-controls="peakshare-card" aria-expanded="false"><svg><use href="#i-cloud"/></svg>Share via PeakShare</button></div>
         </header>
 
         <nav class="view-tabs" aria-label="Sheet views">
@@ -102,6 +102,7 @@
             </div>
           </div>
           <div class="toolbar-actions">
+            <button type="button" class="primary-tool" id="add-record"><svg><use href="#i-plus"/></svg>New</button>
             <button type="button" class="ai-button" id="ask-ai-button" data-overlay-trigger="ai-drawer" aria-haspopup="dialog" aria-controls="ai-drawer" aria-expanded="false"><span class="ai-button-orbit"></span><svg><use href="#i-sparkles"/></svg>Ask AI</button>
             <button type="button" class="icon-button" aria-label="更多"><svg><use href="#i-more"/></svg></button>
           </div>
@@ -197,9 +198,9 @@
               <button type="button" class="saved-script" data-script="domain"><span><strong>Extract company domain</strong><small>Parse website links</small></span><em>✓ yesterday</em></button>
               <button type="button" class="saved-script" data-script="score"><span><strong>Score opportunities</strong><small>Formula + selected signals</small></span><em>Draft</em></button>
             </section>
-            <section class="script-run-config"><header><span><strong id="script-title">Normalize salary</strong><small>Last saved just now</small></span><button type="button" id="save-script"><svg><use href="#i-save"/></svg>Save</button></header>
-              <div class="script-summary"><code>salary → parse currency → normalize → salary_number</code><button type="button">Edit script</button></div>
-              <fieldset><legend>Run on</legend><label><input type="radio" name="run-scope" value="selection">Selection <small id="script-selection-count">1 cell</small></label><label><input type="radio" name="run-scope" value="view">Current view <small id="script-view-count">8 rows</small></label><label><input type="radio" name="run-scope" value="all" checked>All rows <small id="script-all-count">8 rows</small></label></fieldset>
+            <section class="script-run-config"><header><span><strong id="script-title">Normalize salary</strong><small id="script-saved-state">Saved locally · just now</small></span><div class="script-config-actions"><button type="button" id="edit-script">Edit</button><button type="button" id="save-script"><svg><use href="#i-save"/></svg>Save</button></div></header>
+              <div class="script-summary"><code id="script-summary-code">salary → parse currency → normalize → salary_number</code></div>
+              <fieldset class="script-scope"><legend>Run on</legend><label><input type="radio" name="run-scope" value="selection">Selection <small id="script-selection-count">1 cell</small></label><label><input type="radio" name="run-scope" value="view">View <small id="script-view-count">8 rows</small></label><label><input type="radio" name="run-scope" value="all" checked>All <small id="script-all-count">8 rows</small></label></fieldset>
               <div class="script-preview" id="script-preview" hidden><header><strong>Preview</strong><small>No file changes yet</small></header><div><span id="script-preview-changed">5</span><small>will change</small></div><div><span id="script-preview-unchanged">3</span><small>unchanged</small></div><div><span>0</span><small>failed</small></div></div>
               <div class="script-progress" id="script-progress" hidden aria-label="Progress"><header><strong id="script-progress-label">Running 0 / 8</strong><small id="script-progress-percent">0%</small></header><div><i id="script-progress-bar"></i></div><p id="script-progress-detail">Preparing local rows…</p></div>
               <div class="script-actions"><button type="button" id="preview-script">Preview</button><button type="button" id="run-script"><svg><use href="#i-play"/></svg>Run locally</button></div>
@@ -249,12 +250,6 @@
     <button type="button" data-row-action="duplicate">Duplicate row</button>
     <hr>
     <button type="button" class="danger" data-row-action="delete"><svg><use href="#i-trash"/></svg>Delete row</button>
-  </section>
-
-  <section class="location-card" id="location-card" hidden>
-    <span>Current Vault file</span>
-    <strong id="location-path">Product/Launch/Launch Tracker.peaksheet</strong>
-    <small>移动或重命名文件不会改变 Dataset ID；文件本身是当前数据真值。</small>
   </section>
 
   <section class="peakshare-card" id="peakshare-card" hidden>

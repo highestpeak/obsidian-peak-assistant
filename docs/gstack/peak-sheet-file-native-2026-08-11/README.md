@@ -70,7 +70,7 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 
 - **表格字段**：Primary text 默认 220px（160–520px）；Link 200px（144–520px）；Select 112px（104–220px）；Date 108px（96–180px）；Number 96px（84–180px）；Checkbox 104px（96–152px）。虚拟 General 列为稳定的 160px。空间不足时保持这些语义最小宽度，让 grid 横向滚动，不把 Status、Due date 或列名压成不可识别的缩写。
 - **字段头**：列字母是固定内容，字段名才是唯一可收缩槽；配置槽固定 24px，resize handle 置于列边缘且不参与宽度分配。拖动或键盘 Arrow/Home/End 调整列宽，不改变行高、内容位置或其他字段的宽度合同。
-- **文字策略**：标题、文件路径、自由文本可以截断；状态、badge、日期、计数、按钮和菜单项保持单行且拥有语义最小宽度。Location card 的超长路径采用受控换行，而不是把真实路径变成 `…`。
+- **文字策略**：标题、文件路径、自由文本可以截断；状态、badge、日期、计数、按钮和菜单项保持单行且拥有语义最小宽度。文件路径已在标题上方直接可见，不再提供冗余的 Show location 浮层。
 - **Overlay 状态机**：全部 transient surface 共用 `closed | open(id, trigger)`：同一 trigger 再次点击会关闭；另一个 trigger 会切换；外部 pointerdown 和 Escape 会关闭；关闭后返回 trigger 焦点。Field menu、field editor、row menu、Group、location card、Ask AI、Scripts 和 PeakShare 同时只会打开一个。
 - **Ask AI viewport 保持**：打开 AI 不会自动 focus composer，也不会要求浏览器把输入框滚进视口；workspace / document 明确收紧为 `min-height: 0 + overflow: hidden`，只有 grid body 与 AI thread 自己拥有滚动。用户点击 composer 后才开始输入。
 - **滚动 ownership**：Scripts 与 Ask AI 都是 `header + context + minmax(0, scroll body) + footer`；body 有末端安全内边距和 `overscroll-behavior: contain`，footer 不会覆盖最后一个操作或历史条目。
@@ -79,6 +79,10 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 ### 极端 fixture 检查表
 
 每次视觉验收都至少覆盖：短/超长中英文标题、无空格长路径、空标题、0 与大 count、空数据、hover/focus/range selected、拖出 resize handle、Popover 重复触发与切换、外部点击、Escape、窄/宽容器、横向滚动以及 125% / 150% zoom。当前文件浏览器自动化受 `file://` 策略限制，因此这些属于 owner-visible mock 验收；脚本只验证布局/状态机契约存在，不能替代真实渲染证据。
+
+## 同一 Dataset 的多视图（V5.3）
+
+Table、Board、Calendar 不是三个独立页面，而是同一个 `.peaksheet` 的 layout：同一行记录、字段、筛选/排序语义、revision 和 `New` 操作都保持一致。这个心智与 Notion database views 一致：Board 按 `Status` 字段分组，并将卡片拖入另一列直接改写该字段；Calendar 按选定 Date 字段放置相同行，点击卡片回到 Table 的同一记录，月份导航只改变当前 view 的窗口。Notion 也将 Board 定义为按属性分组、Calendar 定义为按 Date 属性显示的同一数据库视图。[Notion database views](https://www.notion.com/help/views-filters-and-sorts)
 
 ## 验证
 

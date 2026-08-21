@@ -12,6 +12,11 @@ const FIELD_WIDTH_CONTRACT = {
   formula: { default: 120, min: 96, max: 260 },
   scriptOutput: { default: 140, min: 112, max: 280 },
 };
+const SCRIPT_LIBRARY = {
+  normalize: { title: 'Normalize salary', saved: 'Saved locally · just now', summary: 'salary → parse currency → normalize → salary_number' },
+  domain: { title: 'Extract company domain', saved: 'Saved locally · yesterday', summary: 'website → parse hostname → company_domain' },
+  score: { title: 'Score opportunities', saved: 'Draft · not saved yet', summary: 'priority + status + selected signals → launch_score' },
+};
 
 const datasets = {
   launch: {
@@ -93,6 +98,8 @@ let scriptTimer = null;
 let rangeClipboard = '';
 let gridState = { activeCell: { row: 2, field: 3 }, anchorRow: 2, anchorField: 3, focusRow: 2, focusField: 3, mode: 'navigation' };
 let overlayState = { id: null, trigger: null };
+let boardDragRowIndex = null;
+let calendarCursor = new Date(2026, 7, 1);
 
 const byId = (id) => document.getElementById(id);
 const current = () => datasets[activeDatasetId];
@@ -134,7 +141,6 @@ function renderDocument() {
   byId('file-folder').textContent = dataset.folder;
   byId('file-name').textContent = `${dataset.title}.peaksheet`;
   byId('file-status').textContent = filePath(dataset);
-  byId('location-path').textContent = filePath(dataset);
   byId('revision').textContent = dataset.revision;
   byId('record-count').textContent = dataset.rows.length;
   document.querySelectorAll('[data-dataset]').forEach((button) => button.classList.toggle('is-active', button.dataset.dataset === activeDatasetId));
@@ -737,9 +743,17 @@ function handleRowAction(action) {
 
 function addRecord() {
   const rowIndex = current().rows.length;
-  current().rows.push(emptyRow(current()));
+  const row = emptyRow(current());
+  const primaryField = current().fields.find((field) => ['task', 'feedback', 'topic'].includes(field.id));
+  const statusField = current().fields.find((field) => field.id === 'status');
+  const dateField = current().fields.find((field) => field.type === 'date');
+  if (primaryField) row[primaryField.id] = 'Untitled record';
+  if (statusField) row[statusField.id] = 'Todo';
+  if (activeView === 'calendar' && dateField) row[dateField.id] = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(calendarCursor);
+  current().rows.push(row);
   gridState = { activeCell: { row: rowIndex, field: 0 }, anchorRow: rowIndex, anchorField: 0, focusRow: rowIndex, focusField: 0, mode: 'navigation' };
   bumpRevision('Row added at the bottom', () => {
+    if (activeView !== 'table') return;
     const cell = document.querySelector(`.cell[data-row-index="${rowIndex}"][data-field-index="0"]`);
     cell?.scrollIntoView({ block: 'center', inline: 'nearest' });
     cell?.focus({ preventScroll: true });
@@ -756,29 +770,118 @@ function nonEmptyRows(dataset = current()) {
 
 function renderBoard() {
   const dataset = current();
-  const rowsWithData = nonEmptyRows(dataset);
   const statusField = dataset.fields.find((field) => field.id === 'status');
   if (!statusField) {
     byId('board-view').innerHTML = '<div class="board-shell"><div class="board-card"><strong>Add a Status field</strong><small>Board groups records by a single-select field.</small></div></div>';
     return;
   }
   const lanes = ['Todo', 'Doing', 'Blocked', 'Done'];
-  byId('board-view').innerHTML = `<div class="board-shell">${lanes.map((lane) => {
-    const rows = rowsWithData.filter((row) => row.status === lane);
-    return `<section class="board-lane"><header class="board-lane-head"><strong>${lane}</strong><span>${rows.length}</span></header>${rows.map((row) => `<article class="board-card"><strong>${escapeHtml(row.task ?? row.feedback ?? row.topic ?? 'Untitled')}</strong><small>${escapeHtml(row.blocker || row.notes || row.category || 'No blocker')}</small><footer><span>${escapeHtml(row.area || row.category || row.channel || '')}</span><span>${escapeHtml(row.due || row.date || '')}</span></footer></article>`).join('')}</section>`;
+  const rowsWithData = dataset.rows.map((row, index) => ({ row, index })).filter(({ row }) => Object.values(row).some((value) => value !== '' && value !== false && value !== null && value !== undefined));
+  byId('board-view').innerHTML = `<div class="board-shell" aria-label="Status board for ${escapeHtml(dataset.title)}">${lanes.map((lane) => {
+    const rows = rowsWithData.filter(({ row }) => row[statusField.id] === lane);
+    return `<section class="board-lane" data-status="${lane}"><header class="board-lane-head"><span><strong>${lane}</strong><small>${statusField.name}</small></span><span>${rows.length}</span></header><div class="board-lane-body" data-status="${lane}" aria-label="Drop records into ${lane}">${rows.map(({ row, index }) => `<article class="board-card" draggable="true" data-row-index="${index}" tabindex="0"><strong>${escapeHtml(row.task ?? row.feedback ?? row.topic ?? 'Untitled')}</strong><small>${escapeHtml(row.blocker || row.notes || row.category || 'No details')}</small><footer><span>${escapeHtml(row.area || row.category || row.channel || '')}</span><span>${escapeHtml(row.due || row.date || '')}</span></footer></article>`).join('')}<span class="board-drop-hint">Drop here</span></div></section>`;
   }).join('')}</div>`;
+  bindBoardEvents();
+}
+
+function bindBoardEvents() {
+  document.querySelectorAll('.board-card').forEach((card) => {
+    card.addEventListener('dragstart', (event) => {
+      boardDragRowIndex = Number(card.dataset.rowIndex);
+      card.classList.add('is-dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', card.dataset.rowIndex);
+    });
+    card.addEventListener('dragend', () => {
+      boardDragRowIndex = null;
+      document.querySelectorAll('.board-lane-body.is-drop-target').forEach((lane) => lane.classList.remove('is-drop-target'));
+      document.querySelectorAll('.board-card.is-dragging').forEach((item) => item.classList.remove('is-dragging'));
+    });
+    card.addEventListener('click', () => openRecordFromProjection(Number(card.dataset.rowIndex)));
+  });
+  document.querySelectorAll('.board-lane-body').forEach((lane) => {
+    lane.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      lane.classList.add('is-drop-target');
+    });
+    lane.addEventListener('dragleave', (event) => {
+      if (lane.contains(event.relatedTarget)) return;
+      lane.classList.remove('is-drop-target');
+    });
+    lane.addEventListener('drop', (event) => {
+      event.preventDefault();
+      lane.classList.remove('is-drop-target');
+      moveBoardRecord(Number(event.dataTransfer.getData('text/plain') || boardDragRowIndex), lane.dataset.status);
+    });
+  });
+}
+
+function moveBoardRecord(rowIndex, status) {
+  const statusField = current().fields.find((field) => field.id === 'status');
+  const row = current().rows[rowIndex];
+  if (!statusField || !row || row[statusField.id] === status) return;
+  row[statusField.id] = status;
+  bumpRevision(`Moved “${row.task ?? row.feedback ?? row.topic ?? 'Record'}” to ${status}`);
+}
+
+function openRecordFromProjection(rowIndex) {
+  const taskFieldIndex = Math.max(0, current().fields.findIndex((field) => ['task', 'feedback', 'topic', 'user'].includes(field.id)));
+  gridState = { activeCell: { row: rowIndex, field: taskFieldIndex }, anchorRow: rowIndex, anchorField: taskFieldIndex, focusRow: rowIndex, focusField: taskFieldIndex, mode: 'navigation' };
+  switchView('table');
+  requestAnimationFrame(() => document.querySelector(`.cell[data-row-index="${rowIndex}"][data-field-index="${taskFieldIndex}"]`)?.focus({ preventScroll: true }));
+  showToast('Opened the same record in Table view');
 }
 
 function renderCalendar() {
   const dataset = current();
-  const datedRows = nonEmptyRows(dataset).filter((row) => row.due || row.date);
-  const cells = Array.from({ length: 35 }, (_, index) => {
-    const day = index + 1;
-    const event = datedRows[index % Math.max(1, datedRows.length)];
-    const showEvent = event && [2, 5, 8, 12, 15, 18, 23].includes(day);
-    return `<div class="calendar-day"><span>${day}</span>${showEvent ? `<span class="calendar-event">${escapeHtml(event.task ?? event.topic ?? event.feedback ?? 'Record')}</span>` : ''}</div>`;
+  const dateField = dataset.fields.find((field) => field.type === 'date');
+  if (!dateField) {
+    byId('calendar-view').innerHTML = '<div class="calendar-empty"><strong>Add a Date field</strong><small>Calendar is a view of the same records, placed by one date field.</small></div>';
+    return;
+  }
+  const year = calendarCursor.getFullYear();
+  const month = calendarCursor.getMonth();
+  const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(calendarCursor);
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const rowsByDay = new Map();
+  dataset.rows.forEach((row, index) => {
+    const date = parseSheetDate(row[dateField.id]);
+    if (!date || date.getFullYear() !== year || date.getMonth() !== month) return;
+    const items = rowsByDay.get(date.getDate()) ?? [];
+    items.push({ row, index });
+    rowsByDay.set(date.getDate(), items);
+  });
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const day = index - firstWeekday + 1;
+    if (day < 1 || day > daysInMonth) return '<div class="calendar-day is-outside"></div>';
+    const records = rowsByDay.get(day) ?? [];
+    return `<div class="calendar-day" data-calendar-day="${day}"><span>${day}</span>${records.slice(0, 3).map(({ row, index: rowIndex }) => `<button type="button" class="calendar-event" data-row-index="${rowIndex}">${escapeHtml(row.task ?? row.topic ?? row.feedback ?? 'Untitled')}</button>`).join('')}${records.length > 3 ? `<button type="button" class="calendar-more" data-calendar-day="${day}">+${records.length - 3} more</button>` : ''}</div>`;
   }).join('');
-  byId('calendar-view').innerHTML = `<div class="calendar-shell"><section class="calendar-main"><header class="calendar-head"><strong>August 2026</strong><span>Today · Month</span></header><div class="calendar-grid">${cells}</div></section><aside class="agenda"><strong>Next 7 days</strong>${datedRows.slice(0, 5).map((row) => `<div class="agenda-item"><small>${escapeHtml(row.due || row.date)}</small><span>${escapeHtml(row.task ?? row.topic ?? row.feedback ?? 'Record')}</span></div>`).join('')}</aside></div>`;
+  const upcoming = [...rowsByDay.entries()].flatMap(([, rows]) => rows).slice(0, 5);
+  byId('calendar-view').innerHTML = `<div class="calendar-shell"><section class="calendar-main"><header class="calendar-head"><strong>${monthLabel}</strong><div class="calendar-controls"><button type="button" class="calendar-icon-button" data-calendar-action="previous" aria-label="Previous month">‹</button><button type="button" class="calendar-today-button" data-calendar-action="today">Today</button><button type="button" class="calendar-icon-button" data-calendar-action="next" aria-label="Next month">›</button><span class="calendar-view-label">Month</span><button type="button" class="calendar-new-button" data-calendar-action="new"><svg><use href="#i-plus"/></svg>New</button></div></header><div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="calendar-grid">${cells}</div></section><aside class="agenda"><header><strong>Upcoming</strong><small>${dateField.name}</small></header>${upcoming.length ? upcoming.map(({ row, index }) => `<button type="button" class="agenda-item" data-row-index="${index}"><small>${escapeHtml(row[dateField.id])}</small><span>${escapeHtml(row.task ?? row.topic ?? row.feedback ?? 'Untitled')}</span></button>`).join('') : '<div class="agenda-empty">No records in this month</div>'}</aside></div>`;
+  bindCalendarEvents();
+}
+
+function parseSheetDate(value) {
+  if (!value) return null;
+  const match = String(value).match(/^([A-Za-z]{3})\s+(\d{1,2})$/);
+  if (!match) return null;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months.indexOf(match[1]);
+  return month < 0 ? null : new Date(2026, month, Number(match[2]));
+}
+
+function bindCalendarEvents() {
+  document.querySelectorAll('[data-calendar-action]').forEach((button) => button.addEventListener('click', () => {
+    if (button.dataset.calendarAction === 'previous') calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
+    if (button.dataset.calendarAction === 'next') calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
+    if (button.dataset.calendarAction === 'today') calendarCursor = new Date(2026, 7, 1);
+    if (button.dataset.calendarAction === 'new') addRecord();
+    renderCalendar();
+  }));
+  document.querySelectorAll('.calendar-event, .agenda-item').forEach((item) => item.addEventListener('click', () => openRecordFromProjection(Number(item.dataset.rowIndex))));
 }
 
 function switchDataset(id) {
@@ -844,7 +947,7 @@ function closeOverlay({ restoreFocus = true } = {}) {
 }
 
 function closePopovers(options) {
-  if (['field-menu', 'field-editor', 'group-menu', 'row-menu', 'location-card'].includes(overlayState.id)) closeOverlay(options);
+  if (['field-menu', 'field-editor', 'group-menu', 'row-menu'].includes(overlayState.id)) closeOverlay(options);
 }
 
 function positionPopover(popover, rect, width) {
@@ -920,10 +1023,6 @@ function runScript() {
     byId('latest-script-run').hidden = false;
     showToast('Local script complete · history saved in this sheet');
   }, 70);
-}
-
-function toggleLocationCard(trigger) {
-  openOverlay('location-card', trigger, () => positionPopover(byId('location-card'), trigger.getBoundingClientRect(), 330));
 }
 
 function openPeakShare(trigger = byId('share-button')) {
@@ -1158,8 +1257,11 @@ document.querySelectorAll('[data-ai-prompt]').forEach((button) => button.addEven
 }));
 document.querySelectorAll('.open-peakshare').forEach((button) => button.addEventListener('click', () => openPeakShare()));
 document.querySelectorAll('.saved-script').forEach((button) => button.addEventListener('click', () => {
+  const script = SCRIPT_LIBRARY[button.dataset.script];
   document.querySelectorAll('.saved-script').forEach((candidate) => candidate.classList.toggle('is-active', candidate === button));
-  byId('script-title').textContent = button.querySelector('strong').textContent;
+  byId('script-title').textContent = script.title;
+  byId('script-saved-state').textContent = script.saved;
+  byId('script-summary-code').textContent = script.summary;
   byId('script-preview').hidden = true;
   byId('script-progress').hidden = true;
 }));
@@ -1167,7 +1269,6 @@ byId('save-field').addEventListener('click', saveField);
 byId('typed-field-button').addEventListener('click', (event) => openFieldEditor(null, event.currentTarget));
 byId('sheet-title').addEventListener('change', renameDataset);
 byId('sheet-title').addEventListener('blur', renameDataset);
-byId('location-button').addEventListener('click', (event) => toggleLocationCard(event.currentTarget));
 byId('share-button').addEventListener('click', (event) => openPeakShare(event.currentTarget));
 byId('close-peakshare').addEventListener('click', closePeakShare);
 byId('cancel-peakshare').addEventListener('click', closePeakShare);
@@ -1177,7 +1278,9 @@ byId('close-scripts').addEventListener('click', closeScriptsDrawer);
 byId('preview-script').addEventListener('click', previewScript);
 byId('run-script').addEventListener('click', runScript);
 byId('save-script').addEventListener('click', () => showToast('Script saved locally in this .peaksheet'));
+byId('edit-script').addEventListener('click', () => showToast('Script editor opens in the next local step'));
 byId('new-script').addEventListener('click', () => showToast('New local script draft created'));
+byId('add-record').addEventListener('click', addRecord);
 byId('group-button').addEventListener('click', (event) => openGroupMenu(event.currentTarget));
 byId('group-field').addEventListener('change', renderGroupPreview);
 byId('apply-group').addEventListener('click', () => { const label = byId('group-field').selectedOptions[0].textContent; closePopovers(); showToast(`Grouped by ${label} · Count summary applied to this view`); });
