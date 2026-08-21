@@ -109,7 +109,7 @@
         </div>
 
         <div class="formula-bar">
-          <span id="cell-reference">D4</span><strong>ƒx</strong><input id="formula-input" value="Doing" aria-label="Formula or cell value"><span class="formula-hint"><svg><use href="#i-sparkles"/></svg>拖选范围后 Ask AI，可生成分析或公式</span>
+          <span id="cell-reference">D4</span><strong>ƒx</strong><input id="formula-input" value="Doing" aria-label="Formula or cell value"><span class="formula-hint"><svg><use href="#i-sparkles"/></svg>拖选范围后 Ask AI，可生成分析或公式 <kbd>⌘↵</kbd> Generate formula</span>
         </div>
 
         <section class="view-stage">
@@ -237,23 +237,24 @@
 
   <section class="popover group-menu" id="group-menu" hidden aria-label="Group and aggregate">
     <header><span><strong>Group & summarize</strong><small>Pivot-like answers without a pivot table</small></span><button type="button" class="close-popover" aria-label="Close">×</button></header>
-    <label>Group by<select id="group-field"><option value="status">Status</option><option value="area">Area</option><option value="priority">Priority</option></select></label>
+    <div class="rule-menu-head"><span>Group by</span><button type="button" id="add-group-rule">Add field</button></div>
+    <div class="rule-list" id="group-rules"></div>
     <label>Summary<select><option>Count records</option><option>Average numeric field</option><option>Sum numeric field</option><option>Min / Max</option></select></label>
     <div class="group-preview" id="group-preview"><span>Doing <b>2</b></span><span>Blocked <b>1</b></span><span>Todo <b>4</b></span><span>Done <b>1</b></span></div>
-    <button type="button" class="group-apply" id="apply-group">Apply to view</button>
+    <div class="view-config-actions"><button type="button" id="clear-group">Clear</button><button type="button" id="apply-group">Apply grouping</button></div>
   </section>
 
   <section class="popover view-config-menu" id="filter-menu" hidden aria-label="Filter this view">
     <header><span><strong>Filter this view</strong><small>Only matching records remain visible</small></span><button type="button" class="close-popover" aria-label="Close">×</button></header>
-    <label>Field<select id="filter-field"></select></label>
-    <label>Contains<select id="filter-value"></select></label>
+    <div class="rule-menu-head"><span>Match all of these</span><button type="button" id="add-filter-rule">Add filter</button></div>
+    <div class="rule-list" id="filter-rules"></div>
     <div class="view-config-actions"><button type="button" id="clear-filter">Clear</button><button type="button" id="apply-filter">Apply filter</button></div>
   </section>
 
   <section class="popover view-config-menu" id="sort-menu" hidden aria-label="Sort this view">
     <header><span><strong>Sort this view</strong><small>Changes this table view only</small></span><button type="button" class="close-popover" aria-label="Close">×</button></header>
-    <label>Field<select id="sort-field"></select></label>
-    <label>Order<select id="sort-direction"><option value="asc">Ascending A → Z</option><option value="desc">Descending Z → A</option></select></label>
+    <div class="rule-menu-head"><span>Sort in this order</span><button type="button" id="add-sort-rule">Add sort</button></div>
+    <div class="rule-list" id="sort-rules"></div>
     <div class="view-config-actions"><button type="button" id="clear-sort">Clear</button><button type="button" id="apply-sort">Apply sort</button></div>
   </section>
 

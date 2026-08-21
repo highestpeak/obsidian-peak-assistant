@@ -59,8 +59,10 @@ const checks = [
   ['calendar has view-native actions', js.includes("data-calendar-action=\"previous\"") && js.includes("data-calendar-action=\"today\"") && js.includes("data-calendar-action=\"new\"")],
   ['command menu has no legacy button chrome', css.includes('appearance: none') && css.includes('background: transparent !important') && !html.includes('Show location') && !html.includes('id="location-card"')],
   ['projection records return to the source row', js.includes('function openRecordFromProjection') && js.includes("projectionFlashRowIndex = rowIndex") && js.includes("cell?.scrollIntoView({ block: 'center', inline: 'nearest' })") && css.includes('@keyframes projection-row-flash')],
-  ['filter is a working table view control', html.includes('id="filter-button"') && html.includes('id="filter-menu"') && js.includes('function applyTableFilter') && js.includes('function rowMatchesTableView') && js.includes("byId('filter-field').addEventListener('change', renderFilterValueOptions)")],
-  ['sort is a working table view control', html.includes('id="sort-button"') && html.includes('id="sort-menu"') && js.includes('function applyTableSort') && js.includes('function compareRowsByField') && js.includes('tableSort.fieldId')],
+  ['multi-filter is a working table view control', html.includes('id="filter-button"') && html.includes('id="filter-menu"') && html.includes('id="add-filter-rule"') && js.includes('function applyTableFilter') && js.includes('tableFilters.every') && js.includes('filterDraft.push')],
+  ['multi-sort is a working table view control', html.includes('id="sort-button"') && html.includes('id="sort-menu"') && html.includes('id="add-sort-rule"') && js.includes('function applyTableSort') && js.includes('function compareRowsByRules') && js.includes('sortDraft.push')],
+  ['multi-group is a working table view control', html.includes('id="group-rules"') && html.includes('id="add-group-rule"') && js.includes('function groupedTableRows') && js.includes('tableGroupFields') && js.includes('groupDraft.push')],
+  ['formula bar exposes an AI shortcut', html.includes('⌘↵</kbd> Generate formula') && js.includes("byId('formula-input').addEventListener('keydown'") && js.includes("runAi('formula')")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

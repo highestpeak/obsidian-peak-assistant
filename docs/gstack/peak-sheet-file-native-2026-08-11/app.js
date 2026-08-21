@@ -103,8 +103,12 @@ let calendarCursor = new Date(2026, 7, 1);
 let projectionFlashRowIndex = null;
 let projectionFlashTimer = null;
 let tableQuery = '';
-let tableFilter = { fieldId: '', value: '' };
-let tableSort = { fieldId: '', direction: 'asc' };
+let tableFilters = [];
+let tableSorts = [];
+let tableGroupFields = [];
+let filterDraft = [];
+let sortDraft = [];
+let groupDraft = [];
 
 const byId = (id) => document.getElementById(id);
 const current = () => datasets[activeDatasetId];
@@ -159,9 +163,10 @@ function renderTable() {
   const dataset = current();
   const table = byId('data-grid');
   const materializedRows = dataset.rows.map((row, rowIndex) => ({ row, rowIndex }));
-  const rows = tableSort.fieldId
-    ? [...materializedRows].sort((left, right) => compareRowsByField(left.row, right.row, tableSort.fieldId, tableSort.direction))
+  const orderedRows = tableSorts.length
+    ? [...materializedRows].sort((left, right) => compareRowsByRules(left.row, right.row, tableSorts))
     : materializedRows;
+  const rows = tableGroupFields.length ? groupedTableRows(orderedRows) : orderedRows;
   while (rows.length < visibleRowCount(dataset)) rows.push({ row: undefined, rowIndex: rows.length });
   const columns = Array.from({ length: visibleColumnCount(dataset) }, (_, index) => dataset.fields[index]);
   updateGridWidth();
@@ -173,11 +178,15 @@ function renderTable() {
         <button type="button" class="field-menu-trigger${openFieldIndex === index ? ' is-open' : ''}" data-field-index="${index}" data-overlay-trigger="${field ? 'field-menu' : 'field-editor'}" aria-haspopup="${field ? 'menu' : 'dialog'}" aria-controls="${field ? 'field-menu' : 'field-editor'}" aria-expanded="${openFieldIndex === index}" aria-label="Configure ${escapeHtml(field?.name ?? `Column ${columnName(index)}`)}"><svg><use href="#i-chevron"/></svg></button>${field ? `<span class="field-resize-handle" data-field-index="${index}" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize ${escapeHtml(field.name)} column"></span>` : ''}
       </div>
     </th>`).join('')}<th class="add-field-head"><button type="button" class="add-field-button" id="inline-add-field" aria-label="Create typed field" title="Create Select, Formula, File, or another typed field"><svg><use href="#i-plus"/></svg></button></th></tr></thead>`;
-  const body = `<tbody>${rows.map(({ row, rowIndex }, displayIndex) => `<tr class="${row ? '' : 'is-placeholder-row'}${rowIndex === projectionFlashRowIndex ? ' is-projection-flash' : ''}"${row && !rowMatchesTableView(row) ? ' hidden' : ''}>
+  const body = `<tbody>${rows.map((entry, displayIndex) => {
+    if (entry.kind === 'group') return `<tr class="grouped-row grouped-row-level-${entry.level}"><td colspan="${columns.length + 2}"><span>${escapeHtml(entry.label)}</span><small>${entry.count} records</small></td></tr>`;
+    const { row, rowIndex } = entry;
+    return `<tr class="${row ? '' : 'is-placeholder-row'}${rowIndex === projectionFlashRowIndex ? ' is-projection-flash' : ''}"${row && !tableGroupFields.length && !rowMatchesTableView(row) ? ' hidden' : ''}>
     <td class="row-index" data-row-index="${rowIndex}">${displayIndex + 1}</td>
     ${columns.map((field, fieldIndex) => `<td class="cell ${cellClass(field)}${field ? '' : ' is-virtual'}" data-row-index="${rowIndex}" data-field-index="${fieldIndex}" tabindex="0">${renderCell(field, field ? row?.[field.id] : undefined)}</td>`).join('')}
     <td></td>
-  </tr>`).join('')}</tbody>`;
+  </tr>`;
+  }).join('')}</tbody>`;
   table.innerHTML = `${colgroup}${head}${body}`;
   bindGridEvents();
   paintSelection();
@@ -188,26 +197,48 @@ function rowMatchesTableView(row) {
   if (!row) return true;
   const queryMatches = !tableQuery || Object.values(row).some((value) => String(value ?? '').toLowerCase().includes(tableQuery));
   if (!queryMatches) return false;
-  if (!tableFilter.fieldId || !tableFilter.value) return true;
-  return String(row[tableFilter.fieldId] ?? '').toLowerCase().includes(tableFilter.value.toLowerCase());
+  return tableFilters.every(({ fieldId, value }) => String(row[fieldId] ?? '').toLowerCase().includes(value.toLowerCase()));
+}
+
+function groupedTableRows(rows) {
+  const output = [];
+  const previous = [];
+  const matchingRows = rows.filter(({ row }) => rowMatchesTableView(row));
+  matchingRows.forEach((entry) => {
+    tableGroupFields.forEach((fieldId, level) => {
+      const field = current().fields.find((candidate) => candidate.id === fieldId);
+      const value = String(entry.row[fieldId] || 'Blank');
+      if (previous[level] === value && previous.slice(0, level).every((parent, index) => parent === String(entry.row[tableGroupFields[index]] || 'Blank'))) return;
+      previous.length = level + 1;
+      previous[level] = value;
+      const count = matchingRows.filter(({ row }) => tableGroupFields.slice(0, level + 1).every((id) => String(row[id] || 'Blank') === String(entry.row[id] || 'Blank'))).length;
+      output.push({ kind: 'group', level, label: `${field?.name ?? 'Field'}: ${value}`, count });
+    });
+    output.push(entry);
+  });
+  return output;
 }
 
 function updateTableRecordCount() {
   const materialized = nonEmptyRows();
   const visible = materialized.filter(rowMatchesTableView).length;
-  byId('record-count').textContent = String(tableQuery || tableFilter.fieldId ? visible : materialized.length);
-  byId('filter-button')?.classList.toggle('is-active', Boolean(tableFilter.fieldId));
-  byId('sort-button')?.classList.toggle('is-active', Boolean(tableSort.fieldId));
+  byId('record-count').textContent = String(tableQuery || tableFilters.length ? visible : materialized.length);
+  byId('filter-button')?.classList.toggle('is-active', tableFilters.length > 0);
+  byId('sort-button')?.classList.toggle('is-active', tableSorts.length > 0);
+  byId('group-button')?.classList.toggle('is-active', tableGroupFields.length > 0);
 }
 
-function compareRowsByField(left, right, fieldId, direction) {
-  const field = current().fields.find((candidate) => candidate.id === fieldId);
-  const leftValue = sortableValue(left[fieldId], field?.type);
-  const rightValue = sortableValue(right[fieldId], field?.type);
-  const compared = typeof leftValue === 'number' && typeof rightValue === 'number'
-    ? leftValue - rightValue
-    : leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: 'base' });
-  return direction === 'desc' ? -compared : compared;
+function compareRowsByRules(left, right, rules) {
+  for (const { fieldId, direction } of rules) {
+    const field = current().fields.find((candidate) => candidate.id === fieldId);
+    const leftValue = sortableValue(left[fieldId], field?.type);
+    const rightValue = sortableValue(right[fieldId], field?.type);
+    const compared = typeof leftValue === 'number' && typeof rightValue === 'number'
+      ? leftValue - rightValue
+      : leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: 'base' });
+    if (compared !== 0) return direction === 'desc' ? -compared : compared;
+  }
+  return 0;
 }
 
 function renderCell(field, value) {
@@ -865,7 +896,7 @@ function openRecordFromProjection(rowIndex) {
   const taskFieldIndex = Math.max(0, current().fields.findIndex((field) => ['task', 'feedback', 'topic', 'user'].includes(field.id)));
   if (!rowMatchesTableView(current().rows[rowIndex])) {
     tableQuery = '';
-    tableFilter = { fieldId: '', value: '' };
+    tableFilters = [];
     byId('table-search').value = '';
   }
   gridState = { activeCell: { row: rowIndex, field: taskFieldIndex }, anchorRow: rowIndex, anchorField: taskFieldIndex, focusRow: rowIndex, focusField: taskFieldIndex, mode: 'navigation' };
@@ -1088,6 +1119,9 @@ function closePeakShare() {
 
 function openGroupMenu(anchor) {
   openOverlay('group-menu', anchor, () => {
+    groupDraft = [...tableGroupFields];
+    if (!groupDraft.length && current().fields.length) groupDraft = [(current().fields.find((field) => field.id === 'status') ?? current().fields[0]).id];
+    renderGroupRules();
     renderGroupPreview();
     positionPopover(byId('group-menu'), anchor.getBoundingClientRect(), 286);
   });
@@ -1097,32 +1131,33 @@ function fieldOptions(selectedId = '') {
   return current().fields.map((field) => `<option value="${escapeHtml(field.id)}"${field.id === selectedId ? ' selected' : ''}>${escapeHtml(field.name)}</option>`).join('');
 }
 
+function fieldValueOptions(fieldId, selectedValue = '') {
+  const values = [...new Set(nonEmptyRows().map((row) => String(row[fieldId] ?? '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return `<option value="">Choose value</option>${values.map((value) => `<option value="${escapeHtml(value)}"${value === selectedValue ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}`;
+}
+
 function openFilterMenu(anchor) {
   if (!current().fields.length) {
     showToast('Add a field before filtering this view');
     return;
   }
   openOverlay('filter-menu', anchor, () => {
-    const fallbackFieldId = current().fields[0].id;
-    byId('filter-field').innerHTML = fieldOptions(tableFilter.fieldId || fallbackFieldId);
-    renderFilterValueOptions();
+    filterDraft = tableFilters.map((rule) => ({ ...rule }));
+    if (!filterDraft.length) filterDraft = [{ fieldId: current().fields[0].id, value: '' }];
+    renderFilterRules();
     positionPopover(byId('filter-menu'), anchor.getBoundingClientRect(), 286);
   });
 }
 
-function renderFilterValueOptions() {
-  const fieldId = byId('filter-field').value;
-  const values = [...new Set(nonEmptyRows().map((row) => String(row[fieldId] ?? '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  byId('filter-value').innerHTML = `<option value="">Any value</option>${values.map((value) => `<option value="${escapeHtml(value)}"${value === tableFilter.value ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}`;
+function renderFilterRules() {
+  byId('filter-rules').innerHTML = filterDraft.map((rule, index) => `<div class="rule-row" data-rule-index="${index}"><select class="filter-rule-field" aria-label="Filter field">${fieldOptions(rule.fieldId)}</select><select class="filter-rule-value" aria-label="Filter value">${fieldValueOptions(rule.fieldId, rule.value)}</select><button type="button" class="remove-rule" data-remove-filter="${index}" aria-label="Remove filter">×</button></div>`).join('');
 }
 
 function applyTableFilter() {
-  const fieldId = byId('filter-field').value;
-  const value = byId('filter-value').value;
-  tableFilter = value ? { fieldId, value } : { fieldId: '', value: '' };
+  tableFilters = filterDraft.filter((rule) => rule.fieldId && rule.value);
   renderTable();
   closePopovers();
-  showToast(value ? `Filtered ${current().fields.find((field) => field.id === fieldId)?.name ?? 'view'} by “${value}”` : 'Filter cleared');
+  showToast(tableFilters.length ? `${tableFilters.length} filters applied with AND` : 'Filter cleared');
 }
 
 function openSortMenu(anchor) {
@@ -1131,11 +1166,15 @@ function openSortMenu(anchor) {
     return;
   }
   openOverlay('sort-menu', anchor, () => {
-    const fallbackFieldId = current().fields[0].id;
-    byId('sort-field').innerHTML = fieldOptions(tableSort.fieldId || fallbackFieldId);
-    byId('sort-direction').value = tableSort.direction;
+    sortDraft = tableSorts.map((rule) => ({ ...rule }));
+    if (!sortDraft.length) sortDraft = [{ fieldId: current().fields[0].id, direction: 'asc' }];
+    renderSortRules();
     positionPopover(byId('sort-menu'), anchor.getBoundingClientRect(), 286);
   });
+}
+
+function renderSortRules() {
+  byId('sort-rules').innerHTML = sortDraft.map((rule, index) => `<div class="rule-row" data-rule-index="${index}"><select class="sort-rule-field" aria-label="Sort field">${fieldOptions(rule.fieldId)}</select><select class="sort-rule-direction" aria-label="Sort order"><option value="asc"${rule.direction === 'asc' ? ' selected' : ''}>A → Z</option><option value="desc"${rule.direction === 'desc' ? ' selected' : ''}>Z → A</option></select><button type="button" class="remove-rule" data-remove-sort="${index}" aria-label="Remove sort">×</button></div>`).join('');
 }
 
 function sortableValue(value, type) {
@@ -1146,24 +1185,25 @@ function sortableValue(value, type) {
 }
 
 function applyTableSort() {
-  const fieldId = byId('sort-field').value;
-  const direction = byId('sort-direction').value;
-  const field = current().fields.find((candidate) => candidate.id === fieldId);
-  tableSort = { fieldId, direction };
+  tableSorts = sortDraft.filter((rule) => rule.fieldId);
   renderTable();
   closePopovers();
-  showToast(`Sorted by ${field?.name ?? 'field'} · ${direction === 'asc' ? 'ascending' : 'descending'}`);
+  showToast(tableSorts.length ? `${tableSorts.length} sort rules applied in order` : 'Sort cleared');
 }
 
 function renderGroupPreview() {
-  const fieldId = byId('group-field').value;
+  const fields = groupDraft.map((fieldId) => current().fields.find((field) => field.id === fieldId)).filter(Boolean);
   const counts = new Map();
   nonEmptyRows().forEach((row) => {
-    const label = String(row[fieldId] || 'Blank');
+    const label = fields.map((field) => String(row[field.id] || 'Blank')).join(' · ');
     counts.set(label, (counts.get(label) ?? 0) + 1);
   });
   const entries = [...counts.entries()].slice(0, 6);
   byId('group-preview').innerHTML = entries.length ? entries.map(([label, count]) => `<span>${escapeHtml(label)} <b>${count}</b></span>`).join('') : '<span>No materialized rows <b>0</b></span>';
+}
+
+function renderGroupRules() {
+  byId('group-rules').innerHTML = groupDraft.map((fieldId, index) => `<div class="rule-row" data-rule-index="${index}"><select class="group-rule-field" aria-label="Group field">${fieldOptions(fieldId)}</select><span class="rule-order">${index + 1}</span><button type="button" class="remove-rule" data-remove-group="${index}" aria-label="Remove group field">×</button></div>`).join('');
 }
 
 function openAiDrawer() {
@@ -1398,24 +1438,86 @@ byId('new-script').addEventListener('click', () => showToast('New local script d
 byId('add-record').addEventListener('click', addRecord);
 byId('filter-button').addEventListener('click', (event) => openFilterMenu(event.currentTarget));
 byId('sort-button').addEventListener('click', (event) => openSortMenu(event.currentTarget));
-byId('filter-field').addEventListener('change', renderFilterValueOptions);
+byId('add-filter-rule').addEventListener('click', () => {
+  filterDraft.push({ fieldId: current().fields[filterDraft.length % current().fields.length]?.id ?? '', value: '' });
+  renderFilterRules();
+});
+byId('filter-rules').addEventListener('change', (event) => {
+  const index = Number(event.target.closest('.rule-row')?.dataset.ruleIndex);
+  if (!Number.isInteger(index)) return;
+  if (event.target.matches('.filter-rule-field')) filterDraft[index] = { fieldId: event.target.value, value: '' };
+  if (event.target.matches('.filter-rule-value')) filterDraft[index] = { ...filterDraft[index], value: event.target.value };
+  renderFilterRules();
+});
+byId('filter-rules').addEventListener('click', (event) => {
+  const index = Number(event.target.closest('[data-remove-filter]')?.dataset.removeFilter);
+  if (!Number.isInteger(index)) return;
+  filterDraft.splice(index, 1);
+  renderFilterRules();
+});
 byId('apply-filter').addEventListener('click', applyTableFilter);
 byId('clear-filter').addEventListener('click', () => {
-  tableFilter = { fieldId: '', value: '' };
+  tableFilters = [];
   renderTable();
   closePopovers();
   showToast('Filter cleared');
 });
+byId('add-sort-rule').addEventListener('click', () => {
+  sortDraft.push({ fieldId: current().fields[sortDraft.length % current().fields.length]?.id ?? '', direction: 'asc' });
+  renderSortRules();
+});
+byId('sort-rules').addEventListener('change', (event) => {
+  const index = Number(event.target.closest('.rule-row')?.dataset.ruleIndex);
+  if (!Number.isInteger(index)) return;
+  if (event.target.matches('.sort-rule-field')) sortDraft[index] = { ...sortDraft[index], fieldId: event.target.value };
+  if (event.target.matches('.sort-rule-direction')) sortDraft[index] = { ...sortDraft[index], direction: event.target.value };
+  renderSortRules();
+});
+byId('sort-rules').addEventListener('click', (event) => {
+  const index = Number(event.target.closest('[data-remove-sort]')?.dataset.removeSort);
+  if (!Number.isInteger(index)) return;
+  sortDraft.splice(index, 1);
+  renderSortRules();
+});
 byId('apply-sort').addEventListener('click', applyTableSort);
 byId('clear-sort').addEventListener('click', () => {
-  tableSort = { fieldId: '', direction: 'asc' };
+  tableSorts = [];
   renderTable();
   closePopovers();
   showToast('Original table order restored');
 });
 byId('group-button').addEventListener('click', (event) => openGroupMenu(event.currentTarget));
-byId('group-field').addEventListener('change', renderGroupPreview);
-byId('apply-group').addEventListener('click', () => { const label = byId('group-field').selectedOptions[0].textContent; closePopovers(); showToast(`Grouped by ${label} · Count summary applied to this view`); });
+byId('add-group-rule').addEventListener('click', () => {
+  groupDraft.push(current().fields[groupDraft.length % current().fields.length]?.id ?? '');
+  renderGroupRules();
+  renderGroupPreview();
+});
+byId('group-rules').addEventListener('change', (event) => {
+  const index = Number(event.target.closest('.rule-row')?.dataset.ruleIndex);
+  if (!Number.isInteger(index) || !event.target.matches('.group-rule-field')) return;
+  groupDraft[index] = event.target.value;
+  renderGroupRules();
+  renderGroupPreview();
+});
+byId('group-rules').addEventListener('click', (event) => {
+  const index = Number(event.target.closest('[data-remove-group]')?.dataset.removeGroup);
+  if (!Number.isInteger(index)) return;
+  groupDraft.splice(index, 1);
+  renderGroupRules();
+  renderGroupPreview();
+});
+byId('apply-group').addEventListener('click', () => {
+  tableGroupFields = groupDraft.filter(Boolean);
+  renderTable();
+  closePopovers();
+  showToast(tableGroupFields.length ? `${tableGroupFields.length} group fields applied in order` : 'Grouping cleared');
+});
+byId('clear-group').addEventListener('click', () => {
+  tableGroupFields = [];
+  renderTable();
+  closePopovers();
+  showToast('Grouping cleared');
+});
 byId('ask-ai-button').addEventListener('click', openAiDrawer);
 byId('close-ai').addEventListener('click', closeAiDrawer);
 byId('ai-submit').addEventListener('click', () => runAi());
@@ -1427,6 +1529,13 @@ byId('ai-prompt').addEventListener('keydown', (event) => {
   if (event.key !== 'Enter' || event.shiftKey) return;
   event.preventDefault();
   runAi();
+});
+byId('formula-input').addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || !event.metaKey) return;
+  event.preventDefault();
+  openAiDrawer();
+  byId('ai-prompt').value = 'Add a Days left formula column for unfinished tasks';
+  runAi('formula');
 });
 byId('table-search').addEventListener('input', (event) => {
   tableQuery = event.target.value.trim().toLowerCase();

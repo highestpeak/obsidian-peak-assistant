@@ -84,6 +84,14 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 
 Table、Board、Calendar 不是三个独立页面，而是同一个 `.peaksheet` 的 layout：同一行记录、字段、筛选/排序语义、revision 和 `New` 操作都保持一致。这个心智与 Notion database views 一致：Board 按 `Status` 字段分组，并将卡片拖入另一列直接改写该字段；Calendar 按选定 Date 字段放置相同行，点击卡片回到 Table 的同一记录，月份导航只改变当前 view 的窗口。Notion 也将 Board 定义为按属性分组、Calendar 定义为按 Date 属性显示的同一数据库视图。[Notion database views](https://www.notion.com/help/views-filters-and-sorts)
 
+## 多规则视图与 Formula 快捷键（V5.4）
+
+- **Filter**：可叠加多条 `field + value`，全部条件以 AND 联合；一条规则的字段变化会立即重建可选值。
+- **Sort**：可叠加多条 `field + direction`，从上到下依次作为排序优先级；它只改变 Table 的呈现顺序，不改写 canonical Dataset。
+- **Group**：可叠加多层字段，Table 会插入对应层级的分组行和 record count，而不再只是一次 toast。Filter 先于 Group 生效，Sort 决定组内记录顺序。
+- **Projection return**：从 Board / Calendar 点击记录会回到 Table 的同一 source row，居中滚动并短暂闪烁整行。
+- **Formula shortcut**：公式栏明确显示 `⌘↵ Generate formula`；焦点在该输入框时触发 Ask AI 的公式生成预览，仍须在侧栏确认后才写入新字段。
+
 ## 验证
 
 ```bash

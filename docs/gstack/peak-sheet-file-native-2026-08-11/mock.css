@@ -125,6 +125,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .formula-bar input:focus { border-color: var(--accent-line); }
 .formula-hint { display: flex; align-items: center; min-width: 0; padding-left: 10px; gap: 5px; color: var(--ink-faint); font-size: 9.5px; white-space: nowrap; }
 .formula-hint svg { width: 12px; height: 12px; color: var(--accent); }
+.formula-hint kbd { margin-left: 4px; padding: 2px 4px; border: 1px solid #d6d0e3; border-radius: 3px; color: #5e468c; background: #faf8fd; font: 650 8px ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .view-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .view-panel { display: none; width: 100%; height: 100%; }
@@ -177,6 +178,11 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .data-grid td.cell[contenteditable="true"] { z-index: 3; outline: 1.5px solid var(--accent); background: #fff; }
 .data-grid tbody tr.is-projection-flash td { animation: projection-row-flash 1.45s ease-out; }
 @keyframes projection-row-flash { 0%, 28% { background: #eee7fb; } 100% { background: transparent; } }
+.data-grid tbody tr.grouped-row td { height: 27px; padding: 0 12px; border-top: 1px solid #dbd6e5; border-bottom-color: #e8e5ed; color: #5d4b7f; background: #f8f6fb; font-size: 9px; font-weight: 650; }
+.data-grid tbody tr.grouped-row td span { margin-right: 7px; }
+.data-grid tbody tr.grouped-row td small { color: var(--ink-faint); font-size: 8px; font-weight: 500; }
+.data-grid tbody tr.grouped-row-level-1 td { padding-left: 26px; background: #fbfafe; }
+.data-grid tbody tr.grouped-row-level-2 td { padding-left: 40px; }
 .cell-primary { color: var(--ink); font-weight: 590; }
 .cell-number { text-align: right !important; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .cell-date { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -385,6 +391,15 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .group-menu header { border-bottom: 1px solid var(--line); }
 .group-menu label { display: flex; flex-direction: column; margin-top: 10px; gap: 4px; color: var(--ink-faint); font-size: 8px; text-transform: uppercase; letter-spacing: .05em; }
 .group-menu select { height: 29px; padding: 0 7px; border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--ink); font-size: 9px; text-transform: none; }
+.rule-menu-head { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; color: var(--ink-faint); font-size: 8px; text-transform: uppercase; letter-spacing: .05em; }
+.rule-menu-head button { height: 22px; padding: 0 5px; border-radius: 3px; color: var(--accent); font-size: 8px; text-transform: none; letter-spacing: 0; }
+.rule-menu-head button:hover { background: var(--accent-soft); }
+.rule-list { display: flex; margin-top: 6px; flex-direction: column; gap: 5px; }
+.rule-row { display: grid; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(82px, .8fr) 23px; gap: 5px; }
+.rule-row select { min-width: 0; height: 28px; padding: 0 5px; border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--ink); font-size: 8.5px; }
+.remove-rule { display: grid; width: 23px; height: 23px; place-items: center; border-radius: 3px; color: var(--ink-faint); font-size: 13px; }
+.remove-rule:hover { color: #9c4c56; background: var(--red-soft); }
+.rule-order { display: grid; min-width: 0; height: 28px; place-items: center; border: 1px solid var(--line); border-radius: 3px; color: var(--accent); background: #faf8fd; font: 650 8px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .group-preview { display: grid; grid-template-columns: repeat(2, 1fr); margin-top: 10px; border: 1px solid var(--line); }
 .group-preview span { display: flex; min-height: 28px; align-items: center; justify-content: space-between; padding: 0 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: 8px; }
 .group-preview span:nth-child(even) { border-right: 0; }
