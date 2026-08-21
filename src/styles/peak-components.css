@@ -21507,6 +21507,15 @@
   margin-top: 8px;
 }
 
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-file-type-body.is-list-only {
+  display: block;
+  min-height: 0;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-file-type-body.is-list-only .pk-vi-file-type-list {
+  width: 100%;
+}
+
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-inventory-pie-panel > .pk-vi-pie-readout {
   min-height: 13px;
   margin-top: 4px;

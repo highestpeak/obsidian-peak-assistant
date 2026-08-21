@@ -338,10 +338,6 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 		const breakdown = object.id === 'files'
 			? inventoryPreviewItems(canonicalBreakdown, config.inventoryPreviewTypeLimit, config.inventoryTypeGroups ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryTypeGroups)
 			: canonicalBreakdown;
-		const previewIsGrouped = breakdown.length < canonicalBreakdown.length;
-		const coverageNote = previewIsGrouped
-			? `${canonicalBreakdown.length} groups · largest ${Math.max(0, breakdown.length - 1)} + Other formats`
-			: object.coverageNote;
 		const distributionUnavailable = object.id !== 'files'
 			&& (object.breakdownStatus === 'unavailable' || canonicalBreakdown.length === 0);
 		const statusLabel = object.id === 'files'
@@ -355,7 +351,7 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 			<div className="pk-vi-inventory-hover" role="group" aria-label={`${object.label} distribution`}>
 				<div className="pk-vi-hover-head"><div><strong>{presentation.title}</strong><span>{presentation.description}</span></div><small className={distributionUnavailable ? 'is-unavailable' : ''}>{statusLabel}</small></div>
 				<InventoryDistribution total={object.count} label={object.label} items={breakdown} canonicalGroupCount={canonicalBreakdown.length} colors={config.fileTypeColors} large={object.id === 'files'} unavailable={distributionUnavailable} unavailableTitle={presentation.unavailableTitle} unavailableDescription={presentation.unavailableDescription} />
-				<div className="pk-vi-hover-footer"><span>{coverageNote ?? 'Canonical records only.'}</span><Button variant="ghost" size="sm" onClick={open}>{object.id === 'files' ? 'Open full file inventory' : `Open ${object.label}`}<ChevronRight size={13} /></Button></div>
+				<div className="pk-vi-hover-footer"><Button variant="ghost" size="sm" onClick={open}>{object.id === 'files' ? 'Open full file inventory' : `Open ${object.label}`}<ChevronRight size={13} /></Button></div>
 			</div>
 		</div>;
 	})}<PlannedSessionCard />{objects.slice(2).map((object) => {
@@ -415,7 +411,7 @@ function InventoryDistribution({ total, label, items, canonicalGroupCount, color
 			offset += item.count;
 			const end = total > 0 ? offset / total : 0;
 			return <path key={item.id} className={`pk-vi-pie-segment ${activeId && activeId !== item.id ? 'is-muted' : ''}`} d={pieSlicePath(start, end)} style={{ fill: palette[index % palette.length] }} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} />;
-		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong><span>{unavailable ? 'Buckets not available' : label === 'Files' ? `${canonicalGroupCount} detected extensions · grouped for clarity` : `${canonicalGroupCount} canonical ${canonicalGroupCount === 1 ? 'group' : 'groups'}`}</span><span className="pk-vi-pie-readout">{unavailable ? 'Distribution not available' : activeId ? items.find((item) => item.id === activeId)?.label : 'Hover a slice or group'}</span></div>
+		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong></div>
 		<div className="pk-vi-inventory-legend">{unavailable
 			? <div className="pk-vi-inventory-unavailable" role="status"><strong>{unavailableTitle}</strong><span>{unavailableDescription}</span></div>
 			: items.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[index % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
@@ -597,16 +593,7 @@ function VaultContents({ snapshot, runtime, config, selectedExtension, onSelectE
 	onSelectExtension: (extension: string | null) => void;
 	onOpenTask: (taskId: string) => void;
 }) {
-	const unreadable = snapshot.tasks.find((task) => task.kind === 'unreadable-files')?.atomicItems.length ?? 0;
-	const actualTypes = snapshot.fileTypes.filter((type) => type.count > 0).length;
 	return <div className="pk-vi-map-layout">
-		<section className="pk-vi-content-summary" aria-label="Vault contents summary">
-			<span><small>Discovered</small><strong>{formatNumber(snapshot.indexReadiness.discovered)}</strong></span>
-			<span><small>Search ready</small><strong>{snapshot.indexReadiness.searchReady === null ? '—' : formatNumber(snapshot.indexReadiness.searchReady)}</strong></span>
-			<span><small>Pending / excluded</small><strong>{snapshot.indexReadiness.pendingOrExcluded === null ? '—' : formatNumber(snapshot.indexReadiness.pendingOrExcluded)}</strong></span>
-			<span><small>Actual file types</small><strong>{formatNumber(actualTypes)}</strong></span>
-			<span className={unreadable > 0 ? 'is-warning' : ''}><small>Unreadable</small><strong>{formatNumber(unreadable)}</strong></span>
-		</section>
 		<FileTypeDistribution snapshot={snapshot} config={config} selected={selectedExtension} onSelect={onSelectExtension} />
 		<KnowledgeGraph snapshot={snapshot} runtime={runtime} selectedExtension={selectedExtension} />
 		{snapshot.tasks.some((task) => task.kind === 'community-membership' || task.kind === 'community-structure' || task.kind === 'unusual-notes') && (
@@ -653,18 +640,10 @@ function FileTypeDistribution({ snapshot, config, selected, onSelect }: {
 }) {
 	const [hovered, setHovered] = useState<string | null>(null);
 	const shown = snapshot.fileTypes.slice(0, 16);
-	const total = snapshot.fileTypes.reduce((sum, type) => sum + type.count, 0);
 	const active = hovered ?? selected;
-	let cursor = 0;
-	const slices = shown.map((type, index) => {
-		const start = cursor;
-		cursor += type.share;
-		return { type, color: config.fileTypeColors[index % config.fileTypeColors.length], start, end: cursor };
-	});
 	return <section className="pk-vi-card pk-vi-file-types">
 		<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Files by actual type</span><span className="pk-vi-card-caption">Select a type to focus the knowledge map without changing the source Vault.</span></div><Button variant="ghost" size="sm" onClick={() => onSelect(null)} className={!selected ? 'is-active' : ''}>All files</Button></div>
-			<div className="pk-vi-file-type-body">
-				<div className="pk-vi-donut"><svg viewBox="0 0 100 100" aria-label="File type distribution" onMouseLeave={() => setHovered(null)}>{slices.map((slice) => <path key={slice.type.extension} className={`${active === slice.type.extension ? 'is-active' : ''} ${active && active !== slice.type.extension ? 'is-muted' : ''}`} d={pieSlicePath(slice.start, slice.end)} fill={slice.color} onMouseEnter={() => setHovered(slice.type.extension)} onFocus={() => setHovered(slice.type.extension)} onBlur={() => setHovered(null)} tabIndex={0} />)}{cursor < 1 && <path d={pieSlicePath(cursor, 1)} fill="#dedce4" />}</svg><span><strong>{formatNumber(total)}</strong><small>{active ? fileTypeLabel(active) : 'files'}</small></span></div>
+			<div className="pk-vi-file-type-body is-list-only">
 				<div className="pk-vi-file-type-list">{shown.map((type, index) => <Button key={type.extension} variant="ghost" className={`${active === type.extension ? 'is-active' : ''} ${active && active !== type.extension ? 'is-muted' : ''}`} aria-pressed={selected === type.extension} onMouseEnter={() => setHovered(type.extension)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(type.extension)} onBlur={() => setHovered(null)} onClick={() => onSelect(selected === type.extension ? null : type.extension)}>
 					<i style={{ backgroundColor: config.fileTypeColors[index % config.fileTypeColors.length] }} /><span>{fileTypeLabel(type.extension)}</span><strong>{formatNumber(type.count)}</strong><small>{Math.round(type.share * 100)}%</small>
 			</Button>)}</div>

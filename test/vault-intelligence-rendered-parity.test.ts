@@ -87,7 +87,7 @@ assert.match(html, /M4 7\.5 12 3l8 4\.5v9L12 21l-8-4\.5z/, 'Header uses the Mock
 assert.match(html, /M4 5h16v11H8l-4 4z/, 'Chat inventory uses the Mock object icon path');
 assert.match(html, /M18\.375 2\.625a1 1 0 0 1 3 3/, 'Composer inventory uses the Mock composer icon path');
 assert.doesNotMatch(html, /pk-vi-inventory-item is-projects/, 'Projects must not remain a standalone inventory card');
-assert.match(html, /Projects are organized within Chats/, 'Projects must appear as a Chats grouping, not a separate product object');
+assert.match(source, /Projects are organized within Chats/, 'Projects must appear as a Chats grouping, not a separate product object');
 assert.match(html, /Sessions not implemented/, 'the new Session card must remain explicitly unavailable until its own contract exists');
 assert.equal((html.match(/pk-vi-inventory-unavailable/g) ?? []).length, 1, 'only the explicitly planned Session card may be unavailable');
 assert.match(html, />Chats</);
@@ -148,6 +148,10 @@ assert.match(source, /kind: 'file-type'/, 'Scan selected type carries a typed fi
 assert.match(source, /initialSelector: VaultScanScopeSelector \| null/, 'Scan setup preserves that selected-type scope instead of discarding it on navigation');
 assert.match(source, /pk-vi-community-summary/, 'Vault contents keeps the Community summary inside the graph workspace');
 assert.doesNotMatch(source, /pk-vi-map-text-entry/, 'Vault contents must not retain the old standalone map-text card subtree');
+assert.doesNotMatch(source, /pk-vi-content-summary/, 'Vault contents must not repeat index readiness counters above the map');
+assert.doesNotMatch(source, /pk-vi-donut/, 'Vault contents must not repeat file type distribution as a second pie chart');
+assert.doesNotMatch(source, /label: 'Data'/, 'file groups must not use an undefined Data bucket');
+assert.doesNotMatch(source, /pk-vi-pie-readout/, 'inventory pie cards must not repeat hover or grouping copy below the chart');
 
 const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snapshot);
 const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };
@@ -199,7 +203,6 @@ assert.match(zeroActivityHtml, /pk-vi-activity-range-window/, 'zero Activity kee
 assert.match(zeroActivityHtml, /No work sessions yet/, 'zero Activity uses a stable empty session treatment');
 
 const zeroMapHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'map' }));
-assert.match(zeroMapHtml, /pk-vi-content-summary/, 'zero Vault contents keeps the five-stat summary');
 assert.match(zeroMapHtml, /pk-vi-file-types/, 'zero Vault contents keeps the file-distribution workspace');
 assert.match(zeroMapHtml, /pk-vi-community-summary/, 'zero Vault contents keeps the graph-integrated Community region');
 assert.match(zeroMapHtml, /No Communities available until the Knowledge Index is built/, 'zero Vault contents uses the reference-compatible Community empty treatment');
@@ -279,7 +282,7 @@ const overflowRuntime: VaultIntelligenceWorkspaceRuntime = {
 };
 const overflowHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: overflowRuntime }));
 assert.equal((overflowHtml.match(/pk-vi-pie-segment/g) ?? []).length, 4, 'unsupported extensions must collapse into one Other formats bucket while the three real object totals stay visible');
-assert.match(overflowHtml, /49 detected extensions/);
+assert.doesNotMatch(overflowHtml, /49 detected extensions|49 groups/, 'pie cards must not repeat extension-count copy below the chart');
 assert.match(overflowHtml, /Other formats/);
 assert.match(overflowHtml, />100%<\/span>/, 'readiness visuals must cap inconsistent projection counts at 100%');
 assert.match(overflowHtml, /528 search records exceed 100 discovered objects/);
