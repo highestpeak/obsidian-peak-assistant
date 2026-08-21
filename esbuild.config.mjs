@@ -6,8 +6,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import gracefulFsQueuePatch from "./scripts/build/graceful-fs-queue-patch.cjs";
+import reactReduxContextPatch from "./scripts/build/react-redux-context-patch.cjs";
 
 const { gracefulFsQueueDataPropertyPlugin } = gracefulFsQueuePatch;
+const { reactReduxLocalContextPlugin } = reactReduxContextPatch;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -151,8 +153,13 @@ function createBasePlugins() {
 			// imports at the CJS barrel creates one full icon namespace wrapper per
 			// importing module and millions of accessor closures at runtime.
 			"lucide-react": path.resolve(__dirname, "node_modules/lucide-react/dist/esm/lucide-react.js"),
+			// Recharts reaches React Redux through its CJS entry under the Node
+			// platform default. Keep one patchable, tree-shakeable ESM graph so its
+			// renderer-global Context registry can remain bundle-local.
+			"react-redux": path.resolve(__dirname, "node_modules/react-redux/dist/react-redux.mjs"),
 		}),
 		gracefulFsQueueDataPropertyPlugin,
+		reactReduxLocalContextPlugin,
 		fixImportMetaPlugin,
 	];
 }

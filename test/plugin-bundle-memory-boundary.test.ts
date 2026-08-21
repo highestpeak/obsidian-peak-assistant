@@ -16,6 +16,14 @@ const {
 	gracefulFsQueueDataPropertyPlugin: Plugin;
 	patchGracefulFsQueuePublisher: (source: string) => string;
 };
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const {
+	patchReactReduxContextRegistry,
+	reactReduxLocalContextPlugin,
+} = require('../scripts/build/react-redux-context-patch.cjs') as {
+	patchReactReduxContextRegistry: (source: string) => string;
+	reactReduxLocalContextPlugin: Plugin;
+};
 
 const ROOT = process.cwd();
 
@@ -34,6 +42,8 @@ function testProductionBundleBoundaries(): void {
 	const evalMemoryProbe = source('scripts/measure-eval-mem.mjs');
 
 	assert.match(config, /gracefulFsQueueDataPropertyPlugin/);
+	assert.match(config, /reactReduxLocalContextPlugin/);
+	assert.match(config, /react-redux\/dist\/react-redux\.mjs/);
 	assert.match(config, /lucide-react\/dist\/esm\/lucide-react\.js/);
 	assert.doesNotMatch(config, /lucide-react\/dist\/cjs\/lucide-react\.js/);
 	assert.doesNotMatch(runtime, /^import \{ parsePeakSheetXlsx \}/m);
@@ -63,6 +73,51 @@ function testProductionBundleBoundaries(): void {
 	assert.match(main, /BinaryDocumentTextWorkerClient/);
 	assert.match(workerClient, /taskTail/);
 	assert.match(workerClient, /worker\.terminate\(\)\.then/);
+}
+
+function testReactReduxPatchIsFailLoud(): void {
+	const original = source('node_modules/react-redux/dist/react-redux.mjs');
+	const patched = patchReactReduxContextRegistry(original);
+	assert.match(patched, /const peakBundleContextMap = \/\* @__PURE__ \*\/ new Map\(\);/);
+	assert.match(patched, /const contextMap = peakBundleContextMap;/);
+	assert.doesNotMatch(patched, /gT\[ContextKey\] \?\?=/);
+	assert.throws(
+		() => patchReactReduxContextRegistry(patched),
+		/react-redux context registry pattern not found/,
+	);
+}
+
+async function testReactReduxBundleDoesNotPublishContextMap(): Promise<void> {
+	const directory = mkdtempSync(path.join(tmpdir(), 'peak-react-redux-memory-'));
+	try {
+		const entry = path.join(directory, 'entry.mjs');
+		const output = path.join(directory, 'bundle.cjs');
+		const reactReduxPath = path.join(ROOT, 'node_modules/react-redux/dist/react-redux.mjs');
+		writeFileSync(entry, `import ${JSON.stringify(reactReduxPath)};`);
+		await build({
+			entryPoints: [entry],
+			bundle: true,
+			define: { 'process.env.NODE_ENV': '"production"' },
+			format: 'cjs',
+			platform: 'node',
+			outfile: output,
+			plugins: [reactReduxLocalContextPlugin],
+			logLevel: 'silent',
+		});
+		const probe = path.join(directory, 'probe.cjs');
+		writeFileSync(probe, [
+			`const key = Symbol.for('react-redux-context');`,
+			`delete globalThis[key];`,
+			`const bundle = ${JSON.stringify(output)};`,
+			`require(bundle);`,
+			`delete require.cache[require.resolve(bundle)];`,
+			`require(bundle);`,
+			`if (globalThis[key] !== undefined) process.exit(2);`,
+		].join('\n'));
+		execFileSync(process.execPath, [probe], { stdio: 'pipe' });
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
 }
 
 function testGracefulFsPatchIsFailLoud(): void {
@@ -105,7 +160,9 @@ async function testBundledDescriptorDoesNotCaptureAGetter(): Promise<void> {
 async function run(): Promise<void> {
 	testProductionBundleBoundaries();
 	testGracefulFsPatchIsFailLoud();
+	testReactReduxPatchIsFailLoud();
 	await testBundledDescriptorDoesNotCaptureAGetter();
+	await testReactReduxBundleDoesNotPublishContextMap();
 	console.log('plugin bundle memory boundary: passed');
 }
 
