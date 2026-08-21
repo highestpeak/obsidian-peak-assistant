@@ -629,7 +629,9 @@
 		"starredEmpty": "No starred messages yet.",
 		"plansSectionTitle": "Project plans",
 		"plansSectionDesc": "Plans are ongoing project-level state, not a single Agent run's temporary steps.",
-		"tabsAriaLabel": "Project views"
+		"tabsAriaLabel": "Project views",
+		"unavailableTitle": "Project not available",
+		"unavailableDetail": "The project may have been removed or is still loading. Its workspace layout is kept in place so you can return without a disruptive view change."
 	},
 	"density": {
 		"narrowCollapsePx": 894,

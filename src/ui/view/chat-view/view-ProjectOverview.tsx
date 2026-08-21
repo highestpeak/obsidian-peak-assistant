@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Folder } from 'lucide-react';
 import { useProjectLoad } from './hooks';
 import { useChatViewStore } from './store/chatViewStore';
 import { Composer } from './components/Composer';
@@ -56,20 +57,7 @@ const ProjectOverviewBody: React.FC = () => {
 
 	const [activeTab, setActiveTab] = useState<ProjectTabId>('conversations');
 
-	if (!projectId) {
-		return (
-			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-pk-muted-foreground">
-				No project selected.
-			</div>
-		);
-	}
-	if (!project) {
-		return (
-			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-pk-muted-foreground">
-				Project not found.
-			</div>
-		);
-	}
+	if (!projectId || !project) return <ProjectOverviewUnavailable />;
 
 	const counts: Record<ProjectTabId, number> = {
 		conversations: conversations.length,
@@ -137,6 +125,48 @@ const ProjectOverviewBody: React.FC = () => {
 							/>
 						)}
 					</div>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+/**
+ * Keep the Project Home reference geometry when a routed project is missing or
+ * still resolving. A one-line early return makes the shell jump and erases the
+ * summary/tabs contract merely because its data is unavailable.
+ */
+const ProjectOverviewUnavailable: React.FC = () => {
+	const strings = useChatStudioStrings().projectHome;
+	const zeroCounts: Record<ProjectTabId, number> = {
+		conversations: 0,
+		starred: 0,
+		resources: 0,
+		plans: 0,
+	};
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidden">
+			<div className="pkchat-header">
+				<span className="pkchat-header__title">{strings.unavailableTitle}</span>
+				<span className="pkchat-header__scope">{strings.headerScope}</span>
+			</div>
+			<div className="pktw-flex-1 pktw-overflow-y-auto">
+				<div className="pktw-w-full pktw-max-w-[840px] pktw-mx-auto pktw-px-7 pktw-pt-[22px] pktw-pb-[30px] pktw-flex pktw-flex-col">
+					<section className="pkchat-projhero" aria-live="polite">
+						<span className="pkchat-projhero__icon" aria-hidden><Folder /></span>
+						<div className="pkchat-projhero__copy">
+							<span className="pkchat-projhero__eyebrow">{strings.eyebrow}</span>
+							<span className="pkchat-projhero__name">{strings.unavailableTitle}</span>
+							<span className="pkchat-projdesc-display pkchat-projdesc-display--empty">
+								<span>{strings.unavailableDetail}</span>
+							</span>
+						</div>
+					</section>
+					<ProjectStatsRow conversations={0} messages={0} starred={0} resources={0} />
+					<div className="pkchat-project-unavailable" role="status">
+						{strings.unavailableDetail}
+					</div>
+					<ProjectTabsBar activeTab="conversations" onChange={() => undefined} counts={zeroCounts} disabled />
 				</div>
 			</div>
 		</div>

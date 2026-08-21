@@ -12385,6 +12385,21 @@
   font-size: 10px;
 }
 
+/* Missing/loading Project Home keeps the reference hierarchy rather than
+   collapsing to a centered sentence. This is deliberately a semantic status,
+   not a replacement card or a second empty-state layout. */
+:is(.pktw-root, .peak-design-root) .pkchat-project-unavailable {
+  width: min(100%, var(--pk-chat-reading-width));
+  margin: 22px auto 18px;
+  padding: 10px 12px;
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  font-size: var(--pk-text-sm);
+  line-height: 1.5;
+}
+
 @media (max-width: 1120px) {
   :is(.pktw-root, .peak-design-root) .pkchat-projstats {
     margin-left: 0;
@@ -12421,6 +12436,12 @@
 
 :is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab:hover {
   color: var(--pk-text-primary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab:disabled {
+  cursor: default;
+  color: var(--pk-text-tertiary);
+  opacity: 0.72;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab[data-active="true"] {

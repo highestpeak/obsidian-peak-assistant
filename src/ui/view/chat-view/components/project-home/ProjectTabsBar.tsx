@@ -7,6 +7,7 @@ interface ProjectTabsBarProps {
 	activeTab: ProjectTabId;
 	onChange: (tab: ProjectTabId) => void;
 	counts: Record<ProjectTabId, number>;
+	disabled?: boolean;
 }
 
 /**
@@ -15,7 +16,7 @@ interface ProjectTabsBarProps {
  * `pktw-border-b-2`). Labels + counts from strings; arrow-key nav.
  */
 export const ProjectTabsBar: React.FC<ProjectTabsBarProps> = ({
-	activeTab, onChange, counts,
+	activeTab, onChange, counts, disabled = false,
 }) => {
 	const strings = useChatStudioStrings().projectHome;
 	const tabs: Array<{ id: ProjectTabId; label: string }> = [
@@ -26,6 +27,7 @@ export const ProjectTabsBar: React.FC<ProjectTabsBarProps> = ({
 	];
 
 	const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+		if (disabled) return;
 		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
 		e.preventDefault();
 		const i = tabs.findIndex(t => t.id === activeTab);
@@ -46,7 +48,8 @@ export const ProjectTabsBar: React.FC<ProjectTabsBarProps> = ({
 					type="button"
 					role="tab"
 					aria-selected={activeTab === tab.id}
-					tabIndex={activeTab === tab.id ? 0 : -1}
+					tabIndex={disabled ? -1 : activeTab === tab.id ? 0 : -1}
+					disabled={disabled}
 					onClick={() => onChange(tab.id)}
 					className="pkchat-projtabs__tab"
 					data-active={activeTab === tab.id ? 'true' : 'false'}

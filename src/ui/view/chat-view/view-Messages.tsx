@@ -52,6 +52,11 @@ const EmptyThreadHero: React.FC = () => {
 	return (
 		<div className="peak-design-root pkchat-shell">
 			<div className="pkchat-center">
+				<div className="pkchat-header">
+					<span className="pkchat-header__title">
+						{studioStrings.projectHome.newChatHeaderTitle}
+					</span>
+				</div>
 				<div
 					className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]"
 					data-peak-keyboard-zone="cs-centre-content"
@@ -63,6 +68,13 @@ const EmptyThreadHero: React.FC = () => {
 						{studioStrings.greeting.emptyThread}
 					</span>
 				</div>
+				{/*
+					The reference empty state keeps the same bottom input geometry as a
+					conversation. Composer can create a standalone conversation on its
+					first successful submission, so this is a real entry point rather than
+					a decorative disabled shell.
+				*/}
+				<Composer />
 			</div>
 		</div>
 	);

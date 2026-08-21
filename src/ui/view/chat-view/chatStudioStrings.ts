@@ -647,6 +647,8 @@ export interface ChatStudioStrings {
 		plansSectionTitle: string;
 		plansSectionDesc: string;
 		tabsAriaLabel: string;
+		unavailableTitle: string;
+		unavailableDetail: string;
 	};
 	density: {
 		narrowCollapsePx: number;
