@@ -42,7 +42,12 @@ import { ObsidianProgressReporter } from '@/app/platform/ObsidianProgressReporte
 import { FileAtlasSessionStore } from '@/app/file-atlas/FileAtlasSessionStore';
 import { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { modelRegistry } from '@/core/providers/model-registry';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
+import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
+import { fetchLMStudioModels } from '@/core/providers/lmstudio/fetchLMStudioModels';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
+import { buildProfileModelItems } from '@/ui/component/model-picker/modelPickerData';
 
 /**
  * Application context containing all global dependencies.
@@ -540,6 +545,16 @@ export class AppContext {
 				await initializer.performFastCoreIncrementalIndexing(paths);
 			},
 			resolveProjectCount: async () => (await manager.proj.listProjects()).length,
+			refreshOperationRouteCandidates: async () => {
+				const profiles = ProfileRegistry.getInstance().getAllProfiles()
+					.filter((profile) => profile.enabled && (profile.kind === 'ollama' || profile.kind === 'lmstudio'));
+				await Promise.all(profiles.map(async (profile) => {
+					const discover = profile.kind === 'ollama' ? fetchOllamaModels : fetchLMStudioModels;
+					const discovered = await discover(profile.baseUrl);
+					const catalogId = profileModelCatalogId(profile);
+					if (catalogId && discovered.length > 0) modelRegistry.mergeRuntimeModels(catalogId, discovered);
+				}));
+			},
 			openOwnerSurface: async (surface) => {
 				if (surface === 'files') {
 					await this.viewManager.activateMyContentView();
@@ -556,10 +571,11 @@ export class AppContext {
 				const embedding = profiles.resolveSlot('knowledgeIndex');
 				const agent = profiles.getActiveAgentConfig();
 				const review = profiles.getActiveAgentFastConfig() ?? agent;
-				const candidates = profiles.getAllProfiles().filter((profile) => profile.enabled).flatMap((profile) => {
-					const models = [...new Set([profile.primaryModel, profile.fastModel, profile.embeddingModel].filter((model): model is string => Boolean(model)))];
-					return models.map((model) => ({ profileId: profile.id, model, provider: profile.kind }));
-				});
+				const candidates = buildProfileModelItems(profiles.getAllProfiles()).map((model) => ({
+					profileId: model.profileId,
+					model: model.modelId,
+					provider: model.profileKind,
+				}));
 				const route = (binding: typeof agent) => binding ? {
 					model: binding.modelId,
 					provider: binding.profile.kind,

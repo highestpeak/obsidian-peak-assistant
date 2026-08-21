@@ -73,6 +73,7 @@ const scanResult: LintScanResult = {
 
 let now = 1_000;
 let indexCalls = 0;
+let routeCandidatesRefreshed = 0;
 const app = {
 	vault: {
 		getFiles: () => [file, otherFile],
@@ -102,6 +103,7 @@ function createRuntime(indexService: object | null = null, reviewRuntime: object
 		getSearchSettings: () => ({}) as never,
 		runCoreIndex: async () => { indexCalls += 1; },
 		resolveProjectCount: async () => 0,
+		refreshOperationRouteCandidates: async () => { routeCandidatesRefreshed += 1; },
 		resolveOperationRoutes: () => ({
 			'embedding-refresh': { model: 'embed-test', provider: 'openai', available: true },
 			'file-summaries': { model: 'agent-test', provider: 'openai', available: true },
@@ -131,6 +133,8 @@ function planFor(
 
 async function main(): Promise<void> {
 	const runtime = createRuntime();
+	await runtime.refresh();
+	assert.equal(routeCandidatesRefreshed, 1, 'refresh must discover locally exposed model candidates before resolving scan routes');
 	await runtime.startScan(planFor('broken-links'));
 	const completed = runtime.getSnapshot();
 

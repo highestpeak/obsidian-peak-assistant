@@ -54,6 +54,7 @@ export interface VaultIntelligenceRuntimeDeps {
 	getSearchSettings: () => SearchSettings;
 	runCoreIndex: (scope: VaultScanScopeMode, paths: string[]) => Promise<void>;
 	resolveProjectCount: () => Promise<number>;
+	refreshOperationRouteCandidates?: () => Promise<void>;
 	openOwnerSurface?: (surface: VaultIntelligenceObjectSummary['id']) => Promise<void>;
 	resolveOperationRoutes: () => Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>>;
 	selectOperationRoute: (operationId: VaultScanAiOperationId, candidate: VaultScanOperationRouteCandidate) => void | Promise<void>;
@@ -120,6 +121,7 @@ export class VaultIntelligenceRuntime {
 			const store = this.recordStore();
 			const review = this.deps.resolveReviewRuntime();
 			const outputs = this.deps.resolveGeneratedOutputs();
+			await this.deps.refreshOperationRouteCandidates?.();
 			const operationRoutes = this.deps.resolveOperationRoutes();
 			const [persisted, digest, events, projectCount, conversationCount, composerEventCount, sourceActivity, indexStatus] = await Promise.all([
 				store?.load().catch(() => null) ?? Promise.resolve(null),
