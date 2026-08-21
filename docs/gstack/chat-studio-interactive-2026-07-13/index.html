@@ -35,20 +35,30 @@
         <section id="conversation-body" class="conversation-body" aria-live="polite"></section>
         <section class="composer-wrap" aria-label="消息编辑器">
           <div id="composer" class="composer">
-            <div id="composer-context" class="composer-context" aria-label="当前上下文">
-              <button class="context-chip" type="button" data-resource-preview="interview-story-bank.md"><span data-icon="file-text"></span><span>interview-story-bank.md</span><span data-icon="x"></span></button>
-            </div>
-            <textarea id="composer-input" rows="1" placeholder="问你的项目、资料或当前工作…"></textarea>
-            <div class="composer-foot">
-              <div class="composer-tools">
-                <button id="composer-plus" class="icon-button" type="button" aria-label="添加资源" title="添加资源" aria-expanded="false" data-icon-button="plus"></button>
-                <button id="source-settings" class="source-chip" type="button" aria-label="选择信息来源" aria-haspopup="menu" aria-expanded="false"><span data-icon="database"></span><span id="source-chip-label">项目上下文</span><span data-icon="chevron-down"></span></button>
+            <button id="composer-compact" class="composer-compact" type="button" aria-label="展开消息编辑器">
+              <span data-icon="message"></span><span>继续这段对话…</span><small><span data-icon="layers"></span><span id="compact-context-count">6</span> 项上下文</small>
+            </button>
+            <div class="composer-expanded">
+              <button id="context-stack-trigger" class="context-stack-rail" type="button" aria-haspopup="dialog" aria-expanded="false">
+                <span class="context-stack-rail__title"><span data-icon="layers"></span><strong>Context stack</strong></span>
+                <span id="context-stack-summary" class="context-stack-rail__summary">历史 · 摘要 · 工作上下文 · 用户画像 · 资源</span>
+                <span id="context-stack-count" class="context-stack-rail__count">6 项</span>
+              </button>
+              <div id="composer-context" class="composer-context" aria-label="当前上下文">
+                <button class="context-chip" type="button" data-resource-preview="interview-story-bank.md"><span data-icon="file-text"></span><span>interview-story-bank.md</span><span data-icon="x"></span></button>
               </div>
-              <div class="composer-status">
-                <button id="run-settings" class="run-chip" type="button" aria-label="模型与助手" aria-haspopup="dialog" aria-expanded="false">
-                  <span id="run-model-label" class="run-model">自动模型</span><span data-icon="chevron-down"></span>
-                </button>
-                <button id="send-button" class="send-button" type="button" aria-label="发送消息" disabled data-icon-button="arrow-up"></button>
+              <textarea id="composer-input" rows="1" placeholder="问你的项目、资料或当前工作…"></textarea>
+              <div class="composer-foot">
+                <div class="composer-tools">
+                  <button id="composer-plus" class="icon-button" type="button" aria-label="添加资源" title="添加资源" aria-expanded="false" data-icon-button="plus"></button>
+                  <button id="source-settings" class="source-chip" type="button" aria-label="选择信息来源" aria-haspopup="menu" aria-expanded="false"><span data-icon="database"></span><span id="source-chip-label">项目上下文</span><span data-icon="chevron-down"></span></button>
+                </div>
+                <div class="composer-status">
+                  <button id="run-settings" class="run-chip" type="button" aria-label="模型与助手" aria-haspopup="dialog" aria-expanded="false">
+                    <span id="run-model-label" class="run-model">自动模型</span><span data-icon="chevron-down"></span>
+                  </button>
+                  <button id="send-button" class="send-button" type="button" aria-label="发送消息" disabled data-icon-button="arrow-up"></button>
+                </div>
               </div>
             </div>
           </div>
@@ -180,6 +190,11 @@
       <button class="source-option" type="button" data-source-toggle="vault" aria-pressed="false"><span class="source-option__icon" data-icon="database"></span><span class="source-option__copy"><strong>Vault Search</strong><small>检索知识库中的其他文档</small></span><span class="source-switch"></span></button>
       <button class="source-option" type="button" data-source-toggle="web" aria-pressed="false"><span class="source-option__icon" data-icon="globe"></span><span class="source-option__copy"><strong>Web Search</strong><small>需要最新或外部资料时开启</small></span><span class="source-switch"></span></button>
     </div>
+
+    <section id="context-stack-popover" class="context-stack-popover" role="dialog" aria-label="下一条消息的 Context stack" aria-hidden="true">
+      <header class="context-stack-popover__head"><span><strong>下一条消息的 Context stack</strong><small>发送前预览；明确范围会在发送时冻结。</small></span><button id="context-stack-close" class="icon-button" type="button" aria-label="关闭 Context stack" data-icon-button="x"></button></header>
+      <div id="context-stack-popover-body" class="context-stack-popover__body"></div>
+    </section>
 
     <div id="type-filter-menu" class="type-filter-menu floating-menu" role="menu" aria-hidden="true"></div>
 

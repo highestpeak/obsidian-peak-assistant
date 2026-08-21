@@ -2,7 +2,7 @@
 
 > **Authority boundary:** This package is design rationale, evidence, and review history only. The implementation master is the [Chat Studio complete implementation spec](../../superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md). If anything in this package conflicts with that master, the master wins; this package cannot override it.
 
-This folder contains the HTML-first design source for the next Chat Studio UI. It is deliberately separate from production React code.
+This folder contains the HTML-first design source for the complete Chat Studio UI. It is deliberately separate from production React code. `index.html` is the single comprehensive interaction entry: it absorbs the later 2026-08 active-conversation Composer refinement while retaining the original three-column, project, message, resource, model, and Assistant flows.
 
 For implementation, start with the [canonical implementation spec](../../superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md). Use [`discussion-synthesis.md`](./discussion-synthesis.md) only to understand owner feedback, rejected proposals, and decision rationale. The source audit behind the visual decisions is recorded in [`calibration.md`](./calibration.md), and the gate-by-gate acceptance log lives in [`decisions.md`](./decisions.md). The product verdict is available as a visual report in [`product-strategy.html`](./product-strategy.html) and as background rationale in [`2026-07-14-chat-studio-product-positioning-and-composer-v2.md`](../../superpowers/specs/2026-07-14-chat-studio-product-positioning-and-composer-v2.md).
 
@@ -29,6 +29,9 @@ Gate 9: answer-action priority and responsive overflow aligned.
 - Pinned → Projects → Recent navigation with realistic list volume, opaque state-aware row menus, visible title typing, and drag-to-project feedback;
 - split project-row interaction: the chevron only expands/collapses, while the project name opens a project home with conversations, stars, resources, plans, and a project-scoped Composer; the compact pass preserves all of those surfaces while replacing the four boxed stat cards with a quieter inline summary; the standalone hero-level “Edit description” action is removed, while the description itself remains directly editable and offers an explicit AI rewrite draft that never saves automatically;
 - one Composer DOM instance changes placement by state: the project home places it in the centre flow after project identity and before project collections, with the same short-greeting + three editable starters mental model as new chat; an active conversation restores it below the scrolling message canvas;
+- the active-conversation Composer is now the later adaptive final direction inside this same mock: reading older history collapses the same input surface to a compact pill; returning to the latest turn, focusing, drafting, attaching resources, or opening a menu expands it without losing the draft;
+- the expanded active Composer has an inspectable, same-width **Context stack**: expected layers and explicit request scope are separate from excluded inputs, each layer can disclose its source, reason, and treatment, and the mock never claims that the whole Vault or inactive variants are silently sent to the model;
+- New chat and Project home deliberately retain their existing Composer geometry. The adaptive state is not a whole-Chat redesign and must not leak into those start surfaces;
 - project home owns its four centre-level collections and therefore hides the conversation-only right index instead of repeating conversations, stars, resources, and plans in both columns;
 - a knowledge-search command that delegates to the existing production `QuickSearchModal`; this Chat Studio mock deliberately does not redraw Vault Search, AI Search, or Vault Intelligence internals, while conversation-title filtering stays separate;
 - a component catalog covering input resources, Streamdown content, generated-artifact proposals, process disclosure, status, and message actions;
@@ -78,6 +81,7 @@ Static review snapshots: [`preview-gate2.png`](./preview-gate2.png), [`preview-p
 - `A`, `B`, `C` changes only centre reading width/message gap for controlled comparison;
 - `T` toggles the existing Peak light/dark token sets;
 - `R` resets state, widths, theme, filters, and variant.
+- in an active conversation, scroll upward to see the compact Composer; click it to return to the full input, then open **Context stack** to inspect the next-turn context model.
 
 ## Density baseline
 

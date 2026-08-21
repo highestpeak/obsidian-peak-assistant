@@ -45,6 +45,8 @@
     projectDescriptionDraft: '',
     projectDescriptionOverrides: {},
     rawMessageText: '',
+    composerFocused: false,
+    contextDetailId: null,
     drafts: {}
   };
 
@@ -154,6 +156,14 @@
     indexSearch: document.getElementById('index-search'),
     composerInput: document.getElementById('composer-input'),
     composerContext: document.getElementById('composer-context'),
+    composer: document.getElementById('composer'),
+    compactComposer: document.getElementById('composer-compact'),
+    contextStackTrigger: document.getElementById('context-stack-trigger'),
+    contextStackCount: document.getElementById('context-stack-count'),
+    compactContextCount: document.getElementById('compact-context-count'),
+    contextStackPopover: document.getElementById('context-stack-popover'),
+    contextStackPopoverBody: document.getElementById('context-stack-popover-body'),
+    contextStackClose: document.getElementById('context-stack-close'),
     sendButton: document.getElementById('send-button'),
     reviewDrawer: document.getElementById('review-drawer'),
     nativeSearchLayer: document.getElementById('native-search-handoff-layer'),
@@ -557,6 +567,8 @@
     placeComposerForCurrentView();
     decorateIcons(elements.conversationBody);
     renderComposerContext();
+    renderContextStack();
+    updateAdaptiveComposer();
     updateStartSurfaceDraftState();
     scheduleMessageActionLayout();
   }
@@ -578,6 +590,63 @@
     document.querySelectorAll('.new-chat-start, .project-start-surface').forEach((start) => {
       start.classList.toggle('has-draft', Boolean(elements.composerInput.value.trim()));
     });
+  }
+
+  function isActiveConversationPlacement() {
+    return state.view === 'active' || state.view === 'catalog';
+  }
+
+  function isNearConversationBottom() {
+    const body = elements.conversationBody;
+    return body.scrollHeight - body.clientHeight - body.scrollTop <= 96;
+  }
+
+  function contextStackLayers() {
+    const assistant = assistants.find((item) => item.id === state.assistantId);
+    const resources = 1 + (state.addedDocument ? 1 : 0) + (state.vaultSearch ? 1 : 0) + (state.webSearch ? 1 : 0);
+    return [
+      { group: 'Foundation', id: 'system', title: 'System prompt', summary: 'Peak Assistant 的安全、格式与工具边界。', state: 'Required', source: 'runtime policy', reason: '每个 turn 都需要', treatment: 'Exact at send time' },
+      { group: 'Foundation', id: 'assistant', title: assistant?.label || 'Assistant', summary: assistant?.summary || '默认对话身份；没有额外的自定义指令。', state: assistant ? 'Included' : 'Empty', source: assistant ? 'saved assistant' : 'no selection', reason: assistant ? '你为本次对话选择的身份' : '没有额外身份层', treatment: assistant ? 'Preview only' : 'Not included' },
+      { group: 'Conversation & work', id: 'history', title: 'Recent history', summary: '当前 active variant 的最近消息。', state: 'Required', source: 'conversation history', reason: '保持本轮上下文连续', treatment: 'May be compressed to fit budget' },
+      { group: 'Conversation & work', id: 'working', title: 'Working context', summary: state.view === 'catalog' ? 'Chat Studio UI/UX 项目与当前资料。' : '面试准备项目与当前文档。', state: 'Included', source: 'project + active note', reason: '当前工作空间', treatment: 'Preview only' },
+      { group: 'Conversation & work', id: 'summary', title: 'Conversation summary', summary: '已持久化的较早对话压缩摘要。', state: 'Included', source: 'conversation summary', reason: '补足窗口外历史', treatment: 'Compressed' },
+      { group: 'Personal context', id: 'profile', title: 'User profile', summary: '中文优先、引用证据、保持边界清楚。', state: 'Included', source: 'user profile', reason: '长期表达偏好', treatment: 'Preview only' },
+      { group: 'Retrieval & this turn', id: 'resources', title: `${resources} resources`, summary: state.addedDocument ? `显式文件：${state.addedDocument}` : '项目资料与显式引用。', state: 'Included', source: 'attachments + explicit refs', reason: '本轮选择的资料', treatment: 'Actual consulted sources appear in receipt' }
+    ];
+  }
+
+  function renderContextStack() {
+    const layers = contextStackLayers();
+    const groups = new Map();
+    layers.forEach((layer) => groups.set(layer.group, [...(groups.get(layer.group) || []), layer]));
+    const layerRows = [...groups.entries()].map(([group, rows]) => `<div class="context-stack-group">${escapeHtml(group)}</div>${rows.map((layer, index) => {
+      const open = state.contextDetailId === layer.id;
+      return `<button class="context-stack-row ${open ? 'is-open' : ''}" type="button" data-context-layer="${layer.id}" aria-expanded="${open}"><span class="context-stack-row__order">${String(index + 1).padStart(2, '0')}</span><span class="context-stack-row__copy"><strong>${escapeHtml(layer.title)}</strong><small>${escapeHtml(layer.summary)}</small></span><span class="context-stack-state">${escapeHtml(layer.state)}</span></button>${open ? `<section class="context-stack-detail"><p>${escapeHtml(layer.summary)}</p><dl><dt>来源</dt><dd>${escapeHtml(layer.source)}</dd><dt>为何包含</dt><dd>${escapeHtml(layer.reason)}</dd><dt>处理</dt><dd>${escapeHtml(layer.treatment)}</dd></dl></section>` : ''}`;
+    }).join('')}`).join('');
+    elements.contextStackPopoverBody.innerHTML = `<div class="context-stack-list">${layerRows}</div><aside class="context-stack-excluded"><strong>不在本轮</strong><small>明确排除能避免“整个 Vault 都会自动送进模型”的误解。</small><div>整个 Vault：只会经 Vault Search 检索后进入。</div><div>未选择的文档与未执行的 Web 结果。</div><div>Inactive variants 与 parent branch 的非 active history。</div></aside>`;
+    const active = layers.filter((layer) => layer.state !== 'Empty').length;
+    elements.contextStackCount.textContent = `${active} 项`;
+    elements.compactContextCount.textContent = String(active);
+  }
+
+  function updateAdaptiveComposer() {
+    const active = isActiveConversationPlacement();
+    const hasDraft = Boolean(elements.composerInput.value.trim());
+    const hasContext = Boolean(state.replyTarget || state.workflowId || state.addedDocument || state.assistantId !== 'default');
+    const hasOpenSurface = Boolean(state.openSurface);
+    const inputFocused = document.activeElement === elements.composerInput;
+    const expanded = !active || isNearConversationBottom() || inputFocused || hasDraft || hasContext || hasOpenSurface;
+    elements.composer.dataset.display = expanded ? 'expanded' : 'compact';
+    elements.composer.dataset.placement = active ? 'active' : 'start';
+    if (!active && state.openSurface === 'context') closeSurfaces();
+  }
+
+  function positionContextStackPopover() {
+    const trigger = elements.contextStackTrigger.getBoundingClientRect();
+    const width = Math.min(trigger.width, window.innerWidth - 32);
+    elements.contextStackPopover.style.width = `${width}px`;
+    elements.contextStackPopover.style.left = `${Math.max(16, Math.min(trigger.left, window.innerWidth - width - 16))}px`;
+    elements.contextStackPopover.style.top = `${Math.max(16, trigger.top - Math.min(560, window.innerHeight - 32) - 8)}px`;
   }
 
   function renderComposerContext() {
@@ -961,14 +1030,17 @@
       }
       return;
     }
-    const surfaces = { plus: elements.plusMenu, workflow: elements.workflowPopover, run: elements.runPopover, source: elements.sourcePopover, type: elements.typeFilterMenu };
+    const surfaces = { plus: elements.plusMenu, workflow: elements.workflowPopover, run: elements.runPopover, source: elements.sourcePopover, type: elements.typeFilterMenu, context: elements.contextStackPopover };
     const surface = surfaces[name];
     if (!surface) return;
     if (name === 'run') renderRunPanel();
     if (name === 'type') renderTypeFilterMenu();
     surface.classList.add('is-open');
     surface.setAttribute('aria-hidden', 'false');
-    requestAnimationFrame(() => positionSurface(surface, anchor, ['plus', 'workflow'].includes(name) ? 'left' : 'right', name === 'type' ? 'below' : 'above'));
+    requestAnimationFrame(() => {
+      if (name === 'context') positionContextStackPopover();
+      else positionSurface(surface, anchor, ['plus', 'workflow'].includes(name) ? 'left' : 'right', name === 'type' ? 'below' : 'above');
+    });
     anchor?.setAttribute('aria-expanded', 'true');
   }
 
@@ -979,12 +1051,14 @@
       surface.classList.remove('is-open');
       surface.setAttribute('aria-hidden', 'true');
     });
-    [elements.plusMenu, elements.workflowPopover, elements.runPopover, elements.sourcePopover, elements.typeFilterMenu].forEach((surface) => { surface.classList.remove('is-open'); surface.setAttribute('aria-hidden', 'true'); });
+    [elements.plusMenu, elements.workflowPopover, elements.runPopover, elements.sourcePopover, elements.typeFilterMenu, elements.contextStackPopover].forEach((surface) => { surface.classList.remove('is-open'); surface.setAttribute('aria-hidden', 'true'); });
     document.getElementById('composer-plus').setAttribute('aria-expanded', 'false');
     document.getElementById('source-settings').setAttribute('aria-expanded', 'false');
     document.getElementById('run-settings').setAttribute('aria-expanded', 'false');
     document.getElementById('type-filter-trigger').setAttribute('aria-expanded', 'false');
     elements.conversationTypeTrigger.setAttribute('aria-expanded', 'false');
+    elements.contextStackTrigger.setAttribute('aria-expanded', 'false');
+    updateAdaptiveComposer();
     elements.conversationTypeMenu.classList.remove('is-open');
     elements.conversationTypeMenu.setAttribute('aria-hidden', 'true');
     closeTransientMenus();
@@ -1629,9 +1703,28 @@
       elements.sendButton.disabled = !event.target.value.trim();
       saveCurrentDraft();
       updateStartSurfaceDraftState();
+      renderContextStack();
+      updateAdaptiveComposer();
       if (event.target.value.endsWith('[[')) openVaultDocumentPicker();
       if (event.target.value.endsWith('/')) openSurface('workflow', document.getElementById('composer-plus'));
     });
+    elements.composerInput.addEventListener('focus', () => { state.composerFocused = true; updateAdaptiveComposer(); });
+    elements.composerInput.addEventListener('blur', () => { state.composerFocused = false; updateAdaptiveComposer(); });
+    elements.compactComposer.addEventListener('click', () => { state.composerFocused = true; updateAdaptiveComposer(); elements.composerInput.focus(); });
+    elements.contextStackTrigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (state.openSurface === 'context') { closeSurfaces(); return; }
+      renderContextStack();
+      openSurface('context', event.currentTarget);
+    });
+    elements.contextStackClose.addEventListener('click', () => closeSurfaces());
+    elements.contextStackPopover.addEventListener('click', (event) => {
+      const layer = event.target.closest('[data-context-layer]');
+      if (!layer) return;
+      state.contextDetailId = state.contextDetailId === layer.dataset.contextLayer ? null : layer.dataset.contextLayer;
+      renderContextStack();
+    });
+    elements.conversationBody.addEventListener('scroll', () => updateAdaptiveComposer(), { passive: true });
     elements.composerContext.addEventListener('click', (event) => {
       if (event.target.closest('[data-remove-reply]')) state.replyTarget = null;
       else if (event.target.closest('[data-remove-workflow]')) state.workflowId = null;
@@ -1640,6 +1733,8 @@
       else return;
       updateRunTrigger();
       renderComposerContext();
+      renderContextStack();
+      updateAdaptiveComposer();
     });
     elements.sendButton.addEventListener('click', () => {
       if (!elements.composerInput.value.trim()) return;
@@ -1652,6 +1747,8 @@
       state.workflowId = null;
       delete state.drafts[currentDraftKey()];
       renderComposerContext();
+      renderContextStack();
+      updateAdaptiveComposer();
     });
     document.querySelectorAll('.right-tab').forEach((tab) => tab.addEventListener('click', () => { state.rightTab = tab.dataset.tab; renderRight(); renderTabs(); }));
     document.getElementById('direction-filter').addEventListener('click', (event) => {
@@ -1795,10 +1892,11 @@
       if (state.openSurface === 'workflow' && !event.target.closest('#workflow-popover, #composer-plus')) closeSurfaces();
       if (state.openSurface === 'run' && !event.target.closest('#run-popover, #run-settings')) closeSurfaces();
       if (state.openSurface === 'source' && !event.target.closest('#source-popover, #source-settings')) closeSurfaces();
+      if (state.openSurface === 'context' && !event.target.closest('#context-stack-popover, #context-stack-trigger')) closeSurfaces();
       if (state.openSurface === 'type' && !event.target.closest('#type-filter-menu, #type-filter-trigger')) closeSurfaces();
       if (!event.target.closest('.row-context-menu, .message-action-menu, .suggested-next-menu, [data-row-menu], [data-project-menu], [data-message-menu], [data-suggestion-menu]')) closeTransientMenus();
     });
-    window.addEventListener('resize', () => { renderReview(); closeSurfaces(); scheduleMessageActionLayout(); });
+    window.addEventListener('resize', () => { renderReview(); closeSurfaces(); scheduleMessageActionLayout(); updateAdaptiveComposer(); });
     window.addEventListener('hashchange', () => setView(location.hash.slice(1), false));
     configureSplitter(document.getElementById('left-splitter'), 'left');
     configureSplitter(document.getElementById('right-splitter'), 'right');
