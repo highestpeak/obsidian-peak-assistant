@@ -17,7 +17,7 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 - **Data Ops 够用即可**：Filter / Sort / Group 保留；Group 面板直接提供 Count / Sum / Average / Min / Max，用轻量汇总覆盖常见 Pivot 需求。
 - **AI Formula 不膨胀**：自然语言生成、逐字公式反馈、Preview、类型检查、Explain、Fix 都在 Ask AI 侧栏完成。用户无需记忆大量函数。
 - **Scripts 不是 View**：顶部 `Scripts` 打开独立 Sidecar，首版只表达 Save → Preview → Run locally → Progress → History；没有 Trigger、Cron 或 Workflow Builder。
-- **Local / PeakShare 严格分层**：页面明确显示 Local。只有点 `Share via PeakShare` 才看到 Upload、Permissions、Collaboration、Cloud Scripts 和 Schedule 的边界说明；本地界面没有协作头像、在线状态和权限菜单。
+- **Local / PeakShare 严格分层**：文件路径和 `.peaksheet` 后缀表达 local-first。只有点 `Share via PeakShare` 才看到 Upload、Permissions、Collaboration、Cloud Scripts 和 Schedule 的边界说明；本地界面没有协作头像、在线状态和权限菜单。
 
 ## 建议体验路径
 
@@ -57,7 +57,7 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 
 这份 mock 不把“能放下”当成布局完成。每个高频区域都遵守固定槽位、可截断文字和受控滚动的合同，避免 hover、选中或长内容改变几何。
 
-- **文档头部**：`identity | save/share` 两个稳定分区；标题与文件路径可以收缩、截断，保存状态和操作始终不换行。窄屏先折叠说明文字，再保留图标入口。
+- **文档头部**：`identity | share action` 两个稳定分区；标题与文件路径可以收缩、截断。文件目录与 `.peaksheet` 后缀已经表达 local-first 身份，不额外展示 PEAK SHEET、Local 或 Saved to Vault 状态文案。
 - **视图与数据工具栏**：View、Scripts、AI 是固定宽度操作；搜索是可收缩区；Filter / Sort / Group / Fields 位于可横向取用但不挤压 AI 的操作带。不会再用一个无规则 spacer 或 `overflow: hidden` 静默吃掉按钮。
 - **表格**：表头、行号、虚拟列、单元格均是固定行高；hover、range、active 都通过背景、outline 或绝对定位的伪元素表达，绝不增加 border 尺寸或推动相邻格子。字段、tag、状态和值默认单行截断。
 - **状态栏**：选择状态与文件路径是可收缩文本槽；帮助、格式和 revision 是固定槽。窄宽度时先隐藏帮助和路径，不让 revision 被挤出。
@@ -70,8 +70,8 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 
 - **表格字段**：Primary text 默认 220px（160–520px）；Link 200px（144–520px）；Select 112px（104–220px）；Date 108px（96–180px）；Number 96px（84–180px）；Checkbox 104px（96–152px）。虚拟 General 列为稳定的 160px。空间不足时保持这些语义最小宽度，让 grid 横向滚动，不把 Status、Due date 或列名压成不可识别的缩写。
 - **字段头**：列字母是固定内容，字段名才是唯一可收缩槽；配置槽固定 24px，resize handle 置于列边缘且不参与宽度分配。拖动或键盘 Arrow/Home/End 调整列宽，不改变行高、内容位置或其他字段的宽度合同。
-- **文字策略**：标题、文件路径、自由文本可以截断；状态、badge、日期、计数、按钮和菜单项保持单行且拥有语义最小宽度。文件路径已在标题上方直接可见，不再提供冗余的 Show location 浮层。
-- **Overlay 状态机**：全部 transient surface 共用 `closed | open(id, trigger)`：同一 trigger 再次点击会关闭；另一个 trigger 会切换；外部 pointerdown 和 Escape 会关闭；关闭后返回 trigger 焦点。Field menu、field editor、row menu、Group、location card、Ask AI、Scripts 和 PeakShare 同时只会打开一个。
+- **文字策略**：标题、文件路径、自由文本可以截断；状态、badge、日期、计数、按钮和菜单项保持单行且拥有语义最小宽度。文件路径已在标题上方直接可见，不再提供冗余的位置浮层。
+- **Overlay 状态机**：全部 transient surface 共用 `closed | open(id, trigger)`：同一 trigger 再次点击会关闭；另一个 trigger 会切换；外部 pointerdown 和 Escape 会关闭；关闭后返回 trigger 焦点。Field menu、field editor、row menu、Group、Ask AI、Scripts 和 PeakShare 同时只会打开一个。
 - **Ask AI viewport 保持**：打开 AI 不会自动 focus composer，也不会要求浏览器把输入框滚进视口；workspace / document 明确收紧为 `min-height: 0 + overflow: hidden`，只有 grid body 与 AI thread 自己拥有滚动。用户点击 composer 后才开始输入。
 - **滚动 ownership**：Scripts 与 Ask AI 都是 `header + context + minmax(0, scroll body) + footer`；body 有末端安全内边距和 `overscroll-behavior: contain`，footer 不会覆盖最后一个操作或历史条目。
 - **宿主隔离**：`.peak-sheet-root` 在根边界固定 box sizing、字体、line-height 和 form control 继承，避免嵌入 Obsidian 时的 button/input 默认几何污染。

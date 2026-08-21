@@ -79,12 +79,8 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .title-line { display: flex; align-items: center; gap: 8px; }
 .title-line > svg { width: 17px; height: 17px; color: var(--accent); }
 .title-line input { min-width: 0; width: min(440px, 42vw); padding: 0; border: 0; outline: 0; background: transparent; font-size: 18px; font-weight: 690; letter-spacing: -.02em; }
-.format-badge { flex: none; padding: 3px 6px 2px; border: 1px solid #d9d3e8; border-radius: 3px; color: #6c569f; background: #f7f4fb; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; letter-spacing: .07em; white-space: nowrap; }
-.save-state { display: flex; align-items: center; flex: none; gap: 6px; color: var(--ink-soft); font-size: 10px; white-space: nowrap; }
-.save-state > span { flex: none; }
+.document-actions { display: flex; align-items: center; flex: none; }
 .save-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-.save-state button { flex: none; margin-left: 5px; padding: 5px 7px; border-radius: 4px; color: var(--accent); font-size: 10px; white-space: nowrap; }
-.save-state button:hover { background: var(--accent-soft); }
 
 .view-tabs { display: flex; align-items: end; min-width: 0; padding: 0 18px; gap: 1px; border-bottom: 1px solid var(--line); }
 .view-tab { display: flex; align-items: center; flex: none; height: 38px; padding: 0 12px; gap: 6px; border-bottom: 2px solid transparent; color: var(--ink-soft); font-size: 11px; white-space: nowrap; }
@@ -508,7 +504,6 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   .agenda { display: none; }
   .share-button { font-size: 0; }
   .share-button svg { width: 14px; height: 14px; }
-  .save-state > span:nth-child(2) { display: none; }
   .status-bar { grid-template-columns: minmax(118px, 1fr) minmax(110px, 1.3fr) max-content max-content; gap: 10px; }
   .status-bar .selection-help { display: none; }
 }
@@ -518,7 +513,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   .vault-pane { display: none; }
   .document-head { padding: 0 12px; gap: 8px; }
   .title-line input { width: min(360px, 46vw); }
-  .format-badge, .file-path { display: none; }
+  .file-path { display: none; }
   .view-tabs { padding: 0 10px; }
   .view-divider { display: none; }
   .workspace-action { margin-left: auto; }
