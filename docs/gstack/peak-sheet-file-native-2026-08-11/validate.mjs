@@ -43,6 +43,11 @@ const checks = [
   ['paper hierarchy', css.includes('--paper: #fff') && css.includes('--accent: #6f52b5')],
   ['interactive datasets', js.includes("activeDatasetId = 'launch'") && js.includes('switchDataset')],
   ['storage boundary documented', readme.includes('CSV / XLSX 是导入导出格式') && readme.includes('SQLite')],
+  ['layout contracts documented', readme.includes('## 布局契约（V5.1）') && readme.includes('固定槽位、可截断文字和受控滚动')],
+  ['toolbar has explicit zones', html.includes('class="toolbar-primary"') && html.includes('class="toolbar-operations"') && html.includes('class="toolbar-actions"') && css.includes('grid-template-columns: minmax(0, 1fr) max-content')],
+  ['stable interaction geometry', css.includes('.data-grid td.cell:hover::after') && css.includes('.data-grid td.cell.is-selected::after') && css.includes('pointer-events: none')],
+  ['drawer scroll ownership', css.includes('.scripts-body { min-height: 0') && css.includes('.ai-thread { min-height: 0') && css.includes('grid-template-rows: auto auto minmax(0, 1fr) auto')],
+  ['long text has constrained slots', css.includes('.status-bar > span { min-width: 0') && css.includes('.saved-script strong, .saved-script small') && css.includes('text-overflow: ellipsis')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

@@ -87,19 +87,24 @@
         </nav>
 
         <div class="data-toolbar">
-          <div class="toolbar-group history-controls">
-            <button type="button" class="icon-button" aria-label="撤销"><svg><use href="#i-undo"/></svg></button>
-            <button type="button" class="icon-button is-muted" aria-label="重做"><svg><use href="#i-redo"/></svg></button>
+          <div class="toolbar-primary" aria-label="Table operations">
+            <div class="toolbar-group history-controls">
+              <button type="button" class="icon-button" aria-label="撤销"><svg><use href="#i-undo"/></svg></button>
+              <button type="button" class="icon-button is-muted" aria-label="重做"><svg><use href="#i-redo"/></svg></button>
+            </div>
+            <label class="table-search"><svg><use href="#i-search"/></svg><input id="table-search" type="search" placeholder="Search this view"><small id="record-count">8</small></label>
+            <div class="toolbar-operations">
+              <button type="button" class="tool-button"><svg><use href="#i-filter"/></svg>Filter</button>
+              <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>Sort</button>
+              <button type="button" class="tool-button" id="group-button"><svg><use href="#i-group"/></svg>Group</button>
+              <button type="button" class="tool-button"><svg><use href="#i-eye"/></svg>Fields</button>
+              <button type="button" class="tool-button typed-field-button" id="typed-field-button"><svg><use href="#i-plus"/></svg>Typed field</button>
+            </div>
           </div>
-          <label class="table-search"><svg><use href="#i-search"/></svg><input id="table-search" type="search" placeholder="Search this view"><small id="record-count">8</small></label>
-          <button type="button" class="tool-button"><svg><use href="#i-filter"/></svg>Filter</button>
-          <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>Sort</button>
-          <button type="button" class="tool-button" id="group-button"><svg><use href="#i-group"/></svg>Group</button>
-          <button type="button" class="tool-button"><svg><use href="#i-eye"/></svg>Fields</button>
-          <button type="button" class="tool-button typed-field-button" id="typed-field-button"><svg><use href="#i-plus"/></svg>Typed field</button>
-          <span class="toolbar-spacer"></span>
-          <button type="button" class="ai-button" id="ask-ai-button"><span class="ai-button-orbit"></span><svg><use href="#i-sparkles"/></svg>Ask AI</button>
-          <button type="button" class="icon-button" aria-label="更多"><svg><use href="#i-more"/></svg></button>
+          <div class="toolbar-actions">
+            <button type="button" class="ai-button" id="ask-ai-button"><span class="ai-button-orbit"></span><svg><use href="#i-sparkles"/></svg>Ask AI</button>
+            <button type="button" class="icon-button" aria-label="更多"><svg><use href="#i-more"/></svg></button>
+          </div>
         </div>
 
         <div class="formula-bar">
@@ -120,7 +125,6 @@
         <footer class="status-bar">
           <span id="selection-status"><i></i> D4 · 1 cell selected</span>
           <span class="selection-help">Type to edit · Drag · Shift + arrow · ⌘C/V/X</span>
-          <span class="status-spacer"></span>
           <span id="file-status">Product/Launch/Launch Tracker.peaksheet</span>
           <span>JSON canonical</span>
           <span>revision <strong id="revision">18</strong></span>

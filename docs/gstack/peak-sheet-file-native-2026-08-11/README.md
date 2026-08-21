@@ -53,6 +53,17 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 
 继续使用克制的白灰纸面、单一紫色焦点和 31px 紧凑数据行。虚拟列用较淡的 `General` 表达“随时可填但尚未结构化”；AI 与 Scripts 都使用编辑器右侧临时工作面，不变成 Dashboard，也不与 Table / Board / Calendar 混成同级 View。
 
+## 布局契约（V5.1）
+
+这份 mock 不把“能放下”当成布局完成。每个高频区域都遵守固定槽位、可截断文字和受控滚动的合同，避免 hover、选中或长内容改变几何。
+
+- **文档头部**：`identity | save/share` 两个稳定分区；标题与文件路径可以收缩、截断，保存状态和操作始终不换行。窄屏先折叠说明文字，再保留图标入口。
+- **视图与数据工具栏**：View、Scripts、AI 是固定宽度操作；搜索是可收缩区；Filter / Sort / Group / Fields 位于可横向取用但不挤压 AI 的操作带。不会再用一个无规则 spacer 或 `overflow: hidden` 静默吃掉按钮。
+- **表格**：表头、行号、虚拟列、单元格均是固定行高；hover、range、active 都通过背景、outline 或绝对定位的伪元素表达，绝不增加 border 尺寸或推动相邻格子。字段、tag、状态和值默认单行截断。
+- **状态栏**：选择状态与文件路径是可收缩文本槽；帮助、格式和 revision 是固定槽。窄宽度时先隐藏帮助和路径，不让 revision 被挤出。
+- **AI / Scripts sidecar**：抽屉只允许作为临时工作面使用绝对定位；内部固定 `header + context + minmax(0, scroll body) + footer`。列表标题、摘要、时间与底部 CTA 都预留独立槽位并截断，滚动只发生在 body。
+- **响应策略**：1100px 先收起辅助文字和 Typed field，860px 再隐藏 vault 与次级 data ops；核心的 Table、Group、Ask AI、单元格编辑和选中信息不改位置。
+
 ## 验证
 
 ```bash
