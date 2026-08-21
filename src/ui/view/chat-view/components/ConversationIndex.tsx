@@ -18,6 +18,7 @@ import {
 	buildOutlineItems,
 	buildResourceRows,
 	filterOutlineItems,
+	filterStarredOutlineItems,
 	filterResourceRows,
 	flattenOutline,
 	DEFAULT_RESOURCE_FILTER,
@@ -32,7 +33,7 @@ import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
- * ConversationIndex — right-side navigator with Outline / Resources tabs.
+ * ConversationIndex — right-side navigator with Outline / Starred / Resources tabs.
  *
  * Spec: chat-studio §10 (right column) + §12.2 (ChatArtifactReceipt) +
  * §17.4 RIGHT-01..03.
@@ -40,6 +41,7 @@ import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigati
  * - Outline: user / assistant / process / error / artifact anchors, grouped by
  *   topic (else strict time order), no filter chrome. Scroll spy highlights
  *   the topmost visible message's outline row.
+ * - Starred: current-conversation saved turns only; click locates the source.
  * - Resources: direction × type filters, receipt-driven rows. Empty state
  *   explains the active filters.
  *
@@ -52,7 +54,7 @@ import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigati
  * own document (popout-safe via usePortalContainer + ownerDocument).
  */
 
-type TabId = 'outline' | 'resources';
+type TabId = 'outline' | 'starred' | 'resources';
 
 // ── Scroll helpers (kept from prior implementation) ─────────────────────────
 
@@ -213,7 +215,7 @@ interface ConversationIndexProps {
 	 *  sidebar leaf omits it (nothing to collapse into). */
 	onCollapse?: () => void;
 	/** Compact layout for the narrow Obsidian right-sidebar leaf: centers the
-	 *  Outline / Resources tabs. Studio's wider right column omits this prop and
+	 *  Outline / Starred / Resources tabs. Studio's wider right column omits this prop and
 	 *  keeps the left-aligned tabs layout. */
 	compact?: boolean;
 }
@@ -310,6 +312,10 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 		() => filterOutlineItems(outlineGroups, query),
 		[outlineGroups, query],
 	);
+	const starredGroups = useMemo(
+		() => filterOutlineItems(filterStarredOutlineItems(outlineGroups), query),
+		[outlineGroups, query],
+	);
 	const resourceRows = useMemo(
 		() => buildResourceRows(messages, artifactReceipts, turnReceipts),
 		[messages, artifactReceipts, turnReceipts],
@@ -360,10 +366,13 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 		() => flattenOutline(outlineFiltered).length,
 		[outlineFiltered],
 	);
+	const starredCount = useMemo(() => flattenOutline(starredGroups).length, [starredGroups]);
 
 	const footerCount = tab === 'outline'
 		? rightStrings.footerOutlineCount.replace('{count}', String(outlineFilteredCount))
-		: rightStrings.footerResourceCount.replace('{count}', String(resourceFiltered.length));
+		: tab === 'starred'
+			? rightStrings.footerStarredCount.replace('{count}', String(starredCount))
+			: rightStrings.footerResourceCount.replace('{count}', String(resourceFiltered.length));
 
 	const resourcesStrings = {
 		directionAll: rightStrings.directionAll,
@@ -429,6 +438,7 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 				{(
 					[
 						['outline', rightStrings.outlineTab],
+						['starred', rightStrings.starredTab],
 						['resources', rightStrings.resourcesTab],
 					] as Array<[TabId, string]>
 				).map(([value, label]) => (
@@ -473,6 +483,17 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 								? rightStrings.emptyOutlineSub
 								: rightStrings.emptyFilteredSub
 						}
+						untopicedLabel={legacyStrings.index.topicNoTopic}
+						forceExpanded={queryActive}
+					/>
+				)}
+				{tab === 'starred' && (
+					<OutlineTab
+						groups={starredGroups}
+						activeMessageId={activeMessageId}
+						onSelect={onOutlineSelect}
+						emptyTitle={rightStrings.emptyStarred}
+						emptySub={rightStrings.emptyStarredSub}
 						untopicedLabel={legacyStrings.index.topicNoTopic}
 						forceExpanded={queryActive}
 					/>

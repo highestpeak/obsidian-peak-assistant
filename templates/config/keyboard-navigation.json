@@ -104,7 +104,7 @@
       "searchVault": "K",
       "header": { "branch": "D", "openSource": "O", "refresh": "R", "restoreIndex": "I" },
       "composer": { "plus": "P", "sources": "S", "graph": "G", "assistant": "A", "model": "L", "send": "E" },
-      "index": { "collapse": "X", "outline": "B", "resources": "U" }
+      "index": { "collapse": "X", "outline": "B", "starred": "S", "resources": "U" }
     },
     "composer": {
       "workspaceBack": "B",

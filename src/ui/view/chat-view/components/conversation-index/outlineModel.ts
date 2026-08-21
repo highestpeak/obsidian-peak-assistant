@@ -283,6 +283,21 @@ export function filterOutlineItems(groups: OutlineGroup[], query: string): Outli
 		.filter((g) => g.items.length > 0);
 }
 
+/**
+ * Presentation adapter for the right-index Starred tab. It intentionally keeps
+ * the outline's topic runs and reverse-chronological order, but removes every
+ * non-message node and every message that was not explicitly starred.
+ */
+export function filterStarredOutlineItems(groups: OutlineGroup[]): OutlineGroup[] {
+	return groups
+		.map((group) => ({
+			id: group.id,
+			topic: group.topic,
+			items: group.items.filter((item) => item.starred === true),
+		}))
+		.filter((group) => group.items.length > 0);
+}
+
 // ── Resource rows ────────────────────────────────────────────────────────────
 
 /**

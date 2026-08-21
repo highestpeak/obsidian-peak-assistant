@@ -120,7 +120,7 @@ export const PEAK_CONTROL_KEY_TIP_KEYS = {
 			model: 'L',
 			send: 'E',
 		},
-		index: { collapse: 'X', outline: 'B', resources: 'U' },
+		index: { collapse: 'X', outline: 'B', starred: 'S', resources: 'U' },
 	},
 	composer: {
 		workspaceBack: 'B',

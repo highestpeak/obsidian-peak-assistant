@@ -477,6 +477,7 @@
 	},
 	"rightIndex": {
 		"outlineTab": "Outline",
+		"starredTab": "Starred",
 		"resourcesTab": "Resources",
 		"searchPlaceholder": "Search this conversation…",
 		"collapseLabel": "Collapse index",
@@ -504,9 +505,12 @@
 		"emptyFiltered": "No items match the current filters",
 		"emptyFilteredSub": "Clear the search or adjust the direction / type filters.",
 		"emptyOutline": "No outline yet — send a message to start",
+		"emptyStarred": "No starred messages in this conversation",
+		"emptyStarredSub": "Star a message to keep it easy to return to.",
 		"emptyResources": "No resources yet",
 		"emptyResourcesSub": "Attachments and generated files will show up here.",
 		"footerOutlineCount": "{count} outline items",
+		"footerStarredCount": "{count} starred messages",
 		"footerResourceCount": "{count} resources",
 		"footerLocateHint": "Click a row to locate",
 		"openLabel": "Open"

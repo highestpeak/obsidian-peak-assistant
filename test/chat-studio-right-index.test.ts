@@ -26,6 +26,7 @@ import {
 	buildOutlineItems,
 	buildResourceRows,
 	filterOutlineItems,
+	filterStarredOutlineItems,
 	filterResourceRows,
 	flattenOutline,
 	mapArtifactKind,
@@ -258,6 +259,25 @@ function testOutlineStarredFlag(): void {
 	console.log('PASS: outlineStarredFlag');
 }
 
+function testStarredTabProjection(): void {
+	const messages = [
+		userMsg('u1', 'saved user question', { starred: true, topic: 'Saved' }),
+		assistantMsg('a1', 'not saved', { starred: false, topic: 'Saved' }),
+		assistantMsg('a2', 'saved answer', { starred: true, topic: 'Review', toolCalls: [{ toolName: 'search' }] }),
+	];
+	const groups = filterStarredOutlineItems(buildOutlineItems(messages, []));
+	const items = flattenOutline(groups);
+	assert.deepStrictEqual(items.map((item) => item.messageId), ['a2', 'u1']);
+	assert.ok(items.every((item) => item.starred === true), 'Starred must not leak process/artifact or plain message rows');
+	assert.deepStrictEqual(groups.map((group) => group.topic), ['Review', 'Saved']);
+	assert.deepStrictEqual(
+		flattenOutline(filterOutlineItems(groups, 'answer')).map((item) => item.messageId),
+		['a2'],
+		'Starred search applies after the starred projection',
+	);
+	console.log('PASS: starredTabProjection');
+}
+
 // ── RIGHT-01 boundary: outline ignores resource filters ─────────────────────
 
 function testOutlineIgnoresResourceFilters(): void {
@@ -443,6 +463,7 @@ async function run(): Promise<void> {
 	testOutlineArtifactAnchorsJoinedByMessage();
 	testOutlineClusterIntegrityUnderReversal();
 	testOutlineStarredFlag();
+	testStarredTabProjection();
 	testOutlineIgnoresResourceFilters();
 	testOutlineTextFilter();
 	testResourceRowMappingDirectionAndKind();

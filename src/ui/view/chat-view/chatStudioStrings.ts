@@ -486,6 +486,7 @@ export interface ChatStudioStrings {
 	};
 	rightIndex: {
 		outlineTab: string;
+		starredTab: string;
 		resourcesTab: string;
 		searchPlaceholder: string;
 		/** aria-label / tooltip for the topline collapse (PanelRightClose) button. */
@@ -519,11 +520,14 @@ export interface ChatStudioStrings {
 		emptyOutline: string;
 		/** Optional second line under the outline-empty title (currently unset). */
 		emptyOutlineSub?: string;
+		emptyStarred: string;
+		emptyStarredSub?: string;
 		/** Resources tab true-empty state (was mis-bound to emptyOutline — R6). */
 		emptyResources: string;
 		emptyResourcesSub?: string;
 		/** Footer count strings — the literal `{count}` is replaced in code. */
 		footerOutlineCount: string;
+		footerStarredCount: string;
 		footerResourceCount: string;
 		/** Footer right-hand static hint. */
 		footerLocateHint: string;
