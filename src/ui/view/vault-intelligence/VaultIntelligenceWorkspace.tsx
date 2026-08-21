@@ -861,15 +861,36 @@ function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const selected = outputs.filter((output) => output.enabled).length;
+	const coreOutputs = config.indexOutputs.filter((output) => output.group === 'core');
+	const generatedGroups = ['summaries', 'tags', 'relationships', 'content'] as const;
+	const renderOutputRow = (entry: VaultIntelligenceConfig['indexOutputs'][number], compact = false) => {
+		const output = outputs.find((candidate) => candidate.id === entry.id)!;
+		const canToggle = entry.availability === 'optional';
+		const state = entry.availability === 'automatic' ? 'Automatic' : entry.availability === 'required' ? 'Required' : entry.availability === 'later' ? 'Later' : null;
+		const className = compact ? `pk-vi-index-core-row is-${entry.availability}` : `pk-vi-index-output is-${entry.availability}`;
+		return <label key={entry.id} className={className}>
+			<span><strong>{entry.label}</strong><small>{entry.description}</small></span>
+			{compact && state && <em>{state}</em>}
+			<input type="checkbox" checked={output.enabled} disabled={!canToggle} onChange={() => onToggle(entry.id)} />
+			{canToggle ? <i className="pk-vi-index-output-toggle" aria-hidden="true" /> : <i className={`pk-vi-index-output-state is-${entry.availability}`} aria-hidden="true">{entry.availability === 'automatic' || entry.availability === 'required' ? '✓' : state}</i>}
+			{!compact && entry.availability === 'later' && state && <em>{state}</em>}
+		</label>;
+	};
 	return <section className={`pk-vi-index-plan ${expanded ? 'is-expanded' : ''}`}>
 		<Button variant="ghost" className="pk-vi-index-plan-trigger" onClick={() => setExpanded((current) => !current)} aria-expanded={expanded}>
 			<Search size={16} /><span><strong>Knowledge Index plan</strong><small>Core Search + {selected} enabled outputs · inherits the Step 1 scope</small></span><span>{scopeObjectCount} objects</span><ChevronDown size={16} />
 		</Button>
-		{expanded && <div className="pk-vi-index-output-groups">{(['core', 'summaries', 'tags', 'relationships', 'content'] as const).map((group) => {
-			const entries = config.indexOutputs.filter((output) => output.group === group);
-			if (entries.length === 0) return null;
-			return <section key={group}><div><strong>{indexOutputGroupLabel(group)}</strong><span>{entries.filter((entry) => outputs.find((output) => output.id === entry.id)?.enabled).length} enabled</span></div>{entries.map((entry) => { const output = outputs.find((candidate) => candidate.id === entry.id)!; const canToggle = entry.availability === 'optional'; const state = entry.availability === 'automatic' ? 'Automatic' : entry.availability === 'required' ? 'Required' : entry.availability === 'later' ? 'Later' : null; return <label key={entry.id} className={`pk-vi-index-output is-${entry.availability}`}><input type="checkbox" checked={output.enabled} disabled={!canToggle} onChange={() => onToggle(entry.id)} />{canToggle ? <i className="pk-vi-index-output-toggle" aria-hidden="true" /> : <i className={`pk-vi-index-output-state is-${entry.availability}`} aria-hidden="true">{entry.availability === 'automatic' || entry.availability === 'required' ? '✓' : state}</i>}<span><strong>{entry.label}</strong><small>{entry.description}</small></span>{state && <em>{state}</em>}</label>; })}</section>;
-		})}</div>}
+		{expanded && <div className="pk-vi-index-plan-body">
+			<div className="pk-vi-index-plan-heading"><div><strong>Choose what this scan adds to the Index</strong><small>Step 1 already defines the content scope. Here you choose the reusable Search and machine-knowledge outputs built from that same scope.</small></div><span>Scope · current selection</span></div>
+			<div className="pk-vi-index-core-label"><strong>Core Search</strong><small>Foundations used to find and retrieve files</small></div>
+			<div className="pk-vi-index-core">{coreOutputs.map((entry) => renderOutputRow(entry, true))}</div>
+			<div className="pk-vi-index-generated-head"><div><strong>Generated Index outputs</strong><small>Optional AI outputs can be included for this run; automatic outputs stay on.</small></div><span>{selected} enabled</span></div>
+			<div className="pk-vi-index-output-grid">{generatedGroups.map((group) => {
+				const entries = config.indexOutputs.filter((output) => output.group === group);
+				if (entries.length === 0) return null;
+				return <section key={group} className="pk-vi-index-output-group"><div className="pk-vi-index-output-head"><strong>{indexOutputGroupLabel(group)}</strong><span>{entries.filter((entry) => outputs.find((output) => output.id === entry.id)?.enabled).length} enabled</span></div><div className="pk-vi-index-output-list">{entries.map((entry) => renderOutputRow(entry))}</div></section>;
+			})}</div>
+		</div>}
 	</section>;
 }
 
