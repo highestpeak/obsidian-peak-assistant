@@ -1,19 +1,30 @@
 const MIN_GRID_ROWS = 64;
 const MIN_GRID_COLUMNS = 30;
 const GENERATED_VALUES = [1, 1, 2, 3, 4, '', 5, 7];
+const FIELD_WIDTH_CONTRACT = {
+  text: { default: 220, min: 160, max: 520 },
+  link: { default: 200, min: 144, max: 520 },
+  singleSelect: { default: 112, min: 104, max: 220 },
+  checkbox: { default: 104, min: 96, max: 152 },
+  date: { default: 108, min: 96, max: 180 },
+  number: { default: 96, min: 84, max: 180 },
+  file: { default: 180, min: 144, max: 360 },
+  formula: { default: 120, min: 96, max: 260 },
+  scriptOutput: { default: 140, min: 112, max: 280 },
+};
 
 const datasets = {
   launch: {
     title: 'Launch Tracker', folder: 'Product / Launch', revision: 18,
     fields: [
       { id: 'task', name: 'Task', type: 'text', width: 220 },
-      { id: 'area', name: 'Area', type: 'singleSelect', width: 80 },
-      { id: 'priority', name: 'Priority', type: 'singleSelect', width: 72 },
-      { id: 'status', name: 'Status', type: 'singleSelect', width: 88 },
-      { id: 'due', name: 'Due date', type: 'date', width: 80 },
-      { id: 'blocker', name: 'Blocker', type: 'text', width: 130 },
-      { id: 'owner', name: 'Owner', type: 'text', width: 72 },
-      { id: 'notes', name: 'Notes', type: 'text', width: 130 },
+      { id: 'area', name: 'Area', type: 'singleSelect', width: 112 },
+      { id: 'priority', name: 'Priority', type: 'singleSelect', width: 104 },
+      { id: 'status', name: 'Status', type: 'singleSelect', width: 112 },
+      { id: 'due', name: 'Due date', type: 'date', width: 108 },
+      { id: 'blocker', name: 'Blocker', type: 'text', width: 190 },
+      { id: 'owner', name: 'Owner', type: 'text', width: 104 },
+      { id: 'notes', name: 'Notes', type: 'text', width: 220 },
     ],
     rows: [
       { task: 'Finish onboarding empty states', area: 'Product', priority: 'P0', status: 'Doing', due: 'Aug 12', blocker: 'Copy approval', owner: 'Jike', notes: 'First-run path must be testable' },
@@ -29,14 +40,14 @@ const datasets = {
   beta: {
     title: 'Beta Feedback', folder: 'Product / Launch', revision: 9,
     fields: [
-      { id: 'user', name: 'User', type: 'text', width: 90 },
+      { id: 'user', name: 'User', type: 'text', width: 108 },
       { id: 'feedback', name: 'Feedback', type: 'text', width: 220 },
-      { id: 'category', name: 'Category', type: 'singleSelect', width: 90 },
-      { id: 'severity', name: 'Severity', type: 'singleSelect', width: 75 },
-      { id: 'repro', name: 'Reproducible', type: 'checkbox', width: 90 },
-      { id: 'status', name: 'Status', type: 'singleSelect', width: 90 },
-      { id: 'task', name: 'Related task', type: 'link', width: 140 },
-      { id: 'notes', name: 'Notes', type: 'text', width: 130 },
+      { id: 'category', name: 'Category', type: 'singleSelect', width: 112 },
+      { id: 'severity', name: 'Severity', type: 'singleSelect', width: 104 },
+      { id: 'repro', name: 'Reproducible', type: 'checkbox', width: 112 },
+      { id: 'status', name: 'Status', type: 'singleSelect', width: 112 },
+      { id: 'task', name: 'Related task', type: 'link', width: 200 },
+      { id: 'notes', name: 'Notes', type: 'text', width: 220 },
     ],
     rows: [
       { user: 'Beta 014', feedback: 'Search result opens the wrong preview tab', category: 'Search', severity: 'P0', repro: true, status: 'Doing', task: 'Verify AI Search provider routing', notes: 'Occurs after switching modes' },
@@ -53,13 +64,13 @@ const datasets = {
   content: {
     title: 'Launch Content', folder: 'Product / Launch / Marketing', revision: 12,
     fields: [
-      { id: 'channel', name: 'Channel', type: 'singleSelect', width: 100 },
-      { id: 'content', name: 'Content type', type: 'singleSelect', width: 100 },
+      { id: 'channel', name: 'Channel', type: 'singleSelect', width: 112 },
+      { id: 'content', name: 'Content type', type: 'singleSelect', width: 124 },
       { id: 'topic', name: 'Topic', type: 'text', width: 250 },
-      { id: 'status', name: 'Status', type: 'singleSelect', width: 90 },
-      { id: 'date', name: 'Publish date', type: 'date', width: 100 },
-      { id: 'link', name: 'Link', type: 'link', width: 180 },
-      { id: 'result', name: 'Result', type: 'number', width: 90 },
+      { id: 'status', name: 'Status', type: 'singleSelect', width: 112 },
+      { id: 'date', name: 'Publish date', type: 'date', width: 108 },
+      { id: 'link', name: 'Link', type: 'link', width: 200 },
+      { id: 'result', name: 'Result', type: 'number', width: 96 },
     ],
     rows: [
       { channel: 'Website', content: 'Landing page', topic: 'See the whole system. Work inside the source.', status: 'Doing', date: 'Aug 17', link: '/launch', result: 0 },
@@ -81,10 +92,27 @@ let aiTypingTimer = null;
 let scriptTimer = null;
 let rangeClipboard = '';
 let gridState = { activeCell: { row: 2, field: 3 }, anchorRow: 2, anchorField: 3, focusRow: 2, focusField: 3, mode: 'navigation' };
+let overlayState = { id: null, trigger: null };
 
 const byId = (id) => document.getElementById(id);
 const current = () => datasets[activeDatasetId];
 const typeLabel = (type) => ({ text: 'Text', singleSelect: 'Single select', number: 'Number', date: 'Date', checkbox: 'Checkbox', link: 'Link', file: 'File', formula: 'Formula', scriptOutput: 'Script output' }[type] ?? type);
+
+function widthContract(field) {
+  return FIELD_WIDTH_CONTRACT[field?.type] ?? FIELD_WIDTH_CONTRACT.text;
+}
+
+function fieldWidth(field) {
+  if (!field) return 160;
+  const contract = widthContract(field);
+  const width = field?.width ?? contract.default;
+  return Math.max(contract.min, Math.min(contract.max, width));
+}
+
+function updateGridWidth() {
+  const columns = Array.from({ length: visibleColumnCount() }, (_, index) => current().fields[index]);
+  byId('grid-scroll').style.setProperty('--grid-width', `${92 + columns.reduce((total, field) => total + fieldWidth(field), 0)}px`);
+}
 
 function filePath(dataset = current()) {
   return `${dataset.folder.replaceAll(' / ', '/')}/${dataset.title}.peaksheet`;
@@ -121,14 +149,13 @@ function renderTable() {
   const table = byId('data-grid');
   const rows = Array.from({ length: visibleRowCount(dataset) }, (_, index) => dataset.rows[index]);
   const columns = Array.from({ length: visibleColumnCount(dataset) }, (_, index) => dataset.fields[index]);
-  const gridWidth = 92 + columns.reduce((total, field) => total + (field?.width ?? 112), 0);
-  byId('grid-scroll').style.setProperty('--grid-width', `${gridWidth}px`);
-  const colgroup = `<colgroup><col style="width:48px">${columns.map((field) => `<col style="width:${field?.width ?? 112}px">`).join('')}<col style="width:44px"></colgroup>`;
+  updateGridWidth();
+  const colgroup = `<colgroup><col style="width:48px">${columns.map((field) => `<col style="width:${fieldWidth(field)}px">`).join('')}<col style="width:44px"></colgroup>`;
   const head = `<thead><tr><th class="row-index"><button type="button" class="select-all-cells" id="select-all-cells" aria-label="Select all cells"></button></th>${columns.map((field, index) => `
     <th class="field-head${field ? '' : ' is-virtual'}" data-field-index="${index}">
       <div class="field-head-shell" data-field-index="${index}">
         <button type="button" class="field-select-button" data-field-index="${index}" title="Click to select · Double-click to name and structure"><span class="column-letter">${columnName(index)}</span><span class="field-title${field ? '' : ' is-general'}">${escapeHtml(field?.name ?? 'General')}</span><small>${escapeHtml(shortType(field?.type ?? 'text'))}</small></button>
-        <button type="button" class="field-menu-trigger${openFieldIndex === index ? ' is-open' : ''}" data-field-index="${index}" aria-label="Configure ${escapeHtml(field?.name ?? `Column ${columnName(index)}`)}"><svg><use href="#i-chevron"/></svg></button>
+        <button type="button" class="field-menu-trigger${openFieldIndex === index ? ' is-open' : ''}" data-field-index="${index}" data-overlay-trigger="${field ? 'field-menu' : 'field-editor'}" aria-haspopup="${field ? 'menu' : 'dialog'}" aria-controls="${field ? 'field-menu' : 'field-editor'}" aria-expanded="${openFieldIndex === index}" aria-label="Configure ${escapeHtml(field?.name ?? `Column ${columnName(index)}`)}"><svg><use href="#i-chevron"/></svg></button>${field ? `<span class="field-resize-handle" data-field-index="${index}" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize ${escapeHtml(field.name)} column"></span>` : ''}
       </div>
     </th>`).join('')}<th class="add-field-head"><button type="button" class="add-field-button" id="inline-add-field" aria-label="Create typed field" title="Create Select, Formula, File, or another typed field"><svg><use href="#i-plus"/></svg></button></th></tr></thead>`;
   const body = `<tbody>${rows.map((row, rowIndex) => `<tr class="${row ? '' : 'is-placeholder-row'}">
@@ -171,6 +198,10 @@ function bindGridEvents() {
   document.querySelectorAll('.field-menu-trigger').forEach((button) => {
     button.addEventListener('click', (event) => openFieldMenu(Number(button.dataset.fieldIndex), event.currentTarget));
   });
+  document.querySelectorAll('.field-resize-handle').forEach((handle) => {
+    handle.addEventListener('pointerdown', (event) => startFieldResize(event, Number(handle.dataset.fieldIndex), handle));
+    handle.addEventListener('keydown', (event) => resizeFieldWithKeyboard(event, Number(handle.dataset.fieldIndex)));
+  });
   document.querySelectorAll('.field-head-shell').forEach((header) => {
     header.addEventListener('contextmenu', (event) => {
       event.preventDefault();
@@ -193,6 +224,52 @@ function bindGridEvents() {
     cell.addEventListener('keydown', (event) => handleCellKeydown(event, cell));
     cell.addEventListener('paste', pasteIntoGrid);
   });
+}
+
+function startFieldResize(event, index, handle) {
+  const field = current().fields[index];
+  if (!field || event.button !== 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const startX = event.clientX;
+  const startWidth = fieldWidth(field);
+  const contract = widthContract(field);
+  handle.setPointerCapture?.(event.pointerId);
+  handle.classList.add('is-active');
+  byId('peak-sheet-root')?.classList.add('is-resizing');
+  const move = (moveEvent) => {
+    field.width = Math.max(contract.min, Math.min(contract.max, startWidth + moveEvent.clientX - startX));
+    const column = byId('data-grid').querySelectorAll('col')[index + 1];
+    if (column) column.style.width = `${field.width}px`;
+    updateGridWidth();
+  };
+  const stop = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', stop);
+    document.removeEventListener('pointercancel', stop);
+    handle.classList.remove('is-active');
+    byId('peak-sheet-root')?.classList.remove('is-resizing');
+    showToast(`${field.name} width ${Math.round(field.width)}px`);
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', stop, { once: true });
+  document.addEventListener('pointercancel', stop, { once: true });
+}
+
+function resizeFieldWithKeyboard(event, index) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  const field = current().fields[index];
+  if (!field) return;
+  event.preventDefault();
+  const contract = widthContract(field);
+  const step = event.shiftKey ? 24 : 8;
+  if (event.key === 'Home') field.width = contract.min;
+  if (event.key === 'End') field.width = contract.max;
+  if (event.key === 'ArrowLeft') field.width = Math.max(contract.min, fieldWidth(field) - step);
+  if (event.key === 'ArrowRight') field.width = Math.min(contract.max, fieldWidth(field) + step);
+  renderTable();
+  document.querySelector(`.field-resize-handle[data-field-index="${index}"]`)?.focus();
+  showToast(`${field.name} width ${Math.round(field.width)}px`);
 }
 
 function startCellSelection(event, cell) {
@@ -502,7 +579,7 @@ function materializeField(fieldIndex) {
     const nextIndex = current().fields.length;
     const name = `Column ${columnName(nextIndex)}`;
     const id = uniqueFieldId(name);
-    current().fields.push({ id, name, type: 'text', width: 112 });
+    current().fields.push({ id, name, type: 'text', width: FIELD_WIDTH_CONTRACT.text.default });
     current().rows.forEach((row) => { row[id] = ''; });
   }
   return current().fields[fieldIndex];
@@ -559,27 +636,26 @@ function openFieldMenu(index, anchor) {
     openFieldEditor(index, anchor);
     return;
   }
-  closePopovers();
-  openFieldIndex = index;
   const field = current().fields[index];
-  byId('field-menu-name').textContent = field.name;
-  byId('field-menu-type').textContent = typeLabel(field.type);
-  positionPopover(byId('field-menu'), anchor.getBoundingClientRect(), 230);
-  byId('field-menu').hidden = false;
-  document.querySelector(`.field-menu-trigger[data-field-index="${index}"]`)?.classList.add('is-open');
+  openOverlay('field-menu', anchor, () => {
+    openFieldIndex = index;
+    byId('field-menu-name').textContent = field.name;
+    byId('field-menu-type').textContent = typeLabel(field.type);
+    positionPopover(byId('field-menu'), anchor.getBoundingClientRect(), 230);
+    anchor.classList.add('is-open');
+  });
 }
 
 function openFieldEditor(index, anchor) {
   const anchorRect = anchor.getBoundingClientRect();
-  closePopovers();
-  openFieldIndex = index;
   const field = index === null ? null : current().fields[index];
-  byId('field-editor-title').textContent = field ? `Edit “${field.name}”` : index === null ? 'Create typed field' : `Structure column ${columnName(index)}`;
-  byId('field-name-input').value = field?.name ?? '';
-  byId('field-type-select').value = field?.type ?? 'text';
-  positionPopover(byId('field-editor'), anchorRect, 292);
-  byId('field-editor').hidden = false;
-  requestAnimationFrame(() => byId('field-name-input').focus());
+  openOverlay('field-editor', anchor, () => {
+    openFieldIndex = index;
+    byId('field-editor-title').textContent = field ? `Edit “${field.name}”` : index === null ? 'Create typed field' : `Structure column ${columnName(index)}`;
+    byId('field-name-input').value = field?.name ?? '';
+    byId('field-type-select').value = field?.type ?? 'text';
+    positionPopover(byId('field-editor'), anchorRect, 292);
+  }, 'field-name-input');
 }
 
 function saveField() {
@@ -587,7 +663,7 @@ function saveField() {
   const type = byId('field-type-select').value;
   if (openFieldIndex === null) {
     const id = uniqueFieldId(name);
-    current().fields.push({ id, name, type, width: 160 });
+    current().fields.push({ id, name, type, width: widthContract({ type }).default });
     current().rows.forEach((row) => { row[id] = type === 'checkbox' ? false : ''; });
     bumpRevision(`Column “${name}” added`);
     closePopovers();
@@ -595,7 +671,7 @@ function saveField() {
   }
   Object.assign(materializeField(openFieldIndex), { name, type });
   bumpRevision(`Field “${name}” saved`);
-  closePopovers();
+  closeOverlay({ restoreFocus: false });
 }
 
 function handleFieldAction(action) {
@@ -610,7 +686,7 @@ function handleFieldAction(action) {
   if (action === 'insert-left' || action === 'insert-right') {
     const id = uniqueFieldId('Untitled');
     const insertAt = action === 'insert-left' ? index : index + 1;
-    current().fields.splice(insertAt, 0, { id, name: 'Untitled', type: 'text', width: 150 });
+    current().fields.splice(insertAt, 0, { id, name: 'Untitled', type: 'text', width: FIELD_WIDTH_CONTRACT.text.default });
     current().rows.forEach((row) => { row[id] = ''; });
     gridState = { activeCell: { row: 0, field: insertAt }, anchorRow: 0, anchorField: insertAt, focusRow: 0, focusField: insertAt, mode: 'navigation' };
     closePopovers();
@@ -633,13 +709,12 @@ function handleFieldAction(action) {
 }
 
 function openRowMenu(index, event) {
-  closePopovers();
-  openRowIndex = index;
-  byId('row-menu-title').textContent = `Row ${index + 1}`;
-  const menu = byId('row-menu');
-  menu.style.left = `${Math.min(event.clientX, window.innerWidth - 235)}px`;
-  menu.style.top = `${Math.min(event.clientY, window.innerHeight - 190)}px`;
-  menu.hidden = false;
+  const anchor = event.currentTarget;
+  openOverlay('row-menu', anchor, () => {
+    openRowIndex = index;
+    byId('row-menu-title').textContent = `Row ${index + 1}`;
+    positionPopover(byId('row-menu'), { left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY }, 230);
+  });
 }
 
 function handleRowAction(action) {
@@ -712,7 +787,7 @@ function switchDataset(id) {
   openFieldIndex = null;
   openRowIndex = null;
   gridState = { activeCell: { row: 0, field: 0 }, anchorRow: 0, anchorField: 0, focusRow: 0, focusField: 0, mode: 'navigation' };
-  closePopovers();
+  closeOverlay({ restoreFocus: false });
   renderDocument();
   showToast(`Opened ${current().title}.peaksheet from the Vault`);
 }
@@ -737,18 +812,50 @@ function bumpRevision(message, afterRender) {
   if (afterRender) requestAnimationFrame(afterRender);
 }
 
-function closePopovers() {
-  document.querySelectorAll('.popover').forEach((popover) => { popover.hidden = true; });
+function openOverlay(id, trigger, configure, focusTargetId = '') {
+  if (overlayState.id === id && overlayState.trigger === trigger) {
+    closeOverlay({ restoreFocus: false });
+    return false;
+  }
+  closeOverlay({ restoreFocus: false });
+  const overlay = byId(id);
+  overlay.hidden = false;
+  overlayState = { id, trigger };
+  trigger?.setAttribute('aria-expanded', 'true');
+  configure?.();
+  if (focusTargetId) requestAnimationFrame(() => byId(focusTargetId)?.focus());
+  return true;
+}
+
+function closeOverlay({ restoreFocus = true } = {}) {
+  if (!overlayState.id) return;
+  const { id, trigger } = overlayState;
+  if (id === 'ai-drawer') clearAiTimers();
+  if (id === 'ai-drawer') byId('ask-ai-button').classList.remove('is-thinking');
+  if (id === 'scripts-drawer' && scriptTimer) clearInterval(scriptTimer);
+  if (id === 'scripts-drawer') scriptTimer = null;
+  byId(id).hidden = true;
+  trigger?.setAttribute('aria-expanded', 'false');
   document.querySelectorAll('.field-menu-trigger.is-open').forEach((button) => button.classList.remove('is-open'));
+  overlayState = { id: null, trigger: null };
   openFieldIndex = null;
   openRowIndex = null;
+  if (restoreFocus && trigger?.isConnected && trigger.getClientRects().length) requestAnimationFrame(() => trigger.focus({ preventScroll: true }));
+}
+
+function closePopovers(options) {
+  if (['field-menu', 'field-editor', 'group-menu', 'row-menu', 'location-card'].includes(overlayState.id)) closeOverlay(options);
 }
 
 function positionPopover(popover, rect, width) {
-  const left = Math.min(rect.left, window.innerWidth - width - 10);
-  const top = Math.min(rect.bottom + 4, window.innerHeight - 360);
-  popover.style.left = `${Math.max(8, left)}px`;
-  popover.style.top = `${Math.max(8, top)}px`;
+  const margin = 8;
+  const height = popover.getBoundingClientRect().height || 260;
+  const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+  const below = rect.bottom + 6;
+  const above = rect.top - height - 6;
+  const top = below + height <= window.innerHeight - margin ? below : Math.max(margin, above);
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
 }
 
 function showToast(message) {
@@ -760,18 +867,16 @@ function showToast(message) {
 }
 
 function openScriptsDrawer() {
-  closeAiDrawer();
-  byId('scripts-drawer').hidden = false;
-  byId('script-selection-count').textContent = `${selectedCellCount()} ${selectedCellCount() === 1 ? 'cell' : 'cells'}`;
-  const rowCount = nonEmptyRows().length;
-  byId('script-view-count').textContent = `${rowCount} rows`;
-  byId('script-all-count').textContent = `${rowCount} rows`;
+  openOverlay('scripts-drawer', byId('scripts-button'), () => {
+    byId('script-selection-count').textContent = `${selectedCellCount()} ${selectedCellCount() === 1 ? 'cell' : 'cells'}`;
+    const rowCount = nonEmptyRows().length;
+    byId('script-view-count').textContent = `${rowCount} rows`;
+    byId('script-all-count').textContent = `${rowCount} rows`;
+  });
 }
 
 function closeScriptsDrawer() {
-  if (scriptTimer) clearInterval(scriptTimer);
-  scriptTimer = null;
-  byId('scripts-drawer').hidden = true;
+  if (overlayState.id === 'scripts-drawer') closeOverlay();
 }
 
 function previewScript() {
@@ -817,20 +922,23 @@ function runScript() {
   }, 70);
 }
 
-function openPeakShare() {
-  byId('peakshare-card').hidden = false;
+function toggleLocationCard(trigger) {
+  openOverlay('location-card', trigger, () => positionPopover(byId('location-card'), trigger.getBoundingClientRect(), 330));
+}
+
+function openPeakShare(trigger = byId('share-button')) {
+  openOverlay('peakshare-card', trigger);
 }
 
 function closePeakShare() {
-  byId('peakshare-card').hidden = true;
+  if (overlayState.id === 'peakshare-card') closeOverlay();
 }
 
 function openGroupMenu(anchor) {
-  closePopovers();
-  renderGroupPreview();
-  const menu = byId('group-menu');
-  positionPopover(menu, anchor.getBoundingClientRect(), 286);
-  menu.hidden = false;
+  openOverlay('group-menu', anchor, () => {
+    renderGroupPreview();
+    positionPopover(byId('group-menu'), anchor.getBoundingClientRect(), 286);
+  });
 }
 
 function renderGroupPreview() {
@@ -845,16 +953,12 @@ function renderGroupPreview() {
 }
 
 function openAiDrawer() {
-  closeScriptsDrawer();
-  byId('ai-drawer').hidden = false;
-  syncAiContext();
-  requestAnimationFrame(() => byId('ai-prompt').focus());
+  openOverlay('ai-drawer', byId('ask-ai-button'), syncAiContext, 'ai-prompt');
 }
 
 function closeAiDrawer() {
-  clearAiTimers();
   byId('ask-ai-button').classList.remove('is-thinking');
-  byId('ai-drawer').hidden = true;
+  if (overlayState.id === 'ai-drawer') closeOverlay();
 }
 
 function syncAiContext(label = rangeLabel(selectionBounds()), count = selectedCellCount()) {
@@ -1051,7 +1155,7 @@ document.querySelectorAll('[data-ai-prompt]').forEach((button) => button.addEven
   byId('ai-prompt').value = button.dataset.aiPrompt;
   runAi(button.dataset.aiMode ?? '');
 }));
-document.querySelectorAll('.open-peakshare').forEach((button) => button.addEventListener('click', openPeakShare));
+document.querySelectorAll('.open-peakshare').forEach((button) => button.addEventListener('click', () => openPeakShare()));
 document.querySelectorAll('.saved-script').forEach((button) => button.addEventListener('click', () => {
   document.querySelectorAll('.saved-script').forEach((candidate) => candidate.classList.toggle('is-active', candidate === button));
   byId('script-title').textContent = button.querySelector('strong').textContent;
@@ -1062,8 +1166,8 @@ byId('save-field').addEventListener('click', saveField);
 byId('typed-field-button').addEventListener('click', (event) => openFieldEditor(null, event.currentTarget));
 byId('sheet-title').addEventListener('change', renameDataset);
 byId('sheet-title').addEventListener('blur', renameDataset);
-byId('location-button').addEventListener('click', () => { byId('location-card').hidden = !byId('location-card').hidden; });
-byId('share-button').addEventListener('click', openPeakShare);
+byId('location-button').addEventListener('click', (event) => toggleLocationCard(event.currentTarget));
+byId('share-button').addEventListener('click', (event) => openPeakShare(event.currentTarget));
 byId('close-peakshare').addEventListener('click', closePeakShare);
 byId('cancel-peakshare').addEventListener('click', closePeakShare);
 byId('continue-peakshare').addEventListener('click', () => { closePeakShare(); showToast('PeakShare handoff preview · the local file remains unchanged'); });
@@ -1095,25 +1199,14 @@ byId('table-search').addEventListener('input', (event) => {
 document.addEventListener('pointerup', () => { draggingSelection = false; if (gridState.mode === 'selecting') gridState.mode = 'navigation'; });
 document.addEventListener('pointercancel', () => { draggingSelection = false; if (gridState.mode === 'selecting') gridState.mode = 'navigation'; });
 document.addEventListener('pointerdown', (event) => {
-  if (event.target.closest('.popover, .field-head-shell, .add-field-button, .row-index, .cell, #location-button, #location-card, .ai-drawer, #ask-ai-button, .scripts-drawer, #scripts-button, .peakshare-card, #share-button')) return;
-  closePopovers();
-  byId('location-card').hidden = true;
+  if (!overlayState.id) return;
+  const overlay = byId(overlayState.id);
+  if (overlay?.contains(event.target) || overlayState.trigger?.contains(event.target)) return;
+  closeOverlay();
 });
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
-  if (!byId('ai-drawer').hidden) {
-    closeAiDrawer();
-    return;
-  }
-  if (!byId('scripts-drawer').hidden) {
-    closeScriptsDrawer();
-    return;
-  }
-  if (!byId('peakshare-card').hidden) {
-    closePeakShare();
-    return;
-  }
-  closePopovers();
+  if (overlayState.id) closeOverlay();
 });
 
 renderDocument();

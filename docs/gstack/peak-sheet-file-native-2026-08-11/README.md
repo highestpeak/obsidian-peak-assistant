@@ -64,6 +64,21 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 - **AI / Scripts sidecar**：抽屉只允许作为临时工作面使用绝对定位；内部固定 `header + context + minmax(0, scroll body) + footer`。列表标题、摘要、时间与底部 CTA 都预留独立槽位并截断，滚动只发生在 body。
 - **响应策略**：1100px 先收起辅助文字和 Typed field，860px 再隐藏 vault 与次级 data ops；核心的 Table、Group、Ask AI、单元格编辑和选中信息不改位置。
 
+## 信息宽度与 Overlay 契约（V5.2）
+
+本次不再把所有文本都当作同一种“需要省略”的内容。字段有语义宽度；overlay 有唯一开关状态。
+
+- **表格字段**：Primary text 默认 220px（160–520px）；Link 200px（144–520px）；Select 112px（104–220px）；Date 108px（96–180px）；Number 96px（84–180px）；Checkbox 104px（96–152px）。虚拟 General 列为稳定的 160px。空间不足时保持这些语义最小宽度，让 grid 横向滚动，不把 Status、Due date 或列名压成不可识别的缩写。
+- **字段头**：列字母是固定内容，字段名才是唯一可收缩槽；配置槽固定 24px，resize handle 置于列边缘且不参与宽度分配。拖动或键盘 Arrow/Home/End 调整列宽，不改变行高、内容位置或其他字段的宽度合同。
+- **文字策略**：标题、文件路径、自由文本可以截断；状态、badge、日期、计数、按钮和菜单项保持单行且拥有语义最小宽度。Location card 的超长路径采用受控换行，而不是把真实路径变成 `…`。
+- **Overlay 状态机**：全部 transient surface 共用 `closed | open(id, trigger)`：同一 trigger 再次点击会关闭；另一个 trigger 会切换；外部 pointerdown 和 Escape 会关闭；关闭后返回 trigger 焦点。Field menu、field editor、row menu、Group、location card、Ask AI、Scripts 和 PeakShare 同时只会打开一个。
+- **滚动 ownership**：Scripts 与 Ask AI 都是 `header + context + minmax(0, scroll body) + footer`；body 有末端安全内边距和 `overscroll-behavior: contain`，footer 不会覆盖最后一个操作或历史条目。
+- **宿主隔离**：`.peak-sheet-root` 在根边界固定 box sizing、字体、line-height 和 form control 继承，避免嵌入 Obsidian 时的 button/input 默认几何污染。
+
+### 极端 fixture 检查表
+
+每次视觉验收都至少覆盖：短/超长中英文标题、无空格长路径、空标题、0 与大 count、空数据、hover/focus/range selected、拖出 resize handle、Popover 重复触发与切换、外部点击、Escape、窄/宽容器、横向滚动以及 125% / 150% zoom。当前文件浏览器自动化受 `file://` 策略限制，因此这些属于 owner-visible mock 验收；脚本只验证布局/状态机契约存在，不能替代真实渲染证据。
+
 ## 验证
 
 ```bash

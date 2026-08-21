@@ -36,7 +36,7 @@
     <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h12l3 3v15H4V3Z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></symbol>
   </svg>
 
-  <div class="app-shell">
+  <div class="app-shell peak-sheet-root" id="peak-sheet-root">
     <aside class="vault-pane" aria-label="Obsidian 文件目录">
       <div class="window-dots"><span></span><span></span><span></span></div>
       <div class="vault-head">
@@ -74,7 +74,7 @@
             <div class="file-path"><span id="file-folder">Product / Launch</span><span>/</span><strong id="file-name">Launch Tracker.peaksheet</strong></div>
             <div class="title-line"><svg><use href="#i-grid"/></svg><input id="sheet-title" value="Launch Tracker" aria-label="Sheet title"><span class="format-badge">PEAK SHEET</span></div>
           </div>
-          <div class="save-state"><span class="local-badge"><span class="save-dot"></span>Local</span><span>Saved to Vault</span><button type="button" id="location-button">Show location</button><button type="button" class="share-button" id="share-button"><svg><use href="#i-cloud"/></svg>Share via PeakShare</button></div>
+          <div class="save-state"><span class="local-badge"><span class="save-dot"></span>Local</span><span>Saved to Vault</span><button type="button" id="location-button" data-overlay-trigger="location-card" aria-haspopup="dialog" aria-controls="location-card" aria-expanded="false">Show location</button><button type="button" class="share-button" id="share-button" data-overlay-trigger="peakshare-card" aria-haspopup="dialog" aria-controls="peakshare-card" aria-expanded="false"><svg><use href="#i-cloud"/></svg>Share via PeakShare</button></div>
         </header>
 
         <nav class="view-tabs" aria-label="Sheet views">
@@ -82,7 +82,7 @@
           <button type="button" class="view-tab" data-view="board"><svg><use href="#i-board"/></svg>Board</button>
           <button type="button" class="view-tab" data-view="calendar"><svg><use href="#i-calendar"/></svg>Calendar</button>
           <span class="view-divider"></span>
-          <button type="button" class="workspace-action" id="scripts-button"><svg><use href="#i-code"/></svg>Scripts<span>3</span></button>
+          <button type="button" class="workspace-action" id="scripts-button" data-overlay-trigger="scripts-drawer" aria-haspopup="dialog" aria-controls="scripts-drawer" aria-expanded="false"><svg><use href="#i-code"/></svg>Scripts<span>3</span></button>
           <span class="view-note">Local dataset · 3 live views</span>
         </nav>
 
@@ -96,13 +96,13 @@
             <div class="toolbar-operations">
               <button type="button" class="tool-button"><svg><use href="#i-filter"/></svg>Filter</button>
               <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>Sort</button>
-              <button type="button" class="tool-button" id="group-button"><svg><use href="#i-group"/></svg>Group</button>
+              <button type="button" class="tool-button" id="group-button" data-overlay-trigger="group-menu" aria-haspopup="menu" aria-controls="group-menu" aria-expanded="false"><svg><use href="#i-group"/></svg>Group</button>
               <button type="button" class="tool-button"><svg><use href="#i-eye"/></svg>Fields</button>
               <button type="button" class="tool-button typed-field-button" id="typed-field-button"><svg><use href="#i-plus"/></svg>Typed field</button>
             </div>
           </div>
           <div class="toolbar-actions">
-            <button type="button" class="ai-button" id="ask-ai-button"><span class="ai-button-orbit"></span><svg><use href="#i-sparkles"/></svg>Ask AI</button>
+            <button type="button" class="ai-button" id="ask-ai-button" data-overlay-trigger="ai-drawer" aria-haspopup="dialog" aria-controls="ai-drawer" aria-expanded="false"><span class="ai-button-orbit"></span><svg><use href="#i-sparkles"/></svg>Ask AI</button>
             <button type="button" class="icon-button" aria-label="更多"><svg><use href="#i-more"/></svg></button>
           </div>
         </div>

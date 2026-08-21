@@ -21,11 +21,12 @@
   font-size: 14px;
 }
 
-* { box-sizing: border-box; }
+.peak-sheet-root, .peak-sheet-root *, .peak-sheet-root *::before, .peak-sheet-root *::after { box-sizing: border-box; }
 html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--canvas); color: var(--ink); }
-button, input, select { font: inherit; color: inherit; }
-button { border: 0; background: none; }
-button, select { cursor: pointer; }
+.peak-sheet-root { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.2; }
+.peak-sheet-root button, .peak-sheet-root input, .peak-sheet-root select, .peak-sheet-root textarea { min-width: 0; min-height: 0; font: inherit; line-height: 1.2; color: inherit; }
+.peak-sheet-root button { border: 0; background: none; }
+.peak-sheet-root button, .peak-sheet-root select { cursor: pointer; }
 svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .icon-sprite { position: fixed; width: 0; height: 0; overflow: hidden; }
 
@@ -144,15 +145,20 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .data-grid tbody .row-index { cursor: pointer; }
 .data-grid tbody .row-index:hover { color: var(--accent); background: var(--accent-soft); }
 .data-grid th.field-head { padding: 0; border-right: 1px solid rgba(226,225,220,.62); }
-.field-head-shell { display: grid; width: 100%; height: 100%; grid-template-columns: minmax(0, 1fr) 24px; }
+.field-head-shell { position: relative; display: grid; width: 100%; height: 100%; grid-template-columns: minmax(0, 1fr) 24px; }
 .field-select-button { display: flex; align-items: center; min-width: 0; height: 100%; padding: 0 4px 0 10px; gap: 6px; color: inherit; text-align: left; }
 .field-select-button:hover, .field-head-shell.is-selected { background: #f3f1f6; color: var(--ink); }
-.field-select-button span { overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
+.field-select-button .column-letter { flex: none; overflow: visible; color: var(--ink-faint); font: 600 8.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.field-select-button .field-title { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
 .field-select-button small { display: none; color: var(--ink-faint); font-size: 8px; font-weight: 500; text-transform: uppercase; }
 .field-menu-trigger { display: grid; height: 100%; place-items: center; color: var(--ink-faint); opacity: 0; }
 .field-head-shell:hover .field-menu-trigger, .field-menu-trigger:focus, .field-menu-trigger.is-open { opacity: 1; }
 .field-menu-trigger:hover { background: #eae7ef; color: var(--accent); }
 .field-menu-trigger svg { width: 11px; height: 11px; }
+.field-resize-handle { position: absolute; z-index: 8; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; touch-action: none; }
+.field-resize-handle::after { position: absolute; top: 7px; bottom: 7px; left: 3px; width: 1px; border-radius: 1px; background: var(--accent-line); content: ""; opacity: 0; }
+.field-head-shell:hover .field-resize-handle::after, .field-resize-handle:focus-visible::after, .peak-sheet-root.is-resizing .field-resize-handle.is-active::after { opacity: 1; }
+.peak-sheet-root.is-resizing { cursor: col-resize; user-select: none; }
 .field-name-input { width: 100%; height: 23px; padding: 0 5px; border: 1px solid var(--accent-line); border-radius: 2px; outline: 0; background: #fff; font-size: 10px; }
 .field-head.is-ai-new { animation: new-column-flash 1.6s ease-out; }
 @keyframes new-column-flash { 0%, 35% { background: #ece4fa; box-shadow: inset 0 0 0 1px var(--accent-line); } 100% { background: #fbfbf9; box-shadow: none; } }
@@ -175,7 +181,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .cell-primary { color: var(--ink); font-weight: 590; }
 .cell-number { text-align: right !important; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .cell-date { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.tag { display: inline-flex; align-items: center; min-height: 23px; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 620; }
+.tag { display: inline-flex; align-items: center; min-height: 23px; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 620; white-space: nowrap; }
 .tag.todo { color: #6c5b36; background: #f2eddc; }
 .tag.doing { color: #6a4b92; background: #ebe3f4; }
 .tag.blocked { color: #94536a; background: var(--red-soft); }
@@ -236,9 +242,9 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .field-editor-actions button { height: 30px; padding: 0 11px; border-radius: 3px; font-size: 10px; }
 .field-editor-actions .secondary { border: 1px solid var(--line); }
 .field-editor-actions .primary { background: var(--ink); color: #fff; }
-.location-card { position: fixed; z-index: 18; top: 110px; right: 18px; display: flex; width: 330px; flex-direction: column; padding: 14px; gap: 5px; border: 1px solid var(--line-strong); border-radius: 5px; background: #fff; box-shadow: var(--shadow); }
+.location-card { position: fixed; z-index: 18; display: flex; width: min(330px, calc(100vw - 16px)); flex-direction: column; padding: 14px; gap: 5px; border: 1px solid var(--line-strong); border-radius: 5px; background: #fff; box-shadow: var(--shadow); }
 .location-card span { color: var(--ink-faint); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
-.location-card strong { font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.location-card strong { overflow-wrap: anywhere; font: 600 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .location-card small { margin-top: 4px; color: var(--ink-soft); font-size: 9.5px; line-height: 1.5; }
 .toast { position: fixed; z-index: 40; right: 20px; bottom: 38px; padding: 9px 12px; border: 1px solid #d7d1e4; border-radius: 4px; opacity: 0; transform: translateY(6px); background: #fcfbfe; color: #5c438b; box-shadow: 0 4px 18px rgba(42,37,33,.1); font-size: 10px; pointer-events: none; transition: opacity 150ms ease, transform 150ms ease; }
 .toast.is-visible { opacity: 1; transform: translateY(0); }
@@ -288,7 +294,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .scripts-local-note { display: grid; align-items: center; min-height: 38px; grid-template-columns: 7px auto minmax(0, 1fr); padding: 0 12px; gap: 7px; border-bottom: 1px solid var(--line); background: #fafcf9; }
 .scripts-local-note strong { color: #466d52; font-size: 8.5px; }
 .scripts-local-note small { overflow: hidden; color: var(--ink-faint); font-size: 8px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-.scripts-body { min-height: 0; padding: 12px; overflow: auto; }
+.scripts-body { min-height: 0; padding: 12px 12px 20px; overflow: auto; overscroll-behavior: contain; }
 .saved-scripts > header, .script-history > header { display: flex; align-items: center; justify-content: space-between; min-height: 27px; }
 .saved-scripts > header strong, .script-history > header strong { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
 .saved-scripts > header button, .script-run-config > header button { display: flex; align-items: center; height: 24px; padding: 0 6px; gap: 4px; border-radius: 3px; color: var(--accent); font-size: 8px; }
@@ -399,7 +405,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .ai-context-strip span { color: var(--ink-faint); font-size: 8px; text-transform: uppercase; letter-spacing: .07em; }
 .ai-context-strip strong { overflow: hidden; color: #5b4582; font: 600 9px ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .ai-context-strip small { max-width: 126px; overflow: hidden; color: var(--ink-faint); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-.ai-thread { min-height: 0; padding: 14px; overflow: auto; background: linear-gradient(#fff, #fdfcfe); }
+.ai-thread { min-height: 0; padding: 14px 14px 22px; overflow: auto; overscroll-behavior: contain; background: linear-gradient(#fff, #fdfcfe); }
 .ai-welcome { display: flex; min-height: 128px; flex-direction: column; align-items: center; justify-content: center; padding: 16px 24px; gap: 7px; color: var(--ink-soft); text-align: center; }
 .ai-welcome-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
 .ai-welcome-icon svg { width: 14px; height: 14px; }
