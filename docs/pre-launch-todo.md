@@ -4,7 +4,7 @@
 >
 > 目标：为首次公开上线或公开 Beta 提供任务顺序、优先级和最终闸门。
 >
-> 最后更新：2026-08-18。
+> 最后更新：2026-08-21。
 
 ## 使用规则
 
@@ -52,6 +52,9 @@
 - [ ] **P1 · 品牌宣传任务** · [19 · Peak Assistant 品牌宣传语与 AI Harness 定位](pre-launch/19-brand-tagline-and-peak-wordplay.md)
   - 评估 `Your personal assistant. Your Peak Assistant.` 与 `An AI harness, designed for your notes.` 两条品牌方向。
   - 将品牌记忆点、具体价值说明和功能证据分层，避免只剩一句无法解释产品的口号。
+- [ ] **P1 · 本地 AI 宣传任务** · [24 · 本地大模型与 Gemma 4 能力宣传](pre-launch/24-local-model-gemma4-launch-positioning.md)
+  - 重点展示本地模型如何完成真实笔记工作，而不只展示 Ollama 连接或模型列表。
+  - 以 Gemma 4 为主要案例，按设备、workload 和能力证据收窄公开主张。
 
 ### 阶段三 · 稳定版本验证与公开材料定稿
 

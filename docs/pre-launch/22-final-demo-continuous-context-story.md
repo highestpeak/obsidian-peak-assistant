@@ -149,6 +149,7 @@ Demo 的核心主张是 **one continuous context**：用户在 AI Search 中建�
 - [ ] Peak Sheet：只有当结构化材料和 typed edit 对任务自然有用时加入。
 - [ ] HTML/Image Workspace：只有当场景本身包含这些材料且能力通过验收时加入。
 - [ ] Canvas/Excalidraw：使用[任务 23](23-canvas-excalidraw-native-ai-editing-showcase.md)中已经通过的原生 typed operations。
+- [ ] Gemma 4：只有[本地模型专项验收](24-local-model-gemma4-launch-positioning.md)通过后，才让它自然承担一个主线步骤。
 - [ ] Vault Intelligence：只有当它自然发现本次需要处理的问题时加入。
 - [ ] 多文件与混合文件编辑：严格跟随[任务 20](20-composer-multi-file-mixed-file-session-qa.md)的能力分级。
 

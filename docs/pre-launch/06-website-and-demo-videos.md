@@ -30,6 +30,7 @@
 - [ ] 最终完整演示遵循[Final Demo 与 One Continuous Context 场景](22-final-demo-continuous-context-story.md)。
 - [ ] Graph 专项演示遵循[Graph 多视图能力宣传与切换演示](21-graph-multi-view-launch-showcase.md)。
 - [ ] 原生画布专项演示遵循[Canvas 与 Excalidraw AI 原生编辑宣传与演示](23-canvas-excalidraw-native-ai-editing-showcase.md)。
+- [ ] 本地 AI 专项演示遵循[本地大模型与 Gemma 4 能力宣传](24-local-model-gemma4-launch-positioning.md)。
 - [ ] 对应的产品主张。
 - [ ] 起始状态。
 - [ ] 操作脚本。
