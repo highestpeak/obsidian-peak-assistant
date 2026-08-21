@@ -23831,6 +23831,26 @@
 .peak-vault-intelligence-view .pk-vi-index-core-row + .pk-vi-index-core-row { border-top: 0; border-left: 1px solid var(--pk-vi-border); }
 .peak-vault-intelligence-view .pk-vi-index-core-row > em,
 .peak-vault-intelligence-view .pk-vi-index-output-list .pk-vi-index-output > em { justify-self: end; padding: 3px 7px; border-radius: 999px; color: var(--pk-vi-muted); background: var(--pk-vi-surface-raised); font-size: 9.5px; font-style: normal; font-weight: 700; }
+.peak-vault-intelligence-view .pk-vi-index-state {
+  display: inline-grid;
+  width: 25px;
+  min-width: 25px;
+  height: 20px;
+  place-items: center;
+  justify-self: end;
+  padding: 0;
+  border-radius: 5px;
+  color: var(--pk-vi-muted);
+  background: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 730;
+}
+.peak-vault-intelligence-view .pk-vi-index-state.is-automatic {
+  color: var(--pk-vi-accent);
+  background: var(--pk-vi-accent-soft);
+}
+.peak-vault-intelligence-view .pk-vi-index-state.is-later { padding: 0 5px; min-width: 25px; }
 .peak-vault-intelligence-view .pk-vi-index-core-row .pk-vi-index-output-toggle,
 .peak-vault-intelligence-view .pk-vi-index-output-list .pk-vi-index-output-toggle { grid-column: 2; justify-self: end; }
 
@@ -23893,8 +23913,11 @@
   cursor: help;
   vertical-align: -2px;
 }
-.peak-vault-intelligence-view .pk-vi-index-output-group { overflow: visible; }
-.peak-vault-intelligence-view .pk-vi-index-output-list { overflow: visible; }
+/* Generated rows use the fixed lower explainer, not a tooltip per label. Keep
+ * their card clipping from the reference mock so tooltip layers cannot leak
+ * across neighbouring columns. */
+.peak-vault-intelligence-view .pk-vi-index-output-group { overflow: hidden; }
+.peak-vault-intelligence-view .pk-vi-index-output-list { overflow: hidden; }
 .peak-vault-intelligence-view .pk-vi-hover-hint:hover,
 .peak-vault-intelligence-view .pk-vi-hover-hint:focus { color: var(--pk-vi-accent); background: var(--pk-vi-accent-soft); outline: 0; }
 .peak-vault-intelligence-view .pk-vi-hover-hint > span {
@@ -23917,6 +23940,36 @@
   text-align: left;
   white-space: normal;
 }
+.peak-vault-intelligence-view .pk-vi-hover-hint.is-bottom > span {
+  top: calc(100% + 7px);
+  bottom: auto;
+}
+.peak-vault-intelligence-view .pk-vi-index-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--pk-vi-muted);
+  font-size: 10px;
+}
+.peak-vault-intelligence-view .pk-vi-index-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.peak-vault-intelligence-view .pk-vi-index-legend i {
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--pk-vi-muted);
+  background: var(--pk-vi-surface-raised);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 780;
+}
+.peak-vault-intelligence-view .pk-vi-index-legend i.is-automatic { color: var(--pk-vi-accent); background: var(--pk-vi-accent-soft); }
 .peak-vault-intelligence-view .pk-vi-hover-hint:hover > span,
 .peak-vault-intelligence-view .pk-vi-hover-hint:focus > span { display: block; }
 
