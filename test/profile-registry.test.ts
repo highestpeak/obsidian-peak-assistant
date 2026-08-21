@@ -38,6 +38,15 @@ async function run(): Promise<void> {
       },
     },
     {
+      name: 'createPresetProfile: LM Studio uses its local OpenAI-compatible server',
+      fn: () => {
+        const p = createPresetProfile('lmstudio');
+        assert.strictEqual(p.kind, 'lmstudio');
+        assert.strictEqual(p.baseUrl, 'http://127.0.0.1:1234/v1');
+        assert.strictEqual(p.apiKey, null);
+      },
+    },
+    {
       name: 'createPresetProfile: custom starts blank',
       fn: () => {
         const p = createPresetProfile('custom');

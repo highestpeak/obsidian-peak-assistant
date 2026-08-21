@@ -2,7 +2,8 @@ import * as React from 'react';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { modelRegistry } from '@/core/providers/model-registry';
-import type { ProfileKind } from '@/core/profiles/types';
+import type { Profile, ProfileKind } from '@/core/profiles/types';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import type { ModelCapabilities } from '@/core/providers/types';
 import { CapTags, highlightMatch } from './model-display-utils';
 import { ChevronDown } from 'lucide-react';
@@ -12,6 +13,7 @@ export interface ModelComboboxProps {
 	value: string;
 	onChange: (modelId: string) => void;
 	providerKind: ProfileKind;
+	profile?: Pick<Profile, 'id' | 'kind'>;
 	allowFreeText?: boolean;
 	placeholder?: string;
 	label?: string;
@@ -36,8 +38,8 @@ interface ModelItem {
 	group?: string;
 }
 
-function buildModelList(providerKind: ProfileKind): ModelItem[] {
-	const catalogId = PROVIDER_CATALOG_MAP[providerKind];
+function buildModelList(providerKind: ProfileKind, profile?: Pick<Profile, 'id' | 'kind'>): ModelItem[] {
+	const catalogId = profile ? profileModelCatalogId(profile) : PROVIDER_CATALOG_MAP[providerKind];
 
 	if (providerKind === 'litellm' || providerKind === 'custom') {
 		// Combine all providers
@@ -65,7 +67,7 @@ function buildModelList(providerKind: ProfileKind): ModelItem[] {
 	return [];
 }
 
-export function ModelCombobox({ value, onChange, providerKind, allowFreeText, placeholder, label }: ModelComboboxProps) {
+export function ModelCombobox({ value, onChange, providerKind, profile, allowFreeText, placeholder, label }: ModelComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const [highlightIdx, setHighlightIdx] = useState(0);
@@ -73,7 +75,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const allModels = useMemo(() => buildModelList(providerKind), [providerKind]);
+	const allModels = useMemo(() => buildModelList(providerKind, profile), [providerKind, profile]);
 
 	const filtered = useMemo(() => {
 		if (!query) return allModels;

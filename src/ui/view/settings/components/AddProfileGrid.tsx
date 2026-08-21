@@ -3,7 +3,7 @@ import type { ProfileKind } from '@/core/profiles/types';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { Button } from '@/ui/component/shared-ui/button';
 
-const KINDS: ProfileKind[] = ['openai', 'anthropic', 'openrouter', 'ollama', 'codex', 'claude-code', 'google', 'perplexity', 'litellm', 'custom', 'simulator'];
+const KINDS: ProfileKind[] = ['openai', 'anthropic', 'openrouter', 'ollama', 'lmstudio', 'codex', 'claude-code', 'google', 'perplexity', 'litellm', 'custom', 'simulator'];
 
 interface AddProfileGridProps {
     onSelect: (kind: ProfileKind) => void;

@@ -121,7 +121,7 @@ export function AIModelsTab({
 	);
 }
 
-const PRIMARY_CONNECTIONS: ProfileKind[] = ['openai', 'anthropic', 'openrouter', 'ollama', 'codex', 'claude-code'];
+const PRIMARY_CONNECTIONS: ProfileKind[] = ['openai', 'anthropic', 'openrouter', 'ollama', 'lmstudio', 'codex', 'claude-code'];
 const MORE_CONNECTIONS: ProfileKind[] = ['google', 'perplexity', 'litellm', 'custom'];
 
 function ConnectionOverview({ profiles, settings, settingsUpdates, managerOpen, setManagerOpen, onProfilesChange }: {
@@ -135,8 +135,8 @@ function ConnectionOverview({ profiles, settings, settingsUpdates, managerOpen, 
 	const [moreOpen, setMoreOpen] = useState(false);
 	function connectionCard(kind: ProfileKind) {
 		const matches = profiles.filter((profile) => profile.kind === kind);
-		const ready = matches.some((profile) => profile.enabled && (kind === 'ollama' || kind === 'codex' || kind === 'claude-code' || Boolean(profile.apiKey)));
-		const status = ready ? (kind === 'ollama' ? 'Local' : 'Ready') : matches.length > 0 ? 'Needs attention' : kind === 'codex' || kind === 'claude-code' ? 'Setup' : 'Not set';
+		const ready = matches.some((profile) => profile.enabled && (kind === 'ollama' || kind === 'lmstudio' || kind === 'codex' || kind === 'claude-code' || Boolean(profile.apiKey)));
+		const status = ready ? (kind === 'ollama' || kind === 'lmstudio' ? 'Local' : 'Ready') : matches.length > 0 ? 'Needs attention' : kind === 'codex' || kind === 'claude-code' ? 'Setup' : 'Not set';
 		return (
 			<Button key={kind} variant="ghost" className="pk-connection-card" onClick={() => setManagerOpen(true)}>
 				<span className="pk-connection-card__fallback">{providerMonogram(kind)}</span>

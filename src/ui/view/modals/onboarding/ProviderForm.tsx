@@ -35,6 +35,7 @@ export const PROVIDER_OPTIONS: ProviderOption[] = [
     { kind: 'anthropic', label: 'Anthropic', desc: 'Claude models', keyUrl: 'https://console.anthropic.com/settings/keys', keyUrlLabel: 'Get API Key' },
     { kind: 'openrouter', label: 'OpenRouter', desc: 'Many model providers', keyUrl: 'https://openrouter.ai/keys', keyUrlLabel: 'Get API Key' },
     { kind: 'ollama', label: 'Ollama', desc: 'Models on this computer', keyUrl: 'https://ollama.com/', keyUrlLabel: 'Documentation' },
+    { kind: 'lmstudio', label: 'LM Studio', desc: 'Models loaded on this computer', keyUrl: 'https://lmstudio.ai/', keyUrlLabel: 'Documentation' },
 	{ kind: 'codex', label: 'Codex', desc: 'Peak execution gateway', keyUrl: null, keyUrlLabel: '' },
 	{ kind: 'claude-code', label: 'Claude Code', desc: 'Peak execution gateway', keyUrl: null, keyUrlLabel: '' },
 	{ kind: 'google', label: 'Google AI', desc: 'Gemini models', keyUrl: 'https://aistudio.google.com/apikey', keyUrlLabel: 'Get API Key' },
@@ -81,7 +82,7 @@ export function AddProviderForm({
 		? selectedKind
 		: visibleOptions[0]?.kind ?? 'openai';
     const selectedOption = PROVIDER_OPTIONS.find((p) => p.kind === effectiveKind)!;
-    const requiresKey = !['ollama', 'custom', 'litellm', 'codex', 'claude-code'].includes(effectiveKind);
+    const requiresKey = !['ollama', 'lmstudio', 'custom', 'litellm', 'codex', 'claude-code'].includes(effectiveKind);
     const preset = createPresetProfile(effectiveKind);
     const effectiveBaseUrl = baseUrl || preset.baseUrl;
 
@@ -207,6 +208,7 @@ function providerMonogram(kind: ProfileKind): string {
 	if (kind === 'anthropic') return 'AN';
 	if (kind === 'openrouter') return 'OR';
 	if (kind === 'ollama') return 'OL';
+	if (kind === 'lmstudio') return 'LM';
 	if (kind === 'codex') return 'CX';
 	if (kind === 'claude-code') return 'CC';
 	return kind.slice(0, 2).toUpperCase();

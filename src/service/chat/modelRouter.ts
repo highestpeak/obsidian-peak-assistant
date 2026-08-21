@@ -29,6 +29,7 @@ import type { Profile } from '@/core/profiles/types';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { modelRegistry } from '@/core/providers/model-registry';
+import { isKeylessLocalProfile, profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import modelRoutingDefaults from '../../../templates/config/model-routing.json';
 
 // ── Public shape ────────────────────────────────────────────────────────────
@@ -148,18 +149,6 @@ function mergeRoutingConfig(base: ModelRoutingConfig, override: Partial<ModelRou
 
 // ── Candidate materialization ────────────────────────────────────────────────
 
-/** Map provider kind → catalog id. Kept in sync with modelPickerData.ts. */
-const PROVIDER_CATALOG: Record<string, string | null> = {
-	anthropic: 'claude',
-	openai: 'openai',
-	google: 'gemini',
-	perplexity: 'perplexity',
-	ollama: 'ollama',
-	openrouter: 'openrouter',
-	litellm: null,
-	custom: null,
-};
-
 /**
  * Materialize all catalog models for currently-enabled profiles.
  * Skips profiles without an apiKey and profiles whose provider kind has no
@@ -170,8 +159,8 @@ export function buildAutoRoutingCandidates(profiles: Profile[]): AutoRoutingCand
 	const candidates: AutoRoutingCandidate[] = [];
 	for (const profile of profiles) {
 		if (profile.enabled === false) continue;
-		if (!profile.apiKey && profile.kind !== 'ollama') continue; // ollama has no key
-		const catalogId = PROVIDER_CATALOG[profile.kind];
+		if (!profile.apiKey && !isKeylessLocalProfile(profile.kind)) continue;
+		const catalogId = profileModelCatalogId(profile);
 		if (!catalogId) continue;
 		const models = modelRegistry.getModelsForProvider(catalogId);
 		for (const model of models) {

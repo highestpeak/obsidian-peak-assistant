@@ -74,7 +74,7 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
 
     const allProfiles = ProfileRegistry.getInstance().getAllProfiles();
     const simulatorProfiles = allProfiles.filter((p) => p.kind === 'simulator');
-    const localProfiles = allProfiles.filter((p) => p.kind === 'ollama' || p.kind === 'litellm' || p.kind === 'custom');
+    const localProfiles = allProfiles.filter((p) => p.kind === 'ollama' || p.kind === 'lmstudio' || p.kind === 'litellm' || p.kind === 'custom');
     const cloudProfiles = allProfiles.filter(
         (p) => p.kind === 'anthropic' || p.kind === 'openai' || p.kind === 'openrouter' || p.kind === 'google' || p.kind === 'perplexity',
     );

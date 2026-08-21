@@ -11,6 +11,7 @@ import { modelRegistry } from '@/core/providers/model-registry';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
 import type { ModelCapabilities, ModelTokenLimits } from '@/core/providers/types';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 
 /**
  * Resolve a profile id → its provider kind (the legacy `activeProvider`
@@ -21,13 +22,6 @@ import type { ModelCapabilities, ModelTokenLimits } from '@/core/providers/types
 export function providerKindForProfile(profileId: string): string | undefined {
 	return ProfileRegistry.getInstance().getAllProfiles().find((p) => p.id === profileId)?.kind;
 }
-
-/** Map provider kind → catalog id for model lookup (mirrors RoleModelPicker). */
-const PROVIDER_CATALOG: Record<string, string | null> = {
-	anthropic: 'claude', openai: 'openai', google: 'gemini',
-	perplexity: 'perplexity', ollama: 'ollama', openrouter: 'openrouter',
-	litellm: null, custom: null,
-};
 
 export interface ProfileModelItem {
 	profileId: string;
@@ -45,7 +39,7 @@ export function buildProfileModelItems(profiles: readonly Profile[]): ProfileMod
 	const items: ProfileModelItem[] = [];
 	for (const profile of profiles) {
 		if (profile.enabled === false) continue;
-		const catalogId = PROVIDER_CATALOG[profile.kind];
+		const catalogId = profileModelCatalogId(profile);
 		if (!catalogId) continue;
 		const models = modelRegistry.getModelsForProvider(catalogId);
 		for (const model of models) {

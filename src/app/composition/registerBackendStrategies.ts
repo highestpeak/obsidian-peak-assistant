@@ -73,7 +73,7 @@ function hasWorkingProvider(profileRegistry: ProfileRegistry): boolean {
 function profileHasCredential(profile: Profile): boolean {
 	if (!profile.enabled) return false;
 	// ollama runs locally; no key required.
-	if (profile.kind === 'ollama') return true;
+	if (profile.kind === 'ollama' || profile.kind === 'lmstudio') return true;
 	return typeof profile.apiKey === 'string' && profile.apiKey.length > 0;
 }
 

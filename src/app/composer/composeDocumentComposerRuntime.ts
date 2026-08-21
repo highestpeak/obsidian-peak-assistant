@@ -21,6 +21,7 @@ import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from '@
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { modelRegistry } from '@/core/providers/model-registry';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import { getAIMediaFolder } from '@/core/config/folderPaths';
 import type { ComposerContentWidth, DefaultDocumentView } from '@/core/composer';
 import type { SearchClient } from '@/service/search/SearchClient';
@@ -284,7 +285,9 @@ export async function composeDocumentComposerRuntime(
 			choices: () => {
 				const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
 				if (!profile) return [];
-				return modelRegistry.getModelsForProvider(profile.kind).map((model) => ({
+				const catalogId = profileModelCatalogId(profile);
+				if (!catalogId) return [];
+				return modelRegistry.getModelsForProvider(catalogId).map((model) => ({
 					id: model.id,
 					displayName: model.displayName ?? model.id,
 					providerLabel: profile.name,

@@ -6,7 +6,7 @@
  * and optional embedding config into one portable unit.
  */
 
-export type ProfileKind = 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'codex' | 'claude-code' | 'litellm' | 'custom' | 'simulator';
+export type ProfileKind = 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'lmstudio' | 'openrouter' | 'codex' | 'claude-code' | 'litellm' | 'custom' | 'simulator';
 
 export type SimulatorScenarioId =
   | 'happy-path'

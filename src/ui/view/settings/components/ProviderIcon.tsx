@@ -39,6 +39,12 @@ const OllamaIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
+const LMStudioIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M4 19V5h16v14H4Z" /><path d="m8 15 3-3 2 2 3-4" />
+    </svg>
+);
+
 const OpenRouterIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props}>
         <circle cx="12" cy="12" r="2" />
@@ -75,6 +81,7 @@ export const ICON_SVGS: Record<ProfileKind, React.FC<React.SVGProps<SVGSVGElemen
     google: GoogleIcon,
     perplexity: PerplexityIcon,
     ollama: OllamaIcon,
+    lmstudio: LMStudioIcon,
     openrouter: OpenRouterIcon,
 	codex: TerminalIcon,
 	'claude-code': TerminalIcon,
@@ -89,6 +96,7 @@ export const ICON_GRADIENTS: Record<ProfileKind, string> = {
     google: 'pktw-bg-[#4f77cc]',
     perplexity: 'pktw-bg-[#378c91]',
     ollama: 'pktw-bg-[#4a4a4a]',
+    lmstudio: 'pktw-bg-[#5a6578]',
     openrouter: 'pktw-bg-[#6266b8]',
 	codex: 'pktw-bg-[#2f6f9f]',
 	'claude-code': 'pktw-bg-[#a66f48]',
@@ -103,6 +111,7 @@ export const PROVIDER_LABELS: Record<ProfileKind, { label: string; desc: string 
     google: { label: 'Google', desc: 'Gemini models' },
     perplexity: { label: 'Perplexity', desc: 'Search-first AI' },
     ollama: { label: 'Ollama', desc: 'Local models' },
+    lmstudio: { label: 'LM Studio', desc: 'Loaded local models' },
     openrouter: { label: 'OpenRouter', desc: 'All providers' },
 	codex: { label: 'Codex', desc: 'Peak gateway' },
 	'claude-code': { label: 'Claude Code', desc: 'Peak gateway' },

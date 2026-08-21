@@ -104,8 +104,9 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
         case 'codex':
         case 'claude-code':
         case 'litellm':
+        case 'lmstudio':
         case 'custom': {
-            // LiteLLM and custom use OpenAI-compatible API
+            // LM Studio, LiteLLM and custom use the OpenAI-compatible API.
             const provider = createOpenAI({
                 baseURL: baseUrl || undefined,
                 apiKey: apiKey ?? undefined,

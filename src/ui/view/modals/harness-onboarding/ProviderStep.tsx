@@ -39,7 +39,7 @@ export function ProviderStep({ selectedProfileId, onSelect, onClear }: ProviderS
     // Auto-select the only profile when there's exactly one credentialed entry.
     useEffect(() => {
         if (selectedProfileId) return;
-        const usable = profiles.filter((p) => p.kind === 'ollama' || (p.apiKey && p.apiKey.length > 0));
+        const usable = profiles.filter((p) => p.kind === 'ollama' || p.kind === 'lmstudio' || (p.apiKey && p.apiKey.length > 0));
         if (usable.length === 1) {
             onSelect(usable[0].id);
         }
@@ -112,7 +112,7 @@ interface SavedProviderRowProps {
 function SavedProviderRow({ profile, selected, onSelect, onDelete, strings }: SavedProviderRowProps) {
     const option = PROVIDER_OPTIONS.find((p) => p.kind === profile.kind);
     const Icon = option?.Icon ?? null;
-    const hasUsableCredentials = profile.kind === 'ollama' || !!(profile.apiKey && profile.apiKey.length > 0);
+    const hasUsableCredentials = profile.kind === 'ollama' || profile.kind === 'lmstudio' || !!(profile.apiKey && profile.apiKey.length > 0);
 
     return (
         <Row

@@ -115,6 +115,25 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     ...overrides,
   }),
 
+  lmstudio: (overrides) => ({
+    id: generateId(),
+    name: 'LM Studio',
+    kind: 'lmstudio',
+    enabled: true,
+    createdAt: Date.now(),
+    baseUrl: 'http://127.0.0.1:1234/v1',
+    apiKey: null,
+    primaryModel: '',
+    fastModel: '',
+    customHeaders: {},
+    embeddingEndpoint: null,
+    embeddingApiKey: null,
+    embeddingModel: null,
+    icon: null,
+    description: 'Local LM Studio server',
+    ...overrides,
+  }),
+
   openrouter: (overrides) => ({
     id: generateId(),
     name: 'OpenRouter',

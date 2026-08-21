@@ -23,6 +23,7 @@ function testVersionedEndpoints(): void {
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('openrouter')).catalog, 'https://openrouter.ai/api/v1/models');
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('codex')).generation, 'http://127.0.0.1:8787/v1/chat/completions');
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('custom', { baseUrl: 'https://example.test/api/v1/' })).catalog, 'https://example.test/api/v1/models');
+	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('lmstudio')).catalog, 'http://127.0.0.1:1234/v1/models');
 }
 
 async function testReadyRequiresCatalogAndGeneration(): Promise<void> {
@@ -55,6 +56,18 @@ async function testOllama404IsNotReady(): Promise<void> {
 	assert.equal(result.failureReason, 'catalog');
 }
 
+async function testLMStudioUsesLiveOpenAICompatibleCatalog(): Promise<void> {
+	const http = new FakeHttp([
+		response(200, '{"data":[{"id":"qwen3-8b-instruct"},{"id":"nomic-embed-text-v1.5"}]}'),
+		response(200, '{"choices":[{"message":{"content":"OK"}}]}'),
+	]);
+	const result = await inspectProviderConnection(http, createPresetProfile('lmstudio'));
+	assert.equal(result.ready, true);
+	assert.deepEqual(result.catalogModelIds, ['qwen3-8b-instruct', 'nomic-embed-text-v1.5']);
+	assert.equal(http.requests[0]?.url, 'http://127.0.0.1:1234/v1/models');
+	assert.equal(JSON.parse(http.requests[1]?.body ?? '{}').model, 'qwen3-8b-instruct');
+}
+
 async function testEmptyCatalogIsNotReady(): Promise<void> {
 	const result = await inspectProviderConnection(new FakeHttp([response(200, '{"data":[]}'), response(200)]), createPresetProfile('openrouter', { apiKey: 'secret' }));
 	assert.equal(result.ready, false);
@@ -66,6 +79,7 @@ async function main(): Promise<void> {
 	await testReadyRequiresCatalogAndGeneration();
 	await testOllamaUsesDiscoveredModel();
 	await testOllama404IsNotReady();
+	await testLMStudioUsesLiveOpenAICompatibleCatalog();
 	await testEmptyCatalogIsNotReady();
 	console.log('PASS onboarding-provider-readiness');
 }

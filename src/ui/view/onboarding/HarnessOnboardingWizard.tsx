@@ -32,6 +32,7 @@ import {
 	type ModelCapabilityRequirement,
 } from '@/core/providers/model-selection';
 import { modelRegistry } from '@/core/providers/model-registry';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import type { IndexReadinessProjection } from '@/core/ports/IndexRunCoordinatorPort';
 import {
 	inspectProviderConnection,
@@ -71,6 +72,7 @@ const LAUNCH_PROVIDER_KINDS = [
 	'anthropic',
 	'openrouter',
 	'ollama',
+	'lmstudio',
 	'codex',
 	'claude-code',
 ] as const;
@@ -310,7 +312,8 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 	function recordEvidence(result: ConnectionEvidence) {
 		const profile = registry.getProfileById(result.profileId);
 		if (profile && result.catalogModelIds.length > 0) {
-			modelRegistry.mergeRuntimeModels(profile.kind, result.catalogModelIds);
+			const catalogId = profileModelCatalogId(profile);
+			if (catalogId) modelRegistry.mergeRuntimeModels(catalogId, result.catalogModelIds);
 		}
 		setEvidence((current) => ({ ...current, [result.profileId]: result }));
 		dispatch({ type: 'connection-check', profileId: result.profileId, status: result.ready ? 'ready' : 'error' });

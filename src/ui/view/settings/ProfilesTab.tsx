@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
+import { fetchLMStudioModels } from '@/core/providers/lmstudio/fetchLMStudioModels';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { Plus, ChevronRight } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -55,6 +57,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
     const [showAddGrid, setShowAddGrid] = useState(false);
     const [tick, setTick] = useState(0);
     const [advancedOpen, setAdvancedOpen] = useState(false);
+	const discoveredEndpointsRef = useRef(new Set<string>());
 
     const bump = () => {
 		setTick((t) => t + 1);
@@ -65,17 +68,25 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
     void tick;
     const profiles = registry.getAllProfiles();
 
-    useEffect(() => {
-        const ollamaProfiles = profiles.filter((p) => p.kind === 'ollama' && p.enabled);
-        for (const p of ollamaProfiles) {
-            fetchOllamaModels(p.baseUrl).then((models) => {
+	useEffect(() => {
+        const localProfiles = profiles.filter((p) => (p.kind === 'ollama' || p.kind === 'lmstudio') && p.enabled);
+        for (const p of localProfiles) {
+			const discoveryKey = `${p.id}:${p.baseUrl}`;
+			if (discoveredEndpointsRef.current.has(discoveryKey)) continue;
+			discoveredEndpointsRef.current.add(discoveryKey);
+            const discover = p.kind === 'ollama' ? fetchOllamaModels : fetchLMStudioModels;
+            discover(p.baseUrl).then((models) => {
                 if (models.length > 0) {
-                    modelRegistry.mergeRuntimeModels('ollama', models);
-                    bump();
+                    const catalogId = profileModelCatalogId(p);
+					if (!catalogId) return;
+					const known = new Set(modelRegistry.getModelsForProvider(catalogId).map((model) => model.id));
+					if (models.every((model) => known.has(model))) return;
+					modelRegistry.mergeRuntimeModels(catalogId, models);
+					bump();
                 }
             });
         }
-    }, []);
+	}, [profiles]);
     // --- Handlers ---
 
     const handleUpdate = (id: string, updates: Partial<Profile>) => {

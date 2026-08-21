@@ -27,7 +27,7 @@ export interface ProfileCardProps {
     onToggleEnabled: (id: string) => void;
 }
 
-const ALL_KINDS: ProfileKind[] = ['simulator', 'anthropic', 'openai', 'google', 'perplexity', 'ollama', 'openrouter', 'litellm', 'custom'];
+const ALL_KINDS: ProfileKind[] = ['simulator', 'anthropic', 'openai', 'google', 'perplexity', 'ollama', 'lmstudio', 'openrouter', 'litellm', 'custom'];
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -48,7 +48,7 @@ const INPUT_CLS = 'pk-profile-control pktw-w-full pktw-bg-pk-background pktw-bor
 
 function getCredentialLabel(profile: Profile): string {
     if (profile.kind === 'simulator') return SIMULATOR_DEFAULTS.ui.credentialLabel;
-    if (profile.kind === 'ollama') return 'no key needed';
+    if (profile.kind === 'ollama' || profile.kind === 'lmstudio') return 'no key needed';
     if (profile.apiKey) return 'API key set';
     return 'no key';
 }
@@ -186,6 +186,7 @@ function ProviderConnectionFields({
                         value={profile.embeddingModel ?? ''}
                         onChange={(id) => update({ embeddingModel: id || null })}
                         providerKind={profile.kind}
+						profile={profile}
                         allowFreeText={allowFreeText}
                     />
                 </FieldRow>
@@ -261,7 +262,7 @@ export function ProfileCard({
     const [isExpanded, setIsExpanded] = useState(false);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
-    const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama';
+    const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama' || profile.kind === 'lmstudio';
     const isSimulator = profile.kind === 'simulator';
     const simulatorConfig = {
         ...DEFAULT_SIMULATOR_PROFILE_CONFIG,

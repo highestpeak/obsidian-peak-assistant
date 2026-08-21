@@ -6,18 +6,12 @@ import { ProviderIcon } from './ProviderIcon';
 import { CapTags, highlightMatch } from './model-display-utils';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 import type { ModelCapabilities } from '@/core/providers/types';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 
 const EXPENSIVE_FAST_MODEL_RE = /\b(sonnet|opus)\b/i;
 function isExpensiveForFast(modelId: string): boolean {
     return EXPENSIVE_FAST_MODEL_RE.test(modelId);
 }
-
-// Map provider kind → catalog id for model lookup
-const PROVIDER_CATALOG: Record<string, string | null> = {
-    anthropic: 'claude', openai: 'openai', google: 'gemini',
-    perplexity: 'perplexity', ollama: 'ollama', openrouter: 'openrouter',
-    simulator: 'simulator', litellm: null, custom: null,
-};
 
 interface PickerItem {
     profileId: string;
@@ -31,7 +25,7 @@ function buildPickerItems(profiles: Profile[], modelFilter?: (modelId: string) =
     const items: PickerItem[] = [];
     for (const profile of profiles) {
         if (profile.enabled === false) continue;
-        const catalogId = PROVIDER_CATALOG[profile.kind];
+		const catalogId = profileModelCatalogId(profile);
         if (!catalogId) continue;
         const models = modelRegistry.getModelsForProvider(catalogId);
         for (const model of models) {

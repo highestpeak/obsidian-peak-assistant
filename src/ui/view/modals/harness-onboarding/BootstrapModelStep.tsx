@@ -15,6 +15,8 @@ import { Sparkles, Cpu, Check } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
+import { fetchLMStudioModels } from '@/core/providers/lmstudio/fetchLMStudioModels';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { Chip } from '@/ui/components/primitives';
 import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
@@ -212,7 +214,12 @@ async function loadModelsForProfile(profile: Profile): Promise<ModelOption[]> {
             );
     }
 
-    const catalogId = PROVIDER_CATALOG[profile.kind];
+    if (profile.kind === 'lmstudio') {
+        const loaded = await fetchLMStudioModels(profile.baseUrl || 'http://127.0.0.1:1234/v1');
+        return loaded.map((id) => ({ id, displayName: id, recommended: false }));
+    }
+
+	const catalogId = profileModelCatalogId(profile) ?? PROVIDER_CATALOG[profile.kind];
     if (!catalogId) {
         const candidates = [profile.fastModel, profile.primaryModel].filter((m) => !!m);
         return [...new Set(candidates)].map((id) => ({ id, displayName: id, recommended: false }));
