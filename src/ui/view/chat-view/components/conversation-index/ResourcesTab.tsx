@@ -13,6 +13,7 @@ import {
 	Wrench,
 	MessageSquare,
 	ExternalLink,
+	LocateFixed,
 	Search,
 	Scissors,
 	BellRing,
@@ -87,6 +88,7 @@ export interface ResourcesTabStrings {
 	emptyEmpty: string;
 	emptyEmptySub?: string;
 	openLabel: string;
+	locateLabel: string;
 }
 
 /** Label for a resource row kind — shared with `ResourcesFilterBar`. */
@@ -169,22 +171,20 @@ function ResourceRowItem({
 						)}
 					</span>
 				</span>
-				{row.createdAt ? (
-					<span className="pkchat-idx-row__time">{formatTime(row.createdAt)}</span>
-				) : null}
 			</button>
-			{row.target && (
-				<button
-					type="button"
-					className="pkchat-idx-row__action"
-					aria-label={strings.openLabel}
-					title={strings.openLabel}
-					tabIndex={-1}
-					onClick={() => onOpen(row)}
-				>
-					<ExternalLink aria-hidden />
-				</button>
-			)}
+			<button
+				type="button"
+				className="pkchat-idx-row__action"
+				aria-label={row.target ? strings.openLabel : strings.locateLabel}
+				title={row.target ? strings.openLabel : strings.locateLabel}
+				tabIndex={-1}
+				onClick={() => row.target ? onOpen(row) : onSelect(row)}
+			>
+				{row.target ? <ExternalLink aria-hidden /> : <LocateFixed aria-hidden />}
+			</button>
+			{row.createdAt ? (
+				<span className="pkchat-idx-row__time">{formatTime(row.createdAt)}</span>
+			) : null}
 		</div>
 	);
 }

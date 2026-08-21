@@ -12,6 +12,8 @@ function run(): void {
 	const messages = source('src/ui/view/chat-view/view-Messages.tsx');
 	const project = source('src/ui/view/chat-view/view-ProjectOverview.tsx');
 	const studio = source('src/ui/view/chat-studio-view/ChatStudioView.tsx');
+	const outline = source('src/ui/view/chat-view/components/conversation-index/OutlineTab.tsx');
+	const resources = source('src/ui/view/chat-view/components/conversation-index/ResourcesTab.tsx');
 	const styles = source('src/styles/peak-components.css');
 
 	assert.match(messages, /const EmptyThreadHero[\s\S]*?<Composer \/>/,
@@ -36,6 +38,12 @@ function run(): void {
 		'right-index open action must defend its compact hit geometry against host button styles');
 	assert.match(styles, /\.pkchat-idx-row--artifact\s*\{[\s\S]*?background:\s*transparent !important;[\s\S]*?box-shadow:\s*none !important;/,
 		'generated-resource rows must remain neutral until the user selects one');
+	assert.match(outline, /isActive=\{item\.id === `msg:\$\{activeMessageId\}`\}/,
+		'a message-scoped scroll spy must not select every artifact emitted by the same message');
+	assert.match(resources, /row\.target \? <ExternalLink[\s\S]*?<LocateFixed/,
+		'every resource row keeps an explicit direct-open or locate-producing-message action');
+	assert.match(resources, /pkchat-idx-row__action[\s\S]*?pkchat-idx-row__time/,
+		'time must remain the final resource-row column after the action slot');
 
 	console.log('chat-studio-reference-state-parity: all guards passed');
 }

@@ -343,7 +343,8 @@ function testResourceRowMappingDirectionAndKind(): void {
 	];
 	const receipts = [
 		artifact('art-1', 'a1', { kind: 'diagram', direction: 'generated', title: 'flow.mmd', vaultPath: 'gen/flow.mmd' }),
-		artifact('art-2', 'a1', { kind: 'code', direction: 'generated', title: 'patch.diff' }),
+		artifact('art-2', 'a1', { kind: 'code', direction: 'generated', title: 'patch.diff', uri: 'https://example.com/patch.diff' }),
+		artifact('art-3', 'a1', { kind: 'image', direction: 'generated', title: 'cover.png', preview: { kind: 'image', uri: 'data:image/svg+xml,test' } }),
 	];
 	const turns = [
 		turn('a1', {
@@ -377,7 +378,9 @@ function testResourceRowMappingDirectionAndKind(): void {
 	const artFlow = rows.find((r) => r.id === 'art:art-1');
 	assert.ok(artFlow && artFlow.direction === 'generated' && artFlow.kind === 'diagram');
 	const artPatch = rows.find((r) => r.id === 'art:art-2');
-	assert.ok(artPatch && artPatch.kind === 'code');
+	assert.ok(artPatch && artPatch.kind === 'code' && artPatch.target?.kind === 'url');
+	const artPreview = rows.find((r) => r.id === 'art:art-3');
+	assert.ok(artPreview && artPreview.target?.kind === 'url', 'preview URIs must expose a direct open target');
 
 	// Process row for the assistant tool call.
 	const procRow = rows.find((r) => r.id === 'proc:a1');

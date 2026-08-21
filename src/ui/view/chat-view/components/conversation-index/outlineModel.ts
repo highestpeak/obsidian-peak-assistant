@@ -388,6 +388,14 @@ function basename(p: string): string {
 	return parts[parts.length - 1] || p;
 }
 
+function artifactTarget(receipt: ChatArtifactReceipt): ResourceRow['target'] {
+	if (receipt.vaultPath) return { kind: 'vault', path: receipt.vaultPath };
+	const uri = receipt.externalUri ?? receipt.uri ?? receipt.preview?.uri;
+	if (!uri) return undefined;
+	if (/^(?:https?:|data:|blob:|app:|file:)/i.test(uri)) return { kind: 'url', url: uri };
+	return { kind: 'vault', path: uri };
+}
+
 /**
  * Build the Resources tab row list from the three real data sources —
  * message resources (input), turn receipt actualSources (input), and artifact
@@ -459,11 +467,7 @@ export function buildResourceRows(
 	//    (spec §12.2 permits both). Trust the receipt.
 	for (const r of artifactReceipts) {
 		const kind = mapArtifactKind(r.kind);
-		const target: ResourceRow['target'] = r.vaultPath
-			? { kind: 'vault', path: r.vaultPath }
-			: r.externalUri
-				? { kind: 'url', url: r.externalUri }
-				: undefined;
+		const target = artifactTarget(r);
 		rows.push({
 			id: `art:${r.artifactId}`,
 			direction: r.direction,

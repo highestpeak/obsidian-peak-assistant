@@ -401,6 +401,7 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 		emptyEmpty: rightStrings.emptyResources,
 		emptyEmptySub: rightStrings.emptyResourcesSub,
 		openLabel: rightStrings.openLabel,
+		locateLabel: rightStrings.footerLocateHint,
 	};
 
 	return (

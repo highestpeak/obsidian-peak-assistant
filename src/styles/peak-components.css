@@ -8615,10 +8615,14 @@
   font-weight: 500;
 }
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__time {
-  font-size: var(--pk-text-xs);
-  color: var(--pk-text-tertiary);
-  flex-shrink: 0;
-  padding-top: 4px;
+	order: 3;
+	min-width: 38px;
+	margin-left: var(--pk-space-1);
+	text-align: right;
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-tertiary);
+	flex-shrink: 0;
+	padding: 0;
   white-space: nowrap;
 }
 /* Outline subline is the faint time/type line (mock .index-time). */
@@ -9877,6 +9881,7 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__action {
+	order: 2;
   display: inline-flex;
   flex: 0 0 28px;
   align-items: center;

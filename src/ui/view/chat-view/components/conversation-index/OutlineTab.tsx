@@ -154,7 +154,7 @@ export const OutlineTab: React.FC<OutlineTabProps> = ({
 								<OutlineRow
 									key={item.id}
 									item={item}
-									isActive={item.messageId === activeMessageId}
+									isActive={item.id === `msg:${activeMessageId}`}
 									onSelect={onSelect}
 								/>
 							))}
