@@ -31,29 +31,19 @@ function unregisterMenu(closeFn: () => void) {
 	openMenus.delete(closeFn);
 }
 
-// Export functions for external use
-// These are now wrapped in an installation function to manage lifecycle and avoid memory leaks
-export function installHoverMenuGlobals() {
-	if (typeof window === 'undefined') return () => {};
-
-	(window as any).closeAllMenusExcept = closeAllMenusExcept;
-	(window as any).registerMenu = registerMenu;
-	(window as any).unregisterMenu = unregisterMenu;
-
-	return () => {
-		// Close all menus and clear Set so no refs to plugin closures remain
-		try {
-			openMenus.forEach((fn) => fn());
-		} catch (_) { /* ignore */ }
-		openMenus.clear();
-		// Replace with no-ops so original function objects (and their closure over openMenus) become unreachable
-		(window as any).closeAllMenusExcept = function () {};
-		(window as any).registerMenu = function () {};
-		(window as any).unregisterMenu = function () {};
-		delete (window as any).closeAllMenusExcept;
-		delete (window as any).registerMenu;
-		delete (window as any).unregisterMenu;
-	};
+/**
+ * Release menu-owned React callbacks during plugin unload.
+ *
+ * This deliberately stays module-local. Publishing these functions on
+ * `window` would let the renderer global retain an old plugin generation
+ * across disable → enable, which in turn retains the full bundled module
+ * context until the next generation replaces those globals.
+ */
+export function clearHoverMenusForUnload(): void {
+	try {
+		openMenus.forEach((closeMenu) => closeMenu());
+	} catch (_) { /* a stale React callback must not interrupt unload */ }
+	openMenus.clear();
 }
 
 export interface HoverMenuConfig {
@@ -107,14 +97,9 @@ export function useHoverMenu(config: HoverMenuConfig): HoverMenuResult {
 			closeTimerRef.current = null;
 		}
 
-		// Close all other menus immediately when opening a new one
-		if (enableCoordination && (window as any).closeAllMenusExcept) {
-			(window as any).closeAllMenusExcept(closeMenu);
-		}
-
-		// Register this menu
-		if (enableCoordination && (window as any).registerMenu) {
-			(window as any).registerMenu(closeMenu);
+		if (enableCoordination) {
+			closeAllMenusExcept(closeMenu);
+			registerMenu(closeMenu);
 		}
 
 		setIsOpen(true);
@@ -136,9 +121,7 @@ export function useHoverMenu(config: HoverMenuConfig): HoverMenuResult {
 	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
-			if (enableCoordination && (window as any).unregisterMenu) {
-				(window as any).unregisterMenu(closeMenu);
-			}
+			if (enableCoordination) unregisterMenu(closeMenu);
 			if (closeTimerRef.current) {
 				clearTimeout(closeTimerRef.current);
 			}
@@ -154,4 +137,3 @@ export function useHoverMenu(config: HoverMenuConfig): HoverMenuResult {
 		handleMouseLeave,
 	};
 }
-

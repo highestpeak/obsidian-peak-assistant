@@ -11,6 +11,7 @@ const mermaidLoader = readFileSync('src/ui/mermaid/importMermaidModule.ts', 'utf
 const composerMermaid = readFileSync('src/ui/view/composer/blocks/mermaid/MermaidBlockView.tsx', 'utf8');
 const composerView = readFileSync('src/app/composer/DocumentComposerView.ts', 'utf8');
 const reactRenderer = readFileSync('src/ui/react/ReactRenderer.tsx', 'utf8');
+const hoverMenus = readFileSync('src/ui/component/mine/hover-menu-manager.tsx', 'utf8');
 const unloadStart = main.indexOf('onunload(): void');
 const unloadEnd = main.indexOf('\n\t/**\n\t * Persists current plugin settings', unloadStart);
 const unloadBody = main.slice(unloadStart, unloadEnd);
@@ -28,6 +29,13 @@ assert.match(entry, /claimPeakShellLoadKind\([\s\S]*globalThis,[\s\S]*workspace\
 assert.match(entry, /loadKind === 'hot-reload'/);
 assert.match(entry, /await this\.boot\(\)/);
 assert.match(entry, /startup RSS gate skipped/);
+assert.match(entry, /const impl = this\.impl;\s*this\.impl = null;\s*if \(impl\) this\.removeChild\(impl\)/);
+
+assert.match(main, /clearHoverMenusForUnload\(\)/);
+assert.match(main, /await import\('@\/core\/providers\/vercel\/provider-factory'\);\s*if \(this\.unloading\) return;/);
+assert.match(main, /await import\('@\/app\/platform\/ObsidianFetchAdapter'\);\s*if \(this\.unloading\) return;/);
+assert.match(hoverMenus, /export function clearHoverMenusForUnload\(\): void/);
+assert.doesNotMatch(hoverMenus, /(?:window as any)\.(?:closeAllMenusExcept|registerMenu|unregisterMenu)/);
 
 assert.match(atlasHost, /createTransientController/);
 assert.match(atlasHost, /\{ capabilities: true \}/);

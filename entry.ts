@@ -116,6 +116,11 @@ export default class PeakShellPlugin extends Plugin {
 			window.clearTimeout(this.pollTimer);
 			this.pollTimer = null;
 		}
-		// impl unloads via Component child cascade.
+		// Do not rely on the parent Component's later child cascade: the core
+		// owns synchronous global/runtime cleanup that must finish before a
+		// disable → enable can evaluate the next bundle generation.
+		const impl = this.impl;
+		this.impl = null;
+		if (impl) this.removeChild(impl);
 	}
 }

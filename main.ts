@@ -48,7 +48,7 @@ import {
 	hydrateCodeStopwordsFromTemplateManager,
 } from '@/core/utils/markdown-utils';
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
-import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
+import { clearHoverMenusForUnload } from '@/ui/component/mine/hover-menu-manager';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { resetQuickSearchPluginSession } from '@/app/search/resetQuickSearchPluginSession';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
@@ -119,9 +119,6 @@ export default class MyPlugin extends Plugin {
 	/** Cached AppContext reference for use in initSqlite(). */
 	private appContext: AppContext | null = null;
 
-	/** Cleanup function for hover menu globals. */
-	private uninstallHoverMenuGlobals?: () => void;
-
 	/** Cleanup function for Usage Dashboard's chat receipt slot registration. */
 	private unregisterUsageDashboardReceipts?: () => void;
 	private unloading = false;
@@ -146,10 +143,10 @@ export default class MyPlugin extends Plugin {
 		// through Obsidian's Node-side `requestUrl`. Must run before any
 		// LLM call — provider-factory reads this at model construction.
 		const { setProviderCorsBypassFetch } = await import('@/core/providers/vercel/provider-factory');
+		if (this.unloading) return;
 		const { obsidianFetch } = await import('@/app/platform/ObsidianFetchAdapter');
+		if (this.unloading) return;
 		setProviderCorsBypassFetch(obsidianFetch);
-
-		this.uninstallHoverMenuGlobals = installHoverMenuGlobals();
 
 		const data = await this.loadData();
 		this.settings = normalizePluginSettings(data);
@@ -1449,8 +1446,7 @@ export default class MyPlugin extends Plugin {
 		// T13: IndexService release now goes through `AppContext.clearForUnload()`
 		// invoked just above; no `clearInstance()` static remains.
 		DocumentLoaderManager.clearInstance();
-		this.uninstallHoverMenuGlobals?.();
-		this.uninstallHoverMenuGlobals = undefined;
+		clearHoverMenusForUnload();
 		clearFormatUtilsCaches();
 		this.appContext = null;
 
