@@ -23646,3 +23646,169 @@
   text-align: left;
 }
 .peak-vault-intelligence-view .pk-vi-estimate-help > span small { color: var(--pk-vi-muted); font-size: 9.5px; font-weight: 400; }
+
+/* Scan setup: one fixed trailing lane for status, configuration and execution. */
+.peak-vault-intelligence-view .pk-vi-readiness-state {
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--pk-vi-muted);
+  background: var(--pk-vi-surface-raised);
+  white-space: nowrap;
+}
+.peak-vault-intelligence-view .pk-vi-readiness-state.is-ready {
+  color: var(--pk-vi-accent);
+  background: var(--pk-vi-accent-soft);
+}
+.peak-vault-intelligence-view .pk-vi-readiness-state.is-attention {
+  color: var(--text-warning);
+  background: color-mix(in srgb, var(--text-warning) 11%, transparent);
+}
+
+.peak-vault-intelligence-view .pk-vi-index-plan-heading > div > small,
+.peak-vault-intelligence-view .pk-vi-index-core-label small,
+.peak-vault-intelligence-view .pk-vi-index-generated-head small,
+.peak-vault-intelligence-view .pk-vi-scan-config-head > div > div > small,
+.peak-vault-intelligence-view .pk-vi-scan-operation-list > div > span small {
+  display: none;
+}
+
+.peak-vault-intelligence-view .pk-vi-index-core,
+.peak-vault-intelligence-view .pk-vi-index-output-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 9px;
+  background: #fff;
+}
+.peak-vault-intelligence-view .pk-vi-index-output-grid { margin-top: 8px; }
+.peak-vault-intelligence-view .pk-vi-index-output-group { border: 0; border-radius: 0; }
+.peak-vault-intelligence-view .pk-vi-index-output-group + .pk-vi-index-output-group { border-top: 1px solid var(--pk-vi-border); }
+.peak-vault-intelligence-view .pk-vi-index-output-head { min-height: 42px; padding: 8px 12px; background: #fcfbfe; }
+.peak-vault-intelligence-view .pk-vi-index-core-row,
+.peak-vault-intelligence-view .pk-vi-index-output-list .pk-vi-index-output {
+  grid-template-columns: minmax(0, 1fr) 132px 32px;
+  min-height: 48px;
+  padding: 8px 12px;
+}
+.peak-vault-intelligence-view .pk-vi-index-core-row + .pk-vi-index-core-row { border-left: 0; border-top: 1px solid var(--pk-vi-border); }
+.peak-vault-intelligence-view .pk-vi-index-core-row > em,
+.peak-vault-intelligence-view .pk-vi-index-output-list .pk-vi-index-output > em {
+  grid-column: 2;
+  justify-self: end;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--pk-vi-muted);
+  background: var(--pk-vi-surface-raised);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+.peak-vault-intelligence-view .pk-vi-index-core-row .pk-vi-index-output-toggle,
+.peak-vault-intelligence-view .pk-vi-index-output-list .pk-vi-index-output-toggle,
+.peak-vault-intelligence-view .pk-vi-index-core-row .pk-vi-index-output-state,
+.peak-vault-intelligence-view .pk-vi-index-output-list .pk-vi-index-output-state {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.peak-vault-intelligence-view .pk-vi-scan-ai-group-row.pk-btn {
+  min-height: 56px !important;
+  grid-template-columns: minmax(0, 1fr) 142px 22px;
+}
+.peak-vault-intelligence-view .pk-vi-scan-ai-group-row > span:first-child small { display: none; }
+.peak-vault-intelligence-view .pk-vi-scan-operation-list { padding: 0 14px; }
+.peak-vault-intelligence-view .pk-vi-scan-operation-list > div {
+  grid-template-columns: minmax(0, 1fr) 238px 142px 34px;
+  min-height: 54px;
+}
+.peak-vault-intelligence-view .pk-vi-scan-model-field { position: relative; }
+.peak-vault-intelligence-view .pk-vi-model-trigger.pk-btn {
+  display: grid !important;
+  width: 100% !important;
+  min-height: 34px !important;
+  grid-template-columns: 16px minmax(0, 1fr) 16px;
+  gap: 7px;
+  padding: 0 9px !important;
+  border: 1px solid var(--pk-vi-border-strong) !important;
+  border-radius: 8px !important;
+  color: var(--pk-vi-ink) !important;
+  background: #fff !important;
+  text-align: left;
+}
+.peak-vault-intelligence-view .pk-vi-model-trigger.pk-btn.is-unconfigured { color: var(--text-warning) !important; border-color: color-mix(in srgb, var(--text-warning) 46%, var(--pk-vi-border)) !important; }
+.peak-vault-intelligence-view .pk-vi-model-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.peak-vault-intelligence-view .pk-vi-model-picker {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: calc(100% + 5px);
+  width: min(320px, 70vw);
+  overflow: hidden;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(25, 22, 35, .16);
+}
+.peak-vault-intelligence-view .pk-vi-model-picker > label { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 7px; align-items: center; padding: 8px; border-bottom: 1px solid var(--pk-vi-border); color: var(--pk-vi-muted); }
+.peak-vault-intelligence-view .pk-vi-model-picker input { width: 100%; min-width: 0; height: 28px; border: 0 !important; outline: 0; background: transparent !important; font-size: 11px; }
+.peak-vault-intelligence-view .pk-vi-model-picker > div:not(.pk-vi-model-picker-empty) { max-height: 188px; overflow-y: auto; }
+.peak-vault-intelligence-view .pk-vi-model-picker .pk-btn { display: grid !important; width: 100% !important; min-height: 44px !important; grid-template-columns: minmax(0, 1fr) 16px; padding: 6px 10px !important; border: 0 !important; border-radius: 0 !important; background: #fff !important; text-align: left; }
+.peak-vault-intelligence-view .pk-vi-model-picker .pk-btn:hover,
+.peak-vault-intelligence-view .pk-vi-model-picker .pk-btn.is-selected { background: var(--pk-vi-accent-soft) !important; }
+.peak-vault-intelligence-view .pk-vi-model-picker .pk-btn strong,
+.peak-vault-intelligence-view .pk-vi-model-picker .pk-btn small { display: block; }
+.peak-vault-intelligence-view .pk-vi-model-picker .pk-btn strong { font-size: 11px; }
+.peak-vault-intelligence-view .pk-vi-model-picker .pk-btn small { margin-top: 2px; color: var(--pk-vi-muted); font-size: 9.5px; }
+.peak-vault-intelligence-view .pk-vi-model-picker-empty { display: grid; gap: 3px; min-height: 76px; padding: 12px; color: var(--pk-vi-muted); }
+.peak-vault-intelligence-view .pk-vi-model-picker-empty strong { color: var(--pk-vi-ink); font-size: 11px; }
+.peak-vault-intelligence-view .pk-vi-model-picker-empty small { font-size: 10px; line-height: 1.4; }
+
+.peak-vault-intelligence-view .pk-vi-scope-builder.is-custom-scope .pk-vi-scope-selected-row {
+  min-height: 58px;
+}
+.peak-vault-intelligence-view .pk-vi-scope-token:not(:has(svg)) {
+  color: var(--pk-vi-muted);
+  background: var(--pk-vi-surface-raised);
+}
+.peak-vault-intelligence-view .pk-vi-path-picker {
+  position: relative;
+}
+.peak-vault-intelligence-view .pk-vi-path-results {
+  position: relative;
+  z-index: 2;
+  max-height: 248px;
+  overflow-y: auto;
+  margin-top: 8px;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 8px;
+  background: #fff;
+}
+.peak-vault-intelligence-view .pk-vi-path-results .pk-btn {
+  display: grid !important;
+  width: 100% !important;
+  min-height: 38px !important;
+  grid-template-columns: 16px minmax(0, 1fr) 16px;
+  gap: 8px;
+  padding: 6px 9px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  text-align: left;
+}
+.peak-vault-intelligence-view .pk-vi-path-results .pk-btn:hover,
+.peak-vault-intelligence-view .pk-vi-path-results .pk-btn.is-selected { background: var(--pk-vi-accent-soft) !important; }
+.peak-vault-intelligence-view .pk-vi-path-results .pk-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts { margin-top: 8px; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts summary { color: var(--pk-vi-muted); font-size: 10.5px; cursor: pointer; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; margin-top: 8px; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts > div > strong { grid-column: 1 / -1; color: var(--pk-vi-muted); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts .pk-btn { display: grid !important; min-width: 0; min-height: 32px !important; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 5px 7px !important; border: 1px solid var(--pk-vi-border) !important; border-radius: 6px !important; background: #fff !important; color: var(--pk-vi-ink); font-size: 10px; text-align: left; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts .pk-btn:hover { border-color: #b8aceb !important; background: var(--pk-vi-accent-soft) !important; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts .pk-btn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts .pk-btn > span:last-child { color: var(--pk-vi-muted); }
+.peak-vault-intelligence-view .pk-vi-selected-paths { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.peak-vault-intelligence-view .pk-vi-selected-paths > span { display: inline-flex; min-width: 0; max-width: 260px; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 999px; color: var(--pk-vi-accent); background: var(--pk-vi-accent-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.peak-vault-intelligence-view .pk-vi-selected-paths .pk-btn { width: 17px !important; min-width: 17px !important; height: 17px !important; min-height: 17px !important; padding: 0 !important; border: 0 !important; border-radius: 50% !important; color: inherit !important; background: transparent !important; }

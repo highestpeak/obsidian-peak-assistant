@@ -1,12 +1,25 @@
 {
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
-  "supportedInventoryTypes": ["md", "markdown", "txt", "pdf", "html", "htm", "csv", "json", "canvas", "excalidraw", "base", "drawio", "png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "mp3", "wav", "ogg", "flac", "mp4", "mov", "avi", "mkv", "webm"],
+  "inventoryTypeGroups": [
+    { "id": "markdown", "label": "Markdown", "extensions": ["md", "markdown"] },
+    { "id": "text", "label": "Text", "extensions": ["txt"] },
+    { "id": "pdf", "label": "PDF", "extensions": ["pdf"] },
+    { "id": "html", "label": "HTML", "extensions": ["html", "htm"] },
+    { "id": "data", "label": "Data", "extensions": ["csv", "json"] },
+    { "id": "canvas", "label": "Canvas", "extensions": ["canvas"] },
+    { "id": "excalidraw", "label": "Excalidraw", "extensions": ["excalidraw"] },
+    { "id": "bases", "label": "Bases", "extensions": ["base"] },
+    { "id": "drawio", "label": "draw.io", "extensions": ["drawio"] },
+    { "id": "images", "label": "Images", "extensions": ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"] },
+    { "id": "audio", "label": "Audio", "extensions": ["mp3", "wav", "ogg", "flac"] },
+    { "id": "video", "label": "Video", "extensions": ["mp4", "mov", "avi", "mkv", "webm"] }
+  ],
   "inventoryPreviewTypeLimit": 16,
   "inventoryObjects": {
     "files": {
       "title": "Files by type",
-      "description": "Distribution by actual file format. Peak Sheet and AI Graph remain file types inside this inventory.",
+      "description": "Supported file groups from the capability audit. Extensions outside those groups are collected as Other formats.",
       "unavailableTitle": "File distribution not available",
       "unavailableDescription": "No file inventory has been indexed yet."
     },
