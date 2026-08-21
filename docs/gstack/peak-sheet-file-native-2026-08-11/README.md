@@ -1,46 +1,57 @@
-# Peak Sheet · Grid-native V4 设计稿
+# Peak Sheet · Local AI Spreadsheet V5 设计稿
 
-这是一份独立于 Editorial V2 的交互设计稿，用于确认 Peak Sheet 的新产品模型。它只修改设计资产，不修改生产插件。
+这是一份只修改设计资产、不修改生产插件的交互稿。V5 把 Peak Sheet 收敛成一条产品路线：
 
-## 这版解决的问题
+> **像 Excel 一样直接开始填，像飞书一样自然地结构化，再让 AI Formula 和 Script 接管复杂操作。**
 
-- 删除 Peak Sheet 自己的 `Find a sheet / New sheet / sheet list` 侧栏。
-- Obsidian 文件目录成为唯一 Sheet 导航；每个 `.peaksheet` 文件就是一张 Sheet。
-- 页面只显示当前文件的完整编辑面，不再同时管理全部 Dataset。
-- 打开就是 32 行连续网格；已填写记录之后仍保留可直接选择、编辑的空白行，不再像数据库列表只显示少量记录。
-- 顶部 `+ Row` 和表底吸附的 `+ Add row` 都是一次点击立即在数据末尾新增，不再经过二级菜单。
-- 最后一列表头右侧常驻 `+`：一次点击立即创建文本列，并在表头原位选中名称；不先打开字段配置表单。
-- 列头左键选择整列，拖拽、Shift-click、Shift + 方向键选择连续单元格范围；左下角即时显示范围、非空值数量以及数字 Sum / Avg。
-- 字段配置从选择动作中分离：右键列头或点击列头右侧小箭头，才打开编辑、插入、复制、隐藏、删除菜单。
-- 行号左键选择整行、右键配置；不让每一行常驻复制、删除图标。
-- Table / Board / Calendar / Chart 共享同一文件内的数据。
-- 文件标题、Vault 路径、保存位置和 canonical carrier 在页面中可见但不抢占注意力。
-- `Ask AI` 是可交互侧栏：读取当前选区 → 规划 → 检查三段动画清晰可见；公式逐字生成、结果预览后才允许插入 Sheet，并提供基于真实行的 blocker 总结示例。
+Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule 只在用户主动进入 PeakShare 后发生。
+
+## V5 的核心决定
+
+- **文件原生**：Obsidian 文件目录仍是唯一 Sheet 导航；一个 `.peaksheet` 文件就是一张 Sheet，页面不再维护内部 Sheet Finder。
+- **Grid Core 优先**：统一成 `GridState = active cell + anchor + range + navigation/selecting/editing mode`。单击、拖选、Shift 扩展、方向键、Enter / F2、直接输入、Tab、Esc、Delete、复制/剪切/粘贴都围绕同一状态工作。
+- **默认就是大网格**：每张 Sheet 至少渲染 30 个虚拟列和 64 个虚拟行；`Blank Sheet.peaksheet` 用于直接体验空白工作面。虚拟区域不写入数据模型。
+- **按使用 materialize**：在虚拟单元格输入、粘贴一个矩形范围、双击虚拟表头命名，才创建对应 row 和 General/Text field。用户不需要先 Add Row / Add Column。
+- **Typed Field 是按需增强**：空列默认 General；`+` 和 `Typed field` 是 Select、Date、File、Formula、Script output 等高级字段入口，而不是开始输入前的必经步骤。
+- **一级 Views 收敛**：只保留 Table / Board / Calendar。Chart 仍可由 AI 生成分析产物，但不占一级 View；Pivot 暂不进入网格。
+- **Data Ops 够用即可**：Filter / Sort / Group 保留；Group 面板直接提供 Count / Sum / Average / Min / Max，用轻量汇总覆盖常见 Pivot 需求。
+- **AI Formula 不膨胀**：自然语言生成、逐字公式反馈、Preview、类型检查、Explain、Fix 都在 Ask AI 侧栏完成。用户无需记忆大量函数。
+- **Scripts 不是 View**：顶部 `Scripts` 打开独立 Sidecar，首版只表达 Save → Preview → Run locally → Progress → History；没有 Trigger、Cron 或 Workflow Builder。
+- **Local / PeakShare 严格分层**：页面明确显示 Local。只有点 `Share via PeakShare` 才看到 Upload、Permissions、Collaboration、Cloud Scripts 和 Schedule 的边界说明；本地界面没有协作头像、在线状态和权限菜单。
 
 ## 建议体验路径
 
-1. 在左侧 Obsidian 文件目录切换三份 `.peaksheet` 文件。
-2. 观察已有记录下面连续存在的空白网格；点击顶部 `+ Row` 或底部吸附的 `+ Add row`，新行直接出现并获得焦点。
-3. 点击最后一列表头右侧的 `+`；列立即创建，直接输入名称后按 Enter，不出现二级字段菜单。
-4. 从任意单元格拖到另一单元格，或先点一个单元格再 Shift-click；观察选区边框和左下角统计。
-5. 点击列头选择整列；右键列头或点击小箭头再配置字段。双击列名可原位重命名。
-6. 点击行号选择整行；右键行号尝试插入、复制或删除。双击普通单元格直接编辑。
-7. 先拖选 Status / Due date 的一段数据，再点 `Ask AI` → `Generate formula column`；观察读取、规划、校验和逐字公式动画，最后点 `Insert formula column`。
-8. 在 `Ask AI` 中点 `Summarize selection`，查看基于源行的 release blocker 分析。
-9. 切换 Board / Calendar / Chart，确认它们仍是同一个文件的投影。
-10. 点击标题右侧 `Show location`，查看文件承载说明。
+1. 点击左侧 `Blank Sheet.peaksheet`，观察 A–AD 虚拟列和 64 个虚拟行；它们尚未进入 Dataset。
+2. 选中虚拟单元格直接输入字符；按 Enter 保存并向下，Tab 保存并向右，Esc 取消。
+3. 在空白区域粘贴 TSV 矩形；对应 rows 和 General fields 自动 materialize。
+4. 拖选范围，尝试 Shift + Click / Arrow、Delete、Cmd/Ctrl + C / V / X；左下角同步显示范围和统计。
+5. 双击 `General` 虚拟表头直接命名；需要 Select、File、Formula 时再点右侧 `+` 或工具栏 `Typed field`。
+6. 打开 Group，查看按 Status 的 Count 汇总；不进入复杂 Pivot 工作面。
+7. 选择 Launch Tracker 的 Status / Due date 数据，打开 Ask AI：生成公式、查看类型检查、Explain / Fix，再 Preview 后 Insert。
+8. 点击顶部 `Scripts`，依次体验 Save、Preview、Run locally、Progress 和 History。
+9. 点击 `Share via PeakShare`，确认本地文件在主动继续前不会上传。
+10. 切换 Table / Board / Calendar，确认它们仍是同一个 `.peaksheet` Dataset 的投影。
 
-## 存储表达
+## 数据与执行边界
 
-- 设计稿采用 `.peaksheet` 作为用户可见的自定义扩展名。
-- 文件内部建议使用结构化 JSON，保存 Dataset ID、revision、fields、rows 和 views。
+- `.peaksheet` 内部使用结构化 JSON 保存 Dataset ID、revision、materialized fields、rows、views 和 saved scripts。
+- 虚拟空行空列只属于 Grid projection，不写入 canonical file。
 - CSV / XLSX 是导入导出格式，不作为 canonical store。
-- JSONL 事件历史可以保留为隐藏恢复记录，但不能替代 `.peaksheet` 文件成为数据真值。
-- SQLite 如果未来加入，只能作为可重建查询投影。
+- JSONL 事件历史用于恢复、Undo / Redo 和 Script run history，但不能替代 `.peaksheet` 文件真值。
+- SQLite 如果加入，只能作为可重建查询投影。
+- Formula 持续计算；Script 是用户主动 Preview / Run 的有界本地批处理。
+- PeakShare 上传的是用户主动选择的版本化副本；本地版不隐式同步或静默开启云端执行。
+
+## 明确不进入当前主界面
+
+- 条件格式、完整 Pivot、巨量 Excel 函数、VBA、Power Query。
+- Trigger / Action / Cron、通用 Workflow Builder。
+- 协作头像、在线状态、权限菜单、实时多人编辑。
+- Relation / Lookup 保持 P1，等 Grid Core、Typed Field、AI Formula 和 Scripts 手感稳定后再进入。
 
 ## 视觉方向
 
-保留 Editorial V2 的纸面层级、克制配色、轻量工具栏与单一紫色焦点；数据行收紧到 31px，让首屏更接近 Excel / Google Sheets 的连续工作网格。AI 侧栏仍是编辑器内的临时工作面，不增加新的 Dashboard 卡片系统。模拟的 Obsidian 文件目录仅用于解释文件归属，不属于 Peak Sheet 内部 UI。
+继续使用克制的白灰纸面、单一紫色焦点和 31px 紧凑数据行。虚拟列用较淡的 `General` 表达“随时可填但尚未结构化”；AI 与 Scripts 都使用编辑器右侧临时工作面，不变成 Dashboard，也不与 Table / Board / Calendar 混成同级 View。
 
 ## 验证
 

@@ -1,4 +1,5 @@
-const MIN_GRID_ROWS = 32;
+const MIN_GRID_ROWS = 64;
+const MIN_GRID_COLUMNS = 30;
 const GENERATED_VALUES = [1, 1, 2, 3, 4, '', 5, 7];
 
 const datasets = {
@@ -44,6 +45,11 @@ const datasets = {
       { user: 'Beta 003', feedback: 'Graph detail is much easier to understand now', category: 'Graph', severity: 'P2', repro: false, status: 'Done', task: '', notes: 'Positive signal' },
     ],
   },
+  blank: {
+    title: 'Blank Sheet', folder: 'Product / Launch', revision: 1,
+    fields: [],
+    rows: [],
+  },
   content: {
     title: 'Launch Content', folder: 'Product / Launch / Marketing', revision: 12,
     fields: [
@@ -72,11 +78,13 @@ let toastTimer = null;
 let draggingSelection = false;
 let aiTimers = [];
 let aiTypingTimer = null;
-let selection = { anchorRow: 2, anchorField: 3, focusRow: 2, focusField: 3 };
+let scriptTimer = null;
+let rangeClipboard = '';
+let gridState = { activeCell: { row: 2, field: 3 }, anchorRow: 2, anchorField: 3, focusRow: 2, focusField: 3, mode: 'navigation' };
 
 const byId = (id) => document.getElementById(id);
 const current = () => datasets[activeDatasetId];
-const typeLabel = (type) => ({ text: 'Text', singleSelect: 'Single select', number: 'Number', date: 'Date', checkbox: 'Checkbox', link: 'Link', file: 'File', formula: 'Formula' }[type] ?? type);
+const typeLabel = (type) => ({ text: 'Text', singleSelect: 'Single select', number: 'Number', date: 'Date', checkbox: 'Checkbox', link: 'Link', file: 'File', formula: 'Formula', scriptOutput: 'Script output' }[type] ?? type);
 
 function filePath(dataset = current()) {
   return `${dataset.folder.replaceAll(' / ', '/')}/${dataset.title}.peaksheet`;
@@ -84,6 +92,10 @@ function filePath(dataset = current()) {
 
 function visibleRowCount(dataset = current()) {
   return Math.max(MIN_GRID_ROWS, dataset.rows.length + 1);
+}
+
+function visibleColumnCount(dataset = current()) {
+  return Math.max(MIN_GRID_COLUMNS, dataset.fields.length + 1);
 }
 
 function renderDocument() {
@@ -101,7 +113,6 @@ function renderDocument() {
   renderTable();
   renderBoard();
   renderCalendar();
-  renderChart();
   updateSelectionSummary();
 }
 
@@ -109,19 +120,20 @@ function renderTable() {
   const dataset = current();
   const table = byId('data-grid');
   const rows = Array.from({ length: visibleRowCount(dataset) }, (_, index) => dataset.rows[index]);
-  const gridWidth = 92 + dataset.fields.reduce((total, field) => total + field.width, 0);
+  const columns = Array.from({ length: visibleColumnCount(dataset) }, (_, index) => dataset.fields[index]);
+  const gridWidth = 92 + columns.reduce((total, field) => total + (field?.width ?? 112), 0);
   byId('grid-scroll').style.setProperty('--grid-width', `${gridWidth}px`);
-  const colgroup = `<colgroup><col style="width:48px">${dataset.fields.map((field) => `<col style="width:${field.width}px">`).join('')}<col style="width:44px"></colgroup>`;
-  const head = `<thead><tr><th class="row-index"><button type="button" class="select-all-cells" id="select-all-cells" aria-label="Select all cells"></button></th>${dataset.fields.map((field, index) => `
-    <th class="field-head" data-field-index="${index}">
+  const colgroup = `<colgroup><col style="width:48px">${columns.map((field) => `<col style="width:${field?.width ?? 112}px">`).join('')}<col style="width:44px"></colgroup>`;
+  const head = `<thead><tr><th class="row-index"><button type="button" class="select-all-cells" id="select-all-cells" aria-label="Select all cells"></button></th>${columns.map((field, index) => `
+    <th class="field-head${field ? '' : ' is-virtual'}" data-field-index="${index}">
       <div class="field-head-shell" data-field-index="${index}">
-        <button type="button" class="field-select-button" data-field-index="${index}" title="Click to select column · Double-click to rename"><span>${escapeHtml(field.name)}</span><small>${escapeHtml(shortType(field.type))}</small></button>
-        <button type="button" class="field-menu-trigger${openFieldIndex === index ? ' is-open' : ''}" data-field-index="${index}" aria-label="Configure ${escapeHtml(field.name)}"><svg><use href="#i-chevron"/></svg></button>
+        <button type="button" class="field-select-button" data-field-index="${index}" title="Click to select · Double-click to name and structure"><span class="column-letter">${columnName(index)}</span><span class="field-title${field ? '' : ' is-general'}">${escapeHtml(field?.name ?? 'General')}</span><small>${escapeHtml(shortType(field?.type ?? 'text'))}</small></button>
+        <button type="button" class="field-menu-trigger${openFieldIndex === index ? ' is-open' : ''}" data-field-index="${index}" aria-label="Configure ${escapeHtml(field?.name ?? `Column ${columnName(index)}`)}"><svg><use href="#i-chevron"/></svg></button>
       </div>
-    </th>`).join('')}<th class="add-field-head"><button type="button" class="add-field-button" id="inline-add-field" aria-label="Add column in one click" title="Add column in one click"><svg><use href="#i-plus"/></svg></button></th></tr></thead>`;
+    </th>`).join('')}<th class="add-field-head"><button type="button" class="add-field-button" id="inline-add-field" aria-label="Create typed field" title="Create Select, Formula, File, or another typed field"><svg><use href="#i-plus"/></svg></button></th></tr></thead>`;
   const body = `<tbody>${rows.map((row, rowIndex) => `<tr class="${row ? '' : 'is-placeholder-row'}">
     <td class="row-index" data-row-index="${rowIndex}">${rowIndex + 1}</td>
-    ${dataset.fields.map((field, fieldIndex) => `<td class="cell ${cellClass(field)}" data-row-index="${rowIndex}" data-field-index="${fieldIndex}" tabindex="0">${renderCell(field, row?.[field.id])}</td>`).join('')}
+    ${columns.map((field, fieldIndex) => `<td class="cell ${cellClass(field)}${field ? '' : ' is-virtual'}" data-row-index="${rowIndex}" data-field-index="${fieldIndex}" tabindex="0">${renderCell(field, field ? row?.[field.id] : undefined)}</td>`).join('')}
     <td></td>
   </tr>`).join('')}</tbody>`;
   table.innerHTML = `${colgroup}${head}${body}`;
@@ -130,9 +142,10 @@ function renderTable() {
 }
 
 function renderCell(field, value) {
+  if (!field) return '<span class="empty-cell-hint">empty</span>';
   if (field.type === 'checkbox') return value ? '<svg class="check-cell"><use href="#i-check"/></svg>' : '';
   if (value === undefined || value === null || value === '') return '<span class="empty-cell-hint">empty</span>';
-  if (field.type === 'formula') return `<span class="calculated-cell">${escapeHtml(value)} <small>days</small></span>`;
+  if (field.type === 'formula' || field.type === 'scriptOutput') return `<span class="calculated-cell">${escapeHtml(value)} <small>${field.id === 'days-left' ? 'days' : field.type === 'formula' ? 'ƒx' : 'script'}</small></span>`;
   if (field.id === 'status') return `<span class="tag ${statusClass(String(value))}">${escapeHtml(value)}</span>`;
   if (field.id === 'priority' || field.id === 'severity') return `<span class="priority ${String(value).toLowerCase()}">${escapeHtml(value)}</span>`;
   if (field.id === 'task' || field.id === 'feedback' || field.id === 'topic' || field.id === 'user') return `<span class="cell-primary">${escapeHtml(value)}</span>`;
@@ -141,7 +154,8 @@ function renderCell(field, value) {
 
 function cellClass(field) {
   const classes = [];
-  if (field.type === 'number' || field.type === 'formula') classes.push('cell-number');
+  if (!field) return '';
+  if (field.type === 'number' || field.type === 'formula' || field.type === 'scriptOutput') classes.push('cell-number');
   if (field.type === 'date') classes.push('cell-date');
   return classes.join(' ');
 }
@@ -163,7 +177,7 @@ function bindGridEvents() {
       openFieldMenu(Number(header.dataset.fieldIndex), header);
     });
   });
-  byId('inline-add-field')?.addEventListener('click', addColumnOneClick);
+  byId('inline-add-field')?.addEventListener('click', (event) => openFieldEditor(null, event.currentTarget));
   byId('select-all-cells')?.addEventListener('click', selectAllCells);
   document.querySelectorAll('tbody .row-index').forEach((cell) => {
     cell.addEventListener('click', () => selectRow(Number(cell.dataset.rowIndex)));
@@ -177,6 +191,7 @@ function bindGridEvents() {
     cell.addEventListener('pointerenter', () => extendDraggedSelection(cell));
     cell.addEventListener('dblclick', () => beginCellEdit(cell));
     cell.addEventListener('keydown', (event) => handleCellKeydown(event, cell));
+    cell.addEventListener('paste', pasteIntoGrid);
   });
 }
 
@@ -184,6 +199,7 @@ function startCellSelection(event, cell) {
   if (event.button !== 0 || cell.contentEditable === 'true') return;
   event.preventDefault();
   draggingSelection = true;
+  gridState.mode = 'selecting';
   const row = Number(cell.dataset.rowIndex);
   const field = Number(cell.dataset.fieldIndex);
   setSelection(row, field, event.shiftKey);
@@ -192,45 +208,71 @@ function startCellSelection(event, cell) {
 
 function extendDraggedSelection(cell) {
   if (!draggingSelection) return;
-  selection.focusRow = Number(cell.dataset.rowIndex);
-  selection.focusField = Number(cell.dataset.fieldIndex);
+  gridState.focusRow = Number(cell.dataset.rowIndex);
+  gridState.focusField = Number(cell.dataset.fieldIndex);
+  gridState.activeCell = { row: gridState.focusRow, field: gridState.focusField };
   paintSelection();
   updateSelectionSummary();
 }
 
 function handleCellKeydown(event, cell) {
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' || event.key === 'F2') {
     event.preventDefault();
     beginCellEdit(cell);
+    return;
+  }
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    event.preventDefault();
+    clearSelectedRange();
+    return;
+  }
+  if ((event.metaKey || event.ctrlKey) && ['c', 'x'].includes(event.key.toLowerCase())) {
+    event.preventDefault();
+    copySelectedRange(event.key.toLowerCase() === 'x');
+    return;
+  }
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') return;
+  if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    event.preventDefault();
+    beginCellEdit(cell, event.key);
+    return;
+  }
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    const field = Math.max(0, Math.min(visibleColumnCount() - 1, gridState.focusField + (event.shiftKey ? -1 : 1)));
+    setSelection(gridState.focusRow, field);
+    document.querySelector(`.cell[data-row-index="${gridState.focusRow}"][data-field-index="${field}"]`)?.focus({ preventScroll: true });
     return;
   }
   const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
   const move = moves[event.key];
   if (!move) return;
   event.preventDefault();
-  const row = Math.max(0, Math.min(visibleRowCount() - 1, selection.focusRow + move[0]));
-  const field = Math.max(0, Math.min(current().fields.length - 1, selection.focusField + move[1]));
+  const row = Math.max(0, Math.min(visibleRowCount() - 1, gridState.focusRow + move[0]));
+  const field = Math.max(0, Math.min(visibleColumnCount() - 1, gridState.focusField + move[1]));
   setSelection(row, field, event.shiftKey);
   document.querySelector(`.cell[data-row-index="${row}"][data-field-index="${field}"]`)?.focus({ preventScroll: true });
 }
 
 function setSelection(row, field, extend = false) {
   if (!extend) {
-    selection.anchorRow = row;
-    selection.anchorField = field;
+    gridState.anchorRow = row;
+    gridState.anchorField = field;
   }
-  selection.focusRow = row;
-  selection.focusField = field;
+  gridState.focusRow = row;
+  gridState.focusField = field;
+  gridState.activeCell = { row, field };
+  gridState.mode = 'navigation';
   paintSelection();
   updateSelectionSummary();
 }
 
 function selectionBounds() {
   return {
-    top: Math.min(selection.anchorRow, selection.focusRow),
-    bottom: Math.max(selection.anchorRow, selection.focusRow),
-    left: Math.min(selection.anchorField, selection.focusField),
-    right: Math.max(selection.anchorField, selection.focusField),
+    top: Math.min(gridState.anchorRow, gridState.focusRow),
+    bottom: Math.max(gridState.anchorRow, gridState.focusRow),
+    left: Math.min(gridState.anchorField, gridState.focusField),
+    right: Math.max(gridState.anchorField, gridState.focusField),
   };
 }
 
@@ -246,7 +288,7 @@ function paintSelection() {
     if (row === bounds.bottom) cell.classList.add('is-range-bottom');
     if (field === bounds.left) cell.classList.add('is-range-left');
     if (field === bounds.right) cell.classList.add('is-range-right');
-    if (row === selection.focusRow && field === selection.focusField) cell.classList.add('is-selected');
+    if (row === gridState.focusRow && field === gridState.focusField) cell.classList.add('is-selected');
   });
   document.querySelectorAll('.field-head-shell').forEach((header) => {
     const field = Number(header.dataset.fieldIndex);
@@ -268,8 +310,8 @@ function updateSelectionSummary() {
   }
   byId('cell-reference').textContent = label;
   byId('selection-status').innerHTML = `<i></i> ${escapeHtml(label)} · ${escapeHtml(detail)}`;
-  const field = current().fields[selection.focusField];
-  const value = current().rows[selection.focusRow]?.[field?.id] ?? '';
+  const field = current().fields[gridState.focusField];
+  const value = current().rows[gridState.focusRow]?.[field?.id] ?? '';
   byId('formula-input').value = field?.type === 'formula' ? field.formula : String(value);
   syncAiContext(label, count);
 }
@@ -285,6 +327,63 @@ function selectedValues(bounds) {
   return values;
 }
 
+function clearSelectedRange() {
+  const bounds = selectionBounds();
+  let changed = 0;
+  for (let row = bounds.top; row <= bounds.bottom; row += 1) {
+    const record = current().rows[row];
+    if (!record) continue;
+    for (let fieldIndex = bounds.left; fieldIndex <= bounds.right; fieldIndex += 1) {
+      const field = current().fields[fieldIndex];
+      if (!field || field.type === 'formula' || field.type === 'scriptOutput') continue;
+      record[field.id] = field.type === 'checkbox' ? false : '';
+      changed += 1;
+    }
+  }
+  if (!changed) {
+    showToast('Nothing materialized in this range yet');
+    return;
+  }
+  bumpRevision(`${changed} cells cleared`);
+}
+
+function copySelectedRange(cut = false) {
+  const bounds = selectionBounds();
+  const lines = [];
+  for (let row = bounds.top; row <= bounds.bottom; row += 1) {
+    const values = [];
+    for (let fieldIndex = bounds.left; fieldIndex <= bounds.right; fieldIndex += 1) {
+      const field = current().fields[fieldIndex];
+      values.push(field ? String(current().rows[row]?.[field.id] ?? '') : '');
+    }
+    lines.push(values.join('\t'));
+  }
+  rangeClipboard = lines.join('\n');
+  navigator.clipboard?.writeText(rangeClipboard).catch(() => {});
+  showToast(`${rangeLabel(bounds)} copied as TSV${cut ? ' and cleared' : ''}`);
+  if (cut) clearSelectedRange();
+}
+
+function pasteIntoGrid(event) {
+  event.preventDefault();
+  const text = event.clipboardData?.getData('text/plain') || rangeClipboard;
+  if (!text) return;
+  const matrix = text.replace(/\r/g, '').split('\n').filter((line, index, lines) => line || index < lines.length - 1).map((line) => line.split('\t'));
+  if (!matrix.length) return;
+  const startRow = gridState.focusRow;
+  const startField = gridState.focusField;
+  const maxWidth = Math.max(...matrix.map((row) => row.length));
+  materializeField(startField + maxWidth - 1);
+  materializeRow(startRow + matrix.length - 1);
+  matrix.forEach((values, rowOffset) => values.forEach((value, fieldOffset) => {
+    const field = current().fields[startField + fieldOffset];
+    if (field.type === 'formula' || field.type === 'scriptOutput') return;
+    current().rows[startRow + rowOffset][field.id] = field.type === 'checkbox' ? /^(true|1|yes|✓)$/i.test(value) : value;
+  }));
+  gridState = { activeCell: { row: startRow, field: startField }, anchorRow: startRow, anchorField: startField, focusRow: startRow + matrix.length - 1, focusField: startField + maxWidth - 1, mode: 'navigation' };
+  bumpRevision(`${matrix.length} × ${maxWidth} range pasted and materialized`);
+}
+
 function rangeLabel(bounds) {
   const start = `${columnName(bounds.left)}${bounds.top + 2}`;
   const end = `${columnName(bounds.right)}${bounds.bottom + 2}`;
@@ -292,38 +391,41 @@ function rangeLabel(bounds) {
 }
 
 function selectColumn(field) {
-  selection = { anchorRow: 0, anchorField: field, focusRow: visibleRowCount() - 1, focusField: field };
+  gridState = { activeCell: { row: 0, field }, anchorRow: 0, anchorField: field, focusRow: visibleRowCount() - 1, focusField: field, mode: 'navigation' };
   paintSelection();
   updateSelectionSummary();
 }
 
 function selectRow(row) {
-  selection = { anchorRow: row, anchorField: 0, focusRow: row, focusField: current().fields.length - 1 };
+  gridState = { activeCell: { row, field: 0 }, anchorRow: row, anchorField: 0, focusRow: row, focusField: visibleColumnCount() - 1, mode: 'navigation' };
   paintSelection();
   updateSelectionSummary();
 }
 
 function selectAllCells() {
-  selection = { anchorRow: 0, anchorField: 0, focusRow: visibleRowCount() - 1, focusField: current().fields.length - 1 };
+  gridState = { activeCell: { row: 0, field: 0 }, anchorRow: 0, anchorField: 0, focusRow: visibleRowCount() - 1, focusField: visibleColumnCount() - 1, mode: 'navigation' };
   paintSelection();
   updateSelectionSummary();
 }
 
 function clampSelection() {
   const maxRow = visibleRowCount() - 1;
-  const maxField = Math.max(0, current().fields.length - 1);
-  selection.anchorRow = Math.min(selection.anchorRow, maxRow);
-  selection.focusRow = Math.min(selection.focusRow, maxRow);
-  selection.anchorField = Math.min(selection.anchorField, maxField);
-  selection.focusField = Math.min(selection.focusField, maxField);
+  const maxField = visibleColumnCount() - 1;
+  gridState.anchorRow = Math.min(gridState.anchorRow, maxRow);
+  gridState.focusRow = Math.min(gridState.focusRow, maxRow);
+  gridState.anchorField = Math.min(gridState.anchorField, maxField);
+  gridState.focusField = Math.min(gridState.focusField, maxField);
+  gridState.activeCell = { row: gridState.focusRow, field: gridState.focusField };
 }
 
-function beginCellEdit(cell) {
+function beginCellEdit(cell, initialText = null) {
   const rowIndex = Number(cell.dataset.rowIndex);
   const fieldIndex = Number(cell.dataset.fieldIndex);
-  const field = current().fields[fieldIndex];
+  const initialFieldCount = current().fields.length;
+  const initialRowCount = current().rows.length;
+  const field = materializeField(fieldIndex);
   setSelection(rowIndex, fieldIndex);
-  if (field.type === 'formula') {
+  if (field.type === 'formula' || field.type === 'scriptOutput') {
     showToast('Formula cells are calculated · edit the formula from Ask AI or the formula bar');
     return;
   }
@@ -333,51 +435,94 @@ function beginCellEdit(cell) {
     bumpRevision('Checkbox updated');
     return;
   }
-  cell.textContent = String(current().rows[rowIndex][field.id] ?? '');
+  const originalValue = String(current().rows[rowIndex][field.id] ?? '');
+  cell.textContent = initialText === null ? originalValue : initialText;
   cell.contentEditable = 'true';
+  gridState.mode = 'editing';
   cell.focus();
   const range = document.createRange();
   range.selectNodeContents(cell);
+  if (initialText !== null) range.collapse(false);
   const nativeSelection = window.getSelection();
   nativeSelection.removeAllRanges();
   nativeSelection.addRange(range);
   let finished = false;
-  const finish = () => {
+  const finish = (commit = true, move = null) => {
     if (finished) return;
     finished = true;
-    current().rows[rowIndex][field.id] = cell.textContent.trim();
+    if (!commit) {
+      current().rows[rowIndex][field.id] = originalValue;
+      rollbackVirtualFields(initialFieldCount);
+      current().rows.splice(initialRowCount);
+    } else {
+      current().rows[rowIndex][field.id] = cell.textContent.trim();
+    }
     cell.contentEditable = 'false';
-    bumpRevision('Cell updated');
+    gridState.mode = 'navigation';
+    if (move) {
+      const nextRow = Math.max(0, Math.min(visibleRowCount() - 1, rowIndex + move[0]));
+      const nextField = Math.max(0, Math.min(visibleColumnCount() - 1, fieldIndex + move[1]));
+      gridState = { activeCell: { row: nextRow, field: nextField }, anchorRow: nextRow, anchorField: nextField, focusRow: nextRow, focusField: nextField, mode: 'navigation' };
+    }
+    if (!commit) {
+      renderDocument();
+      showToast('Edit cancelled');
+      return;
+    }
+    bumpRevision(initialFieldCount <= fieldIndex ? `Column ${columnName(fieldIndex)} and row ${rowIndex + 1} materialized` : 'Cell updated', () => {
+      const target = document.querySelector(`.cell[data-row-index="${gridState.focusRow}"][data-field-index="${gridState.focusField}"]`);
+      target?.focus({ preventScroll: true });
+    });
   };
-  cell.addEventListener('blur', finish, { once: true });
+  cell.addEventListener('blur', () => finish(true), { once: true });
   cell.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter') return;
-    event.preventDefault();
-    cell.blur();
-  }, { once: true });
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true, [1, 0]);
+      return;
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      finish(true, [0, event.shiftKey ? -1 : 1]);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      finish(false);
+    }
+  });
 }
 
 function materializeRow(rowIndex) {
   while (current().rows.length <= rowIndex) current().rows.push(emptyRow(current()));
 }
 
-function addColumnOneClick() {
-  closePopovers();
-  const index = current().fields.length;
-  const id = uniqueFieldId('Untitled');
-  current().fields.push({ id, name: 'Untitled', type: 'text', width: 150 });
-  current().rows.forEach((row) => { row[id] = ''; });
-  selection = { anchorRow: 0, anchorField: index, focusRow: 0, focusField: index };
-  bumpRevision('Column added · type a name, then press Enter', () => beginInlineFieldRename(index));
+function materializeField(fieldIndex) {
+  while (current().fields.length <= fieldIndex) {
+    const nextIndex = current().fields.length;
+    const name = `Column ${columnName(nextIndex)}`;
+    const id = uniqueFieldId(name);
+    current().fields.push({ id, name, type: 'text', width: 112 });
+    current().rows.forEach((row) => { row[id] = ''; });
+  }
+  return current().fields[fieldIndex];
+}
+
+function rollbackVirtualFields(initialFieldCount) {
+  while (current().fields.length > initialFieldCount) {
+    const removed = current().fields.pop();
+    current().rows.forEach((row) => { delete row[removed.id]; });
+  }
 }
 
 function beginInlineFieldRename(index) {
   const button = document.querySelector(`.field-select-button[data-field-index="${index}"]`);
-  const field = current().fields[index];
-  if (!button || !field) return;
+  const existingField = current().fields[index];
+  if (!button) return;
   const input = document.createElement('input');
   input.className = 'field-name-input';
-  input.value = field.name;
+  input.value = existingField?.name ?? '';
+  input.placeholder = `Name column ${columnName(index)}`;
   input.setAttribute('aria-label', 'Column name');
   button.replaceChildren(input);
   input.focus();
@@ -387,13 +532,14 @@ function beginInlineFieldRename(index) {
     if (finished) return;
     finished = true;
     const nextName = input.value.trim();
-    if (!commit || !nextName || nextName === field.name) {
+    if (!commit || !nextName || nextName === existingField?.name) {
       renderTable();
       updateSelectionSummary();
       return;
     }
+    const field = materializeField(index);
     field.name = nextName;
-    bumpRevision(`Column renamed to “${nextName}”`);
+    bumpRevision(existingField ? `Column renamed to “${nextName}”` : `Typed field “${nextName}” materialized`);
   };
   input.addEventListener('blur', () => finish(true), { once: true });
   input.addEventListener('keydown', (event) => {
@@ -409,6 +555,10 @@ function beginInlineFieldRename(index) {
 }
 
 function openFieldMenu(index, anchor) {
+  if (!current().fields[index]) {
+    openFieldEditor(index, anchor);
+    return;
+  }
   closePopovers();
   openFieldIndex = index;
   const field = current().fields[index];
@@ -424,7 +574,7 @@ function openFieldEditor(index, anchor) {
   closePopovers();
   openFieldIndex = index;
   const field = index === null ? null : current().fields[index];
-  byId('field-editor-title').textContent = field ? `Edit “${field.name}”` : 'Add column';
+  byId('field-editor-title').textContent = field ? `Edit “${field.name}”` : index === null ? 'Create typed field' : `Structure column ${columnName(index)}`;
   byId('field-name-input').value = field?.name ?? '';
   byId('field-type-select').value = field?.type ?? 'text';
   positionPopover(byId('field-editor'), anchorRect, 292);
@@ -433,7 +583,7 @@ function openFieldEditor(index, anchor) {
 }
 
 function saveField() {
-  const name = byId('field-name-input').value.trim() || 'Untitled';
+  const name = byId('field-name-input').value.trim() || (openFieldIndex === null ? 'Untitled' : `Column ${columnName(openFieldIndex)}`);
   const type = byId('field-type-select').value;
   if (openFieldIndex === null) {
     const id = uniqueFieldId(name);
@@ -443,7 +593,7 @@ function saveField() {
     closePopovers();
     return;
   }
-  Object.assign(current().fields[openFieldIndex], { name, type });
+  Object.assign(materializeField(openFieldIndex), { name, type });
   bumpRevision(`Field “${name}” saved`);
   closePopovers();
 }
@@ -462,7 +612,7 @@ function handleFieldAction(action) {
     const insertAt = action === 'insert-left' ? index : index + 1;
     current().fields.splice(insertAt, 0, { id, name: 'Untitled', type: 'text', width: 150 });
     current().rows.forEach((row) => { row[id] = ''; });
-    selection = { anchorRow: 0, anchorField: insertAt, focusRow: 0, focusField: insertAt };
+    gridState = { activeCell: { row: 0, field: insertAt }, anchorRow: 0, anchorField: insertAt, focusRow: 0, focusField: insertAt, mode: 'navigation' };
     closePopovers();
     bumpRevision('Column inserted', () => beginInlineFieldRename(insertAt));
     return;
@@ -513,7 +663,7 @@ function handleRowAction(action) {
 function addRecord() {
   const rowIndex = current().rows.length;
   current().rows.push(emptyRow(current()));
-  selection = { anchorRow: rowIndex, anchorField: 0, focusRow: rowIndex, focusField: 0 };
+  gridState = { activeCell: { row: rowIndex, field: 0 }, anchorRow: rowIndex, anchorField: 0, focusRow: rowIndex, focusField: 0, mode: 'navigation' };
   bumpRevision('Row added at the bottom', () => {
     const cell = document.querySelector(`.cell[data-row-index="${rowIndex}"][data-field-index="0"]`);
     cell?.scrollIntoView({ block: 'center', inline: 'nearest' });
@@ -556,25 +706,12 @@ function renderCalendar() {
   byId('calendar-view').innerHTML = `<div class="calendar-shell"><section class="calendar-main"><header class="calendar-head"><strong>August 2026</strong><span>Today · Month</span></header><div class="calendar-grid">${cells}</div></section><aside class="agenda"><strong>Next 7 days</strong>${datedRows.slice(0, 5).map((row) => `<div class="agenda-item"><small>${escapeHtml(row.due || row.date)}</small><span>${escapeHtml(row.task ?? row.topic ?? row.feedback ?? 'Record')}</span></div>`).join('')}</aside></div>`;
 }
 
-function renderChart() {
-  const dataset = current();
-  const rowsWithData = nonEmptyRows(dataset);
-  const counts = new Map();
-  rowsWithData.forEach((row) => {
-    const key = String(row.status || row.category || row.channel || 'Other');
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  });
-  const max = Math.max(1, ...counts.values());
-  const bars = [...counts.entries()].map(([label, value]) => `<div class="bar-item"><strong>${value}</strong><div class="bar" style="height:${Math.max(8, value / max * 78)}%"></div><span>${escapeHtml(label)}</span></div>`).join('');
-  byId('chart-view').innerHTML = `<div class="chart-shell"><section class="chart-card"><header><strong>Records by ${dataset.fields.some((field) => field.id === 'status') ? 'Status' : 'Category'}</strong><small>${rowsWithData.length} records · live from ${escapeHtml(dataset.title)}.peaksheet</small></header><div class="bar-chart">${bars}</div></section><aside class="chart-config"><strong>Chart configuration</strong><label>Chart type<select><option>Bar</option><option>Line</option><option>Pie</option></select></label><label>Category<select><option>Status</option><option>Area</option><option>Priority</option></select></label><label>Value<select><option>Record count</option></select></label></aside></div>`;
-}
-
 function switchDataset(id) {
   if (!datasets[id]) return;
   activeDatasetId = id;
   openFieldIndex = null;
   openRowIndex = null;
-  selection = { anchorRow: 0, anchorField: 0, focusRow: 0, focusField: 0 };
+  gridState = { activeCell: { row: 0, field: 0 }, anchorRow: 0, anchorField: 0, focusRow: 0, focusField: 0, mode: 'navigation' };
   closePopovers();
   renderDocument();
   showToast(`Opened ${current().title}.peaksheet from the Vault`);
@@ -622,7 +759,93 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 1800);
 }
 
+function openScriptsDrawer() {
+  closeAiDrawer();
+  byId('scripts-drawer').hidden = false;
+  byId('script-selection-count').textContent = `${selectedCellCount()} ${selectedCellCount() === 1 ? 'cell' : 'cells'}`;
+  const rowCount = nonEmptyRows().length;
+  byId('script-view-count').textContent = `${rowCount} rows`;
+  byId('script-all-count').textContent = `${rowCount} rows`;
+}
+
+function closeScriptsDrawer() {
+  if (scriptTimer) clearInterval(scriptTimer);
+  scriptTimer = null;
+  byId('scripts-drawer').hidden = true;
+}
+
+function previewScript() {
+  const total = nonEmptyRows().length;
+  if (!total) {
+    showToast('Materialize at least one row before previewing a script');
+    return;
+  }
+  const unchanged = Math.min(3, Math.floor(total / 3));
+  byId('script-preview-changed').textContent = String(total - unchanged);
+  byId('script-preview-unchanged').textContent = String(unchanged);
+  byId('script-preview').hidden = false;
+  byId('script-progress').hidden = true;
+  showToast('Preview ready · the local file is unchanged');
+}
+
+function runScript() {
+  if (scriptTimer) clearInterval(scriptTimer);
+  const total = nonEmptyRows().length;
+  if (!total) {
+    showToast('Materialize at least one row before running a script');
+    return;
+  }
+  const unchanged = Math.min(3, Math.floor(total / 3));
+  const changed = total - unchanged;
+  byId('script-preview').hidden = true;
+  byId('script-progress').hidden = false;
+  byId('latest-script-run').hidden = true;
+  let completed = 0;
+  scriptTimer = setInterval(() => {
+    completed = Math.min(total, completed + Math.max(1, Math.ceil(total / 18)));
+    const percent = Math.round(completed / total * 100);
+    byId('script-progress-label').textContent = `Running ${completed} / ${total}`;
+    byId('script-progress-percent').textContent = `${percent}%`;
+    byId('script-progress-bar').style.width = `${percent}%`;
+    byId('script-progress-detail').textContent = completed < total ? `${Math.min(changed, Math.round(completed * changed / total))} changed · checking locally…` : `${changed} changed · ${unchanged} unchanged · 0 failed`;
+    if (completed < total) return;
+    clearInterval(scriptTimer);
+    scriptTimer = null;
+    byId('latest-script-result').textContent = `${changed} changed · ${unchanged} unchanged · 0 failed`;
+    byId('latest-script-run').hidden = false;
+    showToast('Local script complete · history saved in this sheet');
+  }, 70);
+}
+
+function openPeakShare() {
+  byId('peakshare-card').hidden = false;
+}
+
+function closePeakShare() {
+  byId('peakshare-card').hidden = true;
+}
+
+function openGroupMenu(anchor) {
+  closePopovers();
+  renderGroupPreview();
+  const menu = byId('group-menu');
+  positionPopover(menu, anchor.getBoundingClientRect(), 286);
+  menu.hidden = false;
+}
+
+function renderGroupPreview() {
+  const fieldId = byId('group-field').value;
+  const counts = new Map();
+  nonEmptyRows().forEach((row) => {
+    const label = String(row[fieldId] || 'Blank');
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  });
+  const entries = [...counts.entries()].slice(0, 6);
+  byId('group-preview').innerHTML = entries.length ? entries.map(([label, count]) => `<span>${escapeHtml(label)} <b>${count}</b></span>`).join('') : '<span>No materialized rows <b>0</b></span>';
+}
+
 function openAiDrawer() {
+  closeScriptsDrawer();
   byId('ai-drawer').hidden = false;
   syncAiContext();
   requestAnimationFrame(() => byId('ai-prompt').focus());
@@ -642,6 +865,12 @@ function syncAiContext(label = rangeLabel(selectionBounds()), count = selectedCe
   const formulaAvailable = Boolean(generatedFormulaForCurrent());
   formulaSuggestion.disabled = !formulaAvailable;
   formulaSuggestion.title = formulaAvailable ? 'Generate a formula from Status and the date field' : 'This sheet needs Status and Date fields first';
+  const activeField = current().fields[gridState.focusField];
+  document.querySelectorAll('[data-ai-mode="explain"], [data-ai-mode="fix"]').forEach((button) => {
+    button.disabled = activeField?.type !== 'formula';
+    button.title = activeField?.type === 'formula' ? 'Use the active formula cell' : 'Select a formula cell first';
+  });
+  byId('script-selection-count').textContent = `${count} ${count === 1 ? 'cell' : 'cells'}`;
 }
 
 function selectedCellCount() {
@@ -649,18 +878,23 @@ function selectedCellCount() {
   return (bounds.bottom - bounds.top + 1) * (bounds.right - bounds.left + 1);
 }
 
-function runAi() {
+function runAi(modeOverride = '') {
   const prompt = byId('ai-prompt').value.trim();
   if (!prompt) {
     byId('ai-prompt').focus();
     return;
   }
-  const formulaRequested = /formula|days left|公式/i.test(prompt);
-  if (formulaRequested && !generatedFormulaForCurrent()) {
+  const aiMode = modeOverride || (/explain/i.test(prompt) ? 'explain' : /fix|repair/i.test(prompt) ? 'fix' : /formula|days left|公式/i.test(prompt) ? 'formula' : 'analysis');
+  const activeFormula = current().fields[gridState.focusField]?.formula;
+  if (aiMode === 'formula' && !generatedFormulaForCurrent()) {
     showToast('This sheet needs Status and Date fields before Peak can build Days left');
     return;
   }
-  const formulaMode = formulaRequested;
+  if (['explain', 'fix'].includes(aiMode) && !activeFormula) {
+    showToast('Select a formula cell first');
+    return;
+  }
+  const formulaMode = aiMode !== 'analysis';
   clearAiTimers();
   byId('ai-welcome').hidden = true;
   byId('ai-user-message').hidden = false;
@@ -670,12 +904,13 @@ function runAi() {
   byId('ai-summary-card').hidden = true;
   byId('ai-formula-code').textContent = '';
   byId('ai-formula-code').classList.remove('is-typing');
+  byId('ai-formula-explanation').hidden = true;
   byId('ai-formula-check-count').textContent = `${nonEmptyRows().length} rows checked`;
   byId('ask-ai-button').classList.add('is-thinking');
   setAiStep(0, 'Reading selected cells', 8);
   aiTimers.push(setTimeout(() => setAiStep(1, 'Mapping fields to a safe plan', 38), 650));
   aiTimers.push(setTimeout(() => setAiStep(2, formulaMode ? 'Writing and checking formula' : 'Checking the analysis against source rows', 72), 1320));
-  aiTimers.push(setTimeout(() => finishAiRun(formulaMode), 1980));
+  aiTimers.push(setTimeout(() => finishAiRun(aiMode), 1980));
 }
 
 function setAiStep(index, status, progress) {
@@ -689,7 +924,8 @@ function setAiStep(index, status, progress) {
   byId('ai-progress-bar').style.width = `${progress}%`;
 }
 
-function finishAiRun(formulaMode) {
+function finishAiRun(aiMode) {
+  const formulaMode = aiMode !== 'analysis';
   ['ai-step-read', 'ai-step-plan', 'ai-step-check'].forEach((id) => {
     byId(id).classList.remove('is-active');
     byId(id).classList.add('is-done');
@@ -703,7 +939,15 @@ function finishAiRun(formulaMode) {
     return;
   }
   byId('ai-formula-card').hidden = false;
-  typeFormula(generatedFormulaForCurrent());
+  byId('ai-apply-formula').hidden = aiMode !== 'formula';
+  byId('ai-cancel-formula').textContent = aiMode === 'formula' ? 'Discard' : 'Close';
+  const formula = aiMode === 'formula' ? generatedFormulaForCurrent() : current().fields[gridState.focusField]?.formula;
+  typeFormula(formula);
+  if (aiMode === 'explain') byId('ai-formula-explanation').hidden = false;
+  if (aiMode === 'fix') {
+    byId('ai-formula-explanation').textContent = 'No invalid references found. Peak normalized the date guard and preserved blank completed rows.';
+    byId('ai-formula-explanation').hidden = false;
+  }
 }
 
 function typeFormula(formula) {
@@ -741,7 +985,7 @@ function applyGeneratedFormula() {
     current().rows.forEach((row, rowIndex) => { row['days-left'] = GENERATED_VALUES[rowIndex] ?? ''; });
     index = current().fields.length - 1;
   }
-  selection = { anchorRow: 0, anchorField: index, focusRow: Math.max(0, current().rows.length - 1), focusField: index };
+  gridState = { activeCell: { row: 0, field: index }, anchorRow: 0, anchorField: index, focusRow: Math.max(0, current().rows.length - 1), focusField: index, mode: 'navigation' };
   byId('ai-formula-card').hidden = true;
   bumpRevision('AI formula inserted · Undo is available', () => {
     const header = document.querySelector(`.field-head[data-field-index="${index}"]`);
@@ -805,19 +1049,40 @@ document.querySelectorAll('[data-row-action]').forEach((button) => button.addEve
 document.querySelectorAll('.close-popover').forEach((button) => button.addEventListener('click', closePopovers));
 document.querySelectorAll('[data-ai-prompt]').forEach((button) => button.addEventListener('click', () => {
   byId('ai-prompt').value = button.dataset.aiPrompt;
-  runAi();
+  runAi(button.dataset.aiMode ?? '');
+}));
+document.querySelectorAll('.open-peakshare').forEach((button) => button.addEventListener('click', openPeakShare));
+document.querySelectorAll('.saved-script').forEach((button) => button.addEventListener('click', () => {
+  document.querySelectorAll('.saved-script').forEach((candidate) => candidate.classList.toggle('is-active', candidate === button));
+  byId('script-title').textContent = button.querySelector('strong').textContent;
+  byId('script-preview').hidden = true;
+  byId('script-progress').hidden = true;
 }));
 byId('save-field').addEventListener('click', saveField);
-byId('bottom-add-record').addEventListener('click', addRecord);
-byId('toolbar-add-record').addEventListener('click', addRecord);
+byId('typed-field-button').addEventListener('click', (event) => openFieldEditor(null, event.currentTarget));
 byId('sheet-title').addEventListener('change', renameDataset);
 byId('sheet-title').addEventListener('blur', renameDataset);
 byId('location-button').addEventListener('click', () => { byId('location-card').hidden = !byId('location-card').hidden; });
+byId('share-button').addEventListener('click', openPeakShare);
+byId('close-peakshare').addEventListener('click', closePeakShare);
+byId('cancel-peakshare').addEventListener('click', closePeakShare);
+byId('continue-peakshare').addEventListener('click', () => { closePeakShare(); showToast('PeakShare handoff preview · the local file remains unchanged'); });
+byId('scripts-button').addEventListener('click', openScriptsDrawer);
+byId('close-scripts').addEventListener('click', closeScriptsDrawer);
+byId('preview-script').addEventListener('click', previewScript);
+byId('run-script').addEventListener('click', runScript);
+byId('save-script').addEventListener('click', () => showToast('Script saved locally in this .peaksheet'));
+byId('new-script').addEventListener('click', () => showToast('New local script draft created'));
+byId('group-button').addEventListener('click', (event) => openGroupMenu(event.currentTarget));
+byId('group-field').addEventListener('change', renderGroupPreview);
+byId('apply-group').addEventListener('click', () => { const label = byId('group-field').selectedOptions[0].textContent; closePopovers(); showToast(`Grouped by ${label} · Count summary applied to this view`); });
 byId('ask-ai-button').addEventListener('click', openAiDrawer);
 byId('close-ai').addEventListener('click', closeAiDrawer);
-byId('ai-submit').addEventListener('click', runAi);
+byId('ai-submit').addEventListener('click', () => runAi());
 byId('ai-apply-formula').addEventListener('click', applyGeneratedFormula);
 byId('ai-cancel-formula').addEventListener('click', discardGeneratedFormula);
+byId('ai-explain-formula').addEventListener('click', () => { byId('ai-formula-explanation').hidden = !byId('ai-formula-explanation').hidden; });
+byId('ai-fix-formula').addEventListener('click', () => { byId('ai-formula-explanation').textContent = 'Formula check passed. References, result type, and blank-row behavior are valid.'; byId('ai-formula-explanation').hidden = false; showToast('Formula checked · no destructive change needed'); });
 byId('ai-prompt').addEventListener('keydown', (event) => {
   if (event.key !== 'Enter' || event.shiftKey) return;
   event.preventDefault();
@@ -827,10 +1092,10 @@ byId('table-search').addEventListener('input', (event) => {
   const query = event.target.value.trim().toLowerCase();
   document.querySelectorAll('#data-grid tbody tr').forEach((row) => { row.hidden = query && !row.textContent.toLowerCase().includes(query); });
 });
-document.addEventListener('pointerup', () => { draggingSelection = false; });
-document.addEventListener('pointercancel', () => { draggingSelection = false; });
+document.addEventListener('pointerup', () => { draggingSelection = false; if (gridState.mode === 'selecting') gridState.mode = 'navigation'; });
+document.addEventListener('pointercancel', () => { draggingSelection = false; if (gridState.mode === 'selecting') gridState.mode = 'navigation'; });
 document.addEventListener('pointerdown', (event) => {
-  if (event.target.closest('.popover, .field-head-shell, .add-field-button, .row-index, .cell, #location-button, #location-card, .ai-drawer, #ask-ai-button')) return;
+  if (event.target.closest('.popover, .field-head-shell, .add-field-button, .row-index, .cell, #location-button, #location-card, .ai-drawer, #ask-ai-button, .scripts-drawer, #scripts-button, .peakshare-card, #share-button')) return;
   closePopovers();
   byId('location-card').hidden = true;
 });
@@ -838,6 +1103,14 @@ document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (!byId('ai-drawer').hidden) {
     closeAiDrawer();
+    return;
+  }
+  if (!byId('scripts-drawer').hidden) {
+    closeScriptsDrawer();
+    return;
+  }
+  if (!byId('peakshare-card').hidden) {
+    closePeakShare();
     return;
   }
   closePopovers();
