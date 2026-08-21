@@ -441,7 +441,7 @@ export function toLocalDateKey(value: number | Date): string {
 
 export function summarizeVaultActivity(files: readonly TFile[]): VaultActivityDay[] {
 	const days = new Map<string, VaultActivityDay>();
-	for (const file of files) {
+	for (const file of files.filter(isActivityFile)) {
 		const date = toLocalDateKey(file.stat.mtime);
 		const day = days.get(date) ?? { date, count: 0, files: [] };
 		day.count += 1;
@@ -451,4 +451,8 @@ export function summarizeVaultActivity(files: readonly TFile[]): VaultActivityDa
 	return [...days.values()]
 		.map((day) => ({ ...day, files: day.files.sort((left, right) => right.modifiedAt - left.modifiedAt) }))
 		.sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function isActivityFile(file: TFile): boolean {
+	return file.extension.toLocaleLowerCase() !== 'sqlite';
 }
