@@ -1,6 +1,7 @@
 {
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
+  "supportedInventoryTypes": ["md", "pdf", "docx", "pptx", "xlsx", "csv", "tsv", "canvas", "excalidraw", "drawio", "png", "jpg", "jpeg", "webp", "gif", "svg", "mp3", "wav", "mp4", "mov"],
   "inventoryPreviewTypeLimit": 16,
   "inventoryObjects": {
     "files": {

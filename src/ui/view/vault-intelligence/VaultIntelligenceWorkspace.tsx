@@ -312,7 +312,7 @@ function Overview({ snapshot, runtime, config, onRoute }: {
 				<div className="pk-vi-continue-summary">
 					<span><Clock3 size={14} /><small>Since last scan</small></span>
 					<span><strong>{snapshot.lastCompletedRun && snapshot.changedSinceScan !== null ? formatNumber(snapshot.changedSinceScan) : '0'}</strong><small>{snapshot.lastCompletedRun ? 'Vault items changed' : 'Not indexed yet'}</small></span>
-					<span><strong>{snapshot.digest ? `+${formatNumber(snapshot.digest.communityLinks?.length ?? 0)}` : '0'}</strong><small>current connections</small></span>
+					<span><strong>{snapshot.digest && (snapshot.digest.communityLinks?.length ?? 0) > 0 ? formatNumber(snapshot.digest.communityLinks?.length ?? 0) : 'No'}</strong><small>current connections</small></span>
 					<span><strong>{snapshot.digest ? formatNumber(snapshot.digest.counts.orphans ?? 0) : '0'}</strong><small>notes need a home</small></span>
 					<span><strong>{formatNumber(snapshot.tasks.filter((task) => task.kind === 'content-lifecycle' && task.state !== 'verified').length)}</strong><small>work states need review</small></span>
 				</div>
@@ -338,7 +338,7 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 			? snapshot.fileTypes.map((type) => ({ id: type.extension, label: fileTypeLabel(type.extension), count: type.count }))
 			: object.breakdown ?? [];
 		const breakdown = object.id === 'files'
-			? inventoryPreviewItems(canonicalBreakdown, config.inventoryPreviewTypeLimit)
+			? inventoryPreviewItems(canonicalBreakdown, config.inventoryPreviewTypeLimit, config.supportedInventoryTypes ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.supportedInventoryTypes)
 			: canonicalBreakdown;
 		const previewIsGrouped = breakdown.length < canonicalBreakdown.length;
 		const coverageNote = previewIsGrouped
@@ -393,8 +393,17 @@ function InventoryDistribution({ total, label, items, canonicalGroupCount, color
 	</div>;
 }
 
-function inventoryPreviewItems(items: Array<{ id: string; label: string; count: number }>, limit: number) {
-	const sorted = [...items].sort((left, right) => right.count - left.count);
+function inventoryPreviewItems(items: Array<{ id: string; label: string; count: number }>, limit: number, supportedTypes: string[]) {
+	const supportedOrder = new Map(supportedTypes.map((type, index) => [type.toLowerCase(), index]));
+	const supported = items
+		.filter((item) => supportedOrder.has(item.id.toLowerCase()))
+		.sort((left, right) => (supportedOrder.get(left.id.toLowerCase()) ?? 0) - (supportedOrder.get(right.id.toLowerCase()) ?? 0));
+	const otherCount = items
+		.filter((item) => !supportedOrder.has(item.id.toLowerCase()))
+		.reduce((sum, item) => sum + item.count, 0);
+	const sorted = otherCount > 0
+		? [...supported, { id: 'other-formats', label: 'Other formats', count: otherCount }]
+		: supported;
 	const fallbackLimit = DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryPreviewTypeLimit;
 	const safeLimit = Number.isFinite(limit) ? Math.max(2, Math.floor(limit)) : fallbackLimit;
 	if (sorted.length <= safeLimit) return sorted;

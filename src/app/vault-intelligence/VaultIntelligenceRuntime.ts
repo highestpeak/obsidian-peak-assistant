@@ -29,6 +29,7 @@ import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
 import type { VaultReviewSessionSnapshot } from '@/service/copilot/vault/VaultReviewSession';
 import { VaultIntelligenceRecordStore } from './VaultIntelligenceRecordStore';
+import { generateContentPreview } from '@/core/utils/message-preview-utils';
 import {
 	createEmptyVaultScanRun,
 	deriveMaintenanceState,
@@ -1488,14 +1489,17 @@ async function collectSourceActivity(outputs: GeneratedOutputPersistenceRuntime)
 	const chatStore = new ChatConversationRecordStore(outputs);
 	const chatIds = await chatStore.listConversationIds();
 	const chatRecords = await Promise.all(chatIds.slice(-120).map((conversationId) => chatStore.read(conversationId).catch(() => null)));
-	const chats = chatRecords.flatMap((record) => record?.messages.map((message) => ({
-		id: `chat:${message.id}`,
-		timestamp: message.createdAtTimestamp,
-		kind: 'chat' as const,
-		label: 'Chat message',
-		objectPath: record.meta.id,
-		runId: null,
-	})) ?? []);
+	const chats = chatRecords.flatMap((record) => record?.messages.map((message) => {
+		const preview = activityTextPreview(message.title || message.content);
+		return {
+			id: `chat:${message.id}`,
+			timestamp: message.createdAtTimestamp,
+			kind: 'chat' as const,
+			label: preview || `${message.role === 'user' ? 'You' : 'Peak'} message`,
+			objectPath: record.meta.title.trim() || 'Untitled conversation',
+			runId: null,
+		};
+	}) ?? []);
 	const composer = await outputs.events.readEvents<unknown>({ outputId: 'composer.workspace-events', streamKey: 'current' }).catch(() => null);
 	const composerRecords = composer?.events.flatMap((event, index) => {
 		const payload = event.payload as Record<string, unknown>;
@@ -1514,6 +1518,14 @@ async function collectSourceActivity(outputs: GeneratedOutputPersistenceRuntime)
 		.filter((record) => Number.isFinite(record.timestamp) && record.timestamp > 0)
 		.sort((left, right) => right.timestamp - left.timestamp)
 		.slice(0, 500);
+}
+
+function activityTextPreview(content: string): string {
+	return generateContentPreview(content)
+		.replace(/\s+/g, ' ')
+		.replace(/[#*_`>\[\]]/g, '')
+		.trim()
+		.slice(0, 120);
 }
 
 function buildActivitySessions(records: readonly import('@/core/types/vault-intelligence').VaultActivityRecord[]): VaultActivitySession[] {

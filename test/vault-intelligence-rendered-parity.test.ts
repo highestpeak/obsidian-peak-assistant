@@ -76,6 +76,7 @@ const runtime: VaultIntelligenceWorkspaceRuntime = {
 
 const html = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime }));
 const source = readFileSync('src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx', 'utf8');
+const runtimeSource = readFileSync('src/app/vault-intelligence/VaultIntelligenceRuntime.ts', 'utf8');
 assert.match(
 	html,
 	/class="[^"]*pk-vi-inventory-item[^"]*"/,
@@ -91,6 +92,10 @@ assert.equal((html.match(/class="is-unavailable"/g) ?? []).length, 3, 'missing o
 assert.match(html, /Conversation types not available/);
 assert.match(html, /Project states not available/);
 assert.match(html, /Composer results not available/);
+assert.match(source, /supportedInventoryTypes/, 'only explicitly supported file formats can retain individual inventory rows');
+assert.match(source, /Other formats/, 'unsupported extensions must be grouped honestly instead of becoming product file types');
+assert.match(source, /: 'No'.*current connections/, 'a zero connection count must not render as a misleading signed number');
+assert.match(runtimeSource, /activityTextPreview/, 'Activity must receive a readable chat preview instead of a raw conversation identifier');
 assert.match(html, /pk-vi-continue-summary/, 'zero history must retain the reference summary geometry');
 assert.match(html, /Not indexed yet/, 'zero history must explain the empty scan baseline');
 assert.match(html, /Prepare Vault/);
@@ -251,7 +256,7 @@ const overflowRuntime: VaultIntelligenceWorkspaceRuntime = {
 	getSnapshot: () => overflowSnapshot,
 };
 const overflowHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: overflowRuntime }));
-assert.equal((overflowHtml.match(/pk-vi-pie-segment/g) ?? []).length, 16, 'the hover preview must retain the Mock sixteen-row geometry');
+assert.equal((overflowHtml.match(/pk-vi-pie-segment/g) ?? []).length, 1, 'unsupported extensions must collapse into the one honest Other formats bucket');
 assert.match(overflowHtml, /49 actual file types/);
 assert.match(overflowHtml, /Other formats/);
 assert.match(overflowHtml, />100%<\/span>/, 'readiness visuals must cap inconsistent projection counts at 100%');
