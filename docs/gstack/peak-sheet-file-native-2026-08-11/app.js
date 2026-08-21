@@ -100,6 +100,11 @@ let gridState = { activeCell: { row: 2, field: 3 }, anchorRow: 2, anchorField: 3
 let overlayState = { id: null, trigger: null };
 let boardDragRowIndex = null;
 let calendarCursor = new Date(2026, 7, 1);
+let projectionFlashRowIndex = null;
+let projectionFlashTimer = null;
+let tableQuery = '';
+let tableFilter = { fieldId: '', value: '' };
+let tableSort = { fieldId: '', direction: 'asc' };
 
 const byId = (id) => document.getElementById(id);
 const current = () => datasets[activeDatasetId];
@@ -153,7 +158,11 @@ function renderDocument() {
 function renderTable() {
   const dataset = current();
   const table = byId('data-grid');
-  const rows = Array.from({ length: visibleRowCount(dataset) }, (_, index) => dataset.rows[index]);
+  const materializedRows = dataset.rows.map((row, rowIndex) => ({ row, rowIndex }));
+  const rows = tableSort.fieldId
+    ? [...materializedRows].sort((left, right) => compareRowsByField(left.row, right.row, tableSort.fieldId, tableSort.direction))
+    : materializedRows;
+  while (rows.length < visibleRowCount(dataset)) rows.push({ row: undefined, rowIndex: rows.length });
   const columns = Array.from({ length: visibleColumnCount(dataset) }, (_, index) => dataset.fields[index]);
   updateGridWidth();
   const colgroup = `<colgroup><col style="width:48px">${columns.map((field) => `<col style="width:${fieldWidth(field)}px">`).join('')}<col style="width:44px"></colgroup>`;
@@ -164,14 +173,41 @@ function renderTable() {
         <button type="button" class="field-menu-trigger${openFieldIndex === index ? ' is-open' : ''}" data-field-index="${index}" data-overlay-trigger="${field ? 'field-menu' : 'field-editor'}" aria-haspopup="${field ? 'menu' : 'dialog'}" aria-controls="${field ? 'field-menu' : 'field-editor'}" aria-expanded="${openFieldIndex === index}" aria-label="Configure ${escapeHtml(field?.name ?? `Column ${columnName(index)}`)}"><svg><use href="#i-chevron"/></svg></button>${field ? `<span class="field-resize-handle" data-field-index="${index}" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize ${escapeHtml(field.name)} column"></span>` : ''}
       </div>
     </th>`).join('')}<th class="add-field-head"><button type="button" class="add-field-button" id="inline-add-field" aria-label="Create typed field" title="Create Select, Formula, File, or another typed field"><svg><use href="#i-plus"/></svg></button></th></tr></thead>`;
-  const body = `<tbody>${rows.map((row, rowIndex) => `<tr class="${row ? '' : 'is-placeholder-row'}">
-    <td class="row-index" data-row-index="${rowIndex}">${rowIndex + 1}</td>
+  const body = `<tbody>${rows.map(({ row, rowIndex }, displayIndex) => `<tr class="${row ? '' : 'is-placeholder-row'}${rowIndex === projectionFlashRowIndex ? ' is-projection-flash' : ''}"${row && !rowMatchesTableView(row) ? ' hidden' : ''}>
+    <td class="row-index" data-row-index="${rowIndex}">${displayIndex + 1}</td>
     ${columns.map((field, fieldIndex) => `<td class="cell ${cellClass(field)}${field ? '' : ' is-virtual'}" data-row-index="${rowIndex}" data-field-index="${fieldIndex}" tabindex="0">${renderCell(field, field ? row?.[field.id] : undefined)}</td>`).join('')}
     <td></td>
   </tr>`).join('')}</tbody>`;
   table.innerHTML = `${colgroup}${head}${body}`;
   bindGridEvents();
   paintSelection();
+  updateTableRecordCount();
+}
+
+function rowMatchesTableView(row) {
+  if (!row) return true;
+  const queryMatches = !tableQuery || Object.values(row).some((value) => String(value ?? '').toLowerCase().includes(tableQuery));
+  if (!queryMatches) return false;
+  if (!tableFilter.fieldId || !tableFilter.value) return true;
+  return String(row[tableFilter.fieldId] ?? '').toLowerCase().includes(tableFilter.value.toLowerCase());
+}
+
+function updateTableRecordCount() {
+  const materialized = nonEmptyRows();
+  const visible = materialized.filter(rowMatchesTableView).length;
+  byId('record-count').textContent = String(tableQuery || tableFilter.fieldId ? visible : materialized.length);
+  byId('filter-button')?.classList.toggle('is-active', Boolean(tableFilter.fieldId));
+  byId('sort-button')?.classList.toggle('is-active', Boolean(tableSort.fieldId));
+}
+
+function compareRowsByField(left, right, fieldId, direction) {
+  const field = current().fields.find((candidate) => candidate.id === fieldId);
+  const leftValue = sortableValue(left[fieldId], field?.type);
+  const rightValue = sortableValue(right[fieldId], field?.type);
+  const compared = typeof leftValue === 'number' && typeof rightValue === 'number'
+    ? leftValue - rightValue
+    : leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: 'base' });
+  return direction === 'desc' ? -compared : compared;
 }
 
 function renderCell(field, value) {
@@ -827,9 +863,26 @@ function moveBoardRecord(rowIndex, status) {
 
 function openRecordFromProjection(rowIndex) {
   const taskFieldIndex = Math.max(0, current().fields.findIndex((field) => ['task', 'feedback', 'topic', 'user'].includes(field.id)));
+  if (!rowMatchesTableView(current().rows[rowIndex])) {
+    tableQuery = '';
+    tableFilter = { fieldId: '', value: '' };
+    byId('table-search').value = '';
+  }
   gridState = { activeCell: { row: rowIndex, field: taskFieldIndex }, anchorRow: rowIndex, anchorField: taskFieldIndex, focusRow: rowIndex, focusField: taskFieldIndex, mode: 'navigation' };
+  projectionFlashRowIndex = rowIndex;
+  clearTimeout(projectionFlashTimer);
   switchView('table');
-  requestAnimationFrame(() => document.querySelector(`.cell[data-row-index="${rowIndex}"][data-field-index="${taskFieldIndex}"]`)?.focus({ preventScroll: true }));
+  renderTable();
+  updateSelectionSummary();
+  requestAnimationFrame(() => {
+    const cell = document.querySelector(`.cell[data-row-index="${rowIndex}"][data-field-index="${taskFieldIndex}"]`);
+    cell?.scrollIntoView({ block: 'center', inline: 'nearest' });
+    cell?.focus({ preventScroll: true });
+  });
+  projectionFlashTimer = setTimeout(() => {
+    projectionFlashRowIndex = null;
+    document.querySelector('#data-grid tbody tr.is-projection-flash')?.classList.remove('is-projection-flash');
+  }, 1500);
   showToast('Opened the same record in Table view');
 }
 
@@ -947,7 +1000,7 @@ function closeOverlay({ restoreFocus = true } = {}) {
 }
 
 function closePopovers(options) {
-  if (['field-menu', 'field-editor', 'group-menu', 'row-menu'].includes(overlayState.id)) closeOverlay(options);
+  if (['field-menu', 'field-editor', 'group-menu', 'row-menu', 'filter-menu', 'sort-menu'].includes(overlayState.id)) closeOverlay(options);
 }
 
 function positionPopover(popover, rect, width) {
@@ -1038,6 +1091,68 @@ function openGroupMenu(anchor) {
     renderGroupPreview();
     positionPopover(byId('group-menu'), anchor.getBoundingClientRect(), 286);
   });
+}
+
+function fieldOptions(selectedId = '') {
+  return current().fields.map((field) => `<option value="${escapeHtml(field.id)}"${field.id === selectedId ? ' selected' : ''}>${escapeHtml(field.name)}</option>`).join('');
+}
+
+function openFilterMenu(anchor) {
+  if (!current().fields.length) {
+    showToast('Add a field before filtering this view');
+    return;
+  }
+  openOverlay('filter-menu', anchor, () => {
+    const fallbackFieldId = current().fields[0].id;
+    byId('filter-field').innerHTML = fieldOptions(tableFilter.fieldId || fallbackFieldId);
+    renderFilterValueOptions();
+    positionPopover(byId('filter-menu'), anchor.getBoundingClientRect(), 286);
+  });
+}
+
+function renderFilterValueOptions() {
+  const fieldId = byId('filter-field').value;
+  const values = [...new Set(nonEmptyRows().map((row) => String(row[fieldId] ?? '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  byId('filter-value').innerHTML = `<option value="">Any value</option>${values.map((value) => `<option value="${escapeHtml(value)}"${value === tableFilter.value ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}`;
+}
+
+function applyTableFilter() {
+  const fieldId = byId('filter-field').value;
+  const value = byId('filter-value').value;
+  tableFilter = value ? { fieldId, value } : { fieldId: '', value: '' };
+  renderTable();
+  closePopovers();
+  showToast(value ? `Filtered ${current().fields.find((field) => field.id === fieldId)?.name ?? 'view'} by “${value}”` : 'Filter cleared');
+}
+
+function openSortMenu(anchor) {
+  if (!current().fields.length) {
+    showToast('Add a field before sorting this view');
+    return;
+  }
+  openOverlay('sort-menu', anchor, () => {
+    const fallbackFieldId = current().fields[0].id;
+    byId('sort-field').innerHTML = fieldOptions(tableSort.fieldId || fallbackFieldId);
+    byId('sort-direction').value = tableSort.direction;
+    positionPopover(byId('sort-menu'), anchor.getBoundingClientRect(), 286);
+  });
+}
+
+function sortableValue(value, type) {
+  if (type === 'date') return parseSheetDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
+  if (type === 'number') return Number(value) || 0;
+  if (type === 'checkbox') return value ? 1 : 0;
+  return String(value ?? '');
+}
+
+function applyTableSort() {
+  const fieldId = byId('sort-field').value;
+  const direction = byId('sort-direction').value;
+  const field = current().fields.find((candidate) => candidate.id === fieldId);
+  tableSort = { fieldId, direction };
+  renderTable();
+  closePopovers();
+  showToast(`Sorted by ${field?.name ?? 'field'} · ${direction === 'asc' ? 'ascending' : 'descending'}`);
 }
 
 function renderGroupPreview() {
@@ -1281,6 +1396,23 @@ byId('save-script').addEventListener('click', () => showToast('Script saved loca
 byId('edit-script').addEventListener('click', () => showToast('Script editor opens in the next local step'));
 byId('new-script').addEventListener('click', () => showToast('New local script draft created'));
 byId('add-record').addEventListener('click', addRecord);
+byId('filter-button').addEventListener('click', (event) => openFilterMenu(event.currentTarget));
+byId('sort-button').addEventListener('click', (event) => openSortMenu(event.currentTarget));
+byId('filter-field').addEventListener('change', renderFilterValueOptions);
+byId('apply-filter').addEventListener('click', applyTableFilter);
+byId('clear-filter').addEventListener('click', () => {
+  tableFilter = { fieldId: '', value: '' };
+  renderTable();
+  closePopovers();
+  showToast('Filter cleared');
+});
+byId('apply-sort').addEventListener('click', applyTableSort);
+byId('clear-sort').addEventListener('click', () => {
+  tableSort = { fieldId: '', direction: 'asc' };
+  renderTable();
+  closePopovers();
+  showToast('Original table order restored');
+});
 byId('group-button').addEventListener('click', (event) => openGroupMenu(event.currentTarget));
 byId('group-field').addEventListener('change', renderGroupPreview);
 byId('apply-group').addEventListener('click', () => { const label = byId('group-field').selectedOptions[0].textContent; closePopovers(); showToast(`Grouped by ${label} · Count summary applied to this view`); });
@@ -1297,8 +1429,8 @@ byId('ai-prompt').addEventListener('keydown', (event) => {
   runAi();
 });
 byId('table-search').addEventListener('input', (event) => {
-  const query = event.target.value.trim().toLowerCase();
-  document.querySelectorAll('#data-grid tbody tr').forEach((row) => { row.hidden = query && !row.textContent.toLowerCase().includes(query); });
+  tableQuery = event.target.value.trim().toLowerCase();
+  renderTable();
 });
 document.addEventListener('pointerup', () => { draggingSelection = false; if (gridState.mode === 'selecting') gridState.mode = 'navigation'; });
 document.addEventListener('pointercancel', () => { draggingSelection = false; if (gridState.mode === 'selecting') gridState.mode = 'navigation'; });

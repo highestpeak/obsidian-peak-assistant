@@ -94,8 +94,8 @@
             </div>
             <label class="table-search"><svg><use href="#i-search"/></svg><input id="table-search" type="search" placeholder="Search this view"><small id="record-count">8</small></label>
             <div class="toolbar-operations">
-              <button type="button" class="tool-button"><svg><use href="#i-filter"/></svg>Filter</button>
-              <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>Sort</button>
+              <button type="button" class="tool-button" id="filter-button" data-overlay-trigger="filter-menu" aria-haspopup="dialog" aria-controls="filter-menu" aria-expanded="false"><svg><use href="#i-filter"/></svg>Filter</button>
+              <button type="button" class="tool-button" id="sort-button" data-overlay-trigger="sort-menu" aria-haspopup="dialog" aria-controls="sort-menu" aria-expanded="false"><svg><use href="#i-sort"/></svg>Sort</button>
               <button type="button" class="tool-button" id="group-button" data-overlay-trigger="group-menu" aria-haspopup="menu" aria-controls="group-menu" aria-expanded="false"><svg><use href="#i-group"/></svg>Group</button>
               <button type="button" class="tool-button"><svg><use href="#i-eye"/></svg>Fields</button>
               <button type="button" class="tool-button typed-field-button" id="typed-field-button"><svg><use href="#i-plus"/></svg>Typed field</button>
@@ -241,6 +241,20 @@
     <label>Summary<select><option>Count records</option><option>Average numeric field</option><option>Sum numeric field</option><option>Min / Max</option></select></label>
     <div class="group-preview" id="group-preview"><span>Doing <b>2</b></span><span>Blocked <b>1</b></span><span>Todo <b>4</b></span><span>Done <b>1</b></span></div>
     <button type="button" class="group-apply" id="apply-group">Apply to view</button>
+  </section>
+
+  <section class="popover view-config-menu" id="filter-menu" hidden aria-label="Filter this view">
+    <header><span><strong>Filter this view</strong><small>Only matching records remain visible</small></span><button type="button" class="close-popover" aria-label="Close">×</button></header>
+    <label>Field<select id="filter-field"></select></label>
+    <label>Contains<select id="filter-value"></select></label>
+    <div class="view-config-actions"><button type="button" id="clear-filter">Clear</button><button type="button" id="apply-filter">Apply filter</button></div>
+  </section>
+
+  <section class="popover view-config-menu" id="sort-menu" hidden aria-label="Sort this view">
+    <header><span><strong>Sort this view</strong><small>Changes this table view only</small></span><button type="button" class="close-popover" aria-label="Close">×</button></header>
+    <label>Field<select id="sort-field"></select></label>
+    <label>Order<select id="sort-direction"><option value="asc">Ascending A → Z</option><option value="desc">Descending Z → A</option></select></label>
+    <div class="view-config-actions"><button type="button" id="clear-sort">Clear</button><button type="button" id="apply-sort">Apply sort</button></div>
   </section>
 
   <section class="popover row-menu" id="row-menu" hidden aria-label="Row menu">
