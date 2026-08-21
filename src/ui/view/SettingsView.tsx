@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { ViewEventType } from '@/core/eventBus';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -25,6 +25,15 @@ export function SettingsRoot({
     const { eventBus, plugin } = useServiceContext();
     const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'aiModels');
     const [settings, setSettings] = useState<MyPluginSettings>(plugin.settings);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [modelPickerPortal, setModelPickerPortal] = useState<HTMLElement | null>(null);
+
+	// ReactModalHost renders this tree inside Obsidian's .modal-content. Picker
+	// content must stay there too, otherwise Obsidian sees the menu click as an
+	// outside interaction and closes the Settings modal.
+	useLayoutEffect(() => {
+		setModelPickerPortal(rootRef.current?.closest('.modal-content') as HTMLElement | null);
+	}, []);
 
     // Re-sync settings copy when persistence layer dispatches an update event.
     useEffect(() => {
@@ -37,7 +46,7 @@ export function SettingsRoot({
     const settingsUpdates = useSettingsUpdate(plugin, eventBus, settings);
 
     return (
-        <div className="peak-design-root">
+        <div ref={rootRef} className="peak-design-root">
             <div className="pk-settings-root">
                 <nav className="pk-settings-tabs" role="tablist" aria-label="Peak Assistant settings">
                     {SETTINGS_TABS.map((tab) => (
@@ -55,9 +64,9 @@ export function SettingsRoot({
                     ))}
                 </nav>
                 <div className="pk-settings-scroll">
-                    {activeTab === 'aiModels' && <AIModelsTab settings={settings} settingsUpdates={settingsUpdates} onOpenAIControlCenter={onOpenAIControlCenter} />}
-                    {activeTab === 'agents' && <AgentsTab settings={settings} settingsUpdates={settingsUpdates} onOpenCommandGateway={onOpenCommandGateway} />}
-                    {activeTab === 'knowledgeSearch' && <KnowledgeSearchTab settings={settings} settingsUpdates={settingsUpdates} onOpenIndexWorkspace={onOpenIndexWorkspace} />}
+                    {activeTab === 'aiModels' && <AIModelsTab settings={settings} settingsUpdates={settingsUpdates} onOpenAIControlCenter={onOpenAIControlCenter} modelPickerPortal={modelPickerPortal} />}
+                    {activeTab === 'agents' && <AgentsTab settings={settings} settingsUpdates={settingsUpdates} onOpenCommandGateway={onOpenCommandGateway} modelPickerPortal={modelPickerPortal} />}
+                    {activeTab === 'knowledgeSearch' && <KnowledgeSearchTab settings={settings} settingsUpdates={settingsUpdates} onOpenIndexWorkspace={onOpenIndexWorkspace} modelPickerPortal={modelPickerPortal} />}
                     {activeTab === 'advanced' && <AdvancedSettingsTab settings={settings} settingsUpdates={settingsUpdates} />}
                 </div>
             </div>

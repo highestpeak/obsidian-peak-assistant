@@ -13,10 +13,11 @@ import { UnifiedModelPicker } from '../components/UnifiedModelPicker';
 import { MCPServerSection } from '../components/MCPServerSection';
 import { PluginCommandGatewaySection } from '../components/PluginCommandGatewaySection';
 
-export function AgentsTab({ settings, settingsUpdates, onOpenCommandGateway }: {
+export function AgentsTab({ settings, settingsUpdates, onOpenCommandGateway, modelPickerPortal }: {
 	settings: MyPluginSettings;
 	settingsUpdates: SettingsUpdates;
 	onOpenCommandGateway: () => void | Promise<void>;
+	modelPickerPortal: HTMLElement | null;
 }) {
 	const harness = settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;
 	const profiles = ProfileRegistry.getInstance().getAllProfiles();
@@ -42,7 +43,7 @@ export function AgentsTab({ settings, settingsUpdates, onOpenCommandGateway }: {
 				<div className="pk-settings-section__heading"><span><strong>Agent execution</strong><small>Peak Hermes is the single runtime. The selected provider and model execute its steps.</small></span></div>
 				<div className="pk-hermes-status"><span><Bot size={22} /><span><strong>Peak Hermes</strong><small>Planning, tools, permissions, receipts and recovery</small></span></span><span>Runtime ready</span></div>
 				<div className="pk-settings-list">
-					<div className="pk-settings-model-row"><span><strong>Execution model</strong><small>Only models with reliable tool calling can be selected.</small></span><UnifiedModelPicker profiles={profiles} value={harness.executionModel} requirement={{ tools: true }} onChange={(executionModel) => update({ executionModel })} aliases={settings.modelCatalog.aliases} hiddenModels={settings.modelCatalog.hiddenModels} /></div>
+					<div className="pk-settings-model-row"><span><strong>Execution model</strong><small>Only models with reliable tool calling can be selected.</small></span><UnifiedModelPicker profiles={profiles} value={harness.executionModel} requirement={{ tools: true }} onChange={(executionModel) => update({ executionModel })} aliases={settings.modelCatalog.aliases} hiddenModels={settings.modelCatalog.hiddenModels} portalContainer={modelPickerPortal} /></div>
 					<ToggleRow label="Use a stronger model when needed" summary="Still follows budget and confirmation rules." checked={harness.allowEscalation} onChange={(allowEscalation) => update({ allowEscalation })} />
 					<label className="pk-settings-field-row"><span><strong>Monthly Agent budget</strong><small>Show alerts before expensive work; never silently changes permission rules.</small></span><span className="pk-number-unit"><input type="number" min={0} value={harness.budget.monthlyUsd} onChange={(event) => update({ budget: { ...harness.budget, monthlyUsd: Math.max(0, Number(event.target.value)) } })} /><small>USD</small></span></label>
 				</div>

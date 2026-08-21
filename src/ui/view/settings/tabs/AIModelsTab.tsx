@@ -32,10 +32,12 @@ export function AIModelsTab({
 	settings,
 	settingsUpdates,
 	onOpenAIControlCenter,
+	modelPickerPortal,
 }: {
 	settings: MyPluginSettings;
 	settingsUpdates: SettingsUpdates;
 	onOpenAIControlCenter: () => void | Promise<void>;
+	modelPickerPortal: HTMLElement | null;
 }) {
 	const [, refreshProfiles] = useState(0);
 	const [connectionsOpen, setConnectionsOpen] = useState(false);
@@ -98,6 +100,7 @@ export function AIModelsTab({
 							feature={feature}
 							profiles={profiles}
 							settings={settings}
+							modelPickerPortal={modelPickerPortal}
 							onAssignment={setAssignment}
 							onAdvanced={(key, patch) => updateRouting({
 								advancedControls: {
@@ -219,6 +222,7 @@ function FeatureModelRow({
 	feature,
 	profiles,
 	settings,
+	modelPickerPortal,
 	onAssignment,
 	onAdvanced,
 	onAttachmentHandling,
@@ -226,6 +230,7 @@ function FeatureModelRow({
 	feature: ProductModelFeature;
 	profiles: ReturnType<ProfileRegistry['getAllProfiles']>;
 	settings: MyPluginSettings;
+	modelPickerPortal: HTMLElement | null;
 	onAssignment: (key: string, config: RoleConfig | null) => void;
 	onAdvanced: (key: string, patch: Partial<LLMOutputControlSettings>) => void;
 	onAttachmentHandling: (value: 'direct' | 'degrade_to_text') => void;
@@ -249,6 +254,7 @@ function FeatureModelRow({
 					onChange={(config) => onAssignment(feature.id, config)}
 					aliases={settings.modelCatalog.aliases}
 					hiddenModels={settings.modelCatalog.hiddenModels}
+					portalContainer={modelPickerPortal}
 				/>
 			</div>
 			{open && (
@@ -267,6 +273,7 @@ function FeatureModelRow({
 									onChange={(config) => onAssignment(key, config)}
 									aliases={settings.modelCatalog.aliases}
 									hiddenModels={settings.modelCatalog.hiddenModels}
+									portalContainer={modelPickerPortal}
 								/>}
 							</div>
 						);

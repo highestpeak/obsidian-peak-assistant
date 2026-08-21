@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, Search, Sliders, Sparkles, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger, Pill, Segmented } from '@/ui/components/primitives';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { refreshLocalProfileModelCatalogs } from '@/core/providers/refreshLocalProfileModelCatalogs';
 import { highlightMatch } from '@/ui/view/settings/components/model-display-utils';
 import {
 	buildProfileModelItems,
@@ -68,6 +69,11 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 	const [open, setOpen] = useState(false);
 	const [filterOpen, setFilterOpen] = useState(false);
 	const [filter, setFilter] = useState<ModelFilterState>(emptyModelFilter());
+	const [catalogRevision, setCatalogRevision] = useState(0);
+	const resolvedProfiles = profiles ?? ProfileRegistry.getInstance().getAllProfiles();
+	const profileCatalogKey = resolvedProfiles
+		.map((profile) => `${profile.id}:${profile.kind}:${profile.enabled}:${profile.baseUrl}`)
+		.join('|');
 	const changeOpen = (next: boolean) => {
 		setOpen(next);
 		onSurfaceOpenChange?.(next);
@@ -76,9 +82,18 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 		setFilterOpen(false);
 	};
 
+	useEffect(() => {
+		if (!open) return;
+		let active = true;
+		void refreshLocalProfileModelCatalogs(resolvedProfiles).then((changed) => {
+			if (active && changed) setCatalogRevision((revision) => revision + 1);
+		});
+		return () => { active = false; };
+	}, [open, profileCatalogKey]);
+
 	const allItems = useMemo(
-		() => buildProfileModelItems(profiles ?? ProfileRegistry.getInstance().getAllProfiles()),
-		[open, profiles],
+		() => buildProfileModelItems(resolvedProfiles),
+		[resolvedProfiles, profileCatalogKey, catalogRevision],
 	);
 	const filtered = useMemo(() => filterProfileModelItems(allItems, filter), [allItems, filter]);
 	const groups = useMemo(() => groupByProfile(filtered), [filtered]);

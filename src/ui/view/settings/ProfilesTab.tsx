@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
-import { fetchLMStudioModels } from '@/core/providers/lmstudio/fetchLMStudioModels';
-import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
-import { modelRegistry } from '@/core/providers/model-registry';
+import { refreshLocalProfileModelCatalogs } from '@/core/providers/refreshLocalProfileModelCatalogs';
 import { Plus, ChevronRight } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
@@ -69,23 +66,17 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
     const profiles = registry.getAllProfiles();
 
 	useEffect(() => {
-        const localProfiles = profiles.filter((p) => (p.kind === 'ollama' || p.kind === 'lmstudio') && p.enabled);
-        for (const p of localProfiles) {
-			const discoveryKey = `${p.id}:${p.baseUrl}`;
-			if (discoveredEndpointsRef.current.has(discoveryKey)) continue;
+		const localProfiles = profiles.filter((profile) => profile.enabled && (profile.kind === 'ollama' || profile.kind === 'lmstudio'));
+		const undiscoveredProfiles = localProfiles.filter((profile) => {
+			const discoveryKey = `${profile.id}:${profile.baseUrl}`;
+			if (discoveredEndpointsRef.current.has(discoveryKey)) return false;
 			discoveredEndpointsRef.current.add(discoveryKey);
-            const discover = p.kind === 'ollama' ? fetchOllamaModels : fetchLMStudioModels;
-            discover(p.baseUrl).then((models) => {
-                if (models.length > 0) {
-                    const catalogId = profileModelCatalogId(p);
-					if (!catalogId) return;
-					const known = new Set(modelRegistry.getModelsForProvider(catalogId).map((model) => model.id));
-					if (models.every((model) => known.has(model))) return;
-					modelRegistry.mergeRuntimeModels(catalogId, models);
-					bump();
-                }
-            });
-        }
+			return true;
+		});
+		if (undiscoveredProfiles.length === 0) return;
+		void refreshLocalProfileModelCatalogs(undiscoveredProfiles).then((changed) => {
+			if (changed) bump();
+		});
 	}, [profiles]);
     // --- Handlers ---
 
