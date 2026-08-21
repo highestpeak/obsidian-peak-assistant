@@ -11,6 +11,7 @@ import {
 	CircleAlert,
 	Clock3,
 	CalendarDays,
+	File,
 	FileText,
 	FolderKanban,
 	GitBranch,

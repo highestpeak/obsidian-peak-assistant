@@ -125,6 +125,21 @@ assert.match(zeroOverviewHtml, /pk-vi-overview-activity-body/, 'zero data keeps 
 assert.match(zeroOverviewHtml, /pk-vi-index-overview-body/, 'zero data keeps Knowledge Index geometry');
 assert.match(zeroOverviewHtml, /No unresolved maintenance work/, 'zero data uses an explicit empty treatment');
 
+const fileActivitySnapshot: VaultIntelligenceSnapshot = {
+	...snapshot,
+	activityDays: [{
+		date: new Date(now).toISOString().slice(0, 10),
+		count: 1,
+		files: [{ path: 'Activity evidence.md', modifiedAt: now }],
+	}],
+	recentActivity: [],
+	sourceActivity: [],
+};
+const fileActivityHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, {
+	runtime: { ...runtime, getSnapshot: () => fileActivitySnapshot },
+}));
+assert.match(fileActivityHtml, /Vault file modification/, 'file-only activity evidence must render the Lucide File component, not the DOM File constructor');
+
 const zeroActivityHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'activity' }));
 assert.match(zeroActivityHtml, /pk-vi-activity-complete-workspace/, 'zero Activity keeps the complete two-pane workspace');
 assert.equal((zeroActivityHtml.match(/pk-vi-activity-lane-row/g) ?? []).length, 5, 'zero Activity keeps every recorded source lane');
