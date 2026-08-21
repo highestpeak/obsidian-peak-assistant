@@ -1,7 +1,7 @@
 export type VaultIntelligenceSurface = 'overview' | 'map' | 'queue';
 export type VaultIntelligenceMapSurface = 'contents' | 'activity';
 export type VaultScanScopeMode = 'changed' | 'selected' | 'entire';
-export type VaultScanScopeSelectorKind = 'file' | 'folder' | 'community' | 'saved-work';
+export type VaultScanScopeSelectorKind = 'file' | 'folder' | 'file-type' | 'community' | 'saved-work';
 export type VaultScanStageId = 'discover' | 'index' | 'ai' | 'publish';
 export type VaultScanRunStatus = 'idle' | 'running' | 'stopping' | 'interrupted' | 'completed' | 'failed';
 export type VaultMaintenanceTaskCategory = 'decision' | 'review' | 'recovery';

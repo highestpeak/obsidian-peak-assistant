@@ -135,6 +135,8 @@ assert.match(source, /pk-vi-run-events/, 'Run Progress must retain the Reference
 assert.doesNotMatch(source, /pk-vi-stage-list/, 'Run Progress must not retain the old generic expanded-card subtree');
 assert.match(source, /Manage map text/, 'Vault contents keeps the Mock header action instead of inserting an unrelated map-text card');
 assert.match(source, /Scan selected type/, 'Vault contents keeps the Reference scan entry action');
+assert.match(source, /kind: 'file-type'/, 'Scan selected type carries a typed file-type selector into the production setup adapter');
+assert.match(source, /initialSelector: VaultScanScopeSelector \| null/, 'Scan setup preserves that selected-type scope instead of discarding it on navigation');
 assert.match(source, /pk-vi-community-summary/, 'Vault contents keeps the Community summary inside the graph workspace');
 assert.doesNotMatch(source, /pk-vi-map-text-entry/, 'Vault contents must not retain the old standalone map-text card subtree');
 
@@ -168,6 +170,21 @@ assert.equal((zeroActivityHtml.match(/pk-vi-activity-lane-row/g) ?? []).length, 
 assert.match(zeroActivityHtml, /pk-vi-activity-period-pane/, 'zero Activity keeps selected-period details');
 assert.match(zeroActivityHtml, /pk-vi-activity-range-window/, 'zero Activity keeps the range navigator');
 assert.match(zeroActivityHtml, /No work sessions yet/, 'zero Activity uses a stable empty session treatment');
+
+const zeroMapHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'map' }));
+assert.match(zeroMapHtml, /pk-vi-content-summary/, 'zero Vault contents keeps the five-stat summary');
+assert.match(zeroMapHtml, /pk-vi-file-types/, 'zero Vault contents keeps the file-distribution workspace');
+assert.match(zeroMapHtml, /pk-vi-community-summary/, 'zero Vault contents keeps the graph-integrated Community region');
+assert.match(zeroMapHtml, /No Communities available until the Knowledge Index is built/, 'zero Vault contents uses the reference-compatible Community empty treatment');
+
+const zeroQueueHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'work-queue' }));
+assert.match(zeroQueueHtml, /pk-vi-work-surface/, 'zero Work queue retains its toolbar and list tree');
+assert.match(zeroQueueHtml, /No unresolved maintenance work/, 'zero Work queue has an explicit stable list empty state');
+
+const zeroRunHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'run-progress' }));
+assert.match(zeroRunHtml, /pk-vi-run-stage-tabs/, 'zero Run Progress keeps all stage controls');
+assert.match(zeroRunHtml, /pk-vi-run-stage-workspace/, 'zero Run Progress keeps the selected-stage workspace');
+assert.match(zeroRunHtml, /No run events recorded yet/, 'zero Run Progress keeps the event-stream geometry');
 
 const normalDigest: VaultDigest = {
 	fingerprint: { fingerprint: 'rendered-parity-normal-fixture', fileCount: 12, totalWordCount: 2_400, lastMaxMtime: now, computedAt: now },

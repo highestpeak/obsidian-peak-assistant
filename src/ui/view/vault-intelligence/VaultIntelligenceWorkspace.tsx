@@ -64,7 +64,7 @@ type Surface = 'overview' | 'map' | 'queue';
 type MapSurface = 'contents' | 'activity';
 type Route =
 	| { kind: 'surface'; surface: Surface; mapSurface?: MapSurface; mapDate?: string | null; mapExtension?: string | null }
-	| { kind: 'setup' }
+	| { kind: 'setup'; initialSelector?: VaultScanScopeSelector | null }
 	| { kind: 'progress' }
 	| { kind: 'completed' }
 	| { kind: 'map-text'; extension: string | null }
@@ -137,16 +137,21 @@ const Button = React.forwardRef<HTMLButtonElement, SharedButtonProps>(({
 ));
 Button.displayName = 'VaultIntelligenceButton';
 
-function initialWorkspaceRoute(route: 'overview' | 'activity' | 'scan-setup' | 'map-text'): Route {
+function initialWorkspaceRoute(route: 'overview' | 'map' | 'activity' | 'work-queue' | 'scan-setup' | 'run-progress' | 'completed' | 'map-text'): Route {
+	if (route === 'map') return { kind: 'surface', surface: 'map', mapSurface: 'contents' };
 	if (route === 'activity') return { kind: 'surface', surface: 'map', mapSurface: 'activity' };
+	if (route === 'work-queue') return { kind: 'surface', surface: 'queue' };
 	if (route === 'scan-setup') return { kind: 'setup' };
+	if (route === 'run-progress') return { kind: 'progress' };
+	if (route === 'completed') return { kind: 'completed' };
 	if (route === 'map-text') return { kind: 'map-text', extension: null };
 	return { kind: 'surface', surface: 'overview' };
 }
 
 export interface VaultIntelligenceWorkspaceProps {
 	runtime: VaultIntelligenceWorkspaceRuntime;
-	initialRoute?: 'overview' | 'activity' | 'scan-setup' | 'map-text';
+	/** Deterministic production-render route used by the local parity harness. */
+	initialRoute?: 'overview' | 'map' | 'activity' | 'work-queue' | 'scan-setup' | 'run-progress' | 'completed' | 'map-text';
 }
 
 export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProps> = ({ runtime, initialRoute = 'overview' }) => {
@@ -184,7 +189,7 @@ export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProp
 					<Overview snapshot={snapshot} runtime={runtime} config={config} onRoute={setRoute} />
 				)}
 				{route.kind === 'surface' && route.surface === 'map' && (
-					<VaultMap snapshot={snapshot} runtime={runtime} config={config} initialSurface={route.mapSurface ?? 'contents'} initialDate={route.mapDate ?? null} initialExtension={route.mapExtension ?? null} onOpenSetup={() => setRoute({ kind: 'setup' })} onOpenTask={(taskId) => setRoute({ kind: 'task', taskId, origin: 'queue' })} onOpenMapText={(extension) => setRoute({ kind: 'map-text', extension })} />
+					<VaultMap snapshot={snapshot} runtime={runtime} config={config} initialSurface={route.mapSurface ?? 'contents'} initialDate={route.mapDate ?? null} initialExtension={route.mapExtension ?? null} onOpenSetup={(initialSelector) => setRoute({ kind: 'setup', initialSelector })} onOpenTask={(taskId) => setRoute({ kind: 'task', taskId, origin: 'queue' })} onOpenMapText={(extension) => setRoute({ kind: 'map-text', extension })} />
 				)}
 				{route.kind === 'surface' && route.surface === 'queue' && (
 					<WorkQueue
@@ -193,7 +198,7 @@ export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProp
 					/>
 				)}
 				{route.kind === 'setup' && (
-					<ScanSetup snapshot={snapshot} config={config} onBack={() => setRoute({ kind: 'surface', surface: 'overview' })} onSelectOperationRoute={(operationId, candidate) => { void runtime.selectOperationRoute(operationId, candidate); }} onStart={(plan) => {
+					<ScanSetup snapshot={snapshot} config={config} initialSelector={route.initialSelector ?? null} onBack={() => setRoute({ kind: 'surface', surface: 'overview' })} onSelectOperationRoute={(operationId, candidate) => { void runtime.selectOperationRoute(operationId, candidate); }} onStart={(plan) => {
 						setRoute({ kind: 'progress' });
 						void runtime.startScan(plan);
 					}} />
@@ -499,14 +504,20 @@ function VaultMap({ snapshot, runtime, config, initialSurface, initialDate, init
 	initialSurface: MapSurface;
 	initialDate: string | null;
 	initialExtension: string | null;
-	onOpenSetup: () => void;
+	onOpenSetup: (initialSelector: VaultScanScopeSelector | null) => void;
 	onOpenTask: (taskId: string) => void;
 	onOpenMapText: (extension: string | null) => void;
 }) {
 	const [surface, setSurface] = useState<MapSurface>(initialSurface);
 	const [selectedExtension, setSelectedExtension] = useState<string | null>(initialExtension);
+	const scanSelection = selectedExtension === null ? null : {
+		id: `file-type:${selectedExtension}`,
+		kind: 'file-type' as const,
+		label: `${fileTypeLabel(selectedExtension)} files`,
+		paths: snapshot.availablePaths.filter((path) => pathExtension(path) === selectedExtension),
+	};
 	return <div className="pk-vi-page">
-		<div className="pk-vi-page-head pk-vi-map-head"><div><span className="pk-vi-page-title">{surface === 'contents' ? 'Vault contents · file types in context' : 'Activity'}</span><span className="pk-vi-page-description">{surface === 'contents' ? 'Choose an actual file type, then see where it fits in the knowledge structure and what Peak can currently use.' : 'Timestamped local evidence by recorded source. Work sessions group real VI receipts; no topic is guessed.'}</span></div>{surface === 'contents' ? <div className="pk-vi-page-actions"><Button variant="ghost" size="sm" onClick={() => onOpenMapText(selectedExtension)}>Manage map text</Button><Button variant="ghost" size="sm" onClick={onOpenSetup}><ScanSearch size={14} />Scan selected type</Button></div> : <span className="pk-vi-map-freshness">{snapshot.indexReadiness.builtAt ? `Index built ${formatDateTime(snapshot.indexReadiness.builtAt)}` : 'No completed Index build'}</span>}</div>
+		<div className="pk-vi-page-head pk-vi-map-head"><div><span className="pk-vi-page-title">{surface === 'contents' ? 'Vault contents · file types in context' : 'Activity'}</span><span className="pk-vi-page-description">{surface === 'contents' ? 'Choose an actual file type, then see where it fits in the knowledge structure and what Peak can currently use.' : 'Timestamped local evidence by recorded source. Work sessions group real VI receipts; no topic is guessed.'}</span></div>{surface === 'contents' ? <div className="pk-vi-page-actions"><Button variant="ghost" size="sm" onClick={() => onOpenMapText(selectedExtension)}>Manage map text</Button><Button variant="ghost" size="sm" onClick={() => onOpenSetup(scanSelection)}><ScanSearch size={14} />Scan selected type</Button></div> : <span className="pk-vi-map-freshness">{snapshot.indexReadiness.builtAt ? `Index built ${formatDateTime(snapshot.indexReadiness.builtAt)}` : 'No completed Index build'}</span>}</div>
 		<div className="pk-vi-local-nav">
 			<Button variant="ghost" className={surface === 'contents' ? 'is-active' : ''} onClick={() => setSurface('contents')}>Vault contents</Button>
 			<Button variant="ghost" className={surface === 'activity' ? 'is-active' : ''} onClick={() => setSurface('activity')}>Activity</Button>
@@ -780,16 +791,17 @@ function WorkSurface({ tasks, origin, onOpenTask }: { tasks: VaultMaintenanceTas
 	</section>;
 }
 
-function ScanSetup({ snapshot, config, onBack, onStart, onSelectOperationRoute }: {
+function ScanSetup({ snapshot, config, initialSelector, onBack, onStart, onSelectOperationRoute }: {
 	snapshot: VaultIntelligenceSnapshot;
 	config: VaultIntelligenceConfig;
+	initialSelector: VaultScanScopeSelector | null;
 	onBack: () => void;
 	onSelectOperationRoute: (operationId: VaultScanAiOperationPlan['id'], candidate: VaultScanOperationRouteCandidate) => void;
 	onStart: (plan: VaultScanPlan) => void;
 }) {
-	const [scopeMode, setScopeMode] = useState<VaultScanScopeMode>(snapshot.changedCursorAt ? 'changed' : 'entire');
-	const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
-	const [selectors, setSelectors] = useState<VaultScanScopeSelector[]>([]);
+	const [scopeMode, setScopeMode] = useState<VaultScanScopeMode>(initialSelector ? 'selected' : snapshot.changedCursorAt ? 'changed' : 'entire');
+	const [selectedPaths, setSelectedPaths] = useState<string[]>(initialSelector?.paths ?? []);
+	const [selectors, setSelectors] = useState<VaultScanScopeSelector[]>(initialSelector ? [initialSelector] : []);
 	const [pathQuery, setPathQuery] = useState('');
 	const allChecks = config.checkGroups.flatMap((group) => group.checks);
 	const displayedCheckGroups = [...config.checkGroups].sort(
@@ -1511,6 +1523,12 @@ function fileTypeLabel(extension: string): string {
 	if (extension === 'pdf') return 'PDF';
 	if (extension === '(none)') return 'No extension';
 	return extension.toUpperCase();
+}
+
+function pathExtension(path: string): string {
+	const name = path.split('/').pop() ?? path;
+	const separator = name.lastIndexOf('.');
+	return separator > 0 && separator < name.length - 1 ? name.slice(separator + 1).toLocaleLowerCase() : '(none)';
 }
 function pieSlicePath(start: number, end: number): string {
 	if (end - start >= 0.9999) return 'M 50 50 m -46 0 a 46 46 0 1 0 92 0 a 46 46 0 1 0 -92 0';
