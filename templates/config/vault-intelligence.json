@@ -1,7 +1,7 @@
 {
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
-  "supportedInventoryTypes": ["md", "pdf", "docx", "pptx", "xlsx", "csv", "tsv", "canvas", "excalidraw", "drawio", "png", "jpg", "jpeg", "webp", "gif", "svg", "mp3", "wav", "mp4", "mov"],
+  "supportedInventoryTypes": ["md", "markdown", "txt", "pdf", "html", "htm", "csv", "json", "canvas", "excalidraw", "base", "drawio", "png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "mp3", "wav", "ogg", "flac", "mp4", "mov", "avi", "mkv", "webm"],
   "inventoryPreviewTypeLimit": 16,
   "inventoryObjects": {
     "files": {
@@ -11,22 +11,22 @@
       "unavailableDescription": "No file inventory has been indexed yet."
     },
     "chats": {
-      "title": "Chats by conversation type",
-      "description": "The durable Conversation Type used by Chat Studio history and filters. Pending work is shown separately because it is a status, not a type.",
-      "unavailableTitle": "Conversation types not available",
-      "unavailableDescription": "Peak has the canonical Chat total, but the Chat store does not yet publish stable type buckets."
+      "title": "Chats",
+      "description": "The canonical conversation total currently stored by Chat Studio. Conversation type is only shown when it is explicitly published.",
+      "unavailableTitle": "No Chats recorded",
+      "unavailableDescription": "Chat Studio has not published a durable conversation record yet."
     },
     "projects": {
-      "title": "Projects by explicit state",
-      "description": "A lifecycle view of durable project state. Only an explicit blocked state becomes continuation work; inactivity is not treated as a blocker.",
-      "unavailableTitle": "Project states not available",
-      "unavailableDescription": "Peak has the canonical Project total, but the Project store does not yet publish lifecycle buckets here."
+      "title": "Projects",
+      "description": "The current durable Project total. Lifecycle state appears here only when the Project store publishes it explicitly.",
+      "unavailableTitle": "No Projects recorded",
+      "unavailableDescription": "Peak has not published a durable Project record yet."
     },
     "composer": {
-      "title": "Composer activity by result",
-      "description": "The durable Composer history combines generation, Copilot, and document transactions. Results reveal what was applied, left for review, or became stale.",
-      "unavailableTitle": "Composer results not available",
-      "unavailableDescription": "Peak has the durable Composer event total, but the store does not yet publish stable result buckets."
+      "title": "Composer activity",
+      "description": "The durable Composer event total. Result states appear here only when the history store publishes them explicitly.",
+      "unavailableTitle": "No Composer activity",
+      "unavailableDescription": "Composer has not published a durable workspace event yet."
     }
   },
   "checkGroups": [

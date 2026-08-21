@@ -21899,6 +21899,9 @@
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-popover {
   width: 320px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-overview-range-head {

@@ -80,7 +80,7 @@ export interface VaultInventoryObjectPresentation {
 export interface VaultIntelligenceConfig {
 	activityColors: string[];
 	fileTypeColors: string[];
-	/** Only formats Peak can open or index get their own inventory row. Everything else is grouped as Other formats. */
+	/** Mirrors the source-confirmed file-format capability audit; unsupported extensions are grouped as Other formats. */
 	supportedInventoryTypes: string[];
 	inventoryPreviewTypeLimit: number;
 	inventoryObjects: Record<'files' | 'chats' | 'projects' | 'composer', VaultInventoryObjectPresentation>;

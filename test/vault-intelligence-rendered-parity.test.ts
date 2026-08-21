@@ -87,11 +87,10 @@ assert.match(html, /M4 7\.5 12 3l8 4\.5v9L12 21l-8-4\.5z/, 'Header uses the Mock
 assert.match(html, /M4 5h16v11H8l-4 4z/, 'Chat inventory uses the Mock object icon path');
 assert.match(html, /M22 13a18\.15 18\.15 0 0 1-20 0/, 'Project inventory uses the Mock briefcase icon path');
 assert.match(html, /M18\.375 2\.625a1 1 0 0 1 3 3/, 'Composer inventory uses the Mock composer icon path');
-assert.equal((html.match(/pk-vi-inventory-unavailable/g) ?? []).length, 3, 'missing object buckets retain three explicit distribution regions');
-assert.equal((html.match(/class="is-unavailable"/g) ?? []).length, 3, 'missing object status data retains the three Reference status slots');
-assert.match(html, /Conversation types not available/);
-assert.match(html, /Project states not available/);
-assert.match(html, /Composer results not available/);
+assert.equal((html.match(/pk-vi-inventory-unavailable/g) ?? []).length, 0, 'a published object total must render as actual data, not an unavailable placeholder');
+assert.match(html, /Recorded conversations/);
+assert.match(html, /Current projects/);
+assert.match(html, /Recorded workspace events/);
 assert.match(source, /supportedInventoryTypes/, 'only explicitly supported file formats can retain individual inventory rows');
 assert.match(source, /Other formats/, 'unsupported extensions must be grouped honestly instead of becoming product file types');
 assert.match(source, /: 'No'.*current connections/, 'a zero connection count must not render as a misleading signed number');
@@ -256,13 +255,16 @@ const overflowRuntime: VaultIntelligenceWorkspaceRuntime = {
 	getSnapshot: () => overflowSnapshot,
 };
 const overflowHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: overflowRuntime }));
-assert.equal((overflowHtml.match(/pk-vi-pie-segment/g) ?? []).length, 1, 'unsupported extensions must collapse into the one honest Other formats bucket');
+assert.equal((overflowHtml.match(/pk-vi-pie-segment/g) ?? []).length, 4, 'unsupported extensions must collapse into one Other formats bucket while the three real object totals stay visible');
 assert.match(overflowHtml, /49 actual file types/);
 assert.match(overflowHtml, /Other formats/);
 assert.match(overflowHtml, />100%<\/span>/, 'readiness visuals must cap inconsistent projection counts at 100%');
 assert.match(overflowHtml, /528 search records exceed 100 discovered objects/);
 
 const css = readFileSync('src/styles/peak-components.css', 'utf8');
+const inventoryConfig = readFileSync('templates/config/vault-intelligence.json', 'utf8');
+assert.match(inventoryConfig, /"html"/, 'the inventory capability list must include the audit-confirmed HTML format');
+assert.match(inventoryConfig, /"htm"/, 'the inventory capability list must include the audit-confirmed HTM variant');
 const baseIndex = css.indexOf('Vault Intelligence\n   Standalone, evidence-first maintenance workspace');
 const legacyIndex = css.indexOf('Vault Intelligence production parity defense');
 const correctionIndex = css.indexOf('Vault Intelligence visual parity correction');
@@ -290,6 +292,7 @@ assert.match(exactPort, /\.pk-vi-inventory-legend\s*\{[\s\S]*?display:\s*block;/
 assert.match(exactPort, /\.pk-vi-inventory-distribution\.is-large \.pk-vi-inventory-legend\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/, 'only the file distribution uses two legend columns');
 assert.match(exactPort, /\.pk-vi-inventory-distribution\.is-unavailable \.pk-vi-inventory-legend\s*\{[\s\S]*?min-height:\s*130px;/, 'unavailable distribution data must not collapse hover geometry');
 assert.match(exactPort, /\.pk-vi-overview-grid > \.pk-btn\s*\{[\s\S]*?width:\s*17px !important;[\s\S]*?height:\s*17px !important;/);
+assert.match(exactPort, /\.pk-vi-overview-range-popover\s*\{[\s\S]*?left:\s*50%;[\s\S]*?transform:\s*translateX\(-50%\);/, 'the date menu must be centered under its trigger rather than right-aligned');
 assert.match(css, /\.pk-vi-overview-evidence\s*\{[\s\S]*?min-height:\s*160px;/, 'activity evidence preserves the Mock empty/short-data geometry');
 assert.match(exactPort, /\.pk-vi-index-overview-body\s*\{[\s\S]*?grid-template-columns:\s*154px minmax\(0, 1fr\) 300px;/);
 assert.match(exactPort, /\.pk-vi-continue-summary\s*\{[\s\S]*?grid-template-columns:\s*136px repeat\(4, minmax\(0, 1fr\)\);[\s\S]*?min-height:\s*41px;/);

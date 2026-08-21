@@ -33,12 +33,7 @@ import {
 } from '@/ui/component/shared-ui/button';
 import { AtlasGraphCanvas, type AtlasGraphPreset } from '@/ui/component/graph/AtlasGraphCanvas';
 import { cn } from '@/ui/react/lib/utils';
-import { ComposerModelSelector } from '@/ui/view/chat-view/components/composer/ComposerModelSelector';
-import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import type { Profile } from '@/core/profiles/types';
 import { modelRegistry } from '@/core/providers/model-registry';
-import { ModelType } from '@/core/providers/types';
-import type { ModelSelection } from '@/core/types/chat-studio';
 import type {
 	VaultMaintenanceTask,
 	VaultMaintenanceProposal,
@@ -336,7 +331,7 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 		const presentation = config.inventoryObjects[object.id] ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryObjects[object.id];
 		const canonicalBreakdown = object.id === 'files'
 			? snapshot.fileTypes.map((type) => ({ id: type.extension, label: fileTypeLabel(type.extension), count: type.count }))
-			: object.breakdown ?? [];
+			: object.breakdown?.length ? object.breakdown : [{ id: 'canonical', label: canonicalObjectBucketLabel(object.id), count: object.count }];
 		const breakdown = object.id === 'files'
 			? inventoryPreviewItems(canonicalBreakdown, config.inventoryPreviewTypeLimit, config.supportedInventoryTypes ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.supportedInventoryTypes)
 			: canonicalBreakdown;
@@ -361,6 +356,13 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 			</div>
 		</div>;
 	})}</section>;
+}
+
+function canonicalObjectBucketLabel(id: VaultIntelligenceObjectSummary['id']): string {
+	if (id === 'chats') return 'Recorded conversations';
+	if (id === 'projects') return 'Current projects';
+	if (id === 'composer') return 'Recorded workspace events';
+	return 'Recorded files';
 }
 
 function InventoryDistribution({ total, label, items, canonicalGroupCount, colors, large, unavailable, unavailableTitle, unavailableDescription }: {
@@ -420,9 +422,9 @@ function referenceObjectInventory(objects: VaultIntelligenceObjectSummary[]): Va
 	const byId = new Map(objects.map((object) => [object.id, object]));
 	const fallback: VaultIntelligenceObjectSummary[] = [
 		{ id: 'files', label: 'Files', count: 0, detail: 'Vault files visible to Peak', breakdown: [], coverageNote: 'No file inventory has been indexed yet.' },
-		{ id: 'chats', label: 'Chats', count: 0, detail: 'Durable Peak conversations', breakdown: [], breakdownStatus: 'unavailable', coverageNote: 'No canonical conversations are available yet.' },
-		{ id: 'projects', label: 'Projects', count: 0, detail: 'Current Peak projects', breakdown: [], breakdownStatus: 'unavailable', coverageNote: 'No current projects are available yet.' },
-		{ id: 'composer', label: 'Composer', count: 0, detail: 'Durable Composer activity', breakdown: [], breakdownStatus: 'unavailable', coverageNote: 'No durable Composer records are available yet.' },
+		{ id: 'chats', label: 'Chats', count: 0, detail: 'Durable Peak conversations', breakdown: [{ id: 'canonical', label: 'Recorded conversations', count: 0 }], breakdownStatus: 'available', coverageNote: 'Conversation type is shown only when Chat Studio publishes it explicitly.' },
+		{ id: 'projects', label: 'Projects', count: 0, detail: 'Current Peak projects', breakdown: [{ id: 'canonical', label: 'Current projects', count: 0 }], breakdownStatus: 'available', coverageNote: 'Lifecycle state is shown only when the Project store publishes it explicitly.' },
+		{ id: 'composer', label: 'Composer', count: 0, detail: 'Durable Composer activity', breakdown: [{ id: 'canonical', label: 'Recorded workspace events', count: 0 }], breakdownStatus: 'available', coverageNote: 'Result state is shown only when Composer history publishes it explicitly.' },
 	];
 	return fallback.map((item) => byId.get(item.id) ?? item);
 }
@@ -831,7 +833,6 @@ function ScanSetup({ snapshot, config, initialSelector, onBack, onStart, onSelec
 		operationIds: output.operationIds,
 	})));
 	const [expandedOperationGroup, setExpandedOperationGroup] = useState<'plan' | 'index' | 'relations' | 'structure' | 'follow-up' | null>(null);
-	const modelProfiles = ProfileRegistry.getInstance().getAllProfiles();
 	useEffect(() => {
 		setSelectedCheckKeys(new Set(config.checkGroups.flatMap((group) => group.checks.map((check) => check.checkId))));
 		setOperations(resolvedOperationPlans(config, snapshot));
@@ -900,8 +901,8 @@ function ScanSetup({ snapshot, config, initialSelector, onBack, onStart, onSelec
 			['entire', 'Entire Vault', `${snapshot.availablePaths.length} objects`],
 		] as const).map(([id, label, meta]) => <Button key={id} variant="ghost" disabled={id === 'changed' && !snapshot.changedCursorAt} className={scopeMode === id ? 'is-active' : ''} onClick={() => setScopeMode(id)}><strong>{label}</strong><span>{meta}</span></Button>)}</div><div className="pk-vi-scope-selected-row"><div><strong>Included scope</strong><span>{scopeObjectCount} objects included</span></div><span className="pk-vi-scope-token"><Check size={13} />{scopeMode === 'changed' ? 'Changes since last scan' : scopeMode === 'entire' ? 'Entire Vault' : selectors.length === 1 ? selectors[0].label : selectors.length ? `${selectors.length} selected scopes` : 'Choose files or saved scope'} <b>{scopeObjectCount}</b></span></div>{scopeMode === 'selected' && <div className="pk-vi-path-picker"><label><Search size={15} /><input value={pathQuery} onChange={(event) => setPathQuery(event.target.value)} placeholder="Add a file, folder, Community, or saved work…" /></label>{matchingPaths.length > 0 && <div className="pk-vi-path-results">{matchingPaths.map((path) => <Button key={path} variant="ghost" onClick={() => { addSelector({ id: `file:${path}`, kind: 'file', label: path, paths: [path] }); setPathQuery(''); }}><FileText size={14} /><span>{path}</span><Check size={14} /></Button>)}</div>}<div className="pk-vi-scope-shortcuts"><span>Add a saved scope</span><div>{folderScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Folder · {selector.label}</Button>)}{communityScopes.map((selector) => <Button key={selector.id} variant="ghost" disabled={selector.paths.length === 0} onClick={() => addSelector(selector)}>Community · {selector.label}</Button>)}{savedWorkScope.paths.length > 0 && <Button variant="ghost" onClick={() => addSelector(savedWorkScope)}>Saved work · {savedWorkScope.label}</Button>}</div></div><div className="pk-vi-selected-paths">{selectors.map((selector) => <span key={selector.id}>{selector.kind} · {selector.label} · {selector.paths.length} files<Button variant="ghost" size="icon" onClick={() => { setSelectors((current) => current.filter((candidate) => candidate.id !== selector.id)); setSelectedPaths((current) => current.filter((path) => !selector.paths.includes(path) || selectors.some((candidate) => candidate.id !== selector.id && candidate.paths.includes(path)))); }} aria-label={`Remove ${selector.label}`}><X size={13} /></Button></span>)}</div></div>}<div className="pk-vi-scope-builder-foot"><GitBranch size={13} />Affected relationships and existing Community context are included automatically.</div></div></SetupSection>
 		<SetupSection number="2" title="Choose scan tasks" description="Select the maintenance task categories Peak should run." status={`${selectedCheckKeys.size} of ${allChecks.length} tasks selected`}><div className="pk-vi-scan-check-grid">{displayedCheckGroups.map((group) => { const selectedCount = group.checks.filter((check) => selectedCheckKeys.has(check.checkId)).length; const selected = selectedCount === group.checks.length; return <Button key={group.id} variant="ghost" className={selected ? 'is-active' : ''} title={group.description} onClick={() => setGroupSelected(group.checks, !selected)}><span className="pk-vi-check-mark">{selected && <Check size={13} />}</span><strong>{group.label}</strong><span>{group.checks.length} tasks</span></Button>; })}</div><IndexOutputPlan config={config} outputs={indexOutputs} scopeObjectCount={scopeObjectCount} onToggle={toggleOutput} /></SetupSection>
-		<SetupSection number="3" title="Review AI models" description="Peak mapped the selected tasks and Index outputs to AI operations. Open a row to change models or disable an individual operation." status={`${selectedOps.length} operations · ${hasUnconfiguredEnabledOperation ? 'configuration needed' : selectedOps.length ? 'models ready' : 'no AI work'}`}><div className="pk-vi-scan-ai-groups">{(['plan', 'index', 'relations', 'structure', 'follow-up'] as const).map((group) => { const definitions = config.scanOperations.filter((definition) => definition.group === group); const groupOperations = definitions.map((candidate) => plannedOperations.find((operation) => operation.id === candidate.id)!).filter(Boolean); const enabled = groupOperations.filter((operation) => operation.enabled).length; const expanded = expandedOperationGroup === group; return <section key={group} className={expanded ? 'is-expanded' : ''}><Button variant="ghost" className="pk-vi-scan-ai-group-row" aria-expanded={expanded} onClick={() => setExpandedOperationGroup(expanded ? null : group)}><span><strong>{scanOperationGroupLabel(group)}</strong><small>{scanOperationGroupDescription(group)}</small></span><span><strong>{definitions.length} {definitions.length === 1 ? 'operation' : 'operations'}</strong><small>{scanOperationGroupSummary(group)}</small></span><span><strong>{enabled} / {definitions.length} enabled</strong><small>{groupOperations.some((operation) => snapshot.operationRoutes[operation.id]?.available === false) ? 'Configure model' : groupOperations[0]?.provider ?? 'Route not available'}</small></span><ChevronRight size={15} /></Button>{expanded && <div className="pk-vi-scan-operation-list">{definitions.map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const route = snapshot.operationRoutes[operation.id]; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const shared = sharedExecutionLabel(operation.id); const operationCost = estimateOperationCostUsd(operation); return <div key={definition.id} className={!scopeAvailable ? 'is-scope-unavailable' : ''}><span><strong>{definition.label}</strong><small>{definition.description}{shared ? ` · ${shared}` : ''}</small></span><OperationModelPicker operation={operation} route={route} profiles={modelProfiles} onChange={(candidate) => { setOperations((current) => current.map((item) => item.id === operation.id ? { ...item, model: candidate.model, provider: candidate.provider } : item)); onSelectOperationRoute(operation.id, candidate); }} /><span>{formatCompactNumber(operation.estimatedTokens)} · {operationCost === null ? 'Cost unknown' : formatMoney(operationCost)}</span><Button variant="ghost" disabled={!scopeAvailable} className={`pk-vi-scan-operation-toggle ${operation.enabled ? 'is-on' : ''}`} aria-label={`${operation.enabled ? 'Disable' : 'Enable'} ${definition.label}`} aria-pressed={operation.enabled} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div>}</section>; })}</div></SetupSection>
-		<section className="pk-vi-scan-estimate-block"><div><span><strong>Estimated run</strong><small>Recalculated from the current scope, tasks, AI operations, and models.</small></span><span className="pk-vi-readiness-state">Before start</span></div><div className="pk-vi-scan-estimate-metrics"><span><span className="pk-vi-estimate-value"><strong>{estimatedMinutes === null ? 'Not available' : `${estimatedMinutes.toFixed(1)}–${(estimatedMinutes + 3).toFixed(1)} min`}</strong><EstimateHelp label="How estimated time is calculated" lines={['Local work · objects ÷ measured or conservative throughput', 'Parallel path · 40% × longest enabled AI operation', 'Queue share · 10% × all enabled AI work']} /></span><small>Estimated time</small></span><span><span className="pk-vi-estimate-value"><strong>{estimatedTokens > 0 ? `~${formatCompactNumber(estimatedTokens)}` : '0'}</strong><EstimateHelp label="How AI tokens are calculated" lines={['Configured operation allowance', '× included-scope factor', '+ embedding input when enabled']} /></span><small>Typical AI tokens</small></span><span><span className="pk-vi-estimate-value"><strong>{hasUnknownCost ? 'Not available' : estimatedCost > 0 ? `~${formatMoney(estimatedCost)}` : '$0.00'}</strong><EstimateHelp label="How AI cost is calculated" lines={['Estimated input/output tokens × catalog prices', '+ every enabled AI operation', 'Local models remain $0; missing prices remain unknown']} /></span><small>Typical AI cost</small></span></div><small className="pk-vi-scan-estimate-note"><Info size={13} />Progress shows actual tokens and spend for every AI operation and for the run total. Unknown provider pricing is shown as unknown, never as $0.</small></section></div></div>
+		<SetupSection number="3" title="Review AI models" description="Open a group only when you want to configure an individual operation." status={`${selectedOps.length} operations · ${hasUnconfiguredEnabledOperation ? 'configuration needed' : selectedOps.length ? 'models ready' : 'no AI work'}`}><div className="pk-vi-scan-ai-groups">{(['plan', 'index', 'relations', 'structure', 'follow-up'] as const).map((group) => { const definitions = config.scanOperations.filter((definition) => definition.group === group); const groupOperations = definitions.map((candidate) => plannedOperations.find((operation) => operation.id === candidate.id)!).filter(Boolean); const enabled = groupOperations.filter((operation) => operation.enabled).length; const expanded = expandedOperationGroup === group; return <section key={group} className={expanded ? 'is-expanded' : ''}><Button variant="ghost" className="pk-vi-scan-ai-group-row" aria-expanded={expanded} onClick={() => setExpandedOperationGroup(expanded ? null : group)}><span><strong>{scanOperationGroupLabel(group)}</strong><small>{scanOperationGroupDescription(group)}</small></span><span><strong>{enabled} / {definitions.length} enabled</strong><small>{groupOperations.some((operation) => snapshot.operationRoutes[operation.id]?.available === false) ? 'Configure model' : groupOperations[0]?.provider ?? 'Route not available'}</small></span><ChevronRight size={15} /></Button>{expanded && <div className="pk-vi-scan-operation-list">{definitions.map((definition) => { const operation = plannedOperations.find((candidate) => candidate.id === definition.id)!; const route = snapshot.operationRoutes[operation.id]; const scopeAvailable = operationAvailableForScope(operation.id, scopeMode); const shared = sharedExecutionLabel(operation.id); return <div key={definition.id} className={!scopeAvailable ? 'is-scope-unavailable' : ''}><span><strong>{definition.label}</strong><small>{shared ? `Runs in ${shared}; this switch remains independent.` : definition.description}</small></span><OperationModelPicker operation={operation} route={route} onChange={(candidate) => { setOperations((current) => current.map((item) => item.id === operation.id ? { ...item, model: candidate.model, provider: candidate.provider } : item)); onSelectOperationRoute(operation.id, candidate); }} /><span>{operationEstimateLabel(operation, route)}</span><Button variant="ghost" disabled={!scopeAvailable} className={`pk-vi-scan-operation-toggle ${operation.enabled ? 'is-on' : ''}`} aria-label={`${operation.enabled ? 'Disable' : 'Enable'} ${definition.label}`} aria-pressed={operation.enabled} onClick={() => setOperations((current) => toggleOperationExecutionGroup(current, operation.id))}>{!scopeAvailable ? 'Entire Vault only' : operation.enabled ? 'On' : 'Off'}</Button></div>; })}</div>}</section>; })}</div></SetupSection>
+		<section className="pk-vi-scan-estimate-block"><div><span><strong>Estimated run</strong><small>Recalculated from the selected scope, enabled operations, and their resolved models.</small></span><span className={`pk-vi-readiness-state ${hasUnconfiguredEnabledOperation || hasUnknownCost ? 'is-attention' : 'is-ready'}`}>{hasUnconfiguredEnabledOperation ? 'Model configuration needed' : hasUnknownCost ? 'Some prices unknown' : 'Ready to estimate'}</span></div><div className="pk-vi-scan-estimate-metrics"><span><span className="pk-vi-estimate-value"><strong>{estimatedMinutes === null ? 'Not available' : `${estimatedMinutes.toFixed(1)}–${(estimatedMinutes + 3).toFixed(1)} min`}</strong><EstimateHelp label="How estimated time is calculated" lines={[`Scope · ${scopeObjectCount} objects ÷ 120 objects/min`, `Parallel AI path · 40% × ${longestAiMinutes.toFixed(1)} min`, `Queue share · 10% of ${formatCompactNumber(estimatedTokens)} enabled AI tokens`]} /></span><small>Estimated time</small></span><span><span className="pk-vi-estimate-value"><strong>{estimatedTokens > 0 ? `~${formatCompactNumber(estimatedTokens)}` : 'Not available'}</strong><EstimateHelp label="How AI tokens are calculated" lines={[`${selectedOps.length} enabled operations`, 'Operation allowance × current scope factor', 'Embedding input is included separately']} /></span><small>Typical AI tokens</small></span><span><span className="pk-vi-estimate-value"><strong>{hasUnknownCost ? 'Not available' : estimatedCost > 0 ? `~${formatMoney(estimatedCost)}` : '$0.00'}</strong><EstimateHelp label="How AI cost is calculated" lines={['80% estimated input + 20% estimated output', 'Selected model catalog prices per operation', 'Missing price or model route = not available']} /></span><small>Typical AI cost</small></span></div><small className="pk-vi-scan-estimate-note"><Info size={13} />Open an estimate to inspect its inputs. The final receipt records actual tokens and spend; missing provider prices are never treated as $0.</small></section></div></div>
 		<footer className="pk-vi-scan-setup-footer"><span><Info size={14} />The scan updates machine state and prepares review items. It never applies user-file edits. Current scope: {scopeStatus}.{hasUnconfiguredEnabledOperation ? ' Configure or turn off the unavailable AI operations before starting.' : ''}</span><div><Button variant="outline" onClick={onBack}>Cancel</Button><Button className="pk-vi-primary" onClick={start} disabled={(scopeMode === 'selected' && selectedPaths.length === 0) || hasUnconfiguredEnabledOperation}><Play size={15} />Start scan</Button></div></footer>
 	</section></div>;
 }
@@ -909,25 +910,24 @@ function ScanSetup({ snapshot, config, initialSelector, onBack, onStart, onSelec
 function OperationModelPicker({ operation, route, profiles, onChange }: {
 	operation: VaultScanAiOperationPlan;
 	route: VaultIntelligenceSnapshot['operationRoutes'][VaultScanAiOperationPlan['id']] | undefined;
-	profiles: Profile[];
 	onChange: (candidate: VaultScanOperationRouteCandidate) => void;
 }) {
-	const selection: ModelSelection = route?.profileId
-		? { mode: 'fixed', profileId: route.profileId, modelId: route.model }
-		: { mode: 'auto' };
+	const [open, setOpen] = useState(false);
+	const [query, setQuery] = useState('');
+	const candidates = (route?.candidates ?? []).filter((candidate) => {
+		if (operation.id !== 'embedding-refresh') return true;
+		return /embed/i.test(candidate.model);
+	});
+	const matches = candidates.filter((candidate) => `${candidate.provider} ${candidate.model}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+	const configured = route?.available && route.profileId ? `${route.provider} · ${route.model}` : null;
 	return <div className="pk-vi-scan-model-field">
-		<ComposerModelSelector
-			profiles={profiles}
-			modelType={operation.id === 'embedding-refresh' ? ModelType.EMBEDDING : ModelType.LLM}
-			selection={selection}
-			onSelect={(next) => {
-				if (next.mode !== 'fixed') return;
-				const profile = profiles.find((candidate) => candidate.id === next.profileId);
-				if (!profile) return;
-				onChange({ profileId: next.profileId, model: next.modelId, provider: profile.kind });
-			}}
-		/>
-		{route?.available === false && <small>Configure a model in Peak settings</small>}
+		<Button variant="ghost" className={`pk-vi-model-trigger ${configured ? '' : 'is-unconfigured'}`} aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+			<Sparkles size={14} /><span>{configured ?? 'Configure model'}</span><ChevronDown size={14} />
+		</Button>
+		{open && <div className="pk-vi-model-picker" role="dialog" aria-label={`Choose model for ${operation.id}`}>
+			<label><Search size={14} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search configured models" /></label>
+			{matches.length > 0 ? <div>{matches.map((candidate) => <Button key={`${candidate.profileId}:${candidate.model}`} variant="ghost" className={route?.profileId === candidate.profileId && route.model === candidate.model ? 'is-selected' : ''} onClick={() => { onChange(candidate); setOpen(false); setQuery(''); }}><span><strong>{candidate.model}</strong><small>{candidate.provider}</small></span>{route?.profileId === candidate.profileId && route.model === candidate.model && <Check size={14} />}</Button>)}</div> : <div className="pk-vi-model-picker-empty"><strong>No configured models match</strong><small>{operation.id === 'embedding-refresh' ? 'Configure an embedding-capable model in Peak Settings.' : 'Configure a compatible chat model in Peak Settings.'}</small></div>}
+		</div>}
 	</div>;
 }
 
@@ -942,12 +942,12 @@ function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
 	const selected = outputs.filter((output) => output.enabled).length;
 	const coreOutputs = config.indexOutputs.filter((output) => output.group === 'core');
 	const generatedGroups = ['summaries', 'tags', 'relationships', 'content'] as const;
-	const renderOutputRow = (entry: VaultIntelligenceConfig['indexOutputs'][number], compact = false) => {
+	const renderOutputRow = (entry: VaultIntelligenceConfig['indexOutputs'][number]) => {
 		const output = outputs.find((candidate) => candidate.id === entry.id)!;
 		const canToggle = entry.availability === 'optional';
 		const state = entry.availability === 'automatic' ? 'Automatic' : entry.availability === 'required' ? 'Required' : entry.availability === 'later' ? 'Later' : null;
-		const className = compact ? `pk-vi-index-core-row is-${entry.availability}` : `pk-vi-index-output is-${entry.availability}`;
-		const content = <><span><strong>{entry.label}</strong>{compact && <small>{entry.description}</small>}</span>{compact && state && <em>{state}</em>}{canToggle ? <i className={`pk-vi-index-output-toggle ${output.enabled ? 'is-on' : ''}`} aria-hidden="true" /> : <i className={`pk-vi-index-output-state is-${entry.availability}`} aria-hidden="true">{entry.availability === 'automatic' || entry.availability === 'required' ? '✓' : state}</i>}</>;
+		const className = entry.group === 'core' ? `pk-vi-index-core-row is-${entry.availability}` : `pk-vi-index-output is-${entry.availability}`;
+		const content = <><span><strong>{entry.label}</strong></span>{state && !canToggle && <em>{entry.availability === 'automatic' || entry.availability === 'required' ? 'Local · always on' : state}</em>}{canToggle ? <i className={`pk-vi-index-output-toggle ${output.enabled ? 'is-on' : ''}`} aria-hidden="true" /> : <i className={`pk-vi-index-output-state is-${entry.availability}`} aria-hidden="true">{entry.availability === 'automatic' || entry.availability === 'required' ? '✓' : state}</i>}</>;
 		if (canToggle) return <Button key={entry.id} variant="ghost" className={className} aria-pressed={output.enabled} onMouseEnter={() => setFocusedOutputId(entry.id)} onFocus={() => setFocusedOutputId(entry.id)} onClick={() => onToggle(entry.id)}>{content}</Button>;
 		return <div key={entry.id} className={className} tabIndex={0} onMouseEnter={() => setFocusedOutputId(entry.id)} onFocus={() => setFocusedOutputId(entry.id)}>{content}</div>;
 	};
@@ -966,9 +966,9 @@ function IndexOutputPlan({ config, outputs, scopeObjectCount, onToggle }: {
 		{expanded && <div className="pk-vi-index-plan-body">
 			<div className="pk-vi-index-plan-heading"><div><strong>Choose what this scan adds to the Index</strong><small>Step 1 already defines the content scope. Here you choose the reusable Search and machine-knowledge outputs built from that same scope.</small></div><span>Scope · current selection</span></div>
 			<div className="pk-vi-index-core-label"><strong>Core Search</strong><small>Foundations used to find and retrieve files</small></div>
-			<div className="pk-vi-index-core">{coreOutputs.map((entry) => renderOutputRow(entry, true))}</div>
+				<div className="pk-vi-index-core">{coreOutputs.map(renderOutputRow)}</div>
 			<div className="pk-vi-index-generated-head"><div><strong>Generated Index outputs</strong><small>Optional AI outputs can be included for this run; automatic outputs stay on.</small></div><span>{selected} enabled</span></div>
-			<div className="pk-vi-index-output-grid">{generatedGroups.map((group) => {
+				<div className="pk-vi-index-output-grid">{generatedGroups.map((group) => {
 				const entries = config.indexOutputs.filter((output) => output.group === group);
 				if (entries.length === 0) return null;
 				return <section key={group} className="pk-vi-index-output-group"><div className="pk-vi-index-output-head"><strong>{indexOutputGroupLabel(group)}</strong><span>{entries.filter((entry) => outputs.find((output) => output.id === entry.id)?.enabled).length} enabled</span></div><div className="pk-vi-index-output-list">{entries.map((entry) => renderOutputRow(entry))}</div></section>;
@@ -988,7 +988,8 @@ function indexOutputGroupLabel(group: 'core' | 'summaries' | 'tags' | 'relations
 }
 
 function SetupSection({ number, title, description, status, children }: { number: string; title: string; description: string; status: string; children: React.ReactNode }) {
-	return <section className="pk-vi-scan-config-card"><div className="pk-vi-scan-config-head"><div><span>{number}</span><div><strong>{title}</strong><small>{description}</small></div></div><span className="pk-vi-readiness-state">{status}</span></div>{children}</section>;
+	const tone = /needed|unavailable/i.test(status) ? 'is-attention' : /recommended|selected|ready/i.test(status) ? 'is-ready' : '';
+	return <section className="pk-vi-scan-config-card"><div className="pk-vi-scan-config-head"><div><span>{number}</span><div><strong>{title}</strong><small>{description}</small></div></div><span className={`pk-vi-readiness-state ${tone}`}>{status}</span></div>{children}</section>;
 }
 
 function EstimateHelp({ label, lines }: { label: string; lines: string[] }) {
@@ -1006,6 +1007,18 @@ function estimateOperationCostUsd(operation: VaultScanAiOperationPlan): number |
 	const estimatedInput = operation.estimatedTokens * .8;
 	const estimatedOutput = operation.estimatedTokens * .2;
 	return estimatedInput / 1_000_000 * inputPrice + estimatedOutput / 1_000_000 * outputPrice;
+}
+
+function operationEstimateLabel(
+	operation: VaultScanAiOperationPlan,
+	route: VaultIntelligenceSnapshot['operationRoutes'][VaultScanAiOperationPlan['id']] | undefined,
+): string {
+	if (route?.available === false) return 'Configure first';
+	if (operation.estimatedTokens <= 0) return 'Estimate pending';
+	const cost = estimateOperationCostUsd(operation);
+	if (cost === null) return `${formatCompactNumber(operation.estimatedTokens)} · Price unknown`;
+	if (operation.provider === 'Peak' || operation.provider === 'ollama' || operation.provider === 'lmstudio') return `${formatCompactNumber(operation.estimatedTokens)} · Local`;
+	return `${formatCompactNumber(operation.estimatedTokens)} · ${formatMoney(cost)}`;
 }
 
 function RunProgress({ snapshot, runtime, onBack, onCompleted }: {
@@ -1433,13 +1446,8 @@ function toggleOperationExecutionGroup(
 	operations: VaultScanAiOperationPlan[],
 	id: VaultScanAiOperationPlan['id'],
 ): VaultScanAiOperationPlan[] {
-	const group = id === 'file-summaries' || id === 'ai-tags'
-		? new Set<VaultScanAiOperationPlan['id']>(['file-summaries', 'ai-tags'])
-		: isSharedReviewOperation(id)
-			? new Set<VaultScanAiOperationPlan['id']>(['relationship-discovery', 'semantic-review', 'community-analysis', 'hub-bridge-analysis', 'file-proposals', 'maintenance-synthesis'])
-			: new Set<VaultScanAiOperationPlan['id']>([id]);
 	const enabled = !operations.find((operation) => operation.id === id)?.enabled;
-	return operations.map((operation) => group.has(operation.id) ? { ...operation, enabled } : operation);
+	return operations.map((operation) => operation.id === id ? { ...operation, enabled } : operation);
 }
 
 function sharedExecutionLabel(id: VaultScanAiOperationPlan['id']): string | null {
