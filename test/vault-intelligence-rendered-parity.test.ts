@@ -203,7 +203,7 @@ assert.match(zeroActivityHtml, /pk-vi-activity-range-window/, 'zero Activity kee
 assert.match(zeroActivityHtml, /No work sessions yet/, 'zero Activity uses a stable empty session treatment');
 
 const zeroMapHtml = renderToStaticMarkup(React.createElement(VaultIntelligenceWorkspace, { runtime: zeroRuntime, initialRoute: 'map' }));
-assert.match(zeroMapHtml, /pk-vi-file-types/, 'zero Vault contents keeps the file-distribution workspace');
+assert.doesNotMatch(zeroMapHtml, /pk-vi-file-types/, 'Vault contents no longer duplicates the Overview file-distribution card');
 assert.match(zeroMapHtml, /pk-vi-community-summary/, 'zero Vault contents keeps the graph-integrated Community region');
 assert.match(zeroMapHtml, /No Communities available until the Knowledge Index is built/, 'zero Vault contents uses the reference-compatible Community empty treatment');
 
@@ -323,6 +323,8 @@ assert.match(exactPort, /\.pk-vi-overview-range-popover\s*\{[\s\S]*?right:\s*0;[
 assert.match(exactPort, /\.pk-vi-overview-range-popover > \.pk-btn\s*\{[\s\S]*?justify-content:\s*space-between !important;[\s\S]*?text-align:\s*left;/, 'range options must keep their labels left aligned');
 assert.match(exactPort, /\.pk-vi-overview-activity-title\s*\{[\s\S]*?flex-direction:\s*row;[\s\S]*?align-items:\s*center;/, 'the activity total must sit horizontally beside and vertically centered with the title');
 assert.match(exactPort, /\.pk-vi-overview-evidence > div > article:last-of-type\s*\{[\s\S]*?border-bottom:\s*0 !important;/, 'the final activity row must not duplicate the card border');
+assert.match(exactPort, /\.pk-vi-overview-heatmap-footer\s*\{[\s\S]*?border-top:\s*0;/, 'the activity legend must not create a redundant bottom divider after the final record');
+assert.match(exactPort, /\.pk-vi-nav > \.pk-btn\.is-active\s*\{[\s\S]*?background:\s*#f0edff !important;/, 'the selected production navigation item keeps its visible pill fill after the final host reset');
 assert.match(source, /function DescriptionTooltip\(/, 'inventory and index descriptions must be available through a compact tooltip trigger');
 assert.doesNotMatch(html, /pk-vi-card-caption[^>]*>Search and machine knowledge maintained by Vault scans/, 'the Knowledge Index explanation must not consume header space');
 assert.match(html, /pk-vi-description-tooltip/, 'the Knowledge Index explanation must remain available via its tooltip trigger');

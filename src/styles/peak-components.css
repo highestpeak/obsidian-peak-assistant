@@ -23627,13 +23627,32 @@
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-child(odd) { border-right: 1px solid var(--pk-border) !important; }
 :is(.pktw-root, .peak-design-root) button.pk-onboarding-provider-kind:nth-last-child(-n+2) { border-bottom: 0 !important; }
 
-/* Vault Intelligence precision-parity closure.
-   These overrides intentionally live after the historical VI layers: they
-   neutralize the host button fill without changing the reference geometry. */
+/* Vault Intelligence primary navigation closure. This must come after every
+   historical VI layer because the host's final button reset otherwise erases
+   the visible selected/hover pill. */
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav {
+  height: 52px;
+  min-height: 52px;
+  align-items: center;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+}
+
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn:hover,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn:focus-visible,
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn.is-active {
-  color: #222127;
-  background: transparent !important;
+  color: #5545bf !important;
+  background: #f0edff !important;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn::after {
+  display: none;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-primary.pk-btn:hover:not(:disabled),
