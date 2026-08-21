@@ -6601,6 +6601,35 @@
   color: var(--text-normal) !important;
 }
 
+/* Primary navigation uses a pill state for both the current destination and
+   the immediate hover/focus affordance; the underline is too easy to miss in
+   the host surface. */
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav {
+  min-height: 52px;
+  height: 52px;
+  align-items: center;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn.is-active,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn:hover,
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn:focus-visible {
+  color: #5545bf !important;
+  background: #f0edff !important;
+}
+
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav > .pk-btn::after {
+  display: none;
+}
+
 .peak-vault-intelligence-view .pk-vi-header-status > .pk-btn {
   width: auto !important;
   height: 26px !important;
