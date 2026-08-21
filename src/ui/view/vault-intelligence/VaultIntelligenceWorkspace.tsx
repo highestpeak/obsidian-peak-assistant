@@ -330,7 +330,7 @@ function ObjectInventory({ snapshot, runtime, config, onRoute }: {
 	onRoute: (route: Route) => void;
 }) {
 	const objects = referenceObjectInventory(snapshot.objects);
-	return <section className="pk-vi-inventory-strip" aria-label="Vault object inventory">{objects.slice(0, 2).map((object) => {
+	return <section className="pk-vi-inventory-strip">{objects.slice(0, 2).map((object) => {
 		const presentation = config.inventoryObjects[object.id] ?? DEFAULT_VAULT_INTELLIGENCE_CONFIG.inventoryObjects[object.id];
 		const canonicalBreakdown = object.id === 'files'
 			? snapshot.fileTypes.map((type) => ({ id: type.extension, label: fileTypeLabel(type.extension), count: type.count }))
@@ -405,20 +405,25 @@ function InventoryDistribution({ total, label, items, colors, large, unavailable
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const palette = colors.length > 0 ? colors : DEFAULT_VAULT_INTELLIGENCE_CONFIG.fileTypeColors;
 	const rankedItems = [...items].sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+	const rankedEntries = rankedItems.map((item, colorIndex) => ({ item, colorIndex }));
+	const firstColumnLength = Math.ceil(rankedEntries.length / 2);
+	const legendEntries = large
+		? Array.from({ length: firstColumnLength }, (_, index) => [rankedEntries[index], rankedEntries[firstColumnLength + index]]).flat().filter((entry): entry is { item: typeof rankedItems[number]; colorIndex: number } => Boolean(entry))
+		: rankedEntries;
 	const empty = unavailable || rankedItems.length === 0;
 	let offset = 0;
 	return <div className={`pk-vi-inventory-distribution ${large ? 'is-large' : ''} ${unavailable ? 'is-unavailable' : ''}`}>
 		<div className="pk-vi-inventory-pie-panel"><svg className="pk-vi-inventory-pie" viewBox="0 0 100 100" role="img" aria-label={unavailable ? `${label} distribution not available` : `${label} distribution`}>
 			{empty && <circle className="pk-vi-pie-empty" cx="50" cy="50" r="49" />}
-			{!unavailable && rankedItems.map((item, index) => {
+			{!unavailable && rankedEntries.map(({ item, colorIndex }) => {
 			const start = total > 0 ? offset / total : 0;
 			offset += item.count;
 			const end = total > 0 ? offset / total : 0;
-			return <path key={item.id} className={`pk-vi-pie-segment ${activeId && activeId !== item.id ? 'is-muted' : ''}`} d={pieSlicePath(start, end)} style={{ fill: palette[index % palette.length] }} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} />;
+			return <path key={item.id} className={`pk-vi-pie-segment ${activeId && activeId !== item.id ? 'is-muted' : ''}`} d={pieSlicePath(start, end)} style={{ fill: palette[colorIndex % palette.length] }} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} />;
 		})}</svg><strong>{formatNumber(total)} {label.toLowerCase()}</strong></div>
 		<div className="pk-vi-inventory-legend">{unavailable
 			? <div className="pk-vi-inventory-unavailable" role="status"><strong>{unavailableTitle}</strong><span>{unavailableDescription}</span></div>
-			: rankedItems.map((item, index) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[index % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
+			: legendEntries.map(({ item, colorIndex }) => <div key={item.id} className={`${activeId === item.id ? 'is-active' : ''} ${activeId && activeId !== item.id ? 'is-muted' : ''}`} tabIndex={0} onMouseEnter={() => setActiveId(item.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(item.id)} onBlur={() => setActiveId(null)}><i style={{ background: palette[colorIndex % palette.length] }} /><strong>{item.label}</strong><span><b>{formatNumber(item.count)}</b> · {total > 0 ? `${(item.count / total * 100).toFixed(1)}%` : '0%'}</span></div>)}</div>
 	</div>;
 }
 

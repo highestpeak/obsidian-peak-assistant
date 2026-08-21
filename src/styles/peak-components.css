@@ -23607,6 +23607,7 @@
 
 .peak-vault-intelligence-view .pk-vi-index-core-row.pk-btn,
 .peak-vault-intelligence-view .pk-vi-index-output.pk-btn {
+	  display: grid !important;
   justify-content: stretch !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -23830,6 +23831,8 @@
   cursor: help;
   vertical-align: -2px;
 }
+.peak-vault-intelligence-view .pk-vi-index-output-group { overflow: visible; }
+.peak-vault-intelligence-view .pk-vi-index-output-list { overflow: visible; }
 .peak-vault-intelligence-view .pk-vi-hover-hint:hover,
 .peak-vault-intelligence-view .pk-vi-hover-hint:focus { color: var(--pk-vi-accent); background: var(--pk-vi-accent-soft); outline: 0; }
 .peak-vault-intelligence-view .pk-vi-hover-hint > span {
@@ -23890,6 +23893,31 @@
 .peak-vault-intelligence-view .pk-vi-path-picker {
   position: relative;
 }
+.peak-vault-intelligence-view .pk-vi-scope-builder .pk-vi-path-picker > label {
+  display: grid;
+  width: 100%;
+  min-height: 42px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid var(--pk-vi-border-strong);
+  border-radius: 8px;
+  background: #fff;
+}
+.peak-vault-intelligence-view .pk-vi-scope-builder .pk-vi-path-picker > label input {
+  display: block;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0;
+  box-shadow: none !important;
+  background: transparent !important;
+}
 .peak-vault-intelligence-view .pk-vi-path-results {
   position: relative;
   z-index: 2;
@@ -23915,10 +23943,8 @@
 .peak-vault-intelligence-view .pk-vi-path-results .pk-btn:hover,
 .peak-vault-intelligence-view .pk-vi-path-results .pk-btn.is-selected { background: var(--pk-vi-accent-soft) !important; }
 .peak-vault-intelligence-view .pk-vi-path-results .pk-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; }
-.peak-vault-intelligence-view .pk-vi-scope-shortcuts { margin-top: 8px; }
-.peak-vault-intelligence-view .pk-vi-scope-shortcuts summary { color: var(--pk-vi-muted); font-size: 10.5px; cursor: pointer; }
-.peak-vault-intelligence-view .pk-vi-scope-shortcuts > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; margin-top: 8px; }
-.peak-vault-intelligence-view .pk-vi-scope-shortcuts > div > strong { grid-column: 1 / -1; color: var(--pk-vi-muted); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.peak-vault-intelligence-view .pk-vi-scope-shortcuts > strong { flex-basis: 100%; color: var(--pk-vi-muted); font-size: 10.5px; font-weight: 500; }
 .peak-vault-intelligence-view .pk-vi-scope-shortcuts .pk-btn { display: grid !important; min-width: 0; min-height: 32px !important; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 5px 7px !important; border: 1px solid var(--pk-vi-border) !important; border-radius: 6px !important; background: #fff !important; color: var(--pk-vi-ink); font-size: 10px; text-align: left; }
 .peak-vault-intelligence-view .pk-vi-scope-shortcuts .pk-btn:hover { border-color: #b8aceb !important; background: var(--pk-vi-accent-soft) !important; }
 .peak-vault-intelligence-view .pk-vi-scope-shortcuts .pk-btn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

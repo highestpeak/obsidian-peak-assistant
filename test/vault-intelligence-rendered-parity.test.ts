@@ -114,7 +114,7 @@ assert.match(source, /Knowledge Index plan/, 'the setup must disclose configurab
 assert.match(source, /pk-vi-index-output-toggle/, 'optional Index outputs must retain the Mock toggle subtree');
 assert.match(source, /pk-vi-scan-operation-toggle/, 'AI operation enablement must retain the Mock switch subtree');
 assert.match(source, /Configure (an embedding-capable model|a compatible chat model) in Peak Settings/, 'an unavailable route must explain its configuration boundary instead of hiding selection controls');
-assert.match(source, /onSelectOperationRoute/, 'model selection must dispatch through the production runtime adapter');
+assert.match(source, /routeOverrides/, 'model selection must remain an operation-local Scan override instead of changing a shared default route');
 assert.match(source, /pk-vi-model-picker/, 'each operation must use the compact, searchable Scan model picker');
 assert.match(source, /operationEstimateLabel/, 'each operation must disclose an honest estimate or configuration boundary');
 assert.match(source, /operation\.id === id \? \{ \.\.\.operation, enabled \}/, 'an operation switch must change only its own operation state');
@@ -123,7 +123,7 @@ assert.match(source, /pk-vi-index-output-grid/, 'generated Index outputs must re
 assert.match(source, /Version history/, 'map text must expose draft and publication history');
 assert.match(source, /AI work themes/, 'activity themes must remain an explicit generated layer');
 assert.match(source, /Expand members/, 'the graph must expose Community expansion instead of a fixed thumbnail');
-assert.match(source, /Browse suggested scopes/, 'Scan setup must accept selector-backed scopes beyond an exact file');
+assert.match(source, /Add a saved scope/, 'Scan setup must accept selector-backed scopes beyond an exact file');
 assert.match(source, /scopeObjectCount > 0 && <Check/, 'an empty custom scope must not claim a successful selection');
 assert.doesNotMatch(source, /Period summary/, 'Activity must not retain the old standalone period-summary card');
 assert.doesNotMatch(source, /pk-vi-activity-aside/, 'Activity details must live inside the reference explorer workspace');
@@ -323,6 +323,7 @@ assert.match(exactPort, /\.pk-vi-overview-range-popover\s*\{[\s\S]*?right:\s*0;[
 assert.match(exactPort, /\.pk-vi-overview-range-popover > \.pk-btn\s*\{[\s\S]*?justify-content:\s*space-between !important;[\s\S]*?text-align:\s*left;/, 'range options must keep their labels left aligned');
 assert.match(exactPort, /\.pk-vi-overview-activity-title\s*\{[\s\S]*?flex-direction:\s*row;[\s\S]*?align-items:\s*center;/, 'the activity total must sit horizontally beside and vertically centered with the title');
 assert.match(exactPort, /\.pk-vi-overview-evidence > div > article:last-of-type\s*\{[\s\S]*?border-bottom:\s*0 !important;/, 'the final activity row must not duplicate the card border');
+assert.match(exactPort, /\.pk-vi-overview-heatmap-footer\s*\{[\s\S]*?border-top:\s*0;/, 'the activity legend must not create a redundant bottom divider after the final record');
 assert.match(source, /function DescriptionTooltip\(/, 'inventory and index descriptions must be available through a compact tooltip trigger');
 assert.doesNotMatch(html, /pk-vi-card-caption[^>]*>Search and machine knowledge maintained by Vault scans/, 'the Knowledge Index explanation must not consume header space');
 assert.match(html, /pk-vi-description-tooltip/, 'the Knowledge Index explanation must remain available via its tooltip trigger');
