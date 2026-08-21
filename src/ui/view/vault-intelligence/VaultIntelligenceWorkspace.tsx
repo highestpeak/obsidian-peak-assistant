@@ -184,7 +184,7 @@ export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProp
 					<Overview snapshot={snapshot} runtime={runtime} config={config} onRoute={setRoute} />
 				)}
 				{route.kind === 'surface' && route.surface === 'map' && (
-					<VaultMap snapshot={snapshot} runtime={runtime} config={config} initialSurface={route.mapSurface ?? 'contents'} initialDate={route.mapDate ?? null} initialExtension={route.mapExtension ?? null} onOpenTask={(taskId) => setRoute({ kind: 'task', taskId, origin: 'queue' })} onOpenMapText={(extension) => setRoute({ kind: 'map-text', extension })} />
+					<VaultMap snapshot={snapshot} runtime={runtime} config={config} initialSurface={route.mapSurface ?? 'contents'} initialDate={route.mapDate ?? null} initialExtension={route.mapExtension ?? null} onOpenSetup={() => setRoute({ kind: 'setup' })} onOpenTask={(taskId) => setRoute({ kind: 'task', taskId, origin: 'queue' })} onOpenMapText={(extension) => setRoute({ kind: 'map-text', extension })} />
 				)}
 				{route.kind === 'surface' && route.surface === 'queue' && (
 					<WorkQueue
@@ -492,36 +492,37 @@ function CompactTaskList({ tasks, onOpen }: { tasks: VaultMaintenanceTask[]; onO
 	))}</div>;
 }
 
-function VaultMap({ snapshot, runtime, config, initialSurface, initialDate, initialExtension, onOpenTask, onOpenMapText }: {
+function VaultMap({ snapshot, runtime, config, initialSurface, initialDate, initialExtension, onOpenSetup, onOpenTask, onOpenMapText }: {
 	snapshot: VaultIntelligenceSnapshot;
 	runtime: VaultIntelligenceWorkspaceRuntime;
 	config: VaultIntelligenceConfig;
 	initialSurface: MapSurface;
 	initialDate: string | null;
 	initialExtension: string | null;
+	onOpenSetup: () => void;
 	onOpenTask: (taskId: string) => void;
 	onOpenMapText: (extension: string | null) => void;
 }) {
 	const [surface, setSurface] = useState<MapSurface>(initialSurface);
+	const [selectedExtension, setSelectedExtension] = useState<string | null>(initialExtension);
 	return <div className="pk-vi-page">
-		<div className="pk-vi-page-head pk-vi-map-head"><div><span className="pk-vi-page-title">{surface === 'contents' ? 'Vault contents · file types in context' : 'Activity'}</span><span className="pk-vi-page-description">{surface === 'contents' ? 'Choose an actual file type, then see where it fits in the knowledge structure and what Peak can currently use.' : 'Timestamped local evidence by recorded source. Work sessions group real VI receipts; no topic is guessed.'}</span></div><span className="pk-vi-map-freshness">{snapshot.indexReadiness.builtAt ? `Index built ${formatDateTime(snapshot.indexReadiness.builtAt)}` : 'No completed Index build'}</span></div>
+		<div className="pk-vi-page-head pk-vi-map-head"><div><span className="pk-vi-page-title">{surface === 'contents' ? 'Vault contents · file types in context' : 'Activity'}</span><span className="pk-vi-page-description">{surface === 'contents' ? 'Choose an actual file type, then see where it fits in the knowledge structure and what Peak can currently use.' : 'Timestamped local evidence by recorded source. Work sessions group real VI receipts; no topic is guessed.'}</span></div>{surface === 'contents' ? <div className="pk-vi-page-actions"><Button variant="ghost" size="sm" onClick={() => onOpenMapText(selectedExtension)}>Manage map text</Button><Button variant="ghost" size="sm" onClick={onOpenSetup}><ScanSearch size={14} />Scan selected type</Button></div> : <span className="pk-vi-map-freshness">{snapshot.indexReadiness.builtAt ? `Index built ${formatDateTime(snapshot.indexReadiness.builtAt)}` : 'No completed Index build'}</span>}</div>
 		<div className="pk-vi-local-nav">
 			<Button variant="ghost" className={surface === 'contents' ? 'is-active' : ''} onClick={() => setSurface('contents')}>Vault contents</Button>
 			<Button variant="ghost" className={surface === 'activity' ? 'is-active' : ''} onClick={() => setSurface('activity')}>Activity</Button>
 		</div>
-		{surface === 'contents' ? <VaultContents snapshot={snapshot} runtime={runtime} config={config} initialExtension={initialExtension} onOpenTask={onOpenTask} onOpenMapText={onOpenMapText} /> : <ActivityView snapshot={snapshot} runtime={runtime} initialDate={initialDate} />}
+		{surface === 'contents' ? <VaultContents snapshot={snapshot} runtime={runtime} config={config} selectedExtension={selectedExtension} onSelectExtension={setSelectedExtension} onOpenTask={onOpenTask} /> : <ActivityView snapshot={snapshot} runtime={runtime} initialDate={initialDate} />}
 	</div>;
 }
 
-function VaultContents({ snapshot, runtime, config, initialExtension, onOpenTask, onOpenMapText }: {
+function VaultContents({ snapshot, runtime, config, selectedExtension, onSelectExtension, onOpenTask }: {
 	snapshot: VaultIntelligenceSnapshot;
 	runtime: VaultIntelligenceWorkspaceRuntime;
 	config: VaultIntelligenceConfig;
-	initialExtension: string | null;
+	selectedExtension: string | null;
+	onSelectExtension: (extension: string | null) => void;
 	onOpenTask: (taskId: string) => void;
-	onOpenMapText: (extension: string | null) => void;
 }) {
-	const [selectedExtension, setSelectedExtension] = useState<string | null>(initialExtension);
 	const unreadable = snapshot.tasks.find((task) => task.kind === 'unreadable-files')?.atomicItems.length ?? 0;
 	const actualTypes = snapshot.fileTypes.filter((type) => type.count > 0).length;
 	return <div className="pk-vi-map-layout">
@@ -532,8 +533,7 @@ function VaultContents({ snapshot, runtime, config, initialExtension, onOpenTask
 			<span><small>Actual file types</small><strong>{formatNumber(actualTypes)}</strong></span>
 			<span className={unreadable > 0 ? 'is-warning' : ''}><small>Unreadable</small><strong>{formatNumber(unreadable)}</strong></span>
 		</section>
-		<FileTypeDistribution snapshot={snapshot} config={config} selected={selectedExtension} onSelect={setSelectedExtension} />
-		<section className="pk-vi-card pk-vi-map-text-entry"><div><span className="pk-vi-card-title">Map text</span><span className="pk-vi-card-caption">Community descriptions are Peak-owned annotations, pinned to the current index fingerprint and never inferred from graph geometry.</span></div><Button variant="ghost" onClick={() => onOpenMapText(selectedExtension)}>Review map text<ChevronRight size={15} /></Button></section>
+		<FileTypeDistribution snapshot={snapshot} config={config} selected={selectedExtension} onSelect={onSelectExtension} />
 		<KnowledgeGraph snapshot={snapshot} runtime={runtime} selectedExtension={selectedExtension} />
 		{snapshot.tasks.some((task) => task.kind === 'community-membership' || task.kind === 'community-structure' || task.kind === 'unusual-notes') && (
 			<section className="pk-vi-card pk-vi-map-annotation"><div><strong>Structural maintenance is available</strong><span>Evidence is annotated here; decisions and verification stay in Work queue.</span></div><Button variant="ghost" onClick={() => onOpenTask(snapshot.tasks.find((task) => task.kind === 'community-membership' || task.kind === 'community-structure' || task.kind === 'unusual-notes')!.id)}>Open task<ChevronRight size={15} /></Button></section>
@@ -626,6 +626,7 @@ function KnowledgeGraph({ snapshot, runtime, selectedExtension }: {
 		<section className="pk-vi-card pk-vi-graph-card">
 			<div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Knowledge map{selectedExtension ? ` · .${selectedExtension}` : ''}</span><span className="pk-vi-card-caption">Knowledge communities contain representative Topics and Hubs; lines show verified references.</span></div><div className="pk-vi-segmented pk-vi-graph-presets"><Button variant="ghost" className={preset === 'constellation' ? 'is-active' : ''} onClick={() => setPreset('constellation')}>Constellation</Button><Button variant="ghost" className={preset === 'flow-lr' ? 'is-active' : ''} onClick={() => setPreset('flow-lr')}><ArrowRight size={13} />Flow</Button><Button variant="ghost" className={preset === 'flow-tb' ? 'is-active' : ''} onClick={() => setPreset('flow-tb')}><ArrowDown size={13} />Flow</Button><Button variant="ghost" className={preset === 'orbit' ? 'is-active' : ''} onClick={() => setPreset('orbit')}>Orbit</Button></div></div>
 			<div className="pk-vi-graph-canvas"><AtlasGraphCanvas model={model} preset={preset} showSemantic={false} layerLabel="Verified references" showMiniMap emptyLabel="Build the Knowledge Index to see current Communities." onNodeTap={(node) => setSelectedNodeId((current) => current === node.id ? null : node.id)} onNodeDblTap={(node) => { if (node.path.startsWith('community:') && node.communityId) toggleCommunity(node.communityId); else void runtime.openFile(node.path); }} /></div>
+			<section className="pk-vi-community-summary" aria-label="Community summary"><div><strong>Community summary</strong><span>{communityCount} {communityCount === 1 ? 'community' : 'communities'}</span></div>{communityCount > 0 ? <div className="pk-vi-community-summary-list">{(snapshot.digest?.clusters ?? []).map((community) => <Button key={community.id} variant="ghost" className={selectedNodeId === `community:${community.id}` ? 'is-active' : ''} onClick={() => setSelectedNodeId(`community:${community.id}`)}><strong>{community.label}</strong><span>{formatNumber(community.memberCount)} notes</span><small>{snapshot.indexReadiness.discovered ? `${Math.round(community.memberCount / snapshot.indexReadiness.discovered * 100)}%` : 'Not available'}</small></Button>)}</div> : <div className="pk-vi-empty">No Communities available until the Knowledge Index is built.</div>}</section>
 			<div className="pk-vi-graph-legend"><span><i className="is-community" />Community</span><span><i className="is-topic" />Topic / Hub</span><span><b className="is-contains" />contains</span><span><b className="is-reference" />reference</span></div>
 		</section>
 		<section className="pk-vi-graph-context" aria-label="Map context">

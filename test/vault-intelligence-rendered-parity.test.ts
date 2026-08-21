@@ -130,6 +130,10 @@ assert.match(source, /role="tablist" aria-label="Scan stages"/, 'Run Progress st
 assert.match(source, /pk-vi-run-stage-workspace/, 'Run Progress must render exactly one selected-stage workspace');
 assert.match(source, /pk-vi-run-events/, 'Run Progress must retain the Reference runtime event stream');
 assert.doesNotMatch(source, /pk-vi-stage-list/, 'Run Progress must not retain the old generic expanded-card subtree');
+assert.match(source, /Manage map text/, 'Vault contents keeps the Mock header action instead of inserting an unrelated map-text card');
+assert.match(source, /Scan selected type/, 'Vault contents keeps the Reference scan entry action');
+assert.match(source, /pk-vi-community-summary/, 'Vault contents keeps the Community summary inside the graph workspace');
+assert.doesNotMatch(source, /pk-vi-map-text-entry/, 'Vault contents must not retain the old standalone map-text card subtree');
 
 const zeroSnapshot = applyVaultIntelligencePresentationFixture('zero-data', snapshot);
 const zeroRuntime: VaultIntelligenceWorkspaceRuntime = { ...runtime, getSnapshot: () => zeroSnapshot };

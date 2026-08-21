@@ -19931,6 +19931,78 @@
   background: #faf9fb;
 }
 
+.peak-vault-intelligence-view .pk-vi-community-summary {
+  margin: 18px 20px 0;
+  border: 1px solid var(--pk-vi-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary > div:first-child {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--pk-vi-border);
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary > div:first-child > span {
+  color: var(--pk-vi-muted);
+  font-size: 11px;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list > .pk-btn {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0 !important;
+  min-height: 46px !important;
+  max-height: none !important;
+  gap: 3px 12px;
+  padding: 9px 13px !important;
+  border-right: 1px solid var(--pk-vi-border);
+  border-bottom: 1px solid var(--pk-vi-border);
+  border-radius: 0;
+  text-align: left;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list > .pk-btn:nth-child(3n) {
+  border-right: 0;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list > .pk-btn:nth-last-child(-n + 3) {
+  border-bottom: 0;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list span,
+.peak-vault-intelligence-view .pk-vi-community-summary-list small {
+  color: var(--pk-vi-muted);
+  font-size: 10px;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list small {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+}
+
+.peak-vault-intelligence-view .pk-vi-community-summary-list > .pk-btn.is-active {
+  color: var(--pk-vi-accent);
+  background: var(--pk-vi-accent-soft);
+}
+
 .peak-vault-intelligence-view .pk-vi-graph-context {
   display: grid;
   grid-template-columns: minmax(230px, 0.35fr) minmax(0, 1fr);
