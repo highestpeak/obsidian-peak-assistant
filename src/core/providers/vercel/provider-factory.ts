@@ -28,6 +28,16 @@ export function setProviderCorsBypassFetch(fetchImpl: CorsBypassFetch | null): v
 }
 
 /**
+ * Returns the app-owned transport registered at plugin boot, when available.
+ * Local catalog discovery uses the same transport as model execution so an
+ * `app://obsidian.md` renderer never has to pass a browser CORS preflight to a
+ * local OpenAI-compatible server.
+ */
+export function getProviderCorsBypassFetch(): CorsBypassFetch | null {
+    return corsBypassFetch;
+}
+
+/**
  * Create a Vercel AI SDK LanguageModel from a Profile + modelId.
  * Throws if provider is unsupported.
  */

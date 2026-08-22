@@ -6,6 +6,8 @@ const root = process.cwd();
 const read = (relativePath: string) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
 const discovery = read('src/core/providers/refreshLocalProfileModelCatalogs.ts');
+const lmStudioDiscovery = read('src/core/providers/lmstudio/fetchLMStudioModels.ts');
+const ollamaDiscovery = read('src/core/providers/ollama/fetchOllamaModels.ts');
 const chatPicker = read('src/ui/view/chat-view/components/composer/ComposerModelSelector.tsx');
 const settingsRoot = read('src/ui/view/SettingsView.tsx');
 const aiModels = read('src/ui/view/settings/tabs/AIModelsTab.tsx');
@@ -15,6 +17,8 @@ const knowledge = read('src/ui/view/settings/tabs/KnowledgeSearchTab.tsx');
 assert.match(discovery, /profile\.kind === 'ollama' \? fetchOllamaModels : fetchLMStudioModels/);
 assert.match(discovery, /profileModelCatalogId\(profile\)/);
 assert.match(discovery, /modelRegistry\.mergeRuntimeModels\(catalogId, modelIds\)/);
+assert.match(lmStudioDiscovery, /getProviderCorsBypassFetch\(\) \?\? fetch/, 'LM Studio discovery must use Obsidian\'s registered CORS-safe transport');
+assert.match(ollamaDiscovery, /getProviderCorsBypassFetch\(\) \?\? fetch/, 'Ollama discovery must use Obsidian\'s registered CORS-safe transport');
 assert.match(chatPicker, /refreshLocalProfileModelCatalogs\(resolvedProfiles\)/, 'Chat Studio must refresh local models when its picker opens');
 assert.match(chatPicker, /catalogRevision/, 'a completed discovery must rerender the model list');
 
