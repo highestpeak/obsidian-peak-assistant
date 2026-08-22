@@ -28,7 +28,7 @@ const checks = [
   ['typed fields are optional', html.includes('id="typed-field-button"') && html.includes('General / Text') && html.includes('Blank columns stay General')],
   ['range selection', js.includes('startCellSelection') && js.includes('extendDraggedSelection') && js.includes('event.shiftKey') && css.includes('.is-in-range')],
   ['selection statistics', js.includes('Sum ${sum}') && js.includes('Avg ${(sum / numbers.length).toFixed(1)}')],
-  ['column context menu', html.includes('data-field-action="insert-left"') && html.includes('data-field-action="insert-right"')],
+  ['column context menu', html.includes('data-field-action="insert-left"') && html.includes('data-field-action="insert-right"') && !html.includes('field-menu-trigger') && js.includes("header.addEventListener('contextmenu'")],
   ['row context menu', html.includes('data-row-action="insert-above"') && js.includes("addEventListener('contextmenu'")],
   ['three shared views', ['table', 'board', 'calendar'].every((view) => html.includes(`data-view="${view}"`)) && !html.includes('data-view="chart"') && !html.includes('data-view="scripts"')],
   ['group replaces basic pivot need', html.includes('Group & summarize') && ['Count records', 'Average numeric field', 'Sum numeric field', 'Min / Max'].every((label) => html.includes(label))],

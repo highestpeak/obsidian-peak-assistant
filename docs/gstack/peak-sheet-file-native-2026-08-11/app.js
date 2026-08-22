@@ -175,7 +175,7 @@ function renderTable() {
     <th class="field-head${field ? '' : ' is-virtual'}" data-field-index="${index}">
       <div class="field-head-shell" data-field-index="${index}">
         <button type="button" class="field-select-button" data-field-index="${index}" title="Click to select · Double-click to configure" aria-label="Column ${columnName(index)}${field ? `, ${escapeHtml(field.name)}` : ', empty'}"><span class="column-letter">${columnName(index)}</span></button>
-        <button type="button" class="field-menu-trigger${openFieldIndex === index ? ' is-open' : ''}" data-field-index="${index}" data-overlay-trigger="${field ? 'field-menu' : 'field-editor'}" aria-haspopup="${field ? 'menu' : 'dialog'}" aria-controls="${field ? 'field-menu' : 'field-editor'}" aria-expanded="${openFieldIndex === index}" aria-label="Configure ${escapeHtml(field?.name ?? `Column ${columnName(index)}`)}"><svg><use href="#i-chevron"/></svg></button>${field ? `<span class="field-resize-handle" data-field-index="${index}" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize ${escapeHtml(field.name)} column"></span>` : ''}
+        ${field ? `<span class="field-resize-handle" data-field-index="${index}" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize ${escapeHtml(field.name)} column"></span>` : ''}
       </div>
     </th>`).join('')}<th class="add-field-head"><button type="button" class="add-field-button" id="inline-add-field" aria-label="Create typed field" title="Create Select, Formula, File, or another typed field"><svg><use href="#i-plus"/></svg></button></th></tr></thead>`;
   const body = `<tbody>${rows.map((entry, displayIndex) => {
@@ -267,9 +267,6 @@ function bindGridEvents() {
       event.preventDefault();
       beginInlineFieldRename(Number(button.dataset.fieldIndex));
     });
-  });
-  document.querySelectorAll('.field-menu-trigger').forEach((button) => {
-    button.addEventListener('click', (event) => openFieldMenu(Number(button.dataset.fieldIndex), event.currentTarget));
   });
   document.querySelectorAll('.field-resize-handle').forEach((handle) => {
     handle.addEventListener('pointerdown', (event) => startFieldResize(event, Number(handle.dataset.fieldIndex), handle));
@@ -733,7 +730,6 @@ function openFieldMenu(index, anchor) {
     byId('field-menu-name').textContent = field.name;
     byId('field-menu-type').textContent = typeLabel(field.type);
     positionPopover(byId('field-menu'), anchor.getBoundingClientRect(), 230);
-    anchor.classList.add('is-open');
   });
 }
 
@@ -1041,7 +1037,6 @@ function closeOverlay({ restoreFocus = true } = {}) {
   if (id === 'scripts-drawer') scriptTimer = null;
   byId(id).hidden = true;
   trigger?.setAttribute('aria-expanded', 'false');
-  document.querySelectorAll('.field-menu-trigger.is-open').forEach((button) => button.classList.remove('is-open'));
   overlayState = { id: null, trigger: null };
   openFieldIndex = null;
   openRowIndex = null;
