@@ -529,7 +529,7 @@ function KnowledgeIndexOverview({ snapshot, onReview }: { snapshot: VaultIntelli
 	const searchPercent = discovered > 0 && ready !== null ? Math.min(100, Math.max(0, ready / discovered * 100)) : 0;
 	const percent = Math.round(searchPercent / 4);
 	const readinessNote = ready !== null && ready > discovered
-		? `${formatNumber(ready)} search records exceed ${formatNumber(discovered)} discovered objects; rebuild the Index baseline.`
+		? 'Search baseline needs a rebuild before it can be compared with current Vault contents.'
 		: snapshot.indexReadiness.pendingOrExcluded === null
 			? 'Pending and excluded counts are not reported.'
 			: `${formatNumber(snapshot.indexReadiness.pendingOrExcluded)} pending or excluded by current Index evidence.`;
@@ -550,7 +550,12 @@ function openActivityRecord(runtime: VaultIntelligenceWorkspaceRuntime, record: 
 
 function IndexMeter({ label, value, total }: { label: string; value: number | null; total: number }) {
 	const percent = value === null || total === 0 ? 0 : Math.min(100, value / total * 100);
-	return <div className="pk-vi-index-meter"><span>{label}</span><i><b style={{ width: `${percent}%` }} /></i><strong>{value === null ? 'Not reported' : `${formatNumber(value)} / ${formatNumber(total)}`}</strong></div>;
+	const isBaselineMismatch = value !== null && value > total;
+	const status = value === null ? 'Not reported' : isBaselineMismatch ? 'Rebuild needed' : value >= total ? 'Ready' : `${formatNumber(value)} files ready`;
+	const detail = value === null
+		? `${label} has not been reported by the Index runtime.`
+		: `${formatNumber(value)} indexed search records are reported against ${formatNumber(total)} discovered Vault objects.${isBaselineMismatch ? ' The counts use different baselines; rebuild the Index to reconcile them.' : ''}`;
+	return <div className="pk-vi-index-meter"><span>{label}<DescriptionTooltip text={detail} /></span><i><b style={{ width: `${percent}%` }} /></i><strong>{status}</strong></div>;
 }
 
 function activityIcon(kind: VaultIntelligenceSnapshot['recentActivity'][number]['kind']) {
