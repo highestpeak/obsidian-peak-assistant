@@ -524,6 +524,64 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .ai-composer label button svg { width: 12px; height: 12px; }
 .ai-composer > small { display: block; padding: 6px 2px 0; color: var(--ink-faint); font-size: 7.5px; }
 
+/* Ask AI is a working surface, not a miniature inspector. */
+.ai-drawer { width: min(440px, calc(100% - 20px)); }
+.ai-drawer-head { min-height: 66px; grid-template-columns: 38px minmax(0, 1fr) 32px; padding: 0 15px; gap: 11px; }
+.ai-drawer-head strong { font-size: 14px; }
+.ai-drawer-head small { font-size: 11px; }
+.ai-drawer-head > button { width: 32px; height: 32px; }
+.ai-drawer-head > button svg { width: 15px; height: 15px; }
+.ai-mark { width: 36px; height: 36px; }
+.ai-mark svg { width: 17px; height: 17px; }
+.ai-context-strip { min-height: 43px; padding: 0 15px; gap: 9px; }
+.ai-context-strip span { font-size: 9px; }
+.ai-context-strip strong { font-size: 11px; }
+.ai-context-strip small { max-width: 158px; font-size: 9px; }
+.ai-thread { padding: 18px 18px 26px; }
+.ai-welcome { min-height: 156px; padding: 20px 28px; gap: 9px; }
+.ai-welcome-icon { width: 36px; height: 36px; }
+.ai-welcome-icon svg { width: 17px; height: 17px; }
+.ai-welcome strong { font-size: 14px; }
+.ai-welcome small { max-width: 330px; font-size: 11.5px; }
+.ai-user-message { margin-bottom: 12px; padding: 10px 12px; font-size: 12px; }
+.ai-run-card > header { min-height: 45px; padding: 0 13px; }
+.ai-run-card > header strong { font-size: 12px; }
+.ai-run-card > header small { font-size: 10px; }
+.ai-run-steps { padding: 11px 13px 13px; gap: 9px; font-size: 10.5px; }
+.ai-run-steps li span { width: 15px; height: 15px; }
+.ai-run-steps li.is-done span::after { font-size: 10px; }
+.ai-formula-card > header, .ai-summary-card > header { min-height: 43px; padding: 0 13px; }
+.ai-formula-card > header span, .ai-summary-card > header span { font-size: 12px; }
+.ai-formula-card > header small, .ai-summary-card > header small { font-size: 10px; }
+.ai-formula-name { padding: 12px 13px 8px; }
+.ai-formula-name span, .ai-result-preview span { font-size: 9px; }
+.ai-formula-name strong { font-size: 12px; }
+.ai-formula-name small { font-size: 8.5px; }
+.ai-formula-card code { min-height: 55px; margin: 0 13px; padding: 10px; font-size: 10.5px; }
+.ai-formula-check { margin: 9px 13px 0; padding: 9px 10px; }
+.ai-formula-check span { font-size: 10.5px; }
+.ai-formula-check small { font-size: 9px; }
+.ai-formula-explanation { margin: 0 13px 10px; padding: 10px; font-size: 10.5px; }
+.ai-result-preview { padding: 11px 13px; }
+.ai-result-preview strong { font-size: 10px; }
+.ai-formula-actions { padding: 11px 13px; }
+.ai-formula-actions button { height: 31px; padding: 0 11px; font-size: 10.5px; }
+.ai-formula-actions svg { width: 13px; height: 13px; }
+.ai-summary-card > strong { padding: 13px 13px 8px; font-size: 12px; }
+.ai-summary-card ol { padding: 0 13px 9px; gap: 9px; }
+.ai-summary-card li { grid-template-columns: 29px minmax(0, 1fr); }
+.ai-summary-card li > span { width: 28px; height: 21px; font-size: 9px; }
+.ai-summary-card b { font-size: 10.5px; }
+.ai-summary-card li small { font-size: 10px; }
+.ai-composer { padding: 13px; }
+.ai-suggestions { padding-bottom: 9px; gap: 7px; }
+.ai-suggestions button { height: 30px; padding: 0 10px; font-size: 10px; }
+.ai-composer label { min-height: 67px; grid-template-columns: minmax(0, 1fr) 34px; padding: 9px; gap: 7px; }
+.ai-composer textarea { min-height: 45px; font-size: 13px; }
+.ai-composer label button { width: 33px; height: 33px; }
+.ai-composer label button svg { width: 15px; height: 15px; }
+.ai-composer > small { padding-top: 8px; font-size: 9px; }
+
 @media (max-width: 1100px) {
   .app-shell { grid-template-columns: 210px minmax(0, 1fr); }
   .view-note, .typed-field-button, .selection-help { display: none; }
