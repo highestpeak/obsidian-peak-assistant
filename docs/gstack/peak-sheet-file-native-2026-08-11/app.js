@@ -464,6 +464,7 @@ function updateSelectionSummary() {
   const value = current().rows[gridState.focusRow]?.[field?.id] ?? '';
   byId('formula-input').value = field?.type === 'formula' ? field.formula : String(value);
   syncFormulaInputWidth();
+  setFormulaShortcutVisible(false);
   syncAiContext(label, count);
 }
 
@@ -474,7 +475,13 @@ function syncFormulaInputWidth() {
   const style = window.getComputedStyle(input);
   context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
   const width = Math.ceil(context.measureText(input.value || ' ').width + 20);
-  input.style.width = `${Math.max(96, Math.min(500, width))}px`;
+  const resolvedWidth = Math.max(108, Math.min(500, width));
+  input.style.width = `${resolvedWidth}px`;
+  input.parentElement?.style.setProperty('--formula-input-width', `${resolvedWidth}px`);
+}
+
+function setFormulaShortcutVisible(visible) {
+  byId('formula-shortcut-badge').classList.toggle('is-visible', visible);
 }
 
 function selectedValues(bounds) {
@@ -1548,7 +1555,11 @@ byId('formula-input').addEventListener('keydown', (event) => {
   byId('ai-prompt').value = 'Add a Days left formula column for unfinished tasks';
   runAi('formula');
 });
-byId('formula-input').addEventListener('input', syncFormulaInputWidth);
+byId('formula-input').addEventListener('input', (event) => {
+  syncFormulaInputWidth();
+  setFormulaShortcutVisible(Boolean(event.currentTarget.value.trim()));
+});
+byId('formula-input').addEventListener('blur', () => setFormulaShortcutVisible(false));
 byId('table-search').addEventListener('input', (event) => {
   tableQuery = event.target.value.trim().toLowerCase();
   renderTable();

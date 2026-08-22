@@ -118,16 +118,15 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .ai-button.is-thinking .ai-button-orbit { opacity: 1; animation: ai-button-pulse 1.2s ease-out infinite; }
 @keyframes ai-button-pulse { from { transform: scale(.2); opacity: .65; } to { transform: scale(1.3); opacity: 0; } }
 
-.formula-bar { display: grid; align-items: center; grid-template-columns: 50px 36px minmax(260px, 680px) minmax(0, 1fr); border-bottom: 1px solid var(--line); }
+.formula-bar { display: grid; align-items: center; grid-template-columns: 50px 36px minmax(0, 1fr); border-bottom: 1px solid var(--line); }
 .formula-bar > span:first-child { align-self: stretch; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line); color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
 .formula-bar strong { display: grid; align-self: stretch; place-items: center; border-right: 1px solid var(--line); color: var(--accent); font-family: Georgia, serif; font-size: 11px; font-style: italic; }
-.formula-entry { display: flex; align-items: center; min-width: 0; height: 100%; padding: 0 5px; gap: 5px; }
-.formula-bar input { width: 96px; height: 25px; flex: 0 0 auto; margin: 0; padding: 0 8px; border: 1px solid transparent; outline: 0; background: transparent; font-size: 10.5px; }
+.formula-entry { position: relative; display: flex; align-items: center; min-width: 0; height: 100%; padding: 0 5px; }
+.formula-bar input { width: 108px; height: 28px; flex: 0 0 auto; margin: 0; padding: 0 8px; border: 1px solid transparent; outline: 0; background: transparent; font-size: 12px; }
 .formula-bar input:focus { border-color: var(--accent-line); }
-.formula-shortcut-badge { display: inline-flex; align-items: center; flex: none; height: 20px; padding: 0 5px; gap: 4px; border: 1px solid #ded7eb; border-radius: 3px; color: #6a518f; background: #faf8fd; font-size: 8px; white-space: nowrap; }
-.formula-shortcut-badge kbd { padding: 0; border: 0; color: #5e468c; background: transparent; font: 650 7.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
-.formula-hint { display: flex; align-items: center; min-width: 0; padding-left: 10px; gap: 5px; color: var(--ink-faint); font-size: 9.5px; white-space: nowrap; }
-.formula-hint svg { width: 12px; height: 12px; color: var(--accent); }
+.formula-shortcut-badge { position: absolute; z-index: 5; left: calc(var(--formula-input-width, 108px) + 10px); display: inline-flex; align-items: center; height: 24px; padding: 0 7px; gap: 5px; border: 1px solid #cec1e5; border-radius: 4px; opacity: 0; transform: translate(-4px, 1px); color: #5d4389; background: #fcfaff; box-shadow: 0 3px 10px rgba(68,50,105,.1); font-size: 10px; font-weight: 600; white-space: nowrap; pointer-events: none; transition: opacity 130ms ease, transform 130ms ease; }
+.formula-shortcut-badge.is-visible { opacity: 1; transform: translate(0, 1px); }
+.formula-shortcut-badge kbd { padding: 0; border: 0; color: #4e357c; background: transparent; font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .view-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .view-panel { display: none; width: 100%; height: 100%; }
@@ -525,7 +524,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 
 @media (max-width: 1100px) {
   .app-shell { grid-template-columns: 210px minmax(0, 1fr); }
-  .view-note, .formula-hint, .typed-field-button, .selection-help { display: none; }
+  .view-note, .typed-field-button, .selection-help { display: none; }
   .toolbar-primary { grid-template-columns: max-content minmax(112px, 160px) minmax(0, 1fr); }
   .calendar-shell { grid-template-columns: minmax(580px, 1fr); overflow: auto; }
   .agenda { display: none; }

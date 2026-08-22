@@ -62,7 +62,7 @@ const checks = [
   ['multi-filter is a working table view control', html.includes('id="filter-button"') && html.includes('id="filter-menu"') && html.includes('id="add-filter-rule"') && js.includes('function applyTableFilter') && js.includes('tableFilters.every') && js.includes('filterDraft.push')],
   ['multi-sort is a working table view control', html.includes('id="sort-button"') && html.includes('id="sort-menu"') && html.includes('id="add-sort-rule"') && js.includes('function applyTableSort') && js.includes('function compareRowsByRules') && js.includes('sortDraft.push')],
   ['multi-group is a working table view control', html.includes('id="group-rules"') && html.includes('id="add-group-rule"') && js.includes('function groupedTableRows') && js.includes('tableGroupFields') && js.includes('groupDraft.push')],
-  ['formula bar exposes a near-text AI shortcut', html.includes('class="formula-entry"') && html.includes('class="formula-shortcut-badge"') && js.includes('function syncFormulaInputWidth') && js.includes("byId('formula-input').addEventListener('keydown'") && js.includes("runAi('formula')")],
+  ['formula bar exposes a typed-only near-text AI shortcut', html.includes('class="formula-entry"') && html.includes('id="formula-shortcut-badge"') && !html.includes('拖选范围后 Ask AI') && js.includes('function syncFormulaInputWidth') && js.includes('function setFormulaShortcutVisible') && js.includes("byId('formula-input').addEventListener('keydown'") && js.includes("runAi('formula')")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
