@@ -24245,3 +24245,32 @@
 .peak-vault-intelligence-view .pk-vi-estimate-help > span { display: none; }
 .peak-vault-intelligence-view .pk-vi-estimate-help:hover > span,
 .peak-vault-intelligence-view .pk-vi-estimate-help:focus > span { display: grid; }
+
+/* Scope chips reserve fixed lanes for their count and remove action. */
+.peak-vault-intelligence-view .pk-vi-scope-selected-row .pk-vi-selected-paths > span {
+  position: relative;
+  display: block;
+  max-width: min(440px, 100%);
+  padding: 8px 50px 8px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.peak-vault-intelligence-view .pk-vi-scope-selected-row .pk-vi-selected-paths > span > b {
+  position: absolute;
+  top: 50%;
+  right: 29px;
+  transform: translateY(-50%);
+  font-variant-numeric: tabular-nums;
+}
+.peak-vault-intelligence-view .pk-vi-scope-selected-row .pk-vi-selected-paths > span > .pk-btn {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid !important;
+  width: 18px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  place-items: center;
