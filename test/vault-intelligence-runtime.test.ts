@@ -132,6 +132,14 @@ function planFor(
 }
 
 async function main(): Promise<void> {
+	const coverageRuntime = createRuntime({
+		getIndexStatus: async () => ({ indexBuiltAt: 1, indexedDocs: 48_667, isReady: true }),
+		countIndexedDocuments: async (paths: readonly string[]) => paths.includes(file.path) ? 1 : 0,
+	});
+	await coverageRuntime.refresh();
+	assert.equal(coverageRuntime.getSnapshot().indexReadiness.searchReady, 1, 'readiness must count current unique indexed Vault objects, not the historical write counter');
+	assert.equal(coverageRuntime.getSnapshot().indexReadiness.discovered, 2);
+
 	const runtime = createRuntime();
 	await runtime.refresh();
 	assert.equal(routeCandidatesRefreshed, 1, 'refresh must discover locally exposed model candidates before resolving scan routes');
@@ -304,7 +312,8 @@ async function main(): Promise<void> {
 			return { processed: 1, skippedWrongTenant: 0, errors: [] };
 		},
 		runMobiusGlobalMaintenance: async () => undefined,
-		getIndexStatus: async () => ({ indexedDocs: 2 }),
+		getIndexStatus: async () => ({ indexBuiltAt: 1, indexedDocs: 2, isReady: true }),
+		countIndexedDocuments: async (paths: readonly string[]) => new Set(paths).size,
 	};
 	const enrichedRuntime = createRuntime(indexService);
 	const enrichedPlan = planFor('broken-links', [otherFile.path]);

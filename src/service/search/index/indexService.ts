@@ -523,15 +523,26 @@ export class IndexService
 	/** Index build timestamp and document count (vault tenant). */
 	async getIndexStatus(): Promise<GetIndexStatusResponse> {
 		const indexStateRepo = sqliteStoreManager.getIndexStateRepo('vault');
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo('vault');
 		const builtAtRaw = await indexStateRepo.get(INDEX_STATE_KEYS.builtAt);
-		const indexedRaw = await indexStateRepo.get(INDEX_STATE_KEYS.indexedDocs);
 		const indexBuiltAt = builtAtRaw != null ? Number(builtAtRaw) : null;
-		const indexedDocs = indexedRaw != null ? Number(indexedRaw) : null;
+		const indexedDocs = builtAtRaw == null ? null : (await indexedDocumentRepo.getAllIndexedPaths()).size;
 		return {
 			indexBuiltAt: Number.isFinite(indexBuiltAt as any) ? indexBuiltAt : null,
-			indexedDocs: Number.isFinite(indexedDocs as any) ? indexedDocs : null,
+			indexedDocs,
 			isReady: Boolean(builtAtRaw),
 		};
+	}
+
+	async countIndexedDocuments(paths: readonly string[]): Promise<number> {
+		if (paths.length === 0) return 0;
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo('vault');
+		const uniquePaths = [...new Set(paths)];
+		let count = 0;
+		for (let offset = 0; offset < uniquePaths.length; offset += 400) {
+			count += (await indexedDocumentRepo.batchCheckIndexed(uniquePaths.slice(offset, offset + 400))).size;
+		}
+		return count;
 	}
 
 	/**

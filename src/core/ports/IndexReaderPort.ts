@@ -44,6 +44,8 @@ import type { GetIndexStatusResponse } from '@/core/types/index-status';
 export interface IndexReaderPort {
 	/** Snapshot of readiness, built-at timestamp, and indexed-doc count. */
 	getIndexStatus(): Promise<GetIndexStatusResponse>;
+	/** Count unique indexed documents that still exist in the supplied current Vault paths. */
+	countIndexedDocuments(paths: readonly string[]): Promise<number>;
 	/** Resolve which tenant owns a vault-relative path. */
 	getTenantForPath(path: string): IndexTenant;
 	/**

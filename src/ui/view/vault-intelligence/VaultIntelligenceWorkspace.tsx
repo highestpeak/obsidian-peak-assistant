@@ -548,12 +548,11 @@ function openActivityRecord(runtime: VaultIntelligenceWorkspaceRuntime, record: 
 
 function IndexMeter({ label, value, total }: { label: string; value: number | null; total: number }) {
 	const percent = value === null || total === 0 ? 0 : Math.min(100, value / total * 100);
-	const isBaselineMismatch = value !== null && value > total;
 	const status = value === null ? 'Not reported' : value >= total ? 'Ready' : `${formatNumber(value)} ready`;
 	const detail = value === null
 		? `${label} has not been reported by the Index runtime.`
-		: `${formatNumber(value)} indexed search records are reported against ${formatNumber(total)} discovered Vault objects.${isBaselineMismatch ? ' The counts use different baselines; rebuild the Index to reconcile them.' : ''}`;
-	return <div className="pk-vi-index-meter"><span>{label}<DescriptionTooltip text={detail} /></span><i><b style={{ width: `${percent}%` }} /></i>{isBaselineMismatch ? <strong className="is-baseline-mismatch">{formatNumber(value)} indexed · {formatNumber(total)} objects</strong> : <strong>{status}</strong>}</div>;
+		: `${formatNumber(value)} of ${formatNumber(total)} current Vault objects have this Index output.`;
+	return <div className="pk-vi-index-meter"><span>{label}<DescriptionTooltip text={detail} /></span><i><b style={{ width: `${percent}%` }} /></i><strong>{value === null ? status : `${formatNumber(value)} / ${formatNumber(total)}`}</strong></div>;
 }
 
 function activityIcon(kind: VaultIntelligenceSnapshot['recentActivity'][number]['kind']) {

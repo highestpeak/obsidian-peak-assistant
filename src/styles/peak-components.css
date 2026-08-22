@@ -21868,14 +21868,16 @@
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meters {
-  display: block;
+  display: grid;
+  grid-template-columns: 126px minmax(220px, 1fr) max-content;
+  grid-template-rows: repeat(4, 30px) auto;
+  column-gap: 9px;
+  row-gap: 0;
   padding: 12px 14px;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter {
-  grid-template-columns: 92px minmax(100px, 1fr) 70px;
-  gap: 9px;
-  min-height: 30px;
+  display: contents;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > span {
@@ -21886,14 +21888,6 @@
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > strong {
   color: #6f6b75;
   font-size: 8.5px;
-}
-.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > strong.is-baseline-mismatch {
-  font-size: 9px;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter {
-  grid-template-columns: 126px minmax(220px, 1fr) 168px;
 }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > span:first-child {
   white-space: nowrap;
@@ -21940,6 +21934,7 @@
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meters > small {
+  grid-column: 1 / -1;
   display: block;
   margin-top: 7px;
   padding: 8px 9px;

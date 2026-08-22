@@ -124,7 +124,8 @@ export class VaultIntelligenceRuntime {
 			const outputs = this.deps.resolveGeneratedOutputs();
 			await this.deps.refreshOperationRouteCandidates?.();
 			const operationRoutes = this.deps.resolveOperationRoutes();
-			const [persisted, digest, events, projectCount, conversationCount, composerEventCount, sourceActivity, indexStatus] = await Promise.all([
+			const indexService = this.deps.resolveIndexService();
+			const [persisted, digest, events, projectCount, conversationCount, composerEventCount, sourceActivity, indexStatus, currentIndexedCount] = await Promise.all([
 				store?.load().catch(() => null) ?? Promise.resolve(null),
 				review?.getDigest().catch(() => null) ?? Promise.resolve(null),
 				store?.listEvents().catch(() => []) ?? Promise.resolve([]),
@@ -137,13 +138,14 @@ export class VaultIntelligenceRuntime {
 						.then((result) => result.events.length).catch(() => 0)
 					: Promise.resolve(0),
 				outputs ? collectSourceActivity(outputs).catch(() => []) : Promise.resolve([]),
-				this.deps.resolveIndexService()?.getIndexStatus().catch(() => null) ?? Promise.resolve(null),
+				indexService?.getIndexStatus().catch(() => null) ?? Promise.resolve(null),
+				indexService?.countIndexedDocuments(files.map((file) => file.path)).catch(() => null) ?? Promise.resolve(null),
 			]);
 			const recovered = this.recoverPersistedState(persisted);
 			const changedSinceScan = recovered.changedCursorAt
 				? files.filter((file) => file.stat.mtime > recovered.changedCursorAt!).length
 				: null;
-			const searchReady = indexStatus?.indexedDocs ?? null;
+			const searchReady = indexStatus?.isReady ? currentIndexedCount : null;
 			const recentActivity = recovered.recentActivity;
 			const activitySessions = buildActivitySessions([...sourceActivity, ...recentActivity]);
 			this.patch({
@@ -1066,7 +1068,9 @@ export class VaultIntelligenceRuntime {
 			? files.filter((file) => file.stat.mtime > this.snapshot.changedCursorAt!).length
 			: null;
 		const indexStatus = await this.deps.resolveIndexService()?.getIndexStatus().catch(() => null) ?? null;
-		const searchReady = indexStatus?.indexedDocs ?? null;
+		const searchReady = indexStatus?.isReady
+			? await this.deps.resolveIndexService()?.countIndexedDocuments(files.map((file) => file.path)).catch(() => null) ?? null
+			: null;
 		this.patch({
 			digest,
 			fileTypes: summarizeVaultFileTypes(files),

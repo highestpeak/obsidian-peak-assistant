@@ -20,7 +20,7 @@ const serviceSource = fs.readFileSync(SERVICE_PATH, 'utf8');
 // ---------------------------------------------------------------------------
 
 function testPortShape(): void {
-	const required = ['getIndexStatus(', 'getTenantForPath(', 'isMobiusMaintenanceRecommended('];
+	const required = ['getIndexStatus(', 'countIndexedDocuments(', 'getTenantForPath(', 'isMobiusMaintenanceRecommended('];
 	for (const m of required) {
 		assert.ok(portSource.includes(m), `IndexReaderPort missing method '${m}'`);
 	}
@@ -42,6 +42,7 @@ function testServiceImplementsPort(): void {
 		/class IndexService\s+implements\s+IndexReaderPort/,  // may be followed by comma-separated ports; regex is anchored on `IndexReaderPort`.
 		'IndexService must declare `implements IndexReaderPort`',
 	);
+	assert.match(serviceSource, /offset \+= 400/, 'current Vault coverage must batch paths below SQLite variable limits');
 	console.log('PASS: serviceImplementsPort');
 }
 
@@ -55,6 +56,9 @@ function testStubSatisfiesPort(): void {
 	const stub: IndexReaderPort = {
 		async getIndexStatus() {
 			return { indexBuiltAt: 1234, indexedDocs: 42, isReady: true };
+		},
+		async countIndexedDocuments(paths) {
+			return new Set(paths).size;
 		},
 		getTenantForPath(_path: string) {
 			return 'vault' as const;
