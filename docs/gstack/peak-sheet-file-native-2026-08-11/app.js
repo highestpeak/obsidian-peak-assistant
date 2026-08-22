@@ -463,7 +463,18 @@ function updateSelectionSummary() {
   const field = current().fields[gridState.focusField];
   const value = current().rows[gridState.focusRow]?.[field?.id] ?? '';
   byId('formula-input').value = field?.type === 'formula' ? field.formula : String(value);
+  syncFormulaInputWidth();
   syncAiContext(label, count);
+}
+
+function syncFormulaInputWidth() {
+  const input = byId('formula-input');
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) return;
+  const style = window.getComputedStyle(input);
+  context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  const width = Math.ceil(context.measureText(input.value || ' ').width + 20);
+  input.style.width = `${Math.max(96, Math.min(500, width))}px`;
 }
 
 function selectedValues(bounds) {
@@ -1537,6 +1548,7 @@ byId('formula-input').addEventListener('keydown', (event) => {
   byId('ai-prompt').value = 'Add a Days left formula column for unfinished tasks';
   runAi('formula');
 });
+byId('formula-input').addEventListener('input', syncFormulaInputWidth);
 byId('table-search').addEventListener('input', (event) => {
   tableQuery = event.target.value.trim().toLowerCase();
   renderTable();
