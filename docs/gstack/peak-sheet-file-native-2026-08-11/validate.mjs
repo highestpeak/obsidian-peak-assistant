@@ -49,7 +49,7 @@ const checks = [
   ['drawer scroll ownership', css.includes('.scripts-body { min-height: 0') && css.includes('.ai-thread { min-height: 0') && css.includes('grid-template-rows: auto auto minmax(0, 1fr) auto')],
   ['long text has constrained slots', css.includes('.status-bar > span { min-width: 0') && css.includes('.saved-script strong, .saved-script small') && css.includes('text-overflow: ellipsis')],
   ['semantic field width contracts', js.includes('const FIELD_WIDTH_CONTRACT') && js.includes('function fieldWidth(field)') && js.includes('if (!field) return 160') && js.includes('function startFieldResize')],
-  ['column identity keeps its width', css.includes('.field-select-button .column-letter { flex: none') && css.includes('.field-select-button .field-title { min-width: 0') && css.includes('.field-resize-handle')],
+  ['column headers use Excel letters only', js.includes('aria-label="Column ${columnName(index)}') && !js.includes('field-title${field ?') && css.includes('.field-select-button { display: flex; align-items: center; justify-content: center') && css.includes('.field-resize-handle')],
   ['unified overlay state machine', js.includes('let overlayState = { id: null, trigger: null }') && js.includes('function openOverlay') && js.includes('function closeOverlay') && js.includes("overlayState.id === id && overlayState.trigger === trigger")],
   ['overlay close and focus contract', js.includes("event.key !== 'Escape'") && js.includes('overlay?.contains(event.target)') && js.includes("trigger.focus({ preventScroll: true })")],
   ['host boundary and fixture checklist', css.includes('.peak-sheet-root, .peak-sheet-root *') && readme.includes('### 极端 fixture 检查表') && readme.includes('file://')],
