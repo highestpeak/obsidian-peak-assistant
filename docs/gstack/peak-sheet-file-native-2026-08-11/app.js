@@ -476,7 +476,7 @@ function syncFormulaInputWidth() {
   context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
   const width = Math.ceil(context.measureText(input.value || ' ').width + 20);
   const resolvedWidth = Math.max(108, Math.min(500, width));
-  input.style.width = `${resolvedWidth}px`;
+  input.style.removeProperty('width');
   input.parentElement?.style.setProperty('--formula-input-width', `${resolvedWidth}px`);
 }
 

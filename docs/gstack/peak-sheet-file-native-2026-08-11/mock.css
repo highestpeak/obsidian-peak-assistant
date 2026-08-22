@@ -122,9 +122,10 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .formula-bar > span:first-child { align-self: stretch; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line); color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
 .formula-bar strong { display: grid; align-self: stretch; place-items: center; border-right: 1px solid var(--line); color: var(--accent); font-family: Georgia, serif; font-size: 11px; font-style: italic; }
 .formula-entry { position: relative; display: flex; align-items: center; min-width: 0; height: 100%; padding: 0 5px; }
-.formula-bar input { width: 108px; height: 30px; flex: 0 0 auto; margin: 0; padding: 0 9px; border: 1px solid transparent; outline: 0; background: transparent; font-size: 13px; }
-.formula-bar input:focus { border-color: var(--accent-line); }
-.formula-shortcut-badge { position: absolute; z-index: 5; left: calc(var(--formula-input-width, 108px) + 12px); display: inline-flex; align-items: center; height: 32px; padding: 0 10px; gap: 8px; border: 1px solid #af94da; border-radius: 5px; opacity: 0; transform: translate(-4px, 1px); color: #43276e; background: #fcfaff; box-shadow: 0 4px 12px rgba(68,50,105,.14); font-size: 12px; font-weight: 750; white-space: nowrap; pointer-events: none; transition: opacity 130ms ease, transform 130ms ease; }
+.formula-bar input { width: 100% !important; height: 30px; flex: 1 1 auto; margin: 0; padding: 0 9px; border: 1px solid transparent; outline: 0; background: transparent; font-size: 13px; }
+.formula-bar input:focus { border-color: transparent; }
+.formula-entry:focus-within { background: #fdfcff; }
+.formula-shortcut-badge { position: absolute; z-index: 5; left: min(calc(var(--formula-input-width, 108px) + 12px), calc(100% - 224px)); display: inline-flex; align-items: center; height: 32px; padding: 0 10px; gap: 8px; border: 1px solid #af94da; border-radius: 5px; opacity: 0; transform: translate(-4px, 1px); color: #43276e; background: #fcfaff; box-shadow: 0 4px 12px rgba(68,50,105,.14); font-size: 12px; font-weight: 750; white-space: nowrap; pointer-events: none; transition: opacity 130ms ease, transform 130ms ease; }
 .formula-shortcut-badge.is-visible { opacity: 1; transform: translate(0, 1px); }
 .formula-shortcut-keys { display: inline-flex; align-items: center; gap: 3px; }
 .formula-shortcut-badge kbd { padding: 3px 5px; border: 1px solid #c7b4e4; border-radius: 3px; color: #3e246a; background: #f1eafd; font: 750 10px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .01em; }
