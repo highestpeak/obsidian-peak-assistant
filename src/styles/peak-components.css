@@ -6716,6 +6716,12 @@
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav-map-menu > .pk-btn:hover,
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav-map-menu > .pk-btn:focus-visible { color: #5545bf !important; background: #f0edff !important; }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav-scan.pk-btn { margin-left: 4px; color: #fff !important; background: #6754d7 !important; font-size: 12px; font-weight: 700; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav-scan-wrap { position: relative; display: flex; height: 34px; align-items: center; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-nav-scan-wrap .pk-vi-nav-scan.pk-btn { margin-left: 4px; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-scan-info-popover { position: absolute; z-index: 50; top: 100%; left: 4px; display: grid; width: 340px; gap: 9px; padding: 14px; border: 1px solid #d9d3e7; border-radius: 10px; color: #6f6c77; background: #fff; box-shadow: 0 10px 26px rgba(27, 24, 38, .14); font-size: 12px; line-height: 1.45; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-scan-info-popover > strong { color: #27242d; font-size: 13px; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-scan-info-popover > div { display: grid; gap: 3px; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-scan-info-popover small { color: #5545bf; font-size: 11px; font-weight: 700; }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-map-title {
   display: flex;

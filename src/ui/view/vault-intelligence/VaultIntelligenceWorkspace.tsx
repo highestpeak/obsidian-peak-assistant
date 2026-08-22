@@ -243,19 +243,19 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 	const currentSurface = route.kind === 'surface' ? route.surface : null;
 	const active = snapshot.run.status === 'running' || snapshot.run.status === 'stopping';
 	const resumable = snapshot.run.status === 'interrupted';
-	const [infoOpen, setInfoOpen] = useState(false);
+	const [scanInfoOpen, setScanInfoOpen] = useState(false);
 	const [mapMenuOpen, setMapMenuOpen] = useState(false);
-	const infoButtonRef = useRef<HTMLButtonElement>(null);
+	const scanButtonRef = useRef<HTMLButtonElement>(null);
 	useEffect(() => {
-		if (!infoOpen) return;
+		if (!scanInfoOpen) return;
 		const closeOnEscape = (event: KeyboardEvent) => {
 			if (event.key !== 'Escape') return;
-			setInfoOpen(false);
-			infoButtonRef.current?.focus();
+			setScanInfoOpen(false);
+			scanButtonRef.current?.focus();
 		};
 		window.addEventListener('keydown', closeOnEscape);
 		return () => window.removeEventListener('keydown', closeOnEscape);
-	}, [infoOpen]);
+	}, [scanInfoOpen]);
 	return (
 		<header className="pk-vi-header">
 			<div className="pk-vi-title-row">
@@ -267,12 +267,6 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 						{snapshot.changedSinceScan !== null && snapshot.changedSinceScan > 0 && <Button variant="ghost" className="pk-vi-change-status" onClick={() => onRoute({ kind: 'setup' })}>· {formatNumber(snapshot.changedSinceScan)} changed <strong>Review plan</strong><ChevronRight size={12} /></Button>}
 					</div>
 				</div>
-				<div className="pk-vi-top-actions">
-					<div className="pk-vi-info-wrap">
-						<Button ref={infoButtonRef} variant="outline" className="pk-vi-icon-button" aria-label="About Vault scans" aria-expanded={infoOpen} onClick={() => setInfoOpen((open) => !open)}><Info size={16} /></Button>
-						{infoOpen && <div className="pk-vi-info-popover" role="dialog" aria-label="About Vault scans"><strong>What a Vault scan does</strong><span>Discover and index current Vault objects, then publish review evidence and owner actions.</span><div><small>AI, provider and cost</small><span>The Scan plan shows every enabled AI operation, its selected provider/model and estimated use before it runs.</span></div><div><small>Write boundary</small><span>The Knowledge Index is Peak-owned and rebuildable. Markdown or frontmatter changes require a separate selected diff, Apply, and Verify.</span></div></div>}
-					</div>
-				</div>
 			</div>
 			<nav className="pk-vi-nav" aria-label="Vault Intelligence pages">
 				<Button variant="ghost" className={currentSurface === 'overview' ? 'is-active' : ''} onClick={() => onRoute({ kind: 'surface', surface: 'overview' })}>Overview</Button>
@@ -281,7 +275,10 @@ function WorkspaceHeader({ snapshot, route, onRoute, onPrimary }: {
 					{mapMenuOpen && <div className="pk-vi-nav-map-menu" role="menu" aria-label="Vault map view"><Button variant="ghost" role="menuitem" onClick={() => { onRoute({ kind: 'surface', surface: 'map', mapSurface: 'contents' }); setMapMenuOpen(false); }}>Vault contents</Button><Button variant="ghost" role="menuitem" onClick={() => { onRoute({ kind: 'surface', surface: 'map', mapSurface: 'activity' }); setMapMenuOpen(false); }}>Activity</Button></div>}
 				</div>
 				<Button variant="ghost" className={currentSurface === 'queue' ? 'is-active' : ''} onClick={() => onRoute({ kind: 'surface', surface: 'queue' })}>Work queue{snapshot.tasks.filter((task) => task.state !== 'verified').length > 0 && <span className="pk-vi-count">{snapshot.tasks.filter((task) => task.state !== 'verified').length}</span>}</Button>
-				<Button className="pk-vi-nav-scan" onClick={onPrimary}>{active ? <Activity size={15} /> : resumable ? <Play size={15} /> : <VaultReferenceIcon name="scan" size={15} />}{active ? 'View progress' : resumable ? 'Resume scan' : 'Scan Vault'}</Button>
+				<div className="pk-vi-nav-scan-wrap" onMouseEnter={() => setScanInfoOpen(true)} onMouseLeave={() => setScanInfoOpen(false)}>
+					<Button ref={scanButtonRef} className="pk-vi-nav-scan" aria-describedby={scanInfoOpen ? 'pk-vi-scan-help' : undefined} aria-expanded={scanInfoOpen} onFocus={() => setScanInfoOpen(true)} onClick={onPrimary}>{active ? <Activity size={15} /> : resumable ? <Play size={15} /> : <VaultReferenceIcon name="scan" size={15} />}{active ? 'View progress' : resumable ? 'Resume scan' : 'Scan Vault'}</Button>
+					{scanInfoOpen && <div id="pk-vi-scan-help" className="pk-vi-scan-info-popover" role="tooltip"><strong>What a Vault scan does</strong><span>Discover and index current Vault objects, then publish review evidence and owner actions.</span><div><small>AI, provider and cost</small><span>The Scan plan shows every enabled AI operation, its selected provider/model and estimated use before it runs.</span></div><div><small>Write boundary</small><span>The Knowledge Index is Peak-owned and rebuildable. Markdown or frontmatter changes require a separate selected diff, Apply, and Verify.</span></div></div>}
+				</div>
 			</nav>
 		</header>
 	);
