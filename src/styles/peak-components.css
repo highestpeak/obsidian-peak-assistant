@@ -21896,10 +21896,32 @@
 }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > strong.is-baseline-mismatch > span:first-child { color: #3a3742; }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter {
-  grid-template-columns: 176px minmax(220px, 460px) minmax(190px, 1fr);
+  grid-template-columns: 176px minmax(220px, 1fr) minmax(190px, auto);
 }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > span:first-child {
   white-space: nowrap;
+}
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-head {
+  position: relative;
+  width: fit-content;
+  cursor: help;
+}
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-head:focus-visible { outline: 2px solid #cfc8ed; outline-offset: 3px; border-radius: 3px; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-tooltip {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  padding: 10px 11px;
+  border: 1px solid #d9d3e7;
+  border-radius: 8px;
+  color: #6f6c77;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(27, 24, 38, .14);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meters > small {
