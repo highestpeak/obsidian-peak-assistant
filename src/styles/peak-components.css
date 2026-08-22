@@ -21902,10 +21902,14 @@
   white-space: nowrap;
 }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   position: relative;
   width: fit-content;
   cursor: help;
 }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-help { display: inline-flex; color: #74717c; }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-head:focus-visible { outline: 2px solid #cfc8ed; outline-offset: 3px; border-radius: 3px; }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-tooltip {
   position: absolute;
@@ -24236,3 +24240,8 @@
 .peak-vault-intelligence-view .pk-vi-selected-paths { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .peak-vault-intelligence-view .pk-vi-selected-paths > span { display: inline-flex; min-width: 0; max-width: 260px; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 999px; color: var(--pk-vi-accent); background: var(--pk-vi-accent-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
 .peak-vault-intelligence-view .pk-vi-selected-paths .pk-btn { width: 17px !important; min-width: 17px !important; height: 17px !important; min-height: 17px !important; padding: 0 !important; border: 0 !important; border-radius: 50% !important; color: inherit !important; background: transparent !important; }
+
+/* Estimate explanations are hover/focus tooltips, never persistent cards. */
+.peak-vault-intelligence-view .pk-vi-estimate-help > span { display: none; }
+.peak-vault-intelligence-view .pk-vi-estimate-help:hover > span,
+.peak-vault-intelligence-view .pk-vi-estimate-help:focus > span { display: grid; }
