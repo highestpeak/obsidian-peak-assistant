@@ -21888,15 +21888,12 @@
   font-size: 8.5px;
 }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > strong.is-baseline-mismatch {
-  display: grid;
-  gap: 2px;
   font-size: 9px;
   line-height: 1.2;
-  text-align: left;
+  white-space: nowrap;
 }
-.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > strong.is-baseline-mismatch > span:first-child { color: #3a3742; }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter {
-  grid-template-columns: 176px minmax(220px, 1fr) minmax(190px, auto);
+  grid-template-columns: 126px minmax(220px, 1fr) 168px;
 }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-meter > span:first-child {
   white-space: nowrap;
@@ -21905,12 +21902,26 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  position: relative;
   width: fit-content;
+}
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact > .pk-vi-index-impact-head > .pk-vi-index-impact-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+  min-height: 14px;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #74717c;
+  background: transparent;
   cursor: help;
 }
-.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-help { display: inline-flex; color: #74717c; }
-.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-head:focus-visible { outline: 2px solid #cfc8ed; outline-offset: 3px; border-radius: 3px; }
+.peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-help:focus-visible { outline: 1px solid #8f83d9; outline-offset: 2px; border-radius: 50%; }
 .peak-vault-intelligence-view.peak-vault-intelligence-view .pk-vi-index-impact-tooltip {
   position: absolute;
   z-index: 20;
