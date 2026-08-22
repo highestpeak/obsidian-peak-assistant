@@ -12,7 +12,7 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 - **Grid Core 优先**：统一成 `GridState = active cell + anchor + range + navigation/selecting/editing mode`。单击、拖选、Shift 扩展、方向键、Enter / F2、直接输入、Tab、Esc、Delete、复制/剪切/粘贴都围绕同一状态工作。
 - **默认就是大网格**：每张 Sheet 至少渲染 30 个虚拟列和 64 个虚拟行；`Blank Sheet.peaksheet` 用于直接体验空白工作面。虚拟区域不写入数据模型。
 - **按使用 materialize**：在虚拟单元格输入、粘贴一个矩形范围、双击虚拟表头命名，才创建对应 row 和 General/Text field。用户不需要先 Add Row / Add Column。
-- **Typed Field 是按需增强**：空列默认 General；`+` 和 `Typed field` 是 Select、Date、File、Formula、Script output 等高级字段入口，而不是开始输入前的必经步骤。
+- **Schema 不阻塞输入**：空列就是空列；直接输入、粘贴与 AI 生成会按使用 materialize，不出现“先填 Field name、再选 Field type”的中间表单。
 - **一级 Views 收敛**：只保留 Table / Board / Calendar。Chart 仍可由 AI 生成分析产物，但不占一级 View；Pivot 暂不进入网格。
 - **Data Ops 够用即可**：Filter / Sort / Group 保留；Group 面板直接提供 Count / Sum / Average / Min / Max，用轻量汇总覆盖常见 Pivot 需求。
 - **AI Formula 不膨胀**：自然语言生成、逐字公式反馈、Preview、类型检查、Explain、Fix 都在 Ask AI 侧栏完成。用户无需记忆大量函数。
@@ -25,7 +25,7 @@ Peak Sheet 默认 local-first；分享、多人协作、云端执行和 Schedule
 2. 选中虚拟单元格直接输入字符；按 Enter 保存并向下，Tab 保存并向右，Esc 取消。
 3. 在空白区域粘贴 TSV 矩形；对应 rows 和 General fields 自动 materialize。
 4. 拖选范围，尝试 Shift + Click / Arrow、Delete、Cmd/Ctrl + C / V / X；左下角同步显示范围和统计。
-5. 双击 `General` 虚拟表头直接命名；需要 Select、File、Formula 时再点右侧 `+` 或工具栏 `Typed field`。
+5. 继续直接在空列输入或粘贴；列会按使用 materialize，顶部仍保持 Excel 式字母列头。
 6. 打开 Group，查看按 Status 的 Count 汇总；不进入复杂 Pivot 工作面。
 7. 选择 Launch Tracker 的 Status / Due date 数据，打开 Ask AI：生成公式、查看类型检查、Explain / Fix，再 Preview 后 Insert。
 8. 点击顶部 `Scripts`，依次体验 Save、Preview、Run locally、Progress 和 History。

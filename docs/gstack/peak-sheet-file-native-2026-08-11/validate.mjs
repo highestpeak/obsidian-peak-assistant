@@ -25,7 +25,7 @@ const checks = [
   ['materialize on use', js.includes('function materializeRow') && js.includes('function materializeField') && js.includes('pasteIntoGrid') && readme.includes('按使用 materialize')],
   ['full keyboard editing', js.includes("event.key === 'F2'") && js.includes("event.key === 'Tab'") && js.includes("event.key === 'Escape'") && js.includes('beginCellEdit(cell, event.key)') && js.includes('clearSelectedRange')],
   ['range clipboard', js.includes('copySelectedRange') && js.includes('pasteIntoGrid') && js.includes("values.join('\\t')")],
-  ['typed fields are optional', html.includes('id="typed-field-button"') && html.includes('General / Text') && html.includes('Blank columns stay General')],
+  ['columns materialize without schema forms', !html.includes('id="typed-field-button"') && !html.includes('id="field-editor"') && !js.includes('function openFieldEditor') && js.includes('function materializeField')],
   ['range selection', js.includes('startCellSelection') && js.includes('extendDraggedSelection') && js.includes('event.shiftKey') && css.includes('.is-in-range')],
   ['selection statistics', js.includes('Sum ${sum}') && js.includes('Avg ${(sum / numbers.length).toFixed(1)}')],
   ['column context menu', html.includes('data-field-action="insert-left"') && html.includes('data-field-action="insert-right"') && !html.includes('field-menu-trigger') && js.includes("header.addEventListener('contextmenu'")],

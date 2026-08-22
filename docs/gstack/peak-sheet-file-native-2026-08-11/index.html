@@ -98,7 +98,6 @@
               <button type="button" class="tool-button" id="sort-button" data-overlay-trigger="sort-menu" aria-haspopup="dialog" aria-controls="sort-menu" aria-expanded="false"><svg><use href="#i-sort"/></svg>Sort</button>
               <button type="button" class="tool-button" id="group-button" data-overlay-trigger="group-menu" aria-haspopup="menu" aria-controls="group-menu" aria-expanded="false"><svg><use href="#i-group"/></svg>Group</button>
               <button type="button" class="tool-button"><svg><use href="#i-eye"/></svg>Fields</button>
-              <button type="button" class="tool-button typed-field-button" id="typed-field-button"><svg><use href="#i-plus"/></svg>Typed field</button>
             </div>
           </div>
           <div class="toolbar-actions">
@@ -215,7 +214,6 @@
 
   <section class="popover field-menu" id="field-menu" hidden aria-label="Column menu">
     <header><span><strong id="field-menu-name">Status</strong><small id="field-menu-type">Single select</small></span><kbd>⋮</kbd></header>
-    <button type="button" data-field-action="edit">Edit field</button>
     <button type="button" data-field-action="sort">Sort A → Z</button>
     <button type="button" data-field-action="filter">Filter by this field</button>
     <hr>
@@ -225,14 +223,6 @@
     <button type="button" data-field-action="hide">Hide from this view</button>
     <hr>
     <button type="button" class="danger" data-field-action="delete"><svg><use href="#i-trash"/></svg>Delete column</button>
-  </section>
-
-  <section class="popover field-editor" id="field-editor" hidden aria-label="Edit field">
-    <header><strong id="field-editor-title">Edit field</strong><button type="button" class="close-popover" aria-label="关闭">×</button></header>
-    <label>Field name<input id="field-name-input" value=""></label>
-    <label>Field type<select id="field-type-select"><optgroup label="Core fields"><option value="text">General / Text</option><option value="number">Number</option><option value="date">Date</option><option value="singleSelect">Single select</option><option value="checkbox">Checkbox</option><option value="link">Link</option><option value="file">File</option></optgroup><optgroup label="Computed"><option value="formula">Formula</option><option value="scriptOutput">Script output</option></optgroup></select></label>
-    <small class="field-editor-hint">Blank columns stay General. Create a typed field only when structure adds value.</small>
-    <div class="field-editor-actions"><button type="button" class="secondary close-popover">Cancel</button><button type="button" class="primary" id="save-field">Save field</button></div>
   </section>
 
   <section class="popover group-menu" id="group-menu" hidden aria-label="Group and aggregate">

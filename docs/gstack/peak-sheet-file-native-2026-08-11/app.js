@@ -170,21 +170,20 @@ function renderTable() {
   while (rows.length < visibleRowCount(dataset)) rows.push({ row: undefined, rowIndex: rows.length });
   const columns = Array.from({ length: visibleColumnCount(dataset) }, (_, index) => dataset.fields[index]);
   updateGridWidth();
-  const colgroup = `<colgroup><col style="width:48px">${columns.map((field) => `<col style="width:${fieldWidth(field)}px">`).join('')}<col style="width:44px"></colgroup>`;
+  const colgroup = `<colgroup><col style="width:48px">${columns.map((field) => `<col style="width:${fieldWidth(field)}px">`).join('')}</colgroup>`;
   const head = `<thead><tr><th class="row-index"><button type="button" class="select-all-cells" id="select-all-cells" aria-label="Select all cells"></button></th>${columns.map((field, index) => `
     <th class="field-head${field ? '' : ' is-virtual'}" data-field-index="${index}">
       <div class="field-head-shell" data-field-index="${index}">
         <button type="button" class="field-select-button" data-field-index="${index}" title="Click to select · Double-click to configure" aria-label="Column ${columnName(index)}${field ? `, ${escapeHtml(field.name)}` : ', empty'}"><span class="column-letter">${columnName(index)}</span></button>
         ${field ? `<span class="field-resize-handle" data-field-index="${index}" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize ${escapeHtml(field.name)} column"></span>` : ''}
       </div>
-    </th>`).join('')}<th class="add-field-head"><button type="button" class="add-field-button" id="inline-add-field" aria-label="Create typed field" title="Create Select, Formula, File, or another typed field"><svg><use href="#i-plus"/></svg></button></th></tr></thead>`;
+    </th>`).join('')}</tr></thead>`;
   const body = `<tbody>${rows.map((entry, displayIndex) => {
-    if (entry.kind === 'group') return `<tr class="grouped-row grouped-row-level-${entry.level}"><td colspan="${columns.length + 2}"><span>${escapeHtml(entry.label)}</span><small>${entry.count} records</small></td></tr>`;
+    if (entry.kind === 'group') return `<tr class="grouped-row grouped-row-level-${entry.level}"><td colspan="${columns.length + 1}"><span>${escapeHtml(entry.label)}</span><small>${entry.count} records</small></td></tr>`;
     const { row, rowIndex } = entry;
     return `<tr class="${row ? '' : 'is-placeholder-row'}${rowIndex === projectionFlashRowIndex ? ' is-projection-flash' : ''}"${row && !tableGroupFields.length && !rowMatchesTableView(row) ? ' hidden' : ''}>
     <td class="row-index" data-row-index="${rowIndex}">${displayIndex + 1}</td>
     ${columns.map((field, fieldIndex) => `<td class="cell ${cellClass(field)}${field ? '' : ' is-virtual'}" data-row-index="${rowIndex}" data-field-index="${fieldIndex}" tabindex="0">${renderCell(field, field ? row?.[field.id] : undefined)}</td>`).join('')}
-    <td></td>
   </tr>`;
   }).join('')}</tbody>`;
   table.innerHTML = `${colgroup}${head}${body}`;
@@ -263,10 +262,6 @@ function cellClass(field) {
 function bindGridEvents() {
   document.querySelectorAll('.field-select-button').forEach((button) => {
     button.addEventListener('click', () => selectColumn(Number(button.dataset.fieldIndex)));
-    button.addEventListener('dblclick', (event) => {
-      event.preventDefault();
-      beginInlineFieldRename(Number(button.dataset.fieldIndex));
-    });
   });
   document.querySelectorAll('.field-resize-handle').forEach((handle) => {
     handle.addEventListener('pointerdown', (event) => startFieldResize(event, Number(handle.dataset.fieldIndex), handle));
@@ -278,7 +273,6 @@ function bindGridEvents() {
       openFieldMenu(Number(header.dataset.fieldIndex), header);
     });
   });
-  byId('inline-add-field')?.addEventListener('click', (event) => openFieldEditor(null, event.currentTarget));
   byId('select-all-cells')?.addEventListener('click', selectAllCells);
   document.querySelectorAll('tbody .row-index').forEach((cell) => {
     cell.addEventListener('click', () => selectRow(Number(cell.dataset.rowIndex)));
@@ -680,48 +674,9 @@ function rollbackVirtualFields(initialFieldCount) {
   }
 }
 
-function beginInlineFieldRename(index) {
-  const button = document.querySelector(`.field-select-button[data-field-index="${index}"]`);
-  const existingField = current().fields[index];
-  if (!button) return;
-  const input = document.createElement('input');
-  input.className = 'field-name-input';
-  input.value = existingField?.name ?? '';
-  input.placeholder = `Name column ${columnName(index)}`;
-  input.setAttribute('aria-label', 'Column name');
-  button.replaceChildren(input);
-  input.focus();
-  input.select();
-  let finished = false;
-  const finish = (commit) => {
-    if (finished) return;
-    finished = true;
-    const nextName = input.value.trim();
-    if (!commit || !nextName || nextName === existingField?.name) {
-      renderTable();
-      updateSelectionSummary();
-      return;
-    }
-    const field = materializeField(index);
-    field.name = nextName;
-    bumpRevision(existingField ? `Column renamed to “${nextName}”` : `Typed field “${nextName}” materialized`);
-  };
-  input.addEventListener('blur', () => finish(true), { once: true });
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      finish(true);
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      finish(false);
-    }
-  });
-}
-
 function openFieldMenu(index, anchor) {
   if (!current().fields[index]) {
-    openFieldEditor(index, anchor);
+    showToast('Type or paste into this empty column to use it');
     return;
   }
   const field = current().fields[index];
@@ -733,43 +688,10 @@ function openFieldMenu(index, anchor) {
   });
 }
 
-function openFieldEditor(index, anchor) {
-  const anchorRect = anchor.getBoundingClientRect();
-  const field = index === null ? null : current().fields[index];
-  openOverlay('field-editor', anchor, () => {
-    openFieldIndex = index;
-    byId('field-editor-title').textContent = field ? `Edit “${field.name}”` : index === null ? 'Create typed field' : `Structure column ${columnName(index)}`;
-    byId('field-name-input').value = field?.name ?? '';
-    byId('field-type-select').value = field?.type ?? 'text';
-    positionPopover(byId('field-editor'), anchorRect, 292);
-  }, 'field-name-input');
-}
-
-function saveField() {
-  const name = byId('field-name-input').value.trim() || (openFieldIndex === null ? 'Untitled' : `Column ${columnName(openFieldIndex)}`);
-  const type = byId('field-type-select').value;
-  if (openFieldIndex === null) {
-    const id = uniqueFieldId(name);
-    current().fields.push({ id, name, type, width: widthContract({ type }).default });
-    current().rows.forEach((row) => { row[id] = type === 'checkbox' ? false : ''; });
-    bumpRevision(`Column “${name}” added`);
-    closePopovers();
-    return;
-  }
-  Object.assign(materializeField(openFieldIndex), { name, type });
-  bumpRevision(`Field “${name}” saved`);
-  closeOverlay({ restoreFocus: false });
-}
-
 function handleFieldAction(action) {
   const index = openFieldIndex;
   if (index === null || !current().fields[index]) return;
   const field = current().fields[index];
-  if (action === 'edit') {
-    const menuRect = byId('field-menu').getBoundingClientRect();
-    openFieldEditor(index, { getBoundingClientRect: () => menuRect });
-    return;
-  }
   if (action === 'insert-left' || action === 'insert-right') {
     const id = uniqueFieldId('Untitled');
     const insertAt = action === 'insert-left' ? index : index + 1;
@@ -777,7 +699,7 @@ function handleFieldAction(action) {
     current().rows.forEach((row) => { row[id] = ''; });
     gridState = { activeCell: { row: 0, field: insertAt }, anchorRow: 0, anchorField: insertAt, focusRow: 0, focusField: insertAt, mode: 'navigation' };
     closePopovers();
-    bumpRevision('Column inserted', () => beginInlineFieldRename(insertAt));
+    bumpRevision('Column inserted');
     return;
   }
   if (action === 'duplicate') {
@@ -1044,7 +966,7 @@ function closeOverlay({ restoreFocus = true } = {}) {
 }
 
 function closePopovers(options) {
-  if (['field-menu', 'field-editor', 'group-menu', 'row-menu', 'filter-menu', 'sort-menu'].includes(overlayState.id)) closeOverlay(options);
+  if (['field-menu', 'group-menu', 'row-menu', 'filter-menu', 'sort-menu'].includes(overlayState.id)) closeOverlay(options);
 }
 
 function positionPopover(popover, rect, width) {
@@ -1433,8 +1355,6 @@ document.querySelectorAll('.saved-script').forEach((button) => button.addEventLi
   byId('script-preview').hidden = true;
   byId('script-progress').hidden = true;
 }));
-byId('save-field').addEventListener('click', saveField);
-byId('typed-field-button').addEventListener('click', (event) => openFieldEditor(null, event.currentTarget));
 byId('sheet-title').addEventListener('change', renameDataset);
 byId('sheet-title').addEventListener('blur', renameDataset);
 byId('share-button').addEventListener('click', (event) => openPeakShare(event.currentTarget));
