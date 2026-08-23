@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant · Scan progress header variants</title>
+  <style>
+    :root {
+      --page:#f5f5f7; --surface:#fff; --surface-2:#faf9fc; --line:#e7e5eb; --line-2:#d9d6e0;
+      --ink:#24222a; --ink-2:#56525e; --ink-3:#87828f; --accent:#6b57dc; --accent-2:#5542c5;
+      --accent-soft:#f0edff; --green:#21866c; --green-soft:#eaf8f3; --blue:#448cab; --blue-soft:#edf7fb;
+      --amber:#a66b19; --amber-soft:#fff6e8; --shadow:0 1px 2px rgba(30,24,50,.04);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--page); font:13px/1.45 Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button { font:inherit; }
+    .shell { min-height:100vh; }
+    .appbar { height:64px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; border-bottom:1px solid var(--line); background:#fff; }
+    .brand { display:flex; align-items:center; gap:11px; font-size:16px; font-weight:740; }
+    .brand-icon { width:34px; height:34px; display:grid; place-items:center; border:1px solid #d9d1ff; border-radius:9px; color:var(--accent); background:var(--accent-soft); }
+    .controls { display:flex; align-items:center; gap:8px; }
+    .btn { min-height:34px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 13px; border:1px solid var(--line-2); border-radius:8px; color:var(--ink-2); background:#fff; font-weight:680; cursor:pointer; }
+    .btn:hover { border-color:#bdb6d9; color:var(--ink); }
+    .btn.danger { color:#b54d5d; border-color:#ecd0d5; }
+    .btn svg,.brand-icon svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .page { width:min(1400px,calc(100% - 56px)); margin:0 auto; padding:24px 0 64px; }
+    .crumb { margin-bottom:14px; color:var(--ink-3); font-size:11px; }
+    .crumb b { color:var(--ink-2); }
+    .workspace-head { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:18px; }
+    .workspace-head h1 { margin:0; font-size:20px; letter-spacing:-.02em; }
+    .workspace-head p { max-width:720px; margin:5px 0 0; color:var(--ink-3); font-size:12px; }
+    .variant-tabs { display:flex; gap:4px; padding:4px; border:1px solid var(--line); border-radius:9px; background:#fff; }
+    .variant-tab { min-height:32px; padding:0 12px; border:0; border-radius:6px; color:var(--ink-3); background:transparent; font-weight:680; cursor:pointer; }
+    .variant-tab.active { color:var(--accent-2); background:var(--accent-soft); }
+    .variant { display:none; }
+    .variant.active { display:block; }
+    .variant-label { display:flex; align-items:center; justify-content:space-between; margin:0 2px 9px; color:var(--ink-3); font-size:11px; }
+    .variant-label strong { color:var(--ink-2); font-size:12px; }
+    .recommend { padding:3px 7px; border-radius:999px; color:var(--accent-2); background:var(--accent-soft); font-size:10px; font-weight:720; }
+    .card { overflow:hidden; border:1px solid var(--line); border-radius:10px; background:#fff; box-shadow:var(--shadow); }
+    .progress-line { height:8px; overflow:hidden; border-radius:99px; background:#e9e7ee; }
+    .progress-line > i { display:block; width:0; height:100%; border-radius:inherit; background:var(--accent); transition:width .35s ease; }
+    .progress-line.green > i { background:var(--green); }
+    .progress-line.blue > i { background:var(--blue); }
+    .metric { min-width:0; }
+    .metric strong { display:block; font-size:17px; letter-spacing:-.02em; }
+    .metric span { color:var(--ink-3); font-size:10px; }
+    .dot { width:7px; height:7px; flex:none; border-radius:50%; background:var(--line-2); }
+    .dot.done { background:var(--green); }
+    .dot.live { background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); }
+    .mono { font-variant-numeric:tabular-nums; }
+
+    /* A — one glance */
+    .a-grid { display:grid; grid-template-columns:150px minmax(380px,1fr) 155px 155px 190px; align-items:stretch; }
+    .a-percent { display:grid; place-content:center; padding:22px 24px; border-right:1px solid var(--line); }
+    .a-percent strong { font-size:40px; line-height:1; color:var(--accent-2); letter-spacing:-.05em; }
+    .a-percent span { margin-top:5px; color:var(--ink-3); font-size:11px; }
+    .a-main { display:grid; align-content:center; gap:12px; padding:22px 26px; }
+    .a-current { display:flex; align-items:center; justify-content:space-between; gap:16px; font-weight:720; }
+    .a-current span:last-child { color:var(--ink-3); font-size:11px; font-weight:620; }
+    .a-metric { display:grid; place-content:center start; padding:20px; border-left:1px solid var(--line); }
+    .a-stop { display:grid; align-content:center; gap:8px; padding:18px 22px; border-left:1px solid var(--line); background:var(--surface-2); }
+    .mini-stages { display:grid; grid-template-columns:repeat(5,1fr); gap:7px; }
+    .mini-stage { min-width:0; display:flex; align-items:center; gap:6px; color:var(--ink-3); font-size:10px; white-space:nowrap; }
+    .mini-stage.current { color:var(--accent-2); font-weight:700; }
+
+    /* B — outcomes */
+    .b-grid { display:grid; grid-template-columns:minmax(420px,1.2fr) minmax(560px,1fr); }
+    .b-summary { display:grid; grid-template-columns:132px minmax(0,1fr); gap:24px; align-items:center; padding:24px 28px; }
+    .b-number strong { display:block; color:var(--accent-2); font-size:42px; line-height:1; letter-spacing:-.05em; }
+    .b-number span { display:block; margin-top:6px; color:var(--ink-3); font-size:11px; }
+    .b-main { display:grid; gap:11px; }
+    .b-main-top { display:flex; align-items:baseline; justify-content:space-between; gap:20px; }
+    .b-main-top strong { font-size:15px; }
+    .b-main-top span { color:var(--ink-3); font-size:11px; }
+    .b-facts { display:flex; gap:22px; color:var(--ink-3); font-size:11px; }
+    .b-facts b { color:var(--ink-2); }
+    .outcomes { border-left:1px solid var(--line); }
+    .outcome { min-height:62px; display:grid; grid-template-columns:38px minmax(150px,1fr) 70px 86px; gap:14px; align-items:center; padding:10px 18px; border-bottom:1px solid var(--line); }
+    .outcome:last-child { border-bottom:0; }
+    .outcome-icon { width:30px; height:30px; display:grid; place-items:center; border-radius:50%; color:var(--accent-2); background:var(--accent-soft); }
+    .outcome.ready .outcome-icon { color:var(--green); background:var(--green-soft); }
+    .outcome-icon svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .outcome-name { display:flex; align-items:baseline; gap:10px; font-weight:720; }
+    .outcome-name b { font-size:12px; }
+    .outcome-name span { color:var(--ink-3); font-size:10px; font-weight:600; }
+    .outcome-value { color:var(--ink-2); font-size:12px; font-weight:720; text-align:right; }
+    .outcome-time { color:var(--ink-3); font-size:11px; text-align:right; }
+
+    /* C — critical path */
+    .c-top { min-height:86px; display:grid; grid-template-columns:190px minmax(0,1fr) 150px 150px; align-items:center; border-bottom:1px solid var(--line); }
+    .c-overall { padding:18px 24px; }
+    .c-overall strong { color:var(--accent-2); font-size:32px; letter-spacing:-.04em; }
+    .c-overall span { margin-left:6px; color:var(--ink-3); font-size:11px; }
+    .c-bar { padding:18px 24px; border-left:1px solid var(--line); }
+    .c-bar-head { display:flex; justify-content:space-between; margin-bottom:10px; font-weight:700; }
+    .c-bar-head span { color:var(--ink-3); font-size:11px; font-weight:600; }
+    .c-metric { padding:18px 22px; border-left:1px solid var(--line); }
+    .lanes { display:grid; }
+    .lane { min-height:58px; display:grid; grid-template-columns:180px minmax(260px,1fr) 110px 170px; gap:20px; align-items:center; padding:10px 22px; border-bottom:1px solid var(--line); }
+    .lane:last-child { border-bottom:0; }
+    .lane-name { display:flex; align-items:center; gap:10px; font-weight:720; }
+    .lane-progress { display:grid; grid-template-columns:minmax(0,1fr) 42px; gap:10px; align-items:center; }
+    .lane-progress .progress-line { height:6px; }
+    .lane-progress b { color:var(--ink-2); font-size:11px; text-align:right; }
+    .lane-rate { color:var(--ink-3); font-size:11px; text-align:right; }
+    .lane-now { overflow:hidden; color:var(--ink-2); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* D — remaining work */
+    .d-grid { display:grid; grid-template-columns:minmax(360px,1.05fr) minmax(520px,1fr); }
+    .d-remaining { display:grid; grid-template-columns:200px minmax(0,1fr); gap:28px; align-items:center; padding:26px 30px; }
+    .d-number strong { display:block; font-size:42px; line-height:1; letter-spacing:-.05em; }
+    .d-number span { display:block; margin-top:7px; color:var(--ink-3); }
+    .d-time { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .d-time .metric { padding-left:18px; border-left:1px solid var(--line); }
+    .activity { display:grid; grid-template-columns:repeat(3,1fr); border-left:1px solid var(--line); }
+    .activity-item { display:grid; align-content:center; gap:7px; padding:20px; border-right:1px solid var(--line); }
+    .activity-item:last-child { border-right:0; }
+    .activity-item b { font-size:14px; }
+    .activity-item span { color:var(--ink-3); font-size:11px; }
+    .activity-state { display:flex; align-items:center; gap:7px; color:var(--accent-2) !important; font-weight:680; }
+
+    .decision { margin-top:18px; display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); border-radius:10px; background:#fff; }
+    .decision div { padding:15px 17px; border-right:1px solid var(--line); }
+    .decision div:last-child { border-right:0; }
+    .decision strong { display:block; font-size:11px; }
+    .decision span { display:block; margin-top:5px; color:var(--ink-3); font-size:10.5px; }
+    @media (max-width:1050px) {
+      .workspace-head { align-items:flex-start; flex-direction:column; }
+      .a-grid { grid-template-columns:130px 1fr 130px 145px; }
+      .a-stop { grid-column:1/-1; grid-template-columns:repeat(5,1fr); }
+      .b-grid,.d-grid { grid-template-columns:1fr; }
+      .outcomes,.activity { border-top:1px solid var(--line); border-left:0; }
+      .c-top { grid-template-columns:160px minmax(0,1fr) 130px 130px; }
+      .lane { grid-template-columns:150px minmax(220px,1fr) 90px 140px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="appbar">
+      <div class="brand"><span class="brand-icon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5M4 16.5 12 21l8-4.5"/></svg></span>Scan progress</div>
+      <div class="controls"><button class="btn" id="restart" type="button"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Restart</button><button class="btn" id="pause" type="button"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button><button class="btn danger" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Stop scan</button></div>
+    </header>
+    <main class="page">
+      <div class="crumb">Scan setup&nbsp;&nbsp;/&nbsp;&nbsp;<b>Run progress</b>&nbsp;&nbsp;/&nbsp;&nbsp;run-vault-7f2c</div>
+      <div class="workspace-head">
+        <div><h1>Progress header directions</h1><p>Four information models using the same live run. None uses a running banner, stage headline, or explanatory subtitle.</p></div>
+        <div class="variant-tabs" role="tablist">
+          <button class="variant-tab active" data-variant="a" role="tab">A · One glance</button>
+          <button class="variant-tab" data-variant="b" role="tab">B · Outcomes</button>
+          <button class="variant-tab" data-variant="c" role="tab">C · Critical path</button>
+          <button class="variant-tab" data-variant="d" role="tab">D · Work remaining</button>
+        </div>
+      </div>
+
+      <section class="variant active" data-panel="a">
+        <div class="variant-label"><strong>A · One glance</strong><span>Fastest answer to “where is it now?”</span></div>
+        <div class="card a-grid">
+          <div class="a-percent"><strong class="js-percent mono">34%</strong><span>complete</span></div>
+          <div class="a-main"><div class="a-current"><span class="js-current">Build index · embeddings</span><span class="js-files">50 / 146 files</span></div><div class="progress-line"><i class="js-bar"></i></div></div>
+          <div class="a-metric metric"><strong class="js-elapsed mono">2m 14s</strong><span>elapsed</span></div>
+          <div class="a-metric metric"><strong class="js-remaining mono">3–5 min</strong><span>remaining</span></div>
+          <div class="a-stop"><div class="mini-stages"><span class="mini-stage js-s1"><i class="dot"></i>Discover</span><span class="mini-stage js-s2"><i class="dot"></i>Index</span><span class="mini-stage js-s3"><i class="dot"></i>AI</span><span class="mini-stage js-s4"><i class="dot"></i>Review</span><span class="mini-stage js-s5"><i class="dot"></i>Publish</span></div></div>
+        </div>
+      </section>
+
+      <section class="variant" data-panel="b">
+        <div class="variant-label"><strong>B · Outcome readiness</strong><span class="recommend">Recommended</span></div>
+        <div class="card b-grid">
+          <div class="b-summary"><div class="b-number"><strong class="js-percent mono">34%</strong><span>full scan</span></div><div class="b-main"><div class="b-main-top"><strong class="js-current">Build index · embeddings</strong><span class="js-remaining">3–5 min left</span></div><div class="progress-line"><i class="js-bar"></i></div><div class="b-facts"><span><b class="js-files">50 / 146 files</b></span><span><b class="js-elapsed">2m 14s</b> elapsed</span><span><b class="js-active">8</b> active</span></div></div></div>
+          <div class="outcomes">
+            <div class="outcome js-search-outcome ready"><span class="outcome-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg></span><div class="outcome-name"><b class="js-search-title">Search ready</b><span class="js-search-state">available now</span></div><div class="outcome-value js-search">100%</div><div class="outcome-time js-search-time">11 sec</div></div>
+            <div class="outcome"><span class="outcome-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></span><div class="outcome-name">Semantic ready</div><div class="outcome-value js-semantic">34%</div><div class="outcome-time js-semantic-time">~2 min</div></div>
+            <div class="outcome"><span class="outcome-icon"><svg viewBox="0 0 24 24"><path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3Z"/><path d="m18.5 15 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z"/></svg></span><div class="outcome-name">Fully enriched</div><div class="outcome-value js-enriched">13%</div><div class="outcome-time js-enriched-time">3–5 min</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="variant" data-panel="c">
+        <div class="variant-label"><strong>C · Critical path</strong><span>Most honest when several kinds of work run in parallel</span></div>
+        <div class="card">
+          <div class="c-top"><div class="c-overall"><strong class="js-percent mono">34%</strong><span>complete</span></div><div class="c-bar"><div class="c-bar-head"><b class="js-current">Build index · embeddings</b><span class="js-files">50 / 146 files</span></div><div class="progress-line"><i class="js-bar"></i></div></div><div class="c-metric metric"><strong class="js-elapsed">2m 14s</strong><span>elapsed</span></div><div class="c-metric metric"><strong class="js-remaining">3–5 min</strong><span>remaining</span></div></div>
+          <div class="lanes">
+            <div class="lane"><div class="lane-name"><i class="dot done"></i>Full-text search</div><div class="lane-progress"><div class="progress-line green"><i class="js-search-bar"></i></div><b class="js-search">100%</b></div><div class="lane-rate">796 files/min</div><div class="lane-now">Search available</div></div>
+            <div class="lane"><div class="lane-name"><i class="dot live"></i>Embeddings</div><div class="lane-progress"><div class="progress-line blue"><i class="js-semantic-bar"></i></div><b class="js-semantic">34%</b></div><div class="lane-rate">34 chunks/sec</div><div class="lane-now js-embed-now">4 files vectorizing</div></div>
+            <div class="lane"><div class="lane-name"><i class="dot live"></i>AI enrichment</div><div class="lane-progress"><div class="progress-line"><i class="js-enriched-bar"></i></div><b class="js-enriched">13%</b></div><div class="lane-rate">6.2 files/min</div><div class="lane-now js-ai-now">4 files generating</div></div>
+            <div class="lane"><div class="lane-name"><i class="dot"></i>Vault-wide discovery</div><div class="lane-progress"><div class="progress-line"><i class="js-discovery-bar"></i></div><b class="js-discovery">0%</b></div><div class="lane-rate js-pass">waiting</div><div class="lane-now js-discovery-now">Starts when enough evidence exists</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="variant" data-panel="d">
+        <div class="variant-label"><strong>D · Work remaining</strong><span>Avoids a blended percentage when task costs differ</span></div>
+        <div class="card d-grid">
+          <div class="d-remaining"><div class="d-number"><strong class="js-left mono">96</strong><span>files still have work</span></div><div class="d-time"><div class="metric"><strong class="js-remaining">3–5 min</strong><span>estimated remaining</span></div><div class="metric"><strong class="js-elapsed">2m 14s</strong><span>elapsed</span></div></div></div>
+          <div class="activity"><div class="activity-item"><b class="js-embed-active">4 embedding</b><span class="activity-state"><i class="dot live"></i>working now</span></div><div class="activity-item"><b class="js-ai-active">4 enriching</b><span class="activity-state"><i class="dot live"></i>working now</span></div><div class="activity-item"><b class="js-discovery-active">Discovery waiting</b><span class="js-next">needs more evidence</span></div></div>
+        </div>
+      </section>
+
+      <div class="decision">
+        <div><strong>Overall progress</strong><span>Use for orientation, not as the only truth.</span></div>
+        <div><strong>Remaining time</strong><span>The primary reason users check this area.</span></div>
+        <div><strong>Ready outcomes</strong><span>Shows what is already usable before the run ends.</span></div>
+        <div><strong>Current work</strong><span>Explains pauses without showing a session log here.</span></div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+    let progress = 34;
+    let paused = false;
+    let timer;
+
+    function stageFor(value) {
+      if (value < 12) return { index:1, label:'Discovering scope', detail:'Resolving affected context' };
+      if (value < 55) return { index:2, label:'Build index · embeddings', detail:'Vectorizing current files' };
+      if (value < 84) return { index:3, label:'Vault-wide discovery', detail:'Reviewing retained evidence' };
+      if (value < 97) return { index:4, label:'Preparing review', detail:'Grouping owner decisions' };
+      return { index:5, label:'Publishing machine state', detail:'Saving checkpoint' };
+    }
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m ${String(seconds % 60).padStart(2,'0')}s`;
+    }
+    function render() {
+      const stage = stageFor(progress);
+      const files = Math.min(146, Math.round(progress * 1.46));
+      const left = Math.max(0, 146 - files);
+      const elapsedSeconds = 54 + Math.round(progress * 2.35);
+      const remainingMinutes = Math.max(0, Math.ceil((100 - progress) / 16));
+      const search = Math.min(100, Math.round(progress * 3));
+      const semantic = Math.min(100, Math.max(0, Math.round((progress - 10) * 1.5)));
+      const enriched = Math.min(100, Math.max(0, Math.round((progress - 24) * 1.2)));
+      const discovery = Math.min(100, Math.max(0, Math.round((progress - 52) * 2.6)));
+      $$('.js-percent').forEach(node => node.textContent = `${progress}%`);
+      $$('.js-bar').forEach(node => node.style.width = `${progress}%`);
+      $$('.js-current').forEach(node => node.textContent = stage.label);
+      $$('.js-files').forEach(node => node.textContent = `${files} / 146 files`);
+      $$('.js-elapsed').forEach(node => node.textContent = formatTime(elapsedSeconds));
+      $$('.js-remaining').forEach(node => node.textContent = progress >= 100 ? 'Complete' : `~${remainingMinutes} min`);
+      $$('.js-left').forEach(node => node.textContent = left);
+      $$('.js-active').forEach(node => node.textContent = progress < 97 ? '8' : '1');
+      $$('.js-search').forEach(node => node.textContent = `${search}%`);
+      $$('.js-semantic').forEach(node => node.textContent = `${semantic}%`);
+      $$('.js-enriched').forEach(node => node.textContent = `${enriched}%`);
+      $$('.js-discovery').forEach(node => node.textContent = `${discovery}%`);
+      $$('.js-search-bar').forEach(node => node.style.width = `${search}%`);
+      $$('.js-semantic-bar').forEach(node => node.style.width = `${semantic}%`);
+      $$('.js-enriched-bar').forEach(node => node.style.width = `${enriched}%`);
+      $$('.js-discovery-bar').forEach(node => node.style.width = `${discovery}%`);
+      $$('.js-semantic-time').forEach(node => node.textContent = semantic >= 100 ? 'ready' : `~${Math.max(1,Math.ceil((100-semantic)/32))} min`);
+      $$('.js-enriched-time').forEach(node => node.textContent = enriched >= 100 ? 'ready' : `~${Math.max(1,remainingMinutes)} min`);
+      $$('.js-search-outcome').forEach(node => node.classList.toggle('ready',search >= 100));
+      $$('.js-search-title').forEach(node => node.textContent = search >= 100 ? 'Search ready' : 'Search');
+      $$('.js-search-state').forEach(node => node.textContent = search >= 100 ? 'available now' : 'building');
+      $$('.js-search-time').forEach(node => node.textContent = search >= 100 ? '11 sec' : '~11 sec');
+      $$('.js-pass').forEach(node => node.textContent = discovery > 0 ? `pass ${Math.min(7,Math.floor(discovery/15)+1)}` : 'waiting');
+      $$('.js-discovery-now').forEach(node => node.textContent = discovery > 0 ? 'Testing evidence and revisiting findings' : 'Starts when enough evidence exists');
+      $$('.js-discovery-active').forEach(node => node.textContent = discovery > 0 ? `Discovery pass ${Math.min(7,Math.floor(discovery/15)+1)}` : 'Discovery waiting');
+      $$('.js-next').forEach(node => node.textContent = discovery > 0 ? `${Math.round(discovery/9)} findings retained` : 'needs more evidence');
+      for (let index=1; index<=5; index++) {
+        $$('.js-s'+index).forEach(node => {
+          node.classList.toggle('current',index===stage.index);
+          const dot = $('.dot',node);
+          dot.className = `dot ${index<stage.index?'done':index===stage.index?'live':''}`;
+        });
+      }
+    }
+    function startTimer() {
+      window.clearInterval(timer);
+      timer = window.setInterval(() => {
+        if (paused) return;
+        progress = progress >= 100 ? 0 : progress + 1;
+        render();
+      }, 420);
+    }
+    $$('.variant-tab').forEach(button => button.addEventListener('click', () => {
+      $$('.variant-tab').forEach(item => item.classList.toggle('active',item===button));
+      $$('.variant').forEach(panel => panel.classList.toggle('active',panel.dataset.panel===button.dataset.variant));
+    }));
+    $('#pause').addEventListener('click', () => {
+      paused = !paused;
+      $('#pause span').textContent = paused ? 'Resume' : 'Pause';
+    });
+    $('#restart').addEventListener('click', () => { progress=0; paused=false; $('#pause span').textContent='Pause'; render(); });
+    render();
+    startTimer();
+  </script>
+</body>
+</html>
