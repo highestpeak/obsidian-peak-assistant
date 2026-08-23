@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant · Scan top progress refinement</title>
+  <style>
+    :root { --page:#f5f5f7; --surface:#fff; --surface-2:#fbfafc; --line:#e6e4e9; --line-2:#d9d6df; --ink:#25232a; --ink-2:#57535f; --ink-3:#8a8591; --accent:#6b57dc; --accent-2:#5542c5; --accent-soft:#f0edff; --green:#21876b; --green-soft:#e9f7f2; --blue:#5296b5; --red:#b84f5f; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--page); font:12px/1.4 Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button { font:inherit; }
+    .top { height:62px; display:flex; align-items:center; padding:0 28px; border-bottom:1px solid var(--line); background:#fff; }
+    .brand { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:740; }
+    .mark { width:32px; height:32px; display:grid; place-items:center; border:1px solid #d8d0ff; border-radius:8px; color:var(--accent); background:var(--accent-soft); }
+    .mark svg,.btn svg,.summary-icon svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .tabs { height:48px; display:flex; align-items:end; gap:42px; padding:0 38px; border-bottom:1px solid var(--line); background:#fff; }
+    .tabs span { height:48px; display:flex; align-items:center; color:var(--ink-2); font-weight:680; }
+    .page { width:min(1440px,calc(100% - 64px)); margin:0 auto; padding:22px 0 50px; }
+    .crumb { display:flex; align-items:center; gap:7px; margin-bottom:12px; color:var(--ink-3); font-size:10px; }
+    .crumb b { color:var(--ink-2); }
+    .card { overflow:hidden; border:1px solid var(--line); border-radius:9px; background:var(--surface); box-shadow:0 1px 2px rgba(30,24,50,.04); }
+    .run-top { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:10px 16px 10px 18px; }
+    .run-name { display:flex; align-items:baseline; gap:10px; }
+    .run-name strong { font-size:14px; }
+    .run-name span { color:var(--ink-3); font-size:10px; }
+    .actions { display:flex; align-items:center; gap:8px; }
+    .boundary { padding:4px 9px; border-radius:999px; color:var(--ink-3); background:#f3f2f5; font-size:10px; font-weight:670; }
+    .btn { min-height:32px; display:inline-flex; align-items:center; gap:7px; padding:0 12px; border:1px solid var(--line-2); border-radius:7px; color:var(--ink-2); background:#fff; font-weight:680; cursor:pointer; }
+    .btn.danger { color:var(--red); border-color:#ecd0d5; }
+
+    .stage-track { --ratio:0; position:relative; display:grid; grid-template-columns:repeat(5,1fr); padding:12px 36px 13px; border-top:1px solid var(--line); }
+    .stage-track::before,.stage-track::after { content:""; position:absolute; top:23px; right:calc(10% + 21px); left:calc(10% + 21px); height:2px; border-radius:99px; }
+    .stage-track::before { background:var(--line-2); }
+    .stage-track::after { background:#9fd2c3; transform:scaleX(var(--ratio)); transform-origin:left center; transition:transform .3s ease; }
+    .stage { position:relative; z-index:1; display:grid; justify-items:center; gap:4px; color:var(--ink-3); }
+    .stage-dot { width:22px; height:22px; display:grid; place-items:center; border:1px solid var(--line-2); border-radius:50%; background:#fff; font-size:9px; }
+    .stage.done .stage-dot { border-color:#a5d6c6; color:var(--green); background:var(--green-soft); }
+    .stage.current .stage-dot { border-color:var(--accent); color:#fff; background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+    .stage-name { color:var(--ink-2); font-size:11px; font-weight:700; }
+    .stage.current .stage-name { color:var(--accent-2); }
+
+    .overall { display:grid; grid-template-columns:120px minmax(0,1fr) minmax(270px,.52fr); align-items:center; min-height:106px; border-top:1px solid var(--line); background:var(--surface-2); }
+    .overall-number { padding:18px; }
+    .overall-number strong { display:block; font-size:34px; line-height:1; letter-spacing:-.045em; }
+    .overall-number span { display:block; margin-top:6px; color:var(--ink-3); font-size:10px; font-weight:650; }
+    .overall-main { min-width:0; padding:17px 22px 16px; }
+    .bar { height:8px; overflow:hidden; border-radius:99px; background:#e8e6ec; }
+    .bar i { display:block; width:0; height:100%; border-radius:inherit; background:var(--accent); transition:width .32s ease; }
+    .facts { display:grid; grid-template-columns:repeat(4,minmax(95px,1fr)); gap:16px; margin-top:12px; }
+    .fact strong { display:block; color:var(--ink-2); font-size:12px; font-variant-numeric:tabular-nums; }
+    .fact span { display:block; margin-top:2px; color:var(--ink-3); font-size:9.5px; }
+    .usage { min-height:72px; display:grid; align-content:center; gap:5px; padding:15px 18px 15px 22px; border-left:1px solid var(--line); }
+    .usage-head { display:flex; align-items:center; justify-content:space-between; color:var(--ink-3); font-size:10px; font-weight:680; }
+    .usage-head button { padding:0; border:0; color:var(--accent-2); background:transparent; font-size:9.5px; font-weight:680; }
+    .usage-current { display:flex; align-items:baseline; gap:7px; }
+    .usage-current strong { font-size:18px; }
+    .usage-current span,.usage-projected { color:var(--ink-3); font-size:10px; }
+    .usage-projected b { color:var(--ink-2); }
+
+    .index { margin-top:14px; }
+    .index-summary { display:grid; grid-template-columns:minmax(520px,1.25fr) minmax(480px,.8fr); }
+    .index-overall { min-height:154px; display:grid; grid-template-columns:82px minmax(0,1fr); gap:24px; align-items:center; padding:22px 28px; }
+    .summary-icon { width:62px; height:62px; display:grid; place-items:center; border:1px solid #d9d1ff; border-radius:50%; color:var(--accent); background:var(--accent-soft); box-shadow:0 0 0 7px #faf8ff; }
+    .summary-icon svg { width:26px; height:26px; }
+    .index-title { font-size:19px; font-weight:730; letter-spacing:-.02em; }
+    .index-number { display:flex; align-items:baseline; gap:8px; margin-top:8px; }
+    .index-number strong { color:var(--accent-2); font-size:29px; }
+    .index-number span { color:var(--ink-3); font-size:10px; font-weight:650; }
+    .index .bar { height:6px; margin-top:7px; }
+    .index-facts { display:flex; gap:24px; margin-top:9px; }
+    .index-facts span { color:var(--ink-3); font-size:9.5px; }
+    .index-facts b { margin-right:4px; color:var(--ink-2); }
+    .readiness { border-left:1px solid var(--line); }
+    .ready-row { min-height:51px; display:grid; grid-template-columns:34px minmax(130px,1fr) 58px 70px 76px; gap:10px; align-items:center; padding:9px 16px; border-bottom:1px solid var(--line); }
+    .ready-row:last-child { border-bottom:0; }
+    .ready-icon { width:27px; height:27px; display:grid; place-items:center; border-radius:50%; color:var(--accent-2); background:var(--accent-soft); }
+    .ready-icon svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.8; }
+    .ready-row strong { font-size:11px; }
+    .ready-metric b { display:block; color:var(--accent-2); font-size:13px; }
+    .ready-metric span { display:block; color:var(--ink-3); font-size:8.5px; }
+    .lanes-head { min-height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-top:1px solid var(--line); }
+    .lanes-head strong { font-size:12px; }
+    .legend { display:flex; gap:14px; color:var(--ink-3); font-size:9.5px; }
+    .legend span::before { content:""; width:6px; height:6px; display:inline-block; margin-right:5px; border-radius:50%; background:var(--line-2); }
+    .legend .complete::before { background:var(--green); }.legend .running::before { background:var(--accent); }
+    @media (max-width:980px) { .overall { grid-template-columns:105px minmax(0,1fr); }.usage { grid-column:1/-1; border-top:1px solid var(--line); border-left:0; }.index-summary { grid-template-columns:1fr; }.readiness { border-top:1px solid var(--line); border-left:0; } }
+  </style>
+</head>
+<body>
+  <header class="top"><div class="brand"><span class="mark"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5M4 16.5 12 21l8-4.5"/></svg></span>Vault Intelligence</div></header>
+  <nav class="tabs"><span>Overview</span><span>Vault map</span><span>Work queue&nbsp; 11</span></nav>
+  <main class="page">
+    <div class="crumb"><span>‹</span><b>Scan setup</b><span>/</span><b>Run progress</b><span>/</span><span>run-vault-live-7f2c</span></div>
+    <section class="card">
+      <div class="run-top"><div class="run-name"><strong>Run progress</strong><span id="run-note">Started moments ago</span></div><div class="actions"><span class="boundary">User files unchanged</span><button class="btn" id="pause" type="button"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button><button class="btn danger" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Stop scan</button></div></div>
+      <div class="stage-track" id="stage-track">
+        <div class="stage" data-stage="0"><span class="stage-dot">1</span><span class="stage-name">Discover</span></div>
+        <div class="stage" data-stage="1"><span class="stage-dot">2</span><span class="stage-name">Build Index</span></div>
+        <div class="stage" data-stage="2"><span class="stage-dot">3</span><span class="stage-name">AI work</span></div>
+        <div class="stage" data-stage="3"><span class="stage-dot">4</span><span class="stage-name">Prepare review</span></div>
+        <div class="stage" data-stage="4"><span class="stage-dot">5</span><span class="stage-name">Publish</span></div>
+      </div>
+      <div class="overall">
+        <div class="overall-number"><strong id="overall">10%</strong><span>overall progress</span></div>
+        <div class="overall-main"><div class="bar"><i id="overall-bar"></i></div><div class="facts"><div class="fact"><strong id="processed">15 / 146</strong><span>objects processed</span></div><div class="fact"><strong id="elapsed">0:43</strong><span>elapsed</span></div><div class="fact"><strong id="remaining">~6:26</strong><span>remaining</span></div><div class="fact"><strong id="speed">21 / min</strong><span>current rate</span></div></div></div>
+        <div class="usage"><div class="usage-head"><span>AI usage</span><button type="button">View receipts</button></div><div class="usage-current"><strong id="cost">$0.000</strong><span id="tokens">0 tokens used</span></div><div class="usage-projected">Projected&nbsp; <b>~$0.46 · 180.8K tokens</b></div></div>
+      </div>
+    </section>
+
+    <section class="card index">
+      <div class="index-summary"><div class="index-overall"><span class="summary-icon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5M4 16.5 12 21l8-4.5"/></svg></span><div><div class="index-title" id="index-title">Building search, semantic, and AI layers.</div><div class="index-number"><strong id="index-percent">0%</strong><span>overall progress</span></div><div class="bar"><i id="index-bar"></i></div><div class="index-facts"><span><b id="index-elapsed">0 sec</b>elapsed</span><span><b>4m 13s</b>target</span><span><b id="passes">0 / 438</b>layer passes</span></div></div></div><div class="readiness">
+        <div class="ready-row"><span class="ready-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg></span><strong>Building search</strong><div class="ready-metric"><b id="search-pct">0%</b><span>done</span></div><div class="ready-metric"><b id="search-files">0 / 146</b><span>files</span></div><div class="ready-metric"><b id="search-time">0 sec</b><span>elapsed</span></div></div>
+        <div class="ready-row"><span class="ready-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></span><strong>Semantic ready</strong><div class="ready-metric"><b id="semantic-pct">0%</b><span>done</span></div><div class="ready-metric"><b id="semantic-files">0 / 146</b><span>files</span></div><div class="ready-metric"><b id="semantic-time">0 sec</b><span>elapsed</span></div></div>
+        <div class="ready-row"><span class="ready-icon"><svg viewBox="0 0 24 24"><path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3Z"/></svg></span><strong>Fully enriched</strong><div class="ready-metric"><b id="ai-pct">0%</b><span>done</span></div><div class="ready-metric"><b id="ai-files">0 / 146</b><span>files</span></div><div class="ready-metric"><b id="ai-time">0 sec</b><span>elapsed</span></div></div>
+      </div></div>
+      <div class="lanes-head"><strong>One document stream · three independent lanes</strong><div class="legend"><span class="complete">Complete</span><span class="running">Running</span><span>Queued</span></div></div>
+    </section>
+  </main>
+  <script>
+    const state={progress:10,paused:false,elapsed:43};
+    const $=selector=>document.querySelector(selector);
+    const stageBounds=[0,12,55,84,97,101];
+    const stageIndex=value=>Math.max(0,stageBounds.findIndex((bound,index)=>index>0&&value<bound)-1);
+    function clock(seconds){const m=Math.floor(seconds/60);return `${m}:${String(seconds%60).padStart(2,'0')}`;}
+    function render(){
+      const index=stageIndex(state.progress);const processed=Math.min(146,Math.round(state.progress*1.46));const remaining=Math.max(0,Math.round((100-state.progress)*4.28));
+      $('#overall').textContent=`${state.progress}%`;$('#overall-bar').style.width=`${state.progress}%`;$('#processed').textContent=`${processed} / 146`;$('#elapsed').textContent=clock(state.elapsed);$('#remaining').textContent=state.progress>=100?'Complete':`~${clock(remaining)}`;$('#speed').textContent=state.paused?'—':`${20+Math.round(state.progress/12)} / min`;
+      $('#run-note').textContent=state.paused?'Paused · checkpoint saved':`Step ${index+1} of 5`;
+      $('#cost').textContent=`$${(state.progress*.00048).toFixed(3)}`;$('#tokens').textContent=`${(state.progress*.105).toFixed(1)}K tokens used`;
+      $('#stage-track').style.setProperty('--ratio',String(state.progress/100));
+      document.querySelectorAll('.stage').forEach((node,nodeIndex)=>node.className=`stage ${nodeIndex<index?'done':nodeIndex===index?'current':''}`);
+      const indexProgress=Math.max(0,Math.min(100,Math.round((state.progress-12)/43*100)));$('#index-percent').textContent=`${indexProgress}%`;$('#index-bar').style.width=`${indexProgress}%`;$('#index-elapsed').textContent=`${Math.round(indexProgress*.43)} sec`;$('#passes').textContent=`${Math.round(indexProgress*4.38)} / 438`;
+      const search=Math.min(100,Math.round(indexProgress*2.1)),semantic=Math.min(100,Math.max(0,Math.round((indexProgress-8)*1.45))),ai=Math.min(100,Math.max(0,Math.round((indexProgress-24)*1.2)));
+      [['search',search],['semantic',semantic],['ai',ai]].forEach(([key,value])=>{$(`#${key}-pct`).textContent=`${value}%`;$(`#${key}-files`).textContent=`${Math.round(value*1.46)} / 146`;$(`#${key}-time`).textContent=`${Math.round(value*.11)} sec`;});
+    }
+    render();
+    window.setInterval(()=>{if(state.paused)return;state.progress=state.progress>=100?0:state.progress+1;state.elapsed+=4;render();},520);
+    $('#pause').addEventListener('click',()=>{state.paused=!state.paused;$('#pause span').textContent=state.paused?'Resume':'Pause';render();});
+  </script>
+</body>
+</html>
