@@ -23,6 +23,7 @@ import { computeKeywordTagBundles, extractTextRankFeatures, stripForTextRank } f
 import { resolveTextRankLocaleFromStripped } from '@/core/utils/stopword-utils';
 import { assembleIndexedChunks, type TextrankSentenceStructured } from './helper/assembleIndexedChunks';
 import { BaseDocumentLoader } from './BaseDocumentLoader';
+import { loadIndexEnrichmentConfig } from '@/core/document/IndexEnrichmentConfig';
 
 /** Re-export for callers that import from this module. */
 export { assembleIndexedChunks, type TextrankSentenceStructured };
@@ -203,6 +204,9 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 			} as unknown as Document;
 			const runTagLlm = readOptions.includeLlmTags && Boolean(this.aiServiceManager);
 			const runSummaryLlm = readOptions.includeLlmSummary && Boolean(this.aiServiceManager);
+			const enrichmentConfig = runTagLlm || runSummaryLlm
+				? await loadIndexEnrichmentConfig()
+				: null;
 			const tLlm = Date.now();
 			if (runTagLlm || runSummaryLlm) {
 				console.info('[MarkdownDocumentLoader] readMarkdownFile: LLM batch start', {
@@ -222,7 +226,6 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 				personTags: [] as string[],
 				llmTagRunStatus: 'failed',
 			};
-			const failedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'failed' };
 			const skippedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'skipped' };
 			const reportProgress = (operation: 'summary' | 'tags', phase: 'request-started' | 'response-received' | 'failed' | 'committed', text: string) => {
 				readOptions.onLlmIndexingProgress?.({ path: file.path, operation, phase, text, updatedAt: Date.now() });
@@ -238,13 +241,19 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 						provider: readOptions.llmRoute?.provider,
 						profileId: readOptions.llmRoute?.profileId,
 						modelId: readOptions.llmRoute?.modelId,
+						maxOutputTokens: enrichmentConfig!.outputControl.tagsMaxTokens,
+						systemPrompt: enrichmentConfig!.instructions.tags,
+						traceCallback: (trace) => readOptions.onLlmIndexingTrace?.({
+							...trace,
+							path: file.path,
+							operation: 'tags',
+						}),
 					}).then((result) => {
 						reportProgress('tags', 'response-received', 'AI Tags response received; validating the structured labels.');
 						return result;
 					}).catch((err) => {
 						reportProgress('tags', 'failed', `AI Tags failed: ${err instanceof Error ? err.message : String(err)}`);
-						console.warn('[MarkdownDocumentLoader] extractTopicAndFunctionalTags failed:', err);
-						return failedTag;
+						throw err;
 					})
 				: Promise.resolve(skippedTag);
 			const summaryTask = runSummaryLlm
@@ -254,7 +263,18 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 					this.aiServiceManager!,
 					readOptions.llmRoute?.provider,
 					readOptions.llmRoute?.modelId,
-					{ profileId: readOptions.llmRoute?.profileId, modelId: readOptions.llmRoute?.modelId },
+					{
+						profileId: readOptions.llmRoute?.profileId,
+						modelId: readOptions.llmRoute?.modelId,
+						shortMaxOutputTokens: enrichmentConfig!.outputControl.summaryShortMaxTokens,
+						fullMaxOutputTokens: enrichmentConfig!.outputControl.summaryFullMaxTokens,
+						systemPrompt: enrichmentConfig!.instructions.summary,
+						traceCallback: (trace) => readOptions.onLlmIndexingTrace?.({
+							...trace,
+							path: file.path,
+							operation: 'summary',
+						}),
+					},
 				).then((result) => {
 					reportProgress('summary', 'response-received', 'Summary response received; validating and committing the generated text.');
 					return result;
@@ -316,7 +336,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 						tags: runTagLlm
 							? [...new Set([
 								...tagRes.topicTags,
-								...tagRes.functionalTagEntries.map((entry) => entry.label?.trim() || entry.id),
+								...tagRes.functionalTagEntries.map((entry) => entry.id),
 								...tagRes.timeTags,
 								...tagRes.geoTags,
 								...tagRes.personTags,

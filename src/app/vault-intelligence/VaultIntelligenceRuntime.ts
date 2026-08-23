@@ -1,5 +1,7 @@
 import type { App, TFile } from 'obsidian';
 import type { SearchSettings } from '@/core/config/settingsTypes';
+import type { LlmIndexingTraceEvent } from '@/core/search/indexTypes';
+import { DEFAULT_INDEX_ENRICHMENT_CONFIG } from '@/core/document/IndexEnrichmentConfig';
 import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 import { ChatConversationRecordStore } from '@/core/storage/generated-output';
 import { sha256Text } from '@/core/storage/generated-output/GeneratedOutputIntegrity';
@@ -117,6 +119,8 @@ export class VaultIntelligenceRuntime {
 	private reviewPreparationPackage: ReviewPreparationPackage | null = null;
 	private scanDomainState: VaultScanDomainRunState | null = null;
 	private refreshRevision = 0;
+	/** Raw provider round-trips are intentionally bounded and process-local. */
+	private generationTraces: LlmIndexingTraceEvent[] = [];
 	/** A route override belongs to this Scan setup only. It must never rewrite a
 	 * global Agent/Embedding default merely because the owner is planning a run. */
 	private operationRouteOverrides: Partial<Record<VaultScanAiOperationId, VaultScanOperationRoute>> = {};
@@ -153,6 +157,10 @@ export class VaultIntelligenceRuntime {
 	}
 
 	getSnapshot = (): VaultIntelligenceSnapshot => this.snapshot;
+	getGenerationTraces = (operationId: 'file-summaries' | 'ai-tags', path: string): readonly LlmIndexingTraceEvent[] => {
+		const operation = operationId === 'file-summaries' ? 'summary' : 'tags';
+		return this.generationTraces.filter((trace) => trace.operation === operation && trace.path === path);
+	};
 
 	subscribe = (listener: () => void): (() => void) => {
 		this.listeners.add(listener);
@@ -247,6 +255,7 @@ export class VaultIntelligenceRuntime {
 		const config = await loadVaultIntelligenceConfig();
 		this.indexErrors = [];
 		this.aiReviewSnapshots = [];
+		this.generationTraces = [];
 		this.abortController = new AbortController();
 		const startedAt = this.now();
 		const runId = this.idFactory();
@@ -321,6 +330,7 @@ export class VaultIntelligenceRuntime {
 		this.abortController = null;
 		this.indexErrors = [];
 		this.aiReviewSnapshots = [];
+		this.generationTraces = [];
 		this.patch({ run: createEmptyVaultScanRun(), error: null });
 		await this.flushPersist();
 	}
@@ -1250,6 +1260,19 @@ export class VaultIntelligenceRuntime {
 						updatedAt: activity.updatedAt,
 					}].slice(-8);
 					this.patchOperation(operationId, { currentPath: activity.path, liveEvidence });
+				},
+				onTrace: (trace) => {
+					const index = this.generationTraces.findIndex((candidate) => (
+						candidate.requestId === trace.requestId
+						&& candidate.operation === trace.operation
+						&& candidate.path === trace.path
+					));
+					const next = index < 0
+						? [...this.generationTraces, trace]
+						: this.generationTraces.map((candidate, candidateIndex) => candidateIndex === index ? trace : candidate);
+					this.generationTraces = next.slice(-DEFAULT_INDEX_ENRICHMENT_CONFIG.trace.maxRecentCalls);
+					const operationId: VaultScanAiOperationId = trace.operation === 'summary' ? 'file-summaries' : 'ai-tags';
+					if (group.ids.includes(operationId)) this.patchOperation(operationId, { currentPath: trace.path });
 				},
 			});
 			this.indexErrors.push(...result.errors);

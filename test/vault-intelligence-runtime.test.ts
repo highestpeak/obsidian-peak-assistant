@@ -461,10 +461,12 @@ async function main(): Promise<void> {
 			enrichmentPaths.push([...(options.paths ?? [])]);
 			return { processed: 1, skippedWrongTenant: 0, errors: [] };
 		},
-		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[]; includeSummary?: boolean; includeTags?: boolean; llmRoute: { profileId: string; modelId: string; provider: string }; onActivity?: (event: { path: string; operation: 'summary' | 'tags'; phase: 'request-started'; text: string; updatedAt: number }) => void }) => {
+		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[]; includeSummary?: boolean; includeTags?: boolean; llmRoute: { profileId: string; modelId: string; provider: string }; onActivity?: (event: { path: string; operation: 'summary' | 'tags'; phase: 'request-started'; text: string; updatedAt: number }) => void; onTrace?: (event: { requestId: string; path: string; operation: 'summary' | 'tags'; phase: 'request' | 'response'; startedAt: number; completedAt?: number; systemPrompt: string; userPrompt: string; responseText?: string; usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number } }) => void }) => {
 			enrichmentPaths.push([...(options.paths ?? [])]);
 			llmRoutes.push(options.llmRoute);
 			if (options.includeSummary) options.onActivity?.({ path: options.paths?.[0] ?? '', operation: 'summary', phase: 'request-started', text: 'Summary request started.', updatedAt: now });
+			if (options.includeSummary) options.onTrace?.({ requestId: 'summary-request', path: options.paths?.[0] ?? '', operation: 'summary', phase: 'request', startedAt: now, systemPrompt: 'summary system', userPrompt: 'summary user' });
+			if (options.includeSummary) options.onTrace?.({ requestId: 'summary-request', path: options.paths?.[0] ?? '', operation: 'summary', phase: 'response', startedAt: now, completedAt: now + 1, systemPrompt: 'summary system', userPrompt: 'summary user', responseText: 'Generated summary', usage: { inputTokens: 6, outputTokens: 3, totalTokens: 9, reasoningTokens: 1 } });
 			return {
 				processed: 1, skippedWrongTenant: 0, errors: [],
 				attempts: [{
@@ -497,6 +499,9 @@ async function main(): Promise<void> {
 	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.usage.totalTokens, 9, 'Summary must retain only its own provider usage');
 	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'ai-tags')?.usage.totalTokens, 6, 'AI Tags must retain only its own provider usage');
 	assert.ok(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.liveEvidence?.some((event) => event.text === 'Summary request started.'), 'current document must receive observable generation activity immediately');
+	assert.equal(enrichedRuntime.getGenerationTraces('file-summaries', otherFile.path).length, 1, 'request and response phases for one provider call must merge into one bounded trace');
+	assert.equal(enrichedRuntime.getGenerationTraces('file-summaries', otherFile.path)[0]?.responseText, 'Generated summary', 'the active Scan must expose the exact raw response in process memory');
+	assert.equal(enrichedRuntime.getGenerationTraces('file-summaries', otherFile.path)[0]?.usage?.reasoningTokens, 1, 'provider reasoning usage must stay distinguishable from answer tokens');
 
 	const pipelineEvents: string[] = [];
 	let firstDocumentEnrichmentStarted!: () => void;

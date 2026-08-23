@@ -1,5 +1,5 @@
 import type { DocumentType, Document, ResourceSummary, Summarizable } from '@/core/document/types';
-import type { Chunk, IndexLlmRoute, LlmIndexingCompleteEvent, LlmIndexingProgressEvent } from '@/core/search/indexTypes';
+import type { Chunk, IndexLlmRoute, LlmIndexingCompleteEvent, LlmIndexingProgressEvent, LlmIndexingTraceEvent } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 
 /**
@@ -13,6 +13,8 @@ export interface DocumentLoaderReadOptions {
 	onLlmIndexingComplete?: (ev: LlmIndexingCompleteEvent) => void;
 	/** Emits observable request/response/commit phases; never synthetic model reasoning. */
 	onLlmIndexingProgress?: (ev: LlmIndexingProgressEvent) => void;
+	/** Ephemeral raw request/response trace; never persisted by the loader. */
+	onLlmIndexingTrace?: (ev: LlmIndexingTraceEvent) => void;
 	llmRoute?: IndexLlmRoute;
 }
 

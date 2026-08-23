@@ -1,6 +1,7 @@
 import type { Document } from '@/core/document/types';
 import type { LLMUsage } from '@/core/providers/types';
 import type { ChunkMeta, ChunkType } from '@/core/search/chunkTypes';
+import type { SingleTurnGenerationTraceEvent } from '@/core/llm/SingleTurnGenerationTrace';
 
 /**
  * Payload when markdown index-time LLM (tags + summary) completes for one document.
@@ -34,6 +35,12 @@ export type LlmIndexingProgressEvent = {
 	phase: 'request-started' | 'response-received' | 'failed' | 'committed';
 	text: string;
 	updatedAt: number;
+};
+
+/** Ephemeral, in-memory request/response evidence for owner inspection. */
+export type LlmIndexingTraceEvent = SingleTurnGenerationTraceEvent & {
+	path: string;
+	operation: 'summary' | 'tags';
 };
 
 export interface IndexLlmRoute {
@@ -84,6 +91,7 @@ export interface IndexDocumentOptions {
 	/** Optional; forwarded to markdown loader for LLM usage telemetry (e.g. pending enrichment progress). */
 	onLlmIndexingComplete?: (ev: LlmIndexingCompleteEvent) => void;
 	onLlmIndexingProgress?: (ev: LlmIndexingProgressEvent) => void;
+	onLlmIndexingTrace?: (ev: LlmIndexingTraceEvent) => void;
 	/** Frozen route selected by the owning run. */
 	llmRoute?: IndexLlmRoute;
 }

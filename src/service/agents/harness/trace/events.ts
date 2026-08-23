@@ -29,6 +29,9 @@ export interface StepResult {
     providerId: string;
     promptTokens: number;
     completionTokens: number;
+    /** Provider-reported reasoning tokens included within completionTokens. */
+    reasoningTokens?: number;
+    cachedInputTokens?: number;
     totalTokens: number;
     toolCalls: ToolCallTrace[];
     toolResults: ToolResultTrace[];

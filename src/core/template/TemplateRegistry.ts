@@ -161,6 +161,7 @@ export const ConfigTemplateId = {
 	ResultGraphCommunity: 'config-result-graph-community' as const,
 	GraphWorkspace: 'config-graph-workspace' as const,
 	VaultIntelligence: 'config-vault-intelligence' as const,
+	IndexEnrichment: 'config-index-enrichment' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -502,6 +503,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.ResultGraphCommunity]: meta('config', 'result-graph-community', { expectsJson: true }),
 	[ConfigTemplateId.GraphWorkspace]: meta('config', 'graph-workspace', { expectsJson: true }),
 	[ConfigTemplateId.VaultIntelligence]: meta('config', 'vault-intelligence', { expectsJson: true }),
+	[ConfigTemplateId.IndexEnrichment]: meta('config', 'index-enrichment', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),

@@ -111,6 +111,12 @@ assert.match(source, /liveActivity\.length > 0/, 'provider lifecycle activity mu
 assert.match(source, />Activity</, 'the current document must expose observable provider lifecycle activity without an explanatory panel');
 assert.doesNotMatch(source, /<small>Model<\/small>/, 'the generated-knowledge result view must not repeat model routing already shown by Scan setup and lanes');
 assert.doesNotMatch(source, /Observable provider lifecycle/, 'the generated-knowledge result view must not expose implementation commentary');
+assert.match(source, />Request log</, 'generated knowledge details must expose a compact, owner-opened raw request log');
+assert.match(source, />Raw response</, 'the raw provider response must be inspectable without opening DevTools');
+assert.match(source, />Provider reasoning</, 'provider-emitted reasoning must be visible without fabricating hidden reasoning');
+assert.match(source, /trace\.phase === 'stream'/, 'the current request log must distinguish a live provider stream from a terminal response');
+assert.match(source, /trace\.usage\?\.reasoningTokens/, 'provider reasoning tokens must be separated from answer output in the request log');
+assert.match(source, /runtime\.getGenerationTraces/, 'the request log must consume real runtime traces rather than fabricated UI samples');
 assert.match(source, /Output unavailable/, 'legacy completion receipts without retained output must not render as Ready');
 assert.match(html, /pk-vi-overview-activity-body/);
 assert.match(html, /pk-vi-index-overview-body/);

@@ -4,6 +4,7 @@
 // `IDocSummarizer` remains a one-method surface.
 
 import type { UsageFeature } from '@/core/types/usage';
+import type { SingleTurnGenerationTraceEvent } from '@/core/llm/SingleTurnGenerationTrace';
 
 export interface DocTagClassifierQueryOpts {
 	systemPrompt?: string;
@@ -12,6 +13,10 @@ export interface DocTagClassifierQueryOpts {
 	usageAction?: string;
 	usageSessionId?: string;
 	usageCallback?: (usage: import('@/core/providers/types').LLMUsage) => void;
+	maxOutputTokens?: number;
+	/** Disable duplicate schema text when the selected prompt already contains the compact output contract. */
+	includeSchemaInPrompt?: boolean;
+	traceCallback?: (event: SingleTurnGenerationTraceEvent) => void;
 	/** Explicit one-run binding. Callers must not mutate a global role to select it. */
 	profileId?: string;
 	modelId?: string;

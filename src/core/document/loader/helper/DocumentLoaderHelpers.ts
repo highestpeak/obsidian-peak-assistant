@@ -4,6 +4,7 @@ import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { PromptId } from '@/core/types/prompt';
 import type { TextRankTerm } from '@/core/document/loader/helper/textRank';
 import type { TextrankSentenceStructured } from '@/core/document/loader/helper/assembleIndexedChunks';
+import type { SingleTurnGenerationTraceEvent } from '@/core/llm/SingleTurnGenerationTrace';
 
 /** Caller-supplied summary-length config. Loaders thread this in from {@link DocumentLoaderManager} so this helper stays decoupled from `AppContext`. */
 export interface DocumentSummaryConfig {
@@ -30,6 +31,10 @@ export type DocumentSummaryOptions = {
 	textrankSentences?: string;
 	profileId?: string;
 	modelId?: string;
+	shortMaxOutputTokens?: number;
+	fullMaxOutputTokens?: number;
+	systemPrompt?: string;
+	traceCallback?: (event: SingleTurnGenerationTraceEvent) => void;
 };
 
 /** Summary text plus merged LLM usage for index telemetry. */
@@ -161,22 +166,26 @@ export async function getDefaultDocumentSummary(
 	let shortSummary: string;
 	let fullSummary: string | undefined;
 	const queryOptions = {
+		systemPrompt: options?.systemPrompt,
 		profileId: options?.profileId,
 		modelId: options?.modelId ?? modelId,
+		traceCallback: options?.traceCallback,
 		usageCallback: (usage: LLMUsage) => { llmUsage = mergeTokenUsage(llmUsage, usage); },
 	};
 
 	if (needFull) {
 		const [shortText, fullText] = await Promise.all([
-			aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any, queryOptions),
-			aiServiceManager.queryText(PromptId.DocSummaryFull, fullVarsBase as any, queryOptions),
+			aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any, { ...queryOptions, maxOutputTokens: options?.shortMaxOutputTokens }),
+			aiServiceManager.queryText(PromptId.DocSummaryFull, fullVarsBase as any, { ...queryOptions, maxOutputTokens: options?.fullMaxOutputTokens }),
 		]);
 		shortSummary = shortText;
 		fullSummary = fullText;
 	} else {
-		shortSummary = await aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any, queryOptions);
+		shortSummary = await aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any, { ...queryOptions, maxOutputTokens: options?.shortMaxOutputTokens });
 		fullSummary = undefined;
 	}
+	if (!shortSummary.trim()) throw new Error(`Summary provider returned empty text for "${path || title || 'untitled note'}".`);
+	if (needFull && !fullSummary?.trim()) throw new Error(`Full Summary provider returned empty text for "${path || title || 'untitled note'}".`);
 
 	console.info('[MarkdownDocumentLoader] document summary LLM done', {
 		path,

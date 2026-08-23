@@ -665,6 +665,7 @@ export class IndexService
 				includeLlmSummary: opts.includeLlmSummary,
 				...(opts.onLlmIndexingComplete ? { onLlmIndexingComplete: opts.onLlmIndexingComplete } : {}),
 				...(opts.onLlmIndexingProgress ? { onLlmIndexingProgress: opts.onLlmIndexingProgress } : {}),
+				...(opts.onLlmIndexingTrace ? { onLlmIndexingTrace: opts.onLlmIndexingTrace } : {}),
 				...(opts.llmRoute ? { llmRoute: opts.llmRoute } : {}),
 			};
 
@@ -2233,6 +2234,7 @@ export class IndexService
 		options?: {
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
 			onActivity?: (ev: import('@/core/search/indexTypes').LlmIndexingProgressEvent) => void;
+			onTrace?: (ev: import('@/core/search/indexTypes').LlmIndexingTraceEvent) => void;
 			shouldContinue?: () => boolean;
 			paths?: readonly string[];
 			includeTags?: boolean;
@@ -2338,6 +2340,7 @@ export class IndexService
 						...baseOpts,
 						onLlmIndexingComplete,
 						onLlmIndexingProgress: options?.onActivity,
+						onLlmIndexingTrace: options?.onTrace,
 						llmRoute: options?.llmRoute,
 					});
 					const wallMs = Date.now() - t0;

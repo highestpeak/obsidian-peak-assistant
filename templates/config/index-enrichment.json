@@ -1,0 +1,14 @@
+{
+  "outputControl": {
+    "summaryShortMaxTokens": 384,
+    "summaryFullMaxTokens": 1536,
+    "tagsMaxTokens": 512
+  },
+  "instructions": {
+    "summary": "Return the final summary directly. Do not include analysis or reasoning.",
+    "tags": "This is a bounded classification task. Return the JSON object immediately without explanation or extended reasoning."
+  },
+  "trace": {
+    "maxRecentCalls": 8
+  }
+}

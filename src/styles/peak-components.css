@@ -26717,7 +26717,7 @@
 .peak-design-root .pk-vi-generated-output > em.is-not-supported,
 .peak-design-root .pk-vi-generated-detail em.is-not-supported { color:var(--text-faint); }
 .peak-design-root .pk-vi-generated-tags { display:flex; min-width:0; gap:5px; overflow:hidden; }
-.peak-design-root .pk-vi-generated-tags > i { height:20px; display:inline-flex; align-items:center; flex:none; padding:0 7px; border-radius:999px; color:var(--interactive-accent); background:color-mix(in srgb,var(--interactive-accent) 10%,var(--background-primary)); font-size:8.5px; font-weight:680; font-style:normal; }
+.peak-design-root .pk-vi-generated-tags > i { height:20px; max-width:220px; display:inline-flex; align-items:center; flex:none; overflow:hidden; padding:0 7px; border-radius:999px; color:var(--interactive-accent); background:color-mix(in srgb,var(--interactive-accent) 10%,var(--background-primary)); font-size:8.5px; font-weight:680; font-style:normal; text-overflow:ellipsis; white-space:nowrap; }
 .peak-design-root .pk-vi-generated-activity { border-top:1px solid var(--background-modifier-border); background:var(--background-secondary); }
 .peak-design-root .pk-vi-generated-activity > header { min-height:30px; display:flex; align-items:center; padding:5px 14px; border-bottom:1px solid var(--background-modifier-border); }
 .peak-design-root .pk-vi-generated-activity > header strong { font-size:9.5px; }
@@ -26759,6 +26759,24 @@
 .peak-vault-intelligence-view .pk-vi-generated-detail-copy { display:block; margin-top:12px; color:var(--text-normal); font-size:11px; line-height:1.65; }
 .peak-vault-intelligence-view .pk-vi-generated-detail .pk-vi-generated-tags { flex-wrap:wrap; margin-top:10px; overflow:visible; }
 .peak-vault-intelligence-view .pk-vi-generated-detail .pk-vi-generated-tags > i { height:23px; font-size:9px; }
+.peak-vault-intelligence-view .pk-vi-generation-log { border-bottom:1px solid var(--background-modifier-border); background:var(--background-primary); }
+.peak-vault-intelligence-view .pk-vi-generation-log > summary { min-height:42px; display:grid; grid-template-columns:minmax(0,1fr) auto 14px; gap:10px; align-items:center; padding:7px 22px; cursor:pointer; list-style:none; }
+.peak-vault-intelligence-view .pk-vi-generation-log > summary::-webkit-details-marker { display:none; }
+.peak-vault-intelligence-view .pk-vi-generation-log > summary > span { display:flex; align-items:center; gap:7px; }
+.peak-vault-intelligence-view .pk-vi-generation-log > summary strong { font-size:10.5px; }
+.peak-vault-intelligence-view .pk-vi-generation-log > summary small { color:var(--text-faint); font-size:9px; }
+.peak-vault-intelligence-view .pk-vi-generation-log > summary > svg { transition:transform 120ms ease; }
+.peak-vault-intelligence-view .pk-vi-generation-log[open] > summary > svg { transform:rotate(180deg); }
+.peak-vault-intelligence-view .pk-vi-generation-log > div { max-height:420px; overflow:auto; border-top:1px solid var(--background-modifier-border); background:var(--background-secondary); }
+.peak-vault-intelligence-view .pk-vi-generation-log article { padding:12px 14px; border-bottom:1px solid var(--background-modifier-border); background:var(--background-primary); }
+.peak-vault-intelligence-view .pk-vi-generation-log article:last-child { border-bottom:0; }
+.peak-vault-intelligence-view .pk-vi-generation-log article > header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:9px; }
+.peak-vault-intelligence-view .pk-vi-generation-log article > header strong { font-size:10.5px; }
+.peak-vault-intelligence-view .pk-vi-generation-log article > header span { color:var(--text-muted); font-size:8.5px; }
+.peak-vault-intelligence-view .pk-vi-generation-log article > section + section { margin-top:9px; }
+.peak-vault-intelligence-view .pk-vi-generation-log article > section > strong { display:block; margin-bottom:4px; color:var(--text-muted); font-size:8.5px; text-transform:uppercase; letter-spacing:.04em; }
+.peak-vault-intelligence-view .pk-vi-generation-log pre { max-height:190px; margin:0; overflow:auto; padding:8px 9px; border:1px solid var(--background-modifier-border); border-radius:6px; color:var(--text-normal); background:var(--background-secondary); font-family:var(--font-monospace); font-size:8.5px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; user-select:text; }
+.peak-vault-intelligence-view .pk-vi-generation-log-empty { display:block; padding:18px 22px; color:var(--text-muted); font-size:9.5px; text-align:center; }
 .peak-vault-intelligence-view .pk-vi-generated-boundary { min-height:42px; display:flex; align-items:center; gap:7px; padding:8px 22px; color:var(--text-muted); background:var(--background-secondary); font-size:9.5px; }
 .peak-vault-intelligence-view .pk-vi-generated-boundary > svg { color:var(--color-green); }
 .peak-vault-intelligence-view .pk-vi-generated-boundary > i { width:1px; height:12px; margin:0 3px; background:var(--background-modifier-border); }

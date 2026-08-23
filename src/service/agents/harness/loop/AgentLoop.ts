@@ -473,6 +473,8 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         const usage = capture.usage ?? ({} as LanguageModelUsage);
         const promptTokens = usage.inputTokens ?? 0;
         const completionTokens = usage.outputTokens ?? 0;
+        const reasoningTokens = usage.outputTokenDetails?.reasoningTokens ?? usage.reasoningTokens ?? 0;
+        const cachedInputTokens = usage.inputTokenDetails?.cacheReadTokens ?? usage.cachedInputTokens ?? 0;
         const stepTotal = usage.totalTokens ?? promptTokens + completionTokens;
 
         const step: StepResult = {
@@ -483,6 +485,8 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             providerId: tier.providerId,
             promptTokens,
             completionTokens,
+            reasoningTokens,
+            cachedInputTokens,
             totalTokens: stepTotal,
             toolCalls: callTraces,
             toolResults: resultTraces,

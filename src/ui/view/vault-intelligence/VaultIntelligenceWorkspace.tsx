@@ -1299,7 +1299,7 @@ function RunProgress({ snapshot, runtime, onBack, onCompleted, onStartNew }: {
 		</section>
 		<section className="pk-vi-run-stage-workspace" role="tabpanel">
 			<div className="pk-vi-run-stage-workspace-head"><div><span className="pk-vi-card-title">{currentStage?.id === 'ai' ? 'Vault-wide discovery' : currentStage?.id === 'prepare-review' ? 'Preparing work for review' : currentStage?.id === 'index' ? 'Build Index' : currentStage?.id === 'discover' ? 'Discover scope and affected context' : currentStage?.id === 'publish' ? 'Publish verified machine layers and follow-up' : 'Scan stage'}</span><span className="pk-vi-card-caption">{stageDescription}</span></div><div className="pk-vi-run-stage-head-actions">{currentStage ? <StageState status={currentStage.status} /> : <span>Not available</span>}<div ref={stageMenuRef} className={`pk-vi-stage-inspector ${stageMenuOpen ? 'is-open' : ''}`}><Button variant="ghost" className="pk-vi-stage-inspector-trigger" aria-expanded={stageMenuOpen} onClick={() => setStageMenuOpen((value) => !value)}><ListChecks size={15} />View 5 stages<ChevronDown size={14} /></Button><div className="pk-vi-stage-inspector-menu" role="tablist" aria-label="Scan stages">{run.stages.map((stage, index) => { const isLive = liveStageIds.has(stage.id); return <Button key={stage.id} variant="ghost" role="tab" aria-selected={focusedStageId === stage.id} title={stage.message} className={`pk-vi-run-stage-tab is-${stage.status} ${focusedStageId === stage.id ? 'is-active' : ''} ${isLive ? 'is-live' : ''}`} onClick={() => { setInspectedStageId(stage.id === liveStageId ? null : stage.id); setStageMenuOpen(false); }}><span>{index + 1}</span><strong>{stageLabel(stage.id)}</strong><small>{stageStateLabel(stage, run.status)}</small></Button>; })}</div></div></div></div>
-			{currentStage?.id === 'discover' ? <DiscoverRunWorkspace run={run} stage={currentStage} /> : currentStage?.id === 'index' ? <BuildIndexParityWorkspace run={run} stage={currentStage} /> : currentStage?.id === 'ai' ? <VaultDiscoveryParityWorkspace run={run} /> : currentStage?.id === 'prepare-review' ? <PrepareReviewRunWorkspace run={run} /> : <PublishRunWorkspace run={run} stage={currentStage} />}
+			{currentStage?.id === 'discover' ? <DiscoverRunWorkspace run={run} stage={currentStage} /> : currentStage?.id === 'index' ? <BuildIndexParityWorkspace run={run} stage={currentStage} runtime={runtime} /> : currentStage?.id === 'ai' ? <VaultDiscoveryParityWorkspace run={run} /> : currentStage?.id === 'prepare-review' ? <PrepareReviewRunWorkspace run={run} /> : <PublishRunWorkspace run={run} stage={currentStage} />}
 		</section>
 		<section className="pk-vi-run-events"><div className="pk-vi-card-head"><div><span className="pk-vi-card-title">Run events</span><span className="pk-vi-card-caption">Durable runtime evidence for this Scan.</span></div></div>{relevantEvents.length > 0 ? <div>{relevantEvents.map((event) => <span key={event.id}><time>{formatDateTime(event.timestamp)}</time><strong>{event.detail}</strong></span>)}</div> : <div className="pk-vi-empty">No run events recorded yet.</div>}</section>
 		{run.warnings.length > 0 && <section className="pk-vi-card pk-vi-warning-list"><strong>Partial results and warnings</strong>{run.warnings.map((warning) => <span key={warning}><CircleAlert size={14} />{warning}</span>)}</section>}
@@ -1406,7 +1406,7 @@ function AiRunWorkspace({ run, runtime }: { run: VaultIntelligenceSnapshot['run'
 	</div>;
 }
 
-function BuildIndexParityWorkspace({ run, stage }: { run: VaultIntelligenceSnapshot['run']; stage: VaultIntelligenceSnapshot['run']['stages'][number] }) {
+function BuildIndexParityWorkspace({ run, stage, runtime }: { run: VaultIntelligenceSnapshot['run']; stage: VaultIntelligenceSnapshot['run']['stages'][number]; runtime: VaultIntelligenceWorkspaceRuntime }) {
 	const [inspectOpen, setInspectOpen] = useState(false);
 	const [knowledgePath, setKnowledgePath] = useState<string | null>(null);
 	const knowledgeTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -1508,6 +1508,12 @@ function BuildIndexParityWorkspace({ run, stage }: { run: VaultIntelligenceSnaps
 	const detailEligible = Boolean(knowledgePath && run.pathEligibility?.[knowledgePath]?.aiEnrichment !== false);
 	const detailSummaryState = knowledgePath ? knowledgeState(summaries, knowledgePath, detailEligible, 'summary') : { label: 'Queued', className: '' };
 	const detailTagsState = knowledgePath ? knowledgeState(aiTags, knowledgePath, detailEligible, 'tags') : { label: 'Queued', className: '' };
+	const detailTraces = knowledgePath
+		? [
+			...(runtime.getGenerationTraces?.('file-summaries', knowledgePath) ?? []),
+			...(runtime.getGenerationTraces?.('ai-tags', knowledgePath) ?? []),
+		].sort((left, right) => right.startedAt - left.startedAt)
+		: [];
 	return <div className="pk-vi-build-parity">
 		<section className="pk-vi-build-summary"><div className="pk-vi-build-overall"><i><ListChecks size={28} /></i><div><strong>Building search, semantic, and AI layers.</strong><span className="pk-vi-build-number">{percent}% <small>overall progress</small></span><ProgressBar value={percent} /><span className="pk-vi-build-facts"><b>{elapsed}</b> elapsed <b>Calculating…</b> target <b>{workDone} / {workTotal}</b> eligible layer passes</span></div></div><div className="pk-vi-build-outcomes">{lanes.map((lane) => { const lanePercent = lane.total > 0 ? Math.round(lane.count / lane.total * 100) : 100; const state = laneStatus(lane.id, lane.count, lane.total); return <div key={lane.id} className={`is-${state}`} title={lane.tooltip}><i>{lane.icon}</i><strong>{lane.id === 'search' ? 'Building search' : lane.id === 'embedding' ? 'Semantic ready' : 'Fully enriched'}</strong><span><b>{lanePercent}%</b><small>done</small></span><span><b>{lane.count} / {lane.total}</b><small>eligible</small></span><span><b>{elapsed}</b><small>elapsed</small></span><span><b>Calculating…</b><small>target</small></span></div>; })}</div></section>
 		<section className="pk-vi-build-card"><header><strong>One document stream · three independent lanes</strong><span><i />Complete <i />Running <i />Queued</span></header><div className="pk-vi-build-pipeline">{lanes.map((lane, laneIndex) => { const lanePercent = lane.total > 0 ? Math.round(lane.count / lane.total * 100) : 100; const rows = laneRows(lane.id); const state = laneStatus(lane.id, lane.count, lane.total); return <article key={lane.id} className={`pk-vi-build-lane is-${lane.id}`}><span className="pk-vi-build-marker">{laneIndex + 1}</span><div className="pk-vi-build-lane-title"><i>{lane.icon}</i><span><strong>{lane.title}</strong><em>{state === 'completed' ? 'Complete' : state === 'running' ? 'Running' : state}</em></span></div><div className="pk-vi-build-lane-progress"><span><b>{lane.count} / {lane.total}</b> eligible documents <strong>{lane.rate}</strong></span><ProgressBar value={lanePercent} /><div>{lane.facts.map((fact) => <small key={fact}>{fact}</small>)}</div></div><div className="pk-vi-build-window"><header><span>Current files</span><span>{rows.filter((row) => row.state === 'running').length} active · {rows.filter((row) => row.state === 'queued').length} next</span></header>{rows.length ? rows.map((row) => <span key={row.path} className={`is-${row.state}`}><i /><strong title={row.path}>{row.path}</strong><em>{row.model}</em><small>{row.label}</small></span>) : <div className="pk-vi-build-empty">No eligible files in this lane.</div>}</div></article>; })}</div></section>
@@ -1530,6 +1536,22 @@ function BuildIndexParityWorkspace({ run, stage }: { run: VaultIntelligenceSnaps
 					<section><strong>Summary <em className={detailSummaryState.className}>{detailSummaryState.label}</em></strong><span className="pk-vi-generated-detail-copy">{detailSummaryReceipt?.generatedKnowledge?.summary || (detailSummaryState.label === 'Generating' ? 'Waiting for response…' : detailSummaryState.label)}</span></section>
 					<section><strong>AI Tags <em className={detailTagsState.className}>{detailTagsState.label}</em></strong><div className="pk-vi-generated-tags">{detailTagsReceipt?.generatedKnowledge?.tags?.length ? detailTagsReceipt.generatedKnowledge.tags.map((tag) => <i key={tag}>{tag}</i>) : <span>{detailTagsState.label === 'Generating' ? 'Waiting for tags…' : detailTagsState.label}</span>}</div></section>
 				</div>
+				<details className="pk-vi-generation-log">
+					<summary><span><FileText size={14} /><strong>Request log</strong></span><small>{detailTraces.length ? `${detailTraces.length} call${detailTraces.length === 1 ? '' : 's'}` : 'Waiting'}</small><ChevronDown size={14} /></summary>
+					<div>{detailTraces.length ? detailTraces.map((trace) => {
+						const reasoning = trace.usage?.reasoningTokens ?? 0;
+						const answer = Math.max(0, (trace.usage?.outputTokens ?? 0) - reasoning);
+						const usageText = trace.usage
+							? `${formatCompactNumber(trace.usage.inputTokens ?? 0)} in · ${formatCompactNumber(answer)} answer${reasoning > 0 ? ` · ${formatCompactNumber(reasoning)} reasoning` : ''}`
+							: trace.phase === 'request' ? 'Awaiting receipt' : 'Usage unavailable';
+						return <article key={`${trace.operation}:${trace.requestId}`}>
+							<header><strong>{trace.operation === 'summary' ? 'Summary' : 'AI Tags'}{trace.phase === 'stream' ? ' · streaming' : ''}</strong><span>{usageText}</span></header>
+							<section><strong>Request</strong><pre>{`SYSTEM\n${trace.systemPrompt || '(empty)'}\n\nUSER\n${trace.userPrompt}`}</pre></section>
+							{trace.reasoningText ? <section><strong>Provider reasoning</strong><pre>{trace.reasoningText}</pre></section> : null}
+							<section><strong>Raw response</strong><pre>{trace.phase === 'failed' ? trace.error ?? 'Request failed.' : trace.responseText ?? 'Waiting for the provider response…'}</pre></section>
+						</article>;
+					}) : <span className="pk-vi-generation-log-empty">The exact request and raw response will appear here when this document starts generation.</span>}</div>
+				</details>
 				<div className="pk-vi-generated-boundary"><ShieldCheck size={14} /><span>Source unchanged</span><i />Saved to Peak Index</div>
 			</section>
 		</div>}

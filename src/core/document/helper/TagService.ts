@@ -1,11 +1,11 @@
 import { z } from 'zod/v3';
 import type { LLMUsage } from '@/core/providers/types';
 import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
+import type { SingleTurnGenerationTraceEvent } from '@/core/llm/SingleTurnGenerationTrace';
 import { PromptId } from '@/core/types/prompt';
 import { parseInferCreatedAtStringToMs, parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import {
 	FUNCTIONAL_TAG_IDS,
-	SEMANTIC_DIMENSION_IDS,
 	SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS,
 	type FunctionalTagId,
 } from '@/core/schemas/agents/search-agent-schemas';
@@ -71,9 +71,9 @@ const CONTEXT_LABEL_PATTERN: Record<ContextTagAxis, RegExp> = {
 	person: /^Person[A-Z][a-zA-Z0-9_]*$/,
 };
 
-const MAX_CONTEXT_TAGS_PER_AXIS = 8;
+const MAX_CONTEXT_TAGS_PER_AXIS = 4;
 const MAX_FUNCTIONAL_LABEL_LEN = 240;
-const MAX_TOPIC_ID_LEN = 120;
+const MAX_TOPIC_ID_LEN = 64;
 const MAX_TOPIC_LABEL_LEN = 240;
 
 /**
@@ -347,14 +347,14 @@ const DOC_TYPE_LLM = [
 ] as const;
 
 const docTagResponseSchema = z.object({
-	topicTagEntries: z.array(topicTagEntrySchema).max(12).default([]),
+	topicTagEntries: z.array(topicTagEntrySchema).max(8).default([]),
 	/** @deprecated LLM may still return plain strings; mapped to `{ id }` when topicTagEntries is empty. */
-	topicTags: z.array(z.string()).max(12).optional(),
+	topicTags: z.array(z.string()).max(8).optional(),
 	/** At least one entry; ids normalized via {@link mapLlmFunctionalIdToCanonical}. */
-	functionalTagEntries: z.array(llmFunctionalTagEntryLooseSchema).min(1).max(5),
-	timeTags: z.array(z.string()).max(12).default([]),
-	geoTags: z.array(z.string()).max(12).default([]),
-	personTags: z.array(z.string()).max(12).default([]),
+	functionalTagEntries: z.array(llmFunctionalTagEntryLooseSchema).min(1).max(3),
+	timeTags: z.array(z.string()).max(4).default([]),
+	geoTags: z.array(z.string()).max(4).default([]),
+	personTags: z.array(z.string()).max(4).default([]),
 	/**
 	 * Best estimate of first authorship / event start. Prefer compact text: `yyyyMMdd` or `yyyyMMdd HHmmss`
 	 * (24h). Omit or null if unknown.
@@ -365,7 +365,6 @@ const docTagResponseSchema = z.object({
 	 */
 	docType: z.enum(DOC_TYPE_LLM).optional(),
 	docTypeConfidence: z.number().min(0).max(1).optional(),
-	docTypeReasoning: z.string().max(500).optional(),
 });
 
 /** Folds optional LLM `docType*` into one functional entry's label (same call as tags). */
@@ -373,7 +372,6 @@ function mergeDocVaultRoleIntoFunctionalEntries(
 	entries: FunctionalTagEntry[],
 	docType: (typeof DOC_TYPE_LLM)[number] | undefined,
 	docTypeConfidence: number | undefined,
-	docTypeReasoning: string | undefined,
 ): FunctionalTagEntry[] {
 	if (!docType || entries.length === 0) return entries;
 
@@ -381,8 +379,6 @@ function mergeDocVaultRoleIntoFunctionalEntries(
 	if (docTypeConfidence !== undefined && Number.isFinite(docTypeConfidence)) {
 		parts.push(`conf:${Math.round(Number(docTypeConfidence) * 100) / 100}`);
 	}
-	const reason = String(docTypeReasoning ?? '').trim().slice(0, 200);
-	if (reason) parts.push(reason);
 	const annotation = parts.join(' · ');
 
 	/** Vault docType nuance attaches under semantic dimension `essence_definition` (same functional ids as slot routing). */
@@ -425,15 +421,6 @@ export type DocLlmTagResult = {
 	llmCostUsd?: number;
 };
 
-function buildDimensionFunctionalHintsTable(): string {
-	const lines: string[] = [];
-	for (const dim of SEMANTIC_DIMENSION_IDS) {
-		const hints = SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS[dim];
-		lines.push(`- ${dim}: ${hints.join(', ')}`);
-	}
-	return lines.join('\n');
-}
-
 /**
  * LLM: topic + functional (closed enum) + time/geo/person context tags. Requires {@link AIServiceManager}.
  * User frontmatter tags are hints only; LLM judgment is authoritative for output fields.
@@ -453,6 +440,9 @@ export async function extractTopicAndFunctionalTags(
 		provider?: string;
 		profileId?: string;
 		modelId?: string;
+		maxOutputTokens?: number;
+		systemPrompt?: string;
+		traceCallback?: (event: SingleTurnGenerationTraceEvent) => void;
 	},
 ): Promise<DocLlmTagResult> {
 	const empty: DocLlmTagResult = {
@@ -468,7 +458,6 @@ export async function extractTopicAndFunctionalTags(
 		return empty;
 	}
 
-	const functionalHintsTable = buildDimensionFunctionalHintsTable();
 	const variables = {
 		content: text,
 		title: options?.title ?? '',
@@ -478,7 +467,6 @@ export async function extractTopicAndFunctionalTags(
 		existingUserTags: options?.existingUserTags?.trim() ?? '',
 		...(options?.textrankKeywords?.trim() ? { textrankKeywords: options.textrankKeywords.trim() } : {}),
 		...(options?.textrankSentences?.trim() ? { textrankSentences: options.textrankSentences.trim() } : {}),
-		functionalHintsTable,
 		functionalTagList: FUNCTIONAL_TAG_IDS.join(', '),
 	};
 
@@ -492,16 +480,21 @@ export async function extractTopicAndFunctionalTags(
 	});
 	try {
 		const { zodToJsonSchema } = await import('zod-to-json-schema');
-		normalized = await ai.queryStructured<z.infer<typeof docTagResponseSchema>>(
+		const raw = await ai.queryStructured<unknown>(
 			PromptId.DocTagGenerateJson,
 			variables as any,
 			zodToJsonSchema(docTagResponseSchema),
 			{
+				systemPrompt: options?.systemPrompt,
 				profileId: options?.profileId,
 				modelId: options?.modelId,
+				maxOutputTokens: options?.maxOutputTokens,
+				includeSchemaInPrompt: false,
+				traceCallback: options?.traceCallback,
 				usageCallback: (usage) => { tagUsage = usage; },
 			},
 		);
+		normalized = docTagResponseSchema.parse(raw);
 		console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM done', {
 			title: options?.title ?? '',
 			elapsedMs: Date.now() - tTag,
@@ -512,10 +505,7 @@ export async function extractTopicAndFunctionalTags(
 			elapsedMs: Date.now() - tTag,
 			error: err instanceof Error ? err.message : String(err),
 		});
-		return {
-			...empty,
-			llmTagRunStatus: 'failed',
-		};
+		throw err;
 	}
 
 	let inferCreatedAtMs: number | undefined;
@@ -545,23 +535,13 @@ export async function extractTopicAndFunctionalTags(
 	}
 	let functionalTagEntries = filterValidFunctionalTagEntries(mappedFunctional);
 	if (functionalTagEntries.length === 0) {
-		console.info('[MarkdownDocumentLoader] DocTagGenerateJson: no valid functional tags after filter', {
-			title: options?.title ?? '',
-		});
-		return {
-			...empty,
-			topicTagEntries,
-			topicTags,
-			llmTagRunStatus: 'failed',
-			...(tagUsage ? { llmUsage: tagUsage, llmCostUsd: tagCostUsd } : {}),
-		};
+		throw new Error(`AI Tags response contained no valid functional tag ids for "${options?.title ?? 'untitled note'}".`);
 	}
 
 	functionalTagEntries = mergeDocVaultRoleIntoFunctionalEntries(
 		functionalTagEntries,
 		normalized.docType,
 		normalized.docTypeConfidence,
-		normalized.docTypeReasoning,
 	);
 
 	return {

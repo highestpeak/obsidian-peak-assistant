@@ -53,6 +53,7 @@ import {
 } from '@/service/agents/harness/HarnessModelRunner';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
+import type { SingleTurnGenerationTraceEvent } from '@/core/llm/SingleTurnGenerationTrace';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import type { WorkingContext } from '@/service/context/types';
@@ -899,9 +900,10 @@ ${sourcesList}${topicsList}
 	async queryText(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string; usageCallback?: (usage: LLMUsage) => void },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string; usageCallback?: (usage: LLMUsage) => void; maxOutputTokens?: number; traceCallback?: (event: SingleTurnGenerationTraceEvent) => void },
 	): Promise<string> {
 		const startMs = Date.now();
+		const requestId = crypto.randomUUID();
 		const resolved = this.resolveRequestedProfileAndModel(
 			opts?.profileId,
 			opts?.modelId,
@@ -914,16 +916,39 @@ ${sourcesList}${topicsList}
 			variables,
 			opts?.systemPrompt,
 		);
-
-		const { text, usage } = await runHarnessText({
-			loopId: `query-text-${crypto.randomUUID()}`,
-			profile,
-			modelId,
-			prompt: userPrompt,
-			systemPrompt,
-			maxSteps: 1,
-			signal: opts?.signal,
-		});
+		emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'request', startedAt: startMs, systemPrompt, userPrompt });
+		let text: string;
+		let usage: LLMUsage;
+		let streamedText = '';
+		let streamedReasoning = '';
+		let lastStreamTraceAt = 0;
+		try {
+			const result = await runHarnessText({
+				loopId: `query-text-${requestId}`,
+				profile,
+				modelId,
+				prompt: userPrompt,
+				systemPrompt,
+				maxSteps: 1,
+				modelSettings: opts?.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : undefined,
+				onStreamEvent: (event) => {
+					if (event.type === 'text_delta') streamedText += event.delta;
+					if (event.type === 'reasoning_delta') streamedReasoning += event.delta;
+					if (event.type !== 'text_delta' && event.type !== 'reasoning_delta') return;
+					const now = Date.now();
+					if (now - lastStreamTraceAt < 300) return;
+					lastStreamTraceAt = now;
+					emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'stream', startedAt: startMs, systemPrompt, userPrompt, responseText: streamedText, reasoningText: streamedReasoning });
+				},
+				signal: opts?.signal,
+			});
+			text = result.text;
+			usage = result.usage;
+			emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'response', startedAt: startMs, completedAt: Date.now(), systemPrompt, userPrompt, responseText: text, reasoningText: streamedReasoning, usage });
+		} catch (error) {
+			emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'failed', startedAt: startMs, completedAt: Date.now(), systemPrompt, userPrompt, responseText: streamedText, reasoningText: streamedReasoning, error: error instanceof Error ? error.message : String(error) });
+			throw error;
+		}
 		this.emitUsage(
 			usage,
 			startMs,
@@ -1063,9 +1088,10 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		schema?: unknown,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void; profileId?: string; modelId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void; profileId?: string; modelId?: string; maxOutputTokens?: number; includeSchemaInPrompt?: boolean; traceCallback?: (event: SingleTurnGenerationTraceEvent) => void },
 	): Promise<T> {
 		const startMs = Date.now();
+		const requestId = crypto.randomUUID();
 		const resolved = this.resolveRequestedProfileAndModel(
 			opts?.profileId,
 			opts?.modelId,
@@ -1079,18 +1105,43 @@ ${sourcesList}${topicsList}
 			opts?.systemPrompt,
 		);
 
-		const jsonInstruction = schema
-			? `\n\nRespond with valid JSON matching this schema:\n${JSON.stringify(schema, null, 2)}`
+		const jsonInstruction = schema && opts?.includeSchemaInPrompt !== false
+			? `\n\nRespond with valid JSON matching this schema:\n${JSON.stringify(schema)}`
 			: '\n\nRespond with valid JSON.';
-		const { text, usage } = await runHarnessText({
-			loopId: `query-structured-${crypto.randomUUID()}`,
-			profile,
-			modelId,
-			prompt: userPrompt,
-			systemPrompt: systemPrompt + jsonInstruction,
-			maxSteps: 1,
-			signal: opts?.signal,
-		});
+		const effectiveSystemPrompt = systemPrompt + jsonInstruction;
+		emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'request', startedAt: startMs, systemPrompt: effectiveSystemPrompt, userPrompt });
+		let text: string;
+		let usage: LLMUsage;
+		let streamedText = '';
+		let streamedReasoning = '';
+		let lastStreamTraceAt = 0;
+		try {
+			const result = await runHarnessText({
+				loopId: `query-structured-${requestId}`,
+				profile,
+				modelId,
+				prompt: userPrompt,
+				systemPrompt: effectiveSystemPrompt,
+				maxSteps: 1,
+				modelSettings: opts?.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : undefined,
+				onStreamEvent: (event) => {
+					if (event.type === 'text_delta') streamedText += event.delta;
+					if (event.type === 'reasoning_delta') streamedReasoning += event.delta;
+					if (event.type !== 'text_delta' && event.type !== 'reasoning_delta') return;
+					const now = Date.now();
+					if (now - lastStreamTraceAt < 300) return;
+					lastStreamTraceAt = now;
+					emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'stream', startedAt: startMs, systemPrompt: effectiveSystemPrompt, userPrompt, responseText: streamedText, reasoningText: streamedReasoning });
+				},
+				signal: opts?.signal,
+			});
+			text = result.text;
+			usage = result.usage;
+			emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'response', startedAt: startMs, completedAt: Date.now(), systemPrompt: effectiveSystemPrompt, userPrompt, responseText: text, reasoningText: streamedReasoning, usage });
+		} catch (error) {
+			emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'failed', startedAt: startMs, completedAt: Date.now(), systemPrompt: effectiveSystemPrompt, userPrompt, responseText: streamedText, reasoningText: streamedReasoning, error: error instanceof Error ? error.message : String(error) });
+			throw error;
+		}
 		this.emitUsage(
 			usage,
 			startMs,
@@ -1108,4 +1159,15 @@ ${sourcesList}${topicsList}
 		return JSON.parse(raw) as T;
 	}
 
+}
+
+function emitSingleTurnTrace(
+	callback: ((event: SingleTurnGenerationTraceEvent) => void) | undefined,
+	event: SingleTurnGenerationTraceEvent,
+): void {
+	try {
+		callback?.(event);
+	} catch (error) {
+		console.warn('[AIServiceManager] generation trace callback failed', error);
+	}
 }

@@ -170,15 +170,20 @@ export async function* streamHarnessModel(
 export function usageFromHarnessResult(result: AgentLoopResult): LLMUsage {
 	let inputTokens = 0;
 	let outputTokens = 0;
+	let reasoningTokens = 0;
+	let cachedInputTokens = 0;
 	for (const step of result.steps) {
 		inputTokens += step.promptTokens;
 		outputTokens += step.completionTokens;
+		reasoningTokens += step.reasoningTokens ?? 0;
+		cachedInputTokens += step.cachedInputTokens ?? 0;
 	}
 	return {
 		inputTokens,
 		outputTokens,
 		totalTokens: result.totalTokens,
-		cachedInputTokens: 0,
+		reasoningTokens,
+		cachedInputTokens,
 	};
 }
 

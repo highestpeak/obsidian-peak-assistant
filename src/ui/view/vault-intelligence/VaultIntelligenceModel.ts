@@ -21,6 +21,7 @@ import type {
 	VaultActivityTheme,
 } from '@/core/types/vault-intelligence';
 import type { VaultIntelligenceConfig } from './VaultIntelligenceDefaults';
+import type { LlmIndexingTraceEvent } from '@/core/search/indexTypes';
 import type {
 	CopilotProposals,
 	VaultActionProposal,
@@ -118,6 +119,8 @@ export interface VaultIntelligenceWorkspaceRuntime {
 	expandCommunity: (communityId: string) => Promise<void>;
 	openFile: (path: string) => Promise<boolean>;
 	openOwnerSurface: (surface: VaultIntelligenceObjectSummary['id']) => Promise<boolean>;
+	/** Ephemeral raw generation evidence for the active Scan; never persisted. */
+	getGenerationTraces?: (operationId: 'file-summaries' | 'ai-tags', path: string) => readonly LlmIndexingTraceEvent[];
 }
 
 export function createVaultScanPlan(

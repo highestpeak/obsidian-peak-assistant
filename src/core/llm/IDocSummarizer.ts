@@ -5,6 +5,7 @@
 
 import type { UsageFeature } from '@/core/types/usage';
 import type { LLMUsage } from '@/core/providers/types';
+import type { SingleTurnGenerationTraceEvent } from '@/core/llm/SingleTurnGenerationTrace';
 
 export interface DocSummarizerQueryOpts {
 	systemPrompt?: string;
@@ -16,6 +17,8 @@ export interface DocSummarizerQueryOpts {
 	profileId?: string;
 	modelId?: string;
 	usageCallback?: (usage: LLMUsage) => void;
+	maxOutputTokens?: number;
+	traceCallback?: (event: SingleTurnGenerationTraceEvent) => void;
 }
 
 /**
