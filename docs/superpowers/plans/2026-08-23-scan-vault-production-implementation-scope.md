@@ -6,6 +6,8 @@
 >
 > 上位合同：[`Scan Vault 端到端生产运行设计`](../specs/2026-08-23-scan-vault-end-to-end-runtime-design.md)
 >
+> 可直接复制到实现 session：[`Scan Vault 完整生产实现任务 Prompt`](./2026-08-23-scan-vault-production-implementation-handoff-prompt.md)
+>
 > 交付性质：完整生产 wave；不接受 Mock-only、timer demo 或半条链路
 
 ## 1. 实现结论
