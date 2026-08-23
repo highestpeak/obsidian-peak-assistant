@@ -116,11 +116,17 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
             // OpenAI-compatible server is local and intentionally keyless.
             // This value is only an SDK compatibility header; the frozen
             // profile/model/baseURL remain the sole execution route.
+            // LM Studio exposes the OpenAI-compatible chat/completions
+            // contract. The default provider(model) entry uses /responses in
+            // AI SDK v3, and browser fetch is rejected by the local server's
+            // CORS policy inside Obsidian. Keep both endpoint and transport
+            // explicit: no alternate provider or model is selected.
             const provider = createOpenAI({
                 baseURL: baseUrl || undefined,
                 apiKey: apiKey?.trim() || 'lm-studio-local',
+                fetch: corsBypassFetch ?? undefined,
             });
-            return provider(resolvedModelId);
+            return provider.chat(resolvedModelId);
         }
         case 'codex':
         case 'claude-code':

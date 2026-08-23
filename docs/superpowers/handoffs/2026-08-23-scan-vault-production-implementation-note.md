@@ -8,7 +8,7 @@
 
 Scan completion is now receipt-driven. Core Search, Embeddings, Summary, AI Tags, four Vault Discovery objectives, two Review Preparation objectives, and Publish each have explicit eligibility and completion boundaries. Missing configuration, provider/model/storage errors, missing receipts, or incomplete controller sessions fail the run; they cannot silently select another route or advance to Publish.
 
-LM Studio uses its configured base URL and exact model. Keyless local servers receive only the non-secret `lm-studio-local` compatibility header required by `@ai-sdk/openai`; execution is not redirected to OpenAI. A local check reached `google/gemma-4-26b-a4b-qat` and returned a 41-token usage receipt; `text-embedding-nomic-embed-text-v1.5` returned a 768-dimensional vector.
+LM Studio uses its configured base URL and exact model through the OpenAI-compatible `/chat/completions` endpoint and the app-owned Node-side transport, bypassing renderer CORS without changing route. Keyless local servers receive only the non-secret `lm-studio-local` compatibility header required by `@ai-sdk/openai`; execution is not redirected to OpenAI. Local checks reached `google/gemma-4-26b-a4b-qat` and returned provider usage receipts; `text-embedding-nomic-embed-text-v1.5` returned a 768-dimensional vector.
 
 ## Mock to Production mapping
 
