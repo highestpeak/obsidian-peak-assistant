@@ -93,9 +93,18 @@ export class ProfileRegistry {
     return ProfileRegistry.MODEL_ID_REWRITES[id] ?? id;
   }
 
+  private rewriteModelIdForProfile(profile: Profile | undefined, id: string | null | undefined): string {
+    const rewritten = ProfileRegistry.rewriteModelId(id);
+    if (profile?.kind !== 'openrouter') return rewritten;
+    if (rewritten === 'anthropic/claude-sonnet-4-6') return 'anthropic/claude-sonnet-4.6';
+    if (rewritten === 'anthropic/claude-haiku-4-5') return 'anthropic/claude-haiku-4.5';
+    return rewritten;
+  }
+
   private migrateRoleConfig(cfg: RoleConfig | null | undefined): RoleConfig | null {
     if (!cfg) return null;
-    return { profileId: cfg.profileId, modelId: ProfileRegistry.rewriteModelId(cfg.modelId) };
+    const profile = this.profiles.find(candidate => candidate.id === cfg.profileId);
+    return { profileId: cfg.profileId, modelId: this.rewriteModelIdForProfile(profile, cfg.modelId) };
   }
 
   private migrateProfileModelIds(p: Profile): Profile {
@@ -115,8 +124,8 @@ export class ProfileRegistry {
         },
       };
     }
-    const primary = ProfileRegistry.rewriteModelId(p.primaryModel);
-    const fast = ProfileRegistry.rewriteModelId(p.fastModel);
+    const primary = this.rewriteModelIdForProfile(p, p.primaryModel);
+    const fast = this.rewriteModelIdForProfile(p, p.fastModel);
     if (primary === p.primaryModel && fast === p.fastModel) return p;
     return { ...p, primaryModel: primary, fastModel: fast };
   }

@@ -29,6 +29,8 @@ assert.doesNotMatch(
 assert.match(profilesTab, /className="pk-profile-manager pktw-space-y-4"/);
 assert.match(profileCard, /pk-profile-card/);
 assert.match(profileCard, /pk-profile-control/);
+assert.match(profileCard, /inspectProviderConnection/, 'Settings connection tests must retain structured readiness evidence');
+assert.match(profileCard, /getConnectionFailureMessage\(connectionEvidence\)/, 'failed connection cards must expose the real failure reason');
 assert.match(addProfileGrid, /pk-profile-add-grid__option/);
 assert.doesNotMatch(profileCard, /<button\b/);
 assert.doesNotMatch(addProfileGrid, /<button\b/);

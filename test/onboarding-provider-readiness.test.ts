@@ -74,6 +74,21 @@ async function testEmptyCatalogIsNotReady(): Promise<void> {
 	assert.equal(result.failureReason, 'catalog');
 }
 
+async function testOpenRouterUsesConnectionRouterWhenConfiguredModelIsStale(): Promise<void> {
+	const http = new FakeHttp([
+		response(200, '{"data":[{"id":"meta/specialist-model"},{"id":"openrouter/auto"}]}'),
+		response(200, '{"choices":[{"message":{"content":"OK"}}]}'),
+	]);
+	const profile = createPresetProfile('openrouter', {
+		apiKey: 'secret',
+		primaryModel: 'anthropic/retired-model',
+	});
+	const result = await inspectProviderConnection(http, profile);
+
+	assert.equal(result.ready, true);
+	assert.equal(JSON.parse(http.requests[1]?.body ?? '{}').model, 'openrouter/auto');
+}
+
 async function main(): Promise<void> {
 	testVersionedEndpoints();
 	await testReadyRequiresCatalogAndGeneration();
@@ -81,6 +96,7 @@ async function main(): Promise<void> {
 	await testOllama404IsNotReady();
 	await testLMStudioUsesLiveOpenAICompatibleCatalog();
 	await testEmptyCatalogIsNotReady();
+	await testOpenRouterUsesConnectionRouterWhenConfiguredModelIsStale();
 	console.log('PASS onboarding-provider-readiness');
 }
 

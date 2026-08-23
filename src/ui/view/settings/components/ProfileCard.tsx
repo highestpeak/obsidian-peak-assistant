@@ -6,7 +6,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { Profile, ProfileKind, SimulatorProfileConfig } from '@/core/profiles/types';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { ModelCombobox } from './ModelCombobox';
-import { testProviderConnection } from '@/core/providers/testProviderConnection';
+import { inspectProviderConnection, type ConnectionEvidence } from '@/core/providers/testProviderConnection';
 import { uiHttpClient } from '@/ui/util/uiHttpClient';
 import { FieldRow } from './FieldRow';
 import {
@@ -51,6 +51,13 @@ function getCredentialLabel(profile: Profile): string {
     if (profile.kind === 'ollama' || profile.kind === 'lmstudio') return 'no key needed';
     if (profile.apiKey) return 'API key set';
     return 'no key';
+}
+
+function getConnectionFailureMessage(result: ConnectionEvidence): string {
+    if (result.authentication.state === 'failed') return result.authentication.message;
+    if (result.catalog.state === 'failed') return result.catalog.message;
+    if (result.minimumGeneration.state === 'failed') return result.minimumGeneration.message;
+    return result.minimumGeneration.message || result.catalog.message || result.authentication.message;
 }
 
 function SimulatorFields({
@@ -261,7 +268,8 @@ export function ProfileCard({
 }: ProfileCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [testing, setTesting] = useState(false);
-    const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
+    const [connectionEvidence, setConnectionEvidence] = useState<ConnectionEvidence | null>(null);
+    const testResult = connectionEvidence ? (connectionEvidence.ready ? 'success' : 'fail') : null;
     const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama' || profile.kind === 'lmstudio';
     const isSimulator = profile.kind === 'simulator';
     const simulatorConfig = {
@@ -273,10 +281,12 @@ export function ProfileCard({
     const handleTest = async (e: React.MouseEvent) => {
         e.stopPropagation();
         setTesting(true);
-        setTestResult(null);
-        const ok = await testProviderConnection(uiHttpClient, profile);
-        setTestResult(ok ? 'success' : 'fail');
-        setTesting(false);
+        setConnectionEvidence(null);
+        try {
+            setConnectionEvidence(await inspectProviderConnection(uiHttpClient, profile));
+        } finally {
+            setTesting(false);
+        }
     };
 
     const update = (updates: Partial<Profile>) => onUpdate(profile.id, updates);
@@ -298,6 +308,11 @@ export function ProfileCard({
                         <span className="pktw-text-sm pktw-font-bold pktw-truncate">{profile.name}</span>
                     </div>
                     <span className="pktw-text-pk-sm pktw-text-pk-muted-foreground pktw-truncate pktw-block">{subtitle}</span>
+                    {connectionEvidence && !connectionEvidence.ready && (
+                        <span className="pktw-text-pk-sm pktw-text-pk-error pktw-truncate pktw-block">
+                            {getConnectionFailureMessage(connectionEvidence)}
+                        </span>
+                    )}
                 </div>
 
                 <Button

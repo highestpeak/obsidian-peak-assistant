@@ -88,6 +88,12 @@ function generationBody(profile: Profile): string {
 	return JSON.stringify({ model: profile.primaryModel, max_tokens: 1, messages: [{ role: 'user', content: 'Reply OK' }] });
 }
 
+function connectionProbeModel(profile: Profile, discoveredModelIds: readonly string[]): string {
+	if (discoveredModelIds.includes(profile.primaryModel)) return profile.primaryModel;
+	if (profile.kind === 'openrouter' && discoveredModelIds.includes('openrouter/auto')) return 'openrouter/auto';
+	return discoveredModelIds[0] ?? '';
+}
+
 export async function inspectProviderConnection(http: HttpClientPort, profile: Profile): Promise<ConnectionEvidence> {
 	const endpoints = resolveProviderProbeEndpoints(profile);
 	if (!profile.baseUrl.trim()) return failedConnection(profile, '', 'configuration', 'Base URL is required');
@@ -130,9 +136,7 @@ export async function inspectProviderConnection(http: HttpClientPort, profile: P
 		if (discoveredModelIds.length === 0) {
 			return failedConnection(profile, endpoints.catalog, 'catalog', 'Model catalog did not contain a model list');
 		}
-		const generationModel = discoveredModelIds.includes(profile.primaryModel)
-			? profile.primaryModel
-			: discoveredModelIds[0];
+		const generationModel = connectionProbeModel(profile, discoveredModelIds);
 		const generationProfile = { ...profile, primaryModel: generationModel };
 		const generationEndpoints = resolveProviderProbeEndpoints(generationProfile);
 

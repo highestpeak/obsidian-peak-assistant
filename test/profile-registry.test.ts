@@ -26,7 +26,34 @@ async function run(): Promise<void> {
         const p = createPresetProfile('openrouter');
         assert.strictEqual(p.kind, 'openrouter');
         assert.strictEqual(p.baseUrl, 'https://openrouter.ai/api/v1');
-        assert.strictEqual(p.primaryModel, 'anthropic/claude-sonnet-4-6');
+        assert.strictEqual(p.primaryModel, 'anthropic/claude-sonnet-4.6');
+        assert.strictEqual(p.fastModel, 'anthropic/claude-haiku-4.5');
+      },
+    },
+    {
+      name: 'load: migrates legacy OpenRouter Claude ids without changing direct Anthropic ids',
+      fn: () => {
+        ProfileRegistry.resetInstance();
+        const registry = ProfileRegistry.getInstance();
+        const openrouter = createPresetProfile('openrouter', {
+          primaryModel: 'anthropic/claude-sonnet-4-6',
+          fastModel: 'anthropic/claude-haiku-4-5',
+        });
+        const anthropic = createPresetProfile('anthropic');
+        registry.load({
+          profiles: [openrouter, anthropic],
+          activeAgentConfig: { profileId: openrouter.id, modelId: 'anthropic/claude-sonnet-4-6' },
+          activeEmbeddingConfig: null,
+          activeWebSearchConfig: null,
+          customEndpoints: [],
+        }, () => undefined);
+
+        const migratedOpenRouter = registry.getProfileById(openrouter.id)!;
+        const migratedAnthropic = registry.getProfileById(anthropic.id)!;
+        assert.strictEqual(migratedOpenRouter.primaryModel, 'anthropic/claude-sonnet-4.6');
+        assert.strictEqual(migratedOpenRouter.fastModel, 'anthropic/claude-haiku-4.5');
+        assert.strictEqual(registry.getActiveAgentConfig()?.modelId, 'anthropic/claude-sonnet-4.6');
+        assert.strictEqual(migratedAnthropic.primaryModel, 'claude-sonnet-4-6');
       },
     },
     {
