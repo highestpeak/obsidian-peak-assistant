@@ -457,6 +457,7 @@ async function main(): Promise<void> {
 	const enrichmentPaths: string[][] = [];
 	const llmRoutes: Array<{ profileId: string; modelId: string; provider: string }> = [];
 	const indexService = {
+		getPathIndexEligibility: () => ({ fullText: true, embeddings: true, aiEnrichment: true, reason: null }),
 		runPendingVectorIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[] }) => {
 			enrichmentPaths.push([...(options.paths ?? [])]);
 			return { processed: 1, skippedWrongTenant: 0, errors: [] };
@@ -502,6 +503,38 @@ async function main(): Promise<void> {
 	assert.equal(enrichedRuntime.getGenerationTraces('file-summaries', otherFile.path).length, 1, 'request and response phases for one provider call must merge into one bounded trace');
 	assert.equal(enrichedRuntime.getGenerationTraces('file-summaries', otherFile.path)[0]?.responseText, 'Generated summary', 'the active Scan must expose the exact raw response in process memory');
 	assert.equal(enrichedRuntime.getGenerationTraces('file-summaries', otherFile.path)[0]?.usage?.reasoningTokens, 1, 'provider reasoning usage must stay distinguishable from answer tokens');
+
+	const failedModelPaths: string[] = [];
+	let failedModelSignal: AbortSignal | undefined;
+	const modelFailureMessage = 'Failed to load model "google/gemma-4-26b-a4b-qat". Error: Failed to load model.';
+	const failedModelIndexService = {
+		...indexService,
+		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { signal?: AbortSignal; paths?: readonly string[]; onTrace?: (event: { requestId: string; path: string; operation: 'summary' | 'tags'; phase: 'failed'; startedAt: number; completedAt: number; systemPrompt: string; userPrompt: string; error: string }) => void }) => {
+			const path = options.paths?.[0] ?? '';
+			failedModelPaths.push(path);
+			failedModelSignal = options.signal;
+			options.onTrace?.({ requestId: 'failed-model-request', path, operation: 'summary', phase: 'failed', startedAt: now, completedAt: now + 1, systemPrompt: 'summary system', userPrompt: 'summary user', error: modelFailureMessage });
+			return {
+				processed: 0, skippedWrongTenant: 0, errors: [{ path, message: modelFailureMessage }],
+				attempts: [{ path, status: 'failed', startedAt: now, completedAt: now + 1, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }, costUsd: 0, error: modelFailureMessage, outputs: { summary: 'failed', tags: 'failed' } }],
+			};
+		},
+	};
+	const failedModelRuntime = createRuntime(failedModelIndexService);
+	const failedModelPlan = planFor('broken-links', [file.path, otherFile.path]);
+	failedModelPlan.aiOperations = failedModelPlan.aiOperations.map((operation) => ({
+		...operation,
+		enabled: ['file-summaries', 'ai-tags'].includes(operation.id),
+	}));
+	await failedModelRuntime.startScan(failedModelPlan);
+	assert.deepEqual(failedModelPaths, [file.path], 'the first model failure must prevent every later queued enrichment request');
+	assert.equal(failedModelSignal?.aborted, true, 'the Scan-owned abort signal must be cancelled after the first provider failure');
+	assert.equal(failedModelRuntime.getSnapshot().run.status, 'failed');
+	assert.match(failedModelRuntime.getSnapshot().run.error ?? '', /Failed to load model/);
+	assert.equal(failedModelRuntime.getSnapshot().run.stages.find((stage) => stage.id === 'index')?.status, 'failed');
+	assert.equal(failedModelRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.status, 'failed');
+	assert.equal(failedModelRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'ai-tags')?.status, 'failed');
+	assert.equal(failedModelRuntime.getGenerationTraces('file-summaries', file.path)[0]?.error, modelFailureMessage, 'the failed raw provider request must remain inspectable after the Scan stops');
 
 	const pipelineEvents: string[] = [];
 	let firstDocumentEnrichmentStarted!: () => void;

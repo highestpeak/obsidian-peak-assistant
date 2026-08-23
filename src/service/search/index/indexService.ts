@@ -661,6 +661,7 @@ export class IndexService
 			}
 
 			const readOpts: DocumentLoaderReadOptions = {
+				signal: opts.signal,
 				includeLlmTags: opts.includeLlmTags,
 				includeLlmSummary: opts.includeLlmSummary,
 				...(opts.onLlmIndexingComplete ? { onLlmIndexingComplete: opts.onLlmIndexingComplete } : {}),
@@ -910,6 +911,7 @@ export class IndexService
 				message: (error as Error).message ?? undefined,
 				stack: (error as Error).stack ?? undefined,
 			});
+			throw error;
 		} finally {
 			sw.print();
 		}
@@ -2232,6 +2234,7 @@ export class IndexService
 	async runPendingLlmIndexEnrichment(
 		settings: SearchSettings,
 		options?: {
+			signal?: AbortSignal;
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
 			onActivity?: (ev: import('@/core/search/indexTypes').LlmIndexingProgressEvent) => void;
 			onTrace?: (ev: import('@/core/search/indexTypes').LlmIndexingTraceEvent) => void;
@@ -2254,6 +2257,7 @@ export class IndexService
 		const indexSvc = this;
 		const baseOpts = {
 			...defaultIndexDocumentOptions('llm_enrich_only'),
+			signal: options?.signal,
 			includeLlmTags: options?.includeTags ?? true,
 			includeLlmSummary: options?.includeSummary ?? true,
 		};
@@ -2315,6 +2319,7 @@ export class IndexService
 		await adaptivePool.mapWithAdaptiveConcurrency(
 			pendingPaths,
 			async (path) => {
+				options?.signal?.throwIfAborted();
 				if (options?.shouldContinue && !options.shouldContinue()) {
 					const now = Date.now();
 					attempts.push({ path, status: 'cancelled', startedAt: now, completedAt: now, route: options.llmRoute ?? null, usage: emptyUsage(), costUsd: 0, error: null });

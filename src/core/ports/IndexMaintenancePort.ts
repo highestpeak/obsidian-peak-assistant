@@ -40,6 +40,7 @@ export interface IndexMaintenancePort {
 	runPendingLlmIndexEnrichment(
 		settings: SearchSettings,
 		options?: {
+			signal?: AbortSignal;
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
 			onActivity?: (ev: PendingLlmEnrichmentActivity) => void;
 			shouldContinue?: () => boolean;

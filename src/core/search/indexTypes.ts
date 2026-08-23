@@ -73,6 +73,8 @@ export type IndexLevel = 'fast' | 'semantic' | 'full';
  * Use {@link defaultIndexDocumentOptions} for presets.
  */
 export interface IndexDocumentOptions {
+	/** Abort in-flight provider work owned by the calling Scan. */
+	signal?: AbortSignal;
 	/** When false, skip embedding generation for this pass. */
 	includeEmbeddings: boolean;
 	includeLlmTags: boolean;

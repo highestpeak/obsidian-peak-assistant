@@ -24836,6 +24836,47 @@
   border-radius: 0;
 }
 
+.peak-vault-intelligence-view .pk-vi-run-failure {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	padding: 11px 18px;
+	border-top: 1px solid #f1c7cb;
+	background: #fff7f7;
+	color: #a43340;
+}
+
+.peak-vault-intelligence-view .pk-vi-run-failure > span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+
+.peak-vault-intelligence-view .pk-vi-run-failure strong {
+	font-size: 12px;
+}
+
+.peak-vault-intelligence-view .pk-vi-run-failure small {
+	color: #7f1d2d;
+	font-size: 10.5px;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.peak-vault-intelligence-view .pk-vi-run-failure em {
+	color: var(--pk-vi-muted);
+	font-size: 9.5px;
+	font-style: normal;
+}
+
+.peak-vault-intelligence-view .pk-vi-run-failure .pk-btn {
+	min-height: 30px !important;
+	max-height: 30px !important;
+	padding: 0 10px !important;
+	white-space: nowrap;
+}
+
 /* Active Scan: port the reference hierarchy and geometry directly. */
 .peak-vault-intelligence-view .pk-vi-run-overview {
   margin-bottom: 12px;

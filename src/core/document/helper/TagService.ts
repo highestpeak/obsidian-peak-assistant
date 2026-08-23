@@ -440,6 +440,7 @@ export async function extractTopicAndFunctionalTags(
 		provider?: string;
 		profileId?: string;
 		modelId?: string;
+		signal?: AbortSignal;
 		maxOutputTokens?: number;
 		systemPrompt?: string;
 		traceCallback?: (event: SingleTurnGenerationTraceEvent) => void;
@@ -486,6 +487,7 @@ export async function extractTopicAndFunctionalTags(
 			zodToJsonSchema(docTagResponseSchema),
 			{
 				systemPrompt: options?.systemPrompt,
+				signal: options?.signal,
 				profileId: options?.profileId,
 				modelId: options?.modelId,
 				maxOutputTokens: options?.maxOutputTokens,

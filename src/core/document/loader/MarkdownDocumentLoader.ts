@@ -118,6 +118,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 		const includeLlmTags = readOptions?.includeLlmTags ?? true;
 		const includeLlmSummary = readOptions?.includeLlmSummary ?? true;
 		return this.readMarkdownFile(file, {
+			signal: readOptions?.signal,
 			includeLlmTags,
 			includeLlmSummary,
 			onLlmIndexingComplete: readOptions?.onLlmIndexingComplete,
@@ -132,7 +133,9 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 	): Promise<Document | null> {
 		const tRead = Date.now();
 		try {
+			readOptions.signal?.throwIfAborted();
 			const content = await this.vault.readText(file);
+			readOptions.signal?.throwIfAborted();
 			const contentHash = hashString(content, 8);
 
 			// Parse markdown using remark; resolve wiki link targets to full vault paths
@@ -241,6 +244,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 						provider: readOptions.llmRoute?.provider,
 						profileId: readOptions.llmRoute?.profileId,
 						modelId: readOptions.llmRoute?.modelId,
+						signal: readOptions.signal,
 						maxOutputTokens: enrichmentConfig!.outputControl.tagsMaxTokens,
 						systemPrompt: enrichmentConfig!.instructions.tags,
 						traceCallback: (trace) => readOptions.onLlmIndexingTrace?.({
@@ -266,6 +270,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 					{
 						profileId: readOptions.llmRoute?.profileId,
 						modelId: readOptions.llmRoute?.modelId,
+						signal: readOptions.signal,
 						shortMaxOutputTokens: enrichmentConfig!.outputControl.summaryShortMaxTokens,
 						fullMaxOutputTokens: enrichmentConfig!.outputControl.summaryFullMaxTokens,
 						systemPrompt: enrichmentConfig!.instructions.summary,
@@ -414,8 +419,9 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 			};
 		} catch (error) {
 			console.error('Error reading markdown file:', error);
-			// Ignore read errors; indexing should be best-effort.
-			return null;
+			// Provider/model failures are part of the Scan contract. Returning null here
+			// used to erase the real cause and misreport them as document-load failures.
+			throw error;
 		}
 	}
 

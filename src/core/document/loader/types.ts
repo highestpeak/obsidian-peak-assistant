@@ -7,6 +7,7 @@ import type { ChunkingSettings } from '@/core/config/settingsTypes';
  * When omitted, loaders default to full LLM (legacy behavior).
  */
 export interface DocumentLoaderReadOptions {
+	signal?: AbortSignal;
 	includeLlmTags?: boolean;
 	includeLlmSummary?: boolean;
 	/** Fires after markdown LLM tag + summary batch for this path (index telemetry). */

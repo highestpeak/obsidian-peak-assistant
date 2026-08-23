@@ -179,6 +179,11 @@ assert.match(source, /runtime\.requestStop\(\)/, 'Run Progress must keep immedia
 assert.match(source, /Stop scan/, 'Run Progress must expose the Mock stop boundary');
 assert.match(source, /Start new scan/, 'an unfinished or failed run must expose a path to discard its checkpoint and prepare a new Scan');
 assert.match(source, /runtime\.startNewScan\(\)/, 'the new-Scan action must clear the unfinished runtime checkpoint before returning to setup');
+assert.match(source, /role="alert" aria-live="assertive"/, 'a failed model route must become a persistent, announced Scan-level error');
+assert.match(source, /No further Scan stages or queued model requests will start/, 'the failed state must explain the hard-stop boundary');
+assert.match(source, /Exit to Scan setup/, 'a failed Scan must provide an explicit exit mechanism');
+assert.match(source, /detailSummaryReceipt\?\.error/, 'generated Summary detail must expose the real provider failure instead of a generic Failed label');
+assert.match(source, /detailTagsReceipt\?\.error/, 'generated AI Tags detail must expose the real provider failure instead of a generic Failed label');
 assert.match(source, /pk-vi-run-overview/, 'Run title and progress band must share the reference card container');
 assert.match(source, /globalThis\.setInterval\(\(\) => setClockNow\(Date\.now\(\)\), 1_000\)/, 'a live Scan must keep elapsed time moving between durable runtime events');
 assert.match(source, /pk-vi-run-liveness/, 'slow local-model startup must expose an explicit live activity row instead of appearing frozen');

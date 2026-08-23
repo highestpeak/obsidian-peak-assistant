@@ -994,8 +994,23 @@ export class VaultIntelligenceRuntime {
 				this.stopAtCheckpoint();
 				return;
 			}
-			this.patchRun({ status: 'failed', error: errorMessage(error), completedAt: this.now() });
-			await this.recordEvent('run-failed', this.snapshot.run.id, errorMessage(error));
+			const message = errorMessage(error);
+			const completedAt = this.now();
+			const activeStage = this.snapshot.run.currentStage;
+			if (activeStage && this.stage(activeStage).status === 'running') {
+				this.patchStage(activeStage, { status: 'failed', message: `Scan stopped: ${message}`, completedAt });
+			}
+			for (const operation of this.snapshot.run.operations.filter((candidate) => candidate.status === 'running')) {
+				const hasCompletedWork = (operation.attempts ?? []).some((attempt) => ['produced', 'already-current'].includes(attempt.status));
+				this.patchOperation(operation.id, {
+					status: hasCompletedWork ? 'partial' : 'failed',
+					completedAt,
+					error: operation.error ?? `Stopped because the Scan failed: ${message}`,
+					currentPath: null,
+				});
+			}
+			this.patchRun({ status: 'failed', error: message, completedAt });
+			await this.recordEvent('run-failed', this.snapshot.run.id, message);
 			await this.flushPersist();
 		}
 	}
@@ -1108,13 +1123,39 @@ export class VaultIntelligenceRuntime {
 		let embeddingTail = Promise.resolve();
 		let aiEnrichmentTail = Promise.resolve();
 		let enrichmentFailure: unknown = null;
+		const haltForEnrichmentFailure = (error: unknown, failedIds: readonly VaultScanAiOperationId[]) => {
+			if (enrichmentFailure) return;
+			enrichmentFailure = error;
+			this.abortController?.abort();
+			const message = errorMessage(error);
+			const completedAt = this.now();
+			this.patchStage('index', {
+				status: 'failed',
+				message: `Scan stopped: ${message}`,
+				completedAt,
+			});
+			for (const id of failedIds) {
+				const operation = this.operation(id);
+				if (!operation || operation.status === 'skipped') continue;
+				this.patchOperation(id, {
+					status: 'failed',
+					completedAt,
+					error: message,
+					liveEvidence: [...(operation.liveEvidence ?? []), {
+						kind: 'status',
+						text: `Stopped: ${message}`,
+						updatedAt: completedAt,
+					}].slice(-8),
+				});
+			}
+		};
 		const enqueueEnrichment = (path: string) => {
 			embeddingTail = embeddingTail.then(async () => {
 				if (this.snapshot.run.stopRequested || enrichmentFailure || !index) return;
 				try {
 					await this.runVectorEnrichmentForPath(index, path);
 				} catch (error) {
-					enrichmentFailure = error;
+					haltForEnrichmentFailure(error, ['embedding-refresh']);
 				}
 			});
 			aiEnrichmentTail = aiEnrichmentTail.then(async () => {
@@ -1122,31 +1163,37 @@ export class VaultIntelligenceRuntime {
 				try {
 					await this.runLlmEnrichmentForPath(index, path);
 				} catch (error) {
-					enrichmentFailure = error;
+					haltForEnrichmentFailure(error, ['file-summaries', 'ai-tags']);
 				}
 			});
 		};
 		for (const path of fullTextPaths.filter((candidate) => completedCore.has(candidate))) enqueueEnrichment(path);
-		await this.deps.runCoreIndex(
-			'selected',
-			remainingPaths.filter((path) => eligibleFullText.has(path)),
-			(progress) => {
-				if (progress.path && progress.succeeded !== false) {
-					completedCore.add(progress.path);
-					this.patchRun({ coreIndexedPaths: [...completedCore] });
-					enqueueEnrichment(progress.path);
-				}
-				this.patchStage('index', {
-					processed: completedCore.size,
-					total: fullTextPaths.length,
-					currentPath: progress.path,
-					message: progress.path ? `Indexing ${progress.path}` : 'Updating full-text passages and the Knowledge Index.',
-				});
-			},
-			() => !this.snapshot.run.stopRequested && !enrichmentFailure,
-		);
+		let coreIndexFailure: unknown = null;
+		try {
+			await this.deps.runCoreIndex(
+				'selected',
+				remainingPaths.filter((path) => eligibleFullText.has(path)),
+				(progress) => {
+					if (progress.path && progress.succeeded !== false) {
+						completedCore.add(progress.path);
+						this.patchRun({ coreIndexedPaths: [...completedCore] });
+						enqueueEnrichment(progress.path);
+					}
+					this.patchStage('index', {
+						processed: completedCore.size,
+						total: fullTextPaths.length,
+						currentPath: progress.path,
+						message: progress.path ? `Indexing ${progress.path}` : 'Updating full-text passages and the Knowledge Index.',
+					});
+				},
+				() => !this.snapshot.run.stopRequested && !enrichmentFailure,
+			);
+		} catch (error) {
+			coreIndexFailure = error;
+		}
 		await Promise.all([embeddingTail, aiEnrichmentTail]);
 		if (enrichmentFailure) throw enrichmentFailure;
+		if (coreIndexFailure) throw coreIndexFailure;
 		if (this.snapshot.run.stopRequested) throw new Error('Vault Scan stopped at the next core-index document checkpoint.');
 		this.finalizePerDocumentOperations();
 		const lint = this.deps.resolveLintRuntime();
@@ -1246,6 +1293,7 @@ export class VaultIntelligenceRuntime {
 				liveEvidence: [{ kind: 'status', text: `Preparing ${id === 'file-summaries' ? 'Summary' : 'AI Tags'} for ${path}.`, updatedAt: startedAt }],
 			});
 			const result = await index.runPendingLlmIndexEnrichment(this.deps.getSearchSettings(), {
+				signal: this.abortController?.signal,
 				paths: [path], includeSummary: group.ids.includes('file-summaries'), includeTags: group.ids.includes('ai-tags'),
 				llmRoute: { profileId: group.route.profileId, modelId: group.route.model, provider: group.route.provider },
 				shouldContinue: () => !this.snapshot.run.stopRequested && group.ids.some((id) => this.operation(id)?.status !== 'skipped'),
@@ -1270,7 +1318,13 @@ export class VaultIntelligenceRuntime {
 					const next = index < 0
 						? [...this.generationTraces, trace]
 						: this.generationTraces.map((candidate, candidateIndex) => candidateIndex === index ? trace : candidate);
-					this.generationTraces = next.slice(-DEFAULT_INDEX_ENRICHMENT_CONFIG.trace.maxRecentCalls);
+					const maxRecent = DEFAULT_INDEX_ENRICHMENT_CONFIG.trace.maxRecentCalls;
+					const failedTraces = next.filter((candidate) => candidate.phase === 'failed');
+					const nonFailedTraces = next.filter((candidate) => candidate.phase !== 'failed');
+					this.generationTraces = [
+						...nonFailedTraces.slice(-Math.max(0, maxRecent - Math.min(maxRecent, failedTraces.length))),
+						...failedTraces.slice(-maxRecent),
+					].sort((left, right) => left.startedAt - right.startedAt);
 					const operationId: VaultScanAiOperationId = trace.operation === 'summary' ? 'file-summaries' : 'ai-tags';
 					if (group.ids.includes(operationId)) this.patchOperation(operationId, { currentPath: trace.path });
 				},

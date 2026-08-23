@@ -11,10 +11,14 @@ assert.ok(DEFAULT_INDEX_ENRICHMENT_CONFIG.outputControl.summaryShortMaxTokens <=
 const tagSource = readFileSync('src/core/document/helper/TagService.ts', 'utf8');
 const loaderSource = readFileSync('src/core/document/loader/MarkdownDocumentLoader.ts', 'utf8');
 const serviceSource = readFileSync('src/service/chat/service-manager.ts', 'utf8');
+const indexSource = readFileSync('src/service/search/index/indexService.ts', 'utf8');
 assert.match(tagSource, /docTagResponseSchema\.parse\(raw\)/, 'parsed JSON must pass the actual Zod contract before it is committed');
 assert.doesNotMatch(tagSource, /docTypeReasoning:/, 'verbose document-role reasoning must not remain in the tag output contract');
 assert.match(loaderSource, /functionalTagEntries\.map\(\(entry\) => entry\.id\)/, 'presentation tags must use canonical ids, never internal functional labels');
 assert.match(loaderSource, /tagsMaxTokens/, 'the Markdown loader must apply the configured Tag output limit');
+assert.match(loaderSource, /throw error;/, 'a provider failure must retain its original cause instead of becoming a generic document-load miss');
+assert.doesNotMatch(loaderSource, /Ignore read errors; indexing should be best-effort/, 'index enrichment must not swallow model failures');
+assert.match(indexSource, /\[IndexService\] Error indexing document:[\s\S]*?throw error;/, 'IndexService must log and rethrow the original provider failure');
 assert.match(serviceSource, /modelSettings: opts\?\.maxOutputTokens/, 'single-turn calls must forward their bounded output limit to the Harness');
 assert.match(tagSource, /includeSchemaInPrompt: false/, 'the compact Tag prompt must not resend a duplicate full JSON Schema for every document');
 assert.match(serviceSource, /event\.type === 'reasoning_delta'/, 'provider reasoning deltas must remain observable rather than disappearing inside output usage');

@@ -31,6 +31,7 @@ export type DocumentSummaryOptions = {
 	textrankSentences?: string;
 	profileId?: string;
 	modelId?: string;
+	signal?: AbortSignal;
 	shortMaxOutputTokens?: number;
 	fullMaxOutputTokens?: number;
 	systemPrompt?: string;
@@ -167,6 +168,7 @@ export async function getDefaultDocumentSummary(
 	let fullSummary: string | undefined;
 	const queryOptions = {
 		systemPrompt: options?.systemPrompt,
+		signal: options?.signal,
 		profileId: options?.profileId,
 		modelId: options?.modelId ?? modelId,
 		traceCallback: options?.traceCallback,
