@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scan Vault：从开始到可审核产物</title>
+  <style>
+    :root {
+      --bg:#f4f3f7; --paper:#fff; --ink:#211f27; --muted:#706b78; --line:#dedbe5;
+      --purple:#6554df; --purple-soft:#f0edff; --green:#18876d; --green-soft:#e9f7f2;
+      --blue:#3787b5; --blue-soft:#ebf5fa; --amber:#a66a18; --amber-soft:#fff5e6;
+      --red:#c44e63; --red-soft:#fff0f2; --shadow:0 12px 34px rgba(31,25,52,.07);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.62 Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    a{color:var(--purple);text-decoration:none} a:hover{text-decoration:underline}
+    .layout{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1700px;margin:auto;min-height:100vh}
+    aside{position:sticky;top:0;height:100vh;padding:28px 20px;border-right:1px solid var(--line);background:#faf9fc;overflow:auto}
+    .brand{display:flex;gap:11px;align-items:center;margin-bottom:26px}.brand i{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--purple);color:white;font-style:normal;font-weight:800}.brand strong{font-size:16px}.brand span{display:block;color:var(--muted);font-size:12px}
+    nav strong{display:block;margin:22px 8px 7px;color:#96909f;font-size:12px;font-weight:700}
+    nav a{display:block;padding:7px 9px;border-radius:7px;color:#4f4a57;font-size:13px}nav a:hover{background:var(--purple-soft);text-decoration:none;color:var(--purple)}
+    main{min-width:0;padding:42px clamp(28px,5vw,78px) 96px}
+    .hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(340px,.75fr);gap:26px;align-items:stretch;margin-bottom:26px}
+    .hero-copy,.hero-meta,.section,.figure{border:1px solid var(--line);border-radius:14px;background:var(--paper);box-shadow:var(--shadow)}
+    .hero-copy{padding:36px}.eyebrow{display:flex;align-items:center;gap:8px;color:var(--purple);font-weight:750}.eyebrow:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--purple)}
+    h1{max-width:850px;margin:12px 0 13px;font-size:40px;line-height:1.12;letter-spacing:-.04em}h2{margin:0 0 10px;font-size:27px;line-height:1.25;letter-spacing:-.025em}h3{margin:25px 0 8px;font-size:19px;letter-spacing:-.015em}p{margin:8px 0;color:#4e4955}
+    .lead{max-width:920px;color:#514b5a;font-size:17px}.hero-meta{display:grid;align-content:start;padding:28px}.meta-row{display:grid;grid-template-columns:128px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.meta-row:last-child{border:0}.meta-row span{color:var(--muted)}.meta-row strong{font-weight:700}
+    .callout{margin:18px 0 0;padding:14px 16px;border-left:4px solid var(--purple);border-radius:0 9px 9px 0;background:var(--purple-soft);color:#40366f}.callout.warn{border-color:var(--amber);background:var(--amber-soft);color:#714a14}
+    .section{margin:20px 0;padding:28px}.section-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:18px}.section-head>div>p{max-width:900px}.tag{display:inline-flex;align-items:center;min-height:28px;padding:3px 10px;border-radius:999px;background:#f1eff5;color:#615b68;font-size:12px;font-weight:700;white-space:nowrap}.tag.agent{background:var(--purple-soft);color:var(--purple)}.tag.system{background:var(--green-soft);color:var(--green)}
+    .pipeline{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;align-items:stretch}.stage{position:relative;min-height:132px;padding:16px;border:1px solid var(--line);border-radius:11px;background:#fcfbfd}.stage:not(:last-child):after{content:"→";position:absolute;right:-13px;top:50%;z-index:2;width:18px;height:24px;color:#9a94a1;background:var(--bg);text-align:center;font-weight:800}.stage b{display:block;margin-bottom:6px;color:var(--purple);font-size:12px}.stage strong{display:block;font-size:15px}.stage span{display:block;margin-top:6px;color:var(--muted);font-size:12px;line-height:1.42}.stage.post{border-style:dashed;background:#faf9fc}.stage.agent-stage{border-color:#cfc8f5;background:var(--purple-soft)}
+    .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;color:var(--muted);font-size:12px}.legend i{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:3px;background:var(--green)}.legend .agent-dot{background:var(--purple)}.legend .post-dot{background:#aaa5af}
+    .figure{margin:18px 0;padding:22px;background:#fbfafc;box-shadow:none}.figure-title{display:flex;justify-content:space-between;gap:16px;margin-bottom:17px}.figure-title strong{font-size:16px}.figure-title span{color:var(--muted);font-size:12px}
+    .setup-grid,.role-grid,.artifact-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.card{padding:17px;border:1px solid var(--line);border-radius:10px;background:white}.card .num{display:grid;place-items:center;width:32px;height:32px;margin-bottom:12px;border-radius:9px;background:var(--purple-soft);color:var(--purple);font-weight:800}.card strong{display:block;margin-bottom:5px}.card p{margin:0;font-size:13px}.card ul{margin:10px 0 0;padding-left:18px;color:#57515f;font-size:13px}.card li{margin:5px 0}
+    .sequence{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden}.seq-col{position:relative;min-height:300px;padding:14px 12px;border-right:1px solid var(--line);background:white}.seq-col:last-child{border:0}.seq-head{padding-bottom:10px;border-bottom:1px solid var(--line);font-weight:750;text-align:center}.event{position:relative;margin:18px 0;padding:9px 10px;border-radius:8px;background:#f4f2f8;font-size:12px}.event.send{background:var(--purple-soft);color:#4b3ea2}.event.commit{background:var(--green-soft);color:#146c58}.event:after{content:"";position:absolute;left:50%;top:100%;height:14px;border-left:1px dashed #bbb5c3}.event:last-child:after{display:none}
+    .lanes{display:grid;gap:10px}.lane{display:grid;grid-template-columns:210px minmax(240px,1fr) minmax(220px,.72fr);align-items:stretch;border:1px solid var(--line);border-radius:11px;background:white;overflow:hidden}.lane-name{padding:18px;background:#faf9fc}.lane-name strong{font-size:16px}.lane-name span{display:block;margin-top:5px;color:var(--muted);font-size:12px}.lane-flow{display:flex;gap:8px;align-items:center;padding:18px}.node{flex:1;padding:10px;border-radius:8px;background:var(--purple-soft);color:#4a3b9a;font-size:12px;text-align:center;font-weight:700}.node.green{background:var(--green-soft);color:var(--green)}.node.blue{background:var(--blue-soft);color:#267196}.arrow{color:#a7a1ad;font-weight:800}.lane-output{padding:18px;border-left:1px solid var(--line);color:#57515f;font-size:12px}.lane-output strong{display:block;color:var(--ink);font-size:13px}
+    .loop{display:grid;grid-template-columns:1fr 80px 1fr 80px 1fr;gap:4px;align-items:center}.loop-box{min-height:125px;padding:18px;border:1px solid var(--line);border-radius:10px;background:white}.loop-box.agentbox{border-color:#cfc8f5;background:var(--purple-soft)}.loop-box strong{display:block}.loop-box p{font-size:13px}.loop-arrow{text-align:center;color:var(--purple);font-size:26px;font-weight:800}.loop-return{grid-column:1/-1;margin:2px 12%;padding:8px;border:1px dashed #bfb8d2;border-radius:999px;color:#62568e;text-align:center;font-size:12px;font-weight:700}
+    .causal{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:8px}.causal .step{position:relative;padding:15px;border:1px solid var(--line);border-radius:9px;background:white}.causal .step:not(:last-child):after{content:"→";position:absolute;right:-13px;top:42%;z-index:2;color:#9992a0;font-weight:900}.causal b{display:block;color:var(--purple);font-size:12px}.causal strong{display:block;margin:4px 0}.causal span{color:var(--muted);font-size:12px}.causal .agentstep{background:var(--purple-soft);border-color:#cec7f2}.causal .valid{background:var(--green-soft);border-color:#bce0d4}
+    .progress-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.progress-card{padding:15px;border:1px solid var(--line);border-radius:9px;background:white}.progress-card b{display:block;color:var(--purple);font-size:22px}.progress-card strong{display:block}.progress-card span{display:block;margin-top:6px;color:var(--muted);font-size:12px}.bar{height:7px;margin:11px 0;border-radius:999px;background:#ebe8ef;overflow:hidden}.bar i{display:block;height:100%;background:var(--purple)}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;margin:14px 0;font-size:13px}th,td{padding:11px 12px;border:1px solid var(--line);vertical-align:top;text-align:left;overflow-wrap:break-word;hyphens:none;line-height:1.55}th{background:#f7f5f9;color:#544e5c}td{background:white;color:#504a57}code{padding:2px 5px;border-radius:5px;background:#f0eef3;color:#4f416f;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+    .jump-zone{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:18px}.jump-zone a{padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:white;color:#56505e;font-size:11px;text-align:center}.jump-zone a:hover{border-color:#cfc8f5;color:var(--purple);text-decoration:none}
+    .endpoint-group{margin:12px 0;border:1px solid var(--line);border-radius:10px;background:white;overflow:hidden}.endpoint-group summary{cursor:pointer;padding:15px 17px;font-weight:750;list-style:none}.endpoint-group summary::-webkit-details-marker{display:none}.endpoint-group summary:after{content:"＋";float:right;color:var(--purple)}.endpoint-group[open] summary:after{content:"−"}.endpoint-group table{margin:0;border:0}.endpoint-group th:first-child,.endpoint-group td:first-child{width:25%}
+    .truth-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.truth{padding:18px;border:1px solid var(--line);border-radius:10px;background:white}.truth.target{border-color:#cfc8f5}.truth.current{border-color:#efd4a9}.truth h3{margin:0 0 10px}.truth ul{margin:0;padding-left:20px}.truth li{margin:7px 0;color:#514b58}
+    .source-links{display:flex;flex-wrap:wrap;gap:8px}.source-links a{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:white;font-size:12px}
+    footer{padding:24px 0;color:var(--muted);font-size:12px}
+    @media(max-width:1180px){.layout{grid-template-columns:1fr}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}nav{display:none}.hero{grid-template-columns:1fr}.pipeline{grid-template-columns:repeat(3,1fr)}.stage:after{display:none}.setup-grid,.role-grid,.artifact-grid{grid-template-columns:1fr 1fr}.lane{grid-template-columns:180px 1fr}.lane-output{grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}.progress-grid{grid-template-columns:repeat(3,1fr)}.causal{grid-template-columns:repeat(3,1fr)}.causal .step:after{display:none}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand"><i>SV</i><div><strong>Scan Vault</strong><span>前后端运行总图</span></div></div>
+    <div class="jump-zone"><a href="../../superpowers/specs/2026-08-23-scan-vault-frontend-backend-runtime-atlas.md">文字合同</a><a href="../vault-intelligence-workspace-2026-08-12-v2/index.html">主 Mock</a></div>
+    <nav>
+      <strong>先建立心智</strong>
+      <a href="#overview">30 秒总览</a><a href="#roles">谁负责什么</a><a href="#setup">Setup 三步</a><a href="#start">Start 时序</a>
+      <strong>运行五阶段</strong>
+      <a href="#discover">1 · Discover</a><a href="#index">2 · Build Index</a><a href="#vault-wide">3 · Vault-wide discovery</a><a href="#review">4 · Prepare review</a><a href="#publish">5 · Publish</a>
+      <strong>系统合同</strong>
+      <a href="#progress">进度与 ETA</a><a href="#recovery">暂停与恢复</a><a href="#endpoints">Endpoint 目录</a><a href="#artifacts">产物与写入</a><a href="#gaps">当前与目标</a>
+    </nav>
+  </aside>
+  <main>
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">目标生产运行合同</div>
+        <h1>Scan Vault：从点击开始，到可审核产物</h1>
+        <p class="lead">把 UI、Controller、Index、两个 Agent 会话、证据、进度、持久化和最终写入边界放进同一张地图。设计者可以验证产品心智，程序员可以沿命令、状态和产物直接实现。</p>
+        <div class="callout"><strong>最重要的边界：</strong>Scan 只产生机器知识、证据和可审核工作，不修改用户文件。用户在 Completed 后明确选择 Proposal 并 Apply，才进入写入链。</div>
+      </div>
+      <div class="hero-meta">
+        <div class="meta-row"><span>建议阅读</span><strong>25–35 分钟</strong></div>
+        <div class="meta-row"><span>用户阶段</span><strong>5 个运行阶段</strong></div>
+        <div class="meta-row"><span>Agent 会话</span><strong>Discovery + Prepare review</strong></div>
+        <div class="meta-row"><span>事实层</span><strong>目标合同 + 当前代码差距</strong></div>
+        <div class="meta-row"><span>伴随规格</span><strong><a href="../../superpowers/specs/2026-08-23-scan-vault-frontend-backend-runtime-atlas.md">查看详细文字合同</a></strong></div>
+      </div>
+    </header>
+
+    <section class="section" id="overview">
+      <div class="section-head"><div><h2>30 秒总览</h2><p>Setup 决定“做什么、用什么模型”；五个运行阶段决定“怎样做、何时算完成”；Completed 后才进入 owner 写入工作流。</p></div><span class="tag system">因果主链</span></div>
+      <div class="pipeline">
+        <div class="stage"><b>Setup</b><strong>Scope · Tasks · Models</strong><span>形成 draft；还没有扫描。</span></div>
+        <div class="stage"><b>1</b><strong>Discover</strong><span>冻结路径、版本、路线、预算、DAG。</span></div>
+        <div class="stage"><b>2</b><strong>Build Index</strong><span>全文、Embedding、逐文件 AI enrich。</span></div>
+        <div class="stage agent-stage"><b>3 · Agent</b><strong>Vault-wide discovery</strong><span>反复调查并验证 findings。</span></div>
+        <div class="stage agent-stage"><b>4 · Agent</b><strong>Prepare review</strong><span>生成并验证 review artifacts。</span></div>
+        <div class="stage"><b>5</b><strong>Publish</strong><span>原子发布 Completed snapshot。</span></div>
+        <div class="stage post"><b>Scan 后</b><strong>Proposal → Apply → Verify</strong><span>只有这里允许显式写用户文件。</span></div>
+      </div>
+      <div class="legend"><span><i></i>系统 controller / provider jobs</span><span><i class="agent-dot"></i>Agent Harness session</span><span><i class="post-dot"></i>Scan 后 owner workflow</span></div>
+    </section>
+
+    <section class="section" id="roles">
+      <div class="section-head"><div><h2>不是“AI 做完就算完”：完成权在系统手里</h2><p>Agent 能推理和提出产物，但 scope、证据、进度、预算、状态迁移、完成门和写入权由 controller/validator 掌握。</p></div><span class="tag">单写者</span></div>
+      <div class="role-grid">
+        <div class="card"><strong>UI + Projector</strong><p>显示一个真值 projection，发出 start/pause/inspect/choice。React 不自行拼业务百分比。</p></div>
+        <div class="card"><strong>ScanRunController</strong><p>父状态机与 DAG；调度 controller、checkpoint、预算、stage gate。</p></div>
+        <div class="card"><strong>BuildIndexController</strong><p>三条 per-file lane、route capacity、backpressure、terminal receipts。</p></div>
+        <div class="card"><strong>Discovery Controller</strong><p>frontier、investigation、finding registry、completion gate。</p></div>
+        <div class="card"><strong>Review Controller</strong><p>atoms、jobs、workKey、artifact validator 与 package freeze。</p></div>
+        <div class="card"><strong>CompletedPublisher</strong><p>只提交已经验证的 package；不调模型、不临时生成 task。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="setup">
+      <div class="section-head"><div><h2>Setup 三步：用户批准的其实是运行边界</h2><p>所有运行时选择都从这里来。Run progress 只能展示计划路线和实际 receipt，不能偷偷出现新的 model picker。</p></div><span class="tag">前端入口</span></div>
+      <div class="setup-grid">
+        <div class="card"><div class="num">1</div><strong>Choose scan scope</strong><p>选择 changes、selected 或 entire；动态选择最终解析为明确路径。</p><ul><li>输出 scope draft</li><li>显示预计文件与排除</li><li>不调用模型</li></ul></div>
+        <div class="card"><div class="num">2</div><strong>Choose tasks and Index outputs</strong><p>选择 Knowledge Index、Content health、Relationships &amp; Communities、Reviewable follow-up。</p><ul><li>编译 checks/layers/objectives</li><li>未选任务不会被 Agent 重开</li><li>Index 输出和任务选择分清</li></ul></div>
+        <div class="card"><div class="num">3</div><strong>Review AI models</strong><p>为每种 operation 批准 route pool、fallback、并发和预算，不是全局只选一个模型。</p><ul><li>本地通常并发 1</li><li>远端有界滑动窗口</li><li>每个 attempt 记录 actual route</li></ul></div>
+      </div>
+    </section>
+
+    <section class="section" id="start">
+      <div class="section-head"><div><h2>点击 Start 的时序</h2><p>页面不是一点击就假装扫描。先验证 draft、写 run event 和 active pointer，收到 durable sequence 后才切入 Discover。</p></div><span class="tag system">Durable first</span></div>
+      <div class="figure">
+        <div class="figure-title"><strong>Start scan → 首个冻结 checkpoint</strong><span>横向是参与者，纵向是时间</span></div>
+        <div class="sequence">
+          <div class="seq-col"><div class="seq-head">Owner</div><div class="event send">点击 Start scan</div></div>
+          <div class="seq-col"><div class="seq-head">Setup UI</div><div class="event">提交 ScanPlanDraft</div><div class="event commit">收到 durable run 后进入进度页</div></div>
+          <div class="seq-col"><div class="seq-head">Runtime</div><div class="event">validate scope / tasks / routes</div><div class="event">compose controllers and ports</div></div>
+          <div class="seq-col"><div class="seq-head">Controller</div><div class="event">create run identity</div><div class="event">freeze plan + revisions</div><div class="event commit">publish work graph checkpoint</div></div>
+          <div class="seq-col"><div class="seq-head">Store / Projector</div><div class="event commit">append run.created</div><div class="event commit">save pointer + event sequence</div><div class="event">project Discover state to UI</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="discover">
+      <div class="section-head"><div><h2>1 · Discover：准备运行，不是发现 Community</h2><p>这是确定性 preflight。四个 gate 把易变的用户选择变成一个可恢复、可审计的 FrozenScanPlan。</p></div><span class="tag system">0 个必需 Agent</span></div>
+      <div class="causal">
+        <div class="step"><b>Gate 1</b><strong>Scope frozen</strong><span>路径、hash/mtime、排除、不可读。</span></div>
+        <div class="step"><b>Gate 2</b><strong>Baseline pinned</strong><span>Index/graph revision 与 cursor。</span></div>
+        <div class="step"><b>Gate 3</b><strong>Routes resolved</strong><span>route pools、capacity、retry、budget。</span></div>
+        <div class="step"><b>Gate 4</b><strong>Work graph</strong><span>DAG、manifests、ProgressPlan。</span></div>
+        <div class="step valid"><b>Checkpoint</b><strong>FrozenScanPlan</strong><span>暂停恢复使用同一 fingerprint。</span></div>
+        <div class="step"><b>Next</b><strong>Dispatch ready work</strong><span>开始逐文件 Index 与 collectors。</span></div>
+      </div>
+      <div class="callout warn"><strong>可选 AI planner：</strong>可以建议优先级，但不能改变 scope、路线或完成权；它失败时确定性计划仍能继续。</div>
+    </section>
+
+    <section class="section" id="index">
+      <div class="section-head"><div><h2>2 · Build Index：一个文件流，三条独立 lane</h2><p>全文一准备好，Embedding 和 AI enrichment 就可接手该文件。三条 lane 各自有速度、队列、模型、失败和 ETA，不混成一个虚假 docs/min。</p></div><span class="tag system">Provider / system jobs</span></div>
+      <div class="lanes">
+        <div class="lane"><div class="lane-name"><strong>Full-text search</strong><span>本地 I/O + CPU，最快</span></div><div class="lane-flow"><div class="node">Read</div><div class="arrow">→</div><div class="node">Extract / chunk</div><div class="arrow">→</div><div class="node green">Search ready</div></div><div class="lane-output"><strong>输出</strong>text、keywords/passages、FTS receipt、read/parse failure。</div></div>
+        <div class="lane"><div class="lane-name"><strong>Embeddings</strong><span>route-aware batch pool</span></div><div class="lane-flow"><div class="node">Search-ready chunks</div><div class="arrow">→</div><div class="node">Vectorize</div><div class="arrow">→</div><div class="node green">Semantic ready</div></div><div class="lane-output"><strong>输出</strong>vector/chunk receipts；每个文件记录实际 embedding model。</div></div>
+        <div class="lane"><div class="lane-name"><strong>AI enrichment</strong><span>route-aware rolling pool</span></div><div class="lane-flow"><div class="node">File evidence</div><div class="arrow">→</div><div class="node">Generate selected outputs</div><div class="arrow">→</div><div class="node green">Fully enriched</div></div><div class="lane-output"><strong>输出</strong>summary、AI tags、entities、file signals；不做 Vault-wide 推理。</div></div>
+      </div>
+      <div class="callout"><strong>146 文件、三层：</strong>分母是 438 个 document-layer units。失败也必须形成 terminal receipt；它让阶段带 attention 结束，但不会让已经 Search-ready 的文件退回不可搜索。</div>
+    </section>
+
+    <section class="section" id="vault-wide">
+      <div class="section-head"><div><h2>3 · Vault-wide discovery：反复调查的 Agent Harness</h2><p>Relationship、Community、Hub、Bridge 是输出类型，不是顺序。Controller 根据最新 frontier 反复选择下一项调查；Agent 只能用受限工具读冻结证据并提出 proposal。</p></div><span class="tag agent">Agent session 1</span></div>
+      <div class="figure">
+        <div class="figure-title"><strong>一轮调查与回到 frontier</strong><span>可以重复 0..N 个 bounded attempts</span></div>
+        <div class="loop">
+          <div class="loop-box"><strong>Controller chooses</strong><p>按 priority、coverage、novelty、risk 选择 frontier item。</p></div><div class="loop-arrow">→</div>
+          <div class="loop-box agentbox"><strong>Agent investigates</strong><p>search / inspect / expand / deterministic analysis；流式输出 reasoning 与 citations。</p></div><div class="loop-arrow">→</div>
+          <div class="loop-box"><strong>System validates</strong><p>检查 schema、evidence refs、source revision、confidence 和 transition。</p></div>
+          <div class="loop-return">accepted / revised / rejected finding → reprioritize frontier → 下一轮</div>
+        </div>
+      </div>
+      <h3>Agent 能查什么、能生成什么</h3>
+      <table><thead><tr><th style="width:24%">工具组</th><th style="width:36%">可查/可算</th><th>只能生成</th></tr></thead><tbody>
+        <tr><td>Evidence</td><td>冻结 FTS/vector、passage、graph fact、history、revision、有界邻域/路径</td><td>typed evidence refs 与 truncation receipt</td></tr>
+        <tr><td>Deterministic analysis</td><td>relationship candidates、Community boundary drift、node roles、bridge paths</td><td>候选和度量，不是 final finding</td></tr>
+        <tr><td>Investigation</td><td>当前 frontier、coverage、blockers、已有 findings</td><td>open/update investigation、propose finding/transition</td></tr>
+        <tr><td>Completion</td><td>所有 system gates</td><td>只能 request completion check，不能直接 complete</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="section" id="review">
+      <div class="section-head"><div><h2>4 · Prepare review：产物生成也是 Agent 驱动的</h2><p>Discovery 结束后，系统冻结 findings + deterministic issues。一个统一 ReviewPreparationAgent session 执行 0..N jobs；每份普通 review work 必须先生成 artifact，再通过 validator。</p></div><span class="tag agent">Agent session 2</span></div>
+      <div class="causal">
+        <div class="step"><b>1</b><strong>Normalize atoms</strong><span>类型、identity、provenance、去重。</span></div>
+        <div class="step"><b>2</b><strong>Provisional graph</strong><span>owner question、surface、boundary、anchors。</span></div>
+        <div class="step"><b>3</b><strong>Partition jobs</strong><span>冲突串行，无冲突 bundles 可并行。</span></div>
+        <div class="step agentstep"><b>4 · Agent</b><strong>Draft artifacts</strong><span>merge/split/defer + explanation/options/citations。</span></div>
+        <div class="step valid"><b>5 · System</b><strong>Validate &amp; revise</strong><span>schema、citation、identity、boundary、exit。</span></div>
+        <div class="step"><b>6</b><strong>Freeze package</strong><span>stable workKey、receipts、task plan。</span></div>
+      </div>
+      <div class="callout"><strong>UI 因果：</strong>Session stream 是当前 job 的生成过程。只有 draft 通过 validator 并被 Controller commit，对应 Review work 行才能从 Queued/Generating 变成 Ready、Needs choice 或 Recovery。</div>
+      <h3>一个 Agent，不是按 task kind 建十一个 Agent</h3>
+      <p>0 findings 时 0 jobs。普通 reviewable work 至少一个 drafting job；复杂 bundle 可拆分，互不冲突的 jobs 可并行，但 canonical workKey commit 仍串行。Completed 后的 ProposalDraftAgent 是另一条 Scan 后能力，不计入本阶段。</p>
+    </section>
+
+    <section class="section" id="publish">
+      <div class="section-head"><div><h2>5 · Publish：短、确定、可重试</h2><p>Publish 没有模型调用。它只提交已经冻结并通过验证的 package；如果提交失败，重试相同 package，不重新跑 Agent。</p></div><span class="tag system">Atomic commit</span></div>
+      <div class="causal">
+        <div class="step"><b>Input</b><strong>Validated package</strong><span>Index + findings + review work + usage。</span></div>
+        <div class="step"><b>1</b><strong>Stage body</strong><span>写 immutable Completed body。</span></div>
+        <div class="step"><b>2</b><strong>publish-prepared</strong><span>append durable event。</span></div>
+        <div class="step valid"><b>3</b><strong>Commit pointer</strong><span>原子切 current workspace projection。</span></div>
+        <div class="step"><b>4</b><strong>run.completed</strong><span>append terminal event。</span></div>
+        <div class="step valid"><b>5</b><strong>Read back</strong><span>checksum、count、workKey、reachability。</span></div>
+      </div>
+      <p>Completed 页面只读取这个 snapshot。`Ready for review` 代表 validated ReviewWorkArtifact 已存在；用户作出 choice 后，才创建 revision-guarded source diff，Apply 后再 re-index 和 Verify。</p>
+    </section>
+
+    <section class="section" id="progress">
+      <div class="section-head"><div><h2>没有“总发现数”，百分比怎么走</h2><p>Overall progress 使用系统能验证的 earned credits；ETA 使用吞吐和关键路径。Finding 数、文字长度、token 数和 tool call 数都不直接加百分比。</p></div><span class="tag">Progress ≠ ETA</span></div>
+      <div class="progress-grid">
+        <div class="progress-card"><b>15</b><strong>Discover</strong><div class="bar"><i style="width:100%"></i></div><span>4 durable gates</span></div>
+        <div class="progress-card"><b>40</b><strong>Build Index</strong><div class="bar"><i style="width:72%"></i></div><span>terminal layer units / frozen units</span></div>
+        <div class="progress-card"><b>33</b><strong>Vault-wide</strong><div class="bar"><i style="width:45%"></i></div><span>coverage + probes + convergence + receipt</span></div>
+        <div class="progress-card"><b>10</b><strong>Prepare review</strong><div class="bar"><i style="width:18%"></i></div><span>atoms → jobs → validation → package</span></div>
+        <div class="progress-card"><b>2</b><strong>Publish</strong><div class="bar"><i style="width:0%"></i></div><span>atomic pointer + read-back</span></div>
+      </div>
+      <table><thead><tr><th style="width:22%">阶段</th><th style="width:43%">真实进度来源</th><th>ETA 来源</th></tr></thead><tbody>
+        <tr><td>Full-text</td><td>terminal file passes</td><td>files/bytes throughput EMA</td></tr><tr><td>Embedding</td><td>terminal document-layer receipts</td><td>route chunks/sec + batch wait + queue</td></tr><tr><td>AI enrichment</td><td>terminal document-layer receipts</td><td>route docs/min + active slots</td></tr><tr><td>Vault-wide</td><td>evidence/probes/candidate disposition/convergence gates</td><td>investigation duration + frontier pressure</td></tr><tr><td>Prepare review</td><td>两次 denominator freeze 后的 jobs/validation credits</td><td>job batches + revision distribution</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="section" id="recovery">
+      <div class="section-head"><div><h2>Pause、Resume、Stop：不丢昂贵工作</h2><p>Pause 不是瞬间冻结 provider。系统先停止派发新 work，再等待安全 checkpoint；成功 receipt 永远复用。</p></div><span class="tag">Checkpoint</span></div>
+      <div class="setup-grid">
+        <div class="card"><strong>Pause</strong><p>状态 running → pausing → paused。安全点包括 document receipt、tool result、finding commit、review job commit。</p></div>
+        <div class="card"><strong>Resume</strong><p>校验同一 FrozenScanPlan fingerprint 与 source revisions；无 receipt 的调用新建 attempt，成功调用不重复。</p></div>
+        <div class="card"><strong>Stop</strong><p>收束为 stopped-partial，保留 Index 与机器事实；不从不完整 findings 自动制造正常 Completed tasks。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="endpoints">
+      <div class="section-head"><div><h2>Endpoint 目录</h2><p>这里的 endpoint 是可调用边界，不是假造 HTTP URL。展开每组可看到 caller、输入和可产生的结果。</p></div><span class="tag">Implementation map</span></div>
+      <details class="endpoint-group" open><summary>UI / Runtime commands</summary><table><tbody>
+        <tr><td><code>startScan(draft)</code></td><td>Setup UI → Runtime</td><td>创建 run、冻结后进入 Discover；失败留在 Setup。</td></tr>
+        <tr><td><code>requestPause / resumeScan / requestStop</code></td><td>Run controls</td><td>改变 dispatch/checkpoint，不伪造业务完成。</td></tr>
+        <tr><td><code>getSnapshot / subscribe</code></td><td>React projector</td><td>读取唯一 projection 与 durable 更新。</td></tr>
+        <tr><td><code>choose / prepareProposal / apply / verify</code></td><td>Completed/Work queue</td><td>Scan 后 owner workflow；只有 Apply 可写用户文件。</td></tr>
+      </tbody></table></details>
+      <details class="endpoint-group"><summary>Index / deterministic ports</summary><table><tbody>
+        <tr><td><code>runCoreIndex</code></td><td>BuildIndexController</td><td>text/chunks/FTS receipts。</td></tr>
+        <tr><td><code>runPendingVectorIndexEnrichment</code></td><td>Embedding lane</td><td>vector receipts/errors/actual route。</td></tr>
+        <tr><td><code>runPendingLlmIndexEnrichment</code></td><td>AI enrichment lane</td><td>summary/tags/entities receipts。</td></tr>
+        <tr><td><code>content/link/graph collectors</code></td><td>Evidence assembly</td><td>typed facts 与 revisioned graph snapshot。</td></tr>
+      </tbody></table></details>
+      <details class="endpoint-group"><summary>Vault-wide discovery tools</summary><table><tbody>
+        <tr><td><code>get_state / inspect / search / expand</code></td><td>Discovery Agent</td><td>compact state、typed evidence refs、bounded graph。</td></tr>
+        <tr><td><code>rank_relationships / compare_boundary</code></td><td>Discovery Agent</td><td>候选与 deterministic measurements。</td></tr>
+        <tr><td><code>measure_roles / trace_bridges</code></td><td>Discovery Agent</td><td>role/path evidence，不直接成立 finding。</td></tr>
+        <tr><td><code>open/update investigation</code></td><td>Discovery Agent → Controller</td><td>合法 frontier transition proposal。</td></tr>
+        <tr><td><code>propose finding/transition</code></td><td>Discovery Agent → Controller</td><td>经 citation/revision gate 后 create/revise/merge/reject。</td></tr>
+        <tr><td><code>request_completion_check</code></td><td>Discovery Agent</td><td>只触发 system completion gate。</td></tr>
+      </tbody></table></details>
+      <details class="endpoint-group"><summary>Prepare review tools</summary><table><tbody>
+        <tr><td><code>review_get_state</code></td><td>Review Agent</td><td>job、budget、已有 work、validator feedback。</td></tr>
+        <tr><td><code>inspect_finding_bundle / search_evidence</code></td><td>Review Agent</td><td>冻结 atoms、citations、source revisions。</td></tr>
+        <tr><td><code>compare_existing_work</code></td><td>Review Agent</td><td>跨 scan workKey 与 owner choice。</td></tr>
+        <tr><td><code>propose_task_group / transition</code></td><td>Review Agent → Controller</td><td>merge/split/defer/transition proposal。</td></tr>
+        <tr><td><code>draft_artifact</code></td><td>Review Agent</td><td>explanation、question/options、anchors、citations、exit。</td></tr>
+        <tr><td><code>request_publish_check / submit_validated</code></td><td>Review Agent → Validator/Controller</td><td>validation receipt 后才 commit work row。</td></tr>
+      </tbody></table></details>
+      <details class="endpoint-group"><summary>Storage / Publish ports</summary><table><tbody>
+        <tr><td><code>appendRunEvent</code></td><td>所有 controller</td><td>sequence + idempotency key 的 per-run JSONL。</td></tr>
+        <tr><td><code>writeImmutableArtifact</code></td><td>domain controllers</td><td>plan/evidence/finding/review/completed bodies。</td></tr>
+        <tr><td><code>saveRunCheckpoint</code></td><td>parent controller</td><td>小型 resumable snapshot + pointers。</td></tr>
+        <tr><td><code>commitCompletedPointer</code></td><td>CompletedPublisher</td><td>原子切 current projection。</td></tr>
+        <tr><td><code>readBackCompleted</code></td><td>CompletedPublisher</td><td>checksum/count/identity/reachability gate。</td></tr>
+      </tbody></table></details>
+    </section>
+
+    <section class="section" id="artifacts">
+      <div class="section-head"><div><h2>产物在哪，谁能写什么</h2><p>机器产物进入 registered JSON/JSONL 与本地可重建 projection。Scan 中没有用户文件 writer。</p></div><span class="tag system">Write boundary</span></div>
+      <div class="artifact-grid">
+        <div class="card"><strong>Canonical run truth</strong><p>FrozenScanPlan、per-run events、EvidenceManifest、findings、ReviewPreparationPackage、Completed body。</p></div>
+        <div class="card"><strong>Rebuildable local projection</strong><p>FTS、vectors、file/lane status、finding filters、Work queue queries。丢失后由 canonical artifacts 重建。</p></div>
+        <div class="card"><strong>User-owned content</strong><p>只有 Completed 后的显式 accepted Proposal → Apply 可以写；写前 revision guard，写后 re-index + Verify。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="gaps">
+      <div class="section-head"><div><h2>目标合同与当前代码不是同一件事</h2><p>UI Mock 和本报告定义目标；当前 Runtime 是基础资产，但不能用它的临时四阶段结构反向删掉 Prepare review。</p></div><span class="tag">Gap audit</span></div>
+      <div class="truth-grid">
+        <div class="truth target"><h3>目标</h3><ul><li>五阶段 + 显式 DAG/evidence floor</li><li>Discovery frontier/finding controller</li><li>独立 ReviewPreparationAgent + validator</li><li>Publish 只提交冻结 package</li><li>per-run events + immutable artifacts</li></ul></div>
+        <div class="truth current"><h3>当前代码</h3><ul><li>stage type 仍是 discover/index/ai/publish</li><li>Discover 后 Promise.all(Index, AI)</li><li>多个 AI operation 合并 shared review session</li><li>Publish 现场 derive tasks + graph maintenance</li><li>旧 progress 混合文件/operation units</li></ul></div>
+      </div>
+      <div class="callout warn"><strong>验证边界：</strong>本报告依据源码与批准合同制作；本地 file URL 的浏览器读取被安全策略阻止，所以没有把静态 Mock 冒充真实 Obsidian 交互。生产实现仍需真实 Obsidian CDP 验证。</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>继续读原始合同</h2><p>视觉总图帮助建立心智；实现时以下文档共同构成精确合同。</p></div></div>
+      <div class="source-links">
+        <a href="../../superpowers/specs/2026-08-23-scan-vault-frontend-backend-runtime-atlas.md">详细文字总图</a>
+        <a href="../../superpowers/specs/2026-08-23-scan-vault-end-to-end-runtime-design.md">端到端生产运行设计</a>
+        <a href="../../superpowers/specs/2026-08-23-vault-wide-discovery-harness-design.md">Discovery Harness</a>
+        <a href="../../superpowers/specs/2026-08-23-vault-scan-review-preparation-design.md">Prepare review</a>
+        <a href="../../superpowers/plans/2026-08-23-scan-vault-production-implementation-scope.md">生产实现范围</a>
+        <a href="../vault-intelligence-workspace-2026-08-12-v2/index.html">完整 Workspace Mock</a>
+      </div>
+    </section>
+    <footer>Scan Vault frontend + backend runtime atlas · 2026-08-23 · 文档产物，不修改产品代码</footer>
+  </main>
+</div>
+</body>
+</html>

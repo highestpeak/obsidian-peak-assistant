@@ -7,6 +7,8 @@
 > 适用范围：Vault Intelligence 的 `Scan setup → Run progress → Completed` 运行链路
 >
 > 实施入口：[`2026-08-23-scan-vault-production-implementation-scope.md`](../plans/2026-08-23-scan-vault-production-implementation-scope.md)
+>
+> 前后端可读总图：[`Scan Vault 前后端运行总图`](./2026-08-23-scan-vault-frontend-backend-runtime-atlas.md) · [`视觉 HTML`](../../gstack/vault-scan-runtime-atlas-2026-08-23/index.html)
 
 ## 1. 文档效力
 
