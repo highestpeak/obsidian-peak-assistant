@@ -33,11 +33,16 @@ import {
 } from './tier/types';
 import type { ToolDef } from './tool/types';
 import type { StepResult } from './trace/events';
+import type { DebugModelOperation, DebugSurface, DebugTracePort } from '@/core/debug-trace';
 
 export interface HarnessModelRunRequest {
 	loopId: string;
 	profile: Profile;
 	modelId: string;
+	debugTrace?: DebugTracePort | null;
+	debugSurface?: DebugSurface;
+	debugCapabilityId?: string;
+	debugOperation?: Extract<DebugModelOperation, 'text.generate' | 'text.stream' | 'object.generate'>;
 	systemPrompt: string;
 	prompt: string;
 	tools?: ToolDef[];
@@ -108,6 +113,10 @@ export async function runHarnessModel(
 			maxToolCalls: request.maxToolCalls ?? Math.max(1, tools.length * 4),
 		},
 		modelSettings: request.modelSettings,
+		debugTrace: request.debugTrace,
+		debugSurface: request.debugSurface,
+		debugCapabilityId: request.debugCapabilityId,
+		debugOperation: request.debugOperation,
 		abortSignal: request.signal,
 		stopWhen: request.stopWhen,
 		treatBareTextAsFinal: request.treatBareTextAsFinal,

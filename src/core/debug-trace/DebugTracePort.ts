@@ -7,13 +7,26 @@
 import type {
 	DebugDecision,
 	DebugPayloadInput,
+	CompleteDebugModelCallInput,
+	DebugModelCall,
 	DebugRedactionMode,
 	DebugRun,
 	DebugSpan,
 	DebugSummary,
 	StartDebugRunInput,
+	StartDebugModelCallInput,
 	StartSpanInput,
 } from './types';
+
+export interface DebugModelCallHandle {
+	readonly callId: string;
+	replaceRequest(payload: DebugPayloadInput): void;
+	updateStream(input: { response?: DebugPayloadInput; reasoning?: DebugPayloadInput }): void;
+	succeed(input?: CompleteDebugModelCallInput): DebugModelCall;
+	fail(error: unknown, input?: CompleteDebugModelCallInput): DebugModelCall;
+	cancel(reason?: string): DebugModelCall;
+	snapshot(): DebugModelCall;
+}
 
 export interface DebugSpanHandle {
 	readonly spanId: string;
@@ -43,8 +56,12 @@ export interface DebugTracePort {
 	setMode(mode: DebugRedactionMode): void;
 
 	startRun(input: StartDebugRunInput): DebugRunHandle;
+	startModelCall(input: StartDebugModelCallInput): DebugModelCallHandle;
 
 	listRecent(limit?: number): DebugRun[];
 	getRun(runId: string): DebugRun | undefined;
+	listModelCalls(limit?: number): DebugModelCall[];
+	getModelCall(callId: string): DebugModelCall | undefined;
+	subscribe(listener: () => void): () => void;
 	clearAll(): void;
 }

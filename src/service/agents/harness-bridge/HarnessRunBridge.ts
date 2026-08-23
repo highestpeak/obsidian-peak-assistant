@@ -58,7 +58,7 @@ function withDefaultContextManagerAndHarnessSettings(cfg: BridgeRunConfig): Brid
 		...base,
         context: new ContextManager({
             maxTokens,
-            summarizer: createDefaultCompactSummarizer() ?? undefined,
+            summarizer: createDefaultCompactSummarizer(cfg.debugTrace ?? null) ?? undefined,
         }),
 	};
 }

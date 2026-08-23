@@ -32,6 +32,7 @@ import {
 import { buildVaultHarnessTools } from '@/service/agents/vault/vaultHarnessTools';
 import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
 import { loadApprovedPluginCommandTools } from '@/service/command-gateway/pluginCommandToolCatalog';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 /** Vault-grep callback shape the agent loop needs. */
 export type CopilotAgentSearchFn = (q: string, limit: number) => Promise<GrepHit[]>;
@@ -48,6 +49,7 @@ export interface CopilotAgentPortDeps {
 	analysisHistory: AnalysisHistoryPort;
 	/** Resolve lazily because app boot composes this catalog before the gateway. */
 	resolvePluginCommandGateway(): PluginCommandGatewayPort | null;
+	debugTrace?: DebugTracePort | null;
 }
 
 /**
@@ -146,6 +148,9 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 					maxToolCalls: Math.max(12, (options.maxTurns ?? 20) * 4),
 					signal: options.signal,
 					triggerName,
+					debugTrace: deps.debugTrace,
+					debugSurface: 'analyze',
+					debugCapabilityId: 'copilot.action-agent',
 					stopWhen: () =>
 						capturedResult !== null
 						|| Boolean(

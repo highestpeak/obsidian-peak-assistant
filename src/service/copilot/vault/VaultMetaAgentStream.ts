@@ -37,6 +37,7 @@ import {
 import type { CopilotOutputCollector, ReviewSubmission } from '../CopilotOutputCollector';
 import type { VaultDigest } from './VaultDigestService';
 import { formatVaultDigestForPrompt } from './VaultDigestService';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export type VaultReviewMode = 'fast' | 'complete';
 
@@ -184,6 +185,7 @@ export interface VaultMetaAgentRunDeps {
 	analysisHistory: AnalysisHistoryPort;
 	/** Current app-owned allowlist of external plugin commands. */
 	pluginCommandGateway?: PluginCommandGatewayPort | null;
+	debugTrace?: DebugTracePort | null;
 }
 
 export async function* buildVaultMetaAgentStream(
@@ -270,6 +272,9 @@ export async function* buildVaultMetaAgentStream(
 			maxToolCalls: Math.max(12, options.maxTurns * 4),
 			signal: options.signal,
 			triggerName,
+			debugTrace: deps.debugTrace,
+			debugSurface: 'analyze',
+			debugCapabilityId: 'vault-review.meta-agent',
 			stopWhen: () =>
 				options.collector.getSnapshot().submissions.length > submissionsBefore,
 			treatBareTextAsFinal: false,

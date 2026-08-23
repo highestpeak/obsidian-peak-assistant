@@ -38,6 +38,7 @@ import type {
 } from '@/service/capabilities/CapabilityRunner';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import type { AgentLoopConfig } from '@/service/agents/harness/loop/types';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 /** Discriminated union of payloads that reach the backend strategies. */
 export type BackendInvocationInput =
@@ -54,6 +55,7 @@ export type BackendInvocationInput =
 
 export interface BackendCompositionDeps {
 	readonly profileRegistry: ProfileRegistry;
+	readonly debugTrace?: DebugTracePort | null;
 	/**
 	 * Delegate for `provider-direct` — same shape rationale as above,
 	 * usually points at `MultiProviderChatService.streamText`.
@@ -77,14 +79,21 @@ function profileHasCredential(profile: Profile): boolean {
 	return typeof profile.apiKey === 'string' && profile.apiKey.length > 0;
 }
 
-function buildHermesHarnessStrategy(): BackendStrategy<BackendInvocationInput, unknown> {
+function buildHermesHarnessStrategy(
+	debugTrace: DebugTracePort | null,
+): BackendStrategy<BackendInvocationInput, unknown> {
 	return async (input, _ctx) => {
 		if (input.kind !== 'agent-loop') {
 			throw new Error(
 				`hermes-harness backend received unsupported input '${input.kind}'. Expected { kind: 'agent-loop', config }.`,
 			);
 		}
-		const result = await runAgentLoop(input.config);
+		const result = await runAgentLoop({
+			...input.config,
+			debugTrace: input.config.debugTrace ?? debugTrace,
+			debugSurface: input.config.debugSurface ?? 'agent',
+			debugCapabilityId: input.config.debugCapabilityId ?? 'backend.hermes-harness',
+		});
 		return {
 			result,
 			artifactTitle: `agent-loop:${input.config.loopId}`,
@@ -106,7 +115,7 @@ export function registerBackendStrategies(
 	const anyProvider = hasWorkingProvider(deps.profileRegistry);
 
 	if (anyProvider) {
-		registry['hermes-harness'] = buildHermesHarnessStrategy() as BackendStrategy;
+		registry['hermes-harness'] = buildHermesHarnessStrategy(deps.debugTrace ?? null) as BackendStrategy;
 	}
 
 	if (anyProvider && deps.providerStreamAdapter) {

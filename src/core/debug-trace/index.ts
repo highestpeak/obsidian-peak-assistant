@@ -18,12 +18,19 @@ export type {
 	StartSpanInput,
 	DebugClock,
 	DebugIdFactory,
+	DebugModelOperation,
+	DebugModelCallPhase,
+	DebugModelCallError,
+	DebugModelCall,
+	StartDebugModelCallInput,
+	CompleteDebugModelCallInput,
 } from './types';
 
 export type {
 	DebugTracePort,
 	DebugRunHandle,
 	DebugSpanHandle,
+	DebugModelCallHandle,
 } from './DebugTracePort';
 
 export { DebugTraceRecorder } from './DebugTraceRecorder';

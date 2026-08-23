@@ -170,7 +170,7 @@ export class VaultSearchAgent {
         });
 
         if (opts.webEnabled) {
-            const webTool = buildHarnessWebSearchTool(this.app, this.pluginId);
+            const webTool = buildHarnessWebSearchTool(this.app, this.pluginId, this.debugTracePort);
             if (webTool) tools.push(webTool);
         }
 
@@ -271,7 +271,10 @@ export class VaultSearchAgent {
             tierController,
             trace,
             budget: { maxSteps: 20, maxTokens: 200_000, maxToolCalls: 40 },
-            abortSignal: opts.signal,
+			abortSignal: opts.signal,
+			debugTrace: this.debugTracePort,
+			debugSurface: 'search',
+			debugCapabilityId: 'vault-search.agent',
             // Completion is defined SOLELY by vault_submit_plan succeeding — a
             // text-only planning turn (which the playbook mandates before the
             // first tool call) must not be mistaken for a final answer.
@@ -453,7 +456,7 @@ async function gatherPreSearchContext(
 /**
  * Harness-native web search tool.
  */
-function buildHarnessWebSearchTool(app: AppHandle, pluginId: string): ToolDef | null {
+function buildHarnessWebSearchTool(app: AppHandle, pluginId: string, debugTrace: DebugTracePort | null): ToolDef | null {
     const binding = ProfileRegistry.getInstance().getActiveWebSearchConfig();
     if (!binding) return null;
     return {
@@ -478,6 +481,9 @@ function buildHarnessWebSearchTool(app: AppHandle, pluginId: string): ToolDef | 
                     prompt: query,
                     systemPrompt,
                     maxSteps: 1,
+					debugTrace,
+					debugSurface: 'search',
+					debugCapabilityId: 'vault-search.web-tool',
                 });
                 return ok({ text: text || 'No results found.' });
             } catch (err) {

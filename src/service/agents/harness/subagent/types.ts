@@ -14,6 +14,7 @@ import type { AgentLoopFinishReason } from '../loop/types';
 import type { HookBus } from '../hook/HookBus';
 import type { TraceBus } from '../trace/events';
 import type { TierController } from '../tier/TierController';
+import type { DebugSurface, DebugTracePort } from '@/core/debug-trace';
 
 export interface SubAgentDefinition {
     /** Stable identifier exposed as the tool name in the parent loop. */
@@ -68,4 +69,6 @@ export interface DispatcherCtx {
     trace?: TraceBus;
     /** Optional shared HookBus passed into the child loop. */
     hooks?: HookBus;
+	debugTrace?: DebugTracePort | null;
+	debugSurface?: DebugSurface;
 }

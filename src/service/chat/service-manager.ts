@@ -61,6 +61,7 @@ import { SessionContextService } from '@/service/context/SessionContextService';
 import type { WorkingContext } from '@/service/context/types';
 import type { LanguageModelV3CallOptions } from '@ai-sdk/provider';
 import { LLMResponseError } from '@/core/errors';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -81,6 +82,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	private generatedOutputs?: GeneratedOutputPersistenceRuntime;
 	private contextUpdateService?: ContextUpdateService;
 	private modelCatalog: ModelCatalogReader = modelRegistry;
+	private debugTracePort: DebugTracePort | null = null;
 
 	get proj(): ProjectService {
 		if (!this._projectService) throw new Error('ProjectService not initialized. Call init() first.');
@@ -175,6 +177,16 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	/** For on-demand template loading (prompts, tool results, agent context). Cleared on plugin unload. */
 	getTemplateManager(): TemplateManager | undefined {
 		return this.templateManager;
+	}
+
+	/** Bound by app composition; provider logging never resolves through AppContext. */
+	setDebugTracePort(port: DebugTracePort | null): void {
+		this.debugTracePort = port;
+	}
+
+	/** Exposes the app-injected diagnostics port to explicitly-owned child runs. */
+	getDebugTracePort(): DebugTracePort | null {
+		return this.debugTracePort;
 	}
 
 	/** Bound by main.ts immediately after the app-owned runtime is composed. */
@@ -932,6 +944,9 @@ ${sourcesList}${topicsList}
 				prompt: userPrompt,
 				systemPrompt,
 				maxSteps: 1,
+				debugTrace: this.debugTracePort,
+				debugSurface: 'agent',
+				debugCapabilityId: `query.text:${String(promptOrText)}`,
 				modelSettings: opts?.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : undefined,
 				onStreamEvent: (event) => {
 					if (event.type === 'text_delta') streamedText += event.delta;
@@ -997,6 +1012,9 @@ ${sourcesList}${topicsList}
 			prompt: userPrompt,
 			systemPrompt,
 			maxSteps: 1,
+			debugTrace: this.debugTracePort,
+			debugSurface: 'agent',
+			debugCapabilityId: `query.text-stream:${String(promptOrText)}`,
 			signal: opts?.signal,
 		})) {
 			if (event.type === 'text-delta') {
@@ -1055,6 +1073,9 @@ ${sourcesList}${topicsList}
 			prompt: userPrompt,
 			systemPrompt,
 			maxSteps: 1,
+			debugTrace: this.debugTracePort,
+			debugSurface: 'agent',
+			debugCapabilityId: `query.stream:${String(promptOrText)}`,
 			signal: opts?.signal,
 			triggerName: opts?.triggerName as any,
 		})) {
@@ -1126,6 +1147,10 @@ ${sourcesList}${topicsList}
 				prompt: userPrompt,
 				systemPrompt: effectiveSystemPrompt,
 				maxSteps: 1,
+				debugTrace: this.debugTracePort,
+				debugSurface: 'agent',
+				debugCapabilityId: `query.structured:${String(promptOrText)}`,
+				debugOperation: 'object.generate',
 				modelSettings: opts?.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : undefined,
 				responseFormat: structuredResponseFormat(schema),
 				onStreamEvent: (event) => {

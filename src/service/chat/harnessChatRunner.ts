@@ -44,6 +44,7 @@ import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES, type TierBinding } from '@/service/agents/harness/tier/types';
 import type { ToolDef } from '@/service/agents/harness/tool/types';
 import type { PermissionGuard } from '@/service/agents/harness/permission/PermissionGuard';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export interface HarnessChatStreamRequest {
 	profile: Profile;
@@ -54,6 +55,7 @@ export interface HarnessChatStreamRequest {
 	budget: AgentLoopBudget;
 	outputControl?: LLMOutputControlSettings;
 	abortSignal?: AbortSignal;
+	debugTrace?: DebugTracePort | null;
 	/**
 	 * B1 §5.2 R4: PermissionGuard is now owned by the caller so mutating
 	 * tools (MCP `kind:'edit'`, future media-generate) get an ask-based
@@ -232,6 +234,9 @@ async function* runHarnessStream(
 		abortSignal: req.abortSignal,
 		modelSettings: toModelSettings(req.outputControl),
 		onStreamEvent,
+		debugTrace: req.debugTrace,
+		debugSurface: 'chat',
+		debugCapabilityId: 'chat.turn',
 		// B1 §5.2 R4: propagate permission guard + resolver so mutating
 		// tools (MCP `kind:'edit'`) go through the ask path.
 		permission: req.permission,

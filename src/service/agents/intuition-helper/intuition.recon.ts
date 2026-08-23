@@ -164,6 +164,9 @@ export async function* runKnowledgeIntuitionLoop(options: {
 			maxSteps: 2,
 			maxToolCalls: 12,
 			triggerName: StreamTriggerName.KNOWLEDGE_INTUITION_PLAN,
+			debugTrace: aiServiceManager.getDebugTracePort(),
+			debugSurface: 'agent',
+			debugCapabilityId: 'knowledge-intuition.plan',
 		});
 
 		// Stream and collect plan text

@@ -26,6 +26,7 @@ import {
 	type GraphOutput,
 } from './ai-graph/graph-output-types';
 import { graphOutputToLensData } from './ai-graph/graph-output-to-lens';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export type AIGraphEvent = LLMStreamEvent;
 
@@ -40,6 +41,7 @@ export class AIGraphAgent {
 		private readonly app: AppHandle,
 		private readonly searchClient: SearchClient,
 		private readonly prompter: IAgentPrompter,
+		private readonly debugTrace: DebugTracePort | null = null,
 	) {}
 
 	/**
@@ -73,7 +75,7 @@ export class AIGraphAgent {
 		let webResearch: WebSearchQueryResult | null = null;
 		if (options.webEnabled) {
 			yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'web-searching' } } as any;
-			webResearch = await runWebSearchQuery(userQuery);
+			webResearch = await runWebSearchQuery(userQuery, this.debugTrace);
 			for (const source of webResearch.sources) {
 				if (graphData.nodes.some((node) => node.path === source.url)) continue;
 				graphData.nodes.push({
@@ -213,7 +215,7 @@ export class AIGraphAgent {
 		let webResearch: WebSearchQueryResult | null = null;
 		if (options.webEnabled) {
 			yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'web-searching' } } as any;
-			webResearch = await runWebSearchQuery(userQuery);
+			webResearch = await runWebSearchQuery(userQuery, this.debugTrace);
 			for (const source of webResearch.sources) {
 				if (graphData.nodes.some((node) => node.path === source.url)) continue;
 				graphData.nodes.push({

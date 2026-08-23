@@ -257,7 +257,12 @@ export function composeQuickSearchHost(
 		aiGraphArtifacts: appContext.runtimeRegistry.tryGetAIGraphArtifactRuntime(),
 
 		createSynthesizeAgent: () => new SynthesizeAgent(manager),
-		createAIGraphAgent: () => new AIGraphAgent(app, searchClient!, manager),
+		createAIGraphAgent: () => new AIGraphAgent(
+			app,
+			searchClient!,
+			manager,
+			AppContext.tryGetDebugTracePort(),
+		),
 		createVaultSearchAgent: () => new VaultSearchAgent(app, plugin.manifest.id, searchClient!, manager, {}, AppContext.tryGetDebugTracePort()),
 		createContinueAnalysisAgent: (_rounds) => new ContinueAnalysisAgent({
 			app,
@@ -265,7 +270,11 @@ export function composeQuickSearchHost(
 			searchClient: searchClient!,
 			aiServiceManager: manager,
 		}),
-		createGraphAgent: () => new GraphAgent(app, plugin.manifest.id),
+		createGraphAgent: () => new GraphAgent(
+			app,
+			plugin.manifest.id,
+			AppContext.tryGetDebugTracePort(),
+		),
 		createContextProvider: () => new ContextProvider(app, search.ignorePatterns),
 		// Debug trace plumbing: remember the most recently constructed
 		// orchestrator so explicit Markdown export can attach an artifact span.
@@ -652,7 +661,12 @@ export function composeQuickSearchHost(
 			const runtime = appContext.runtimeRegistry.getAIGraphArtifactRuntime();
 			const current = await runtime.open(graphId, baseVersionId);
 			if (!current) throw new Error(`AI Graph ${graphId} does not exist.`);
-				const agent = new AIGraphAgent(app, searchClient!, manager);
+				const agent = new AIGraphAgent(
+					app,
+					searchClient!,
+					manager,
+					AppContext.tryGetDebugTracePort(),
+				);
 				let generated = null;
 				const activeVaultPaths = current.sources
 					.filter((source) =>

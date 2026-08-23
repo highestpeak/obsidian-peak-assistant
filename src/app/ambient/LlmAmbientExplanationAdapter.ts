@@ -14,8 +14,11 @@ import {
 	type AmbientExplanationLlmPort,
 } from '@/service/ambient/AmbientExplanationService';
 import type { AmbientExplanationPort } from '@/core/ports/AmbientPorts';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 class HarnessAmbientLlmPort implements AmbientExplanationLlmPort {
+	constructor(private readonly debugTrace: DebugTracePort | null = null) {}
+
 	async collectText(input: {
 		prompt: string;
 		systemPrompt: string;
@@ -29,6 +32,9 @@ class HarnessAmbientLlmPort implements AmbientExplanationLlmPort {
 			prompt: input.prompt,
 			systemPrompt: input.systemPrompt,
 			maxSteps: 1,
+			debugTrace: this.debugTrace,
+			debugSurface: 'agent',
+			debugCapabilityId: 'ambient.explanation',
 		});
 		return text;
 	}
@@ -37,8 +43,8 @@ class HarnessAmbientLlmPort implements AmbientExplanationLlmPort {
 export class LlmAmbientExplanationAdapter implements AmbientExplanationPort {
 	private readonly service: AmbientExplanationService;
 
-	constructor(service?: AmbientExplanationService) {
-		this.service = service ?? new AmbientExplanationService(new HarnessAmbientLlmPort());
+	constructor(service?: AmbientExplanationService, debugTrace: DebugTracePort | null = null) {
+		this.service = service ?? new AmbientExplanationService(new HarnessAmbientLlmPort(debugTrace));
 	}
 
 	generateLlmExplanation(

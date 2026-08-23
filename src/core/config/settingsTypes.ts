@@ -521,8 +521,8 @@ export interface MyPluginSettings {
 }
 
 /**
- * Debug Trace Infrastructure settings. Default: recorder off. Users opt in
- * from Settings → Advanced → Developer → Debug traces.
+ * Debug Trace Infrastructure settings. Redacted provider lifecycle evidence
+ * is on by default; Full local content remains explicit.
  *
  * Retention is a numeric ring-buffer size; `'session'` maps to
  * `Number.POSITIVE_INFINITY` in the recorder (no automatic eviction until
@@ -540,7 +540,7 @@ export interface DebugTraceSettings {
 }
 
 export const DEFAULT_DEBUG_TRACE_SETTINGS: DebugTraceSettings = {
-	mode: 'off',
+	mode: 'redacted',
 	retention: 20,
 	copyFormat: 'markdown',
 	includeRawContent: false,

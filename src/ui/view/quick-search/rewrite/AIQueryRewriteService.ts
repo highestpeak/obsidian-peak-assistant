@@ -17,6 +17,7 @@ import { behaviorRecorder } from './BehaviorContextRecorder';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
 import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import type { LLMUsage } from '@/core/providers/types';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 /**
  * AIQueryRewriteService — orchestrates one round of Suggest.
@@ -94,6 +95,7 @@ export async function suggestQueries(opts: {
 	signal?: AbortSignal;
 	/** Fires as each stage begins — used by the panel to show a live trace. */
 	onStage?: (stage: QueryRewriteStage) => void;
+	debugTrace?: DebugTracePort | null;
 }): Promise<QueryRewriteResult> {
 	const trace: StageEntry[] = [];
 	const suggestStartMs = Date.now();
@@ -176,6 +178,12 @@ export async function suggestQueries(opts: {
 				],
 				undefined,
 				opts.signal,
+				{
+					debugTrace: opts.debugTrace ?? null,
+					surface: 'search',
+					capabilityId: 'search.query-rewrite',
+					operation: 'object.generate',
+				},
 			);
 			// If the caller aborted while the provider was mid-stream, the
 			// SDK propagates it as an exception — but guard defensively.

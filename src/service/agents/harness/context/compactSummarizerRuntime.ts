@@ -13,6 +13,7 @@ import type { CompactSummarizer, CompactSummarizerInput } from './types';
 import type { MemoryBlock } from '../memory/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { vercelGenerateText } from '@/core/providers/vercel';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 const SUMMARY_SYSTEM_PROMPT = `You compact a chat history window for a long-running agent. The middle turns will be replaced by your summary before the next agent step runs. Return prose only — no markdown, no lists, no headers.
 
@@ -30,7 +31,7 @@ Never invent content. If a turn's role or content is unclear, say so briefly.`;
  * active fast-role binding (Agent Fast). Returns null when no profile is
  * available so the caller can decide whether to skip stage (c).
  */
-export function createDefaultCompactSummarizer(): CompactSummarizer | null {
+export function createDefaultCompactSummarizer(debugTrace: DebugTracePort | null = null): CompactSummarizer | null {
     const fast = ProfileRegistry.getInstance().getActiveAgentFastConfig();
     if (!fast) return null;
     return async (input: CompactSummarizerInput): Promise<string> => {
@@ -38,7 +39,11 @@ export function createDefaultCompactSummarizer(): CompactSummarizer | null {
         const { text } = await vercelGenerateText(fast.profile, fast.modelId, [
             { role: 'system', content: [{ type: 'text', text: SUMMARY_SYSTEM_PROMPT }] },
             { role: 'user', content: [{ type: 'text', text: userPrompt }] },
-        ]);
+		], undefined, undefined, {
+			debugTrace,
+			surface: 'agent',
+			capabilityId: 'harness.context-compact',
+		});
         return text;
     };
 }

@@ -3,6 +3,7 @@ import type { LLMRequestMessage, LLMStreamEvent, LLMOutputControlSettings, LLMUs
 import type { ToolSet } from 'ai';
 import { createLanguageModel } from './provider-factory';
 import { streamChat as adapterStreamChat } from './vercel-adapter';
+import { withDebugLanguageModel, type DebugLanguageModelContext } from './debug-language-model-middleware';
 
 export interface VercelChatRequest {
     messages: LLMRequestMessage[];
@@ -10,6 +11,7 @@ export interface VercelChatRequest {
     tools?: ToolSet;
     maxSteps?: number;
     abortSignal?: AbortSignal;
+	debug?: DebugLanguageModelContext;
 }
 
 /**
@@ -21,7 +23,8 @@ export async function* vercelStreamChat(
     modelId: string,
     request: VercelChatRequest,
 ): AsyncGenerator<LLMStreamEvent> {
-    const model = createLanguageModel(profile, modelId);
+	const baseModel = createLanguageModel(profile, modelId);
+	const model = request.debug ? withDebugLanguageModel(baseModel, request.debug) : baseModel;
     yield* adapterStreamChat(model, request.messages, {
         outputControl: request.outputControl,
         tools: request.tools,
@@ -39,11 +42,12 @@ export async function vercelGenerateText(
     messages: LLMRequestMessage[],
     outputControl?: LLMOutputControlSettings,
     abortSignal?: AbortSignal,
+	debug?: DebugLanguageModelContext,
 ): Promise<{ text: string; usage?: LLMUsage }> {
     let text = '';
     let usage: LLMUsage | undefined;
     let streamError: Error | null = null;
-    for await (const event of vercelStreamChat(profile, modelId, { messages, outputControl, abortSignal })) {
+    for await (const event of vercelStreamChat(profile, modelId, { messages, outputControl, abortSignal, debug })) {
         if (event.type === 'text-delta') text += event.text;
         else if (event.type === 'complete') usage = event.usage;
         else if (event.type === 'error') {

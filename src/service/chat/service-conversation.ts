@@ -590,6 +590,7 @@ export class ConversationService {
 				toolDeps: {
 					app: self.app,
 					pluginId: self.pluginId,
+					debugTrace: self.debugTracePort,
 					enableWebSearch: self.chatState.isWebSearchEnabled(),
 					enableVaultSearch: self.chatState.isVaultSearchEnabled(),
 					vaultRetrieval: self.vaultRetrievalPort,
@@ -750,6 +751,7 @@ export class ConversationService {
 				permission,
 				resolvePermissionAsk:
 					params.resolvePermissionAsk ?? self.permissionAskResolver ?? undefined,
+				debugTrace: self.debugTracePort,
 			});
 
 			let lastFinishReason: string | undefined;

@@ -26,6 +26,7 @@ import type {
 	MediaTranscriptionResult,
 } from '@/core/ports/MediaUnderstandingPort';
 import { UnsupportedMediaError } from '@/core/ports/MediaUnderstandingPort';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export type UnderstandingSource =
 	| 'native-video-input'
@@ -72,6 +73,7 @@ export interface UnderstandOutcome {
 export interface MediaUnderstandingRuntimeOptions {
 	transcription: MediaUnderstandingPort | null;
 	audioExtractor: MediaAudioExtractorPort | null;
+	debugTrace?: DebugTracePort | null;
 }
 
 export class MediaUnderstandingRuntime {
@@ -148,7 +150,7 @@ export class MediaUnderstandingRuntime {
 
 		if (decision.source === 'transcript-from-audio') {
 			try {
-				const result = await transcription.transcribeAudio({
+				const result = await this.transcribe({
 					bytes: input.bytes,
 					mimeType: input.mimeType,
 					filenameHint: input.filenameHint,
@@ -181,7 +183,7 @@ export class MediaUnderstandingRuntime {
 			return { source: 'attachment-only', error: `extract-failed: ${(err as Error).message}` };
 		}
 		try {
-			const result = await transcription.transcribeAudio({
+			const result = await this.transcribe({
 				bytes: wav.wavBytes,
 				mimeType: 'audio/wav',
 				filenameHint: input.filenameHint ? `${stripExt(input.filenameHint)}.wav` : 'video-audio.wav',
@@ -193,6 +195,39 @@ export class MediaUnderstandingRuntime {
 				source: 'attachment-only',
 				error: `transcription-failed: ${(err as Error).message}`,
 			};
+		}
+	}
+
+	private async transcribe(input: Parameters<MediaUnderstandingPort['transcribeAudio']>[0]): Promise<MediaTranscriptionResult> {
+		const call = this.opts.debugTrace?.startModelCall({
+			surface: 'chat',
+			capabilityId: 'media.transcription',
+			operation: 'speech.transcribe',
+			providerId: 'configured-transcription-provider',
+			modelId: 'configured-transcription-model',
+			request: {
+				raw: JSON.stringify({
+					mimeType: input.mimeType,
+					filenameHint: input.filenameHint,
+					languageHint: input.languageHint,
+					bytes: input.bytes.byteLength,
+				}),
+				contentType: 'application/json',
+			},
+		});
+		try {
+			const result = await this.opts.transcription!.transcribeAudio(input);
+			call?.succeed({
+				response: {
+					raw: JSON.stringify(result),
+					contentType: 'application/json',
+				},
+				metrics: { transcriptChars: result.transcript.length },
+			});
+			return result;
+		} catch (error) {
+			call?.fail(error);
+			throw error;
 		}
 	}
 

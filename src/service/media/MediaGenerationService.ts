@@ -45,6 +45,8 @@ import type { MediaJobRunner } from '@/service/media/MediaJobRunner';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { MediaUsageEmitter } from './MediaUsageEmitter';
 import { buildMediaUsageEvent, safeRecordMediaUsage } from './MediaUsageEmitter';
+import type { DebugTracePort } from '@/core/debug-trace';
+import { safeSerialize } from '@/core/providers/vercel/debug-language-model-middleware';
 
 /**
  * Injected persister for artifact receipts. We take a narrow port here
@@ -86,6 +88,7 @@ export interface MediaGenerationServiceDeps {
 	 * cannot fail a generation run.
 	 */
 	usageEmitter?: MediaUsageEmitter;
+	debugTrace?: DebugTracePort | null;
 }
 
 export interface ProduceMediaInput {
@@ -253,6 +256,7 @@ export class MediaGenerationService {
 		const nowFn0 = this.deps.now ?? Date.now;
 		const runStartedAtMs = nowFn0();
 		let result: MediaGenerationResult;
+		let debugCall: ReturnType<DebugTracePort['startModelCall']> | null = null;
 		try {
 			const adapterRequest = await buildAdapterRequest({
 				request: input.request,
@@ -261,8 +265,40 @@ export class MediaGenerationService {
 				config,
 				referenceResolver: this.deps.referenceResolver,
 			});
+			debugCall = this.deps.debugTrace?.startModelCall({
+				runId: input.runId,
+				surface: 'chat',
+				capabilityId: `media.${input.request.kind}`,
+				operation: 'media.generate',
+				providerId: adapter.providerId,
+				modelId: preflight.modelId ?? preset.model,
+				request: { raw: safeSerialize(adapterRequest), contentType: 'application/json' },
+			}) ?? null;
 			result = await adapter.generate(adapterRequest);
+			const resultOutputs = result.outputs?.length ? result.outputs : [result];
+			debugCall?.succeed({
+				response: {
+					raw: JSON.stringify({
+						kind: result.kind,
+						modelId: result.modelId,
+						providerRequestId: result.providerRequestId,
+						providerResponseUrl: result.providerResponseUrl,
+						outputs: resultOutputs.map((output) => ({
+							mimeType: output.mimeType,
+							extension: output.extension,
+							bytes: output.bytes.byteLength,
+						})),
+					}),
+					contentType: 'application/json',
+				},
+				metrics: {
+					outputCount: resultOutputs.length,
+					totalBytes: resultOutputs.reduce((sum, output) => sum + output.bytes.byteLength, 0),
+					...(result.latencyMs !== undefined ? { providerLatencyMs: result.latencyMs } : {}),
+				},
+			});
 		} catch (err) {
+			debugCall?.fail(err);
 			const message = (err as Error).message;
 			await this.deps.jobService.transition(job.jobId, 'failed', { error: message });
 			// V1 §R2 — record failure so cost/latency for aborted runs still
@@ -682,4 +718,3 @@ export function makeChatArtifactReceiptSink(
 		save: (r) => saveArtifactReceipt(r),
 	};
 }
-

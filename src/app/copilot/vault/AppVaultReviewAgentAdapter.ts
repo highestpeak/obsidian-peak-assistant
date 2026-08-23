@@ -33,6 +33,7 @@ export class AppVaultReviewAgentAdapter implements VaultReviewAgentPort {
 				analysisHistory: appContext.aiAnalysisHistoryService,
 				pluginCommandGateway:
 					appContext.runtimeRegistry.tryGetPluginCommandGatewayRuntime(),
+				debugTrace: appContext.runtimeRegistry.tryGetDebugTracePort(),
 			},
 			options,
 		);

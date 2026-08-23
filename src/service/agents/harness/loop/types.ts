@@ -14,6 +14,7 @@ import type { SubAgentDefinition } from '../subagent/types';
 import type { ContextManager } from '../context/ContextManager';
 import type { MemoryStore } from '../memory/MemoryStore';
 import type { CompiledSkill } from '@/core/types/compiled-skill';
+import type { DebugModelOperation, DebugSurface, DebugTracePort } from '@/core/debug-trace';
 
 export interface AgentLoopBudget {
     /** Hard cap on outer-loop iterations (one model call per iteration). */
@@ -232,6 +233,11 @@ export interface AgentLoopConfig {
     tools: ToolDef[];
     skills?: HarnessSkill[];
     tierController: TierController;
+	/** App-owned provider-call observer. It never participates in routing. */
+	debugTrace?: DebugTracePort | null;
+	debugSurface?: DebugSurface;
+	debugCapabilityId?: string;
+	debugOperation?: Extract<DebugModelOperation, 'text.generate' | 'text.stream' | 'object.generate'>;
     budget?: Partial<AgentLoopBudget>;
     abortSignal?: AbortSignal;
     /**

@@ -11,6 +11,7 @@ import {
 	assertSuccessfulRun,
 	runHarnessModel,
 } from '@/service/agents/harness/HarnessModelRunner';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export interface GraphAgentInput {
     searchQuery: string;
@@ -29,6 +30,7 @@ export class GraphAgent {
     constructor(
         private readonly app: AppHandle,
         private readonly pluginId: string,
+		private readonly debugTrace: DebugTracePort | null = null,
     ) {}
 
     async warmup(): Promise<void> {
@@ -84,6 +86,9 @@ export class GraphAgent {
                 tools: graphTools,
                 maxSteps: 10,
                 maxToolCalls: 12,
+				debugTrace: this.debugTrace,
+				debugSurface: 'agent',
+				debugCapabilityId: 'graph.generate',
                 signal,
                 stopWhen: () => graphSubmitted,
                 treatBareTextAsFinal: false,

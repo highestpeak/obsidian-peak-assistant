@@ -39,7 +39,7 @@ export function RunningCuratorStep({
     onError,
     onCancel,
 }: RunningCuratorStepProps) {
-    const { settingsActions } = useServiceContext();
+    const { settingsActions, debugTracePort } = useServiceContext();
     const strings = useOnboardingStrings();
     const copy = strings.steps.running;
     const onSuccessRef = useRef(onSuccess);
@@ -79,6 +79,7 @@ export function RunningCuratorStep({
                     bootstrap: { profile, modelId: bs.modelId },
                     userFollowup: userNote.trim() ? userNote.trim() : undefined,
                     signal: controller.signal,
+					debugTrace: debugTracePort,
                 });
                 if (controller.signal.aborted) return;
                 onSuccessRef.current(result);
@@ -90,7 +91,7 @@ export function RunningCuratorStep({
 
         void run(bootstrap);
         return () => controller.abort();
-    }, [bootstrap, preferences, userNote]);
+    }, [bootstrap, preferences, userNote, debugTracePort]);
 
     return (
         <div className="pkonb-hero">

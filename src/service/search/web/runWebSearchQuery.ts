@@ -6,6 +6,7 @@ import {
 	type CitedWebSource,
 } from '@/core/web/sourceExtraction';
 import { runHarnessText } from '@/service/agents/harness/HarnessModelRunner';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export interface WebSearchQueryResult {
 	query: string;
@@ -18,7 +19,10 @@ export interface WebSearchQueryResult {
  * user permission before invoking it. Only URLs cited by the provider response
  * become sources; the synthesized answer itself is never promoted to evidence.
  */
-export async function runWebSearchQuery(query: string): Promise<WebSearchQueryResult> {
+export async function runWebSearchQuery(
+	query: string,
+	debugTrace: DebugTracePort | null = null,
+): Promise<WebSearchQueryResult> {
 	const binding = ProfileRegistry.getInstance().getActiveWebSearchConfig();
 	if (!binding) throw new Error('No Web Search profile is configured.');
 	const templates = TemplateManager.getInstance();
@@ -31,6 +35,9 @@ export async function runWebSearchQuery(query: string): Promise<WebSearchQueryRe
 		prompt: query,
 		systemPrompt,
 		maxSteps: 1,
+		debugTrace,
+		debugSurface: 'agent',
+		debugCapabilityId: 'search.web-query',
 	});
 	const answer = text?.trim() ?? '';
 	return {

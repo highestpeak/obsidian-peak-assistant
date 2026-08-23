@@ -14,6 +14,7 @@ import {
 import type { CopilotActionAgentPort } from '@/core/ports/CopilotActionPorts';
 import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
 import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export interface AppCopilotActionAgentAdapterOptions {
 	app: App;
@@ -24,6 +25,7 @@ export interface AppCopilotActionAgentAdapterOptions {
 	analysisHistory: AnalysisHistoryPort;
 	/** Lazy because the gateway is composed after the manual action catalog. */
 	resolvePluginCommandGateway: () => PluginCommandGatewayPort | null;
+	debugTrace?: DebugTracePort | null;
 }
 
 export function createAppCopilotActionAgentAdapter(
@@ -56,5 +58,6 @@ export function createAppCopilotActionAgentAdapter(
 		search: searchFn,
 		analysisHistory: opts.analysisHistory,
 		resolvePluginCommandGateway: opts.resolvePluginCommandGateway,
+		debugTrace: opts.debugTrace,
 	});
 }

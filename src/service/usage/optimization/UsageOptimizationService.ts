@@ -17,6 +17,7 @@ import type {
 	Scenario,
 	ScenarioSummary,
 } from './types';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SHORT_CHAT_MAX_TOKENS = 1_500;
@@ -48,6 +49,7 @@ export interface RunOptimizationOptions {
  */
 export class UsageOptimizationService {
 	private db: Kysely<DbSchema> | null = null;
+	constructor(private readonly debugTrace: DebugTracePort | null = null) {}
 
 	init(db: Kysely<DbSchema>): void {
 		this.db = db;
@@ -128,7 +130,12 @@ export class UsageOptimizationService {
 				const { text } = await vercelGenerateText(llm.profile, llm.modelId, [
 					{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
 					{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
-				]);
+				], undefined, signal, {
+					debugTrace: this.debugTrace,
+					surface: 'analyze',
+					capabilityId: 'usage.optimization',
+					operation: 'object.generate',
+				});
 				const parsed = parseJson(text);
 				const result = RecommendationsResponseSchema.safeParse(parsed);
 				if (result.success) {

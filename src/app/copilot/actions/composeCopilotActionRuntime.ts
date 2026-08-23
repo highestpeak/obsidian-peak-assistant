@@ -80,6 +80,7 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 			analysisHistory: appContext.aiAnalysisHistoryService,
 			resolvePluginCommandGateway: () =>
 				AppContext.tryGetPluginCommandGatewayRuntime(),
+			debugTrace: appContext.runtimeRegistry.tryGetDebugTracePort(),
 		}),
 		promptTemplates: {
 			render: (template, variables) =>

@@ -723,7 +723,12 @@ export class AppContext {
 	/** Create an AIGraphAgent for building multi-lens knowledge graphs. */
 	public static aiGraphAgent(): AIGraphAgent {
 		const ctx = AppContext.getInstance();
-		return new AIGraphAgent(ctx.app, ctx.searchClient, ctx.manager);
+		return new AIGraphAgent(
+			ctx.app,
+			ctx.searchClient,
+			ctx.manager,
+			ctx.runtimeRegistry.tryGetDebugTracePort(),
+		);
 	}
 
 	/**

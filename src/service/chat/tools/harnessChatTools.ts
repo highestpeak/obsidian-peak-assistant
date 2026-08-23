@@ -241,6 +241,9 @@ function buildWebSearchTool(deps: ChatToolDeps): ToolDef {
 				prompt: args.query,
 				systemPrompt,
 				maxSteps: 1,
+				debugTrace: deps.debugTrace,
+				debugSurface: 'chat',
+				debugCapabilityId: 'chat.web-search-tool',
 			});
 			const answer = text || 'No results found.';
 			if (receipts) {

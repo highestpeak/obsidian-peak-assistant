@@ -22,6 +22,7 @@ import {
 	type ReviewMode,
 	type PreviousRoundSummary,
 } from './CopilotMetaAgentStream';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export type ReviewSessionStatus =
 	| 'idle'
@@ -95,6 +96,7 @@ export interface CopilotReviewDeps {
 	searchClient: import('@/service/search/SearchClient').SearchClient;
 	pluginCommandGateway?: import('@/core/ports/PluginCommandGatewayPort').PluginCommandGatewayPort | null;
 	userProfileText?: string;
+	debugTrace?: DebugTracePort | null;
 }
 
 export interface RunReviewOptions {
@@ -191,6 +193,7 @@ export async function* runCopilotReview(
 				analysisHistory: options.deps.analysisHistory,
 				searchClient: options.deps.searchClient,
 				pluginCommandGateway: options.deps.pluginCommandGateway,
+				debugTrace: options.deps.debugTrace,
 				onTurnIncrement: () => {
 					round.turnCount += 1;
 				},

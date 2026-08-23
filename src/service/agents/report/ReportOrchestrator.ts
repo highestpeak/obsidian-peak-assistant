@@ -117,6 +117,9 @@ export class ReportOrchestrator {
             systemPrompt,
             maxSteps: 1,
             signal,
+			debugTrace: this.debugTrace,
+			debugSurface: 'analyze',
+			debugCapabilityId: 'report.section',
         });
         while (true) {
             const step = await stream.next();
@@ -405,6 +408,10 @@ export class ReportOrchestrator {
                 prompt,
                 systemPrompt: '',
                 maxSteps: 1,
+				debugTrace: this.debugTrace,
+				debugSurface: 'analyze',
+				debugCapabilityId: 'report.assign-insights',
+				debugOperation: 'object.generate',
             });
 
             // Parse JSON from response
@@ -596,6 +603,9 @@ export class ReportOrchestrator {
                 prompt: userMessage,
                 systemPrompt,
                 maxSteps: 1,
+				debugTrace: this.debugTrace,
+				debugSurface: 'analyze',
+				debugCapabilityId: 'report.mermaid-fix',
             });
 
             return fixed.includes('```mermaid') ? fixed.trim() : null;

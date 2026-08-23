@@ -255,6 +255,7 @@ async function getOrBuildMediaGenerationService() {
 		getMediaAttachmentFolder: () => ctx.plugin.settings.ai?.mediaAttachmentFolder,
 		getRootFolder: () => ctx.plugin.settings.ai?.rootFolder ?? '',
 		generatedOutputs: ctx.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
+		debugTrace: ctx.runtimeRegistry.tryGetDebugTracePort(),
 		getMediaSettingsOverride: () => ctx.plugin.settings.ai?.mediaDefaults,
 		saveArtifactReceipt: (r) => ctx.manager.conv.saveArtifactReceipt(r),
 	});

@@ -336,6 +336,7 @@ export default class MyPlugin extends Plugin {
 		// T11K B3: bind the embedding usage reporter so `embedClient`
 		// surfaces usage events without reaching `AppContext` from core.
 		setEmbeddingUsageReporter({
+			get debugTrace() { return appContext.runtimeRegistry.tryGetDebugTracePort(); },
 			report: (u) => {
 				appContext.eventBus.dispatch(new UsageRecordedViewEvent({
 					sessionId: crypto.randomUUID(),
@@ -361,9 +362,9 @@ export default class MyPlugin extends Plugin {
 		await this.aiServiceManager.init();
 
 		// Debug Trace Infrastructure — one in-memory recorder per plugin load.
-		// Mode + retention read from `settings.debugTrace`; defaults keep the
-		// recorder in `off` mode (zero-alloc hot paths) until the user opts in
-		// from Settings → Advanced → Developer → Debug traces.
+		// Mode + retention read from `settings.debugTrace`; redacted lifecycle
+		// evidence is the default so provider failures are diagnosable without
+		// reproducing them. Full request/response text remains explicit opt-in.
 		//
 		// Constructed HERE (before initSqlite / ViewManager / commands) so
 		// every downstream consumer — `conv.setDebugTracePort` immediately
@@ -371,7 +372,7 @@ export default class MyPlugin extends Plugin {
 		// instead of null.
 		const debugSettings = this.settings.debugTrace;
 		const debugRecorder = new DebugTraceRecorder({
-			mode: debugSettings?.mode ?? 'off',
+			mode: debugSettings?.mode ?? 'redacted',
 			retention:
 				debugSettings?.retention === 'session'
 					? Number.POSITIVE_INFINITY
@@ -383,6 +384,7 @@ export default class MyPlugin extends Plugin {
 		// receipt (context.assemble spans + drop / compact decisions).
 		// No-op when the recorder is in 'off' mode.
 		this.aiServiceManager.conv.setDebugTracePort(debugRecorder);
+		this.aiServiceManager.setDebugTracePort(debugRecorder);
 
 		// T11B-R (2026-06-14): bind the Copilot manual-action runtime
 		// BEFORE initSqlite(). The catalog must be available the moment
@@ -531,6 +533,7 @@ export default class MyPlugin extends Plugin {
 		// `resolveBackendStrategy`.
 		const backendStrategies = registerBackendStrategies({
 			profileRegistry: ProfileRegistry.getInstance(),
+			debugTrace: debugRecorder,
 		});
 		void backendStrategies; // consumers wire in during Wave 1
 
@@ -885,7 +888,9 @@ export default class MyPlugin extends Plugin {
 				const chatDb = sqliteStoreManager.getIndexContext('chat');
 				const usageTracking = new UsageTrackingService();
 				const usageOutcome = new UsageOutcomeService();
-				const usageOptimization = new UsageOptimizationService();
+				const usageOptimization = new UsageOptimizationService(
+					AppContext.tryGetDebugTracePort(),
+				);
 				usageTracking.init(chatDb, this.app, {
 					usageTrackingEnabled: this.settings.usageTrackingEnabled,
 					usageDetailRetentionDays: this.settings.usageDetailRetentionDays,
@@ -1008,6 +1013,7 @@ export default class MyPlugin extends Plugin {
 						getMediaAttachmentFolder: () => this.settings.ai?.mediaAttachmentFolder,
 						getRootFolder: () => this.settings.ai?.rootFolder ?? '',
 						generatedOutputs: this.appContext?.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
+						debugTrace: AppContext.tryGetDebugTracePort(),
 						// Task E1 — settings.ai.mediaDefaults is the user overlay
 						// applied inside composeMediaRuntime's loadConfig closure.
 						getMediaSettingsOverride: () => this.settings.ai?.mediaDefaults,

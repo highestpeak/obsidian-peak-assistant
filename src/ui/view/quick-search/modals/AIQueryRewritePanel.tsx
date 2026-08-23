@@ -13,6 +13,7 @@ import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContext
 import { suggestHistoryStore, type SuggestHistoryEntry } from '@/ui/view/quick-search/rewrite/SuggestHistoryStore';
 import type { App } from 'obsidian';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /**
  * Decide whether the user has produced enough signal to run a Suggest round.
@@ -117,6 +118,7 @@ function entryToSuccess(entry: SuggestHistoryEntry): QueryRewriteSuccess {
 export const AIQueryRewritePanel: React.FC<AIQueryRewritePanelProps> = ({
 	app, settings, onClose, onPick, onOpenAISetup, replayEntry,
 }) => {
+	const { debugTracePort } = useServiceContext();
 	const { vaultSearchQuery } = useSharedStore();
 	// Replay mode hydrates the success state directly from the stored entry;
 	// no LLM round runs unless the user hits Try again.
@@ -150,6 +152,7 @@ export const AIQueryRewritePanel: React.FC<AIQueryRewritePanelProps> = ({
 			app,
 			harness: settings.harnessSettings,
 			signal: ac.signal,
+			debugTrace: debugTracePort,
 			onStage: (stage) => {
 				if (ac.signal.aborted) return;
 				const entry: LoadingTrace = {
@@ -626,4 +629,3 @@ const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 		{children}
 	</span>
 );
-

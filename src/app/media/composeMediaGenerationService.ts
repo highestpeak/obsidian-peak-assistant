@@ -50,6 +50,7 @@ import type {
 } from '@/service/media/MediaUsageEmitter';
 import { canonicalJson, type GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 import { hashSHA256 } from '@/core/utils/hash-utils';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export interface ComposeMediaGenerationServiceDeps {
 	app: App;
@@ -74,6 +75,7 @@ export interface ComposeMediaGenerationServiceDeps {
 	 */
 	getArtifactReceipt?: (artifactId: string) => Promise<{ vaultPath?: string | null } | null>;
 	generatedOutputs?: GeneratedOutputPersistenceRuntime;
+	debugTrace?: DebugTracePort | null;
 }
 
 export interface ComposedMediaRuntime {
@@ -265,6 +267,7 @@ export async function composeMediaRuntime(
 		loadConfig: loadConfigWithOverlay,
 		attachmentFolder,
 		usageEmitter,
+		debugTrace: deps.debugTrace,
 	});
 
 	const runner = new MediaJobRunner({
@@ -310,6 +313,7 @@ export async function composeMediaRuntime(
 	const understanding = new MediaUnderstandingRuntime({
 		transcription: transcriptionAdapter,
 		audioExtractor,
+		debugTrace: deps.debugTrace,
 	});
 
 	return { runtime: { service, runner, understanding } };

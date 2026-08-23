@@ -106,7 +106,10 @@ export function composeAmbientRuntime(app: App): AmbientRuntime {
 	const projection = new AmbientUiProjectionAdapter();
 	const briefingRead = new SqliteAmbientBriefingReadAdapter();
 	const briefing = new BriefingItemBuilder(briefingRead);
-	const explanation = new LlmAmbientExplanationAdapter();
+	const explanation = new LlmAmbientExplanationAdapter(
+		undefined,
+		AppContext.tryGetDebugTracePort(),
+	);
 	const clock = new DefaultAmbientClock();
 
 	const ports: AmbientPorts = {

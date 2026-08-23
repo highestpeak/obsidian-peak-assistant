@@ -49,6 +49,9 @@ export class SubAgentDispatcher {
                 trace: this.ctx.trace,
                 hooks: this.ctx.hooks,
                 permission: guard,
+				debugTrace: this.ctx.debugTrace,
+				debugSurface: this.ctx.debugSurface,
+				debugCapabilityId: `subagent.${def.name}`,
             });
             return {
                 name: def.name,

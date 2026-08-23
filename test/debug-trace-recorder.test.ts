@@ -178,4 +178,85 @@ console.log('debug-trace-recorder: child spans + summary');
 	assert.strictEqual(finished.summary?.finalTier, 'quick');
 }
 
+// ---------------------------------------------------------------------------
+// provider call lifecycle: visible before send, streaming, terminal + errors
+// ---------------------------------------------------------------------------
+
+console.log('debug-trace-recorder: provider call lifecycle');
+{
+	const logs: unknown[][] = [];
+	const rec = new DebugTraceRecorder({
+		mode: 'raw',
+		clock: makeFakeClock(),
+		idFactory: makeFakeIds('call'),
+		logger: {
+			info: (...args: unknown[]) => { logs.push(args); },
+			error: (...args: unknown[]) => { logs.push(args); },
+		},
+	});
+	let notifications = 0;
+	const unsubscribe = rec.subscribe(() => { notifications += 1; });
+	rec.setMode('redacted');
+	assert.strictEqual(notifications, 1, 'mode changes must immediately refresh diagnostics UI');
+	rec.setMode('raw');
+	const call = rec.startModelCall({
+		surface: 'agent',
+		capabilityId: 'index.summary',
+		operation: 'object.generate',
+		providerId: 'lmstudio',
+		modelId: 'gemma-local',
+		request: { raw: JSON.stringify({ prompt: 'summarize', apiKey: 'sk-12345678901234567890' }) },
+	});
+	assert.strictEqual(rec.listModelCalls()[0]?.phase, 'request');
+	assert.strictEqual(rec.listModelCalls()[0]?.request.raw?.includes('sk-123'), false);
+	call.replaceRequest({ raw: JSON.stringify({ wire: true, authorization: 'Bearer 12345678901234567890' }) });
+	call.updateStream({
+		response: { raw: '{"summary":"partial' },
+		reasoning: { raw: 'provider reasoning delta' },
+	});
+	assert.strictEqual(rec.listModelCalls()[0]?.phase, 'streaming');
+	assert.strictEqual(rec.listModelCalls()[0]?.reasoning?.raw, 'provider reasoning delta');
+	const finished = call.succeed({
+		response: { raw: '{"summary":"done"}' },
+		finishReason: 'stop',
+		metrics: { inputTokens: 12, outputTokens: 3 },
+	});
+	assert.strictEqual(finished.phase, 'response');
+	assert.strictEqual(finished.metrics?.outputTokens, 3);
+	assert.ok(notifications >= 4);
+	assert.strictEqual(logs.length, 2, 'request and terminal states should log');
+	unsubscribe();
+
+	const failed = rec.startModelCall({
+		surface: 'agent',
+		capabilityId: 'index.tags',
+		operation: 'object.generate',
+		providerId: 'lmstudio',
+		modelId: 'gemma-local',
+		request: { raw: '{}' },
+	});
+	failed.fail(new Error('LLM returned empty response'));
+	assert.strictEqual(rec.listModelCalls()[0]?.phase, 'failed');
+	assert.strictEqual(rec.listModelCalls()[0]?.error?.message, 'LLM returned empty response');
+}
+
+console.log('debug-trace-recorder: call privacy mode is stable for its lifetime');
+{
+	const rec = new DebugTraceRecorder({ mode: 'redacted', logger: { info: () => {}, error: () => {} } });
+	const call = rec.startModelCall({
+		surface: 'agent',
+		capabilityId: 'privacy.mode-stability',
+		operation: 'text.stream',
+		providerId: 'local',
+		modelId: 'model',
+		request: { raw: 'request body' },
+	});
+	rec.setMode('raw');
+	const finished = call.succeed({ response: { raw: 'response body' } });
+	assert.strictEqual(finished.redaction, 'redacted');
+	assert.strictEqual(finished.request.raw, undefined);
+	assert.strictEqual(finished.response?.raw, undefined);
+	assert.deepStrictEqual(rec.listModelCalls(), [], 'a call from the previous privacy mode must not reappear');
+}
+
 console.log('debug-trace-recorder: OK');

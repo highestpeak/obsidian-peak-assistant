@@ -142,6 +142,70 @@ export interface DebugPayloadInput {
 	readonly excerpt?: string;
 }
 
+export type DebugModelOperation =
+	| 'text.generate'
+	| 'text.stream'
+	| 'object.generate'
+	| 'embedding.generate'
+	| 'media.generate'
+	| 'speech.transcribe';
+
+export type DebugModelCallPhase =
+	| 'request'
+	| 'streaming'
+	| 'response'
+	| 'failed'
+	| 'cancelled';
+
+export interface DebugModelCallError {
+	readonly message: string;
+	readonly stack?: string;
+}
+
+/**
+ * Provider-bound lifecycle receipt. Unlike DebugRun spans this shape includes
+ * active work, so Diagnostics can show a request before the provider returns.
+ */
+export interface DebugModelCall {
+	readonly version: 1;
+	readonly callId: string;
+	readonly runId?: string;
+	readonly surface: DebugSurface;
+	readonly capabilityId: string;
+	readonly operation: DebugModelOperation;
+	readonly providerId: string;
+	readonly modelId: string;
+	readonly phase: DebugModelCallPhase;
+	readonly startedAt: number;
+	readonly updatedAt: number;
+	readonly completedAt?: number;
+	readonly durationMs?: number;
+	readonly request: DebugPayload;
+	readonly response?: DebugPayload;
+	readonly reasoning?: DebugPayload;
+	readonly finishReason?: string;
+	readonly metrics?: Readonly<Record<string, number>>;
+	readonly error?: DebugModelCallError;
+	readonly redaction: DebugSpanRedaction;
+}
+
+export interface StartDebugModelCallInput {
+	readonly runId?: string;
+	readonly surface: DebugSurface;
+	readonly capabilityId: string;
+	readonly operation: DebugModelOperation;
+	readonly providerId: string;
+	readonly modelId: string;
+	readonly request: DebugPayloadInput;
+}
+
+export interface CompleteDebugModelCallInput {
+	readonly response?: DebugPayloadInput;
+	readonly reasoning?: DebugPayloadInput;
+	readonly finishReason?: string;
+	readonly metrics?: Readonly<Record<string, number>>;
+}
+
 // --------------------------------------------------------------------------
 // Clock / id factory (mirrors the RunEnvelope shape so tests can share fakes)
 // --------------------------------------------------------------------------

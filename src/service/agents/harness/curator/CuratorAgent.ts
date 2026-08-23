@@ -23,6 +23,7 @@ import type {
     ValidationError,
 } from './types';
 import { hardErrors, validateRecommendation } from './validation';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 const MAX_ATTEMPTS = 3;
 
@@ -38,6 +39,7 @@ export interface RunCuratorOptions {
     userFollowup?: string;
     /** Abort signal — passes through to underlying fetch where possible. */
     signal?: AbortSignal;
+	debugTrace?: DebugTracePort | null;
 }
 
 /**
@@ -64,7 +66,7 @@ export async function runCurator(opts: RunCuratorOptions): Promise<CuratorResult
 
         let rawJsonText: string;
         try {
-            rawJsonText = await invokeLLM(opts.bootstrap, userPrompt);
+            rawJsonText = await invokeLLM(opts.bootstrap, userPrompt, opts.debugTrace);
         } catch (e) {
             attempts.push({
                 attempt,
@@ -123,7 +125,7 @@ export async function runCurator(opts: RunCuratorOptions): Promise<CuratorResult
     };
 }
 
-async function invokeLLM(bootstrap: BootstrapBinding, userPrompt: string): Promise<string> {
+async function invokeLLM(bootstrap: BootstrapBinding, userPrompt: string, debugTrace?: DebugTracePort | null): Promise<string> {
     const systemPrompt = await getCuratorSystemPrompt();
     const { text } = await vercelGenerateText(
         bootstrap.profile,
@@ -131,7 +133,15 @@ async function invokeLLM(bootstrap: BootstrapBinding, userPrompt: string): Promi
         [
             { role: 'system', content: [{ type: 'text', text: systemPrompt }] },
             { role: 'user', content: [{ type: 'text', text: userPrompt }] },
-        ],
+		],
+		undefined,
+		undefined,
+		{
+			debugTrace: debugTrace ?? null,
+			surface: 'agent',
+			capabilityId: 'onboarding.curator',
+			operation: 'object.generate',
+		},
     );
     if (!text || text.trim().length === 0) {
         throw new Error('LLM returned empty response');

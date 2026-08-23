@@ -30,6 +30,7 @@ import {
 import type { CopilotOutputCollector, ReviewSubmission } from './CopilotOutputCollector';
 import type { DocumentSignalReport } from './CopilotSignalReport';
 import { formatSignalReportForPrompt } from './CopilotSignalReport';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 export type ReviewMode = 'fast' | 'complete';
 
@@ -81,6 +82,7 @@ export interface MetaAgentOptions {
 	searchClient: import('@/service/search/SearchClient').SearchClient;
 	/** Current app-owned allowlist of external plugin commands. */
 	pluginCommandGateway?: PluginCommandGatewayPort | null;
+	debugTrace?: DebugTracePort | null;
 }
 
 /**
@@ -336,6 +338,9 @@ export async function* buildCopilotMetaAgentStream(
 			maxToolCalls: Math.max(12, options.maxTurns * 4),
 			signal: options.signal,
 			triggerName,
+			debugTrace: options.debugTrace,
+			debugSurface: 'analyze',
+			debugCapabilityId: 'copilot.document-review',
 			stopWhen: () =>
 				options.collector.getSnapshot().submissions.length > submissionsBefore,
 			treatBareTextAsFinal: false,

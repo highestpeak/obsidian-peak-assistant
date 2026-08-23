@@ -1,5 +1,6 @@
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { type EmbeddingCallConfig, toEmbeddingConfig } from '@/core/profiles/materialize';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 /**
  * Narrow port for reporting one embedding-call's usage to a sink (e.g. the
@@ -8,6 +9,7 @@ import { type EmbeddingCallConfig, toEmbeddingConfig } from '@/core/profiles/mat
  * upward dependency on the app shell.
  */
 export interface EmbeddingUsageReporter {
+	readonly debugTrace?: DebugTracePort | null;
 	report(usage: {
 		feature: 'indexing';
 		action: 'embed';
@@ -48,19 +50,55 @@ export async function embedTexts(texts: string[], route?: EmbeddingCallConfig): 
 	const config = route ?? (profile ? toEmbeddingConfig(profile) : null);
 	if (!config)
 		throw new Error('Embedding endpoint not configured on active profile');
+	const debugCall = reporter?.debugTrace?.startModelCall({
+		surface: 'search',
+		capabilityId: 'search.embedding',
+		operation: 'embedding.generate',
+		providerId: config.provider,
+		modelId: config.model,
+		request: {
+			raw: JSON.stringify(embeddingRequestBody(texts, config)),
+			contentType: 'application/json',
+		},
+	});
 
-	const response = await requestEmbeddings(texts, config);
+	let response: Response;
+	try {
+		response = await requestEmbeddings(texts, config);
+	} catch (error) {
+		debugCall?.fail(error);
+		throw error;
+	}
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new Error(
+    const error = new Error(
       `Embedding API error ${response.status}: ${body.slice(0, 200)}`,
     );
+	debugCall?.fail(error, { response: { raw: body, contentType: 'application/json' } });
+	throw error;
   }
 
 	const data = await response.json();
 	const promptTokens: number = data.usage?.prompt_tokens ?? 0;
 	const embeddings = readEmbeddings(data, config.transport);
+	debugCall?.succeed({
+		response: {
+			raw: JSON.stringify({
+				status: response.status,
+				vectorCount: embeddings.length,
+				dimensions: embeddings[0]?.length ?? 0,
+				usage: data.usage ?? null,
+			}),
+			contentType: 'application/json',
+		},
+		metrics: {
+			inputCount: texts.length,
+			vectorCount: embeddings.length,
+			dimensions: embeddings[0]?.length ?? 0,
+			...(promptTokens > 0 ? { inputTokens: promptTokens } : {}),
+		},
+	});
 
   if (promptTokens > 0 && reporter) {
     try {
@@ -78,6 +116,16 @@ export async function embedTexts(texts: string[], route?: EmbeddingCallConfig): 
   }
 
   return embeddings;
+}
+
+function embeddingRequestBody(texts: string[], config: EmbeddingCallConfig): unknown {
+	if (config.transport === 'gemini') {
+		return {
+			model: config.model,
+			requests: texts.map((text) => ({ content: { parts: [{ text }] } })),
+		};
+	}
+	return { model: config.model, input: texts };
 }
 
 async function requestEmbeddings(texts: string[], config: EmbeddingCallConfig): Promise<Response> {

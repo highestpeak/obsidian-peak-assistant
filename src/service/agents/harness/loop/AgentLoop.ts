@@ -47,6 +47,7 @@ import { PermissionGuard } from '../permission/PermissionGuard';
 import { buildSubagentTool } from '../subagent/subagentTool';
 import type { MemoryBlock } from '../memory/types';
 import { renderMemoryBlocks } from '../memory/MemoryBlock';
+import { withDebugLanguageModel } from '@/core/providers/vercel/debug-language-model-middleware';
 
 const ESCALATE_TOOL_NAME = 'escalate';
 
@@ -155,6 +156,8 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             tierController: cfg.tierController,
             trace,
             hooks: cfg.hooks,
+			debugTrace: cfg.debugTrace,
+			debugSurface: cfg.debugSurface,
         });
         for (const def of cfg.subagents) {
             effectiveTools.push(buildSubagentTool(def, dispatcher) as ToolDef);
@@ -250,8 +253,15 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         };
 
         try {
+			const observedModel = withDebugLanguageModel(tier.resolve(), {
+				debugTrace: cfg.debugTrace ?? null,
+				surface: cfg.debugSurface ?? 'agent',
+				capabilityId: cfg.debugCapabilityId ?? 'harness.agent-loop',
+				runId: cfg.loopId,
+				operation: cfg.debugOperation ?? 'text.stream',
+			});
             const streamed = streamText({
-                model: tier.resolve(),
+                model: observedModel,
                 system: systemPrompt || undefined,
                 messages,
                 tools: toolSet,

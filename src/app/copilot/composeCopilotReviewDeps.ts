@@ -29,6 +29,7 @@ export function composeCopilotReviewDeps(appContext: AppContext): () => Promise<
 			searchClient: appContext.searchClient,
 			pluginCommandGateway:
 				appContext.runtimeRegistry.tryGetPluginCommandGatewayRuntime(),
+			debugTrace: appContext.runtimeRegistry.tryGetDebugTracePort(),
 			userProfileText,
 		};
 	};

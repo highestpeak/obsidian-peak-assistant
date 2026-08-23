@@ -19,6 +19,7 @@ import type { ArtifactProducerService } from '@/service/chat/artifacts/artifactP
 import type { ChatArtifactReceipt } from '@/core/types/chat-studio';
 import type { ToolDef } from '@/core/types/tool';
 import type { PeakSheetToolPort } from '@/core/ports/PeakSheetToolPort';
+import type { DebugTracePort } from '@/core/debug-trace';
 
 /**
  * T11Y-6: web search tool system prompt body moved to
@@ -29,6 +30,7 @@ import type { PeakSheetToolPort } from '@/core/ports/PeakSheetToolPort';
 export interface ChatToolDeps {
     app: AppHandle;
     pluginId: string;
+	debugTrace?: DebugTracePort | null;
     enableWebSearch: boolean;
     /** Vault Search switch (chat-studio RUN-01). Only effective when vaultRetrieval is wired. */
     enableVaultSearch?: boolean;
@@ -191,6 +193,9 @@ export function buildChatTools(
                             prompt: query,
                             systemPrompt,
                             maxSteps: 1,
+							debugTrace: deps.debugTrace,
+							debugSurface: 'chat',
+							debugCapabilityId: 'chat.web-search-tool',
                         });
                         const answer = text || 'No results found.';
                         // RUN-02 receipt honesty: record the ACTUAL web sources the
