@@ -3670,6 +3670,83 @@
     .completion-action-modal .completion-object-choice {
       font-size: 12px;
     }
+
+    /* Prepare review is a causal run stage: active output lives inside the task it gates. */
+    .stage-track { grid-template-columns: repeat(5, 1fr); }
+    .stage-track::before, .stage-track::after { right: calc(10% + 21px); left: calc(10% + 21px); }
+    .review-prep-panel { background: var(--bg); }
+    .review-prep-summary { display: grid; grid-template-columns: minmax(0, 1fr) 470px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .review-prep-summary-main { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 18px; align-items: center; min-height: 146px; padding: 20px 22px; }
+    .review-prep-summary-icon { width: 54px; height: 54px; display: grid; place-items: center; border: 1px solid #d9d2f7; border-radius: 50%; color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 8px rgba(104,87,217,.035); }
+    .review-prep-summary-icon .icon { width: 25px; height: 25px; }
+    .review-prep-title { font-size: 20px; font-weight: 750; letter-spacing: -.025em; }
+    .review-prep-progress-line { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
+    .review-prep-progress-line strong { color: var(--accent-2); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .review-prep-progress-line span { color: var(--ink-2); font-size: 11.5px; font-weight: 700; }
+    .review-prep-track { height: 7px; margin-top: 11px; overflow: hidden; border-radius: 999px; background: #e9e6ef; }
+    .review-prep-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 220ms ease; }
+    .review-prep-timing { display: flex; gap: 22px; margin-top: 10px; color: var(--ink-2); font-size: 11px; }
+    .review-prep-timing b { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .review-prep-milestones { border-left: 1px solid var(--line); background: #fcfbfd; }
+    .review-prep-milestone { min-height: 48px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 0 17px; border-bottom: 1px solid var(--line); }
+    .review-prep-milestone:last-child { border-bottom: 0; }
+    .review-prep-milestone-icon { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
+    .review-prep-milestone-icon .icon { width: 14px; height: 14px; }
+    .review-prep-milestone > strong { font-size: 11.5px; }
+    .review-prep-milestone-value { display: flex; align-items: baseline; gap: 7px; font-variant-numeric: tabular-nums; }
+    .review-prep-milestone-value b { font-size: 14px; }
+    .review-prep-milestone-value span { min-width: 56px; color: var(--ink-3); font-size: 10px; }
+    .review-prep-milestone.good .review-prep-milestone-icon, .review-prep-milestone.good .review-prep-milestone-value b { color: var(--green); background: var(--green-soft); }
+    .review-prep-milestone.attention .review-prep-milestone-icon, .review-prep-milestone.attention .review-prep-milestone-value b { color: var(--amber); background: var(--amber-soft); }
+    .review-prep-work, .review-prep-session { margin: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+    .review-prep-section-head { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 9px 15px; border-bottom: 1px solid var(--line); }
+    .review-prep-section-title { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+    .review-prep-legend { display: flex; align-items: center; gap: 16px; color: var(--ink-3); font-size: 10px; }
+    .review-prep-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .review-prep-legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); }
+    .review-prep-legend .running { background: var(--accent); }
+    .review-prep-legend .ready { background: var(--green); }
+    .review-prep-legend .attention { background: var(--amber); }
+    .review-prep-plan { min-height: 420px; }
+    .review-prep-planning { min-height: 72px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); font-size: 12px; font-weight: 700; }
+    .review-prep-planning i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .review-prep-task { min-height: 66px; display: grid; grid-template-columns: 42px minmax(260px, 1.25fr) 140px minmax(200px, .8fr) 160px; gap: 14px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
+    .review-prep-task:first-child { border-top: 0; }
+    .review-prep-task-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
+    .review-prep-task-icon .icon { width: 17px; height: 17px; }
+    .review-prep-task-title { overflow: hidden; font-size: 12.5px; font-weight: 720; text-overflow: ellipsis; white-space: nowrap; }
+    .review-prep-task-count { color: var(--ink-2); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .review-prep-task-progress-head { display: flex; justify-content: space-between; gap: 10px; color: var(--ink-2); font-size: 10.5px; }
+    .review-prep-task-progress-head b { color: var(--ink); }
+    .review-prep-mini-track { height: 5px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: #ebe9ef; }
+    .review-prep-mini-track i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 200ms ease; }
+    .review-prep-task.ready .review-prep-mini-track i { background: var(--green); }
+    .review-prep-task.attention .review-prep-mini-track i { background: var(--amber); }
+    .review-prep-route { overflow: hidden; color: var(--ink-2); font-size: 10.5px; font-weight: 700; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+    .review-prep-status { min-width: 88px; display: inline-flex; justify-content: center; justify-self: end; padding: 5px 9px; border-radius: 999px; color: var(--ink-3); background: var(--surface-3); font-size: 10px; font-weight: 750; }
+    .review-prep-task.running .review-prep-status { color: var(--accent-2); background: var(--accent-soft); }
+    .review-prep-task.ready .review-prep-status { color: var(--green); background: var(--green-soft); }
+    .review-prep-task.attention .review-prep-status { color: var(--amber); background: var(--amber-soft); }
+    .review-prep-live { min-height: 156px; margin: 0 16px 12px 58px; padding: 15px 18px; border: 1px solid #dfdaf2; border-left: 2px solid var(--accent); border-radius: 8px; background: #fcfbff; }
+    .review-prep-live-meta { display: flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: 10.5px; font-weight: 700; }
+    .review-prep-live-meta i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .review-prep-live-meta time { margin-left: auto; color: var(--ink-3); font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .review-prep-live-copy { min-height: 70px; margin-top: 13px; color: #393440; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+    .review-prep-citation { display: flex; align-items: center; gap: 8px; margin-top: 9px; padding-top: 9px; border-top: 1px solid #ece9f2; color: var(--ink-2); font-size: 10.5px; }
+    .review-prep-session { margin-top: 0; }
+    .review-prep-receipts { max-height: 250px; overflow: auto; overflow-anchor: none; scrollbar-gutter: stable; }
+    .review-prep-receipt-empty { min-height: 90px; display: grid; place-items: center; color: var(--ink-3); font-size: 11px; }
+    .review-prep-receipt { min-height: 50px; display: grid; grid-template-columns: 76px 100px minmax(0, 1fr) 165px; gap: 14px; align-items: start; padding: 11px 15px; border-bottom: 1px solid var(--line); font-size: 11px; }
+    .review-prep-receipt:last-child { border-bottom: 0; }
+    .review-prep-receipt time { color: var(--ink-3); font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .review-prep-receipt-kind { color: var(--green); font-weight: 740; }
+    .review-prep-receipt.attention .review-prep-receipt-kind { color: var(--amber); }
+    .review-prep-receipt-source { color: var(--ink-3); text-align: right; }
+    @media (max-width: 1320px) {
+      .review-prep-summary { grid-template-columns: minmax(0, 1fr) 390px; }
+      .review-prep-task { grid-template-columns: 40px minmax(240px, 1fr) 120px minmax(180px, .8fr); }
+      .review-prep-route { grid-column: 2 / -1; justify-self: start; text-align: left; }
+    }
   </style>
   <link rel="stylesheet" href="./vault-graph-cytoscape.css">
 </head>
@@ -4205,7 +4282,7 @@
                   </section>
 
                   <section class="scan-config-card" id="scan-config-ai" aria-labelledby="scan-ai-title">
-                    <div class="scan-config-head"><div class="scan-config-title"><span class="scan-config-number">3</span><div><strong id="scan-ai-title">Review AI models</strong><span>Peak mapped the selected tasks and Index outputs to AI operations. Open a row to change models or disable an individual operation.</span></div></div><span class="status purple" id="scan-ai-selected-count">10 operations · models ready</span></div>
+                    <div class="scan-config-head"><div class="scan-config-title"><span class="scan-config-number">3</span><div><strong id="scan-ai-title">Review AI models</strong><span>Peak mapped the selected tasks and Index outputs to AI operations. Open a row to change models or disable an individual operation.</span></div></div><span class="status purple" id="scan-ai-selected-count">9 operations · models ready</span></div>
                     <div class="scan-option-card">
                       <div class="scan-ai-group system" data-ai-config-group="plan">
                         <div class="scan-ai-group-head"><button class="scan-ai-group-expand" type="button" data-ai-group-config="plan" aria-expanded="false"><span class="scan-ai-group-copy"><strong>Plan this scan</strong><span>Keep enabled AI work inside the selected scope and selected tasks.</span></span><span class="scan-ai-group-stat"><strong>1 operation</strong><span>Optional AI planning</span></span><span class="scan-ai-group-model"><strong>1 / 1 enabled</strong><span>Auto routing</span></span><span class="scan-ai-row-chevron" aria-hidden="true"><svg class="icon sm"><use href="#i-chevron"/></svg></span></button></div>
@@ -4236,10 +4313,9 @@
                         </div>
                       </div>
                       <div class="scan-ai-group" data-ai-config-group="output">
-                        <div class="scan-ai-group-head"><button class="scan-ai-group-expand" type="button" data-ai-group-config="output" aria-expanded="false"><span class="scan-ai-group-copy"><strong>Prepare reviewable follow-up</strong><span>Create safe proposals and explain what completed automatically versus what still needs you.</span></span><span class="scan-ai-group-stat"><strong>2 operations</strong><span>File proposals · synthesis</span></span><span class="scan-ai-group-model"><strong>2 / 2 enabled</strong><span>Auto routing · 1 model</span></span><span class="scan-ai-row-chevron" aria-hidden="true"><svg class="icon sm"><use href="#i-chevron"/></svg></span></button></div>
+                        <div class="scan-ai-group-head"><button class="scan-ai-group-expand" type="button" data-ai-group-config="output" aria-expanded="false"><span class="scan-ai-group-copy"><strong>Prepare review</strong><span>Turn retained findings into owner work after Vault-wide discovery finishes.</span></span><span class="scan-ai-group-stat"><strong>1 operation</strong><span>Task synthesis</span></span><span class="scan-ai-group-model"><strong>1 / 1 enabled</strong><span>Auto routing · 1 model</span></span><span class="scan-ai-row-chevron" aria-hidden="true"><svg class="icon sm"><use href="#i-chevron"/></svg></span></button></div>
                         <div class="scan-ai-operation-list">
-                          <div class="scan-ai-operation-detail"><div><strong>File proposal preparation</strong><span>Create evidence-backed diffs for later review; never apply them during Scan.</span></div><select class="scan-model-select" data-scan-model data-group="output" data-base-tokens="12000" data-base-cost="0.014" aria-label="Model for file proposal preparation"><option value="auto" data-cost-factor="1">Auto · GPT-5 mini</option><option value="gpt-5-mini" data-cost-factor="1">GPT-5 mini</option><option value="claude-sonnet-4" data-cost-factor="1.55">Claude Sonnet 4</option><option value="gemini-2.5-flash" data-cost-factor="0.72">Gemini 2.5 Flash</option><option value="local" data-cost-factor="0">Local model</option></select><span class="scan-operation-estimate">~12K · ~$0.014</span><button class="switch on scan-ai-operation-toggle" type="button" data-ai-operation-switch="file-proposals" data-group="output" aria-label="Enable file proposal preparation" aria-pressed="true"></button></div>
-                          <div class="scan-ai-operation-detail"><div><strong>Maintenance synthesis</strong><span>Summarize completed effects and create only follow-up items with a real owner action.</span></div><select class="scan-model-select" data-scan-model data-group="output" data-base-tokens="8000" data-base-cost="0.010" aria-label="Model for maintenance synthesis"><option value="auto" data-cost-factor="1">Auto · GPT-5 mini</option><option value="gpt-5-mini" data-cost-factor="1">GPT-5 mini</option><option value="claude-sonnet-4" data-cost-factor="1.55">Claude Sonnet 4</option><option value="gemini-2.5-flash" data-cost-factor="0.72">Gemini 2.5 Flash</option><option value="local" data-cost-factor="0">Local model</option></select><span class="scan-operation-estimate">~8K · ~$0.010</span><button class="switch on scan-ai-operation-toggle" type="button" data-ai-operation-switch="maintenance-synthesis" data-group="output" aria-label="Enable maintenance synthesis" aria-pressed="true"></button></div>
+                          <div class="scan-ai-operation-detail"><div><strong>Task synthesis</strong><span>Account for every retained finding, group owner decisions, and publish review tasks with evidence boundaries. File proposals are generated later, after an owner chooses a task.</span></div><select class="scan-model-select" data-scan-model data-group="output" data-base-tokens="20000" data-base-cost="0.024" aria-label="Model for task synthesis"><option value="auto" data-cost-factor="1">Auto · GPT-5 mini</option><option value="gpt-5-mini" data-cost-factor="1">GPT-5 mini</option><option value="claude-sonnet-4" data-cost-factor="1.55">Claude Sonnet 4</option><option value="gemini-2.5-flash" data-cost-factor="0.72">Gemini 2.5 Flash</option><option value="local" data-cost-factor="0">Local model</option></select><span class="scan-operation-estimate">~20K · ~$0.024</span><button class="switch on scan-ai-operation-toggle" type="button" data-ai-operation-switch="maintenance-synthesis" data-group="output" aria-label="Enable task synthesis" aria-pressed="true"></button></div>
                         </div>
                       </div>
                     </div>
@@ -4280,7 +4356,8 @@
             <button class="stage current selected" type="button" role="tab" data-stage="0" data-run-stage-tab="discover" aria-selected="true"><span class="stage-marker">1</span><span class="stage-name">Discover</span><span class="stage-state">Running</span></button>
             <button class="stage" type="button" role="tab" data-stage="1" data-run-stage-tab="local" aria-selected="false"><span class="stage-marker">2</span><span class="stage-name">Build Index</span><span class="stage-state">Waiting</span></button>
             <button class="stage" type="button" role="tab" data-stage="2" data-run-stage-tab="ai" aria-selected="false"><span class="stage-marker">3</span><span class="stage-name">AI work</span><span class="stage-state">Parallel</span></button>
-            <button class="stage" type="button" role="tab" data-stage="3" data-run-stage-tab="publish" aria-selected="false"><span class="stage-marker">4</span><span class="stage-name">Publish</span><span class="stage-state">Waiting</span></button>
+            <button class="stage" type="button" role="tab" data-stage="3" data-run-stage-tab="review" aria-selected="false"><span class="stage-marker">4</span><span class="stage-name">Prepare review</span><span class="stage-state">Waiting</span></button>
+            <button class="stage" type="button" role="tab" data-stage="4" data-run-stage-tab="publish" aria-selected="false"><span class="stage-marker">5</span><span class="stage-name">Publish</span><span class="stage-state">Waiting</span></button>
           </div>
           <div class="run-layout">
             <section class="card run-stage-panel active" data-run-stage-panel="discover" role="tabpanel">
@@ -4394,19 +4471,39 @@
               </div>
             </section>
             <section class="card run-stage-panel ai-operation-card" data-run-stage-panel="ai" role="tabpanel">
-              <div class="ai-operation-head"><div><div style="display:flex;align-items:center;gap:9px"><div class="card-title">AI work has two execution scopes</div><span class="status purple" id="ai-operation-summary">10 operations</span></div><div class="card-caption">Per-document enrichment follows the Index. Vault-wide analysis has its own evidence, discovery, review, and synthesis lifecycle.</div></div><span class="status neutral" data-run-panel-state="ai">Waiting</span></div>
+              <div class="ai-operation-head"><div><div style="display:flex;align-items:center;gap:9px"><div class="card-title">AI work has two execution scopes</div><span class="status purple" id="ai-operation-summary">9 operations</span></div><div class="card-caption">Per-document enrichment follows the Index. Vault-wide analysis owns evidence discovery and review; task synthesis begins in the next stage.</div></div><span class="status neutral" data-run-panel-state="ai">Waiting</span></div>
               <div class="ai-operation-list" id="ai-operation-list">
                 <div class="ai-scope-divider foundation"><div class="ai-scope-copy"><span class="ai-scope-eyebrow">Once per Scan · run foundation</span></div><span class="status neutral ai-scope-state" id="ai-foundation-state">Waiting</span></div>
                 <section class="ai-run-group" data-ai-run="plan"><button class="ai-run-row" type="button" data-ai-run-toggle aria-expanded="false"><div class="ai-run-main"><span class="ai-run-state">•</span><div><div class="ai-run-title">Plan this scan</div><div class="ai-run-copy">Freeze dependencies, batching, evidence boundaries, and approved model routes</div></div></div><div class="ai-run-model"><strong>gpt-5-mini</strong><span>Configured in Setup</span></div><div class="ai-run-usage"><strong data-ai-usage>0 tokens</strong><span data-ai-spend>Waiting</span></div><svg class="icon sm ai-run-chevron"><use href="#i-chevron"/></svg></button><div class="ai-run-detail"><div class="ai-operation-step" data-ai-operation-run="plan-scan"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>AI scan planning</strong><span>Build a bounded execution plan without adding disabled work.</span></div><div class="ai-operation-step-result" data-ai-operation-result>Waiting for frozen scope</div><div class="ai-operation-step-model"><strong data-ai-operation-model>GPT-5 mini</strong><span data-ai-operation-provider>OpenAI</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="plan-scan">Skip</button></div></div></div></section>
                 <section class="ai-run-group expanded" data-ai-run="file"><button class="ai-run-row" type="button" data-ai-run-toggle aria-expanded="true"><div class="ai-run-main"><span class="ai-run-state">•</span><div><div class="ai-run-title">Enrich the Knowledge Index</div><div class="ai-run-copy">Follows Core Search per document; it is part of Index progress and can overlap local indexing</div></div></div><div class="ai-run-model"><strong>gpt-5-mini + embedding</strong><span>Configured in Setup</span></div><div class="ai-run-usage"><strong data-ai-usage>0 tokens</strong><span data-ai-spend>Waiting</span></div><svg class="icon sm ai-run-chevron"><use href="#i-chevron"/></svg></button><div class="ai-run-detail"><div class="ai-operation-step" data-ai-operation-run="embedding-refresh"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>Embedding refresh</strong><span>Build vectors only after the document text and chunks are ready.</span></div><div class="ai-operation-step-result" data-ai-operation-result>No documents ready yet</div><div class="ai-operation-step-model"><strong data-ai-operation-model>text-embedding-3-small</strong><span data-ai-operation-provider>OpenAI</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="embedding-refresh">Skip</button></div></div><div class="ai-operation-step" data-ai-operation-run="file-summaries"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>File summaries</strong><span>Refresh machine summaries for retrieval and maintenance context.</span></div><div class="ai-operation-step-result" data-ai-operation-result>No summaries generated yet</div><div class="ai-operation-step-model"><strong data-ai-operation-model>GPT-5 mini</strong><span data-ai-operation-provider>OpenAI</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="file-summaries">Skip</button></div></div><div class="ai-operation-step" data-ai-operation-run="ai-tags"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>AI Tags and entities</strong><span>Generate rebuildable machine-only knowledge; never edit Markdown or YAML.</span></div><div class="ai-operation-step-result" data-ai-operation-result>No AI Tags generated yet</div><div class="ai-operation-step-model"><strong data-ai-operation-model>GPT-5 mini</strong><span data-ai-operation-provider>OpenAI</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="ai-tags">Skip</button></div></div></div></section>
                 <section class="ai-run-group" data-ai-run="relations"><button class="ai-run-row" type="button" data-ai-run-toggle aria-expanded="false"><div class="ai-run-main"><span class="ai-run-state">•</span><div><div class="ai-run-title">Find meaning and relationships</div><div class="ai-run-copy">Compare changed files with affected context and retain only evidence-backed candidates</div></div></div><div class="ai-run-model"><strong>Claude Sonnet 4</strong><span>Configured in Setup</span></div><div class="ai-run-usage"><strong data-ai-usage>0 tokens</strong><span data-ai-spend>Waiting</span></div><svg class="icon sm ai-run-chevron"><use href="#i-chevron"/></svg></button><div class="ai-run-detail"><div class="ai-operation-step" data-ai-operation-run="relationship-discovery"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>Relationship discovery</strong><span>Search changed and already-known content for candidate semantic connections.</span></div><div class="ai-operation-step-result" data-ai-operation-result>Waiting for enough indexed evidence</div><div class="ai-operation-step-model"><strong data-ai-operation-model>Claude Sonnet 4</strong><span data-ai-operation-provider>Anthropic</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="relationship-discovery">Skip</button></div></div><div class="ai-operation-step" data-ai-operation-run="semantic-review"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>Semantic review</strong><span>Check candidate meaning against cited source evidence before machine knowledge changes.</span></div><div class="ai-operation-step-result" data-ai-operation-result>Waiting for relationship candidates</div><div class="ai-operation-step-model"><strong data-ai-operation-model>Claude Sonnet 4</strong><span data-ai-operation-provider>Anthropic</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="semantic-review">Skip</button></div></div></div></section>
                 <section class="ai-run-group" data-ai-run="structure"><button class="ai-run-row" type="button" data-ai-run-toggle aria-expanded="false"><div class="ai-run-main"><span class="ai-run-state">•</span><div><div class="ai-run-title">Review Communities, Hubs, and bridges</div><div class="ai-run-copy">Overlay changed evidence on the complete current graph instead of analyzing an isolated subset</div></div></div><div class="ai-run-model"><strong>Claude Sonnet 4</strong><span>Configured in Setup</span></div><div class="ai-run-usage"><strong data-ai-usage>0 tokens</strong><span data-ai-spend>Waiting</span></div><svg class="icon sm ai-run-chevron"><use href="#i-chevron"/></svg></button><div class="ai-run-detail"><div class="ai-operation-step" data-ai-operation-run="community-analysis"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>Community review</strong><span>Compare deterministic clusters with existing Community identities and history.</span></div><div class="ai-operation-step-result" data-ai-operation-result>Waiting for updated graph evidence</div><div class="ai-operation-step-model"><strong data-ai-operation-model>Claude Sonnet 4</strong><span data-ai-operation-provider>Anthropic</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="community-analysis">Skip</button></div></div><div class="ai-operation-step" data-ai-operation-run="hub-bridge-analysis"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>Hub and bridge review</strong><span>Explain changed centrality, weak bridges, drift, and retirement candidates.</span></div><div class="ai-operation-step-result" data-ai-operation-result>Waiting for Community review</div><div class="ai-operation-step-model"><strong data-ai-operation-model>Claude Sonnet 4</strong><span data-ai-operation-provider>Anthropic</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="hub-bridge-analysis">Skip</button></div></div></div></section>
-                <section class="ai-run-group" data-ai-run="output"><button class="ai-run-row" type="button" data-ai-run-toggle aria-expanded="false"><div class="ai-run-main"><span class="ai-run-state">•</span><div><div class="ai-run-title">Prepare reviewable follow-up</div><div class="ai-run-copy">Turn completed evidence into guarded proposals and only the owner decisions that remain</div></div></div><div class="ai-run-model"><strong>gpt-5-mini</strong><span>Configured in Setup</span></div><div class="ai-run-usage"><strong data-ai-usage>0 tokens</strong><span data-ai-spend>Waiting</span></div><svg class="icon sm ai-run-chevron"><use href="#i-chevron"/></svg></button><div class="ai-run-detail"><div class="ai-operation-step" data-ai-operation-run="file-proposals"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>File proposal preparation</strong><span>Create evidence-backed diffs with source revision guards; apply nothing during Scan.</span></div><div class="ai-operation-step-result" data-ai-operation-result>Waiting for reviewed evidence</div><div class="ai-operation-step-model"><strong data-ai-operation-model>GPT-5 mini</strong><span data-ai-operation-provider>OpenAI</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="file-proposals">Skip</button></div></div><div class="ai-operation-step" data-ai-operation-run="maintenance-synthesis"><span class="ai-operation-step-state">•</span><div class="ai-operation-step-copy"><strong>Maintenance synthesis</strong><span>Separate completed effects, partial results, blockers, and durable owner decisions.</span></div><div class="ai-operation-step-result" data-ai-operation-result>Waiting for upstream results</div><div class="ai-operation-step-model"><strong data-ai-operation-model>GPT-5 mini</strong><span data-ai-operation-provider>OpenAI</span></div><div class="ai-operation-step-usage"><strong data-ai-operation-usage>0 tokens</strong><span data-ai-operation-spend>Waiting</span></div><div class="ai-operation-step-control"><button class="btn small" type="button" data-ai-operation-control="maintenance-synthesis">Skip</button></div></div></div></section>
               </div>
             </section>
+            <section class="card run-stage-panel review-prep-panel" data-run-stage-panel="review" role="tabpanel">
+              <div class="review-prep-summary">
+                <div class="review-prep-summary-main">
+                  <div class="review-prep-summary-icon"><svg class="icon"><use href="#i-review"/></svg></div>
+                  <div><div class="review-prep-title" id="review-prep-title">Planning review work.</div><div class="review-prep-progress-line"><strong id="review-prep-percent">Planning…</strong><span id="review-prep-phase">accounting for findings</span></div><div class="review-prep-track"><span id="review-prep-track"></span></div><div class="review-prep-timing"><span>Elapsed <b id="review-prep-elapsed">0 sec</b></span><span>Estimated remaining <b id="review-prep-remaining">Estimating…</b></span></div></div>
+                </div>
+                <div class="review-prep-milestones">
+                  <div class="review-prep-milestone good"><span class="review-prep-milestone-icon"><svg class="icon"><use href="#i-check"/></svg></span><strong>Findings accounted</strong><span class="review-prep-milestone-value"><b id="review-prep-accounted">0 / 42</b><span id="review-prep-accounted-state">running</span></span></div>
+                  <div class="review-prep-milestone"><span class="review-prep-milestone-icon"><svg class="icon"><use href="#i-list"/></svg></span><strong>Tasks planned</strong><span class="review-prep-milestone-value"><b id="review-prep-planned">—</b><span id="review-prep-planned-state">planning</span></span></div>
+                  <div class="review-prep-milestone attention"><span class="review-prep-milestone-icon"><svg class="icon"><use href="#i-alert"/></svg></span><strong>Ready / attention</strong><span class="review-prep-milestone-value"><b id="review-prep-ready">0 / 0</b><span id="review-prep-ready-state">waiting</span></span></div>
+                </div>
+              </div>
+              <section class="review-prep-work">
+                <div class="review-prep-section-head"><div class="review-prep-section-title"><svg class="icon"><use href="#i-list"/></svg><strong>Review work</strong></div><div class="review-prep-legend"><span><i class="running"></i>Running</span><span><i class="ready"></i>Ready</span><span><i class="attention"></i>Needs attention</span><span><i></i>Waiting</span></div></div>
+                <div class="review-prep-plan" id="review-prep-plan"><div class="review-prep-planning"><i></i><span>Organizing findings into owner work</span></div></div>
+              </section>
+              <section class="review-prep-session">
+                <div class="review-prep-section-head"><div class="review-prep-section-title"><svg class="icon"><use href="#i-review"/></svg><strong>Session receipts</strong></div><span class="status neutral">Completed work only</span></div>
+                <div class="review-prep-receipts" id="review-prep-receipts"><div class="review-prep-receipt-empty">A receipt appears only after the active work above finishes.</div></div>
+              </section>
+            </section>
             <section class="card run-stage-panel" data-run-stage-panel="publish" role="tabpanel">
-              <div class="run-stage-head"><div><strong>Publish verified machine layers and follow-up</strong><span>Core Search can publish when verified even if an optional AI enrichment layer ends partial; user-file changes still require later review and Apply.</span></div><span class="status neutral" data-run-panel-state="publish">Waiting</span></div>
-              <div class="run-stage-list"><div class="run-stage-row"><span class="run-stage-row-icon"><svg class="icon sm"><use href="#i-search"/></svg></span><div><strong>Publish verified Index layers</strong><span>Promote Core Search, vectors, summaries, and AI Tags by verified layer; a failed optional layer remains a partial result instead of blocking Search</span></div><span class="status neutral">Waiting</span></div><div class="run-stage-row"><span class="run-stage-row-icon"><svg class="icon sm"><use href="#i-graph"/></svg></span><div><strong>Vault map machine state</strong><span>Publish deterministic graph facts; keep AI Community changes as reviewable proposals</span></div><span class="status neutral">Waiting</span></div><div class="run-stage-row"><span class="run-stage-row-icon"><svg class="icon sm"><use href="#i-check"/></svg></span><div><strong>Follow-up and receipts</strong><span>Create only durable owner actions and store exact local, Index-layer, and provider receipts</span></div><span class="status neutral">Waiting</span></div></div>
+              <div class="run-stage-head"><div><strong>Publish verified machine layers and review work</strong><span>Publish only after every retained finding has a disposition and every review task has passed its completion gate. User-file changes still require later owner review and Apply.</span></div><span class="status neutral" data-run-panel-state="publish">Waiting</span></div>
+              <div class="run-stage-list"><div class="run-stage-row"><span class="run-stage-row-icon"><svg class="icon sm"><use href="#i-search"/></svg></span><div><strong>Publish verified Index layers</strong><span>Promote verified Search, vector, summary, and AI Tag layers; an optional partial layer does not block Search</span></div><span class="status neutral">Waiting</span></div><div class="run-stage-row"><span class="run-stage-row-icon"><svg class="icon sm"><use href="#i-graph"/></svg></span><div><strong>Publish Vault map machine state</strong><span>Store deterministic graph facts and retained discovery evidence without editing user files</span></div><span class="status neutral">Waiting</span></div><div class="run-stage-row"><span class="run-stage-row-icon"><svg class="icon sm"><use href="#i-check"/></svg></span><div><strong>Publish review tasks and receipts</strong><span>Atomically expose the completed task set, automatic outcomes, attention items, and exact execution receipts</span></div><span class="status neutral">Waiting</span></div></div>
             </section>
           </div>
           <details class="card event-stream"><summary class="event-summary"><div><strong>Run events</strong><span id="event-latest">Latest: run created from changed objects, affected relations, and the complete graph baseline</span></div><span class="status neutral">Open log</span><svg class="icon sm" aria-hidden="true"><use href="#i-chevron"/></svg></summary><div id="event-list"><div class="event-row"><span class="event-time">now</span><span class="event-stage">Discover</span><span class="event-detail">Run created from 146 changed objects, affected relations, and the complete current graph baseline</span><span class="status green">Started</span></div></div></details>
@@ -4425,7 +4522,7 @@
             <summary><div class="completion-disclosure-main"><strong>Run details</strong></div><span class="completion-disclosure-digest"><span id="completed-scan-count">146 objects</span> · 6m 42s · <span id="completed-ai-strip">180.8K AI tokens · $0.460 actual</span></span><svg class="icon sm completion-disclosure-chevron"><use href="#i-chevron"/></svg></summary>
             <div class="completion-disclosure-body"><div class="completion-run-detail-head"><div><strong>AI receipt</strong><span>Actual models, tokens, spend, and operation completion</span></div><button class="text-link" type="button" data-demo-toast="The detailed receipt would show every provider request, response usage record, price basis, and stopped or skipped operation">Inspect provider calls</button></div>
               <div class="ai-receipt-summary"><div class="ai-receipt-stat"><strong id="completed-ai-tokens">180.8K</strong><span>Actual tokens</span></div><div class="ai-receipt-stat"><strong id="completed-ai-cost">$0.460</strong><span>Actual spend</span></div><div class="ai-receipt-stat"><strong>3</strong><span>Models used</span></div><div class="ai-receipt-stat"><strong id="completed-ai-status">10 / 10</strong><span>AI operations completed</span></div></div>
-              <div class="ai-receipt-rows"><div class="ai-receipt-row" data-ai-receipt-group="plan"><strong>Plan this scan</strong><span>gpt-5-mini</span><span>5.8K · $0.026</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="file"><strong>Enrich Knowledge Index</strong><span>gpt-5-mini + embedding</span><span>72K · $0.090</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="relations"><strong>Meaning and relationships</strong><span>Claude Sonnet 4</span><span>48K · $0.180</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="structure"><strong>Communities, Hubs, bridges</strong><span>Claude Sonnet 4</span><span>35K · $0.140</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="output"><strong>Follow-up preparation</strong><span>gpt-5-mini</span><span>20K · $0.024</span><span class="status green">Complete</span></div></div>
+              <div class="ai-receipt-rows"><div class="ai-receipt-row" data-ai-receipt-group="plan"><strong>Plan this scan</strong><span>gpt-5-mini</span><span>5.8K · $0.026</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="file"><strong>Enrich Knowledge Index</strong><span>gpt-5-mini + embedding</span><span>72K · $0.090</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="relations"><strong>Meaning and relationships</strong><span>Claude Sonnet 4</span><span>48K · $0.180</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="structure"><strong>Communities, Hubs, bridges</strong><span>Claude Sonnet 4</span><span>35K · $0.140</span><span class="status green">Complete</span></div><div class="ai-receipt-row" data-ai-receipt-group="output"><strong>Task synthesis</strong><span>gpt-5-mini</span><span>20K · $0.024</span><span class="status green">Complete</span></div></div>
             </div>
           </details>
           <details class="completion-disclosure" id="completion-auto-updates">
@@ -4600,7 +4697,7 @@
 
   <div class="run-strip" id="run-strip"><div class="run-strip-top"><div class="run-strip-title"><span class="pulse-dot"></span><span id="strip-title">Scanning changed objects</span></div><span class="run-strip-meta" id="strip-meta">0 / 146 · 0%</span></div><div class="mini-progress"><span id="strip-progress"></span></div></div>
 
-  <div class="mock-run-state" aria-label="Preview scan entry states"><span>Mock state</span><button class="active" type="button" data-scan-preview="changed">Changes</button><button type="button" data-scan-preview="first">First setup</button><button type="button" data-scan-preview="recoverable">Recoverable</button><button type="button" data-scan-preview="indexing">Indexing</button><button type="button" data-scan-preview="ai-work">AI work</button><button type="button" data-scan-preview="completed">Completed</button></div>
+  <div class="mock-run-state" aria-label="Preview scan entry states"><span>Mock state</span><button class="active" type="button" data-scan-preview="changed">Changes</button><button type="button" data-scan-preview="first">First setup</button><button type="button" data-scan-preview="recoverable">Recoverable</button><button type="button" data-scan-preview="indexing">Indexing</button><button type="button" data-scan-preview="ai-work">AI work</button><button type="button" data-scan-preview="prepare-review">Prepare review</button><button type="button" data-scan-preview="completed">Completed</button></div>
 
   <div class="overlay detail-modal-wrap" id="detail-overlay" role="dialog" aria-modal="true" aria-labelledby="detail-header">
     <section class="detail-modal"><div class="detail-modal-head"><div><div class="eyebrow" id="detail-eyebrow">Object detail</div><div class="modal-title" id="detail-header">Vault object</div></div><button class="btn icon-only ghost" type="button" data-close-overlay><svg class="icon"><use href="#i-close"/></svg></button></div><div class="detail-modal-body" id="detail-content"></div></section>
@@ -5171,7 +5268,6 @@
       'semantic-review': .70,
       'community-analysis': .90,
       'hub-bridge-analysis': .65,
-      'file-proposals': .55,
       'maintenance-synthesis': .45
     };
 
@@ -5535,7 +5631,7 @@
     });
     document.querySelectorAll('[data-scan-preview]').forEach((button) => button.addEventListener('click', () => {
       const state = button.dataset.scanPreview;
-      if (state === 'indexing' || state === 'ai-work') {
+      if (state === 'indexing' || state === 'ai-work' || state === 'prepare-review') {
         document.querySelectorAll('[data-scan-preview]').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
         window.clearInterval(runTimer);
         runTimer = null;
@@ -5546,14 +5642,28 @@
         document.getElementById('stop-run').style.display = '';
         document.getElementById('pause-run').innerHTML = '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>';
         document.getElementById('review-remaining-plan').style.display = 'none';
-        runProgress = state === 'indexing' ? 30 : 76;
+        runProgress = state === 'indexing' ? 30 : state === 'ai-work' ? 76 : 88;
         inspectedRunStage = null;
         skippedAIOperations = new Set();
         stoppedAIOperationsAt = new Map();
         resetAIGroupExpansionTracking();
+        resetReviewPreparation();
         syncRunAIProfiles();
         showScreen('active-run');
         renderRunProgress();
+        if (state === 'prepare-review') {
+          runTimer = window.setInterval(() => {
+            if (runPaused) return;
+            if (reviewPreparationState.tick < 9) {
+              reviewPreparationState.elapsed += 1;
+              advanceReviewPreparationGate();
+            } else {
+              runProgress += 1.5;
+            }
+            renderRunProgress();
+            if (runProgress >= 100) finishRun();
+          }, 760);
+        }
         return;
       }
       if (state !== 'completed') {
@@ -11077,7 +11187,8 @@
       { key: 'discover', at: 0, title: 'Discovering changed inputs and affected context', state: 'VAULT SCAN RUNNING' },
       { key: 'local', at: 15, title: 'Building and enriching the Knowledge Index', state: 'INDEX PIPELINE RUNNING' },
       { key: 'ai', at: 55, title: 'Analyzing meaning, relationships, and structure', state: 'AI WORK IN PROGRESS' },
-      { key: 'publish', at: 88, title: 'Publishing verified Index layers and follow-up', state: 'FINALIZING RESULTS' }
+      { key: 'review', at: 88, title: 'Preparing work for review', state: 'REVIEW PREPARATION RUNNING' },
+      { key: 'publish', at: 98, title: 'Publishing verified results and review work', state: 'FINALIZING RESULTS' }
     ];
     const indexRunWindow = { start: 15, verify: 70, end: 74 };
 
@@ -11086,7 +11197,7 @@
       file: { operations: ['embedding-refresh', 'file-summaries', 'ai-tags'] },
       relations: { operations: ['relationship-discovery', 'semantic-review'] },
       structure: { operations: ['community-analysis', 'hub-bridge-analysis'] },
-      output: { operations: ['file-proposals', 'maintenance-synthesis'] }
+      output: { operations: ['maintenance-synthesis'] }
     };
 
     const aiOperationRunDefinitions = {
@@ -11097,17 +11208,190 @@
       'relationship-discovery': { group: 'relations', start: 54, end: 79, tokens: 30000, cost: .110, enabled: true, model: 'Claude Sonnet 4', provider: 'Anthropic' },
       'semantic-review': { group: 'relations', start: 63, end: 85, tokens: 18000, cost: .070, enabled: true, model: 'Claude Sonnet 4', provider: 'Anthropic' },
       'community-analysis': { group: 'structure', start: 60, end: 87, tokens: 22000, cost: .090, enabled: true, model: 'Claude Sonnet 4', provider: 'Anthropic' },
-      'hub-bridge-analysis': { group: 'structure', start: 68, end: 90, tokens: 13000, cost: .050, enabled: true, model: 'Claude Sonnet 4', provider: 'Anthropic' },
-      'file-proposals': { group: 'output', start: 82, end: 96, tokens: 12000, cost: .014, enabled: true, model: 'GPT-5 mini', provider: 'OpenAI' },
-      'maintenance-synthesis': { group: 'output', start: 88, end: 99, tokens: 8000, cost: .010, enabled: true, model: 'GPT-5 mini', provider: 'OpenAI' }
+      'hub-bridge-analysis': { group: 'structure', start: 68, end: 88, tokens: 13000, cost: .050, enabled: true, model: 'Claude Sonnet 4', provider: 'Anthropic' },
+      'maintenance-synthesis': { group: 'output', start: 88, end: 98, tokens: 20000, cost: .024, enabled: true, model: 'GPT-5 mini', provider: 'OpenAI' }
     };
 
     const vaultAnalysisPhaseDefinitions = [
       { key: 'evidence', number: 1, title: 'Assemble evidence', description: 'Freeze changed input, affected context, the current graph, and source revisions.', start: 46, end: 56, running: 'Assembling evidence', operations: [] },
       { key: 'discover', number: 2, title: 'Discover candidates', description: 'Search changed and already-known content for possible meaning and relationships.', start: 54, end: 79, running: 'Discovering candidates', operations: ['relationship-discovery'] },
-      { key: 'review', number: 3, title: 'Review and explain', description: 'Test candidates against source evidence, Communities, Hubs, bridges, and history.', start: 60, end: 90, running: 'Reviewing evidence', operations: ['semantic-review', 'community-analysis', 'hub-bridge-analysis'] },
-      { key: 'followup', number: 4, title: 'Prepare follow-up', description: 'Create guarded proposals and retain only unresolved owner work.', start: 82, end: 99, running: 'Preparing follow-up', operations: ['file-proposals', 'maintenance-synthesis'] }
+      { key: 'review', number: 3, title: 'Review and explain', description: 'Test candidates against source evidence, Communities, Hubs, bridges, and history.', start: 60, end: 88, running: 'Reviewing evidence', operations: ['semantic-review', 'community-analysis', 'hub-bridge-analysis'] }
     ];
+
+    const reviewPreparationTasks = [
+      { id: 'properties', icon: 'i-file', title: 'Organize Research interview records', count: '12 files', atoms: 19, route: 'Local rules', start: 1, ready: 2 },
+      { id: 'links', icon: 'i-link', title: 'Repair broken references', count: '63 references', atoms: 63, route: 'Configured review model', start: 2, ready: 3 },
+      { id: 'membership', icon: 'i-graph', title: 'Review Community membership', count: '9 notes', atoms: 9, route: 'Configured review model', start: 3, ready: 4 },
+      { id: 'connections', icon: 'i-link', title: 'Review changed knowledge connections', count: '3 connections', atoms: 3, route: 'Local validator', start: 4, ready: 5 },
+      { id: 'recovery', icon: 'i-alert', title: 'Recover unreadable documents', count: '3 documents', atoms: 3, route: 'Local recovery', start: 5, ready: 6, attention: true },
+      { id: 'splits', icon: 'i-review', title: 'Review possible note splits', count: '3 source notes', atoms: 9, route: 'Configured review model', start: 6, ready: 7 },
+      { id: 'structure', icon: 'i-graph', title: 'Decide Community structure changes', count: '4 Communities', atoms: 4, route: 'Configured review model', start: 7, ready: 8 }
+    ];
+
+    const reviewPreparationStreams = [
+      { key: 'plan', tick: 0, kind: 'Controller', route: 'Local rules', text: 'I am accounting for every retained finding before creating owner work. Deterministic results, recovery receipts, existing tasks, and saved owner choices must all receive a disposition before the task plan can be frozen.', citation: 'Review snapshot rp-42 · 42 retained findings · 6 saved choices' },
+      { key: 'properties', tick: 1, kind: 'Controller', route: 'Local rules', text: 'These 19 property findings answer one owner question across 12 Research interview files. I am validating them as one task while preserving file-level choices and source revisions.', citation: '12 files · 19 property atoms · source revisions frozen' },
+      { key: 'links', tick: 2, kind: 'Agent', route: 'Configured review model', text: 'The broken-reference evidence contains 63 exact references across 18 files. I am keeping it as one owner task with Target, File, and exact-reference views instead of creating one task per file.', citation: '63 references · 18 source revisions · 11 unresolved targets' },
+      { key: 'membership', tick: 3, kind: 'Agent', route: 'Configured review model', text: 'I am validating Community membership suggestions against the owner overrides retained from the previous scan. Suggestions may change, but the six saved owner choices remain authoritative.', citation: '9 candidates · 6 owner choices · Research Community v19' },
+      { key: 'connections', tick: 4, kind: 'Controller', route: 'Local validator', text: 'Three changed connections share one owner decision and the same Peak-owned write boundary. Their cited endpoints and verification path are complete, so no model-generated proposal is required.', citation: '3 connection findings · graph snapshot v19' },
+      { key: 'recovery', tick: 5, kind: 'Controller', route: 'Local recovery', text: 'These documents have parser failures rather than reviewable content. I am publishing one recovery task with exact retry scope and receipts, and marking it Needs attention rather than inventing recommendations.', citation: '3 parser failures · retry scope frozen' },
+      { key: 'splits', tick: 6, kind: 'Agent', route: 'Configured review model', text: 'The split candidates have an executable owner question and a verification exit, but no guarded source diff exists. I am keeping them in Needs choice instead of labeling them Ready for review.', citation: '3 source notes · 9 destination candidates · no proposal artifact' },
+      { key: 'structure', tick: 7, kind: 'Agent', route: 'Configured review model', text: 'I am comparing four Community structure changes with existing Work queue items. The retained group has one owner surface, no duplicate active task, and a Peak-owned verification path.', citation: '4 Communities · task history mt-18 · graph snapshot v19' },
+      { key: 'publish', tick: 8, kind: 'Controller', route: 'Local receipt', text: 'Every task now has a stable identity, owner action, evidence boundary, and verification exit. I am atomically publishing the task set, automatic receipts, and the recovery attention result.', citation: '7 tasks · 7 automatic receipts · completion gate passed' }
+    ];
+
+    const reviewPreparationReceipts = [
+      { tick: 1, kind: 'Plan', text: 'Frozen a 7-task plan after accounting for all 42 findings and existing owner work.', source: 'Plan revision 2' },
+      { tick: 2, kind: 'Result', text: 'Research interview property findings passed grouping and boundary validation.', source: '12 files · 19 changes' },
+      { tick: 3, kind: 'Result', text: 'Broken references are ready as one task with Target, File, and exact-reference views.', source: '63 references · 18 files' },
+      { tick: 4, kind: 'Result', text: 'Community membership suggestions retained all existing owner overrides.', source: '9 notes · 6 choices' },
+      { tick: 5, kind: 'Result', text: 'Changed knowledge connections passed deterministic evidence checks.', source: '3 cited connections' },
+      { tick: 6, kind: 'Attention', text: 'Unreadable documents were published as recovery work, not reviewable content.', source: '3 parser receipts' },
+      { tick: 7, kind: 'Result', text: 'Split candidates have owner actions and verification exits; no proposal exists yet.', source: '3 source notes' },
+      { tick: 8, kind: 'Result', text: 'Community structure work passed duplicate-work and write-boundary validation.', source: '4 Communities' },
+      { tick: 9, kind: 'System', text: 'Published 7 maintenance tasks, 7 automatic receipts, and one attention result.', source: 'Completed snapshot' }
+    ];
+
+    const reviewPreparationState = { tick: 0, elapsed: 0, streamKey: null, streamChars: 0, receiptIndex: 0 };
+
+    function resetReviewPreparation() {
+      reviewPreparationState.tick = 0;
+      reviewPreparationState.elapsed = 0;
+      reviewPreparationState.streamKey = null;
+      reviewPreparationState.streamChars = 0;
+      reviewPreparationState.receiptIndex = 0;
+      const receipts = document.getElementById('review-prep-receipts');
+      if (receipts) receipts.innerHTML = '<div class="review-prep-receipt-empty">A receipt appears only after the active work above finishes.</div>';
+      const plan = document.getElementById('review-prep-plan');
+      if (plan) plan.dataset.mode = '';
+      renderReviewPreparation();
+    }
+
+    function reviewPreparationStream() {
+      return reviewPreparationStreams.find((stream) => stream.tick === reviewPreparationState.tick) || reviewPreparationStreams[reviewPreparationStreams.length - 1];
+    }
+
+    function reviewPreparationModel() {
+      const definition = aiOperationRunDefinitions['maintenance-synthesis'];
+      if (!definition?.enabled) return 'AI disabled';
+      return definition.model;
+    }
+
+    function reviewPreparationLiveMarkup() {
+      return '<div class="review-prep-live" id="review-prep-live"><div class="review-prep-live-meta"><i></i><span id="review-prep-stream-kind">Controller</span><strong id="review-prep-stream-route">Local rules</strong><time id="review-prep-stream-time">0 sec</time></div><div class="review-prep-live-copy" id="review-prep-stream-text">Starting review preparation…</div><div class="review-prep-citation"><svg class="icon sm"><use href="#i-file"/></svg><span id="review-prep-stream-citation">Frozen review snapshot rp-42</span></div></div>';
+    }
+
+    function reviewPreparationTaskStatus(task) {
+      if (reviewPreparationState.tick < task.start) return { label: 'Waiting', className: 'waiting', progress: 0 };
+      if (reviewPreparationState.tick >= task.ready) {
+        const needsModel = task.route === 'Configured review model';
+        const attention = task.attention || (needsModel && !aiOperationRunDefinitions['maintenance-synthesis'].enabled);
+        return { label: attention ? 'Needs attention' : 'Ready', className: attention ? 'attention' : 'ready', progress: 100 };
+      }
+      const stream = reviewPreparationStream();
+      const progress = stream.text.length ? Math.min(99, Math.round(reviewPreparationState.streamChars / stream.text.length * 100)) : 0;
+      return { label: progress < 82 ? 'Drafting' : 'Validating', className: 'running', progress };
+    }
+
+    function updateReviewPreparationTasks(plan) {
+      if (!plan || plan.dataset.mode !== 'tasks') return;
+      reviewPreparationTasks.forEach((task) => {
+        const row = plan.querySelector(`[data-review-prep-task="${task.id}"]`);
+        const status = reviewPreparationTaskStatus(task);
+        const processed = status.progress >= 100 ? task.atoms : status.progress ? Math.max(1, Math.round(task.atoms * status.progress / 100)) : 0;
+        row.className = `review-prep-task ${status.className}`;
+        row.querySelector('[data-review-prep-status]').textContent = status.label;
+        row.querySelector('[data-review-prep-count]').textContent = `${processed} / ${task.atoms}`;
+        row.querySelector('.review-prep-mini-track i').style.width = `${status.progress}%`;
+        row.querySelector('[data-review-prep-route]').textContent = task.route === 'Configured review model' ? reviewPreparationModel() : task.route;
+      });
+    }
+
+    function renderReviewPreparationTasks() {
+      const plan = document.getElementById('review-prep-plan');
+      if (!plan) return;
+      if (reviewPreparationState.tick < 1) {
+        if (plan.dataset.mode !== 'planning') {
+          plan.dataset.mode = 'planning';
+          plan.innerHTML = `<div class="review-prep-planning"><i></i><span>Organizing findings into owner work</span></div>${reviewPreparationLiveMarkup()}`;
+        }
+        return;
+      }
+      if (plan.dataset.mode !== 'tasks') {
+        plan.dataset.mode = 'tasks';
+        plan.innerHTML = reviewPreparationTasks.map((task) => `<div class="review-prep-task waiting" data-review-prep-task="${task.id}"><span class="review-prep-task-icon"><svg class="icon"><use href="#${task.icon}"/></svg></span><span class="review-prep-task-title">${task.title}</span><span class="review-prep-task-count">${task.count}</span><div><div class="review-prep-task-progress-head"><b data-review-prep-status>Waiting</b><span data-review-prep-count>0 / ${task.atoms}</span></div><div class="review-prep-mini-track"><i></i></div></div><span class="review-prep-route" data-review-prep-route>Waiting</span></div>`).join('');
+      }
+      let live = document.getElementById('review-prep-live');
+      if (!live) {
+        plan.insertAdjacentHTML('beforeend', reviewPreparationLiveMarkup());
+        live = document.getElementById('review-prep-live');
+      }
+      const activeTask = reviewPreparationTasks.find((task) => reviewPreparationState.tick >= task.start && reviewPreparationState.tick < task.ready);
+      const activeRow = activeTask ? plan.querySelector(`[data-review-prep-task="${activeTask.id}"]`) : null;
+      if (activeRow) activeRow.insertAdjacentElement('afterend', live);
+      else plan.appendChild(live);
+      updateReviewPreparationTasks(plan);
+    }
+
+    function appendReviewPreparationReceipts() {
+      const receipts = document.getElementById('review-prep-receipts');
+      if (!receipts) return;
+      while (reviewPreparationState.receiptIndex < reviewPreparationReceipts.length && reviewPreparationReceipts[reviewPreparationState.receiptIndex].tick <= reviewPreparationState.tick) {
+        const receipt = reviewPreparationReceipts[reviewPreparationState.receiptIndex];
+        receipts.querySelector('.review-prep-receipt-empty')?.remove();
+        const row = document.createElement('div');
+        row.className = `review-prep-receipt${receipt.kind === 'Attention' ? ' attention' : ''}`;
+        row.innerHTML = `<time>${reviewPreparationState.elapsed} sec</time><span class="review-prep-receipt-kind">${receipt.kind}</span><span>${receipt.text}</span><span class="review-prep-receipt-source">${receipt.source}</span>`;
+        receipts.appendChild(row);
+        reviewPreparationState.receiptIndex += 1;
+      }
+    }
+
+    function renderReviewPreparation() {
+      const plan = document.getElementById('review-prep-plan');
+      if (!plan) return;
+      renderReviewPreparationTasks();
+      const stream = reviewPreparationStream();
+      if (reviewPreparationState.streamKey !== stream.key) {
+        reviewPreparationState.streamKey = stream.key;
+        reviewPreparationState.streamChars = reviewPreparationState.tick >= 9 ? stream.text.length : 0;
+      }
+      const complete = reviewPreparationState.tick >= 9;
+      const percent = complete ? 100 : reviewPreparationState.tick < 1 ? null : Math.round(reviewPreparationState.tick / 9 * 100);
+      document.getElementById('review-prep-title').textContent = complete ? 'Review work is ready.' : runPaused ? 'Review preparation paused.' : reviewPreparationState.tick < 1 ? 'Planning review work.' : 'Preparing work for review.';
+      document.getElementById('review-prep-percent').textContent = percent === null ? 'Planning…' : `${percent}%`;
+      document.getElementById('review-prep-phase').textContent = complete ? 'complete' : reviewPreparationState.tick < 1 ? 'accounting for findings' : reviewPreparationState.tick < 8 ? 'drafting and validating' : 'publishing receipts';
+      document.getElementById('review-prep-track').style.width = `${percent || 0}%`;
+      document.getElementById('review-prep-elapsed').textContent = `${reviewPreparationState.elapsed} sec`;
+      document.getElementById('review-prep-remaining').textContent = complete ? '0 sec' : reviewPreparationState.tick < 1 ? 'Estimating…' : `${Math.max(1, 4 - Math.floor(reviewPreparationState.tick / 3))}–${Math.max(2, 6 - Math.floor(reviewPreparationState.tick / 3))} min`;
+      const accounted = reviewPreparationState.tick > 0 ? 42 : Math.min(42, Math.round(reviewPreparationState.streamChars / reviewPreparationStreams[0].text.length * 42));
+      document.getElementById('review-prep-accounted').textContent = `${accounted} / 42`;
+      document.getElementById('review-prep-accounted-state').textContent = accounted === 42 ? 'complete' : 'running';
+      document.getElementById('review-prep-planned').textContent = reviewPreparationState.tick < 1 ? '—' : '7';
+      document.getElementById('review-prep-planned-state').textContent = reviewPreparationState.tick < 1 ? 'planning' : 'plan frozen';
+      const taskStates = reviewPreparationState.tick < 1 ? [] : reviewPreparationTasks.map(reviewPreparationTaskStatus);
+      document.getElementById('review-prep-ready').textContent = `${taskStates.filter((state) => state.label === 'Ready').length} / ${taskStates.filter((state) => state.label === 'Needs attention').length}`;
+      document.getElementById('review-prep-ready-state').textContent = complete ? 'published' : 'updating';
+      document.getElementById('review-prep-stream-kind').textContent = stream.kind;
+      document.getElementById('review-prep-stream-route').textContent = stream.route === 'Configured review model' ? reviewPreparationModel() : stream.route;
+      document.getElementById('review-prep-stream-time').textContent = `${reviewPreparationState.elapsed} sec`;
+      document.getElementById('review-prep-stream-text').textContent = stream.text.slice(0, reviewPreparationState.streamChars) || 'Starting review preparation…';
+      document.getElementById('review-prep-stream-citation').textContent = stream.citation;
+      updateReviewPreparationTasks(plan);
+      appendReviewPreparationReceipts();
+    }
+
+    function advanceReviewPreparationGate() {
+      if (reviewPreparationState.tick >= 9) return true;
+      const stream = reviewPreparationStream();
+      if (reviewPreparationState.streamChars < stream.text.length) return false;
+      reviewPreparationState.tick += 1;
+      reviewPreparationState.streamKey = null;
+      reviewPreparationState.streamChars = 0;
+      runProgress = 88 + reviewPreparationState.tick * (10 / 9);
+      renderReviewPreparation();
+      return reviewPreparationState.tick >= 9;
+    }
 
     function modelProviderLabel(model) {
       if (/claude/i.test(model)) return 'Anthropic';
@@ -11130,17 +11414,22 @@
         definition.model = selectedModelLabel(select);
         definition.provider = modelProviderLabel(definition.model);
         const operationRow = document.querySelector(`[data-ai-operation-run="${operationId}"]`);
-        operationRow.querySelector('[data-ai-operation-model]').textContent = definition.model;
-        operationRow.querySelector('[data-ai-operation-provider]').textContent = definition.provider;
+        if (operationRow) {
+          operationRow.querySelector('[data-ai-operation-model]').textContent = definition.model;
+          operationRow.querySelector('[data-ai-operation-provider]').textContent = definition.provider;
+        }
       });
       Object.entries(aiGroupDefinitions).forEach(([key, group]) => {
         const enabledOperations = group.operations.map((operationId) => aiOperationRunDefinitions[operationId]).filter((definition) => definition.enabled);
         const modelLabels = [...new Set(enabledOperations.map((definition) => definition.model))];
         const modelSummary = modelLabels.join(' + ') || 'No AI operations enabled';
         const runModel = document.querySelector(`[data-ai-run="${key}"] .ai-run-model`);
-        runModel.querySelector('strong').textContent = modelSummary;
-        runModel.querySelector('span').textContent = enabledOperations.length ? `${enabledOperations.length} operation${enabledOperations.length === 1 ? '' : 's'} · configured in Setup` : 'Local task only';
-        document.querySelector(`[data-ai-receipt-group="${key}"]`).children[1].textContent = modelSummary;
+        if (runModel) {
+          runModel.querySelector('strong').textContent = modelSummary;
+          runModel.querySelector('span').textContent = enabledOperations.length ? `${enabledOperations.length} operation${enabledOperations.length === 1 ? '' : 's'} · configured in Setup` : 'Local task only';
+        }
+        const receipt = document.querySelector(`[data-ai-receipt-group="${key}"]`);
+        if (receipt) receipt.children[1].textContent = modelSummary;
       });
     }
 
@@ -11184,7 +11473,6 @@
           'semantic-review': 'Waiting for relationship candidates',
           'community-analysis': 'Waiting for updated graph evidence',
           'hub-bridge-analysis': 'Waiting for Community review',
-          'file-proposals': 'Waiting for reviewed evidence',
           'maintenance-synthesis': 'Waiting for upstream results'
         };
         return waiting[operationId];
@@ -11198,7 +11486,6 @@
       if (operationId === 'semantic-review') return `<strong>${Math.max(1, Math.round(27 * ratio))} reviewed · ${Math.max(1, Math.round(11 * ratio))} retained</strong>Every retained relation keeps cited source evidence.`;
       if (operationId === 'community-analysis') return `<strong>${Math.max(1, Math.round(7 * ratio))} Communities compared</strong>${ratio > .62 ? '1 boundary-change candidate found.' : 'Comparing against existing Community identity.'}`;
       if (operationId === 'hub-bridge-analysis') return `<strong>${Math.max(1, Math.round(4 * ratio))} Hub signals · ${Math.round(2 * ratio)} bridge candidates</strong>Existing Product ↔ Research history remains in context.`;
-      if (operationId === 'file-proposals') return `<strong>${Math.max(1, Math.round(12 * ratio))} guarded diffs prepared</strong>Nothing is applied during Scan.`;
       return `<strong>${Math.max(1, Math.round(5 * ratio))} owner decisions · ${Math.max(1, Math.round(3 * ratio))} blockers explained</strong>Completed effects stay out of Work queue.`;
     }
 
@@ -11244,11 +11531,6 @@
           steps: ['Load centrality and bridge facts', 'Compare the previous graph snapshot', 'Inspect documents causing the shift', 'Emit Hub or bridge candidates'],
           findings: ['Research synthesis.md remains the strongest bridge', 'Launch contract.pdf lost one verified cross-Community link']
         },
-        'file-proposals': {
-          current: 'Reviewed evidence eligible for guarded user-file proposals',
-          steps: ['Collect reviewed evidence', 'Map evidence to possible file changes', 'Generate diff and revision guard', 'Store proposal without applying'],
-          findings: ['Research metadata diff prepared with source revision guard', 'Product ↔ Research bridge retirement stays a user decision']
-        },
         'maintenance-synthesis': {
           current: 'Verified automatic effects, partial results, and unresolved owner work',
           steps: ['Join layer receipts and partial failures', 'Separate automatic effects from owner work', 'Deduplicate decisions and blockers', 'Create follow-up with an exit condition'],
@@ -11281,12 +11563,10 @@
       }
       if (key === 'review') {
         if (progress < 60) return 'Will test candidate meaning against sources, Community identity, graph facts, and history.';
-        if (progress < 90) return `<strong>${Math.max(1, Math.round(27 * ((progress - 60) / 30)))} relations reviewed</strong> · ${Math.max(1, Math.round(7 * ((progress - 60) / 30)))} Communities compared.`;
+        if (progress < 88) return `<strong>${Math.max(1, Math.round(27 * ((progress - 60) / 28)))} relations reviewed</strong> · ${Math.max(1, Math.round(7 * ((progress - 60) / 28)))} Communities compared.`;
         return '<strong>11 relations retained · 7 Communities compared</strong> · 2 bridge candidates explained.';
       }
-      if (progress < 82) return 'Will separate automatic updates, guarded proposals, blockers, and owner decisions.';
-      if (progress < 99) return `<strong>${Math.max(1, Math.round(12 * ((progress - 82) / 17)))} guarded diffs</strong> · ${Math.max(1, Math.round(5 * ((progress - 82) / 17)))} owner decisions prepared.`;
-      return '<strong>12 guarded diffs · 5 owner decisions · 3 blockers</strong> · nothing applied to user files.';
+      return 'Waiting for evidence.';
     }
 
     function vaultPhaseExecutionState(definition, progress) {
@@ -11347,7 +11627,7 @@
       fileGroup.before(perDocument);
       const vaultWide = document.createElement('div');
       vaultWide.className = 'ai-scope-divider';
-      vaultWide.innerHTML = '<div class="ai-scope-copy"><span class="ai-scope-eyebrow">Vault-wide · begins as soon as enough Index evidence exists</span><strong class="ai-scope-title">Vault-wide analysis timeline</strong><span class="ai-scope-description">One continuous trace from frozen evidence to candidates, review, and follow-up. Stages may overlap when their required evidence is ready.</span></div><span class="status neutral ai-scope-state" id="ai-vault-lane-state">Waiting for evidence</span>';
+      vaultWide.innerHTML = '<div class="ai-scope-copy"><span class="ai-scope-eyebrow">Vault-wide · begins as soon as enough Index evidence exists</span><strong class="ai-scope-title">Vault-wide analysis timeline</strong><span class="ai-scope-description">One continuous trace from frozen evidence to candidates and evidence review. Prepare review starts only after this discovery loop closes.</span></div><span class="status neutral ai-scope-state" id="ai-vault-lane-state">Waiting for evidence</span>';
       relationsGroup.before(vaultWide);
 
       const flow = document.createElement('div');
@@ -11368,7 +11648,7 @@
         if (!target) return;
         definition.operations.forEach((operationId) => target.append(document.querySelector(`[data-ai-operation-run="${operationId}"]`)));
       });
-      ['relations', 'structure', 'output'].forEach((key) => list.querySelector(`[data-ai-run="${key}"]`).classList.add('vault-analysis-source-group'));
+      ['relations', 'structure'].forEach((key) => list.querySelector(`[data-ai-run="${key}"]`).classList.add('vault-analysis-source-group'));
 
       flow.querySelectorAll('[data-vault-phase-toggle]').forEach((button) => button.addEventListener('click', () => {
         const phase = button.closest('[data-vault-analysis-phase]');
@@ -11451,8 +11731,8 @@
       indexState.textContent = progress >= indexRunWindow.end ? 'Index enrichment complete' : progress >= 20 ? 'Following Index documents' : 'Waiting for documents';
       indexState.className = `status ${progress >= indexRunWindow.end ? 'green' : progress >= 20 ? 'purple' : 'neutral'} ai-scope-state`;
       const vaultState = document.getElementById('ai-vault-lane-state');
-      vaultState.textContent = progress >= 99 ? 'Vault analysis complete' : progress >= 54 ? 'Independent analysis running' : 'Waiting for evidence';
-      vaultState.className = `status ${progress >= 99 ? 'green' : progress >= 54 ? 'purple' : 'neutral'} ai-scope-state`;
+      vaultState.textContent = progress >= 88 ? 'Vault analysis complete' : progress >= 54 ? 'Independent analysis running' : 'Waiting for evidence';
+      vaultState.className = `status ${progress >= 88 ? 'green' : progress >= 54 ? 'purple' : 'neutral'} ai-scope-state`;
     }
 
     function renderAIOperations(progress) {
@@ -11475,6 +11755,13 @@
         if (definition.enabled && !skipped) {
           projectedTokens += usage.fullTokens ?? Math.round(definition.tokens * scanEstimateScale());
           projectedCost += usage.fullCost ?? definition.cost * scanEstimateScale();
+        }
+        if (!step) {
+          if (!definition.enabled || skipped) stateCounts.skipped += 1;
+          else if (done) stateCounts.done += 1;
+          else if (running) stateCounts.running += 1;
+          else stateCounts.queued += 1;
+          return;
         }
         step.classList.toggle('done', done);
         step.classList.toggle('running', running);
@@ -11536,9 +11823,11 @@
       });
       Object.entries(aiGroupDefinitions).forEach(([key, group]) => {
         const container = document.querySelector(`[data-ai-run="${key}"]`);
+        if (!container) return;
         const enabled = group.operations.filter((operationId) => aiOperationRunDefinitions[operationId].enabled);
-        const running = enabled.some((operationId) => document.querySelector(`[data-ai-operation-run="${operationId}"]`).classList.contains('running'));
-        const done = enabled.length > 0 && enabled.every((operationId) => document.querySelector(`[data-ai-operation-run="${operationId}"]`).classList.contains('done'));
+        const visibleEnabled = enabled.filter((operationId) => document.querySelector(`[data-ai-operation-run="${operationId}"]`));
+        const running = visibleEnabled.some((operationId) => document.querySelector(`[data-ai-operation-run="${operationId}"]`).classList.contains('running'));
+        const done = visibleEnabled.length > 0 && visibleEnabled.every((operationId) => document.querySelector(`[data-ai-operation-run="${operationId}"]`).classList.contains('done'));
         const skipped = enabled.length > 0 && enabled.every((operationId) => skippedAIOperations.has(operationId));
         container.classList.toggle('running', running);
         container.classList.toggle('done', done);
@@ -11611,13 +11900,13 @@
       const nextStageAt = stageDefinitions[index + 1]?.at ?? 100;
       const currentStageAt = stageDefinitions[index].at;
       const stageRatio = Math.max(0, Math.min(1, (progress - currentStageAt) / Math.max(1, nextStageAt - currentStageAt)));
-      const trackProgress = Math.min(75, (index + stageRatio) * 25);
-      document.getElementById('stage-track').style.setProperty('--scan-stage-ratio', String(trackProgress / 75));
+      const trackSegments = Math.max(1, stageDefinitions.length - 1);
+      document.getElementById('stage-track').style.setProperty('--scan-stage-ratio', String(Math.min(1, (index + stageRatio) / trackSegments)));
       stages.forEach((stage, stageIndex) => {
         const key = stage.dataset.runStageTab;
         const aiRunning = Object.entries(aiOperationRunDefinitions).filter(([operationId, definition]) => definition.enabled && !skippedAIOperations.has(operationId) && progress >= definition.start && progress < definition.end).length;
-        const done = key === 'discover' ? progress >= indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.end : key === 'ai' ? progress >= 99 : progress >= 100;
-        const active = key === 'discover' ? progress < indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.start && progress < indexRunWindow.end : key === 'ai' ? aiRunning > 0 : progress >= 88 && progress < 100;
+        const done = key === 'discover' ? progress >= indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.end : key === 'ai' ? progress >= 88 : key === 'review' ? reviewPreparationState.tick >= 9 : progress >= 100;
+        const active = key === 'discover' ? progress < indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.start && progress < indexRunWindow.end : key === 'ai' ? progress >= 55 && progress < 88 : key === 'review' ? progress >= 88 && reviewPreparationState.tick < 9 : progress >= 98 && progress < 100;
         const current = stageIndex === index;
         stage.classList.toggle('done', done);
         stage.classList.toggle('current', current);
@@ -11629,6 +11918,7 @@
         if (done) { state.textContent = 'Complete'; marker.innerHTML = '<svg class="icon sm"><use href="#i-check"/></svg>'; return; }
         if (key === 'local' && active) { state.textContent = `Index ${Math.round(Math.max(0, Math.min(1, (progress - indexRunWindow.start) / (indexRunWindow.end - indexRunWindow.start))) * 100)}%`; marker.textContent = String(stageIndex + 1); return; }
         if (key === 'ai' && active) { state.textContent = `${aiRunning} operation${aiRunning === 1 ? '' : 's'} running`; marker.textContent = String(stageIndex + 1); return; }
+        if (key === 'review' && active) { state.textContent = reviewPreparationState.tick < 1 ? 'Planning' : `${Math.round(reviewPreparationState.tick / 9 * 100)}%`; marker.textContent = String(stageIndex + 1); return; }
         if (active || current) { state.textContent = 'Live'; marker.textContent = String(stageIndex + 1); return; }
         state.textContent = 'Waiting'; marker.textContent = String(stageIndex + 1);
       });
@@ -11636,8 +11926,8 @@
       document.querySelectorAll('[data-run-panel-state]').forEach((badge) => {
         const key = badge.dataset.runPanelState;
         const aiRunning = Object.entries(aiOperationRunDefinitions).filter(([operationId, definition]) => definition.enabled && !skippedAIOperations.has(operationId) && progress >= definition.start && progress < definition.end).length;
-        const done = key === 'discover' ? progress >= indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.end : key === 'ai' ? progress >= 99 : progress >= 100;
-        const active = key === 'discover' ? progress < indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.start && progress < indexRunWindow.end : key === 'ai' ? aiRunning > 0 : progress >= 88;
+        const done = key === 'discover' ? progress >= indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.end : key === 'ai' ? progress >= 88 : key === 'review' ? reviewPreparationState.tick >= 9 : progress >= 100;
+        const active = key === 'discover' ? progress < indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.start && progress < indexRunWindow.end : key === 'ai' ? progress >= 55 && progress < 88 : key === 'review' ? progress >= 88 && reviewPreparationState.tick < 9 : progress >= 98;
         badge.textContent = done ? 'Complete' : active ? key === 'ai' ? `${aiRunning} running · parallel` : 'Live' : 'Waiting';
         badge.className = `status ${done ? 'green' : active ? 'purple' : 'neutral'}`;
       });
@@ -12058,6 +12348,7 @@
       updateLocalIndexWorkbench(progress);
       updateBuildIndexWorkspace(progress);
       renderAIOperations(progress);
+      renderReviewPreparation();
     }
 
     function updateRunEntryPoints() {
@@ -12130,6 +12421,7 @@
       skippedAIOperations = new Set();
       stoppedAIOperationsAt = new Map();
       resetAIGroupExpansionTracking();
+      resetReviewPreparation();
       inspectedRunStage = null;
       syncRunAIProfiles();
       runProgress = recovering ? 41 : 0;
@@ -12151,11 +12443,16 @@
       let lastStage = -1;
       runTimer = window.setInterval(() => {
         if (runPaused) return;
-        runProgress += runProgress < 12 ? 2.5 : runProgress < 68 ? 2 : 1.5;
+        if (runProgress >= 88 && reviewPreparationState.tick < 9) {
+          reviewPreparationState.elapsed += 1;
+          advanceReviewPreparationGate();
+        } else {
+          runProgress += runProgress < 12 ? 2.5 : runProgress < 68 ? 2 : 1.5;
+        }
         const stageIndex = currentStageIndex(runProgress);
         if (stageIndex !== lastStage) {
           lastStage = stageIndex;
-          const messages = ['Changed inputs, affected context, and graph baseline frozen', `Core Search is leading each document; selected Index enrichment and ${selectedScanCheckCount()} maintenance tasks follow when their inputs are ready`, 'Vault-level AI operations are comparing indexed changes with existing relationships and Communities while the Index tail may still finish', 'Publishing verified Index layers, machine updates, receipts, and only the follow-up that still needs an owner'];
+          const messages = ['Changed inputs, affected context, and graph baseline frozen', `Core Search is leading each document; selected Index enrichment and ${selectedScanCheckCount()} maintenance tasks follow when their inputs are ready`, 'Vault-level AI operations are comparing indexed changes with existing relationships and Communities while the Index tail may still finish', 'Every retained finding is being turned into bounded owner work; each task must finish streaming and validation before the next can advance', 'Publishing verified Index layers, machine updates, review tasks, and immutable receipts'];
           appendEvent(stageDefinitions[stageIndex].title, messages[stageIndex]);
         }
         if (runProgress >= 100) { finishRun(); return; }
@@ -12217,6 +12514,17 @@
     }));
     document.getElementById('complete-mock-run').addEventListener('click', finishRun);
     runStrip.addEventListener('click', () => showScreen('active-run'));
+
+    window.setInterval(() => {
+      if (!runActive || runComplete || runPaused || runProgress < 88 || reviewPreparationState.tick >= 9) return;
+      const stream = reviewPreparationStream();
+      if (reviewPreparationState.streamKey !== stream.key) {
+        reviewPreparationState.streamKey = stream.key;
+        reviewPreparationState.streamChars = 0;
+      }
+      reviewPreparationState.streamChars = Math.min(stream.text.length, reviewPreparationState.streamChars + 10);
+      renderReviewPreparation();
+    }, 55);
 
     const proposalChecks = [...document.querySelectorAll('.proposal-check')];
     function updateProposalCount() { document.getElementById('proposal-selected').textContent = proposalChecks.filter((box) => box.checked).length; }
