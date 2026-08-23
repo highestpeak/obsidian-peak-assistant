@@ -118,7 +118,7 @@
     .breadcrumb strong { color: var(--ink-2); }
     .run-summary {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 430px;
+      grid-template-columns: minmax(0, 1fr) 510px;
       border: 1px solid var(--line);
       border-radius: 10px;
       overflow: hidden;
@@ -134,6 +134,9 @@
     .overall-track { height: 8px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #ebe9ef; }
     .overall-track span { display: block; width: var(--progress); height: 100%; border-radius: inherit; background: var(--accent); transition: width 180ms ease; }
     .overall-facts { display: flex; align-items: center; gap: 18px; margin-top: 10px; color: var(--ink-2); font-size: 10.5px; font-weight: 680; }
+    .overall-fact { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+    .overall-fact strong { color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .overall-fact span { color: var(--ink-3); font-size: 9px; text-transform: uppercase; letter-spacing: .03em; }
 
     .outcomes {
       display: grid;
@@ -141,15 +144,17 @@
       border-left: 1px solid var(--line);
       background: #fcfbfd;
     }
-    .outcome { min-height: 58px; display: grid; grid-template-columns: 28px minmax(0, 1fr) 76px 74px; gap: 10px; align-items: center; padding: 8px 15px; border-bottom: 1px solid var(--line); }
+    .outcome { min-height: 58px; display: grid; grid-template-columns: 28px minmax(108px, 1fr) 48px 64px 72px 78px; gap: 8px; align-items: center; padding: 8px 15px; border-bottom: 1px solid var(--line); }
     .outcome:last-child { border-bottom: 0; }
     .outcome-icon { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-3); background: var(--surface-3); }
     .outcome.complete .outcome-icon { color: var(--green); background: var(--green-soft); }
     .outcome.running .outcome-icon { color: var(--accent-2); background: var(--accent-soft); }
     .outcome-copy strong { display: block; font-size: 11.5px; }
-    .outcome-time { color: var(--ink-2); font-size: 10.5px; font-weight: 680; text-align: right; white-space: nowrap; }
-    .outcome-value { color: var(--ink-2); font-size: 13px; font-weight: 730; font-variant-numeric: tabular-nums; }
-    .outcome.complete .outcome-value { color: var(--green); }
+    .outcome-metric { min-width: 0; }
+    .outcome-metric strong { display: block; overflow: hidden; color: var(--ink-2); font-size: 11px; font-weight: 740; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+    .outcome-metric span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8px; font-weight: 650; text-transform: uppercase; letter-spacing: .025em; white-space: nowrap; }
+    .outcome-percent strong { color: var(--accent-2); font-size: 13px; }
+    .outcome.complete .outcome-metric strong { color: var(--green); }
 
     .card { margin-top: 13px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 1px 1px rgba(36, 31, 49, .015); }
     .card-head { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
@@ -231,14 +236,8 @@
     .inspect-title { display: flex; align-items: center; gap: 9px; }
     .inspect-title strong { font-size: 12px; }
     .inspect-count { color: var(--ink-2); font-size: 11px; font-weight: 690; }
-    .inspect-actions { display: flex; align-items: center; gap: 10px; }
-    .live-follow-btn { min-height: 28px; display: inline-flex; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #d8d1f5; border-radius: 7px; color: var(--accent-2); background: var(--accent-soft); font-size: 9.5px; font-weight: 710; cursor: pointer; }
-    .live-follow-btn::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px rgba(104, 87, 217, .12); }
-    .live-follow-btn.off { border-color: var(--line-2); color: var(--ink-3); background: var(--surface-2); }
-    .live-follow-btn.off::before { background: var(--line-2); box-shadow: none; }
-    .inspect-table { max-height: 390px; overflow: auto; scroll-behavior: smooth; scrollbar-gutter: stable; border-top: 1px solid var(--line); }
+    .inspect-table { max-height: 390px; overflow: auto; scrollbar-gutter: stable; border-top: 1px solid var(--line); }
     .inspect-row { display: grid; grid-template-columns: minmax(250px, 1fr) repeat(3, minmax(170px, .62fr)); gap: 12px; align-items: center; min-height: 40px; padding: 0 15px; border-bottom: 1px solid var(--line); font-size: 10.5px; transition: background 120ms ease, box-shadow 120ms ease; }
-    .inspect-row.focus { position: relative; z-index: 1; background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
     .inspect-row:last-child { border-bottom: 0; }
     .inspect-row.head { position: sticky; z-index: 2; top: 0; min-height: 36px; color: var(--ink-2); background: var(--surface-2); font-size: 9.5px; font-weight: 720; }
     .file strong { display: block; font-size: 10.5px; }
@@ -302,7 +301,8 @@
 
     @media (max-width: 1180px) {
       .page { padding-inline: 18px; }
-      .run-summary { grid-template-columns: minmax(0, 1fr) 390px; }
+      .run-summary { grid-template-columns: minmax(0, 1fr); }
+      .outcomes { border-top: 1px solid var(--line); border-left: 0; }
       .lane { grid-template-columns: 42px minmax(225px, .82fr) minmax(260px, 1fr) minmax(330px, 1fr); gap: 11px; }
       .scan-file-name { max-width: 150px; }
     }
@@ -355,27 +355,37 @@
             <div class="hero-title"><span id="hero-title">Building search, semantic, and AI layers.</span><button class="hint-btn" type="button" data-tooltip="Each selected document contributes one work unit to every enabled lane. The overall percentage combines completed layer work; each lane keeps its own speed and ETA." aria-label="How overall progress is calculated"><svg class="icon"><use href="#i-info"/></svg></button></div>
             <div class="overall-number"><strong id="overall-percent">5%</strong><span>overall progress</span></div>
             <div class="overall-track" id="overall-track" style="--progress:5.3%"><span></span></div>
-            <div class="overall-facts"><span id="overall-work">23 / 438 layer passes</span><span id="overall-state">3 lanes running</span></div>
+            <div class="overall-facts">
+              <div class="overall-fact"><strong id="overall-elapsed">9 sec</strong><span>elapsed</span></div>
+              <div class="overall-fact"><strong id="overall-target">3–5 min</strong><span>target</span></div>
+              <div class="overall-fact"><strong id="overall-work">23 / 438</strong><span>layer passes</span></div>
+            </div>
           </div>
         </div>
         <section class="outcomes" aria-label="Index readiness outcomes">
           <div class="outcome running" id="search-outcome" tabindex="0" data-tooltip="Files become searchable as soon as text, keywords, and full-text passages are committed locally.">
             <div class="outcome-icon"><svg class="icon sm"><use id="search-outcome-icon" href="#i-search"/></svg></div>
             <div class="outcome-copy"><strong id="search-outcome-label">Building search</strong></div>
-            <div class="outcome-time" id="search-outcome-time">~11 sec</div>
-            <div class="outcome-value" id="search-outcome-value">18 / 146</div>
+            <div class="outcome-metric outcome-percent"><strong id="search-outcome-percent">12%</strong><span>done</span></div>
+            <div class="outcome-metric"><strong id="search-outcome-value">18 / 146</strong><span>files</span></div>
+            <div class="outcome-metric"><strong id="search-outcome-elapsed">1 sec</strong><span>elapsed</span></div>
+            <div class="outcome-metric"><strong id="search-outcome-target">≤15 sec</strong><span>target</span></div>
           </div>
           <div class="outcome running" id="embedding-outcome" tabindex="0" data-tooltip="Semantic readiness counts documents whose current text has a verified vector embedding.">
             <div class="outcome-icon"><svg class="icon sm"><use href="#i-vector"/></svg></div>
             <div class="outcome-copy"><strong>Semantic ready</strong></div>
-            <div class="outcome-time" id="embedding-outcome-time">~36 sec</div>
-            <div class="outcome-value" id="embedding-outcome-value">4 / 146</div>
+            <div class="outcome-metric outcome-percent"><strong id="embedding-outcome-percent">3%</strong><span>done</span></div>
+            <div class="outcome-metric"><strong id="embedding-outcome-value">4 / 146</strong><span>files</span></div>
+            <div class="outcome-metric"><strong id="embedding-outcome-elapsed">9 sec</strong><span>elapsed</span></div>
+            <div class="outcome-metric"><strong id="embedding-outcome-target">~3 min</strong><span>target</span></div>
           </div>
           <div class="outcome running" id="ai-outcome" tabindex="0" data-tooltip="Fully enriched documents have a summary, machine-only AI Tags, entities, and file-level relationship signals.">
             <div class="outcome-icon"><svg class="icon sm"><use href="#i-spark"/></svg></div>
             <div class="outcome-copy"><strong>Fully enriched</strong></div>
-            <div class="outcome-time" id="ai-outcome-time">3–5 min</div>
-            <div class="outcome-value" id="ai-outcome-value">1 / 146</div>
+            <div class="outcome-metric outcome-percent"><strong id="ai-outcome-percent">1%</strong><span>done</span></div>
+            <div class="outcome-metric"><strong id="ai-outcome-value">1 / 146</strong><span>files</span></div>
+            <div class="outcome-metric"><strong id="ai-outcome-elapsed">9 sec</strong><span>elapsed</span></div>
+            <div class="outcome-metric"><strong id="ai-outcome-target">3–5 min</strong><span>target</span></div>
           </div>
         </section>
       </section>
@@ -452,7 +462,7 @@
       </section>
 
       <details class="inspect" id="inspect" open>
-        <summary><div class="inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect all document states</strong><span class="inspect-count">146 files</span></div><div class="inspect-actions"><button class="live-follow-btn" type="button" id="follow-btn" aria-pressed="true">Following full-text</button><svg class="icon sm"><use href="#i-chevron"/></svg></div></summary>
+        <summary><div class="inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect all document states</strong><span class="inspect-count">146 files</span></div><svg class="icon sm"><use href="#i-chevron"/></svg></summary>
         <div class="inspect-table" id="inspect-table">
           <div class="inspect-row head"><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>AI enrichment</span></div>
           <div id="inspect-rows"></div>
@@ -507,7 +517,7 @@
     const app = document.getElementById('app');
     const pauseButton = document.getElementById('pause-btn');
     const scenarioButtons = [...document.querySelectorAll('.scenario-btn')];
-    const run = { search: 18, embedding: 4, ai: 1, tick: 0, mode: 'hybrid', running: true, stopped: false, autoFollow: true };
+    const run = { search: 18, embedding: 4, ai: 1, tick: 0, elapsed: 9, mode: 'hybrid', running: true, stopped: false };
 
     function setText(id, value) {
       const element = document.getElementById(id);
@@ -548,6 +558,20 @@
 
     function modelAt(models, index) {
       return models[((index % models.length) + models.length) % models.length];
+    }
+
+    function formatDuration(seconds) {
+      const safeSeconds = Math.max(0, Math.round(seconds));
+      if (safeSeconds < 60) return `${safeSeconds} sec`;
+      const minutes = Math.floor(safeSeconds / 60);
+      const remainder = safeSeconds % 60;
+      return remainder ? `${minutes}m ${String(remainder).padStart(2, '0')}s` : `${minutes} min`;
+    }
+
+    function runTargets() {
+      if (run.mode === 'local') return { overall: '36–52 min', embedding: '~8 min', ai: '36–52 min' };
+      if (run.mode === 'cloud') return { overall: '5–8 min', embedding: '~4 min', ai: '5–8 min' };
+      return { overall: '3–5 min', embedding: '~3 min', ai: '3–5 min' };
     }
 
     function row(name, state, label, model) {
@@ -627,45 +651,12 @@
       return `<span class="state ${state}">${label}</span>`;
     }
 
-    function inspectFocus() {
-      if (run.search < TOTAL) return { index: run.search, label: 'Following full-text' };
-      if (run.embedding < TOTAL) return { index: run.embedding, label: 'Following embeddings' };
-      if (run.ai < TOTAL) return { index: run.ai, label: 'Following AI enrichment' };
-      return { index: TOTAL - 1, label: 'Run complete' };
-    }
-
-    function updateFollowButton() {
-      const button = document.getElementById('follow-btn');
-      const focus = inspectFocus();
-      button.textContent = run.autoFollow ? focus.label : 'Resume live follow';
-      button.classList.toggle('off', !run.autoFollow);
-      button.setAttribute('aria-pressed', String(run.autoFollow));
-    }
-
-    function followInspectProgress(behavior = 'smooth') {
-      updateFollowButton();
-      if (!run.autoFollow || !document.getElementById('inspect').open) return;
-      window.requestAnimationFrame(() => {
-        const table = document.getElementById('inspect-table');
-        const focus = inspectFocus();
-        const row = table.querySelector(`[data-file-index="${focus.index}"]`);
-        if (!row) return;
-        const tableRect = table.getBoundingClientRect();
-        const rowRect = row.getBoundingClientRect();
-        const rowTopInTable = table.scrollTop + rowRect.top - tableRect.top;
-        const targetTop = Math.max(0, rowTopInTable - (table.clientHeight * .42));
-        table.style.scrollBehavior = behavior === 'auto' ? 'auto' : 'smooth';
-        table.scrollTo({ top: targetTop, behavior });
-      });
-    }
-
     function renderInspectRows() {
       const embeddingPool = embeddingModels();
       const aiPool = aiModels();
       const embeddingActiveEnd = Math.min(run.search, run.embedding + embeddingCapacity());
       const aiActiveEnd = Math.min(run.search, run.ai + aiCapacity());
       const aiStages = ['Summary', 'AI Tags', 'Entities', 'File signals'];
-      const focusIndex = inspectFocus().index;
       const rows = [];
       for (let index = 0; index < TOTAL; index += 1) {
         const searchState = index < run.search
@@ -685,10 +676,9 @@
           : index < aiActiveEnd
             ? stateCell('live', `${aiStages[(run.tick + index) % aiStages.length]} · ${aiModel}`)
             : stateCell('', index < run.search ? 'Queued' : 'Waiting for text');
-        rows.push(`<div class="inspect-row ${index === focusIndex ? 'focus' : ''}" data-file-index="${index}"><div class="file"><strong>${fileAt(index, true)}</strong></div>${searchState}${embeddingState}${aiState}</div>`);
+        rows.push(`<div class="inspect-row"><div class="file"><strong>${fileAt(index, true)}</strong></div>${searchState}${embeddingState}${aiState}</div>`);
       }
       document.getElementById('inspect-rows').innerHTML = rows.join('');
-      followInspectProgress(run.running && run.tick ? 'smooth' : 'auto');
     }
 
     function setLaneState(id, markerId, count, waiting) {
@@ -733,17 +723,28 @@
       setText('search-outcome-value', `${run.search} / ${TOTAL}`);
       setText('embedding-outcome-value', `${run.embedding} / ${TOTAL}`);
       setText('ai-outcome-value', `${run.ai} / ${TOTAL}`);
+      setText('search-outcome-percent', `${Math.round(searchPercent)}%`);
+      setText('embedding-outcome-percent', `${Math.round(embeddingPercent)}%`);
+      setText('ai-outcome-percent', `${Math.round(aiPercent)}%`);
       setText('overall-percent', `${Math.round(overallPercent)}%`);
-      setText('overall-work', `${completedWork} / ${totalWork} layer passes`);
+      setText('overall-work', `${completedWork} / ${totalWork}`);
+      const targets = runTargets();
+      const searchElapsed = Math.min(11, Math.round((run.search / TOTAL) * 11));
+      setText('overall-elapsed', formatDuration(run.elapsed));
+      setText('overall-target', targets.overall);
+      setText('search-outcome-elapsed', formatDuration(searchElapsed));
+      setText('search-outcome-target', '≤15 sec');
+      setText('embedding-outcome-elapsed', formatDuration(run.embedding ? run.elapsed : 0));
+      setText('embedding-outcome-target', targets.embedding);
+      setText('ai-outcome-elapsed', formatDuration(run.ai ? run.elapsed : 0));
+      setText('ai-outcome-target', targets.ai);
       document.getElementById('overall-track').style.setProperty('--progress', `${overallPercent}%`);
       document.getElementById('search-track').style.setProperty('--progress', `${searchPercent}%`);
       document.getElementById('embedding-track').style.setProperty('--progress', `${embeddingPercent}%`);
       document.getElementById('ai-track').style.setProperty('--progress', `${aiPercent}%`);
       setText('search-eta', run.search >= TOTAL ? 'Finished in 11 sec' : `~${Math.max(1, Math.ceil((TOTAL - run.search) / 12))} sec left`);
-      setText('search-outcome-time', run.search >= TOTAL ? '11 sec' : `~${Math.max(1, Math.ceil((TOTAL - run.search) / 12))} sec`);
       setText('search-passages', `${Math.round(run.search * 32.96).toLocaleString()} passages`);
       setText('embedding-eta', run.embedding >= TOTAL ? 'Embedding complete' : `~${Math.max(1, Math.ceil((TOTAL - run.embedding) / 4))} sec left`);
-      setText('embedding-outcome-time', run.embedding >= TOTAL ? 'Complete' : `~${Math.max(1, Math.ceil((TOTAL - run.embedding) / 4))} sec`);
       setText('embedding-chunks', `${Math.round(run.embedding * 19.97).toLocaleString()} / 2,916 chunks`);
       setText('embedding-active', `${Math.min(embeddingCapacity(), Math.max(0, run.search - run.embedding))} active files`);
       const localUsage = run.mode === 'local' ? `${Math.round(run.ai * 460).toLocaleString()} local tokens` : null;
@@ -752,7 +753,6 @@
       setText('ai-concurrency', `${Math.min(aiCapacity(), Math.max(0, run.search - run.ai))} / ${aiCapacity()} active`);
       const aiTime = run.mode === 'local' ? '36–52 min' : run.mode === 'cloud' ? '5–8 min' : '3–5 min';
       setText('ai-eta', `${aiTime} ETA`);
-      setText('ai-outcome-time', run.ai >= TOTAL ? 'Complete' : aiTime);
 
       const searchDone = run.search >= TOTAL;
       const embeddingDone = run.embedding >= TOTAL;
@@ -765,9 +765,6 @@
       setLaneState('search-lane', 'search-marker', run.search, false);
       setLaneState('embedding-lane', 'embedding-marker', run.embedding, run.search === 0);
       setLaneState('ai-lane', 'ai-marker', run.ai, run.search === 0);
-      const runningLanes = [searchDone, embeddingDone, aiDone].filter((done) => !done).length;
-      setText('overall-state', aiDone ? 'All lanes complete' : `${runningLanes} ${runningLanes === 1 ? 'lane' : 'lanes'} running`);
-
       if (aiDone) setText('hero-title', 'Knowledge Index is ready.');
       else if (searchDone) setText('hero-title', 'Search is ready. Semantic and AI layers are still catching up.');
       else setText('hero-title', 'Building search, semantic, and AI layers.');
@@ -782,6 +779,7 @@
     function advance() {
       if (!run.running || run.stopped) return;
       run.tick += 1;
+      run.elapsed += 6;
       run.search = Math.min(TOTAL, run.search + 7 + (run.tick % 3));
       const embeddingRoom = Math.max(0, run.search - run.embedding);
       const embeddingStep = run.mode === 'local' ? 2 : run.mode === 'cloud' ? 4 : 5;
@@ -806,9 +804,9 @@
       run.embedding = 0;
       run.ai = 0;
       run.tick = 0;
+      run.elapsed = 0;
       run.running = true;
       run.stopped = false;
-      run.autoFollow = true;
       document.getElementById('inspect-table').scrollTop = 0;
       render();
     }
@@ -825,25 +823,6 @@
       run.stopped = true;
       render();
     });
-    const inspectTable = document.getElementById('inspect-table');
-    const followButton = document.getElementById('follow-btn');
-    followButton.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      run.autoFollow = !run.autoFollow;
-      followInspectProgress('smooth');
-    });
-    inspectTable.addEventListener('wheel', () => {
-      if (!run.autoFollow) return;
-      run.autoFollow = false;
-      updateFollowButton();
-    }, { passive: true });
-    inspectTable.addEventListener('pointerdown', () => {
-      if (!run.autoFollow) return;
-      run.autoFollow = false;
-      updateFollowButton();
-    });
-
     const tooltip = document.getElementById('tooltip');
     function showTooltip(target) {
       tooltip.textContent = target.dataset.tooltip;
