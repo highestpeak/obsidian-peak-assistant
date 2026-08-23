@@ -58,7 +58,7 @@ assert.ok(frontmatter.includes('setCandidateReviewOpen(true)'), 'a field candida
 assert.ok(frontmatter.includes("candidate={candidateReviewOpen ? candidatePayload : null}"), 'suggestions do not project into YAML before selection');
 assert.ok(copilot.includes('<CopilotModelSelector'), 'Copilot keeps a model selector in the shared instruction composer');
 assert.ok(
-	copilot.includes('buildProfileModelItems(profiles)'),
+	copilot.includes('buildProfileModelItems(modelCatalog, profiles)'),
 	'Copilot model choices reuse the shared profile-qualified model catalog without importing protected Chat UI',
 );
 assert.equal(

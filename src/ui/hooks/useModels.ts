@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { ViewEventType } from '@/core/eventBus';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 
 /**
  * Hook for managing model data and loading state
@@ -9,6 +11,8 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
  */
 export function useModels() {
 	const { manager, eventBus } = useServiceContext();
+	const modelCatalog = useModelCatalog(ProfileRegistry.getInstance().getAllProfiles());
+	const catalogRevision = modelCatalog.getRevision();
 	const [models, setModels] = useState<ModelInfoForSwitch[]>([]);
 	const [isModelsLoading, setIsModelsLoading] = useState(false);
 
@@ -25,7 +29,7 @@ export function useModels() {
 		} finally {
 			setIsModelsLoading(false);
 		}
-	}, [manager]);
+	}, [manager, catalogRevision]);
 
 	// Initialize models loading
 	useEffect(() => {

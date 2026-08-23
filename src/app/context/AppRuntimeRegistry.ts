@@ -43,6 +43,7 @@ import type { PeakKeyboardNavigationPort } from '@/ui/keyboard/KeyboardNavigatio
 import type { PeakSheetRuntime } from '@/app/sheet/PeakSheetRuntime';
 import type { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
 import type { IndexRunCoordinator } from '@/app/search/IndexRunCoordinator';
+import type { ModelCatalogPort } from '@/core/ports/ModelCatalogPort';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -80,9 +81,28 @@ export class AppRuntimeRegistry {
 	private keyboardNavigationRuntime: PeakKeyboardNavigationPort | null = null;
 	private peakSheetRuntime: PeakSheetRuntime | null = null;
 	private vaultIntelligenceRuntime: VaultIntelligenceRuntime | null = null;
+	private modelCatalogRuntime: ModelCatalogPort | null = null;
 
 	constructor(generatedOutputRegistry: GeneratedOutputRegistry = createDefaultGeneratedOutputRegistry()) {
 		this.generatedOutputRegistry = generatedOutputRegistry;
+	}
+
+	setModelCatalogRuntime(runtime: ModelCatalogPort): void {
+		if (this.modelCatalogRuntime !== null) throw new Error('AppRuntimeRegistry.setModelCatalogRuntime: a runtime is already bound.');
+		this.modelCatalogRuntime = runtime;
+	}
+
+	getModelCatalogRuntime(): ModelCatalogPort {
+		if (this.modelCatalogRuntime === null) throw new Error('AppRuntimeRegistry.getModelCatalogRuntime: no runtime is bound.');
+		return this.modelCatalogRuntime;
+	}
+
+	tryGetModelCatalogRuntime(): ModelCatalogPort | null {
+		return this.modelCatalogRuntime;
+	}
+
+	clearModelCatalogRuntime(): void {
+		this.modelCatalogRuntime = null;
 	}
 
 	/**

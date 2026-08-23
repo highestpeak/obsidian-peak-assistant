@@ -43,10 +43,10 @@ import { FileAtlasSessionStore } from '@/app/file-atlas/FileAtlasSessionStore';
 import { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { PromptId } from '@/core/types/prompt';
-import { refreshLocalProfileModelCatalogs } from '@/core/providers/refreshLocalProfileModelCatalogs';
+import { ModelCatalogRuntime } from '@/app/model-catalog/ModelCatalogRuntime';
+import { obsidianHttpClient } from '@/app/platform/HttpClientAdapter';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { buildUnifiedModelChoices, resolveOperationRouteCandidate } from '@/core/providers/model-selection';
-import { modelRegistry } from '@/core/providers/model-registry';
 import { ModelType } from '@/core/providers/types';
 import { toEmbeddingConfig } from '@/core/profiles/materialize';
 
@@ -487,6 +487,7 @@ export class AppContext {
 			// bundle does not retain references to the closed sqlite repo
 			// or the editor event subscriptions.
 			AppContext.instance.runtimeRegistry.clearVaultIntelligenceRuntime();
+			AppContext.instance.runtimeRegistry.clearModelCatalogRuntime();
 			AppContext.instance.runtimeRegistry.clearVaultLintRuntime();
 			AppContext.instance.runtimeRegistry.clearAmbientRuntime();
 			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
@@ -529,6 +530,7 @@ export class AppContext {
 		this.eventBus = EventBus.getInstance(app);
 		this._bridge = new HarnessRunBridge();
 		this.runtimeRegistry = new AppRuntimeRegistry();
+		this.runtimeRegistry.setModelCatalogRuntime(new ModelCatalogRuntime(obsidianHttpClient));
 		this.runtimeRegistry.setVaultIntelligenceRuntime(new VaultIntelligenceRuntime({
 			app,
 			resolveLintRuntime: () => this.runtimeRegistry.tryGetVaultLintRuntime(),
@@ -547,7 +549,7 @@ export class AppContext {
 			},
 			resolveProjectCount: async () => (await manager.proj.listProjects()).length,
 			refreshOperationRouteCandidates: async () => {
-				await refreshLocalProfileModelCatalogs(ProfileRegistry.getInstance().getAllProfiles());
+				await this.runtimeRegistry.getModelCatalogRuntime().refreshProfiles(ProfileRegistry.getInstance().getAllProfiles());
 			},
 			runTaskSuggestionRefresh: async (input) => {
 				let capturedUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 };
@@ -586,7 +588,7 @@ export class AppContext {
 				const agent = profiles.resolveSlot('research');
 				const review = profiles.resolveSlot('fast');
 				const candidatesFor = (modelType: ModelType) => buildUnifiedModelChoices(
-					modelRegistry,
+					this.runtimeRegistry.getModelCatalogRuntime(),
 					profiles.getAllProfiles(),
 					{ modelType },
 				).map((model) => {

@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Check, ChevronDown, Search, Sliders, Sparkles, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger, Pill, Segmented } from '@/ui/components/primitives';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { refreshLocalProfileModelCatalogs } from '@/core/providers/refreshLocalProfileModelCatalogs';
 import { highlightMatch } from '@/ui/view/settings/components/model-display-utils';
 import {
 	buildProfileModelItems,
@@ -23,6 +22,7 @@ import type { Profile } from '@/core/profiles/types';
 import type { ModelType } from '@/core/providers/types';
 import { useChatStudioStrings } from '../../chatStudioStringsContext';
 import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 
 /**
  * Profile-qualified model selector (chat-studio §8.5 / COMP-05).
@@ -33,7 +33,7 @@ import { PEAK_CONTROL_KEY_TIP_KEYS } from '@/ui/keyboard/config/KeyboardNavigati
  * models grouped by ENABLED profile. Rows use a provider monogram + displayName
  * primary + `id · provider` sub + neutral (catalog-declared) capability tags.
  * Search/filter/floor logic is unchanged — only presentation was aligned.
- * Data comes only from ProfileRegistry + modelRegistry — no second catalog.
+ * Data comes only from enabled Profiles + the shared model-catalog port.
  */
 
 export interface ComposerModelSelectorProps {
@@ -73,8 +73,8 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 	const [open, setOpen] = useState(false);
 	const [filterOpen, setFilterOpen] = useState(false);
 	const [filter, setFilter] = useState<ModelFilterState>(emptyModelFilter());
-	const [catalogRevision, setCatalogRevision] = useState(0);
 	const resolvedProfiles = profiles ?? ProfileRegistry.getInstance().getAllProfiles();
+	const modelCatalog = useModelCatalog(resolvedProfiles);
 	const profileCatalogKey = resolvedProfiles
 		.map((profile) => `${profile.id}:${profile.kind}:${profile.enabled}:${profile.baseUrl}`)
 		.join('|');
@@ -86,18 +86,9 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 		setFilterOpen(false);
 	};
 
-	useEffect(() => {
-		if (!open) return;
-		let active = true;
-		void refreshLocalProfileModelCatalogs(resolvedProfiles).then((changed) => {
-			if (active && changed) setCatalogRevision((revision) => revision + 1);
-		});
-		return () => { active = false; };
-	}, [open, profileCatalogKey]);
-
 	const allItems = useMemo(
-		() => buildProfileModelItems(resolvedProfiles).filter((item) => !modelType || item.modelType === modelType),
-		[resolvedProfiles, profileCatalogKey, catalogRevision, modelType],
+		() => buildProfileModelItems(modelCatalog, resolvedProfiles).filter((item) => !modelType || item.modelType === modelType),
+		[modelCatalog, resolvedProfiles, profileCatalogKey, modelCatalog.getRevision(), modelType],
 	);
 	const filtered = useMemo(() => filterProfileModelItems(allItems, filter), [allItems, filter]);
 	const groups = useMemo(() => groupByProfile(filtered), [filtered]);

@@ -8,9 +8,10 @@
 import type { AppHandle as App } from '@/core/ports/AppHandle';
 import type { VaultFileRef as TFile } from '@/core/ports/VaultFileRef';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
 import { isMobile } from '@/core/platform';
 import type { EnvironmentSnapshot, ProfileSummary } from './types';
+import type { ModelCatalogPort } from '@/core/ports/ModelCatalogPort';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 
 const DEFAULT_RAM_GB = 8;
 const VAULT_SAMPLE_SIZE = 60;
@@ -21,12 +22,13 @@ export interface DetectOptions {
     /** Override RAM in tests. */
     ramGB?: number;
     /** Skip vault sampling (tests / mobile-cold-start). */
-    skipLanguageProbe?: boolean;
+	skipLanguageProbe?: boolean;
+	modelCatalog?: ModelCatalogPort;
 }
 
 export async function detectEnvironment(opts: DetectOptions): Promise<EnvironmentSnapshot> {
     const [ollama, profiles, chineseRatio] = await Promise.all([
-        probeOllama(),
+        probeOllama(opts.modelCatalog),
         summarizeProfiles(),
         opts.skipLanguageProbe ? Promise.resolve(0) : probeChineseRatio(opts.app),
     ]);
@@ -58,7 +60,7 @@ function detectRamGB(): number {
     return DEFAULT_RAM_GB;
 }
 
-async function probeOllama(): Promise<{ running: boolean; models: string[] }> {
+async function probeOllama(modelCatalog?: ModelCatalogPort): Promise<{ running: boolean; models: string[] }> {
     const reg = ProfileRegistry.getInstance();
     const baseUrls = new Set<string>();
     for (const p of reg.getAllProfiles()) {
@@ -66,16 +68,21 @@ async function probeOllama(): Promise<{ running: boolean; models: string[] }> {
     }
     if (baseUrls.size === 0) baseUrls.add('http://localhost:11434');
 
-    for (const url of baseUrls) {
-        const models = await fetchOllamaModels(url);
-        if (models.length > 0) return { running: true, models };
+	if (modelCatalog) {
+		for (const profile of reg.getAllProfiles().filter((candidate) => candidate.kind === 'ollama' && candidate.enabled)) {
+			await modelCatalog.refreshProfile(profile);
+			const catalogId = profileModelCatalogId(profile);
+			const models = catalogId ? modelCatalog.getModelsForProvider(catalogId).map((model) => model.id) : [];
+			if (models.length > 0) return { running: true, models };
+		}
     }
-    // Daemon may be up with no models — distinguish that with a HEAD check.
+    // Daemon may be up with no models — use its version endpoint, not a second
+	// model-list request, to distinguish that state.
     for (const url of baseUrls) {
         try {
             const ctl = new AbortController();
             const t = setTimeout(() => ctl.abort(), 1500);
-            const res = await fetch(`${url}/api/tags`, { signal: ctl.signal });
+            const res = await fetch(`${url}/api/version`, { signal: ctl.signal });
             clearTimeout(t);
             if (res.ok) return { running: true, models: [] };
         } catch {

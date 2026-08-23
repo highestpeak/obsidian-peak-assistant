@@ -22,7 +22,7 @@ assert.ok(copilot.includes('source: \'automatic\''), 'the prompt marks document 
 assert.ok(copilot.includes('formatCopilotContextLabel'), 'the prompt displays concise body context');
 assert.ok(copilot.includes('<CopilotModelSelector'), 'the prompt retains a task-local model selector');
 assert.ok(
-	copilot.includes('buildProfileModelItems(profiles)'),
+	copilot.includes('buildProfileModelItems(modelCatalog, profiles)'),
 	'the model selector reuses the shared profile-qualified catalog rather than duplicating model data',
 );
 assert.equal(

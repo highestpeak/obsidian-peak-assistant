@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/ui/react/lib/utils';
-import { modelRegistry } from '@/core/providers/model-registry';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import type { ModelCapabilities } from '@/core/providers/types';
 import { CapTags, highlightMatch } from './model-display-utils';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
+import type { ModelCatalogReader } from '@/core/providers/model-selection';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 
 export interface ModelComboboxProps {
 	value: string;
@@ -38,24 +39,11 @@ interface ModelItem {
 	group?: string;
 }
 
-function buildModelList(providerKind: ProfileKind, profile?: Pick<Profile, 'id' | 'kind'>): ModelItem[] {
+function buildModelList(catalog: ModelCatalogReader, providerKind: ProfileKind, profile?: Pick<Profile, 'id' | 'kind'>): ModelItem[] {
 	const catalogId = profile ? profileModelCatalogId(profile) : PROVIDER_CATALOG_MAP[providerKind];
 
-	if (providerKind === 'litellm' || providerKind === 'custom') {
-		// Combine all providers
-		const allIds = modelRegistry.getAllProviderIds();
-		const items: ModelItem[] = [];
-		for (const pid of allIds) {
-			for (const m of modelRegistry.getModelsForProvider(pid)) {
-				const group = m.id.includes('/') ? m.id.split('/')[0] : undefined;
-				items.push({ id: m.id, capabilities: m.capabilities, group });
-			}
-		}
-		return items;
-	}
-
 	if (catalogId) {
-		const models = modelRegistry.getModelsForProvider(catalogId);
+		const models = catalog.getModelsForProvider(catalogId);
 		const needsGrouping = GROUPED_KINDS.has(providerKind);
 		return models.map((m) => ({
 			id: m.id,
@@ -68,6 +56,7 @@ function buildModelList(providerKind: ProfileKind, profile?: Pick<Profile, 'id' 
 }
 
 export function ModelCombobox({ value, onChange, providerKind, profile, allowFreeText, placeholder, label }: ModelComboboxProps) {
+	const modelCatalog = useModelCatalog();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const [highlightIdx, setHighlightIdx] = useState(0);
@@ -75,7 +64,7 @@ export function ModelCombobox({ value, onChange, providerKind, profile, allowFre
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const allModels = useMemo(() => buildModelList(providerKind, profile), [providerKind, profile]);
+	const allModels = useMemo(() => buildModelList(modelCatalog, providerKind, profile), [modelCatalog, providerKind, profile, modelCatalog.getRevision()]);
 
 	const filtered = useMemo(() => {
 		if (!query) return allModels;

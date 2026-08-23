@@ -27,7 +27,7 @@ const models: Record<string, ModelMetaData[]> = {
 		{ id: 'chat-a', displayName: 'Chat A', capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false } },
 		{ id: 'chat-b', displayName: 'Chat B', capabilities: { vision: false, pdfInput: false, tools: true, webSearch: false } },
 	],
-	ollama: [
+	'ollama:ollama-1': [
 		{ id: 'local-no-tools', displayName: 'Local no tools', capabilities: { vision: false, pdfInput: false, tools: false, webSearch: false } },
 	],
 };

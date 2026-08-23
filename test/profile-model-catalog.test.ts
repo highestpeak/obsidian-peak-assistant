@@ -11,7 +11,10 @@ const second = createPresetProfile('lmstudio', { id: 'lm-two' });
 assert.equal(profileModelCatalogId(first), 'lmstudio:lm-one');
 assert.equal(profileModelCatalogId(second), 'lmstudio:lm-two');
 assert.notEqual(profileModelCatalogId(first), profileModelCatalogId(second));
-assert.equal(profileModelCatalogId(createPresetProfile('ollama')), 'ollama');
+const ollama = createPresetProfile('ollama', { id: 'ollama-one' });
+const openrouter = createPresetProfile('openrouter', { id: 'router-one' });
+assert.equal(profileModelCatalogId(ollama), 'ollama:ollama-one');
+assert.equal(profileModelCatalogId(openrouter), 'openrouter:router-one');
 assert.ok(
 	modelRegistry.getModelsForProvider('openai').some((model) => model.id === 'text-embedding-3-small' && model.modelType === ModelType.EMBEDDING),
 	'OpenAI embedding choices must be typed as embeddings, never inferred from a chat model name',

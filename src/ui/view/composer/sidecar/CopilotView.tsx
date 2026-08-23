@@ -58,6 +58,7 @@ import {
 	useChatStudioStrings,
 } from '@/ui/view/chat-view/chatStudioStringsContext';
 import { buildProfileModelItems } from '@/ui/component/model-picker/modelPickerData';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 import { useComposerChrome } from '../chrome/ComposerChromeContext';
 import { BriefView } from './BriefView';
 import { RunReceiptCard } from './RunReceiptCard';
@@ -413,8 +414,9 @@ function CopilotModelSelector({
 	profiles: readonly import('@/core/profiles/types').Profile[];
 }): React.ReactElement {
 	const strings = useChatStudioStrings();
+	const modelCatalog = useModelCatalog(profiles);
 	const [open, setOpen] = React.useState(false);
-	const items = React.useMemo(() => buildProfileModelItems(profiles), [profiles]);
+	const items = React.useMemo(() => buildProfileModelItems(modelCatalog, profiles), [modelCatalog, profiles, modelCatalog.getRevision()]);
 	const selected = selection.mode === 'fixed'
 		? items.find((item) => item.profileId === selection.profileId && item.modelId === selection.modelId)
 		: null;

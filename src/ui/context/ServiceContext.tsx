@@ -38,6 +38,7 @@ import type MyPlugin from 'main';
 import type { PeakKeyboardNavigationPort } from '@/ui/keyboard/KeyboardNavigationPort';
 import type { CommunityExplanationPort } from '@/service/search/community/CommunityExplanationService';
 import type { GraphNodeExplanationPort } from '@/service/search/community/GraphNodeExplanationService';
+import type { ModelCatalogPort } from '@/core/ports/ModelCatalogPort';
 
 /** T13: Usage-telemetry bundle mirrored from `AppRuntimeRegistry.usageServices`. */
 export interface UsageServicesCtx {
@@ -142,6 +143,7 @@ interface ServiceContextValue {
 	pluginCommandGateway: PluginCommandGatewayPort | null;
 	/** App-owned cross-surface keyboard zone/layer runtime. */
 	keyboardNavigation: PeakKeyboardNavigationPort | null;
+	modelCatalog: ModelCatalogPort;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -197,7 +199,8 @@ export const ServiceProvider: React.FC<{
 	quickSearchLauncher?: QuickSearchLauncherPort | null;
 	pluginCommandGateway?: PluginCommandGatewayPort | null;
 	keyboardNavigation?: PeakKeyboardNavigationPort | null;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null, resultSubgraph = null, communityExplanation = null, graphNodeExplanation = null, contextualGraph = null, quickSearchLauncher = null, pluginCommandGateway = null, keyboardNavigation = null }) => {
+	modelCatalog: ModelCatalogPort;
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, modelCatalog, debugTracePort = null, headingMode = null, resultSubgraph = null, communityExplanation = null, graphNodeExplanation = null, contextualGraph = null, quickSearchLauncher = null, pluginCommandGateway = null, keyboardNavigation = null }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -237,7 +240,8 @@ export const ServiceProvider: React.FC<{
 		quickSearchLauncher,
 		pluginCommandGateway,
 		keyboardNavigation,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode, resultSubgraph, communityExplanation, graphNodeExplanation, contextualGraph, quickSearchLauncher, pluginCommandGateway, keyboardNavigation]);
+		modelCatalog,
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode, resultSubgraph, communityExplanation, graphNodeExplanation, contextualGraph, quickSearchLauncher, pluginCommandGateway, keyboardNavigation, modelCatalog]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

@@ -2,15 +2,15 @@
  * Shared profile-qualified model picker data + filter logic (chat-studio §8.5).
  *
  * Data source is the SAME truth as Settings' RoleModelPicker: enabled
- * Profiles from ProfileRegistry + modelRegistry catalog metadata. No second
+ * Profiles plus metadata from the injected shared catalog reader. No second
  * catalog. Filters use AND semantics; models with UNKNOWN values for a
  * positively-selected filter do NOT pass (never inflate capabilities).
  */
 
-import { modelRegistry } from '@/core/providers/model-registry';
+import type { ModelCatalogReader } from '@/core/providers/model-selection';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
-import type { ModelCapabilities, ModelTokenLimits } from '@/core/providers/types';
+import type { ModelCapabilities, ModelTokenLimits, ModelType } from '@/core/providers/types';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 
 /**
@@ -33,15 +33,16 @@ export interface ProfileModelItem {
 	displayName?: string;
 	capabilities?: ModelCapabilities;
 	tokenLimits?: ModelTokenLimits;
+	modelType?: ModelType;
 }
 
-export function buildProfileModelItems(profiles: readonly Profile[]): ProfileModelItem[] {
+export function buildProfileModelItems(catalog: ModelCatalogReader, profiles: readonly Profile[]): ProfileModelItem[] {
 	const items: ProfileModelItem[] = [];
 	for (const profile of profiles) {
 		if (profile.enabled === false) continue;
 		const catalogId = profileModelCatalogId(profile);
 		if (!catalogId) continue;
-		const models = modelRegistry.getModelsForProvider(catalogId);
+		const models = catalog.getModelsForProvider(catalogId);
 		for (const model of models) {
 			items.push({
 				profileId: profile.id,
@@ -50,7 +51,8 @@ export function buildProfileModelItems(profiles: readonly Profile[]): ProfileMod
 				modelId: model.id,
 				displayName: model.displayName,
 				capabilities: model.capabilities,
-				tokenLimits: modelRegistry.getModelTokenLimits(catalogId, model.id),
+				tokenLimits: model.tokenLimits,
+				modelType: model.modelType,
 			});
 		}
 	}

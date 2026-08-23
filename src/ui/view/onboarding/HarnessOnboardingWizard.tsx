@@ -31,8 +31,6 @@ import {
 	buildUnifiedModelChoices,
 	type ModelCapabilityRequirement,
 } from '@/core/providers/model-selection';
-import { modelRegistry } from '@/core/providers/model-registry';
-import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import { collapseDuplicateLocalProfiles, localProfileConnectionIdentity } from '@/core/profiles/profile-connection-identity';
 import type { IndexReadinessProjection } from '@/core/ports/IndexRunCoordinatorPort';
 import {
@@ -87,7 +85,7 @@ const ROLE_REQUIREMENTS: Record<keyof OnboardingRoleModels, ModelCapabilityRequi
 type SaveState = 'saved' | 'saving' | 'failed';
 
 export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: HarnessOnboardingWizardProps) {
-	const { settings, settingsActions } = useServiceContext();
+	const { settings, settingsActions, modelCatalog } = useServiceContext();
 	const registry = ProfileRegistry.getInstance();
 	const persisted = settings.onboarding;
 	const shouldResume = !isReRun && persisted.completedAt === null && persisted.updatedAt > 0;
@@ -188,7 +186,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 		if (state.step !== 'core-models') return;
 		for (const role of Object.keys(ROLE_REQUIREMENTS) as Array<keyof OnboardingRoleModels>) {
 			dispatch({ type: 'model-check', role, status: 'checking' });
-			const ready = assignmentIsUsable(state.models[role], readyProfiles, ROLE_REQUIREMENTS[role]);
+			const ready = assignmentIsUsable(modelCatalog, state.models[role], readyProfiles, ROLE_REQUIREMENTS[role]);
 			dispatch({ type: 'model-check', role, status: ready ? 'ready' : 'failed' });
 		}
 	}, [dispatch, readyProfiles, state.models, state.step]);
@@ -269,9 +267,9 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 				message: string;
 			}> = [
 				{ key: 'connection', status: readyProfiles.length > 0 ? 'ready' : 'failed', message: readyProfiles.length > 0 ? 'One verified AI service is available.' : 'No verified AI service is available. Return to Connect AI and test one connection.' },
-				{ key: 'conversation', status: assignmentIsUsable(state.models.conversation, readyProfiles, ROLE_REQUIREMENTS.conversation) ? 'ready' : 'failed', message: 'Chat & writing needs a compatible model from a verified connection.' },
-				{ key: 'knowledge', status: assignmentIsUsable(state.models.knowledge, readyProfiles, ROLE_REQUIREMENTS.knowledge) ? 'ready' : 'failed', message: 'Search & analysis needs a compatible reasoning model.' },
-				{ key: 'agent', status: assignmentIsUsable(state.models.agent, readyProfiles, ROLE_REQUIREMENTS.agent) ? 'ready' : 'failed', message: 'Agent & tools needs a model that supports tool use.' },
+				{ key: 'conversation', status: assignmentIsUsable(modelCatalog, state.models.conversation, readyProfiles, ROLE_REQUIREMENTS.conversation) ? 'ready' : 'failed', message: 'Chat & writing needs a compatible model from a verified connection.' },
+				{ key: 'knowledge', status: assignmentIsUsable(modelCatalog, state.models.knowledge, readyProfiles, ROLE_REQUIREMENTS.knowledge) ? 'ready' : 'failed', message: 'Search & analysis needs a compatible reasoning model.' },
+				{ key: 'agent', status: assignmentIsUsable(modelCatalog, state.models.agent, readyProfiles, ROLE_REQUIREMENTS.agent) ? 'ready' : 'failed', message: 'Agent & tools needs a model that supports tool use.' },
 				{ key: 'sqlite', status: state.betterSqlite === 'ready' ? 'ready' : 'failed', message: state.betterSqliteMessage || 'Better SQLite has not passed its compatibility and read/write checks.' },
 			];
 			for (const check of checks) {
@@ -323,10 +321,7 @@ export function HarnessOnboardingWizard({ isReRun, initialStep, onClose }: Harne
 
 	function recordEvidence(result: ConnectionEvidence) {
 		const profile = registry.getProfileById(result.profileId);
-		if (profile && result.catalogModelIds.length > 0) {
-			const catalogId = profileModelCatalogId(profile);
-			if (catalogId) modelRegistry.mergeRuntimeModels(catalogId, result.catalogModelIds);
-		}
+		if (profile && result.ready) void modelCatalog.refreshProfile(profile);
 		setEvidence((current) => ({ ...current, [result.profileId]: result }));
 		dispatch({ type: 'connection-check', profileId: result.profileId, status: result.ready ? 'ready' : 'error' });
 	}
@@ -779,8 +774,8 @@ function LaunchCard({ icon: Icon, title, detail, disabled = false, onClick }: { 
 	return <Button variant="ghost" disabled={disabled} data-available={disabled ? 'false' : 'true'} onClick={onClick}><Icon size={22} /><span><strong>{title}</strong><small>{detail}</small></span><ChevronRight size={18} /></Button>;
 }
 
-function assignmentIsUsable(assignment: ModelAssignment, profiles: Profile[], requirement: ModelCapabilityRequirement): boolean {
-	const choices = buildUnifiedModelChoices(modelRegistry, profiles, requirement).filter((choice) => choice.selectable);
+function assignmentIsUsable(catalog: import('@/core/providers/model-selection').ModelCatalogReader, assignment: ModelAssignment, profiles: Profile[], requirement: ModelCapabilityRequirement): boolean {
+	const choices = buildUnifiedModelChoices(catalog, profiles, requirement).filter((choice) => choice.selectable);
 	if (assignment.mode === 'automatic') return choices.length > 0;
 	return choices.some((choice) => choice.profileId === assignment.config.profileId && choice.modelId === assignment.config.modelId);
 }

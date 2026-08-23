@@ -203,7 +203,11 @@ export function composeSettingsActions(appContext: AppContext): SettingsActions 
 				}
 				return { ready: true, message: 'Better SQLite, database integrity and full-text search are ready.', checks: [binary.message, ...health.lines, 'FTS read/write: ok'] };
 			},
-			detectHarnessEnvironment: (opts) => detectEnvironment({ app, ...opts }),
+			detectHarnessEnvironment: (opts) => detectEnvironment({
+				app,
+				...opts,
+				modelCatalog: appContext.runtimeRegistry.getModelCatalogRuntime(),
+			}),
 		},
 		maintenance: {
 			index: {

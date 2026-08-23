@@ -5,8 +5,6 @@ const STATIC_CATALOGS: Partial<Record<ProfileKind, string>> = {
 	openai: 'openai',
 	google: 'gemini',
 	perplexity: 'perplexity',
-	ollama: 'ollama',
-	openrouter: 'openrouter',
 	simulator: 'simulator',
 };
 
@@ -16,7 +14,9 @@ const STATIC_CATALOGS: Partial<Record<ProfileKind, string>> = {
  * loaded models and must never leak choices into each other.
  */
 export function profileModelCatalogId(profile: Pick<Profile, 'id' | 'kind'>): string | null {
-	if (profile.kind === 'lmstudio') return `lmstudio:${profile.id}`;
+	if (profile.kind === 'ollama' || profile.kind === 'lmstudio' || profile.kind === 'openrouter') {
+		return `${profile.kind}:${profile.id}`;
+	}
 	return STATIC_CATALOGS[profile.kind] ?? null;
 }
 

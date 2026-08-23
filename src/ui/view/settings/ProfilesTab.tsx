@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { refreshLocalProfileModelCatalogs } from '@/core/providers/refreshLocalProfileModelCatalogs';
+import React, { useState } from 'react';
 import { Plus, ChevronRight } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
@@ -13,6 +12,7 @@ import { AddProfileGrid } from './components/AddProfileGrid';
 import { FieldRow as SharedFieldRow } from './components/FieldRow';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -54,7 +54,6 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
     const [showAddGrid, setShowAddGrid] = useState(false);
     const [tick, setTick] = useState(0);
     const [advancedOpen, setAdvancedOpen] = useState(false);
-	const discoveredEndpointsRef = useRef(new Set<string>());
 
     const bump = () => {
 		setTick((t) => t + 1);
@@ -64,20 +63,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false, 
     // Derived from registry (tick forces re-read)
     void tick;
     const profiles = registry.getAllProfiles();
-
-	useEffect(() => {
-		const localProfiles = profiles.filter((profile) => profile.enabled && (profile.kind === 'ollama' || profile.kind === 'lmstudio'));
-		const undiscoveredProfiles = localProfiles.filter((profile) => {
-			const discoveryKey = `${profile.id}:${profile.baseUrl}`;
-			if (discoveredEndpointsRef.current.has(discoveryKey)) return false;
-			discoveredEndpointsRef.current.add(discoveryKey);
-			return true;
-		});
-		if (undiscoveredProfiles.length === 0) return;
-		void refreshLocalProfileModelCatalogs(undiscoveredProfiles).then((changed) => {
-			if (changed) bump();
-		});
-	}, [profiles]);
+	useModelCatalog(profiles);
     // --- Handlers ---
 
     const handleUpdate = (id: string, updates: Partial<Profile>) => {

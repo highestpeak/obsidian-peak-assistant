@@ -44,7 +44,7 @@ assert.match(workspace, /Choose a scope/);
 assert.match(workspace, /Entire Vault/);
 assert.match(workspace, /same canonical decisions/);
 assert.match(workspace, /function OperationModelPicker/);
-assert.match(workspace, /modelRegistry/);
+assert.match(workspace, /useOptionalServiceContext\(\)\?\.modelCatalog/);
 assert.match(workspace, /createPortal/);
 assert.doesNotMatch(workspace, /UnifiedModelPicker/);
 assert.doesNotMatch(workspace, /<select value=\{operation\.model\}/);

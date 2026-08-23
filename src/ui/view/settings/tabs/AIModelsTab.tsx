@@ -9,14 +9,12 @@ import type { LLMOutputControlSettings } from '@/core/providers/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { PRODUCT_MODEL_FEATURES, type ProductModelFeature } from '@/core/settings/peakSettingsContract';
 import { buildUnifiedModelChoices } from '@/core/providers/model-selection';
-import { modelRegistry } from '@/core/providers/model-registry';
-import { refreshOpenRouterCatalog } from '@/core/providers/openrouter-catalog';
 import { Button } from '@/ui/components/primitives';
 import { ProfilesTab } from '../ProfilesTab';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { UnifiedModelPicker } from '../components/UnifiedModelPicker';
 import { PROVIDER_LABELS } from '../components/ProviderIcon';
-import { uiHttpClient } from '@/ui/util/uiHttpClient';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 
 const FEATURE_ICONS = {
 	'chat-studio': MessageSquare,
@@ -320,9 +318,9 @@ function AdvancedControls({ assignmentKey, value, onChange }: { assignmentKey: s
 function CatalogManager({ settings, settingsUpdates, profiles }: { settings: MyPluginSettings; settingsUpdates: SettingsUpdates; profiles: ReturnType<ProfileRegistry['getAllProfiles']> }) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
-	const [catalogRevision, setCatalogRevision] = useState(0);
 	const [checking, setChecking] = useState(false);
-	const choices = useMemo(() => buildUnifiedModelChoices(modelRegistry, profiles, {}), [catalogRevision, profiles]);
+	const modelCatalog = useModelCatalog(profiles);
+	const choices = useMemo(() => buildUnifiedModelChoices(modelCatalog, profiles, {}), [modelCatalog, profiles, modelCatalog.getRevision()]);
 	const filtered = choices.filter((choice) => `${choice.profileName} ${choice.modelId}`.toLowerCase().includes(query.toLowerCase()));
 	function update(patch: Partial<MyPluginSettings['modelCatalog']>) {
 		void settingsUpdates.update('modelCatalog', { ...settings.modelCatalog, ...patch });
@@ -330,10 +328,7 @@ function CatalogManager({ settings, settingsUpdates, profiles }: { settings: MyP
 	async function checkCatalog() {
 		setChecking(true);
 		try {
-			const result = await refreshOpenRouterCatalog(uiHttpClient, settings.modelCatalog);
-			if (result.catalog) modelRegistry.mergeProviderData(result.catalog);
-			await settingsUpdates.update('modelCatalog', result.settings);
-			setCatalogRevision((value) => value + 1);
+			await modelCatalog.refreshProfiles(profiles);
 		} finally {
 			setChecking(false);
 		}
@@ -347,7 +342,7 @@ function CatalogManager({ settings, settingsUpdates, profiles }: { settings: MyP
 			{open && <div className="pk-reference-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setOpen(false); }}><div className="pk-reference-modal pk-reference-modal--catalog" role="dialog" aria-modal="true" aria-label="Manage model catalog">
 				<header><span><strong>Manage model catalog</strong><small>Models stay grouped by connection. Hidden models remain available to existing fixed assignments.</small></span><Button variant="ghost" className="pk-reference-modal__close" onClick={() => setOpen(false)} aria-label="Close"><X size={17} /></Button></header>
 				<div className="pk-reference-modal__body pk-catalog-manager">
-					<label className="pk-settings-field-row"><span><strong>OpenRouter catalog JSON</strong><small>{catalogStatus(settings.modelCatalog)}</small></span><span className="pk-catalog-source"><input value={settings.modelCatalog.openRouterCatalogUrl} onChange={(event) => update({ openRouterCatalogUrl: event.target.value, lastError: null })} placeholder="Project URL or GitHub Gist raw URL" /><Button variant="secondary" onClick={() => void checkCatalog()} disabled={checking}>{checking ? <RefreshCw size={15} className="pk-spin" /> : <RefreshCw size={15} />} {checking ? 'Checking…' : 'Check now'}</Button></span></label>
+					<div className="pk-settings-field-row"><span><strong>Provider model catalogs</strong><small>Lists come from each configured connection. OpenRouter is filtered by the current API key.</small></span><Button variant="secondary" onClick={() => void checkCatalog()} disabled={checking}>{checking ? <RefreshCw size={15} className="pk-spin" /> : <RefreshCw size={15} />} {checking ? 'Refreshing…' : 'Refresh all'}</Button></div>
 					<input className="pk-catalog-manager__search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search models to hide or rename" />
 					<div className="pk-catalog-manager__list">
 						{filtered.length === 0 && <div className="pk-reference-empty">No models match this filter.</div>}
@@ -361,12 +356,6 @@ function CatalogManager({ settings, settingsUpdates, profiles }: { settings: MyP
 			</div></div>}
 		</section>
 	);
-}
-
-function catalogStatus(catalog: MyPluginSettings['modelCatalog']) {
-	if (catalog.lastError) return `Last check failed: ${catalog.lastError}`;
-	if (!catalog.lastCheckedAt) return 'Conditional GET keeps the last working catalog if the network or JSON fails.';
-	return `Checked ${new Date(catalog.lastCheckedAt).toLocaleString()}${catalog.cachedOpenRouterCatalog?.catalogVersion ? ` · ${catalog.cachedOpenRouterCatalog.catalogVersion}` : ''}`;
 }
 
 function CheckMark() {

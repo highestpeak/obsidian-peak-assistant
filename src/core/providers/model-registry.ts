@@ -269,6 +269,36 @@ export class ModelRegistry {
 		return changed;
 	}
 
+	/** Replace one runtime/profile bucket exactly, removing stale upstream models. */
+	public replaceRuntimeModels(providerId: string, runtimeModels: readonly ModelMetaData[]): boolean {
+		const key = normalizeProviderId(providerId);
+		const previous = this.getModelsForProvider(key);
+		const next = runtimeModels.map((model) => ({
+			...model,
+			displayName: model.displayName || model.id,
+			modelType: model.modelType ?? DEFAULT_MODEL_TYPE,
+		}));
+		if (JSON.stringify(previous) === JSON.stringify(next)) return false;
+
+		const models: InternalModelEntry[] = next.map((model) => ({
+			...model,
+			modelType: model.modelType ?? DEFAULT_MODEL_TYPE,
+			normalizedId: normalizeModelKey(model.id),
+		}));
+		const modelById = new Map<string, InternalModelEntry>();
+		for (const model of models) modelById.set(model.normalizedId, model);
+		this.providers.set(key, {
+			id: providerId,
+			name: this.providers.get(key)?.name ?? providerId,
+			defaultBaseUrl: this.providers.get(key)?.defaultBaseUrl ?? '',
+			icon: this.providers.get(key)?.icon,
+			models,
+			modelById,
+			modelByApiModelId: new Map(),
+		});
+		return true;
+	}
+
 	/**
 	 * Merge runtime-loaded provider data (from TemplateManager JSON) into the registry.
 	 * Overrides bundled catalog entries for matching providers; adds new providers.

@@ -3,6 +3,8 @@ import type { AppHandle as App } from '@/core/ports/AppHandle';
 import { ModelInfoForSwitch, LLMUsage, LLMStreamEvent, LLMRequestMessage, ModelTokenLimits } from '@/core/providers/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';
+import type { ModelCatalogReader } from '@/core/providers/model-selection';
+import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation } from './types';
@@ -78,6 +80,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	private profileService?: UserProfileService;
 	private generatedOutputs?: GeneratedOutputPersistenceRuntime;
 	private contextUpdateService?: ContextUpdateService;
+	private modelCatalog: ModelCatalogReader = modelRegistry;
 
 	get proj(): ProjectService {
 		if (!this._projectService) throw new Error('ProjectService not initialized. Call init() first.');
@@ -225,6 +228,11 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 				};
 			},
 		});
+	}
+
+	/** Bound by the app after its single model-catalog runtime is composed. */
+	setModelCatalogReader(catalog: ModelCatalogReader): void {
+		this.modelCatalog = catalog;
 	}
 
 	async migrateLegacyGeneratedOutputs(): Promise<{
@@ -599,28 +607,18 @@ ${sourcesList}${topicsList}
 
 	/**
 	 * Get all available models from all configured providers.
-	 * Uses the static model catalog (no runtime API calls).
-	 * Only returns models from enabled providers and enabled models.
+	 * Reads the app-owned, profile-qualified catalog snapshot. Discovery and
+	 * refresh are owned elsewhere; this method never performs provider I/O.
 	 */
 	async getAllAvailableModels(): Promise<ModelInfoForSwitch[]> {
-		const providerConfigs = this.settings.llmProviderConfigs ?? {};
 		const result: ModelInfoForSwitch[] = [];
-
-		for (const [providerId, config] of Object.entries(providerConfigs)) {
-			if (config?.enabled !== true) continue;
-			const models = modelRegistry.getModelsForProvider(providerId);
+		for (const profile of ProfileRegistry.getInstance().getAllProfiles()) {
+			if (!profile.enabled) continue;
+			const providerId = profileModelCatalogId(profile);
+			if (!providerId) continue;
+			const models = this.modelCatalog.getModelsForProvider(providerId);
 			for (const model of models) {
-				const modelConfigs = config.modelConfigs;
-				if (!modelConfigs) {
-					// No modelConfigs → all models default to enabled
-					result.push({ ...model, provider: providerId });
-					continue;
-				}
-				const modelConfig = modelConfigs[model.id];
-				if (modelConfig?.enabled === true) {
-					result.push({ ...model, provider: providerId });
-				}
-				// If modelConfig is missing or not enabled → skip
+				result.push({ ...model, provider: profile.kind });
 			}
 		}
 
@@ -629,7 +627,7 @@ ${sourcesList}${topicsList}
 		for (const endpoint of customEndpoints) {
 			if (!endpoint.enabled) continue;
 			const endpointProviderId = `custom:${endpoint.id}`;
-			const endpointModels = modelRegistry.getModelsForProvider(endpointProviderId);
+			const endpointModels = this.modelCatalog.getModelsForProvider(endpointProviderId);
 			for (const m of endpointModels) {
 				result.push({ ...m, provider: endpointProviderId });
 			}
@@ -656,7 +654,9 @@ ${sourcesList}${topicsList}
 	 * Get token limits for a specific model from the static model catalog.
 	 */
 	async getModelTokenLimits(model: string, provider: string): Promise<ModelTokenLimits | undefined> {
-		return modelRegistry.getModelTokenLimits(provider, model);
+		const profile = ProfileRegistry.getInstance().getAllProfiles().find((candidate) => candidate.kind === provider && candidate.enabled);
+		const catalogId = profile ? profileModelCatalogId(profile) : provider;
+		return this.modelCatalog.getModelsForProvider(catalogId ?? provider).find((candidate) => candidate.id === model)?.tokenLimits;
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

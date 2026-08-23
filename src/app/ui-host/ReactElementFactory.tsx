@@ -128,6 +128,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			quickSearchLauncher: composeQuickSearchLauncher(appContext),
 			pluginCommandGateway: appContext.runtimeRegistry.tryGetPluginCommandGatewayRuntime(),
 			keyboardNavigation: appContext.runtimeRegistry.tryGetKeyboardNavigationRuntime(),
+			modelCatalog: appContext.runtimeRegistry.getModelCatalogRuntime(),
 			children: React.createElement(Component, props as T)
 		}
 	);

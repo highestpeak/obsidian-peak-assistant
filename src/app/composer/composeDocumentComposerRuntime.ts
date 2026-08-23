@@ -20,7 +20,6 @@ import { loadComposerConfig, loadComposerTransactionConfig } from '@/ui/view/com
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from '@/ui/view/composer/sidecar/sidecarConfig';
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { modelRegistry } from '@/core/providers/model-registry';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import { getAIMediaFolder } from '@/core/config/folderPaths';
 import type { ComposerContentWidth, DefaultDocumentView } from '@/core/composer';
@@ -288,7 +287,7 @@ export async function composeDocumentComposerRuntime(
 				const profile = config.profile;
 				const catalogId = profileModelCatalogId(profile);
 				if (!catalogId) return [];
-				return modelRegistry.getModelsForProvider(catalogId).map((model) => ({
+				return AppContext.getInstance().runtimeRegistry.getModelCatalogRuntime().getModelsForProvider(catalogId).map((model) => ({
 					id: model.id,
 					displayName: model.displayName ?? model.id,
 					providerLabel: profile.name,

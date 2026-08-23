@@ -13,13 +13,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Cpu, Check } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { modelRegistry } from '@/core/providers/model-registry';
-import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
-import { fetchLMStudioModels } from '@/core/providers/lmstudio/fetchLMStudioModels';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { Chip } from '@/ui/components/primitives';
 import { useOnboardingStrings, type OnboardingStrings } from '@/ui/view/onboarding/onboardingStrings';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
+import type { ModelCatalogReader } from '@/core/providers/model-selection';
 
 const PROVIDER_CATALOG: Partial<Record<ProfileKind, string>> = {
     anthropic: 'claude',
@@ -66,6 +65,7 @@ export function BootstrapModelStep({
         () => (profileId ? ProfileRegistry.getInstance().getProfileById(profileId) : null),
         [profileId],
     );
+	const modelCatalog = useModelCatalog(profile ? [profile] : []);
 
     const [models, setModels] = useState<ModelOption[]>([]);
     const [loading, setLoading] = useState(false);
@@ -81,7 +81,8 @@ export function BootstrapModelStep({
             setLoading(true);
             setError(null);
             try {
-                const opts = await loadModelsForProfile(p);
+				await modelCatalog.refreshProfile(p);
+				const opts = loadModelsForProfile(modelCatalog, p);
                 if (!cancelled) setModels(opts);
             } catch (e) {
                 if (!cancelled) {
@@ -95,7 +96,7 @@ export function BootstrapModelStep({
         return () => {
             cancelled = true;
         };
-    }, [profile]);
+    }, [modelCatalog, profile]);
 
     useEffect(() => {
         if (!profile || selectedModelId || models.length === 0) return;
@@ -199,10 +200,10 @@ function ModelCard({
     );
 }
 
-async function loadModelsForProfile(profile: Profile): Promise<ModelOption[]> {
+function loadModelsForProfile(catalog: ModelCatalogReader, profile: Profile): ModelOption[] {
     if (profile.kind === 'ollama') {
-        const installed = await fetchOllamaModels(profile.baseUrl || 'http://localhost:11434');
-        return installed
+        return catalog.getModelsForProvider(profileModelCatalogId(profile) ?? '')
+			.map((model) => model.id)
             .filter((name) => OLLAMA_PREFERRED_RE.test(name))
             .sort((a, b) => sizeRank(a) - sizeRank(b))
             .map(
@@ -215,8 +216,8 @@ async function loadModelsForProfile(profile: Profile): Promise<ModelOption[]> {
     }
 
     if (profile.kind === 'lmstudio') {
-        const loaded = await fetchLMStudioModels(profile.baseUrl || 'http://127.0.0.1:1234/v1');
-        return loaded.map((id) => ({ id, displayName: id, recommended: false }));
+        return catalog.getModelsForProvider(profileModelCatalogId(profile) ?? '')
+			.map((model) => ({ id: model.id, displayName: model.displayName, recommended: false }));
     }
 
 	const catalogId = profileModelCatalogId(profile) ?? PROVIDER_CATALOG[profile.kind];
@@ -224,7 +225,7 @@ async function loadModelsForProfile(profile: Profile): Promise<ModelOption[]> {
         const candidates = [profile.fastModel, profile.primaryModel].filter((m) => !!m);
         return [...new Set(candidates)].map((id) => ({ id, displayName: id, recommended: false }));
     }
-    const meta = modelRegistry.getModelsForProvider(catalogId);
+    const meta = catalog.getModelsForProvider(catalogId);
     const recRe = RECOMMENDED_BY_KIND[profile.kind];
     return meta
         .filter((m) => (m.modelType ?? 'llm') === 'llm')

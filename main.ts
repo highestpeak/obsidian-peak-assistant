@@ -214,21 +214,6 @@ export default class MyPlugin extends Plugin {
 				console.warn('[Peak Assistant] Failed to load model registry templates; using bundled catalog.', e);
 			}
 
-			const cachedOpenRouterCatalog = this.settings.modelCatalog.cachedOpenRouterCatalog;
-			if (cachedOpenRouterCatalog) {
-				ModelRegistry.getInstance().mergeProviderData(cachedOpenRouterCatalog as { provider: string; models: Record<string, any> });
-			}
-			const catalogDue = !!this.settings.modelCatalog.openRouterCatalogUrl
-				&& (!this.settings.modelCatalog.lastCheckedAt || Date.now() - this.settings.modelCatalog.lastCheckedAt > 24 * 60 * 60 * 1000);
-			if (catalogDue) {
-				void import('@/core/providers/openrouter-catalog').then(async ({ refreshOpenRouterCatalog }) => {
-					const result = await refreshOpenRouterCatalog(obsidianHttpClient, this.settings.modelCatalog);
-					if (result.catalog) ModelRegistry.getInstance().mergeProviderData(result.catalog);
-					this.settings.modelCatalog = result.settings;
-					await this.saveSettings();
-				});
-			}
-
 			// Load curator catalog for the Agent Harness onboarding wizard.
 			try {
 				const { loadCuratorCatalog } = await import('@/service/agents/harness/curator');
@@ -319,9 +304,13 @@ export default class MyPlugin extends Plugin {
 			this.settings,
 			aiAnalysisHistoryService,
 		);
+		void appContext.runtimeRegistry.getModelCatalogRuntime().refreshProfiles(
+			ProfileRegistry.getInstance().getAllProfiles(),
+		);
 		this.aiServiceManager.setGeneratedOutputPersistenceRuntime(
 			appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 		);
+		this.aiServiceManager.setModelCatalogReader(appContext.runtimeRegistry.getModelCatalogRuntime());
 		const keyboardNavigation = composePeakKeyboardRuntime();
 		appContext.runtimeRegistry.setKeyboardNavigationRuntime(keyboardNavigation);
 

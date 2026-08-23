@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, Check, AlertTriangle } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import { modelRegistry } from '@/core/providers/model-registry';
 import { ProviderIcon } from './ProviderIcon';
 import { CapTags, highlightMatch } from './model-display-utils';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 import type { ModelCapabilities } from '@/core/providers/types';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
+import type { ModelCatalogReader } from '@/core/providers/model-selection';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 
 const EXPENSIVE_FAST_MODEL_RE = /\b(sonnet|opus)\b/i;
 function isExpensiveForFast(modelId: string): boolean {
@@ -21,13 +22,13 @@ interface PickerItem {
     capabilities?: ModelCapabilities;
 }
 
-function buildPickerItems(profiles: Profile[], modelFilter?: (modelId: string) => boolean): PickerItem[] {
+function buildPickerItems(catalog: ModelCatalogReader, profiles: Profile[], modelFilter?: (modelId: string) => boolean): PickerItem[] {
     const items: PickerItem[] = [];
     for (const profile of profiles) {
         if (profile.enabled === false) continue;
 		const catalogId = profileModelCatalogId(profile);
         if (!catalogId) continue;
-        const models = modelRegistry.getModelsForProvider(catalogId);
+        const models = catalog.getModelsForProvider(catalogId);
         for (const model of models) {
             if (modelFilter && !modelFilter(model.id)) continue;
             items.push({
@@ -52,6 +53,7 @@ export interface RoleModelPickerProps {
 }
 
 export function RoleModelPicker({ role, activeConfig, profiles, onSelect, onClear, modelFilter }: RoleModelPickerProps) {
+	const modelCatalog = useModelCatalog(profiles);
     const isFastRole = role === 'agent-fast';
     const guardedSelect = (config: RoleConfig) => {
         if (isFastRole && isExpensiveForFast(config.modelId)) {
@@ -69,7 +71,7 @@ export function RoleModelPicker({ role, activeConfig, profiles, onSelect, onClea
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    const allItems = useMemo(() => buildPickerItems(profiles, modelFilter), [profiles, modelFilter]);
+    const allItems = useMemo(() => buildPickerItems(modelCatalog, profiles, modelFilter), [modelCatalog, profiles, modelFilter, modelCatalog.getRevision()]);
 
     const filtered = useMemo(() => {
         if (!query) return allItems;

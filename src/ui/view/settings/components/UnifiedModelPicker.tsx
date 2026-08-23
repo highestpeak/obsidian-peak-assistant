@@ -2,7 +2,6 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import type { Profile, RoleConfig } from '@/core/profiles/types';
 import type { ModelCapabilities } from '@/core/providers/types';
-import { modelRegistry } from '@/core/providers/model-registry';
 import {
 	buildUnifiedModelChoices,
 	type ModelCapabilityRequirement,
@@ -10,6 +9,7 @@ import {
 import { Button, Popover, PopoverContent, PopoverTrigger } from '@/ui/components/primitives';
 import { ProviderIcon } from './ProviderIcon';
 import { cn } from '@/ui/react/lib/utils';
+import { useModelCatalog } from '@/ui/hooks/useModelCatalog';
 
 export interface UnifiedModelPickerProps {
 	profiles: Profile[];
@@ -48,6 +48,7 @@ export function UnifiedModelPicker({
 	align = 'end',
 	portalContainer,
 }: UnifiedModelPickerProps) {
+	const modelCatalog = useModelCatalog(profiles);
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const [filter, setFilter] = useState<keyof ModelCapabilities | null>(null);
@@ -55,8 +56,8 @@ export function UnifiedModelPicker({
 	const searchRef = useRef<HTMLInputElement>(null);
 	const hidden = useMemo(() => new Set(hiddenModels), [hiddenModels]);
 	const choices = useMemo(
-		() => buildUnifiedModelChoices(modelRegistry, profiles, requirement),
-		[profiles, requirement],
+		() => buildUnifiedModelChoices(modelCatalog, profiles, requirement),
+		[modelCatalog, profiles, requirement, modelCatalog.getRevision()],
 	);
 	const visible = useMemo(() => {
 		const normalized = query.trim().toLowerCase();
@@ -81,6 +82,7 @@ export function UnifiedModelPicker({
 	const selected = value
 		? choices.find((choice) => choice.profileId === value.profileId && choice.modelId === value.modelId)
 		: null;
+	const selectedProfile = value ? profiles.find((profile) => profile.id === value.profileId) : null;
 
 	function choose(next: RoleConfig | null) {
 		onChange(next);
@@ -107,8 +109,8 @@ export function UnifiedModelPicker({
 					aria-haspopup="listbox"
 					aria-expanded={open}
 				>
-					<span className="pk-model-trigger__provider">{selected?.profileName ?? automaticLabel}</span>
-					<span className="pk-model-trigger__model">{selected ? aliases[`${selected.profileId}/${selected.modelId}`] ?? selected.displayName : 'Best compatible model'}</span>
+					<span className="pk-model-trigger__provider">{selected?.profileName ?? selectedProfile?.name ?? automaticLabel}</span>
+					<span className="pk-model-trigger__model">{selected ? aliases[`${selected.profileId}/${selected.modelId}`] ?? selected.displayName : value ? `${value.modelId} · unavailable` : 'Best compatible model'}</span>
 					<ChevronDown size={15} />
 				</Button>
 			</PopoverTrigger>
