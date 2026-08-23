@@ -1214,11 +1214,18 @@ function RunProgress({ snapshot, runtime, onBack, onCompleted, onStartNew }: {
 	onStartNew: () => void;
 }) {
 	const run = snapshot.run;
+	const [clockNow, setClockNow] = useState(() => Date.now());
 	const liveStageId = deriveLiveStageId(run);
 	const [inspectedStageId, setInspectedStageId] = useState<VaultIntelligenceSnapshot['run']['stages'][number]['id'] | null>(null);
 	const [stageMenuOpen, setStageMenuOpen] = useState(false);
 	const stageMenuRef = useRef<HTMLDivElement>(null);
 	useEffect(() => setInspectedStageId(null), [run.id]);
+	useEffect(() => {
+		setClockNow(Date.now());
+		if (run.status !== 'running' && run.status !== 'stopping') return;
+		const timer = globalThis.setInterval(() => setClockNow(Date.now()), 1_000);
+		return () => globalThis.clearInterval(timer);
+	}, [run.id, run.status]);
 	useEffect(() => {
 		if (!stageMenuOpen) return;
 		const closeOutside = (event: PointerEvent) => {
@@ -1255,8 +1262,20 @@ function RunProgress({ snapshot, runtime, onBack, onCompleted, onStartNew }: {
 	const currentStage = run.stages.find((stage) => stage.id === focusedStageId) ?? run.stages[0] ?? null;
 	const relevantEvents = snapshot.events.filter((event) => !run.id || event.runId === run.id).slice(-8).reverse();
 	const liveHeadline = runStageHeadline(liveStageId, run.status);
-	const elapsedMs = run.startedAt ? Math.max(0, Date.now() - run.startedAt) : 0;
+	const elapsedMs = run.startedAt ? Math.max(0, clockNow - run.startedAt) : 0;
 	const objectsPerMinute = elapsedMs > 0 ? Math.round(progressMetric.processed / elapsedMs * 60_000) : 0;
+	const activeOperations = run.operations.filter((operation) => operation.status === 'running');
+	const activeOperation = activeOperations.find((operation) => operation.currentPath) ?? activeOperations[0] ?? null;
+	const liveActivityTitle = activeOperation
+		? activeOperation.id === 'plan-scan'
+			? `Planning this Scan with ${activeOperation.model}`
+			: `${operationLabel(activeOperation.id)} is working`
+		: `${stageLabel(liveStageId ?? 'discover')} is working`;
+	const liveActivityDetail = activeOperation?.currentPath
+		? `${activeOperation.currentPath} · ${activeOperation.provider}`
+		: activeOperation
+			? `Waiting for the next response from ${activeOperation.provider}`
+			: 'Waiting for the next durable progress event';
 	const stageDescription = currentStage?.id === 'discover'
 		? 'Freeze the exact input and the existing Vault state this run will compare against.'
 		: currentStage?.id === 'index'
@@ -1274,8 +1293,9 @@ function RunProgress({ snapshot, runtime, onBack, onCompleted, onStartNew }: {
 				<div className="pk-vi-page-actions"><span className="pk-vi-user-file-boundary">User files unchanged</span>{run.status === 'running' && inspectedStageId && inspectedStageId !== liveStageId && <Button variant="ghost" onClick={() => setInspectedStageId(null)}><Activity size={15} />Follow live</Button>}{run.status === 'running' && <><Button variant="ghost" onClick={() => runtime.requestPause()} title="Finish the current durable unit, then retain the checkpoint"><Pause size={15} />Pause</Button><Button className="pk-vi-stop-run" onClick={() => runtime.requestStop()} title="Stop active provider work and retain completed facts and partial results"><X size={15} />Stop scan</Button></>}{run.status === 'stopping' && <Button variant="ghost" disabled><RefreshCw size={15} className="pk-vi-spin" />Stopping…</Button>}{canStartNew && <Button variant="ghost" onClick={() => void startNew()} title="Discard this unfinished run checkpoint and prepare a new Scan">Start new scan</Button>}{resumable && <Button className="pk-vi-primary" onClick={() => void runtime.resumeScan()}><Play size={15} />Resume</Button>}{completed && <Button className="pk-vi-primary" onClick={onCompleted}>View completed work<ChevronRight size={15} /></Button>}</div>
 			</div>
 			<div className="pk-vi-run-progress-summary">
-				<div className="pk-vi-overall-number"><strong>{overall}%</strong><small>overall progress</small></div><div className="pk-vi-run-progress-main"><div className="pk-vi-progress-track"><i style={{ width: `${overall}%` }} /></div><div><span><strong>{progressMetric.processed.toLocaleString()} / {progressMetric.total.toLocaleString()}</strong> objects advanced</span><span><strong>{run.startedAt ? elapsedLabel(run.startedAt, Date.now()) : '0s'}</strong> elapsed</span><span><strong>{objectsPerMinute || '—'}</strong> objects / min</span></div></div><div className="pk-vi-run-ai-usage"><small>AI usage</small><strong>{runUsage.providerReceiptCount ? formatMoney(runUsage.costUsd) : 'Unavailable'}</strong><span>{runUsage.providerReceiptCount ? `${formatCompactNumber(runUsage.totalTokens)} tokens used` : 'No provider receipt yet'}</span><em>{plannedTokens > 0 ? `Projected ~${formatMoney(plannedCost)} · ${formatCompactNumber(plannedTokens)} tokens` : 'Projection unavailable'}</em></div>
+				<div className="pk-vi-overall-number"><strong>{overall}%</strong><small>overall progress</small></div><div className="pk-vi-run-progress-main"><div className="pk-vi-progress-track"><i style={{ width: `${overall}%` }} /></div><div><span><strong>{progressMetric.processed.toLocaleString()} / {progressMetric.total.toLocaleString()}</strong> objects advanced</span><span><strong>{run.startedAt ? elapsedLabel(run.startedAt, clockNow) : '0s'}</strong> elapsed</span><span><strong>{objectsPerMinute || '—'}</strong> objects / min</span></div></div><div className="pk-vi-run-ai-usage"><small>AI usage</small><strong>{runUsage.providerReceiptCount ? formatMoney(runUsage.costUsd) : 'Unavailable'}</strong><span>{runUsage.providerReceiptCount ? `${formatCompactNumber(runUsage.totalTokens)} tokens used` : 'No provider receipt yet'}</span><em>{plannedTokens > 0 ? `Projected ~${formatMoney(plannedCost)} · ${formatCompactNumber(plannedTokens)} tokens` : 'Projection unavailable'}</em></div>
 			</div>
+			{(run.status === 'running' || run.status === 'stopping') && <div className="pk-vi-run-liveness" role="status" aria-live="polite"><RefreshCw size={14} className="pk-vi-spin" /><span><strong>{liveActivityTitle}</strong><small>{liveActivityDetail}</small></span><em>Active · {run.startedAt ? elapsedLabel(run.startedAt, clockNow) : '0s'}</em></div>}
 		</section>
 		<section className="pk-vi-run-stage-workspace" role="tabpanel">
 			<div className="pk-vi-run-stage-workspace-head"><div><span className="pk-vi-card-title">{currentStage?.id === 'ai' ? 'Vault-wide discovery' : currentStage?.id === 'prepare-review' ? 'Preparing work for review' : currentStage?.id === 'index' ? 'Build Index' : currentStage?.id === 'discover' ? 'Discover scope and affected context' : currentStage?.id === 'publish' ? 'Publish verified machine layers and follow-up' : 'Scan stage'}</span><span className="pk-vi-card-caption">{stageDescription}</span></div><div className="pk-vi-run-stage-head-actions">{currentStage ? <StageState status={currentStage.status} /> : <span>Not available</span>}<div ref={stageMenuRef} className={`pk-vi-stage-inspector ${stageMenuOpen ? 'is-open' : ''}`}><Button variant="ghost" className="pk-vi-stage-inspector-trigger" aria-expanded={stageMenuOpen} onClick={() => setStageMenuOpen((value) => !value)}><ListChecks size={15} />View 5 stages<ChevronDown size={14} /></Button><div className="pk-vi-stage-inspector-menu" role="tablist" aria-label="Scan stages">{run.stages.map((stage, index) => { const isLive = liveStageIds.has(stage.id); return <Button key={stage.id} variant="ghost" role="tab" aria-selected={focusedStageId === stage.id} title={stage.message} className={`pk-vi-run-stage-tab is-${stage.status} ${focusedStageId === stage.id ? 'is-active' : ''} ${isLive ? 'is-live' : ''}`} onClick={() => { setInspectedStageId(stage.id === liveStageId ? null : stage.id); setStageMenuOpen(false); }}><span>{index + 1}</span><strong>{stageLabel(stage.id)}</strong><small>{stageStateLabel(stage, run.status)}</small></Button>; })}</div></div></div></div>

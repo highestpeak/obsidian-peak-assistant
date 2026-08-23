@@ -1096,10 +1096,15 @@ export class VaultIntelligenceRuntime {
 		this.patchStage('index', { processed: completedCore.size, total: fullTextPaths.length, currentPath: null });
 		this.preparePerDocumentOperations(index, pathEligibility);
 		let enrichmentTail = Promise.resolve();
+		let enrichmentFailure: unknown = null;
 		const enqueueEnrichment = (path: string) => {
 			enrichmentTail = enrichmentTail.then(async () => {
-				if (this.snapshot.run.stopRequested || !index) return;
-				await this.enrichReadyDocument(index, path);
+				if (this.snapshot.run.stopRequested || enrichmentFailure || !index) return;
+				try {
+					await this.enrichReadyDocument(index, path);
+				} catch (error) {
+					enrichmentFailure = error;
+				}
 			});
 		};
 		for (const path of fullTextPaths.filter((candidate) => completedCore.has(candidate))) enqueueEnrichment(path);
@@ -1119,9 +1124,10 @@ export class VaultIntelligenceRuntime {
 					message: progress.path ? `Indexing ${progress.path}` : 'Updating full-text passages and the Knowledge Index.',
 				});
 			},
-			() => !this.snapshot.run.stopRequested,
+			() => !this.snapshot.run.stopRequested && !enrichmentFailure,
 		);
 		await enrichmentTail;
+		if (enrichmentFailure) throw enrichmentFailure;
 		if (this.snapshot.run.stopRequested) throw new Error('Vault Scan stopped at the next core-index document checkpoint.');
 		this.finalizePerDocumentOperations();
 		const lint = this.deps.resolveLintRuntime();

@@ -46,6 +46,7 @@ The old generic Index and AI render paths were replaced. Prepare Review is an in
 - The stage menu is in the current-stage header, at the right.
 - The full document table is collapsed by default and its rows are unmounted while closed.
 - Stage selection, outside pointer, and Escape dismiss the menu; Escape restores trigger focus.
+- Live elapsed time advances once per second between durable events, and an explicit activity row identifies slow local-model startup or the current document instead of leaving a static `0s` screen.
 
 ### HOST_ENVIRONMENT_MISMATCH
 
@@ -70,6 +71,7 @@ Mock geometry remains the reference. Only the incorrect menu placement, duplicat
 - Conversation, Agent, Agent Fast, Copilot, Knowledge Index, Web Search, and Harness tiers do not borrow another role.
 - Overrides require an exact `profileId + modelId`; stale bindings throw.
 - A complete per-run Scan route is resolved before consulting any global role slot, so an explicitly configured Scan does not require a second hidden Agent/Copilot default.
+- Per-document enrichment planning, pricing, Summary, and AI Tags all consume that frozen Scan route; the ETA planner no longer consults the global Agent slot behind the operation runtime.
 - Auto routing does not choose the first remaining candidate when a configured tier misses.
 - Backend resolution executes only `preferred`.
 - Assistant storage/profile errors propagate instead of substituting Default.

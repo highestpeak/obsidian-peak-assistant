@@ -40,6 +40,15 @@ function testServiceImplementsPort(): void {
 		/llmTelemetry\.snapshot = ev;/,
 		'a document LLM completion receipt must retain its produced/partial/failed status before Scan derives progress or usage',
 	);
+	assert.match(
+		serviceSource,
+		/new LlmEnrichmentProgressTracker\(settings, ai, options\?\.llmRoute\)/,
+		'Scan LLM planning and cost telemetry must use the exact per-operation route instead of the global Agent slot',
+	);
+	assert.ok(
+		serviceSource.indexOf('plan = await tracker.planForMarkdownDoc(chars);') > serviceSource.indexOf('const t0 = Date.now();\n\t\t\t\ttry {'),
+		'per-document planning failures must be captured as terminal attempts instead of unhandled worker rejections',
+	);
 	console.log('PASS: serviceImplementsPort');
 }
 

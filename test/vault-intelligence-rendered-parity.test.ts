@@ -165,6 +165,9 @@ assert.match(source, /Stop scan/, 'Run Progress must expose the Mock stop bounda
 assert.match(source, /Start new scan/, 'an unfinished or failed run must expose a path to discard its checkpoint and prepare a new Scan');
 assert.match(source, /runtime\.startNewScan\(\)/, 'the new-Scan action must clear the unfinished runtime checkpoint before returning to setup');
 assert.match(source, /pk-vi-run-overview/, 'Run title and progress band must share the reference card container');
+assert.match(source, /globalThis\.setInterval\(\(\) => setClockNow\(Date\.now\(\)\), 1_000\)/, 'a live Scan must keep elapsed time moving between durable runtime events');
+assert.match(source, /pk-vi-run-liveness/, 'slow local-model startup must expose an explicit live activity row instead of appearing frozen');
+assert.match(source, /Waiting for the next response from/, 'the live activity row must explain first-response latency');
 assert.match(source, /liveStageIds/, 'parallel Index and AI stages must both remain visibly live');
 assert.match(source, /pk-vi-build-parity/, 'Build Index must use the focused Mock three-lane production subtree');
 assert.match(source, /onToggle=\{\(event\) => setInspectOpen\(event\.currentTarget\.open\)\}/, 'the all-document table must stay unmounted while collapsed');

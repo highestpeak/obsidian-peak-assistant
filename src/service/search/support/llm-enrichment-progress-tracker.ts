@@ -2,6 +2,7 @@ import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { LLMUsage } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { computeUsdFromUsage, normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
+import type { IndexLlmRoute } from '@/core/search/indexTypes';
 
 export type { LlmIndexingCompleteEvent } from '@/core/search/indexTypes';
 
@@ -35,6 +36,7 @@ export class LlmEnrichmentProgressTracker {
 	constructor(
 		private readonly settings: SearchSettings,
 		private readonly ai: AIServiceManager,
+		private readonly route?: IndexLlmRoute,
 	) {}
 
 	async planForMarkdownDoc(contentChars: number): Promise<LlmEnrichmentDocPlan> {
@@ -45,7 +47,9 @@ export class LlmEnrichmentProgressTracker {
 		const shortOut = wordsToTokens(this.settings.shortSummaryLength), fullOut = wordsToTokens(this.settings.fullSummaryLength), tagOut = TAG_OUTPUT_AVG;
 
 		const costFor = async (inT: number, outT: number) => {
-			const m = this.ai.getActiveAgentModel();
+			const m = this.route
+				? { modelId: this.route.modelId, provider: this.route.provider }
+				: this.ai.getActiveAgentModel();
 			const info = await this.ai.getModelInfo(m.modelId, m.provider);
 			return computeUsdFromUsage({ inputTokens: inT, outputTokens: outT, totalTokens: inT + outT }, info);
 		};

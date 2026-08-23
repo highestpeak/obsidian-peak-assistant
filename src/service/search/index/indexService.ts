@@ -2287,7 +2287,7 @@ export class IndexService
 		let done = 0;
 		const batchStartMs = Date.now();
 		const ai = indexSvc.getAiServiceManager();
-		const tracker = new LlmEnrichmentProgressTracker(settings, ai);
+		const tracker = new LlmEnrichmentProgressTracker(settings, ai, options?.llmRoute);
 		const loaderMgr = DocumentLoaderManager.getInstance();
 		const indexApp = this.env.app;
 
@@ -2316,13 +2316,7 @@ export class IndexService
 					attempts.push({ path, status: 'cancelled', startedAt: now, completedAt: now, route: options.llmRoute ?? null, usage: emptyUsage(), costUsd: 0, error: null });
 					return;
 				}
-				const docType = loaderMgr.getTypeForPath(path);
 				let plan = tracker.emptyPlan();
-				if (docType === 'markdown') {
-					const chars = await readMarkdownContentChars(path);
-					plan = await tracker.planForMarkdownDoc(chars);
-				}
-
 				/** Per-path ref so concurrent workers do not share telemetry state. */
 				const llmTelemetry: { snapshot: LlmIndexingCompleteEvent | null } = {
 					snapshot: null,
@@ -2333,6 +2327,11 @@ export class IndexService
 
 				const t0 = Date.now();
 				try {
+					const docType = loaderMgr.getTypeForPath(path);
+					if (docType === 'markdown') {
+						const chars = await readMarkdownContentChars(path);
+						plan = await tracker.planForMarkdownDoc(chars);
+					}
 					await indexSvc.indexDocument(path, settings, {
 						...baseOpts,
 						onLlmIndexingComplete,
