@@ -231,8 +231,14 @@
     .inspect-title { display: flex; align-items: center; gap: 9px; }
     .inspect-title strong { font-size: 12px; }
     .inspect-count { color: var(--ink-2); font-size: 11px; font-weight: 690; }
-    .inspect-table { max-height: 390px; overflow: auto; border-top: 1px solid var(--line); }
-    .inspect-row { display: grid; grid-template-columns: minmax(250px, 1fr) repeat(3, minmax(170px, .62fr)); gap: 12px; align-items: center; min-height: 40px; padding: 0 15px; border-bottom: 1px solid var(--line); font-size: 10.5px; }
+    .inspect-actions { display: flex; align-items: center; gap: 10px; }
+    .live-follow-btn { min-height: 28px; display: inline-flex; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #d8d1f5; border-radius: 7px; color: var(--accent-2); background: var(--accent-soft); font-size: 9.5px; font-weight: 710; cursor: pointer; }
+    .live-follow-btn::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px rgba(104, 87, 217, .12); }
+    .live-follow-btn.off { border-color: var(--line-2); color: var(--ink-3); background: var(--surface-2); }
+    .live-follow-btn.off::before { background: var(--line-2); box-shadow: none; }
+    .inspect-table { max-height: 390px; overflow: auto; scroll-behavior: smooth; scrollbar-gutter: stable; border-top: 1px solid var(--line); }
+    .inspect-row { display: grid; grid-template-columns: minmax(250px, 1fr) repeat(3, minmax(170px, .62fr)); gap: 12px; align-items: center; min-height: 40px; padding: 0 15px; border-bottom: 1px solid var(--line); font-size: 10.5px; transition: background 120ms ease, box-shadow 120ms ease; }
+    .inspect-row.focus { position: relative; z-index: 1; background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
     .inspect-row:last-child { border-bottom: 0; }
     .inspect-row.head { position: sticky; z-index: 2; top: 0; min-height: 36px; color: var(--ink-2); background: var(--surface-2); font-size: 9.5px; font-weight: 720; }
     .file strong { display: block; font-size: 10.5px; }
@@ -446,8 +452,8 @@
       </section>
 
       <details class="inspect" id="inspect" open>
-        <summary><div class="inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect all document states</strong><span class="inspect-count">146 files</span></div><svg class="icon sm"><use href="#i-chevron"/></svg></summary>
-        <div class="inspect-table">
+        <summary><div class="inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect all document states</strong><span class="inspect-count">146 files</span></div><div class="inspect-actions"><button class="live-follow-btn" type="button" id="follow-btn" aria-pressed="true">Following full-text</button><svg class="icon sm"><use href="#i-chevron"/></svg></div></summary>
+        <div class="inspect-table" id="inspect-table">
           <div class="inspect-row head"><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>AI enrichment</span></div>
           <div id="inspect-rows"></div>
         </div>
@@ -501,7 +507,7 @@
     const app = document.getElementById('app');
     const pauseButton = document.getElementById('pause-btn');
     const scenarioButtons = [...document.querySelectorAll('.scenario-btn')];
-    const run = { search: 18, embedding: 4, ai: 1, tick: 0, mode: 'hybrid', running: true, stopped: false };
+    const run = { search: 18, embedding: 4, ai: 1, tick: 0, mode: 'hybrid', running: true, stopped: false, autoFollow: true };
 
     function setText(id, value) {
       const element = document.getElementById(id);
@@ -621,12 +627,45 @@
       return `<span class="state ${state}">${label}</span>`;
     }
 
+    function inspectFocus() {
+      if (run.search < TOTAL) return { index: run.search, label: 'Following full-text' };
+      if (run.embedding < TOTAL) return { index: run.embedding, label: 'Following embeddings' };
+      if (run.ai < TOTAL) return { index: run.ai, label: 'Following AI enrichment' };
+      return { index: TOTAL - 1, label: 'Run complete' };
+    }
+
+    function updateFollowButton() {
+      const button = document.getElementById('follow-btn');
+      const focus = inspectFocus();
+      button.textContent = run.autoFollow ? focus.label : 'Resume live follow';
+      button.classList.toggle('off', !run.autoFollow);
+      button.setAttribute('aria-pressed', String(run.autoFollow));
+    }
+
+    function followInspectProgress(behavior = 'smooth') {
+      updateFollowButton();
+      if (!run.autoFollow || !document.getElementById('inspect').open) return;
+      window.requestAnimationFrame(() => {
+        const table = document.getElementById('inspect-table');
+        const focus = inspectFocus();
+        const row = table.querySelector(`[data-file-index="${focus.index}"]`);
+        if (!row) return;
+        const tableRect = table.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        const rowTopInTable = table.scrollTop + rowRect.top - tableRect.top;
+        const targetTop = Math.max(0, rowTopInTable - (table.clientHeight * .42));
+        table.style.scrollBehavior = behavior === 'auto' ? 'auto' : 'smooth';
+        table.scrollTo({ top: targetTop, behavior });
+      });
+    }
+
     function renderInspectRows() {
       const embeddingPool = embeddingModels();
       const aiPool = aiModels();
       const embeddingActiveEnd = Math.min(run.search, run.embedding + embeddingCapacity());
       const aiActiveEnd = Math.min(run.search, run.ai + aiCapacity());
       const aiStages = ['Summary', 'AI Tags', 'Entities', 'File signals'];
+      const focusIndex = inspectFocus().index;
       const rows = [];
       for (let index = 0; index < TOTAL; index += 1) {
         const searchState = index < run.search
@@ -646,9 +685,10 @@
           : index < aiActiveEnd
             ? stateCell('live', `${aiStages[(run.tick + index) % aiStages.length]} · ${aiModel}`)
             : stateCell('', index < run.search ? 'Queued' : 'Waiting for text');
-        rows.push(`<div class="inspect-row"><div class="file"><strong>${fileAt(index, true)}</strong></div>${searchState}${embeddingState}${aiState}</div>`);
+        rows.push(`<div class="inspect-row ${index === focusIndex ? 'focus' : ''}" data-file-index="${index}"><div class="file"><strong>${fileAt(index, true)}</strong></div>${searchState}${embeddingState}${aiState}</div>`);
       }
       document.getElementById('inspect-rows').innerHTML = rows.join('');
+      followInspectProgress(run.running && run.tick ? 'smooth' : 'auto');
     }
 
     function setLaneState(id, markerId, count, waiting) {
@@ -768,6 +808,8 @@
       run.tick = 0;
       run.running = true;
       run.stopped = false;
+      run.autoFollow = true;
+      document.getElementById('inspect-table').scrollTop = 0;
       render();
     }
 
@@ -782,6 +824,24 @@
       run.running = false;
       run.stopped = true;
       render();
+    });
+    const inspectTable = document.getElementById('inspect-table');
+    const followButton = document.getElementById('follow-btn');
+    followButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      run.autoFollow = !run.autoFollow;
+      followInspectProgress('smooth');
+    });
+    inspectTable.addEventListener('wheel', () => {
+      if (!run.autoFollow) return;
+      run.autoFollow = false;
+      updateFollowButton();
+    }, { passive: true });
+    inspectTable.addEventListener('pointerdown', () => {
+      if (!run.autoFollow) return;
+      run.autoFollow = false;
+      updateFollowButton();
     });
 
     const tooltip = document.getElementById('tooltip');
