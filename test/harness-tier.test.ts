@@ -50,20 +50,19 @@ async function run(): Promise<void> {
             },
         },
         {
-            name: 'falls forward when preferred tier unbound',
+			name: 'rejects when preferred tier is unbound',
             fn: () => {
                 const bindings: TierBindings = {
                     'research': fakeBinding('research'),
                     stronger: fakeBinding('stronger'),
                 };
-                const c = new TierController({ bindings, policy: { preferred: 'fast' } });
-                assert.strictEqual(c.currentTier(), 'research');
+				assert.throws(() => new TierController({ bindings, policy: { preferred: 'fast' } }), /runtime fallback is disabled/i);
             },
         },
         {
             name: 'throws when no bindings at all',
             fn: () => {
-                assert.throws(() => new TierController({ bindings: {} }), /No usable tier bindings/);
+				assert.throws(() => new TierController({ bindings: {} }), /runtime fallback is disabled/i);
             },
         },
         {

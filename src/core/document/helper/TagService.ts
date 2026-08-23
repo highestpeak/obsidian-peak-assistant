@@ -451,6 +451,7 @@ export async function extractTopicAndFunctionalTags(
 		/** TextRank numbered sentences. */
 		textrankSentences?: string;
 		provider?: string;
+		profileId?: string;
 		modelId?: string;
 	},
 ): Promise<DocLlmTagResult> {
@@ -495,6 +496,11 @@ export async function extractTopicAndFunctionalTags(
 			PromptId.DocTagGenerateJson,
 			variables as any,
 			zodToJsonSchema(docTagResponseSchema),
+			{
+				profileId: options?.profileId,
+				modelId: options?.modelId,
+				usageCallback: (usage) => { tagUsage = usage; },
+			},
 		);
 		console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM done', {
 			title: options?.title ?? '',
@@ -570,4 +576,3 @@ export async function extractTopicAndFunctionalTags(
 		...(tagUsage ? { llmUsage: tagUsage, llmCostUsd: tagCostUsd } : {}),
 	};
 }
-

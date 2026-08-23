@@ -12,6 +12,9 @@ export interface DocTagClassifierQueryOpts {
 	usageAction?: string;
 	usageSessionId?: string;
 	usageCallback?: (usage: import('@/core/providers/types').LLMUsage) => void;
+	/** Explicit one-run binding. Callers must not mutate a global role to select it. */
+	profileId?: string;
+	modelId?: string;
 }
 
 export interface IDocTagClassifier {

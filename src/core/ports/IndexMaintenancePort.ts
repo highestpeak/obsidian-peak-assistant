@@ -18,6 +18,7 @@
 
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { SearchSettings } from '@/core/config/settingsTypes';
+import type { IndexLlmRoute } from '@/core/search/indexTypes';
 import type {
 	LlmIndexEnrichmentResult,
 	MobiusGlobalMaintenanceOptions,
@@ -41,6 +42,9 @@ export interface IndexMaintenancePort {
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
 			shouldContinue?: () => boolean;
 			paths?: readonly string[];
+			includeTags?: boolean;
+			includeSummary?: boolean;
+			llmRoute?: IndexLlmRoute;
 		},
 	): Promise<LlmIndexEnrichmentResult>;
 

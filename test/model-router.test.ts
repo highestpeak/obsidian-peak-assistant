@@ -8,8 +8,7 @@
  *       candidates whose context window is smaller than the estimate are
  *       excluded; disabled / keyless profiles never appear.
  *   R3  Tier selection: tier `when` conditions gate candidacy; preferOrder
- *       is honored (first match wins); tier fallback returns first filtered
- *       candidate with a distinct reason string.
+ *       is honored (first match wins); an unmatched configured tier fails.
  *   R4  Zero candidates: returns `ok:false` with a message that names the
  *       required capabilities so the UI shows an actionable error, not a
  *       silent bad pick.
@@ -229,8 +228,7 @@ async function testR3TierSelection(): Promise<boolean> {
 	}
 
 	// Custom config with a single tier whose preferOrder points at a
-	// non-existent model — verify fallback path lands on ANY filtered
-	// candidate and records that in the reason string.
+	// A non-existent configured model must not land on another candidate.
 	const fallbackConfig: ModelRoutingConfig = {
 		...DEFAULT_MODEL_ROUTING_CONFIG,
 		tiers: [
@@ -247,13 +245,10 @@ async function testR3TierSelection(): Promise<boolean> {
 		config: fallbackConfig,
 	});
 	try {
-		assert.ok(fallbackOutcome.ok, 'fallback path must still succeed');
-		if (fallbackOutcome.ok) {
-			assert.strictEqual(fallbackOutcome.value.tierId, 'fallback', 'tierId should be fallback');
-		}
-		console.log('✅ PASS: R3 tier fallback');
+		assert.strictEqual(fallbackOutcome.ok, false, 'an unmatched configured tier must fail');
+		console.log('✅ PASS: R3 unmatched tier rejects fallback');
 	} catch (e) {
-		console.log(`❌ FAIL: R3 tier fallback: ${(e as Error).message}`);
+		console.log(`❌ FAIL: R3 unmatched tier: ${(e as Error).message}`);
 		ok = false;
 	}
 	return ok;
@@ -377,20 +372,9 @@ async function testR6Precedence(): Promise<boolean> {
 		console.log(`❌ FAIL: R6 assistant preferred: ${(e as Error).message}`);
 		ok = false;
 	}
-	// Assistant preferred that is unresolvable falls to auto-default AND
-	// records the drop; caller then triggers the router. Verify the drop
-	// flag.
-	const assistantDropRes = resolveEffectiveModel({
-		fixedSelection: null,
-		legacyActive: {},
-		assistantPreferred: { profileId: 'missing-profile', modelId: 'x' },
-		defaultModel: { modelId: 'fallback', provider: 'openai' },
-		profileRegistry,
-	});
 	try {
-		assert.strictEqual(assistantDropRes.source, 'auto-default');
-		assert.strictEqual(assistantDropRes.assistantPreferredUnavailable, true);
-		console.log('✅ PASS: R6 assistant preferred unresolvable → auto-default with drop flag');
+		assert.throws(() => resolveEffectiveModel({ fixedSelection: null, legacyActive: {}, assistantPreferred: { profileId: 'missing-profile', modelId: 'x' }, defaultModel: { modelId: 'fallback', provider: 'openai' }, profileRegistry }), /fallback is disabled/i);
+		console.log('✅ PASS: R6 assistant preferred unresolvable fails loudly');
 	} catch (e) {
 		console.log(`❌ FAIL: R6 assistant preferred unresolvable: ${(e as Error).message}`);
 		ok = false;

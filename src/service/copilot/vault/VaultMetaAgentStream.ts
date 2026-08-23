@@ -58,6 +58,14 @@ export interface VaultMetaAgentOptions {
 	signal?: AbortSignal;
 	onTurnIncrement?: () => void;
 	userProfileText?: string;
+	route?: VaultMetaAgentRoute;
+	focus?: { objectiveId: string; instruction: string; evidenceRefs: readonly string[] };
+}
+
+export interface VaultMetaAgentRoute {
+	profileId: string;
+	modelId: string;
+	provider: string;
 }
 
 /**
@@ -72,19 +80,14 @@ export interface VaultMetaAgentOptions {
 
 function resolveProfileForMode(mode: VaultReviewMode): { profile: Profile; modelId: string } | null {
 	const registry = ProfileRegistry.getInstance();
-	const agentConfig = registry.getActiveAgentConfig();
-	if (!agentConfig) return null;
-	if (mode !== 'fast') return agentConfig;
+	return mode === 'fast' ? registry.getActiveAgentFastConfig() : registry.getActiveAgentConfig();
+}
 
-	const fastConfig = registry.getActiveAgentFastConfig();
-	if (fastConfig?.profile && fastConfig.modelId) {
-		return { profile: fastConfig.profile, modelId: fastConfig.modelId };
-	}
-	const agentProfile = agentConfig.profile;
-	if (agentProfile.fastModel && agentProfile.fastModel !== agentProfile.primaryModel) {
-		return { profile: agentProfile, modelId: agentProfile.fastModel };
-	}
-	return agentConfig;
+function resolveExplicitRoute(route: VaultMetaAgentRoute | undefined): { profile: Profile; modelId: string } | null {
+	if (!route) return null;
+	const profile = ProfileRegistry.getInstance().getAllProfiles().find((candidate) => candidate.id === route.profileId);
+	if (!profile || profile.kind !== route.provider) return null;
+	return { profile, modelId: route.modelId };
 }
 
 function buildPreviousRoundsBlock(prev: VaultPreviousRoundSummary[]): string {
@@ -127,6 +130,7 @@ export async function buildVaultMetaAgentSystemPrompt(options: {
 	digest: VaultDigest;
 	previousRounds: VaultPreviousRoundSummary[];
 	userProfileText?: string;
+	focus?: { objectiveId: string; instruction: string; evidenceRefs: readonly string[] };
 }): Promise<string> {
 	const tm = TemplateManager.getInstance();
 	if (!tm) throw new Error('TemplateManager not bound — cannot render vault meta-agent prompts.');
@@ -138,12 +142,20 @@ export async function buildVaultMetaAgentSystemPrompt(options: {
 	const digestText = formatVaultDigestForPrompt(options.digest);
 	const prevBlock = buildPreviousRoundsBlock(options.previousRounds);
 	const prefs = buildUserPreferencesBlock(options.userProfileText);
+	const focus = options.focus ? [
+		'',
+		`CURRENT REQUIRED OBJECTIVE: ${options.focus.objectiveId}`,
+		options.focus.instruction,
+		`Frozen evidence refs: ${options.focus.evidenceRefs.join(', ') || 'none'}`,
+		'Complete this objective explicitly. Do not substitute another discovery objective.',
+	].join('\n') : '';
 	return [
 		base,
 		'',
 		'VAULT DIGEST (pre-flight, computed from index + lint + community detection):',
 		digestText,
 		prefs,
+		focus,
 		modeSuffix,
 		prevBlock,
 	].filter(Boolean).join('\n');
@@ -181,14 +193,11 @@ export async function* buildVaultMetaAgentStream(
 	const triggerName = StreamTriggerName.COPILOT;
 	const { app, pluginId } = deps;
 
-	const resolved = resolveProfileForMode(options.mode);
+	const resolved = options.route ? resolveExplicitRoute(options.route) : resolveProfileForMode(options.mode);
 	if (!resolved) {
-		yield {
-			type: 'error',
-			error: new Error('No active agent profile configured. Please set up a profile in Settings.'),
-			triggerName,
-		} as LLMStreamEvent;
-		return;
+		throw new Error(options.route
+			? 'The model selected for this Vault Scan is no longer executable. Runtime model fallback is disabled.'
+			: `No ${options.mode === 'fast' ? 'Agent Fast' : 'Agent'} model is configured. Runtime model fallback is disabled.`);
 	}
 	const { profile, modelId } = resolved;
 
@@ -231,6 +240,7 @@ export async function* buildVaultMetaAgentStream(
 		digest: options.digest,
 		previousRounds: options.previousRounds,
 		userProfileText: options.userProfileText,
+		focus: options.focus,
 	});
 	const userPrompt = buildVaultMetaAgentUserPrompt(options.digest);
 
@@ -282,6 +292,6 @@ export async function* buildVaultMetaAgentStream(
 			yield next.value;
 		}
 	} catch (err) {
-		yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
+		throw err;
 	}
 }

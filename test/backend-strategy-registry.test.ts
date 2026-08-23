@@ -45,19 +45,21 @@ function testPreferredWins(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Test 2 — fallback used when preferred missing.
+// Test 2 — configured fallback is metadata only; runtime refuses to downgrade.
 // ---------------------------------------------------------------------------
 
-function testFallbackUsed(): void {
+function testFallbackRejected(): void {
 	const registry: BackendStrategyRegistry = {
 		'provider-direct': makeEchoStrategy(),
 	};
-	const { backend } = resolveBackendStrategy(
-		{ preferred: 'hermes-harness', fallback: ['provider-direct'] },
-		registry,
+	assert.throws(
+		() => resolveBackendStrategy(
+			{ preferred: 'hermes-harness', fallback: ['provider-direct'] },
+			registry,
+		),
+		/Runtime fallback is disabled/,
 	);
-	assert.strictEqual(backend, 'provider-direct');
-	console.log('PASS: fallbackUsed');
+	console.log('PASS: fallbackRejected');
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +75,7 @@ function testFailLoud(): void {
 		);
 	} catch (err) { thrown = err; }
 	assert.ok(thrown instanceof Error, 'must throw');
-	assert.match((thrown as Error).message, /No backend strategy registered/);
+	assert.match((thrown as Error).message, /Runtime fallback is disabled/);
 	console.log('PASS: failLoud');
 }
 
@@ -128,7 +130,7 @@ async function testEchoStrategy(): Promise<void> {
 
 async function run(): Promise<void> {
 	testPreferredWins();
-	testFallbackUsed();
+	testFallbackRejected();
 	testFailLoud();
 	await testComposeExecute();
 	await testEchoStrategy();

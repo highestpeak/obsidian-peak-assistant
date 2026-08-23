@@ -67,11 +67,12 @@ assert.equal(
 	'Copilot does not cross the protected Chat Composer boundary',
 );
 assert.ok(copilot.includes("modelSelection.mode === 'fixed'"), 'Copilot resolves the shared fixed selection to a model override');
-assert.ok(copilot.includes('...(selectedModelId ? { modelId: selectedModelId } : {})'), 'selected model is passed into capability invocation');
+assert.ok(copilot.includes('? { profileId: selectedProfileId, modelId: selectedModelId }'), 'the exact selected profile and model route is passed into capability invocation');
+assert.ok(capabilityRuntime.includes('profileId?: string'), 'capability runtime retains the selected profile');
 assert.ok(capabilityRuntime.includes('modelId?: string'), 'capability runtime retains the selected model');
 assert.ok(
-	aiService.includes('const modelId = opts?.modelId ?? resolved.modelId;'),
-	'the shared Harness AI service executes the selected model override',
+	aiService.includes("throw new Error('A model override requires its configured profileId. Runtime model fallback is disabled.');"),
+	'the shared Harness AI service rejects partial route overrides',
 );
 assert.ok(copilot.includes('<CapabilityIcon name={item.lucideIcon} />'), 'capability rows use their declared Lucide icons');
 assert.ok(related.includes('GraphWorkspaceControl'), 'related-material browser preserves List / Tree / Graph controls through the shared workspace');

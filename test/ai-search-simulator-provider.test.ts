@@ -171,9 +171,9 @@ async function verifyRealAgentLoop(baseUrl: string) {
 		localDeepConfig: { profileId: profile.id, modelId: SIMULATOR_MODEL_ID },
 		onlineConfig: null,
 	});
-	assert.equal(bindings.fast?.providerId, profile.id);
+	assert.equal(bindings.fast, undefined);
 	assert.equal(bindings.research?.providerId, profile.id);
-	assert.equal(bindings.stronger?.providerId, profile.id);
+	assert.equal(bindings.stronger, undefined);
 
 	let submitted: Record<string, unknown> | null = null;
 	const loop = await runAgentLoop({

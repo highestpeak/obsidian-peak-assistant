@@ -18,11 +18,17 @@ function methodBody(methodName: string): string {
 function testAllSingleTurnQueryShapesConsumeModelOverride(): void {
 	for (const methodName of ['queryText', 'queryTextStream', 'queryStructured']) {
 		const body = methodBody(methodName);
+		assert.match(body, /profileId\?: string/, `${methodName} must expose profileId in its query options`);
 		assert.match(body, /modelId\?: string/, `${methodName} must expose modelId in its query options`);
 		assert.match(
 			body,
-			/const modelId = opts\?\.modelId \?\? resolved\.modelId;/,
-			`${methodName} must use the requested model before its profile default`,
+			/resolveRequestedProfileAndModel\(opts\?\.profileId, opts\?\.modelId, configured\)/,
+			`${methodName} must resolve the requested profile and model as one exact route`,
+		);
+		assert.match(
+			body,
+			/const modelId = resolved\.modelId;/,
+			`${methodName} must execute the exact resolved model without a profile-default fallback`,
 		);
 		assert.match(
 			body,

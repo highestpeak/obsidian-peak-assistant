@@ -1,12 +1,8 @@
 /**
  * Build TierBindings from settings + ProfileRegistry.
  *
- * Resolution order per tier:
- *   1. HarnessSettings.{localFast,localDeep,online}Config — explicit harness tier picks
- *   2. ProfileRegistry role configs (agent-fast / agent / chat) — fallback to existing UI pickers
- *
- * This lets users override per-tier models in Settings → Agent Harness while
- * still working for users who only configured the StatusBar role pickers.
+ * Every tier comes only from its matching HarnessSettings binding. Missing
+ * tiers remain absent and cannot borrow an Agent, Chat, or neighboring tier.
  */
 
 import type { LanguageModel } from 'ai';
@@ -57,8 +53,8 @@ function bindingFromRole(
  * first refresh the registry's tier mirror from the settings we were handed so
  * all concurrent Harness consumers resolve identical bindings. The three
  * cascade tiers (fast / research / stronger) ARE slots, so each maps to itself.
- * Tiers with neither an explicit pick nor a role fallback are absent;
- * TierController falls forward to the next bound tier.
+	* Tiers without an explicit pick are absent; TierController rejects a run
+	* whose configured preferred tier is absent.
  */
 export function defaultTierBindings(harness: HarnessSettings): TierBindings {
     const reg = ProfileRegistry.getInstance();
@@ -67,18 +63,9 @@ export function defaultTierBindings(harness: HarnessSettings): TierBindings {
         research: harness.localDeepConfig ?? null,
         stronger: harness.onlineConfig ?? null,
     });
-    const researchRole = reg.resolveSlot('research');
-    if (researchRole?.profile.kind === 'simulator') {
-        return {
-            fast: bindingFromRole('fast', researchRole),
-            research: bindingFromRole('research', researchRole),
-            stronger: bindingFromRole('stronger', researchRole),
-        };
-    }
-
-    return {
-        fast: bindingFromRole('fast', reg.resolveSlot('fast')),
-        research: bindingFromRole('research', researchRole),
-        stronger: bindingFromRole('stronger', reg.resolveSlot('stronger')),
-    };
+	return {
+		fast: bindingFromRole('fast', reg.resolveSlot('fast')),
+		research: bindingFromRole('research', reg.resolveSlot('research')),
+		stronger: bindingFromRole('stronger', reg.resolveSlot('stronger')),
+	};
 }

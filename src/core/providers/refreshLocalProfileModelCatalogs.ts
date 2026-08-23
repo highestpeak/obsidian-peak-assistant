@@ -1,7 +1,8 @@
 import type { Profile } from '@/core/profiles/types';
-import { fetchLMStudioModels } from '@/core/providers/lmstudio/fetchLMStudioModels';
+import { fetchLMStudioModelMetadata } from '@/core/providers/lmstudio/fetchLMStudioModels';
 import { modelRegistry } from '@/core/providers/model-registry';
-import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
+import { fetchOllamaModelMetadata } from '@/core/providers/ollama/fetchOllamaModels';
+import { fetchOpenRouterEmbeddingModels } from '@/core/providers/openrouter/fetchOpenRouterEmbeddingModels';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 
 /**
@@ -13,19 +14,19 @@ import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
  * Failed local requests intentionally leave the current catalog untouched.
  */
 export async function refreshLocalProfileModelCatalogs(profiles: readonly Profile[]): Promise<boolean> {
-	const localProfiles = profiles.filter((profile) =>
-		profile.enabled && (profile.kind === 'ollama' || profile.kind === 'lmstudio'),
+	const discoverableProfiles = profiles.filter((profile) =>
+		profile.enabled && ['ollama', 'lmstudio', 'openrouter'].includes(profile.kind),
 	);
-	const changed = await Promise.all(localProfiles.map(async (profile) => {
-		const discover = profile.kind === 'ollama' ? fetchOllamaModels : fetchLMStudioModels;
-		const modelIds = await discover(profile.baseUrl);
+	const changed = await Promise.all(discoverableProfiles.map(async (profile) => {
+		const discover = profile.kind === 'ollama'
+			? fetchOllamaModelMetadata
+			: profile.kind === 'lmstudio'
+				? fetchLMStudioModelMetadata
+				: fetchOpenRouterEmbeddingModels;
+		const models = await discover(profile.baseUrl);
 		const catalogId = profileModelCatalogId(profile);
-		if (!catalogId || modelIds.length === 0) return false;
-
-		const knownIds = new Set(modelRegistry.getModelsForProvider(catalogId).map((model) => model.id));
-		if (modelIds.every((modelId) => knownIds.has(modelId))) return false;
-		modelRegistry.mergeRuntimeModels(catalogId, modelIds);
-		return true;
+		if (!catalogId || models.length === 0) return false;
+		return modelRegistry.mergeRuntimeModels(catalogId, models);
 	}));
 
 	return changed.some(Boolean);

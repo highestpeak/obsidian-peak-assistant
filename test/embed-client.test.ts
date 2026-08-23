@@ -205,6 +205,50 @@ async function run(): Promise<void> {
       },
     },
 
+    {
+      name: 'embedTexts: honours a frozen Scan route instead of the active profile',
+      fn: async () => {
+        const { mockFetch, captured } = makeMockFetch(embeddingResponse([[1, 2]]));
+        const origFetch = globalThis.fetch;
+        globalThis.fetch = mockFetch;
+        try {
+          await embedTexts(['scan text'], {
+            endpoint: 'http://127.0.0.1:1234/v1',
+            apiKey: '',
+            model: 'nomic-embed-text',
+            provider: 'lmstudio',
+            transport: 'openai-compatible',
+          });
+        } finally {
+          globalThis.fetch = origFetch;
+        }
+        assert.strictEqual(captured[0].url, 'http://127.0.0.1:1234/v1/embeddings');
+        assert.strictEqual(JSON.parse(captured[0].init.body as string).model, 'nomic-embed-text');
+      },
+    },
+
+    {
+      name: 'embedTexts: uses Ollama native embedding endpoint for a frozen route',
+      fn: async () => {
+        const { mockFetch, captured } = makeMockFetch({ embeddings: [[0.4, 0.5]] });
+        const origFetch = globalThis.fetch;
+        globalThis.fetch = mockFetch;
+        try {
+          const result = await embedTexts(['scan text'], {
+            endpoint: 'http://127.0.0.1:11434',
+            apiKey: '',
+            model: 'nomic-embed-text',
+            provider: 'ollama',
+            transport: 'ollama',
+          });
+          assert.deepStrictEqual(result, [[0.4, 0.5]]);
+        } finally {
+          globalThis.fetch = origFetch;
+        }
+        assert.strictEqual(captured[0].url, 'http://127.0.0.1:11434/api/embed');
+      },
+    },
+
     // --- embedText convenience wrapper ----------------------------------------
     {
       name: 'embedText: returns single vector from embedTexts',
@@ -315,9 +359,9 @@ async function run(): Promise<void> {
       },
     },
 
-    // --- fallback: no embedding profile → use agent profile -------------------
+    // --- strict route: Agent configuration is not an embedding route ----------
     {
-      name: 'embedTexts: falls back to agent profile when no embedding profile set',
+      name: 'embedTexts: rejects agent profile substitution when no embedding profile is set',
       fn: async () => {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
@@ -330,20 +374,16 @@ async function run(): Promise<void> {
           () => {},
         );
 
-        const { mockFetch, captured } = makeMockFetch(
-          embeddingResponse([[0.5, 0.6]]),
-        );
+		const { mockFetch, captured } = makeMockFetch(embeddingResponse([[0.5, 0.6]]));
         const origFetch = globalThis.fetch;
         globalThis.fetch = mockFetch;
         try {
-          await embedTexts(['fallback test']);
+		  await assert.rejects(() => embedTexts(['strict route test']), /No embedding profile configured/);
         } finally {
           globalThis.fetch = origFetch;
         }
 
-        // Should still succeed using agent profile's embedding config
-        assert.strictEqual(captured.length, 1);
-        assert.ok(captured[0].url.includes('/embeddings'));
+		assert.strictEqual(captured.length, 0);
       },
     },
   ];

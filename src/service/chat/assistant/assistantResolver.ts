@@ -3,7 +3,7 @@
  *
  * Assistants are user-owned durable identities (`ChatAssistantDefinition`).
  * A conversation binds one via `meta.assistantId`; runtime must:
- *   1. Resolve the definition or safely fall back to Default (null).
+ *   1. Resolve the configured definition exactly; missing storage records fail loudly.
  *   2. Inject `instructions` into the prompt through {@link AssistantSlot}
  *      (never through React or the Composer directly).
  *   3. Fold `knowledgeRefs` into the same explicit-ref/attachment pipe the
@@ -53,7 +53,7 @@ export interface ResolvedAssistant {
 /**
  * Look up the assistant bound to a conversation.
  * - Missing/undefined `assistantId` → null (Default).
- * - Deleted assistant → null (safe fallback; historical receipts keep the id).
+ * - Deleted assistant → error; a bound identity may not silently become Default.
  * - Archived assistant is still returned; UI hides them from selection but a
  *   conversation already bound to one keeps its behaviour.
  */
@@ -66,7 +66,7 @@ export async function resolveAssistantForConversation(
 	if (!assistantId) return null;
 	try {
 		const definition = await assistantService.get(assistantId);
-		if (!definition) return null;
+		if (!definition) throw new Error(`The configured assistant "${assistantId}" no longer exists. Runtime assistant fallback is disabled.`);
 		return {
 			definition,
 			knowledgeRefs: definition.knowledgeRefs ?? [],
@@ -74,9 +74,7 @@ export async function resolveAssistantForConversation(
 			preferredModel: definition.preferredModel,
 		};
 	} catch (err) {
-		// Storage failure must never break a chat turn — degrade to Default.
-		console.warn('[assistantResolver] failed to load assistant, falling back to Default:', err);
-		return null;
+		throw err instanceof Error ? err : new Error(String(err));
 	}
 }
 
@@ -244,9 +242,8 @@ export function resolveEffectiveModel(input: EffectiveModelInput): EffectiveMode
 				};
 			}
 		}
-		// Legacy fixed rows may not have a real profile id (see
-		// normalizeModelSelection); fall through to the legacy mirror if
-		// provider was supplied.
+		// Legacy rows with an explicit provider remain pinned to that exact
+		// provider/model. A missing configured profile is never replaced.
 		if (input.fixedSelection.provider) {
 			return {
 				modelId: input.fixedSelection.modelId,
@@ -254,6 +251,7 @@ export function resolveEffectiveModel(input: EffectiveModelInput): EffectiveMode
 				source: 'conversation-fixed',
 			};
 		}
+		throw new Error(`The conversation's configured model profile "${profileId ?? 'unknown'}" is unavailable. Runtime model fallback is disabled.`);
 	}
 
 	// Legacy mirror: activeModel/activeProvider on the conversation.
@@ -278,11 +276,7 @@ export function resolveEffectiveModel(input: EffectiveModelInput): EffectiveMode
 				source: 'assistant-preferred',
 			};
 		}
-		// Requested but unresolvable — fall to Auto and record the drop.
-		return {
-			...pickAutoDefault(input),
-			assistantPreferredUnavailable: true,
-		};
+		throw new Error(`The assistant's configured model ${input.assistantPreferred.profileId}/${input.assistantPreferred.modelId} is unavailable. Runtime model fallback is disabled.`);
 	}
 
 	// 3. Auto default.
@@ -299,11 +293,7 @@ function pickAutoDefault(input: EffectiveModelInput): EffectiveModelResolution {
 			source: 'auto-default',
 		};
 	}
-	return {
-		modelId: input.defaultModel.modelId,
-		provider: input.defaultModel.provider,
-		source: 'auto-default',
-	};
+	throw new Error('No active Chat model is configured. Configure the Chat model explicitly; runtime model fallback is disabled.');
 }
 
 // ─── knowledgeRefs → attachment pipe ─────────────────────────────────────────

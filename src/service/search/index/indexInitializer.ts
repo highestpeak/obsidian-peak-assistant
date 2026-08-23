@@ -48,6 +48,14 @@ export class IndexRunControl {
 }
 
 export type IndexErrorAction = 'continue' | 'retry' | 'cancel';
+export interface IndexDocumentProgress {
+	processed: number;
+	total: number;
+	path: string | null;
+	failed: number;
+	/** Result for `path`, not the cumulative batch result. */
+	succeeded?: boolean;
+}
 export type IndexErrorHandler = (error: {
 	step: string;
 	failedCount: number;
@@ -443,24 +451,24 @@ export class IndexInitializer {
 	}
 
 	/** Full vault pass: core FTS + chunks only (`listener_fast`). Defers vectors and LLM via pending flags. */
-	async performFastCoreFullIndexing(_showNotification: boolean): Promise<void> {
+	async performFastCoreFullIndexing(_showNotification: boolean, onProgress?: (progress: IndexDocumentProgress) => void, shouldContinue?: () => boolean): Promise<void> {
 		if (!sqliteStoreManager.isInitialized()) {
 			this.reporter.show('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
 			return;
 		}
 		IndexService.resetCancellation();
 		const filesToIndex = await this.collectAllIndexableFilePaths();
-		await this.indexDocumentPaths(filesToIndex, 'Peak: Fast index (FTS)…', 'listener_fast');
+		await this.indexDocumentPaths(filesToIndex, 'Peak: Fast index (FTS)…', 'listener_fast', onProgress, shouldContinue);
 	}
 
 	/** Incremental fast core indexing: `listener_fast` only, no automatic maintenance. */
-	async performFastCoreIncrementalIndexing(filesToIndexPaths?: string[]): Promise<void> {
+	async performFastCoreIncrementalIndexing(filesToIndexPaths?: string[], onProgress?: (progress: IndexDocumentProgress) => void, shouldContinue?: () => boolean): Promise<void> {
 		try {
 			IndexService.resetCancellation();
 			filesToIndexPaths = await this.resolveFilesToIndex(filesToIndexPaths);
 			await Promise.all([
 				this.checkAndDeleteRemovedFiles(),
-				this.indexDocumentPaths(filesToIndexPaths, 'Peak: Fast index (FTS)…', 'listener_fast'),
+				this.indexDocumentPaths(filesToIndexPaths, 'Peak: Fast index (FTS)…', 'listener_fast', onProgress, shouldContinue),
 			]);
 		} catch (e) {
 			console.error('Fast core incremental indexing failed:', e);
@@ -508,8 +516,11 @@ export class IndexInitializer {
 		filesToIndexPaths: string[],
 		progressStartLabel: string,
 		reasonOrOpts: IndexDocumentReason | IndexDocumentOptions,
+		onProgress?: (progress: IndexDocumentProgress) => void,
+		shouldContinue?: () => boolean,
 	): Promise<void> {
 		if (filesToIndexPaths.length === 0) {
+			onProgress?.({ processed: 0, total: 0, path: null, failed: 0 });
 			return;
 		}
 
@@ -523,6 +534,7 @@ export class IndexInitializer {
 
 		let failureCount = 0;
 		for (const path of filesToIndexPaths) {
+			if (shouldContinue && !shouldContinue()) break;
 			await IndexService.waitIfPaused();
 			if (IndexService.isCancelled() || progressTracker?.isCancelled()) {
 				break;
@@ -546,6 +558,7 @@ export class IndexInitializer {
 			}
 
 			const processedCount = indexedCount + failureCount;
+			onProgress?.({ processed: processedCount, total: filesToIndexPaths.length, path, failed: failureCount, succeeded: indexed });
 			if (processedCount === 1 || Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS || processedCount === filesToIndexPaths.length) {
 				progressTracker.updateProgress(processedCount, path);
 				lastProgressUpdate = Date.now();

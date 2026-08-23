@@ -220,7 +220,7 @@ export class ModelRegistry {
 	 * Merge runtime-discovered models (e.g. from Ollama API) into a provider's
 	 * model list. Deduplicates against existing catalog entries.
 	 */
-	public mergeRuntimeModels(providerId: string, modelIds: string[]): void {
+	public mergeRuntimeModels(providerId: string, runtimeModels: Array<string | ModelMetaData>): boolean {
 		const key = normalizeProviderId(providerId);
 		let provider = this.providers.get(key);
 		if (!provider) {
@@ -236,19 +236,37 @@ export class ModelRegistry {
 			this.providers.set(key, provider);
 		}
 
-		for (const id of modelIds) {
+		let changed = false;
+		for (const runtimeModel of runtimeModels) {
+			const model = typeof runtimeModel === 'string'
+				? { id: runtimeModel, displayName: runtimeModel }
+				: runtimeModel;
+			const id = model.id;
 			const normalized = normalizeModelKey(id);
-			if (provider.modelById.has(normalized)) continue;
+			const existing = provider.modelById.get(normalized);
+			if (existing) {
+				const nextType = model.modelType ?? existing.modelType;
+				const nextCapabilities = model.capabilities ?? existing.capabilities;
+				if (existing.modelType !== nextType || JSON.stringify(existing.capabilities) !== JSON.stringify(nextCapabilities)) {
+					existing.modelType = nextType;
+					existing.capabilities = cloneCapabilities(nextCapabilities);
+					changed = true;
+				}
+				continue;
+			}
 
 			const entry: InternalModelEntry = {
 				id,
-				displayName: id,
-				modelType: DEFAULT_MODEL_TYPE,
+				displayName: model.displayName || id,
+				modelType: model.modelType ?? DEFAULT_MODEL_TYPE,
+				capabilities: cloneCapabilities(model.capabilities),
 				normalizedId: normalized,
 			};
 			provider.models.push(entry);
 			provider.modelById.set(normalized, entry);
+			changed = true;
 		}
+		return changed;
 	}
 
 	/**

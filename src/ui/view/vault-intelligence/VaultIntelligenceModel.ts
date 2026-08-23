@@ -21,6 +21,11 @@ import type {
 	VaultActivityTheme,
 } from '@/core/types/vault-intelligence';
 import type { VaultIntelligenceConfig } from './VaultIntelligenceDefaults';
+import type {
+	CopilotProposals,
+	VaultActionProposal,
+	VaultGapProposal,
+} from '@/service/copilot/CopilotOutputCollector';
 
 export interface VaultFileTypeSummary {
 	extension: string;
@@ -58,6 +63,10 @@ export interface VaultIntelligenceSnapshot {
 	digest: VaultDigest | null;
 	fileTypes: VaultFileTypeSummary[];
 	availablePaths: string[];
+	/** File sizes captured with the current Vault inventory. Older persisted
+	 * snapshots omit this field, so consumers must retain a count-based fallback. */
+	availablePathBytes?: Record<string, number>;
+	changedPaths: string[];
 	activityDays: VaultActivityDay[];
 	changedSinceScan: number | null;
 	changedCursorAt: number | null;
@@ -90,9 +99,12 @@ export interface VaultIntelligenceWorkspaceRuntime {
 	selectOperationRoute: (operationId: VaultScanRunState['operations'][number]['id'], candidate: VaultScanOperationRouteCandidate) => Promise<void>;
 	startScan: (plan: VaultScanPlan) => Promise<void>;
 	resumeScan: () => Promise<void>;
+	startNewScan: () => Promise<void>;
 	requestStop: () => void;
+	requestPause: () => void;
 	skipOperation: (operationId: VaultScanRunState['operations'][number]['id']) => void;
 	choose: (taskId: string, atomicItemId: string | null, choiceId: string, choiceValue?: string | null) => Promise<void>;
+	refreshTaskSuggestions: (taskIds: string[], instruction: string) => Promise<void>;
 	applyTask: (taskId: string) => Promise<void>;
 	prepareProposal: (taskId: string) => Promise<void>;
 	applyProposal: (proposalId: string) => Promise<void>;
@@ -127,8 +139,8 @@ export function createVaultScanPlan(
 			enabled: operation.defaultEnabled,
 			model: operation.model,
 			provider: operation.provider,
-			estimatedTokens: operation.estimatedTokens,
-			estimatedCostUsd: operation.estimatedCostUsd,
+			estimatedTokens: 0,
+			estimatedCostUsd: 0,
 		})),
 		createdAt: now,
 	};
@@ -151,15 +163,20 @@ export function createEmptyVaultScanRun(): VaultScanRunState {
 			{ id: 'discover', status: 'waiting', processed: 0, total: 0, message: 'Waiting' },
 			{ id: 'index', status: 'waiting', processed: 0, total: 0, message: 'Waiting' },
 			{ id: 'ai', status: 'waiting', processed: 0, total: 0, message: 'Waiting' },
+			{ id: 'prepare-review', status: 'waiting', processed: 0, total: 0, message: 'Waiting' },
 			{ id: 'publish', status: 'waiting', processed: 0, total: 0, message: 'Waiting' },
 		],
 		operations: [],
 		frozenPaths: [],
+		coreIndexedPaths: [],
 		startedAt: null,
 		completedAt: null,
 		warnings: [],
 		error: null,
 		stopRequested: false,
+		stopMode: null,
+		reviewPreparation: null,
+		discoveryFindings: [],
 	};
 }
 
@@ -167,6 +184,7 @@ export function deriveVaultMaintenanceTasks(options: {
 	config: VaultIntelligenceConfig;
 	findings: readonly LintFinding[];
 	unreadableErrors: readonly { path: string; message: string }[];
+	reviewEvidence?: readonly CopilotProposals[];
 	previous: readonly VaultMaintenanceTask[];
 	runId: string;
 	now: number;
@@ -178,13 +196,18 @@ export function deriveVaultMaintenanceTasks(options: {
 	for (const definition of options.config.tasks) {
 		const matching = openFindings.filter((finding) => definition.signalIds.includes(finding.signalId));
 		const previous = previousByKind.get(definition.kind);
-		const previousChoices = new Map(
-			previous?.atomicItems.map((item) => [item.id, item.ownerChoice] as const) ?? [],
-		);
+		const previousChoices = new Map<string, VaultMaintenanceOwnerChoice | null>();
+		for (const item of previous?.atomicItems ?? []) {
+			previousChoices.set(item.id, item.ownerChoice);
+			if (item.identityKey) previousChoices.set(item.identityKey, item.ownerChoice);
+		}
 		let atomicItems: VaultMaintenanceAtomicItem[] = matching.map((finding) => {
 			const projection = projectionForFinding(definition.kind, finding);
 			return {
 				id: finding.id,
+				identityKey: `lint:${finding.signalId}:${finding.filePath ?? ''}:${finding.id}`,
+				sourceType: 'lint',
+				provenance: finding.filePath ? [finding.filePath] : [],
 				sourceFindingId: finding.id,
 				signalId: finding.signalId,
 				filePath: finding.filePath,
@@ -201,6 +224,9 @@ export function deriveVaultMaintenanceTasks(options: {
 		if (definition.kind === 'unreadable-files') {
 			atomicItems = options.unreadableErrors.map((error) => ({
 				id: `index-error:${error.path}`,
+				identityKey: `index-error:${error.path}`,
+				sourceType: 'index-error',
+				provenance: error.path ? [error.path] : [],
 				sourceFindingId: null,
 				signalId: null,
 				filePath: error.path || null,
@@ -214,6 +240,8 @@ export function deriveVaultMaintenanceTasks(options: {
 				ownerChoice: previousChoices.get(`index-error:${error.path}`) ?? null,
 			}));
 		}
+		const reviewItems = reviewAtomicItems(options.reviewEvidence ?? [], definition.kind, previousChoices);
+		atomicItems = dedupeAtomicItems([...atomicItems, ...reviewItems]);
 		if (atomicItems.length === 0) continue;
 		const paths = new Set(atomicItems.flatMap((item) => item.filePath ? [item.filePath] : []));
 		const proposalChoiceIds = new Set(definition.choices
@@ -227,14 +255,15 @@ export function deriveVaultMaintenanceTasks(options: {
 		const defaultChoice = previous?.defaultChoice && atomicItems.every((item) => item.ownerChoice)
 			? previous.defaultChoice
 			: null;
+		const state: VaultMaintenanceTaskState = hasStaleProposal
+			? 'recovery'
+			: deriveMaintenanceState(definition.initialState, atomicItems, defaultChoice);
 		const task: VaultMaintenanceTask = {
 			id: `maintenance:${definition.kind}`,
 			kind: definition.kind,
 			sourceRunId: options.runId,
 			category: definition.category,
-			state: hasStaleProposal
-				? 'recovery'
-				: deriveMaintenanceState(definition.initialState, atomicItems, defaultChoice),
+			state,
 			title: definition.title,
 			typeLabel: definition.typeLabel,
 			affectedLabel: maintenanceAffectedLabel(definition.kind, atomicItems.length),
@@ -242,12 +271,132 @@ export function deriveVaultMaintenanceTasks(options: {
 			impact: definition.impact,
 			atomicItems,
 			defaultChoice,
+			workflow: previous?.state === state ? previous.workflow : undefined,
+			suggestionReceipt: previous?.suggestionReceipt,
 			createdAt: previous?.createdAt ?? options.now,
 			updatedAt: options.now,
 		};
 		tasks.push(task);
 	}
 	return tasks;
+}
+
+function reviewAtomicItems(
+	snapshots: readonly CopilotProposals[],
+	kind: VaultMaintenanceTask['kind'],
+	previousChoices: ReadonlyMap<string, VaultMaintenanceOwnerChoice | null>,
+): VaultMaintenanceAtomicItem[] {
+	const items: VaultMaintenanceAtomicItem[] = [];
+	for (const snapshot of snapshots) {
+		for (const action of snapshot.actions) {
+			if (taskKindForAction(action) !== kind) continue;
+			const identityKey = reviewActionIdentity(action);
+			const filePath = action.involvedNotes[0] ?? null;
+			items.push({
+				id: `vault-review:${stableIdentityId(identityKey)}`,
+				identityKey,
+				sourceType: 'vault-review-action',
+				provenance: [...action.involvedNotes],
+				sourceFindingId: null,
+				signalId: null,
+				filePath,
+				title: action.title,
+				evidence: [action.rationale, action.estimatedImpact].filter(Boolean).join(' · '),
+				projectionKey: `ai-action:${action.kind}`,
+				projectionLabel: reviewProjectionLabel(kind, action.title, filePath),
+				suggestedChoiceId: suggestedChoiceForAction(action),
+				suggestedValue: null,
+				proposalPatch: null,
+				ownerChoice: previousChoices.get(identityKey) ?? null,
+			});
+		}
+		for (const gap of snapshot.gaps) {
+			if (taskKindForGap(gap) !== kind) continue;
+			const identityKey = reviewGapIdentity(gap);
+			const filePath = gap.references.find((reference) => !reference.startsWith('[[') && /\.[a-z0-9]+$/i.test(reference)) ?? null;
+			items.push({
+				id: `vault-review:${stableIdentityId(identityKey)}`,
+				identityKey,
+				sourceType: 'vault-review-gap',
+				provenance: [...gap.references],
+				sourceFindingId: null,
+				signalId: null,
+				filePath,
+				title: gap.title,
+				evidence: `${gap.body} · ${gap.confidence} confidence`,
+				projectionKey: `ai-gap:${gap.kind}`,
+				projectionLabel: reviewProjectionLabel(kind, gap.title, filePath),
+				suggestedChoiceId: null,
+				suggestedValue: null,
+				proposalPatch: null,
+				ownerChoice: previousChoices.get(identityKey) ?? null,
+			});
+		}
+	}
+	return items;
+}
+
+function taskKindForAction(action: VaultActionProposal): VaultMaintenanceTask['kind'] {
+	if (action.kind === 'create-note') return 'broken-links';
+	if (action.kind === 'merge-notes') return 'related-notes';
+	if (action.kind === 'split-note') return 'note-split';
+	if (action.kind === 'archive-cluster' || action.kind === 'restructure') return 'community-structure';
+	if (action.kind === 'refresh-note') return 'content-lifecycle';
+	return 'unusual-notes';
+}
+
+function taskKindForGap(gap: VaultGapProposal): VaultMaintenanceTask['kind'] {
+	if (gap.kind === 'dangling-reference') return 'broken-links';
+	if (gap.kind === 'structural-hole') return 'knowledge-connections';
+	if (gap.kind === 'stale-hub') return 'community-hubs';
+	return 'unusual-notes';
+}
+
+function suggestedChoiceForAction(action: VaultActionProposal): string | null {
+	if (action.kind === 'create-note') return 'create';
+	if (action.kind === 'merge-notes') return 'merge';
+	if (action.kind === 'split-note' || action.kind === 'archive-cluster') return 'accept';
+	if (action.kind === 'restructure') return 'adjust';
+	return null;
+}
+
+function reviewProjectionLabel(kind: VaultMaintenanceTask['kind'], title: string, filePath: string | null): string {
+	if (kind === 'note-split' || kind === 'content-lifecycle') return filePath ?? title;
+	if (kind === 'community-structure') return 'AI-reviewed Community structure';
+	if (kind === 'community-hubs') return 'AI-reviewed Hub freshness';
+	if (kind === 'knowledge-connections') return 'AI-reviewed structural gaps';
+	return title;
+}
+
+function reviewActionIdentity(action: VaultActionProposal): string {
+	return ['vault-review-action', action.kind, normalizedIdentityText(action.title), ...[...action.involvedNotes].sort()].join(':');
+}
+
+function reviewGapIdentity(gap: VaultGapProposal): string {
+	return ['vault-review-gap', gap.kind, normalizedIdentityText(gap.title), ...[...gap.references].sort()].join(':');
+}
+
+function normalizedIdentityText(value: string): string {
+	return value.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+}
+
+function stableIdentityId(value: string): string {
+	let hash = 2166136261;
+	for (let index = 0; index < value.length; index += 1) {
+		hash ^= value.charCodeAt(index);
+		hash = Math.imul(hash, 16777619);
+	}
+	return (hash >>> 0).toString(36);
+}
+
+function dedupeAtomicItems(items: readonly VaultMaintenanceAtomicItem[]): VaultMaintenanceAtomicItem[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const key = item.identityKey ?? item.id;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
 
 function proposalPatchFor(finding: LintFinding): VaultMaintenanceAtomicItem['proposalPatch'] {

@@ -13,13 +13,11 @@
 //   - `BackendStrategyRegistry` — a map (BackendKind → BackendStrategy).
 //     An app composition site can populate it with hermes-harness and/or
 //     provider-direct execution. Unavailable backends simply do not register —
-//     the resolver then skips them via the fallback list. The current boot path
+//     the resolver then reports the missing preferred backend. The current boot path
 //     creates this registry as a local composition value; long-lived ownership
 //     and Gateway consumption are separate convergence work.
-//   - `resolveBackendStrategy(policy, registry)` — walks
-//     `[policy.preferred, ...policy.fallback]` and returns the first
-//     registered strategy. Throws when none are available (fail-loud,
-//     no silent downgrade).
+//   - `resolveBackendStrategy(policy, registry)` — resolves only
+//     `policy.preferred` and throws when it is unavailable.
 //   - `composeExecuteFromPolicy(manifest, registry)` — the sugar most
 //     callsites want: give me an `execute` function that already knows
 //     which backend to call.
@@ -52,8 +50,9 @@ export type BackendStrategy<TInput = unknown, TResult = unknown> = (
 export type BackendStrategyRegistry = Partial<Record<BackendKind, BackendStrategy>>;
 
 /**
- * Walk `[preferred, ...fallback]` and return the first registered
- * strategy. Throws when none of the requested backends are available.
+ * Resolve only the configured preferred strategy. Runtime failures must not
+ * silently switch execution backends; the owning surface must expose the
+ * configuration error and let the owner retry that same route.
  * Fail-loud on purpose: silently downgrading to an unrequested backend
  * would violate handbook §3 "No Dual System" (the manifest is the
  * source of truth for backend selection).
@@ -62,15 +61,10 @@ export function resolveBackendStrategy<TInput = unknown, TResult = unknown>(
 	policy: BackendPolicy,
 	registry: BackendStrategyRegistry,
 ): { strategy: BackendStrategy<TInput, TResult>; backend: BackendKind } {
-	const candidates: BackendKind[] = [policy.preferred, ...policy.fallback];
-	for (const kind of candidates) {
-		const s = registry[kind];
-		if (s !== undefined) {
-			return { strategy: s as BackendStrategy<TInput, TResult>, backend: kind };
-		}
-	}
+	const strategy = registry[policy.preferred];
+	if (strategy !== undefined) return { strategy: strategy as BackendStrategy<TInput, TResult>, backend: policy.preferred };
 	throw new Error(
-		`No backend strategy registered for policy [preferred=${policy.preferred}, fallback=${JSON.stringify(policy.fallback)}]. Registered backends: ${JSON.stringify(Object.keys(registry))}.`,
+		`The configured backend strategy "${policy.preferred}" is not registered. Runtime fallback is disabled. Registered backends: ${JSON.stringify(Object.keys(registry))}.`,
 	);
 }
 

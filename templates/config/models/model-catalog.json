@@ -203,6 +203,20 @@
           "costOutput": "0",
           "tokenLimits": { "maxTokens": 16384, "maxInputTokens": 16384, "recommendedSummaryThreshold": 12000 },
           "capabilities": { "vision": false, "pdfInput": false, "tools": true, "webSearch": false, "reasoning": false, "maxCtx": 16384 }
+        },
+        {
+          "id": "text-embedding-3-small",
+          "icon": "openai",
+          "modelType": "embedding",
+          "costInput": "0",
+          "costOutput": "0"
+        },
+        {
+          "id": "text-embedding-3-large",
+          "icon": "openai",
+          "modelType": "embedding",
+          "costInput": "0",
+          "costOutput": "0"
         }
       ]
     },
@@ -399,6 +413,13 @@
           "costOutput": "0",
           "tokenLimits": { "maxTokens": 1048576, "maxInputTokens": 1048576, "recommendedSummaryThreshold": 800000 },
           "capabilities": { "vision": true, "pdfInput": true, "tools": true, "webSearch": false, "reasoning": false, "maxCtx": 1048576 }
+        },
+        {
+          "id": "gemini-embedding-001",
+          "icon": "gemini",
+          "modelType": "embedding",
+          "costInput": "0",
+          "costOutput": "0"
         }
       ]
     },
@@ -457,6 +478,20 @@
           "costOutput": "0",
           "tokenLimits": { "maxTokens": 131072, "maxInputTokens": 131072, "recommendedSummaryThreshold": 100000 },
           "capabilities": { "vision": false, "pdfInput": false, "tools": false, "webSearch": true, "reasoning": false, "maxCtx": 131072 }
+        },
+        {
+          "id": "pplx-embed-v1-0.6b",
+          "icon": "perplexity",
+          "modelType": "embedding",
+          "costInput": "0",
+          "costOutput": "0"
+        },
+        {
+          "id": "pplx-embed-v1-4b",
+          "icon": "perplexity",
+          "modelType": "embedding",
+          "costInput": "0",
+          "costOutput": "0"
         }
       ]
     },

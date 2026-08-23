@@ -1,0 +1,1335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vault Intelligence — Scan / Work queue / Result parity audit</title>
+  <style>
+    :root {
+      --ink: #24212b;
+      --muted: #706b79;
+      --line: #dedbe5;
+      --soft: #f6f5f8;
+      --panel: #ffffff;
+      --purple: #6555c6;
+      --purple-soft: #efedff;
+      --red: #b42318;
+      --red-soft: #fff1f0;
+      --amber: #9a6700;
+      --amber-soft: #fff8df;
+      --green: #18794e;
+      --green-soft: #ecf8f1;
+      --blue: #175cd3;
+      --blue-soft: #edf4ff;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #efeff3;
+      font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: var(--purple); }
+    code { font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: break-word; }
+    pre { margin: 10px 0 0; padding: 14px 16px; overflow: auto; color: #e8e4ef; background: #211e29; border: 1px solid #3d3747; border-radius: 9px; }
+    pre code { color: inherit; white-space: pre; overflow-wrap: normal; }
+    .shell { max-width: 1540px; margin: 0 auto; background: #fafafd; min-height: 100vh; }
+    .hero { padding: 42px 48px 34px; background: #211e29; color: white; }
+    .hero .kicker { color: #c9c1ff; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+    .hero h1 { margin: 8px 0 10px; max-width: 1080px; font-size: clamp(28px, 4vw, 48px); line-height: 1.08; }
+    .hero p { max-width: 1050px; margin: 0; color: #d6d1dd; font-size: 16px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+    .meta span, .pill { border: 1px solid #4f485a; border-radius: 999px; padding: 5px 9px; color: #e8e4ef; font-size: 12px; }
+    .nav { position: sticky; top: 0; z-index: 10; display: flex; gap: 10px; overflow-x: auto; padding: 9px 18px; background: rgba(255,255,255,.94); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); }
+    .nav-group { display: flex; flex: none; gap: 3px; padding-right: 10px; border-right: 1px solid var(--line); }
+    .nav-group:last-child { padding-right: 0; border-right: 0; }
+    .nav a { white-space: nowrap; text-decoration: none; color: var(--muted); border-radius: 7px; padding: 7px 10px; }
+    .nav a:hover { color: var(--purple); background: var(--purple-soft); }
+    main { padding: 30px 34px 72px; }
+    section { scroll-margin-top: 72px; margin: 0 0 34px; }
+    h2 { margin: 0 0 10px; font-size: 25px; line-height: 1.2; }
+    h3 { margin: 0 0 8px; font-size: 17px; }
+    h4 { margin: 0 0 5px; font-size: 14px; }
+    .lede { margin: 0 0 18px; color: var(--muted); max-width: 1100px; }
+    .grid { display: grid; gap: 14px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+    .card p { margin: 5px 0 0; color: var(--muted); }
+    .verdict { border-left: 5px solid var(--red); background: var(--red-soft); }
+    .verdict strong { color: var(--red); }
+    .callout { border-left: 4px solid var(--purple); background: var(--purple-soft); }
+    .good { border-left: 4px solid var(--green); background: var(--green-soft); }
+    .warn { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+    .metric { display: flex; align-items: baseline; gap: 8px; }
+    .metric b { font-size: 29px; line-height: 1; }
+    .metric small { color: var(--muted); }
+    .tag { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 7px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .p0 { color: var(--red); background: var(--red-soft); }
+    .p1 { color: var(--amber); background: var(--amber-soft); }
+    .state { color: #7a271a; background: #fef3f2; }
+    .data { color: #1849a9; background: #eff4ff; }
+    .structure { color: #5925dc; background: #f4f3ff; }
+    .host { color: #026aa2; background: #f0f9ff; }
+    .visual { color: #4e5ba6; background: #f2f4ff; }
+    .parity { color: var(--green); background: var(--green-soft); }
+    .blocked { color: #667085; background: #f2f4f7; }
+    .flow { display: grid; grid-template-columns: repeat(7, minmax(105px, 1fr)); align-items: stretch; gap: 8px; }
+    .flow.cols-5 { grid-template-columns: repeat(5, minmax(150px, 1fr)); margin-top: 12px; }
+    .flow.cols-4 { grid-template-columns: repeat(4, minmax(160px, 1fr)); }
+    .node { position: relative; min-height: 92px; padding: 12px; border: 1px solid var(--line); background: white; border-radius: 10px; }
+    .node:not(:last-child)::after { content: "→"; position: absolute; right: -15px; top: 34px; z-index: 2; color: var(--purple); font-weight: 800; }
+    .node.bad { border-color: #f1a9a2; background: var(--red-soft); }
+    .node small { display: block; margin-top: 5px; color: var(--muted); }
+    .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    figure { margin: 0; background: white; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    figure img { display: block; width: 100%; height: auto; background: #ddd; }
+    figcaption { padding: 10px 12px; color: var(--muted); border-top: 1px solid var(--line); }
+    figcaption strong { color: var(--ink); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: white; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { padding: 10px 11px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); line-height: 1.53; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+    th { background: #f4f3f7; font-size: 12px; color: #544f5e; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #faf9fc; }
+    .matrix { table-layout: fixed; }
+    .matrix td:nth-child(1) { white-space: nowrap; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; }
+    .matrix td:nth-child(2), .matrix td:nth-child(3) { white-space: nowrap; }
+    .compact td, .compact th { padding: 8px 9px; }
+    .tree { padding-left: 18px; border-left: 2px solid var(--line); }
+    .tree > div { margin: 8px 0; }
+    .arrow { color: var(--purple); font-weight: 700; }
+    .accept { margin: 6px 0 0; padding-left: 18px; }
+    .accept li { margin: 3px 0; }
+    .source { color: var(--muted); font-size: 12px; }
+    .reading-meta { margin-top: 12px; color: #bdb7c6; font-size: 12px; }
+    .claim-title { margin-bottom: 4px; color: var(--ink); }
+    .screen-stack, .case-stack, .dossier-stack { display: grid; gap: 14px; }
+    .audit-entry { background: white; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .audit-entry > summary { display: grid; grid-template-columns: 120px minmax(0, 1fr) max-content; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; }
+    .audit-entry > summary::-webkit-details-marker { display: none; }
+    .audit-entry > summary:hover { background: #f8f7fa; }
+    .audit-entry > summary::after { content: "＋"; color: var(--purple); font-weight: 700; }
+    .audit-entry[open] > summary::after { content: "−"; }
+    .audit-entry > summary > span { color: var(--muted); font-size: 12px; }
+    .audit-entry > summary > div strong { display: block; }
+    .audit-entry > summary > div small { color: var(--muted); }
+    .audit-body { padding: 0 16px 17px; border-top: 1px solid var(--line); }
+    .field-list { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 0; margin: 0; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+    .field-list dt, .field-list dd { margin: 0; padding: 9px 11px; border-bottom: 1px solid var(--line); }
+    .field-list dt { color: #544f5e; background: #f5f4f7; font-weight: 700; }
+    .field-list dd { background: white; }
+    .field-list dt:last-of-type, .field-list dd:last-of-type { border-bottom: 0; }
+    .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .tree-code { margin: 0; min-height: 100%; }
+    .evidence-label { display: inline-flex; margin-right: 6px; padding: 2px 6px; color: #344054; background: #f2f4f7; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .timeline { position: relative; margin: 0; padding: 0 0 0 20px; list-style: none; }
+    .timeline::before { content: ""; position: absolute; top: 8px; bottom: 8px; left: 5px; width: 2px; background: var(--line); }
+    .timeline li { position: relative; display: grid; grid-template-columns: 90px 150px minmax(0, 1fr); gap: 12px; padding: 0 0 14px; }
+    .timeline li::before { content: ""; position: absolute; left: -20px; top: 6px; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; background: var(--purple); box-shadow: 0 0 0 1px var(--purple); }
+    .timeline time { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--purple); font-weight: 700; }
+    .timeline b { font-size: 12px; }
+    .case-id { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--red); font-weight: 800; }
+    .invariant { margin: 10px 0 0; padding: 10px 12px; color: #7a271a; background: var(--red-soft); border-left: 3px solid var(--red); }
+    .test-list { margin: 7px 0 0; padding-left: 20px; }
+    .test-list li { margin: 4px 0; }
+    .foot { padding: 28px 34px; background: #211e29; color: #d8d3df; }
+    @media (max-width: 980px) {
+      main { padding: 24px 16px 60px; }
+      .hero { padding: 32px 22px; }
+      .grid.cols-2, .grid.cols-3, .gallery, .split { grid-template-columns: 1fr; }
+      .flow, .flow.cols-5, .flow.cols-4 { grid-template-columns: 1fr; }
+      .node:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -18px; }
+      .audit-entry > summary { grid-template-columns: 90px minmax(0, 1fr) max-content; }
+      .field-list { grid-template-columns: 130px minmax(0, 1fr); }
+      .timeline li { grid-template-columns: 76px minmax(0, 1fr); }
+      .timeline li > span:last-child { grid-column: 2; }
+    }
+    @media print { .nav { display: none; } .shell { max-width: none; } body { background: white; } section { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="hero">
+    <div class="kicker">Read-only parity audit · 2026-08-23</div>
+    <h1>Vault Intelligence — Scan、Work queue 与 Result workspace 精确复刻审计</h1>
+    <p>唯一视觉与交互参考是 V2 Mock。审计只覆盖 Scan 连续流程、Work queue、全部结果项工作区及 Proposal → Apply → Re-index → Verify；Overview、Vault map、Contents、Activity 与其他页面受保护，不进入本轮改造范围。</p>
+    <div class="meta">
+      <span>Production SHA c55c8a3d4b34</span>
+      <span>Reference SHA-256 0b1c46c86697…</span>
+      <span>Evidence viewport 1728 × 1084</span>
+      <span>Real host: three Obsidian recordings</span>
+      <span>CDP: unavailable during audit</span>
+      <span>Approved deltas: none</span>
+    </div>
+    <div class="reading-meta">Forensic handoff 版 · 目标读者：实施工程师与 parity reviewer · 主线阅读约 30 分钟，含全部 case files / dossiers 约 70 分钟</div>
+  </header>
+
+  <nav class="nav">
+    <div class="nav-group"><a href="#verdict">结论</a><a href="#scope">范围</a><a href="#evidence">视觉证据</a></div>
+    <div class="nav-group"><a href="#runtime">运行真值</a><a href="#screen-inventory">逐屏审计</a><a href="#video-timeline">录屏时间线</a><a href="#p0-cases">P0 case files</a></div>
+    <div class="nav-group"><a href="#mapping">组件映射</a><a href="#matrix">Mismatch matrix</a><a href="#states">状态矩阵</a><a href="#contract-deep">字段合同</a></div>
+    <div class="nav-group"><a href="#result-dossiers">结果项 dossier</a><a href="#geometry-deep">几何 / 宿主</a><a href="#source-plan">文件计划</a><a href="#verification-deep">测试矩阵</a><a href="#acceptance">验收</a></div>
+  </nav>
+
+  <main>
+    <section id="verdict">
+      <h2>审计结论</h2>
+      <p class="lede">当前页面的主要问题不是像素微调，而是 Production 没有运行 Mock 所表达的同一个产品：执行顺序、模型路由、AI 收据、进度算法、暂停/停止/恢复、AI 结果进入 Work queue 的因果链，以及各类结果项的动作模型都存在断点。</p>
+      <div class="grid cols-3">
+        <div class="card verdict"><div class="metric"><b>15</b><small>P0</small></div><strong>真值或安全边界错误</strong><p>包括“0 tokens 仍完成”、所选模型未控制调用、进度倒退、停止后索引仍可能继续写、partial 被当成 completed。</p></div>
+        <div class="card warn"><div class="metric"><b>19</b><small>P1</small></div><strong>结构与交互偏差</strong><p>Run workbench、Completed 信息顺序、Work queue 调整入口、11 类结果工作区均未完整迁移 Mock 合同。</p></div>
+        <div class="card callout"><div class="metric"><b>1</b><small>正确处理顺序</small></div><strong>Runtime truth → UI</strong><p>必须先修 route / receipt / state machine，再替换 subtree 和迁移 CSS。反过来做会继续制造“看起来在跑、实际没调用”的假状态。</p></div>
+      </div>
+      <div class="card verdict" style="margin-top:14px">
+        <strong>最终判定：FAIL — P0/P1 parity 未关闭。</strong>
+        <p>视频中最直接的证据是：AI Work 已标为 Completed，但所有 per-file operation 仍是 Not started、AI usage 为 0；随后整体进度从 81% 回退到 76%；最终 502/502 summaries 与 AI tags 都显示 Completed，却仍是 0 tokens / US$0。源码能完整解释这些现象，不是录屏偶发。</p>
+      </div>
+    </section>
+
+    <section id="scope">
+      <h2>Impact Contract 与保护范围</h2>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>本轮必须关闭</h3>
+          <div class="tree">
+            <div><strong>Scan</strong> — Setup → Discover → Build Index → per-document AI → Vault-wide AI → Publish → Completed</div>
+            <div><strong>Control</strong> — pause / stop / resume / retry / checkpoint / live-follow</div>
+            <div><strong>Work queue</strong> — filters / search / empty / loading / error / suggestion adjustment / row selection</div>
+            <div><strong>Result items</strong> — 11 maintenance kinds、owner choice、history、proposal、recovery、verification、reopen</div>
+          </div>
+        </div>
+        <div class="card good">
+          <h3>受保护，不应被顺手重做</h3>
+          <p>Overview、Vault map、Contents、Activity、顶部 IA、其他九个真实页面；既有真实数据和分布；用户文件写入的 source-hash / explicit Apply 安全边界。</p>
+          <p><strong>禁止：</strong>复制 Mock 合成数量；伪造 provider receipt；为空数据隐藏整个 UI；为了复用旧 generic modal 而牺牲结果项语义；以 build 或静态源码匹配代替真实 Obsidian 验收。</p>
+        </div>
+      </div>
+      <details class="audit-entry" style="margin-top:14px">
+        <summary><span>Protection ledger</span><div><strong>审计起始 dirty worktree（必须视为他人/用户所有）</strong><small>本任务没有 revert、stage、覆盖或纳入这些产品改动</small></div></summary>
+        <div class="audit-body">
+          <div class="split">
+            <div><h3>Pre-existing modified</h3><pre><code>docs/pre-launch-todo.md
+docs/roadmap.html
+main.ts
+src/app/context/AppContext.ts
+src/app/vault-intelligence/VaultIntelligenceRuntime.ts
+src/core/profiles/ProfileRegistry.ts
+src/core/profiles/materialize.ts
+src/core/providers/model-registry.ts
+src/core/providers/model-selection.ts
+src/core/providers/ollama/fetchOllamaModels.ts
+src/core/providers/refreshLocalProfileModelCatalogs.ts
+src/core/types/vault-intelligence.ts
+src/service/search/embeddings/embedClient.ts
+src/service/search/index/indexInitializer.ts
+src/service/search/index/indexService.ts
+src/styles/peak-components.css
+src/ui/view/vault-intelligence/VaultIntelligenceDefaults.ts
+src/ui/view/vault-intelligence/VaultIntelligenceModel.ts
+src/ui/view/vault-intelligence/VaultIntelligenceWorkspace.tsx
+templates/config/models/model-catalog.json
+templates/config/vault-intelligence.json
+test/embed-client.test.ts
+test/model-picker-local-discovery-boundary.test.ts
+test/profile-model-catalog.test.ts
+test/unified-model-selection.test.ts
+test/vault-intelligence-rendered-parity.test.ts
+test/vault-intelligence-runtime.test.ts
+test/vault-intelligence-standalone-contract.test.ts</code></pre></div>
+            <div><h3>Pre-existing untracked / task-owned separation</h3><pre><code># Pre-existing untracked
+src/core/providers/openrouter/
+src/ui/view/vault-intelligence/VaultScanEstimate.ts
+test/ollama-model-discovery.test.ts
+test/vault-scan-estimate.test.ts
+
+# This audit owns only
+docs/superpowers/audits/
+  2026-08-23-vault-intelligence-scan-work-queue-result-parity-audit.html
+docs/superpowers/audits/assets/
+  vault-intelligence-scan-work-queue-parity-2026-08-23/</code></pre>
+              <p><strong>Commit rule：</strong>Stage B 若启动，必须先重新取 status，并按 hunk 证明 task ownership；禁止 <code>git add -A</code>。如果上述同一文件持续由其他工作修改，无法安全拆分时应停止提交，而不是混合所有权。</p>
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section id="evidence">
+      <h2>逐屏视觉证据</h2>
+      <p class="lede">下列图片均为 1728×1084。Mock 截图来自唯一 reference HTML；Production 截图来自用户提供的真实 Obsidian 录屏。Overlay 只用于暴露几何/结构偏差，不用于证明数据或交互正确。</p>
+      <div class="gallery">
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/mock-progress-index.png" alt="Mock Build Index" /><figcaption><strong>Reference · Build Index</strong>：阶段轨道、Index metrics、4-step pipeline、左侧 document order、右侧 current document 与 substeps。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/production-progress-0032.jpg" alt="Production progress at 32 seconds" /><figcaption><strong>Real current · 00:00:32</strong>：整体 81%，Index 323/509；AI work 已写 Completed，AI usage 0。产品状态已与 Reference 不同。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/overlay-progress-index.png" alt="Build Index overlay" /><figcaption><strong>50% overlay · layout comparison</strong>：同 viewport、近似 Build Index 时刻；主要 subtree、信息密度、stage geometry 与工作区分栏不一致。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/production-progress-0112.jpg" alt="Production regressed progress" /><figcaption><strong>Real current · 00:01:12</strong>：整体从 81% 回退到 76%；core index 已 509/509，embedding 仍跑，AI enriched 142/501。当前 percentage 不是单调且分母语义不稳定。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/mock-progress-ai.png" alt="Mock AI work" /><figcaption><strong>Reference · AI work</strong>：per-operation timeline、current input、evidence produced、token/spend、Stop remaining；Vault-wide lifecycle 独立推进。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/production-ai-0200.jpg" alt="Production AI at two minutes" /><figcaption><strong>Real current · 00:02:00</strong>：summaries 502/502 与 AI tags 502/502 均 Completed，但所有 usage 为 0；Vault-wide operations 全部 Skipped。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/mock-progress-publish.png" alt="Mock Publish" /><figcaption><strong>Reference · Publish</strong>：Publish 是具体的 machine-state / follow-up / receipt 工作区；可与仍在收尾的 AI operation 重叠。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/production-publish-0224.jpg" alt="Production Publish" /><figcaption><strong>Real current · 00:02:24</strong>：Publish running、overall 100%、AI usage 0；进度与 stage terminal state 冲突。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/mock-work-queue.png" alt="Mock Work queue" /><figcaption><strong>Reference · Work queue</strong>：紧凑表格、状态筛选、搜索、建议输入；合成数量仅用于覆盖 taxonomy，不是生产目标数据。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/production-work-queue.jpg" alt="Production Work queue" /><figcaption><strong>Real current · Work queue</strong>：真实 7 项数据应保留；默认密度、列结构、筛选与调整闭环仍不一致。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/production-result-property.jpg" alt="Production property result" /><figcaption><strong>Real current · Property result</strong>：有领域标题，但核心仍是 generic overlay + generic atomic choices，缺少连续 saved review / diff / apply / conflict 历史。</figcaption></figure>
+        <figure><img src="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/production-result-link.jpg" alt="Production broken-link result" /><figcaption><strong>Real current · Broken link result</strong>：只预览顶部 3 条 evidence；没有 reference 的 repair target / create / redirect / remove / rerun / reopen 完整动作闭环。</figcaption></figure>
+      </div>
+      <div class="card warn" style="margin-top:14px"><strong>可比性声明：</strong>Build Index 和 Work queue 可做 layout-level comparison；它们不是同一 fixture，数据像素不可比。Completed 录屏最后打开了另一工作区，无法锁定与 Mock 相同的 completed resting state，因此 <code>COMPLETED VISUAL NOT COMPARABLE</code>。</div>
+    </section>
+
+    <section id="runtime">
+      <h2>运行真值与因果链</h2>
+      <p class="lede">Mock JS 不是动画装饰：它规定 per-document 流水、Vault-wide lifecycle、Publish 重叠和每个 operation 的可观察证据。Production 当前执行链在六处断开。</p>
+      <div class="flow">
+        <div class="node"><strong>Setup plan</strong><small>选择 operation、profile、model、scope</small></div>
+        <div class="node bad"><strong>Route lost</strong><small>LLM enrichment / Review 未接收所选 route</small></div>
+        <div class="node bad"><strong>Index sequential</strong><small>core index 完成后才 vector，再 LLM；非 per-document overlap</small></div>
+        <div class="node bad"><strong>Review too early</strong><small>与整个 Index 并行，可能在 index ready 前生成 digest</small></div>
+        <div class="node bad"><strong>False completion</strong><small>processed++ 不等于 provider 成功；0 receipt 仍 completed</small></div>
+        <div class="node bad"><strong>Publish lint only</strong><small>AI review collector 未适配为 maintenance atom</small></div>
+        <div class="node bad"><strong>Generic results</strong><small>11 kinds 被压平为同类 modal/choice</small></div>
+      </div>
+      <div class="grid cols-2" style="margin-top:14px">
+        <div class="card"><h3>Mock execution contract</h3><p>Discover 0% → local/core index 15% → per-file AI 20–73% 并随 ready document 流动 → Vault-wide evidence/discover/review/follow-up 54% 起 → Publish 88% 起；最后 AI operation 可持续到 99%。每一步展示 current input、substep、evidence、tokens/spend 与 stop boundary。</p></div>
+        <div class="card verdict"><h3>Production execution reality</h3><p><code>executeRun()</code> 只做 Discover → <code>Promise.all(performIndex, performAi)</code> → Publish。<code>performIndex()</code> 内部又严格 await core → vector → LLM → lint；<code>performAi()</code> 则在 index 尚未 ready 时启动一个共享 Review。UI 看到的“并行”不是 Mock 的文档流水线。</p></div>
+      </div>
+    </section>
+
+    <section id="screen-inventory">
+      <h2>逐屏、逐 subtree 审计</h2>
+      <p class="lede">本节把每一屏拆成 primary job、render tree、读取数据、写入状态、交互和入口/出口。实现者可以按 screen 顺序阅读，而不是在 34 行总表里猜具体该替换什么。</p>
+      <div class="screen-stack">
+        <details class="audit-entry" open>
+          <summary><span>Screen 01</span><div><strong>Scan setup</strong><small>冻结 scope、checks、Index outputs、AI operations、model routes 和 estimate</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Primary job</dt><dd>让 owner 在启动前看到同一份 frozen plan：扫描什么、运行什么、实际使用哪个模型、预计成本、哪些能力不可用、是否会写用户文件。</dd>
+              <dt>Reference reads</dt><dd>changed baseline、Vault object counts、scope candidates、task/check catalog、Index output availability、model catalog/pricing、last completed routes。</dd>
+              <dt>Reference writes</dt><dd>只写尚未启动的 plan draft；Start 时冻结 concrete paths、operation switches、route binding、estimate basis 和 consent boundary。</dd>
+              <dt>Actions</dt><dd>scope mode、browse/search、add/remove scope、toggle checks/outputs/operations、expand groups、pick model、Start scan、recover saved run。</dd>
+              <dt>Empty/error</dt><dd>空 selected scope 保留卡片并禁用 Start；route 不可用保留 row 并常驻说明；price 缺失显示 Not available。</dd>
+              <dt>Entry / exit</dt><dd>从 View progress、selected type、saved work 或 last-run continuation 进入；Start 后进入 Active run，Back 不得静默丢掉 recoverable plan。</dd>
+            </dl>
+            <div class="split">
+              <div><h4>Mock render tree</h4><pre class="tree-code"><code>screen[data-screen="scan-setup"]
+└─ scan-setup-shell
+   ├─ scan-setup-overview
+   │  ├─ scan-setup-hero
+   │  └─ setup-trust-row (3 facts)
+   ├─ scan-setup-grid
+   │  ├─ scan-config-scope
+   │  ├─ scan-config-checks
+   │  │  └─ scan-index-plan disclosure
+   │  └─ scan-config-ai-models
+   │     └─ operation groups / model rows
+   └─ estimate + footer / Start</code></pre></div>
+              <div><h4>Production render tree</h4><pre class="tree-code"><code>ScanSetup
+├─ scan-setup-overview
+├─ SetupSection(1) scope
+├─ SetupSection(2) checks + Index plan
+├─ SetupSection(3) AI model groups
+└─ estimate / Start
+
+Structural status: mostly ported
+Runtime status: selected LLM route not consumed</code></pre></div>
+            </div>
+            <p class="invariant"><strong>关键断点：</strong><code>selectOperationRoute()</code> 更新了 Setup snapshot，但 <code>runLlmEnrichment()</code> 与 <code>review.run()</code> 没有接收该 route。UI 的“model ready”目前只是计划元数据，不是 execution binding。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span>Screen 02</span><div><strong>Active run shell</strong><small>统一展示 overall truth、stage overlap、current work、AI usage 与控制边界</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Primary job</dt><dd>让 owner 持续确认 Peak 真的在工作、当前处理对象、已发布证据、真实 provider usage、可安全暂停或停止的位置。</dd>
+              <dt>Reference reads</dt><dd>frozen plan、fixed total、stage windows、document pipeline events、operation attempts、provider events、usage receipts、warnings。</dd>
+              <dt>Reference writes</dt><dd>只记录 inspection selection、expanded operation、pause/stop intent；不能由 UI 推导 terminal state。</dd>
+              <dt>Actions</dt><dd>inspect stage、Follow live、expand operation、Skip/Stop remaining、Pause at checkpoint、Stop run、Resume。</dd>
+              <dt>Entry / exit</dt><dd>Start 或 persisted interrupted run 进入；仅当 Publish terminal receipt 已持久化时自动进入 Completed。</dd>
+            </dl>
+            <div class="split">
+              <div><h4>Mock hierarchy</h4><pre class="tree-code"><code>active-run
+├─ run-focus-hero
+│  ├─ state + title + boundary
+│  └─ pause / stop controls
+├─ overall metrics
+│  ├─ fixed percent
+│  ├─ processed / elapsed / throughput
+│  └─ actual + projected AI
+├─ stage-track (4 stages, overlap-aware)
+├─ exactly one stage panel
+└─ event-stream disclosure</code></pre></div>
+              <div><h4>Production hierarchy</h4><pre class="tree-code"><code>RunProgress
+├─ pk-vi-run-hero
+├─ separate progress-summary card
+├─ pk-vi-run-stage-tabs grid
+├─ one stage-workspace
+└─ pk-vi-run-events
+
+liveStageId = first running stage
+overall = recomputed from mutable totals</code></pre></div>
+            </div>
+            <p class="invariant"><strong>结构判断：</strong>这不是同一 render tree。即便色彩、padding 全部调准，独立 progress card、tab grid 和单 live-stage 模型仍无法表达 Mock 的 overlap、fixed denominator 与同屏 current work。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>Stage 01</span><div><strong>Discover</strong><small>冻结可复现输入，而不是只显示“509 objects”</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reference workspace</dt><dd>Frozen scan input、current discovery unit、frozen object receipt；三行固定 geometry，即使对象为 0 也不消失。</dd>
+              <dt>Current data</dt><dd><code>frozenPaths</code>、Discover stage count、<code>plan-scan</code> operation evidence。</dd>
+              <dt>Mismatch</dt><dd>Production 用 generic stage rows 复用 Publish 文案；没有 selector resolution、affected context、closure revision 或 scope manifest hash。</dd>
+              <dt>Required acceptance</dt><dd>同一 run 重启后 frozen path set byte-equivalent；0-object run 诚实显示 empty；动态 scope 变化不改变 active run。</dd>
+            </dl>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span>Stage 02</span><div><strong>Build index</strong><small>Core Search、vector、per-file AI 和 maintenance checks 的文档流水线</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reference workspace</dt><dd>Index metrics、四步 pipeline、Document order table、Current document、每个 document 的 substep state、recent completed context。</dd>
+              <dt>Current runtime</dt><dd><code>performIndex()</code> 先 await 整体 core index，再运行 vector，再运行 summaries/tags，最后 full lint。</dd>
+              <dt>Current UI</dt><dd><code>IndexRunWorkspace</code> 展示 current document 和 queue，但缺 source revision、substep attempt、output receipt；顺序和分栏也与 Mock 相反。</dd>
+              <dt>Empty/error</dt><dd>无 pending LLM document 时应显示 0 eligible / no pending work；provider 不可用时保留 operation row 并标 unavailable，不能显示 completed 0/0。</dd>
+              <dt>Required acceptance</dt><dd>doc A core-ready 后可启动 A 的后续 substeps，不等待 doc Z；每一步能区分 queued/running/skipped/failed/completed，并能追到 output checksum。</dd>
+            </dl>
+            <p class="invariant"><strong>当前矛盾：</strong>Production UI 文案写着 “Runs as each eligible document becomes ready”，但 runtime 明确在整个 <code>runCoreIndex()</code> 返回后才调用 enrichment。这是 UI 与执行真值冲突，不是视觉差异。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span>Stage 03</span><div><strong>AI work</strong><small>每个 operation 的真实 stream 与 Vault-wide lifecycle</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reference per-file</dt><dd>File summaries 与 AI Tags 各有 operation row、process timeline、current input、evidence produced、model/provider、usage/spend、Skip。</dd>
+              <dt>Reference Vault-wide</dt><dd>Relationship discovery、semantic review、community analysis、hub/bridge analysis、file proposals、maintenance synthesis 各有独立可观察结果；共享 execution 必须显式关联。</dd>
+              <dt>Production state</dt><dd>六个 Vault-wide row 共享一个 <code>review.run({mode:'fast'})</code>；同一个 eventCount/evidenceCount 被复制到每行，usage 只写第一行。</dd>
+              <dt>Production UI</dt><dd>flat <code>&lt;details&gt;</code> 只有 started/completed/evidence string；没有 first token、stable prefix、result reference、attempt/retry、shared execution id。</dd>
+              <dt>Required acceptance</dt><dd>每行可回答：是否真实调用、实际 route、何时收到首 token、当前稳定输出、产生哪些可引用 evidence、为何 stopped/skipped/failed。</dd>
+            </dl>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>Stage 04</span><div><strong>Publish</strong><small>发布已验证 machine state、派生 follow-up、冻结 run receipt</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reference workspace</dt><dd>Publish verified Index layers、Vault map machine state、Follow-up and receipts；optional AI partial 不阻塞已验证 Core Search。</dd>
+              <dt>Current runtime</dt><dd>运行 global maintenance，读取 latest lint，调用 <code>deriveVaultMaintenanceTasks()</code>，构建 CompletedRun，随后直接 status=completed。</dd>
+              <dt>Missing adapter</dt><dd><code>finalSnapshot.collectorSnapshot</code> 的 findings、gaps、actions、file proposals 没有进入 task derivation。</dd>
+              <dt>Required acceptance</dt><dd>每个 publish layer 有 independently verified receipt；follow-up 可追到 deterministic finding 或 AI evidence；零任务仍有 honest empty receipt。</dd>
+            </dl>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span>Screen 03</span><div><strong>Completed</strong><small>先说明 Peak 已完成什么，再说明仍需要 owner 做什么</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reference order</dt><dd>Scan complete hero → Run details disclosure → Completed automatically disclosure → Needs you Work queue。</dd>
+              <dt>Reference receipt</dt><dd>actual models、tokens、spend、operation completion；provider calls 可继续 inspect。</dd>
+              <dt>Production gap</dt><dd>model slot 固定 Not available；operation completion 仅基于 generic receipts；0-token false completion 会被永久写入 completed summary。</dd>
+              <dt>Entry / exit</dt><dd>从 terminal Publish 自动进入一次；可回 Run progress 检查历史，也可进入具体 task；返回时保持 queue filter/scroll。</dd>
+              <dt>Not comparable</dt><dd>录屏最终打开了 Property Maintenance，未提供与 Mock 相同 fixture 的 Completed resting screenshot，因此只验证了 transition，不宣称视觉完成。</dd>
+            </dl>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span>Screen 04</span><div><strong>Work queue</strong><small>只保存 durable unresolved owner work，不是 Scan 日志或所有 finding 的堆叠</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reference reads</dt><dd>canonical maintenance atoms、current owner choice、current suggestion、suggestion version、impact、affected counts、state、exit condition。</dd>
+              <dt>Reference actions</dt><dd>filter、search、open whole row、Update suggestions、bulk Set all（只改变作用范围，不改变 choice semantics）。</dd>
+              <dt>Current gap</dt><dd>真实 7 tasks 应保留；但 Update suggestions 永远返回 runtime unavailable，仍作为正常可提交表单显示。</dd>
+              <dt>Empty/error</dt><dd>无 unresolved work 显示 intentional empty；search/filter 无结果与 canonical queue empty 必须是两个状态；load/persist error 不能变成 0 tasks。</dd>
+              <dt>Entry / exit</dt><dd>顶层 Work queue 或 Completed Needs you 进入；task overlay 关闭后恢复原 row focus、filter、query 和 scroll anchor。</dd>
+            </dl>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>Screen 05+</span><div><strong>Result workspace / Proposal / Verify</strong><small>11 种领域问题共享安全 primitives，但不能共享一个 generic 产品模型</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Can share</dt><dd>overlay、focus trap、Escape、outside click、focus restoration、header/footer frame、source revision guard、diff selection primitive。</dd>
+              <dt>Cannot share</dt><dd>用户问题、evidence organization、available actions、owner-surface handoff、write boundary、exit verifier、reopen trigger。</dd>
+              <dt>Current structure</dt><dd><code>TaskSpecificWorkspace</code> 只对 note-split、content-lifecycle、unreadable-files 有局部布局；其余类型共享 matrix/relationship callout，顶部最多取 3 个 atomic item。</dd>
+              <dt>Required exit</dt><dd>choice saved 不等于 applied；applied 不等于 verified；verified 必须来自 fresh evidence；证据 revision 变化时可 reopen 且保留 owner history。</dd>
+            </dl>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="video-timeline">
+      <h2>三段真实录屏时间线</h2>
+      <p class="lede">以下时间点是人工逐帧观察，不从 UI 文案反推 runtime。每个异常都与源码调用链交叉验证。</p>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3>22:31:16 · 首次长扫描</h3>
+          <ol class="timeline">
+            <li><time>00:00:05</time><b>Build Index</b><span>Discover 已完成；Build Index running；AI work 已显示 Completed；AI usage 0。</span></li>
+            <li><time>00:02:45</time><b>静止</b><span>长时间页面无新对象级证据，只有 generic “Running maintenance checks”。</span></li>
+            <li><time>00:03:00</time><b>79%</b><span>Optional AI work skipped；embedding/summaries/tags 显示 Completed 0 tokens；六个 Vault-wide operation skipped。</span></li>
+            <li><time>00:05:00</time><b>Publish</b><span>页面继续依靠 stage/event 文案，仍无 provider receipt 或 stream evidence。</span></li>
+            <li><time>00:05:15</time><b>Finished</b><span>Scan 完成，AI 仍为 0 usage。</span></li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>22:55:34 · Work queue / results</h3>
+          <ol class="timeline">
+            <li><time>00:00:00</time><b>Queue</b><span>真实 7 个 task，全部 Needs Choice；数量本身不是 mismatch。</span></li>
+            <li><time>00:00:10</time><b>Properties</b><span>Property result 有领域标题，但仍使用 generic overlay/choice frame。</span></li>
+            <li><time>00:00:15</time><b>Broken links</b><span>顶部 evidence 只显示最多 3 项，缺 repair/create/redirect/remove/rerun/reopen 流程。</span></li>
+            <li><time>00:00:35</time><b>Note split</b><span>有局部专用布局，但 Draft in Composer、Apply、re-index、Verify 没有连续状态反馈。</span></li>
+          </ol>
+        </div>
+        <div class="card verdict">
+          <h3>23:51:23 · 最强运行真值证据</h3>
+          <ol class="timeline">
+            <li><time>00:00:00</time><b>Setup</b><span>9 operations/models ready，509 selected。</span></li>
+            <li><time>00:00:32</time><b>81%</b><span>Index 323/509；AI work 已 Completed；AI usage 0。</span></li>
+            <li><time>00:00:56</time><b>AI detail</b><span>所有 per-file operation 仍 Not started/Not completed，Vault-wide lifecycle 却全 Complete。</span></li>
+            <li><time>00:01:12</time><b>76%</b><span>整体进度从 81% 回退；core index 509/509，embedding 仍 running，AI enriched 142/501。</span></li>
+            <li><time>00:02:00</time><b>502/502</b><span>embedding 501/501、summaries 502/502、AI tags 502/502 全 Completed，所有 tokens/cost 仍为 0。</span></li>
+            <li><time>00:02:24</time><b>100%</b><span>Publish 仍 running，但 overall 已 100%。</span></li>
+            <li><time>00:02:32</time><b>Complete</b><span>自动跳转后打开 Property Maintenance；Completed resting state 未锁定。</span></li>
+          </ol>
+        </div>
+      </div>
+      <div class="card callout" style="margin-top:14px"><div class="claim-title"><strong>证据解释</strong></div><p>“0 tokens”单独不能证明 provider 一定没调用，因为某些 adapter 可能缺 usage；但这里同时存在 route 未传递、completion callback 缺失仍 processed++、operation receipt 不存在、shared usage 被清零四组源码证据。因此“AI 已完成”的状态无法被当前数据合同证明。</p></div>
+    </section>
+
+    <section id="p0-cases">
+      <h2>15 个 P0 root-cause case files</h2>
+      <p class="lede">这些不是待调样式清单，而是会让页面展示错误事实、丢失执行边界或错误关闭任务的问题。每个 case 给出复现条件、代码路径、被破坏的 invariant、最小正确修复边界与自动化证据。</p>
+      <div class="case-stack">
+        <details class="audit-entry" open>
+          <summary><span class="case-id">P0-01</span><div><strong>Setup 选择的 LLM route 没有绑定到执行</strong><small>UI 显示 gemma-3 / Claude / GPT，不代表实际 call 使用它</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>在 Setup 给 file-summaries、AI tags 或 Vault-wide operation 选择与全局 active Agent 不同的 profile/model；启动 Scan。</dd>
+              <dt>Observed contract</dt><dd>snapshot 和 CompletedRun 会保存所选 model/provider/profileId，因此 UI 看起来记住了选择。</dd>
+              <dt>Actual call path</dt><dd><code>selectOperationRoute()</code> → plan metadata；<code>runLlmEnrichment()</code> 只传 SearchSettings/paths；<code>review.run({mode:'fast'})</code> 只传 mode/signal；<code>VaultMetaAgentStream.resolveProfileForMode()</code> 再读取全局 active Agent/Fast。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:237–259, 894–921, 935–960</code>；<code>VaultMetaAgentStream.ts:73–87, 177–194</code>。</dd>
+              <dt>Smallest correct fix</dt><dd>把 resolved executable route 放入 app-owned run dependency；Index LLM port 与 Vault Review port 都必须显式接收 route。Completed receipt 从 actual attempt 生成，不再从 plan 回填。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong><code>plannedRoute === actualRoute</code>，或在 provider 发生受控 fallback 时持久化 <code>fallbackReason</code> 与实际 route。</p>
+            <ul class="test-list"><li>provider spy：选择 route B 后 adapter B 被调用，A 未调用。</li><li>restart：persisted plan 恢复后仍绑定相同 executable profile revision。</li><li>failure：route 不再 executable 时 operation 进入 unavailable/failed，不得改用全局模型。</li></ul>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span class="case-id">P0-02</span><div><strong>Per-document AI 不是文档流水线</strong><small>UI 文案承诺 ready-as-you-go，runtime 实际 whole-stage barrier</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>用多个文件启动包含 Core Search、embedding、summary、AI Tags 的 Scan，观察首个 summary 的开始时间。</dd>
+              <dt>Actual order</dt><dd><code>await runCoreIndex(all paths)</code> → <code>await runVectorEnrichment(all paths)</code> → <code>await runLlmEnrichment(all paths)</code> → <code>await lint.runFullScan()</code>。</dd>
+              <dt>Mock order</dt><dd>每个 document core-ready 后进入后续 substep；document order、current document、recent completed 均保留可见。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:820–855</code>；UI 声明位于 <code>VaultIntelligenceWorkspace.tsx:1304</code>。</dd>
+              <dt>Smallest correct fix</dt><dd>让 core index 发布 typed document-ready event；每个后续 operation 消费同一 frozen document queue，并为每个 path 保存 substep receipt。并发上限仍由现有 pool/配置控制。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>对于任意文档 A，A 的 eligible downstream 可以在最后文档 Z core-ready 前开始；同一文档的 substep 仍保持依赖顺序。</p>
+            <ul class="test-list"><li>deferred promises：A core-ready 后 summary(A) 已调用，Z 仍 blocked。</li><li>pause：A 当前 durable unit 完成后，不再 dequeue B。</li><li>UI fixture：current document 每个 substep 与 runtime receipt 一致。</li></ul>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-03</span><div><strong>Partial scope 的 Vault-wide operation 合同自相矛盾</strong><small>Setup 可见/可配，normalizePlan 又静默改成 disabled</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>选择单文件或文件夹，打开 Vault-wide group 并启用六个 operation，Start。</dd>
+              <dt>Runtime mutation</dt><dd><code>normalizePlan()</code> 在 scope 非 entire 时，把 execution group 包含 relationship-discovery 的所有 operation 改为 disabled。</dd>
+              <dt>UI contradiction</dt><dd><code>operationAvailableForScope()</code> 与 Setup 文案允许配置；Mock 说明 changed evidence 会与 complete graph baseline 比较。</dd>
+              <dt>Test contradiction</dt><dd><code>vault-intelligence-runtime.test.ts:347–359</code> 明确断言 partial scope 必须 skipped，锁住了偏离 Reference 的行为。</dd>
+              <dt>Smallest correct fix</dt><dd>定义 scope closure adapter：selected/changed paths 是 changed evidence，Vault-wide review 读取 current complete graph baseline；仅在 baseline 不可用时 unavailable，并常驻原因。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>Start 后 frozen plan 不得静默改变 owner 已确认的 operation switches。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span class="case-id">P0-04</span><div><strong>没有 LLM completion receipt 仍 processed++ 并 Completed</strong><small>直接解释 502/502、0 tokens、US$0</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>让 <code>indexDocument()</code> 返回但不触发 <code>onLlmIndexingComplete</code>，且不抛异常。</dd>
+              <dt>False success path</dt><dd><code>runPendingLlmIndexEnrichment()</code> 无条件 <code>processed++</code>；telemetry snapshot 为 null 时使用 emptyUsage；Runtime 只看 errors 数组为空，随后把 summaries 与 AI Tags 均标 completed。</dd>
+              <dt>Exact evidence</dt><dd><code>indexService.ts:2300–2343</code>；<code>VaultIntelligenceRuntime.ts:894–933</code>；录屏 23:51 的 00:02:00。</dd>
+              <dt>Why 502 not 509</dt><dd>分母来自 pending eligible paths，而不是 frozen objects；当前 UI 没解释 eligible 口径，因此 509/509、501/501、502/502 同时出现但互相不可理解。</dd>
+              <dt>Smallest correct fix</dt><dd>每个 requested output 返回 explicit outcome：produced / already-current / ineligible / skipped / failed；只有 produced/already-current 才计入 successful denominator。缺 callback 是 contract failure。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong><code>completed</code> 必须由 output receipt 证明，不能由“函数没有 throw”推导。</p>
+            <ul class="test-list"><li>callback absent → operation partial/failed，processedSuccess 不增加。</li><li>usage unavailable 但 output receipt 存在 → Completed 可成立，usage 显示 Not available 而不是 0。</li><li>already-current → 单独计数，不能伪装本次 provider output。</li></ul>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-05</span><div><strong>六个 Vault-wide row 共享一次执行，却没有共享收据主键</strong><small>第一行拿 usage，其他五行被写成 EMPTY_USAGE</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>Entire Vault scope 启用任意两个以上 Vault-wide operation，并让 Review 完成。</dd>
+              <dt>Current behavior</dt><dd>一次 <code>review.run()</code> 产生一个 session snapshot；所有行复制相同 eventCount/evidenceCount；只有 enabled[0] 保存 usage。</dd>
+              <dt>UI workaround</dt><dd><code>RunOperation</code> 只有在 owner usage &gt; 0 时显示 Shared receipt；usage 缺失时 sibling 看起来像独立 0-token operation。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:935–1020</code>；<code>VaultIntelligenceWorkspace.tsx:1312</code>。</dd>
+              <dt>Smallest correct fix</dt><dd>生成 <code>executionId</code>；共享 attempt 保存一次 route/usage/provider events；每个 operation 保存 projection outcome 与 <code>sharedExecutionId</code>。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>同一个 provider call 不能复制为六个独立 call，也不能把五个 operation 表示成 0-token success。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span class="case-id">P0-06</span><div><strong>Overall progress 的 denominator 会变化且失败/跳过被计满</strong><small>81% → 76%，Publish running → 100%</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>运行 frozen objects 与 operation total 在不同时间才变为已知的 Scan；包含 skipped/failed operation。</dd>
+              <dt>Current formula</dt><dd><code>scanProgressMetric()</code> 汇总 stage/operation 的动态 total；unknown 使用 fallback unit；terminal skipped/failed/partial 视为 full processed。</dd>
+              <dt>Observed evidence</dt><dd>23:51 录屏 00:00:32 为 81%，00:01:12 为 76%，00:02:24 Publish running 时 100%。</dd>
+              <dt>Smallest correct fix</dt><dd>Start 时冻结 progress ledger；新增 work unit 只能来自 frozen plan adapter，不能运行中扩 denominator；completed、failed、skipped 分开累计，overall 100 由 terminal run gate 决定。</dd>
+              <dt>Number disclosure</dt><dd>UI 明示 objects processed / frozen objects、operations terminal / selected operations、actual tokens / provider receipts；不得把不同 denominator 混成一个“Objects”。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>同一 frozen run 的 overall percent 单调不降；100% 仅在 required publish receipt terminal 后成立。</p>
+            <ul class="test-list"><li>property-based：任意合法 event ordering 下 percent 单调且在 0…100。</li><li>skipped/failed 不增加 success numerator。</li><li>unknown total 不更换 denominator；UI 显示 indeterminate submetric。</li></ul>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span class="case-id">P0-07</span><div><strong>AI Review 结果没有进入 Work queue</strong><small>file-proposals / maintenance-synthesis 做完也不影响任务</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>让 Review collector 产生 findings/gaps/actions/proposal candidates，同时 lint 返回空。</dd>
+              <dt>Current Publish input</dt><dd>只读取 <code>loadLatestScan().findings</code> 与 <code>indexErrors</code>，传给 <code>deriveVaultMaintenanceTasks()</code>。</dd>
+              <dt>Dropped data</dt><dd><code>finalSnapshot.collectorSnapshot</code> 只用于运行中 evidence count 和 saveReport；未传入 Publish/task adapter。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:964–978, 990–1013, 1039–1061</code>；<code>VaultIntelligenceModel.ts:172–256</code>。</dd>
+              <dt>Smallest correct fix</dt><dd>建立 AI evidence → canonical atom adapter，按 semantic identity 与 deterministic finding 合并；AI suggestion 不覆盖 owner choice；只有满足 durable owner-action + verifiable exit 才进入 Queue。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>任何 UI 宣称完成的 <code>file-proposals</code> 或 <code>maintenance-synthesis</code> 必须有可追踪 output，或明确显示 “0 outputs”；不能做完后无消费者。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-08</span><div><strong>Pause at checkpoint 实际没有 unit checkpoint</strong><small>只设置 stopRequested，等待整个 Promise.all 边界</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>在 core index 或 Vault Review 长操作中点击 Pause。</dd>
+              <dt>Current behavior</dt><dd><code>requestPause()</code> 把 run 改为 stopping；不 abort active work；<code>stopAtCheckpoint()</code> 只在 Discover 后和整个 Index+AI Promise.all 后检查。</dd>
+              <dt>Misleading copy</dt><dd>UI title 说 “Finish the current durable unit”，但 runtime 没有 durable unit id、checkpoint cursor 或 persisted attempt boundary。</dd>
+              <dt>Smallest correct fix</dt><dd>document pipeline 在每个 path/substep 完成后检查 pause intent；Vault Review 在 durable round/event boundary 检查；持久化 pending/running/completed unit ledger。</dd>
+              <dt>Resume requirement</dt><dd>插件 reload 后只恢复 pending unit；已提交 output receipt 不重复调用 provider。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>Pause accepted 后不得 dequeue 新 durable unit。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span class="case-id">P0-09</span><div><strong>Stop 后 core index 可能继续写</strong><small>shared abortController 不属于 runCoreIndex child work</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>让 <code>runCoreIndex()</code> 长时间 pending；同时让 Review 被 abort 后 reject；点击 Stop。</dd>
+              <dt>Race</dt><dd>Stop aborts Review signal；<code>Promise.all</code> 立即 reject 并把 run 设 interrupted；未接收 signal 的 core index promise 仍在后台运行并可 patch/write。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:281–290, 774–792, 820–830</code>；Index port 签名没有 run-owned abort signal。</dd>
+              <dt>Smallest correct fix</dt><dd>每个 child operation 注册到 run task group；Stop 广播 signal；runtime 等待所有 children settle/join 后才发布 terminal interrupted receipt；late callback 必须被 run generation guard 拒绝。</dd>
+              <dt>Persistence</dt><dd>terminal receipt 保存每个 child 的 final outcome；restart 不得把未 join 的旧 generation 事件写入新 run。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>run terminal 后，不允许任何该 run 的新 write、progress event 或 receipt mutation。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-10</span><div><strong>Partial stage 被写进 completedStages，Resume 会跳过</strong><small>恢复逻辑只看 ID 是否存在，不看终态</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>让 Review runtime unavailable 或返回 non-completed final snapshot，AI stage 进入 partial；持久化后 Resume。</dd>
+              <dt>Current behavior</dt><dd><code>completeStage(..., 'partial')</code> 仍把 id 加入 completedStages；<code>executeRun()</code> 看到 id 后跳过整个 AI stage。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:776–783, 945–950, 1015–1020, 1193–1202</code>。</dd>
+              <dt>Smallest correct fix</dt><dd>删除 completedStages 作为并行 truth；每个 stage/operation/attempt 以 terminal outcome 与 retry policy 决定 resume plan。partial 本身不是“跳过全部”的条件。</dd>
+              <dt>Compatibility</dt><dd>持久化 schema migration 必须把旧 completedStages 与 stage.status 交叉解释，不能把旧 partial 自动升级为 completed。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>Resume 只能跳过有 completed receipt 的 unit。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-11</span><div><strong>Update suggestions 是可提交的 dead control</strong><small>用户动作必然得到“不支持”，但入口仍像正常能力</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>在 Work queue 或 Completed 输入任意非空 instruction，点击 Update suggestions。</dd>
+              <dt>Current behavior</dt><dd>只设置本地 receipt string：runtime unavailable、nothing saved、no tasks changed。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceWorkspace.tsx:852–869</code>。</dd>
+              <dt>Reference behavior</dt><dd>按 task/atom evidence 重新计算 suggestion，生成 suggestion version/history，但不写 owner choice 或用户文件。</dd>
+              <dt>Smallest correct fix</dt><dd>新增 typed suggestion-update capability；不可用时 input/button disabled 且常驻原因；可用时保存 instruction、input revisions、output version、changed atom ids、provider receipt。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>看起来可执行的 primary control 必须有真实 action contract；不可用不能等到 submit 后才揭示。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-12</span><div><strong>Finding ID 被当成 canonical atom identity</strong><small>历史 owner choice 只在新 finding.id 完全相同时继承</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>同一 semantic issue 在后续 detector run 产生新 finding id，但 path/signal/target/evidence identity 相同。</dd>
+              <dt>Current behavior</dt><dd><code>atomicItem.id = finding.id</code>；previousChoices 以 id lookup；task id 仅按 kind 固定。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceModel.ts:181–205, 236–253</code>。</dd>
+              <dt>Risk</dt><dd>owner choice 可能丢失或同一问题重新出现为未处理；反向情况也可能因复用 id 继承到不同 evidence revision。</dd>
+              <dt>Smallest correct fix</dt><dd>每个 kind 定义 semantic identity key；finding id 只做 source evidence reference。Atom 保留 current finding refs 和 revision history。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>当前 owner choice 的优先级高于新 suggestion；继承依据必须是问题 identity，不是一次 detector row id。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-13</span><div><strong>Unreadable retry 没验证实际进入 current Index</strong><small>runCoreIndex 返回后直接把 task 标 verified</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>unreadable task 选择 retry，让 runCoreIndex 返回但文件仍解析失败或未出现在 current indexed-path coverage。</dd>
+              <dt>Current behavior</dt><dd><code>verifyTask()</code> 调用 runCoreIndex(retryPaths)，不读取结果、不查 coverage、不重新匹配 index error，随后所有 ownerChoice status=verified。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:607–623</code>。</dd>
+              <dt>Smallest correct fix</dt><dd>Retry 建立 recovery attempt；验证 path 当前 coverage、loader/parser outcome 与 exclusion policy。成功、仍失败、明确排除分别形成不同 receipt。</dd>
+              <dt>UI requirement</dt><dd>Result workspace 展示 queued/running/rechecking/verified/still unreadable；不能点击后瞬间关闭。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>“Retry command returned” 不等于 “file is readable and indexed”。</p>
+          </div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span class="case-id">P0-14</span><div><strong>Verify 不是每种 task 的 fresh-evidence exit gate</strong><small>无 proposal path 的 Peak-owned choice 可直接 verified</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Reproduce</dt><dd>对 Community membership 等 Peak-owned choice 保存选择并调用 Verify；不产生 proposal path。</dd>
+              <dt>Current behavior</dt><dd>只有存在 applied proposal path 才 re-index + lint；其他 task 直接将 choice 和 task 标 verified。</dd>
+              <dt>Secondary bug</dt><dd>即便跑 lint，stillOpen 也以原 sourceFindingId 与新 finding.id exact-match；detector 重新分配 id 时可能误关。</dd>
+              <dt>Exact evidence</dt><dd><code>VaultIntelligenceRuntime.ts:573–627</code>；现有测试 <code>runtime.test.ts:274–281</code> 把 direct verification 当正确行为。</dd>
+              <dt>Smallest correct fix</dt><dd>配置/代码为每种 kind 注册 verifier：lint finding、graph membership、edge state、source diff、index coverage 或 time policy；所有 verifier 返回 typed receipt。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>task.state=verified 只能由 fresh verifier receipt 产生，不能由 owner choice 的存在推导。</p>
+            <ul class="test-list"><li>finding id 改变、semantic key 相同 → 仍 open。</li><li>Peak-owned graph choice → recompute 后验证 projection。</li><li>new evidence revision 与 verification baseline 不同 → reopened，owner history 保留。</li></ul>
+          </div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span class="case-id">P0-15</span><div><strong>现有 parity tests 证明“字符串存在”，没有证明产品状态</strong><small>会阻止真正的 root-cause 修复并给出虚假绿灯</small></div></summary>
+          <div class="audit-body">
+            <dl class="field-list">
+              <dt>Current proof</dt><dd><code>vault-intelligence-rendered-parity.test.ts</code> 大量 <code>assert.match(source, /class-or-copy/)</code>；只证明源码文本包含 selector/文案。</dd>
+              <dt>False-positive example</dt><dd>测试检查 Run 有 stage tabs、AI workbench、auto transition，却无法发现 81%→76%、0-token Completed、route 未调用或 Stop race。</dd>
+              <dt>Wrong locked behavior</dt><dd>runtime test 明确要求 partial scope Vault-wide operations skipped；另一个 fake enrichment 返回 processed=1/errors=[]、没有 usage/receipt，仍被当作成功。</dd>
+              <dt>Smallest correct fix</dt><dd>保留少量 boundary/source tests；parity 主证据改为真实 component + typed fixture DOM assertions、runtime state-machine tests、provider spies、geometry harness 和 real-host interaction。</dd>
+              <dt>Do not do</dt><dd>不能简单删掉失败测试让 build 变绿；先用正确 invariant 测试替换，再改 runtime/UI。</dd>
+            </dl>
+            <p class="invariant"><strong>Broken invariant：</strong>测试名称中的 “parity” 必须对应可观察 contract，而不是 selector token inventory。</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="mapping">
+      <h2>Mock → Production component mapping</h2>
+      <div class="table-wrap"><table class="compact">
+        <thead><tr><th>Reference subtree</th><th>当前 Production</th><th>判定</th><th>处理</th></tr></thead>
+        <tbody>
+          <tr><td>Scan Setup hero / trust / three sections / operation groups / estimate</td><td><code>ScanSetup</code> · Workspace.tsx:875</td><td><span class="tag parity">部分保留</span></td><td>保留现有新 Setup 框架；只修 route/data/state truth，不重做已收敛的 geometry。</td></tr>
+          <tr><td>Progress hero + metric strip + horizontal stage track</td><td><code>RunProgress</code> · :1219</td><td><span class="tag structure">STRUCTURE</span></td><td>以 Mock hierarchy 重建，不继续在旧 card + tab grid 上叠 CSS。</td></tr>
+          <tr><td>Discover workspace</td><td>generic stage rows</td><td><span class="tag structure">STRUCTURE</span></td><td>端到端迁移 frozen scope / current work / receipt 三行模型。</td></tr>
+          <tr><td>Index metrics + pipeline + document order / current document</td><td><code>IndexRunWorkspace</code> · :1277</td><td><span class="tag structure">STRUCTURE</span></td><td>替换 subtree；接入 document pipeline receipt。</td></tr>
+          <tr><td>Per-file AI timeline + Vault-wide lifecycle</td><td><code>AiRunWorkspace</code> · :1300</td><td><span class="tag data">DATA + STRUCTURE</span></td><td>替换 flat <code>&lt;details&gt;</code>；先提供 attempt/stream/evidence receipts。</td></tr>
+          <tr><td>Publish workspace</td><td>generic stage rows</td><td><span class="tag structure">STRUCTURE</span></td><td>迁移 publish facts / follow-up derivation / immutable receipt。</td></tr>
+          <tr><td>Compact Completed + disclosures + Needs you</td><td><code>Completed</code> · :1315</td><td><span class="tag structure">STRUCTURE</span></td><td>重排为 receipt-first；移除与 Mock 不一致的首屏五项 stat 密度。</td></tr>
+          <tr><td>Queue controls + compact rows</td><td><code>WorkSurface</code> · :852</td><td><span class="tag data">DATA</span></td><td>保留真实 7 项，不造 11/48；使 Update suggestions 真正执行或诚实 disabled。</td></tr>
+          <tr><td>11 task-specific result workspaces</td><td><code>MaintenanceWorkspace</code> + <code>TaskSpecificWorkspace</code> · :1336/:1395</td><td><span class="tag structure">STRUCTURE</span></td><td>保留 overlay primitive；替换 generic body / callout / atomic choice subtree 为领域工作区。</td></tr>
+          <tr><td>Per-file combined diff → Apply → Re-index → Verify</td><td><code>ProposalWorkspace</code> · :1455</td><td><span class="tag parity">基础可用</span></td><td>保留 source hash fail-closed；补 combined diff、progress、receipt、fresh verification 与 reopen。</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="matrix">
+      <h2>P0/P1 mismatch matrix</h2>
+      <p class="lede">每一项都包含 Mock state、Production state、根因、精确位置和验收证据。除最后的 CDP 宿主验证外，均属于 <strong>PARITY_FIX</strong>；没有已批准的产品偏离。</p>
+      <div class="table-wrap"><table class="matrix">
+        <colgroup><col style="width:72px"><col style="width:72px"><col style="width:145px"><col style="width:23%"><col style="width:29%"><col></colgroup>
+        <thead><tr><th>ID</th><th>优先级</th><th>分类</th><th>Mock / Production mismatch</th><th>Root cause + exact files/selectors</th><th>Acceptance evidence</th></tr></thead>
+        <tbody>
+          <tr><td>SCAN-01</td><td><span class="tag p0">P0</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>Setup 选择的 operation profile/model 必须控制调用；当前 LLM enrichment 与 Review 未接收 route。</td><td><code>Runtime.ts:894–933, 959</code>；<code>VaultMetaAgentStream.ts:73–87</code> 回退全局 active/fast profile。</td><td>每个 attempt receipt 的 plannedRoute = actualRoute；provider spy 证明选择不同模型会改变实际 adapter call。</td></tr>
+          <tr><td>SCAN-02</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Mock：document core-ready 后 per-file AI 即开始；当前：整个 core index 完成后才 vector 和 LLM。</td><td><code>Runtime.ts:820–855</code> 串行 await；没有 document-ready queue。</td><td>事件时间线证明 doc N 的 summary 可早于最后一个 doc core-index completion；UI 同步展示 stable prefix。</td></tr>
+          <tr><td>SCAN-03</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Mock 可配置 scope；当前 partial scope 静默禁用 6 个 Vault-wide operation，UI 又声称 available。</td><td><code>Runtime.ts:1381–1414</code> vs <code>Workspace.tsx:1765–1773</code>；错误行为被 <code>runtime.test.ts:347–359</code> 固化。</td><td>selected files/folders 的实际 operation matrix 与 Setup 一致；若确需 Entire Vault，Mock/文档/owner 批准 delta 后常驻解释。</td></tr>
+          <tr><td>SCAN-04</td><td><span class="tag p0">P0</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>Mock completed 要有 provider evidence；当前 502/502 summaries/tags 可在 0 tokens、0 receipt 下 Completed。</td><td><code>indexService.ts:2198–2343</code> processed++ 不要求 LLM completion；<code>Runtime.ts:899–931</code> 仅按 batch error 判终态。</td><td>无 provider success receipt 时只能 unavailable/failed/skipped；真实调用至少有 request id 或 provider+model+timestamps+usage/result checksum。</td></tr>
+          <tr><td>SCAN-05</td><td><span class="tag p0">P0</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>六个 Vault-wide operation 在 Mock 中各自有 lifecycle/receipt；当前共享一次 Review，只把 usage 给第一项，其他项空 usage。</td><td><code>Runtime.ts:935–1015</code>，特别是 <code>index === 0 ? usage : EMPTY_USAGE</code>。</td><td>共享执行用 stable executionId + per-operation output refs；每行能追到同一 shared receipt，而非伪装独立 0-token completion。</td></tr>
+          <tr><td>SCAN-06</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Mock overall progress 单调且口径可解释；视频 81% → 76%，Publish running 时 100%。</td><td><code>Workspace.tsx:1847–1870</code> 动态 fallback denominator；skipped/failed/partial 被计满。</td><td>属性测试：同一 frozen plan 下 percent 单调 0…100；100 仅当 required terminal + publish completed；UI 展示 numerator/denominator/source。</td></tr>
+          <tr><td>SCAN-07</td><td><span class="tag p1">P1</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Mock stage track 可同时表达 live overlap；当前 <code>deriveLiveStageId</code> 只取第一个 running。</td><td><code>Workspace.tsx:1831–1845</code> 单一 stage id；Run hero 的 current work 因此不完整。</td><td>Index+AI overlap fixture 同时有 live indicators；用户 inspection 不改 live truth，Follow live 恢复正确 anchor。</td></tr>
+          <tr><td>SCAN-08</td><td><span class="tag p0">P0</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>Mock AI findings/synthesis 进入 Needs you；当前 Publish 只从 lint + indexErrors 派生 tasks。</td><td><code>Runtime.ts:1053</code> → <code>Model.ts:172–256</code>；Review collector/proposals 未进入 adapter。</td><td>fixture 中 AI evidence 可产生/更新 canonical atom，带 provenance；相同 atom 不重复；无 AI 时 deterministic findings 仍诚实可用。</td></tr>
+          <tr><td>SCAN-09</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Pause at checkpoint 应完成当前 durable unit 后停；当前仅设置 stopRequested，直到 Promise.all 结束后检查。</td><td><code>Runtime.ts:270–279, 774–789, 1181–1187</code>；没有 durable unit checkpoint cursor。</td><td>视频/测试证明 pause 后不启动下一 document/attempt；重启插件后从 persisted checkpoint 恢复。</td></tr>
+          <tr><td>SCAN-10</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Stop 必须停止 active work；当前 abort 只覆盖共享 AI，core index 无 signal，Promise.all rejection 后索引可能继续写。</td><td><code>Runtime.ts:281–291, 774–800, 820–855</code>；Index port 没有 abort ownership。</td><td>stop race 测试：terminal interrupted 后无新 write/event/progress；所有 child work join/settle 后才发布 interrupted receipt。</td></tr>
+          <tr><td>SCAN-11</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Partial stage 应可恢复未完成 work；当前 <code>completeStage</code> 无论 partial 都加入 completedStages，resume 会跳过。</td><td><code>Runtime.ts:1193–1202</code> + <code>:776–783</code>。</td><td>partial fixture resume 后只重试 pending/retryable attempts；completed facts 不重复；最终 receipt 明确 attempts。</td></tr>
+          <tr><td>SCAN-12</td><td><span class="tag p1">P1</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>AI 全部 disabled/skipped 时不应显示绿色 Completed；当前 enabled=0 直接 completeStage(ai)。</td><td><code>Runtime.ts:935–949, 984</code>；UI terminal badge 未区分 no-work/skipped/completed。</td><td>stage state 至少区分 not-selected / skipped / partial / failed / completed；overall receipt 明示 deterministic-only run。</td></tr>
+          <tr><td>SCAN-13</td><td><span class="tag p1">P1</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>Mock Plan this scan 是可观察 AI operation；当前代码称 local planning 并排除 estimate/call。</td><td><code>normalizePlan/selectOperationRoute</code> 与 Setup 文案/Mock JS 冲突。</td><td>按唯一 reference 实现 AI planning receipt；若产品坚持 local，必须形成 owner-approved delta，并同步 Mock/文档/常驻说明。</td></tr>
+          <tr><td>RUN-01</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Progress hero、facts、stage track hierarchy 与 Mock 不同。</td><td><code>RunProgress</code> · <code>Workspace.tsx:1219–1275</code>；CSS <code>.pk-vi-run-*</code> 20555+ / 24072+。</td><td>固定 viewport DOM hierarchy/geometry snapshot；reference/current/overlay 无 P0/P1 alignment、clipping、density drift。</td></tr>
+          <tr><td>RUN-02</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Index workbench 顺序/分栏/metrics/pipeline 与 Mock 不同。</td><td><code>IndexRunWorkspace</code> · :1277；<code>.pk-vi-index-live-workbench</code>。</td><td>左 queue / 右 current doc；4 substep state、current input、counts、empty geometry 均按 reference。</td></tr>
+          <tr><td>RUN-03</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>AI work 是 flat details；没有流式 timeline/current input/evidence produced/first token。</td><td><code>AiRunWorkspace</code> · :1300；<code>.pk-vi-run-operation</code> 20984+。</td><td>per-operation timeline 与 Vault-wide lifecycle 同屏；provider streaming fixture 和 real video 能看到 stable-prefix movement。</td></tr>
+          <tr><td>RUN-04</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Publish 复用 generic stage rows，未展示 reference 的 publish facts。</td><td><code>RunProgress</code> generic <code>pk-vi-run-stage-rows</code>。</td><td>machine facts / follow-up derivation / receipt 三组保持 geometry，即使 0 tasks 也显示 honest empty。</td></tr>
+          <tr><td>COMP-01</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Mock 先 compact receipt/disclosures，再 Needs you；当前首屏插入 5-stat row，model slot 常为 Not available。</td><td><code>Completed</code> · :1315；actual route/receipt 缺失导致 model metadata 空。</td><td>同 reference order/density；run detail 数字可追 numerator、denominator、来源；0 AI 显示 Not run 而非成功 0。</td></tr>
+          <tr><td>QUEUE-01</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Update suggestions 在 Mock 是有效动作；当前提交后只显示“not available”，不改变任何数据。</td><td><code>WorkSurface</code> · <code>Workspace.tsx:852–869</code>。</td><td>有 capability 时产生 versioned suggestion receipt/history；无 capability 时 disabled + 常驻原因，不显示可提交的假入口。</td></tr>
+          <tr><td>QUEUE-02</td><td><span class="tag p1">P1</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>Queue row 需要 current owner choice、current suggestion、historical evidence、verifiable exit；当前 task/atom 字段不足。</td><td><code>src/core/types/vault-intelligence.ts</code> maintenance types；<code>WorkSurface</code> rendering。</td><td>owner-choice precedence tests；row status/source/impact/count 都有 explicit field，无 generic label/count/detail 拼装。</td></tr>
+          <tr><td>ITEM-01</td><td><span class="tag p0">P0</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>Mock 每个结果是 canonical atom 的不同 projection；当前顶部只 <code>slice(0,3)</code>，其余落入 generic choices。</td><td><code>MaintenanceWorkspace</code> · :1336–1393；<code>TaskSpecificWorkspace</code> · :1395。</td><td>同 atom 在 Queue/Completed/detail/proposal 保持 stable ID、choice、suggestion version、source revision 与 exit receipt。</td></tr>
+          <tr><td>ITEM-02</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>File properties 缺 continuous saved review、per-file diff、edit/apply/reject/conflict。</td><td>generic <code>TaskWorkspaceCallout</code> / atomic button matrix。</td><td>Mock actions 全覆盖；冲突/partial apply/history/continue saved work 有独立状态。</td></tr>
+          <tr><td>ITEM-03</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Broken links 缺 target/create/redirect/remove/mark fixed/rerun/reopen。</td><td>generic choices + top 3 evidence preview。</td><td>exact reference、target existence、repair proposal、rerun detector、verified/reopened receipts 完整。</td></tr>
+          <tr><td>ITEM-04</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Community membership / knowledge connections 缺 File Atlas、Connect/Keep separate、Ask AI、Bridge lifecycle。</td><td>大多只提供 <code>runtime.openFile</code>，没有 typed surface handoff。</td><td>真实 File Atlas/Composer context handoff；返回后恢复 task/atom/scroll/focus。</td></tr>
+          <tr><td>ITEM-05</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Related notes / note split 缺 merge/keep/alias 与 Draft in Composer/split 的领域流程。</td><td><code>TaskSpecificWorkspace</code> 只有 split 有局部专用 layout，动作仍 generic。</td><td>每个 action 有 typed capability、proposal boundary、cancel/undo/verify 结果。</td></tr>
+          <tr><td>ITEM-06</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Community structure/hubs 缺 merge/split/rename 与 create/refresh/retire 工作区。</td><td>社区类共用 generic relationship matrix。</td><td>graph evidence、member impact、projected diff、owner decision、recompute/verify 一体闭环。</td></tr>
+          <tr><td>ITEM-07</td><td><span class="tag p1">P1</span></td><td><span class="tag structure">STRUCTURE</span></td><td>Content lifecycle/unusual notes 缺 revisit/archive/snooze 和 intentional/dismiss reason。</td><td>虽有局部字段，未形成 durable snooze/reason/reopen contract。</td><td>时间到期/证据变化能 reopen；dismiss reason/history 常驻可查。</td></tr>
+          <tr><td>ITEM-08</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Unreadable recovery 应重试并验证实际 coverage；当前 runCoreIndex 后可直接 verified。</td><td><code>verifyTask</code> · <code>Runtime.ts:573–627</code>。</td><td>parser/setup repair progress；path 成功进入 current index 才 close；exclude 有 policy receipt。</td></tr>
+          <tr><td>PROP-01</td><td><span class="tag p1">P1</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Apply 后状态仍名为 <code>ready-apply</code>，缺 re-index progress 与 verify receipt；同文件多个 patch 未统一。</td><td><code>ProposalWorkspace</code> · :1455；proposal runtime/state types。</td><td>prepared → applying → applied → reindexing → verifying → verified/conflict/failed；同文件 combined diff 与 deterministic patch ordering。</td></tr>
+          <tr><td>VERIFY-01</td><td><span class="tag p0">P0</span></td><td><span class="tag state">STATE_MISMATCH</span></td><td>Peak-owned choice 无 proposal path 时可不跑 fresh detector 就 verified；finding id exact-match 也可能误关。</td><td><code>Runtime.ts:573–627</code>。</td><td>每种 task 有 exit verifier；按 semantic identity/evidence key 对比，不依赖易变 finding id；receipt 含 detector revision。</td></tr>
+          <tr><td>VERIFY-02</td><td><span class="tag p1">P1</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>Mock 支持证据变化后 reopen；当前 UI/data 不展示 reopen trigger/history。</td><td>maintenance task/atom types 缺 verification baseline 和 reopen policy。</td><td>新 evidence revision 触发 reopened；owner 历史保留，旧建议不覆盖当前 choice。</td></tr>
+          <tr><td>HOST-01</td><td><span class="tag p1">P1</span></td><td><span class="tag host">HOST_ENVIRONMENT</span></td><td>CSS 存在多代兼容层和 Cascade lock；大量后置 selector/important，结构错误被级联补丁掩盖。</td><td><code>peak-components.css:20547–21491, 23071–24338</code>。</td><td>新 reference subtree 单一 root scope；computed geometry 与 direct-port CSS 对应；ancestor overflow、button reset、font/box sizing 实机验证。</td></tr>
+          <tr><td>TEST-01</td><td><span class="tag p0">P0</span></td><td><span class="tag data">DATA_CONTRACT</span></td><td>现有 rendered parity 多为 <code>assert.match(source)</code>，字符串存在不等于 DOM/state/geometry 正确。</td><td><code>test/vault-intelligence-rendered-parity.test.ts:101–167</code>。</td><td>真实 component harness + typed fixtures + geometry/interaction assertions；删掉/降级不能证明 parity 的 source-string claims。</td></tr>
+          <tr><td>HOST-02</td><td><span class="tag p1">P1</span></td><td><span class="tag blocked">BLOCKED</span></td><td>本次无 Obsidian CDP listener，无法精确验证 hover corridor、focus-visible、Escape、outside click、focus restore。</td><td><code>lsof -nP -iTCP -sTCP:LISTEN | rg '^Obsidian'</code> 无结果；视频仅覆盖可见流程。</td><td>实现后按 canonical QA 协议锁 SHA/viewport/DPR/theme/zoom/fixture，plugin-only reload + CDP/Playwright + Computer Use 最终截图。</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="states">
+      <h2>完整状态矩阵</h2>
+      <div class="table-wrap"><table class="compact">
+        <thead><tr><th>Surface</th><th>必须覆盖的状态</th><th>当前主要缺口</th><th>验收重点</th></tr></thead>
+        <tbody>
+          <tr><td>Setup</td><td>first / changed / recoverable；entire / selected / empty selection；configured / unavailable；operation on/off；group expanded；model picker open/empty/error</td><td>route selection 与 actual runtime 脱节；partial-scope contract 冲突</td><td>outside click、Escape、focus restore；disabled reason 常驻；empty scope 不隐藏 geometry</td></tr>
+          <tr><td>Run</td><td>idle / running / pausing / paused / stopping / interrupted / resuming / failed / completed</td><td>pausing/stopping 没有 durable child-work ownership</td><td>terminal truth、monotonic progress、checkpoint persistence</td></tr>
+          <tr><td>Stage</td><td>waiting / running / inspected / partial / skipped / failed / completed；overlapping live stages</td><td>partial/skipped 容易被展示为 completed；单一 live stage</td><td>live 与 selected 分离；失败/跳过不计作成功工作量</td></tr>
+          <tr><td>Operation</td><td>not-selected / queued / running / streaming / stopping / skipped / failed / completed / retrying</td><td>没有 attempt/first-token/stable-prefix/receipt；0 usage completed</td><td>planned route、actual route、provider result、usage、evidence 一一可追</td></tr>
+          <tr><td>Work queue</td><td>loading / empty / error / populated；filter selected；search no-result；row hover/focus/selected；suggestion updating/failed/versioned</td><td>Update suggestions 是可提交的 dead control</td><td>真实数据，不造分布；空状态保留表格/controls geometry</td></tr>
+          <tr><td>Result workspace</td><td>rest / hover / focus / selected / expanded；saved draft / conflict / unavailable capability / error；overlay open/close</td><td>generic body 压平 11 类领域动作；只显示 top 3 evidence</td><td>keyboard、Escape、outside click、focus restore；current choice 常驻</td></tr>
+          <tr><td>Proposal</td><td>preparing / ready / source-stale / applying / partial / applied / reindexing / verifying / verified / conflict / failed</td><td>Apply 后状态命名和后续进度不真实</td><td>source hash fail-closed、combined diff、exact write set、receipt</td></tr>
+          <tr><td>Verification</td><td>queued / running / passed / failed / inconclusive / reopened</td><td>部分 choice 直接 verified；无 reopen baseline</td><td>fresh detector evidence、semantic identity、revision-based reopen</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="contract-deep">
+      <h2>字段级数据合同与状态不变量</h2>
+      <p class="lede">下面的 TypeScript 是 <strong>illustrative proposed contract</strong>，用于说明 UI 必须得到哪些事实，不要求逐字采用命名。关键要求是运行时生产事实、adapter 组织事实、UI 只投影事实。</p>
+
+      <h3>1. Operation attempt：证明实际调用，而不是重复 plan 元数据</h3>
+      <pre><code>// Proposed — src/core/types/vault-intelligence.ts
+type VaultAttemptOutcome =
+  | 'queued' | 'running' | 'stopping'
+  | 'produced' | 'already-current' | 'skipped'
+  | 'unavailable' | 'failed' | 'cancelled';
+
+interface VaultOperationAttemptReceipt {
+  attemptId: string;
+  executionId: string;
+  operationId: VaultScanAiOperationId;
+  sharedExecutionId: string | null;
+  plannedRoute: ExecutableModelRoute | null;
+  actualRoute: ExecutableModelRoute | null;
+  fallbackReason: string | null;
+  providerRequestRef: string | null;
+  outcome: VaultAttemptOutcome;
+  queuedAt: number;
+  startedAt: number | null;
+  firstTokenAt: number | null;
+  stablePrefixAt: number | null;
+  finishedAt: number | null;
+  usage: VaultScanUsage | null; // null = unavailable; zero = known zero
+  inputRefs: EvidenceRef[];
+  outputRefs: EvidenceRef[];
+  error: SerializableRunError | null;
+  retryOfAttemptId: string | null;
+}</code></pre>
+      <div class="grid cols-3" style="margin-top:12px">
+        <div class="card"><h4>Nullable usage</h4><p>当前把缺 telemetry 写成 0，UI 无法区分“真实 0”与“provider 没返回 usage”。</p></div>
+        <div class="card"><h4>Execution ID</h4><p>六个 Vault-wide projections 可以共享一次 provider execution；各 row 引用同一主 receipt。</p></div>
+        <div class="card"><h4>Output references</h4><p>Completed 的依据是可寻址 output/evidence，而不是函数返回或 processed counter。</p></div>
+      </div>
+
+      <h3 style="margin-top:22px">2. Document pipeline：支撑 current document 与 substeps</h3>
+      <pre><code>// Proposed
+interface VaultDocumentPipelineReceipt {
+  unitId: string;
+  runId: string;
+  path: string;
+  sourceRevision: { mtime: number; sha256: string | null };
+  orderIndex: number;
+  eligibility: Record&lt;VaultDocumentSubstepId, {
+    eligible: boolean;
+    reason: string | null;
+  }&gt;;
+  substeps: Record&lt;VaultDocumentSubstepId, {
+    state: 'waiting' | 'running' | 'produced' | 'already-current'
+      | 'skipped' | 'failed' | 'cancelled';
+    attemptIds: string[];
+    outputRefs: EvidenceRef[];
+  }&gt;;
+  checkpoint: 'pending' | 'in-flight' | 'durable';
+}</code></pre>
+      <div class="table-wrap" style="margin-top:12px"><table class="compact">
+        <colgroup><col style="width:170px"><col style="width:24%"><col><col style="width:25%"></colgroup>
+        <thead><tr><th>Substep</th><th>Numerator</th><th>Denominator</th><th>Empty / unavailable rendering</th></tr></thead>
+        <tbody>
+          <tr><td>Core Search</td><td>durable core receipts</td><td>frozen paths eligible for core</td><td>0 eligible；显示 unsupported/excluded breakdown</td></tr>
+          <tr><td>Embeddings</td><td>produced + already-current</td><td>embedding-eligible frozen revisions</td><td>model unavailable 与 no changed vectors 分开</td></tr>
+          <tr><td>File summaries</td><td>summary output refs</td><td>summary-eligible revisions</td><td>no pending、route unavailable、failed 分开</td></tr>
+          <tr><td>AI Tags</td><td>tag-set output refs</td><td>tag-eligible revisions</td><td>machine-only boundary 常驻</td></tr>
+          <tr><td>Maintenance checks</td><td>detector completed units</td><td>selected applicable detectors</td><td>detector unavailable 不计 completed</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 style="margin-top:22px">3. Frozen progress ledger：让进度单调且可解释</h3>
+      <pre><code>// Proposed invariant-oriented shape
+interface VaultProgressLedger {
+  frozenAt: number;
+  units: Array&lt;{
+    id: string;
+    stage: VaultScanStageId;
+    kind: 'object' | 'operation' | 'publish-gate';
+    weight: number; // frozen from config + plan
+    outcome: 'pending' | 'running' | 'success'
+      | 'partial' | 'failed' | 'skipped';
+  }&gt;;
+}
+
+successPercent =
+  sum(weight where outcome === 'success') / sum(all frozen weights)
+
+terminalPercent =
+  sum(weight where outcome is terminal) / sum(all frozen weights)</code></pre>
+      <div class="card warn" style="margin-top:12px"><div class="claim-title"><strong>UI rule</strong></div><p>主进度只能展示一种明确口径。建议主百分比使用 terminal progress，并在旁边拆开 completed、partial、failed、skipped。如果产品使用 success progress，run terminal 时可能低于 100%，Completed hero 必须解释 terminal 与 success coverage 的区别。</p></div>
+
+      <h3 style="margin-top:22px">4. Canonical maintenance atom：跨 surface 保持同一真值</h3>
+      <pre><code>// Proposed
+interface VaultMaintenanceAtom {
+  atomId: string; // semantic identity, not finding.id
+  kind: VaultMaintenanceTaskKind;
+  identityKey: string;
+  sourceRunIds: string[];
+  evidenceRevisions: EvidenceRevision[];
+  currentEvidenceRevision: string;
+  currentOwnerChoice: VaultMaintenanceOwnerChoice | null;
+  ownerChoiceHistory: VaultMaintenanceOwnerChoice[];
+  currentSuggestion: VaultSuggestionVersion | null;
+  suggestionHistory: VaultSuggestionVersion[];
+  availableActions: VaultTaskActionCapability[];
+  writeBoundary: 'peak-owned' | 'proposal-required' | 'external-owner-surface';
+  exitVerifier: VaultVerifierRef;
+  latestVerification: VaultVerificationReceipt | null;
+  reopenPolicy: VaultReopenPolicy;
+}</code></pre>
+      <div class="flow cols-5">
+        <div class="node"><strong>Current evidence</strong><small>fresh detector / graph / index facts</small></div>
+        <div class="node"><strong>Peak suggestion</strong><small>versioned、cited、replaceable</small></div>
+        <div class="node"><strong>Owner choice</strong><small>highest presentation priority</small></div>
+        <div class="node"><strong>Apply / owner action</strong><small>boundary-specific receipt</small></div>
+        <div class="node"><strong>Fresh verification</strong><small>close or reopen</small></div>
+      </div>
+      <ul class="test-list">
+        <li>Current owner choice 优先于新的 Peak suggestion；新 suggestion 只能进入 history 或显式提示 conflict。</li>
+        <li>相同 identityKey 的新 evidence revision 更新同一 atom；不同 identityKey 即使 finding id 相同也不能合并。</li>
+        <li>Queue 是 atom 的 unresolved projection；verified atom 不进入 queue，但历史仍可从 run receipt 查看。</li>
+      </ul>
+
+      <h3 style="margin-top:22px">5. Verification receipt：关闭任务的唯一入口</h3>
+      <pre><code>// Proposed
+interface VaultVerificationReceipt {
+  verificationId: string;
+  atomId: string;
+  verifierId: string;
+  verifierRevision: string;
+  startedAt: number;
+  finishedAt: number;
+  checkedSourceRevisions: EvidenceRef[];
+  reindexReceiptIds: string[];
+  beforeEvidenceKeys: string[];
+  afterEvidenceKeys: string[];
+  outcome: 'verified' | 'still-open' | 'inconclusive' | 'failed';
+  reason: string;
+  reopenBaseline: string | null;
+}</code></pre>
+      <div class="card verdict" style="margin-top:12px"><div class="claim-title"><strong>禁止的状态捷径</strong></div><p><code>ownerChoice exists → verified</code>、<code>runCoreIndex returned → verified</code>、<code>old finding.id not found → verified</code> 都不成立。只有适用于该 task kind 的 fresh verifier receipt 才能关闭 atom。</p></div>
+    </section>
+
+    <section id="data-contract">
+      <h2>Reference-compatible data contract</h2>
+      <p class="lede">正确数据流应是 <strong>Production runtime data → presentation adapter → Reference-compatible UI</strong>。下面不是新产品对象，而是 Mock 已经要求、Production 当前无法表达的运行证据字段。</p>
+      <div class="grid cols-3">
+        <div class="card"><h3>ScanExecutionReceipt</h3><p><code>runId</code>、frozenPlanRevision、scope manifest/hash、started/completed、terminalReason、stage attempts、actual totals、deterministic-only 标记、publish receipt。</p></div>
+        <div class="card"><h3>OperationAttemptReceipt</h3><p><code>attemptId</code>、executionId、plannedRoute、actualRoute、provider request/reference、queued/start/firstToken/stablePrefix/finish、usage、output refs、error/retry。</p></div>
+        <div class="card"><h3>DocumentPipelineReceipt</h3><p>path/source revision、core/vector/summary/tags 各 substep state、current input、output checksum、evidence refs、retry cursor。</p></div>
+        <div class="card"><h3>VaultReviewEvidence</h3><p>shared execution id、phase lifecycle、operation-specific projections、citations/confidence/source revisions、synthesis output refs。</p></div>
+        <div class="card"><h3>MaintenanceAtom</h3><p>stable semantic id、kind、evidence、finding revision、current owner choice、current suggestion、suggestion history/provenance、capabilities、write boundary、exit verifier、reopen policy。</p></div>
+        <div class="card"><h3>VerificationReceipt</h3><p>verifier id/revision、before/after evidence keys、checked paths、re-index receipt、outcome、failure reason、verifiedAt、reopen baseline。</p></div>
+      </div>
+      <div class="card callout" style="margin-top:14px"><strong>数字合同：</strong>每个数字都必须能回答 numerator、denominator、来源、统计口径。Mock 的动画数值不可复制；Production 的 7 tasks、509 files、502 eligible 等真实值必须通过 adapter 进入同一几何，而不是为了“像 Mock”改成 11 或 48。</div>
+    </section>
+
+    <section id="items">
+      <h2>11 类 Result item 交互合同</h2>
+      <div class="table-wrap"><table class="compact">
+        <thead><tr><th>Kind</th><th>Mock archetype</th><th>Reference actions</th><th>Production gap</th><th>Exit / reopen</th></tr></thead>
+        <tbody>
+          <tr><td>file-properties</td><td>resume + proposal</td><td>Continue saved work / diff / edit / apply / reject / resolve conflict</td><td>generic choices，无连续 checkpoint/history</td><td>re-index properties；source revision 改变时 conflict/reopen</td></tr>
+          <tr><td>broken-links</td><td>repair</td><td>repair / create / redirect / remove / mark fixed / rerun</td><td>没有 exact target workflow 和 verified receipt</td><td>fresh broken-link detector；reference 重现则 reopen</td></tr>
+          <tr><td>community-membership</td><td>inspect + ai</td><td>File Atlas / connect / keep separate / Ask AI</td><td>缺 typed Atlas/AI handoff</td><td>graph recompute；membership evidence change reopen</td></tr>
+          <tr><td>knowledge-connections</td><td>inspect + proposal</td><td>inspect / update / replace / retire bridge</td><td>generic relationship matrix</td><td>edge/provenance recheck；bridge returns reopen</td></tr>
+          <tr><td>related-notes</td><td>decision + proposal</td><td>merge / keep / alias</td><td>无 merge/alias 专用 preview</td><td>source/index relation verify</td></tr>
+          <tr><td>note-split</td><td>ai + proposal</td><td>Draft in Composer / split</td><td>有局部专用区，但 handoff/apply lifecycle 不完整</td><td>Composer return receipt + re-index</td></tr>
+          <tr><td>community-structure</td><td>decision</td><td>merge / split / rename</td><td>generic choices，缺 member impact</td><td>community recompute；structure drift reopen</td></tr>
+          <tr><td>community-hubs</td><td>proposal</td><td>create / refresh / retire</td><td>缺 hub materialization lifecycle</td><td>hub artifact/index receipt</td></tr>
+          <tr><td>content-lifecycle</td><td>decision</td><td>revisit / archive / snooze</td><td>snooze/expiry/history 不完整</td><td>due date/evidence change reopen</td></tr>
+          <tr><td>unusual-notes</td><td>decision</td><td>reintegrate / intentional / dismiss with reason</td><td>reason/provenance/history 不完整</td><td>new anomaly evidence reopen</td></tr>
+          <tr><td>unreadable-files</td><td>run</td><td>retry / exclude / repair parser/setup</td><td>重跑后可直接 verified，未检查真实 coverage</td><td>current index coverage or explicit exclusion policy receipt</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="result-dossiers">
+      <h2>11 类 Result item 逐项 dossier</h2>
+      <p class="lede">每个 dossier 都回答用户到底在决定什么、需要看到什么证据、哪些动作必须真实存在、哪里发生写入、如何验证关闭、什么变化会 reopen。共同 overlay 不是问题，共同产品模型才是问题。</p>
+      <div class="dossier-stack">
+        <details class="audit-entry" open>
+          <summary><span>01 / 11</span><div><strong>File properties</strong><small>连续批次 review，不是一次性 generic choice</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>Peak 建议的 property/value 是否适合每个文件？哪些接受、编辑、拒绝或稍后处理？</dd>
+            <dt>Reference actions</dt><dd>Continue saved work、review next、edit value、accept/reject、Update suggestions、Review diff、Apply selected、resolve conflict。</dd>
+            <dt>Reads</dt><dd>file path、property name、current value/source revision、suggested value/reason、current owner choice、suggestion history、saved cursor。</dd>
+            <dt>Writes</dt><dd>Review 阶段只写 choice/checkpoint；用户 YAML 只经 per-file combined diff、source hash guard、explicit Apply。</dd>
+            <dt>Exit</dt><dd>Apply 后 re-index property projection；fresh verifier 确认 intended property/value；source revision 改变则 conflict/reopen。</dd>
+            <dt>Current gap</dt><dd>generic atomic button rows；没有 saved review cursor、editable value、suggestion version、conflict workspace 和 partial apply history。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span>02 / 11</span><div><strong>Broken links</strong><small>每条 exact reference 的 repair workflow</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>这个 exact link 应指向哪个现有目标、创建目标、删除引用，还是确认 intentional unresolved？</dd>
+            <dt>Reference actions</dt><dd>Repair target、Create missing note、Redirect、Remove reference、Mark fixed、Update suggestions、Review diff、Re-run detector。</dd>
+            <dt>Reads</dt><dd>source path/revision、line/heading context、raw link text、missing target、candidate targets、rename receipts、prior decision。</dd>
+            <dt>Writes</dt><dd>ambiguous repair 走 Proposal；deterministic rename receipt 只有在 Setup policy 明确允许时可自动修复并保留 reversible receipt。</dd>
+            <dt>Exit</dt><dd>fresh broken-link detector 在 exact semantic identity 上不再 open；target 存在且解析到 intended object。相同 reference 再失效则 reopen。</dd>
+            <dt>Current gap</dt><dd>顶部只预览三项；generic redirect/keep choices 没有 exact reference context、candidate reasoning、create/remove path、rerun progress。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>03 / 11</span><div><strong>Community membership</strong><small>在 complete graph context 中决定 note 归属</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>这篇 note 应连接到建议 Community、另一个 Community、保持独立，还是需要更多 AI 解释？</dd>
+            <dt>Reference actions</dt><dd>Open in File Atlas、Connect to suggested、Choose another、Keep separate、Ask AI、Update suggestions。</dd>
+            <dt>Reads</dt><dd>note evidence、candidate Community labels/members、connection strengths、existing owner override、current graph revision、citations。</dd>
+            <dt>Writes</dt><dd>membership override 是 Peak-owned machine state；不修改 Markdown/YAML。File Atlas 与 Ask AI 通过 typed context handoff。</dd>
+            <dt>Exit</dt><dd>graph recompute 后 current membership projection 与 owner choice 一致；baseline graph revision 保存。新 evidence 越过 reopen threshold 时 reopen。</dd>
+            <dt>Current gap</dt><dd>只有 generic relationship callout 与 choice buttons；无 Atlas/AI handoff、candidate comparison、graph revision 或 recompute receipt。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>04 / 11</span><div><strong>Knowledge connections</strong><small>审查 changed source 对 Bridge/edge 的影响</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>现有 connection 仍成立、需要替换证据、应该更新，还是应退役这个 Bridge？</dd>
+            <dt>Reference actions</dt><dd>Inspect evidence、Open File Atlas、Update connection、Replace source、Retire bridge、Ask AI / Draft in Composer。</dd>
+            <dt>Reads</dt><dd>source/target、edge role/direction、cited passages、source revisions、prior connection history、centrality/bridge impact。</dd>
+            <dt>Writes</dt><dd>机器 connection state 为 Peak-owned；若需要补写/改写用户 Note，必须转 Proposal 或 Composer owner surface。</dd>
+            <dt>Exit</dt><dd>graph edge projection 与 owner decision 一致，citation revisions current；证据失效、target 更换或 edge reappears 时 reopen。</dd>
+            <dt>Current gap</dt><dd>generic relationship matrix，没有 edge-specific history、source replacement、retire semantics 与 typed owner-surface return point。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>05 / 11</span><div><strong>Related / duplicate notes</strong><small>决定 merge、keep separate 或 alias</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>这些 notes 是真正重复、相关但独立，还是应建立 alias/redirect？</dd>
+            <dt>Reference actions</dt><dd>Compare notes、Merge、Keep separate、Create alias、Ask AI、Review combined diff。</dd>
+            <dt>Reads</dt><dd>group identity、side-by-side excerpts、unique facts、links/backlinks、source revisions、similarity evidence 与 confidence。</dd>
+            <dt>Writes</dt><dd>Merge/alias 涉及用户文件，必须 per-file proposal；Keep separate 是 Peak-owned suppression with reason。</dd>
+            <dt>Exit</dt><dd>merge/alias 写入后 re-index；duplicate detector 不再报告相同 semantic group。内容重新趋同时可 reopen。</dd>
+            <dt>Current gap</dt><dd>没有 side-by-side comparison、unique-content preservation、combined diff 或 suppression baseline。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>06 / 11</span><div><strong>Note split</strong><small>先在 Composer 形成结构，再审查实际拆分 diff</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>这篇 note 是否包含多个独立主题？建议边界是否保留所有内容和 links？</dd>
+            <dt>Reference actions</dt><dd>Inspect sections、Draft in Composer、adjust boundaries/titles、Prepare split proposal、Review diff、Apply。</dd>
+            <dt>Reads</dt><dd>完整 source revision、candidate sections、heading/link ownership、backlinks、suggestion rationale、owner edits。</dd>
+            <dt>Writes</dt><dd>Composer draft 是 owner surface；创建/修改多个 notes 必须以 exact write set 和 combined diff 显示。</dd>
+            <dt>Exit</dt><dd>所有 target files re-index；原 content accounted-for；links/backlinks valid；split detector 不再报告同一 source revision。</dd>
+            <dt>Current gap</dt><dd>已有 source/candidate cards，但 Composer handoff、return state、write-set preview、content conservation 与 verifier 不完整。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>07 / 11</span><div><strong>Community structure</strong><small>merge / split / rename 的 member-impact decision</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>Community identity 是否仍稳定？建议 merge、split 或 rename 会影响哪些 members、Hubs 和历史文本？</dd>
+            <dt>Reference actions</dt><dd>Inspect members、Merge、Split、Rename、Keep current、Ask AI、Preview projection。</dd>
+            <dt>Reads</dt><dd>complete graph revision、member sets、stable identity history、cross-community edges、current labels/descriptions、owner overrides。</dd>
+            <dt>Writes</dt><dd>structure/identity 是 versioned Peak-owned state；不得覆盖 user-authored map text。</dd>
+            <dt>Exit</dt><dd>recompute projection 后 identity mapping 与 owner decision 一致；显式 version receipt 支持 rollback。结构再次漂移时 reopen。</dd>
+            <dt>Current gap</dt><dd>generic relationship layout，没有 member impact、identity migration、map-text preservation 或 preview/rollback。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>08 / 11</span><div><strong>Community hubs</strong><small>create / refresh / retire Hub materialization</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>哪个 Hub 应创建、刷新或退役？当前 centrality 和 source evidence 是否足够？</dd>
+            <dt>Reference actions</dt><dd>Inspect Community、Create Hub、Refresh Hub、Retire Hub、Edit draft、Review proposal。</dd>
+            <dt>Reads</dt><dd>Community identity、top nodes、centrality/bridge signals、existing Hub artifact/version、citations、staleness。</dd>
+            <dt>Writes</dt><dd>Peak-owned Hub artifact 或 explicit materialization；如果生成用户 Markdown，必须走 Proposal/Apply registry boundary。</dd>
+            <dt>Exit</dt><dd>Hub artifact/version 与 current graph fingerprint 一致；retired mapping 保留。fingerprint 漂移越过阈值时 reopen。</dd>
+            <dt>Current gap</dt><dd>没有 Hub lifecycle、artifact version、materialization boundary、refresh diff 和 retirement verification。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>09 / 11</span><div><strong>Content lifecycle</strong><small>revisit / archive / snooze 的时间状态</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>这篇 note 仍 current、应安排 revisit、可以 archive，还是暂时 snooze？</dd>
+            <dt>Reference actions</dt><dd>Open note、Revisit now、Archive proposal、Snooze until date、Keep current、Update suggestions。</dd>
+            <dt>Reads</dt><dd>activity/mtime、links/references、project context、lifecycle signal、previous snooze/decision、current date。</dd>
+            <dt>Writes</dt><dd>snooze 是 Peak-owned durable timer；archive 若修改用户文件/位置则走 Proposal。</dd>
+            <dt>Exit</dt><dd>current decision 保存；snooze 到期自动 reopen；新的 activity/reference 可提前 reopen。</dd>
+            <dt>Current gap</dt><dd>有 lifecycle lanes，但缺日期 picker、durable timer、archive boundary、expiry/reopen history。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry">
+          <summary><span>10 / 11</span><div><strong>Unusual notes</strong><small>reintegrate、intentional 或 dismiss with reason</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>孤立/异常状态是需要修复的信号，还是有意设计？如果 dismiss，理由是什么？</dd>
+            <dt>Reference actions</dt><dd>Inspect evidence、Reintegrate、Mark intentional、Dismiss with reason、Ask AI。</dd>
+            <dt>Reads</dt><dd>signal kind、graph neighborhood、folder/project context、activity、prior dismiss reason、evidence revisions。</dd>
+            <dt>Writes</dt><dd>intentional/dismiss suppression 是 Peak-owned；reintegrate 可能跳转 File Atlas/Composer/Proposal。</dd>
+            <dt>Exit</dt><dd>suppression 与 reason/version 保存；new signal/evidence revision 触发 reopen，而不是永久隐藏。</dd>
+            <dt>Current gap</dt><dd>没有强制 reason、suppression baseline、typed reintegrate handoff 和 reopen history。</dd>
+          </dl></div>
+        </details>
+
+        <details class="audit-entry" open>
+          <summary><span>11 / 11</span><div><strong>Unreadable files</strong><small>真实 recovery run，而不是点击后直接 verified</small></div></summary>
+          <div class="audit-body"><dl class="field-list">
+            <dt>User question</dt><dd>应该重试、修复 parser/setup、明确排除，还是需要外部处理文件？</dd>
+            <dt>Reference actions</dt><dd>Retry、Repair parser/setup、Open file/location、Exclude with policy、Re-run verification。</dd>
+            <dt>Reads</dt><dd>path/type、loader selection、parse/index error、attempt history、current coverage、provider/runtime availability、exclusion policy。</dd>
+            <dt>Writes</dt><dd>retry 只写 recovery attempt；exclude 写 explicit policy receipt；不修改文件内容。</dd>
+            <dt>Exit</dt><dd>path 出现在 current unique index coverage 且 parser outcome success，或存在明确有效 exclusion policy。失败保持 recovery。</dd>
+            <dt>Current gap</dt><dd>有 recovery cards，但 <code>verifyTask()</code> 只 await runCoreIndex 后直接 verified；没有 attempt progress、coverage check 或 policy receipt。</dd>
+          </dl></div>
+        </details>
+      </div>
+    </section>
+
+    <section id="geometry-deep">
+      <h2>Mock 原始几何、Production selector 与宿主链审计</h2>
+      <p class="lede">这一节是实现时的 direct-port 清单，不是根据截图重新估算。数值来自唯一 Reference HTML 的实际 CSS。Production 后段已经出现若干“接近 Mock”的 selector，但它们仍挂在不同 subtree 上，且前后存在多代覆盖；<strong>CSS 字符串接近不等于 render tree、state 或最终 computed geometry 已一致</strong>。</p>
+
+      <h3>1. Run shell 与 Build Index 的逐 selector 几何合同</h3>
+      <div class="table-wrap"><table class="compact">
+        <colgroup><col style="width:235px"><col style="width:30%"><col style="width:250px"><col><col style="width:25%"></colgroup>
+        <thead><tr><th>Mock selector / source</th><th>Reference geometry（应优先直接迁移）</th><th>Production counterpart</th><th>当前根因，不是表面现象</th><th>Computed acceptance</th></tr></thead>
+        <tbody>
+          <tr><td><code>.progress-title-row</code><br><span class="source">Mock :1253</span></td><td><code>min-height:82px</code>；flex center/space-between；<code>gap:24px</code>；<code>padding:15px 18px</code>。</td><td><code>.pk-vi-run-hero</code><br><span class="source">CSS :20555</span></td><td>Production 是独立 104px hero，padding 20×24；Reference title row 与 progress band 属于同一 overflow-hidden hero。父 hierarchy 先错，不能只把高度改成 82。</td><td>同 card 内 title row bbox 高 82px；title/actions 基线对齐；下方 band 与其共享左右边界且只有一条分隔线。</td></tr>
+          <tr><td><code>.run-progress-band</code><br><span class="source">Mock :1260</span></td><td><code>118px minmax(0,1fr) minmax(320px,.72fr)</code>；<code>gap:20px</code>；<code>padding:15px 18px 16px</code>；AI usage 左分隔。</td><td><code>.pk-vi-run-progress-summary</code><br><span class="source">CSS :20573</span></td><td>Production 只有 2 columns（320px/.9fr + 1.1fr），把 percent/bar/facts 分组方式改了；AI usage 也未成为 Reference 第三列。属于 STRUCTURE 后才是 geometry。</td><td>读取 <code>gridTemplateColumns</code> 应解析为三列；第三列不低于 320px；percent、bar、AI receipt 同屏且无换行/裁剪。</td></tr>
+          <tr><td><code>.big-progress</code> / <code>.percent</code><br><span class="source">Mock :1261–1264</span></td><td>bar <code>height:8px</code>；percent 34px / 750，百分号 20px；facts top margin 10px。</td><td>Production progress primitives / later cascade</td><td>当前 percent 由动态 denominator 计算，先有 STATE_MISMATCH；修算法前测 bar width 只会把错误真值画得更准确。</td><td>固定 58% fixture：bar clientWidth × .58，误差 ≤1px；文本与 ledger numerator/denominator 同源；后续事件不得变小。</td></tr>
+          <tr><td><code>.stage-track</code><br><span class="source">Mock :1278</span></td><td>4 equal columns；<code>padding:11px 28px 12px</code>；radius 9；connector top 22px，从 <code>12.5% + 21px</code> 到对侧；bottom margin 12px。</td><td><code>.pk-vi-run-stage-tabs</code><br><span class="source">CSS :20619</span></td><td>Production 是四个 54px 高的矩形 tabs 和底部 active border；Reference 是 marker-on-track，selected、current、concurrent 三种彼此独立的视觉语义。</td><td>四 marker center 的 y 坐标一致；connector 穿过 marker center；selected inspection 不清除 concurrent live marker；Tab/Enter 可达。</td></tr>
+          <tr><td><code>.run-stage-head</code><br><span class="source">Mock :1298</span></td><td><code>min-height:66px</code>；<code>padding:12px 15px</code>；title 14px，caption 10.5px。</td><td><code>.pk-vi-run-stage-workspace-head</code><br><span class="source">CSS :20684</span></td><td>Production workspace 整体先 padding 20×24，head 自身无固定 66px row，导致 section boundary 与 Mock 不可对齐。</td><td>header bbox 66px；左右内容在 15px inset；下面第一 row 与 header 只有单一 border。</td></tr>
+          <tr><td><code>.run-stage-row</code><br><span class="source">Mock :1302</span></td><td><code>min-height:64px</code>；grid <code>30px minmax(0,1fr) auto</code>；gap 12；padding 10×15；icon 28px。</td><td><code>.pk-vi-run-stage-rows &gt; span</code><br><span class="source">CSS :20713</span></td><td>Production 是三列横向 facts（repeat(3)），不是 vertically ordered operation rows。给 children 调 padding 无法恢复状态序列。</td><td>每行同一 x-grid；任意长路径只在中列 ellipsis；terminal badge 不挤压 icon/copy；空值仍保留 64px。</td></tr>
+          <tr><td><code>.local-index-progress</code><br><span class="source">Mock :1312</span></td><td>padding 14px 16px 13px；count 26px；bar 7px / top 12；下方 facts 用负 inset 回到 card 边。</td><td><code>.pk-vi-index-live-summary</code><br><span class="source">CSS :24090+</span></td><td>当前 late CSS 只给 3 个 summary facts，没有 Reference count/head/bar/4 facts 的完整父子结构；这是新“类似块”，不是 direct port。</td><td>一张 card 内顺序为 head → count → bar → 4 facts；4 facts 等宽、每格 min-height 54px；count 与 ledger 一致。</td></tr>
+          <tr><td><code>.local-index-progress-facts</code><br><span class="source">Mock :1321</span></td><td>4 equal columns；margin <code>13px -16px -13px</code>；top border；fact <code>min-height:54px</code>、padding 10×16。</td><td><code>.pk-vi-index-live-summary</code> 3 columns</td><td>列数与数据合同同时不一致：Mock 区分 frozen/processed/current/rate 类事实；Production 当前三格 generic summary 无法逐字段映射。</td><td>四个 cell bbox 同宽；label/value/source 不被 generic 化；unavailable 用文本占位而非删除 cell。</td></tr>
+          <tr><td><code>.local-index-pipeline</code><br><span class="source">Mock :1326</span></td><td>4 equal columns；padding 14×16×13；connector top 23px；marker 19px；copy 10.5/9px。</td><td><code>.pk-vi-index-pipeline</code><br><span class="source">CSS :24120+</span></td><td>Production late CSS 也有 4 columns，但渲染为四个 bordered cells（min-height 61、22px icon），没有 Reference 连续 track。这是 VISUAL + STRUCTURE 混合偏差。</td><td>阶段 connector 连续；4 marker center 与线重合；done/current/waiting 分别来自 per-document receipt，不由 index 总数推断。</td></tr>
+          <tr><td><code>.local-index-workspace</code><br><span class="source">Mock :1338</span></td><td><code>minmax(0,1.7fr) minmax(300px,.72fr)</code>；gap 12；padding 12；surface-2 background。</td><td><code>.pk-vi-index-current</code> + <code>.pk-vi-index-queue</code><br><span class="source">CSS :24190+</span></td><td>Production 当前“current”内部又切成 .8fr/1.2fr，queue 是下方列表；父级不是 Reference 的 queue/current 双栏。应重建 wrapper 后再复用 row primitives。</td><td>≥1051px 时右栏 ≥300px；两栏顶边/底边一致；左栏 overflow 不扩大 page；≤1050px 按 Reference breakpoint 单列。</td></tr>
+          <tr><td><code>.local-index-queue-head</code><br><span class="source">Mock :1340</span></td><td><code>min-height:58px</code>；padding 10×13；order select 30px 高。</td><td><code>.pk-vi-index-queue &gt; div</code> late CSS</td><td>Production header min-height 39px 且 flex；缺 order control 和 queue summary 的同一层级。</td><td>head 58px；select computed height 30px；keyboard focus ring 不裁剪；caption 仍可见。</td></tr>
+          <tr><td><code>.local-index-table-head</code> / <code>.local-index-document-row</code><br><span class="source">Mock :1346–1351</span></td><td>columns <code>52px minmax(190px,1fr) minmax(135px,.52fr) 62px</code>；gap 9；head 31px；row 51px；padding 0×12。</td><td><code>.pk-vi-index-queue &gt; span</code><br><span class="source">CSS late run section</span></td><td>Production 是 <code>48px 1fr 120px</code> 三列、min-height 36；丢失 document state/progress/time 的独立列和 table header。</td><td>head/rows 的四列 x 坐标逐像素一致；current row 左 3px accent；文件名不会把 time 列推出容器。</td></tr>
+          <tr><td><code>.local-index-current</code> / <code>.local-index-substep</code><br><span class="source">Mock :1365 / :1376</span></td><td>panel padding 13；substep <code>min-height:34px</code>；grid <code>17px 1fr auto</code>；icon 14px。</td><td><code>.pk-vi-index-current</code> / <code>.pk-vi-index-substeps</code></td><td>同名 Production selector 语义不同：current 是二维 split container，substeps 是 2-column grid、row 39px。名字相似不能视为 component mapping 完成。</td><td>右侧单一 current-document panel；substeps 纵向稳定顺序；first-token/stable-prefix 可逐步更新而不重排父面板。</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 style="margin-top:18px">2. Completed / Work queue / Result item 的几何与披露合同</h3>
+      <div class="table-wrap"><table class="compact">
+        <colgroup><col style="width:240px"><col style="width:31%"><col><col style="width:29%"></colgroup>
+        <thead><tr><th>Reference selector</th><th>不可改写的默认几何/密度</th><th>Production 风险</th><th>验收</th></tr></thead>
+        <tbody>
+          <tr><td><code>.completion-layout</code> + <code>.completion-focus-hero</code><br><span class="source">Mock :1684–1690</span></td><td>layout padding 20px 22px 0；focus hero min-height 50、padding 12px 22px；首屏只回答“run 结束后现在最需要我看什么”。</td><td>Production Completed 首屏五项 stat 改变默认信息密度，把 receipt、follow-up 和 status 平铺成不同产品。</td><td>首屏 reading order：outcome → focus/Needs you → disclosure summaries；真实 0 items 时保留 hero 并显示 No follow-up yet。</td></tr>
+          <tr><td><code>.completion-disclosure &gt; summary</code><br><span class="source">Mock :1695</span></td><td>min-height 50；columns <code>220px 1fr 18px</code>；gap 18；padding 8px 22px；hover background；chevron。</td><td>generic card/details 会受 Obsidian summary/button 默认、父 overflow、字体度量影响；不能只复制 border/color。</td><td>rest/hover/focus/open 四态截图与 bbox；Enter/Space 打开、Escape 若合同要求关闭、focus 不丢失；长 digest 不推走 chevron。</td></tr>
+          <tr><td><code>.completion-change-row</code><br><span class="source">Mock :1724</span></td><td>columns <code>160px 1fr auto</code>；gap 20；min-height 70；padding 13×14。</td><td>Production generic receipt rows 不区分 change name、scope/help、result，partial 也可能被绿色 Completed 覆盖。</td><td>三列在所有 rows 对齐；partial 结果 amber；unavailable 结果保留列宽；结果文本不换行。</td></tr>
+          <tr><td>Work queue compact control + row family</td><td>默认 summary/table 密度；filters/search/adjustment 是同一 header/control strip；真实 7 项不因 Mock 48 项而扩张。</td><td><code>.pk-vi-work-surface</code> 至少经历 :2489、:15283、:15740、:19774、:20358、:21490 多代定义；后声明的 specificity/cascade 决定最终几何。</td><td>记录每个 computed declaration 的 winning stylesheet line；header、columns、row 共用同一 grid template；0 items 仍保留 controls + header + empty body。</td></tr>
+          <tr><td>Result overlay / typed workspace</td><td>overlay shell 可共享；body 必须按 kind 保留 Mock 的 decision group、evidence、history、proposal/recovery/verify 区域和默认折叠密度。</td><td>当前 generic <code>TaskSpecificWorkspace</code> 用同一 choice/callout 压平 11 类语义；CSS patch 无法生成缺失 subtree。</td><td>11 fixtures 各做 DOM inventory；共同 shell bbox 一致；领域区块只在 Mock 定义的状态隐藏；empty evidence 显示 unavailable 而不是 return null。</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 style="margin-top:18px">3. Obsidian host CSS ancestor chain：每个 transient/control 必须逐层检查</h3>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Layout / clipping chain</h3>
+          <ol class="accept">
+            <li><code>.workspace-leaf-content</code> / view content：实际可用高度、native tab header 与 status bar 是否占位。</li>
+            <li><code>.peak-design-root</code>：主题字体、native button/input reset、line-height 和 CSS variables。</li>
+            <li><code>.peak-vault-intelligence-view</code>：页面 scope、<code>min-width:0</code>、全局 box-sizing。</li>
+            <li><code>.pk-vi-main</code>：当前 late cascade 为 <code>overflow:auto</code>；确认它是唯一主滚动所有者。</li>
+            <li><code>.pk-vi-page</code>：当前 max-width 1556、padding 21×28×34；必须与 reference capture content width 一起锁定，不能只锁 window。</li>
+            <li>card / details / typed workspace：逐祖先记录 <code>overflow-x/y</code>、transform、contain、filter、isolation 和 stacking context。</li>
+            <li>dropdown / tooltip / modal portal：若不 port 到 root，任何 ancestor 的 hidden/clip 都会让 z-index 无效。</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>Native control / font chain</h3>
+          <ol class="accept">
+            <li>项目约定的 <code>.peak-design-root button</code> 会把 height/min-height/max-height reset；任何固定 hit target 都要在 scoped primitive 上以更高 specificity 锁 width/height/min/max/padding。</li>
+            <li>select/input/summary 记录 <code>appearance</code>、font inheritance、line-height、padding、border 和 focus outline；不能假设 Chromium 默认与 Mock 相同。</li>
+            <li>所有 geometry root 统一 <code>box-sizing:border-box</code>；伪元素也要包含，否则 connector/track 会偏移。</li>
+            <li>字体不是“颜色细节”：记录 computed family、size、weight、line-height、letter-spacing；同 width 下文字换行不同会改变 card 高度。</li>
+            <li>theme、app zoom、CSS viewport、DPR 必须进入 manifest。录屏位图 3456×2168 不能直接解释为 3456 CSS px。</li>
+            <li>fixed-size button 新 selector 加入 <code>test/shared-button-reset-defense.test.ts</code>；但测试只能证明 cascade defense，真实 computed bbox 仍需 CDP。</li>
+          </ol>
+        </div>
+      </div>
+
+      <h3 style="margin-top:18px">4. 断点与测量协议</h3>
+      <div class="table-wrap"><table class="compact">
+        <colgroup><col style="width:180px"><col style="width:28%"><col><col style="width:28%"></colgroup>
+        <thead><tr><th>Width/state</th><th>Reference expectation</th><th>禁止的替代做法</th><th>必须记录</th></tr></thead>
+        <tbody>
+          <tr><td>Desktop comparison</td><td>使用相同 CSS viewport/content width；Build Index 双栏，AI timelines 不被裁剪。</td><td>拿 PNG 像素尺寸当 viewport；用 browser screenshot 替代 real host。</td><td><code>innerWidth/Height</code>、DPR、zoom、page/root/main/workspace bbox、scrollTop、theme、source checksum。</td></tr>
+          <tr><td>≤1050px</td><td>Build Index workspace/current 区域进入单列；边界和 reading order 保持。</td><td>仅缩字体或让双栏横向溢出。</td><td>before/after breakpoint bbox；DOM order 与 visual order；focus sequence。</td></tr>
+          <tr><td>≤760px</td><td>summary/pipeline 可按 Reference 变为 2 columns；披露 summary 退为主列 + chevron。</td><td>隐藏 facts、usage、disabled reason 或 current selection。</td><td>每个 retained field 的可见性；horizontal overflow；44px controls；dropdown clipping。</td></tr>
+          <tr><td>Streaming mutation</td><td>stable-prefix 文本增长时当前 row/panel 稳定；scroll follow 只有用户未脱离 live anchor 时继续。</td><td>用固定假定文本长度通过截图；每 token 强制页面跳到底。</td><td>first-token、stable-prefix、final 三帧 bbox；scrollTop；live-follow state；layout shift。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="card verdict" style="margin-top:12px"><div class="claim-title"><strong>几何关闭规则</strong></div><p>只有在相同 state/data/DOM subtree 下，Production 的 computed grid、bbox、font metrics、overflow chain 与 Reference 进入容差，才可把差异归为并关闭 VISUAL_MISMATCH。若 subtree、字段或状态仍不同，任何“像素差不多”都不算 parity。</p></div>
+    </section>
+
+    <section id="source-plan">
+      <h2>精确文件与函数实施计划</h2>
+      <p class="lede">这是改造边界，不是建议重构整个 Vault Intelligence。每个文件条目说明为什么要动、主要函数、受保护内容和完成证据。</p>
+      <div class="table-wrap"><table class="compact">
+        <colgroup><col style="width:230px"><col style="width:25%"><col><col style="width:24%"></colgroup>
+        <thead><tr><th>File / layer</th><th>Exact target</th><th>Required change</th><th>Protection / evidence</th></tr></thead>
+        <tbody>
+          <tr><td><code>vault-intelligence.ts</code><br><span class="source">src/core/types</span></td><td>run status、operation state、task/atom、proposal、event</td><td>增加 attempt/execution/document pipeline/progress ledger/suggestion/verification/reopen fields；schema version migration。</td><td>保留 11 kind 与 Proposal hash fields；type exhaustiveness tests。</td></tr>
+          <tr><td><code>VaultIntelligenceRuntime.ts</code><br><span class="source">src/app/vault-intelligence</span></td><td><code>startScan</code>、<code>executeRun</code>、<code>performIndex</code>、<code>performAi</code>、<code>performPublish</code>、pause/stop/resume、verify</td><td>app-owned execution group、explicit route binding、document-ready pipeline、receipt-driven completion、AI→atom adapter、fresh verifiers。</td><td>保留 source-write boundaries；race/state/property tests。</td></tr>
+          <tr><td><code>indexService.ts</code><br><span class="source">src/service/search/index</span></td><td><code>runPendingLlmIndexEnrichment</code> 与 core index progress port</td><td>返回 per-path/per-output outcome；callback 缺失不能 success；接收 executable route/signal；发布 document-ready 与 durable receipt。</td><td>不改变其他 Index callers 的默认语义；adapter compatibility tests。</td></tr>
+          <tr><td><code>VaultMetaAgentStream.ts</code> + review composition</td><td><code>resolveProfileForMode</code>、<code>buildVaultMetaAgentStream</code>、Review runtime port</td><td>允许 caller-supplied executable route；全局 active profile 仅用于非 Scan callers；输出 request/session ref。</td><td>不引入 service singleton；app composition test。</td></tr>
+          <tr><td><code>VaultIntelligenceModel.ts</code><br><span class="source">src/ui/view/vault-intelligence</span></td><td><code>deriveVaultMaintenanceTasks</code>、state/identity adapters</td><td>从 finding id 分离 semantic identity；合并 deterministic + AI evidence；保留 choice/suggestion histories；投影 Queue/Completed。</td><td>不生成假 task；canonical atom fixtures。</td></tr>
+          <tr><td><code>VaultIntelligenceWorkspace.tsx</code></td><td><code>RunProgress</code>、<code>IndexRunWorkspace</code>、<code>AiRunWorkspace</code>、<code>Completed</code>、<code>WorkSurface</code>、<code>TaskSpecificWorkspace</code>、<code>ProposalWorkspace</code></td><td>按 Mock hierarchy 替换 subtree；接入 typed presentation adapter；11 dossier 通过专用 archetype renderer 实现。</td><td>Overview/Map/Contents/Activity JSX 不动；render-tree tests + harness screenshots。</td></tr>
+          <tr><td><code>peak-components.css</code></td><td>run/work/result selectors；20547+、20984+、21380 cascade lock、24072+</td><td>在新 root subtree 上直接迁移 Mock geometry；删掉仅服务被替换 subtree 的后置兼容 overrides；审计 host button/overflow/font/box-sizing。</td><td>不重做全局 VI CSS；computed-style manifest + real host geometry。</td></tr>
+          <tr><td><code>vault-intelligence.json</code><br><span class="source">templates/config</span></td><td>operation timing/weight、task actions、verifier refs、reopen policy</td><td>把可配置 labels/thresholds/weights/actions 从逻辑中移到 template；compiled fallback 镜像并注明来源。</td><td>不硬编码 Mock synthetic counts；config schema tests。</td></tr>
+          <tr><td><code>vault-intelligence-runtime.test.ts</code></td><td>route、scope、enrichment、cancel、verify</td><td>替换错误的 partial-scope skip 与 receipt-less success expectations；增加 provider spy/race/resume/reopen。</td><td>不能只删除 assertions；每个 P0 有失败复现。</td></tr>
+          <tr><td><code>vault-intelligence-rendered-parity.test.ts</code></td><td>source-string parity assertions</td><td>降级为 boundary inventory；新增真实 component fixtures、DOM hierarchy、empty/error state 和 geometry harness。</td><td>source/build 不升级为 host evidence。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="card good" style="margin-top:12px"><div class="claim-title"><strong>Task-owned commit boundary</strong></div><p>实现完成时只提交上述 task-owned changes 与新增 focused tests/evidence manifest。现有 dirty worktree 的其他修改不得被 broad add；如果同一文件已有用户改动，按 hunk 级所有权审计后再提交。</p></div>
+    </section>
+
+    <section id="verification-deep">
+      <h2>测试与真实 Obsidian 验证矩阵</h2>
+      <div class="table-wrap"><table class="compact">
+        <colgroup><col style="width:185px"><col style="width:30%"><col><col style="width:170px"></colgroup>
+        <thead><tr><th>Layer</th><th>Fixture / action</th><th>Required assertion</th><th>Evidence grade</th></tr></thead>
+        <tbody>
+          <tr><td>Route unit</td><td>为 summaries 选择非 active model</td><td>selected executable adapter 被调用；Completed actualRoute 与 spy 一致；无 silent fallback。</td><td>Automated contract</td></tr>
+          <tr><td>LLM receipt unit</td><td>indexDocument 返回但不触发 completion callback</td><td>outcome failed/inconclusive；success numerator 不增加；usage 显示 unavailable。</td><td>Automated contract</td></tr>
+          <tr><td>Pipeline concurrency</td><td>A ready、Z blocked</td><td>summary(A) 在 core(Z) 前开始；同一文档 substeps 有序。</td><td>Automated timeline</td></tr>
+          <tr><td>Progress property</td><td>随机合法 event ordering、late totals、fail/skip</td><td>fixed denominator；主百分比单调；100 terminal gate 正确。</td><td>Property test</td></tr>
+          <tr><td>Pause durability</td><td>当前 unit running 时 Pause；reload runtime</td><td>不 dequeue next unit；reload 后 resume pending；completed receipt 不重复。</td><td>Automated persistence</td></tr>
+          <tr><td>Stop race</td><td>Review aborts、core index still pending</td><td>join all child work；terminal 后无 late event/write。</td><td>Automated race</td></tr>
+          <tr><td>Partial resume</td><td>AI partial + persisted checkpoint</td><td>只重试 retryable pending attempt；completed operation 不重复。</td><td>Automated state</td></tr>
+          <tr><td>AI → Queue adapter</td><td>lint empty、collector 有 action/proposal</td><td>生成 provenance-backed atom；不覆盖 owner choice；无 durable action 则不进 Queue。</td><td>Adapter fixture</td></tr>
+          <tr><td>Semantic identity</td><td>同 issue 新 finding id</td><td>保留 atom/owner history；current evidence revision 更新。</td><td>Model unit</td></tr>
+          <tr><td>Verify / reopen</td><td>finding id 变化、semantic key 相同；随后 evidence revision 变化</td><td>第一次仍 open；通过后 baseline 保存；新证据触发 reopened。</td><td>Verifier contract</td></tr>
+          <tr><td>Render tree</td><td>Mock state fixtures：8/32/58/76/92/completed</td><td>同 section order、DOM grouping、default disclosure、empty geometry。</td><td>Harness DOM</td></tr>
+          <tr><td>Geometry</td><td>1728×1084 fixed fixture</td><td>关键 bbox、grid columns、alignment、clipping、control dimensions 在 tolerance 内。</td><td>Harness visual</td></tr>
+          <tr><td>Keyboard</td><td>Tab/Enter/Escape；dropdown/modal open</td><td>focus-visible、Escape close、focus restoration、no hidden focus。</td><td>Real CDP</td></tr>
+          <tr><td>Pointer</td><td>hover corridor、outside click、row open/back</td><td>popover 不因 pointer path 消失；outside click 正确；return focus/scroll 恢复。</td><td>Real CDP + video</td></tr>
+          <tr><td>Streaming</td><td>真实 provider first-token / stable-prefix / Stop</td><td>UI 持续变化、prefix 不回退、Stop 后无新 token、receipt terminal。</td><td>Real host video</td></tr>
+          <tr><td>Visual set</td><td>锁 SHA/theme/zoom/DPR/viewport/fixture/scroll</td><td>reference、real current、normalized current、overlay/diff、manifest 完整。</td><td>Acceptance evidence</td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid cols-2" style="margin-top:12px">
+        <div class="card"><h3>Focused command set</h3><pre><code>npm run test -- \
+  test/vault-intelligence-runtime.test.ts \
+  test/vault-intelligence-rendered-parity.test.ts \
+  test/vault-intelligence-host-css-defense.test.ts \
+  test/vault-intelligence-standalone-contract.test.ts
+
+npm run build</code></pre></div>
+        <div class="card verdict"><h3>What these commands cannot prove</h3><p>它们不能证明 Obsidian host computed geometry、hover corridor、focus restoration、真实 provider streaming、plugin reload persistence 或视频中的稳定输出。上述项目必须保留真实 CDP/Computer Use evidence gate。</p></div>
+      </div>
+    </section>
+
+    <section id="plan">
+      <h2>实施 DAG：依赖顺序与替换边界</h2>
+      <p class="lede">不能逐个视觉小问题打补丁。整页关闭单位是下面八个依赖波次；每一波必须保留 Overview/Vault map 等保护范围。</p>
+      <div class="flow cols-4">
+        <div class="node"><strong>0 · Protection</strong><small>锁 dirty worktree、fixture、Mock checksum；新增 truth tests，禁止触碰保护页面</small></div>
+        <div class="node"><strong>1 · Routes & receipts</strong><small>actual model route、provider receipt、stream events、shared execution references</small></div>
+        <div class="node"><strong>2 · State model</strong><small>document pipeline、monotonic progress、pause/stop/join/resume/partial</small></div>
+        <div class="node"><strong>3 · Data adapters</strong><small>Review evidence → canonical atom → Queue/Completed/result projections</small></div>
+        <div class="node"><strong>4 · Run subtree</strong><small>替换 RunProgress / IndexRunWorkspace / AiRunWorkspace / Publish / Completed</small></div>
+        <div class="node"><strong>5 · Result workspaces</strong><small>保留 overlay primitive；替换 generic body 为 11 类 typed archetype</small></div>
+        <div class="node"><strong>6 · Apply & Verify</strong><small>combined diff、progress、fresh verifier、reopen</small></div>
+        <div class="node"><strong>7 · CSS & host QA</strong><small>direct Mock CSS port、scope isolation、harness overlay、真实 Obsidian/CDP</small></div>
+      </div>
+      <div class="grid cols-2" style="margin-top:14px">
+        <div class="card verdict"><h3>必须替换的旧 subtree</h3><p><code>RunProgress</code> 内的 hero/progress card/tab grid；<code>IndexRunWorkspace</code>；<code>AiRunWorkspace</code>；generic Publish rows；<code>Completed</code> 首屏结构；<code>TaskSpecificWorkspace</code> / <code>TaskWorkspaceCallout</code> generic body。</p></div>
+        <div class="card good"><h3>可以保留并增强</h3><p>Setup 已收敛部分；Work queue 的真实 canonical task source；overlay focus-trap/Escape/outside-click primitive；Proposal source-hash / mtime fail-closed 与 explicit Apply 安全边界；现有 11 kind type inventory。</p></div>
+      </div>
+    </section>
+
+    <section id="acceptance">
+      <h2>完成标准与证据等级</h2>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>P0 gate</h3>
+          <ul class="accept">
+            <li>所选 route 实际控制 provider call；没有 receipt 不得显示 AI Completed。</li>
+            <li>frozen plan 下 progress 单调、100% terminal；skipped/partial/failed 不伪装成功。</li>
+            <li>pause 在 durable unit；stop 后无后台写；resume 不跳过 partial。</li>
+            <li>AI review evidence 进入 canonical atom / queue，保留 provenance。</li>
+            <li>Verify 使用 fresh detector evidence，失败不关闭，证据改变可 reopen。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>P1 parity gate</h3>
+          <ul class="accept">
+            <li>Run 每个阶段、Completed、Queue、11 result workspaces 与 Mock render tree/默认密度一致。</li>
+            <li>empty/loading/error/disabled 状态保留 geometry，诚实显示 unavailable。</li>
+            <li>同类 controls 使用固定 geometry；tooltip/dropdown 审计完整 overflow chain。</li>
+            <li>hover/focus/selection/outside-click/Escape/focus restoration 均有真实交互证据。</li>
+            <li>最终 reference + real current + normalized current + overlay/diff + manifest 完整。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="table-wrap" style="margin-top:14px"><table class="compact">
+        <thead><tr><th>Evidence layer</th><th>本次审计</th><th>能证明什么</th><th>不能证明什么</th></tr></thead>
+        <tbody>
+          <tr><td>Mock render/state/JS</td><td><span class="tag parity">VERIFIED</span></td><td>reference hierarchy、states、timelines、11 kind actions</td><td>Production runtime/provider success</td></tr>
+          <tr><td>Production source/runtime</td><td><span class="tag parity">VERIFIED</span></td><td>上述 route/state/data root cause</td><td>real host computed geometry</td></tr>
+          <tr><td>Real Obsidian video</td><td><span class="tag parity">VERIFIED</span></td><td>真实可见的 0-token completion、progress regression、current geometry</td><td>DOM、focus、pointer corridor、provider network receipt</td></tr>
+          <tr><td>CDP DOM / interaction</td><td><span class="tag blocked">NOT VERIFIED</span></td><td>—</td><td>hover、focus-visible、Escape、outside click、focus restore、exact computed geometry</td></tr>
+          <tr><td>Completed exact visual parity</td><td><span class="tag blocked">NOT COMPARABLE</span></td><td>Production final transition visible</td><td>与 Mock 相同 fixture/resting state 的 pixel comparison</td></tr>
+        </tbody>
+      </table></div>
+      <div class="card callout" style="margin-top:14px">
+        <strong>PRODUCT_DECISION_REQUIRED：</strong>当前唯一潜在冲突是 <em>Plan this scan</em> 到底是 AI operation 还是 local planning。由于用户已明确 Mock 为唯一 reference，审计默认它是 <strong>PARITY_FIX</strong>；若坚持 local，必须由 owner 明确批准并记录 delta，不能静默偏离。
+      </div>
+    </section>
+
+    <section id="manifest">
+      <h2>Evidence manifest</h2>
+      <div class="card">
+        <p><strong>Reference：</strong><code>docs/gstack/vault-intelligence-workspace-2026-08-12-v2/index.html</code><br /><span class="source">SHA-256 0b1c46c8669772ab64004c72e3eff7bc64970c9dcfacdb68c8a6d06865d6b927</span></p>
+        <p><strong>Recording A：</strong><code>Downloads/iShot_2026-08-22_22.31.16.mp4</code><br /><span class="source">SHA-256 d417c24aa98c91bde39aabe1453f0bda6da9100d8912243c1b10e366341c739b · 527.833s · 3456×2168 source</span></p>
+        <p><strong>Recording B：</strong><code>Downloads/iShot_2026-08-22_22.55.34.mp4</code><br /><span class="source">SHA-256 3d0edeca29088cb424b2bff4a0736ca438bfcc116aecc8b27c941c77f26a0115 · 38.533s · Work queue/result items</span></p>
+        <p><strong>Recording C：</strong><code>Downloads/iShot_2026-08-22_23.51.23.mp4</code><br /><span class="source">SHA-256 e0294691178ae20e3c2734087fcf701c77798e1c387b8a49c5e6eeaa3f22e2d2 · 171.967s · 3456×2168 source</span></p>
+        <p><strong>Production baseline：</strong><code>master @ c55c8a3d4b348359643c73b2cd4df7757db3f32b</code>；审计开始时工作树已有大量未提交改动，本报告未改动产品代码、未暂存或覆盖用户变更。</p>
+        <p><strong>Source snapshot checksums：</strong><a href="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/source-checksums.sha256"><code>source-checksums.sha256</code></a>；锁定本报告行号与结论对应的 13 个关键 reference/source/test 文件。该文件记录 dirty audit snapshot，不把 base HEAD 伪称为完整源码状态。</p>
+        <p><strong>Capture normalization：</strong>Mock browser viewport 1728×1084；关键录屏帧为 1728×1084 normalized export；theme/zoom/DPR 未能通过 CDP 锁定，因此只做结构级比较。</p>
+        <p><strong>Asset checksums：</strong><a href="assets/vault-intelligence-scan-work-queue-parity-2026-08-23/manifest.sha256"><code>manifest.sha256</code></a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">审计方法：reference render tree / state / data / interaction / host CSS / visual geometry 分层；先 root cause，后修复顺序。此文件是 Stage A 只读审计产物，不代表 Stage B 已实施，也不代表真实 Obsidian 交互已验收。</footer>
+</div>
+</body>
+</html>

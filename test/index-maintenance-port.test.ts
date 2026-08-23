@@ -35,6 +35,11 @@ function testServiceImplementsPort(): void {
 		/class IndexService\s+implements\s+[^{]*IndexMaintenancePort/,
 		'IndexService must declare `implements ... IndexMaintenancePort`',
 	);
+	assert.match(
+		serviceSource,
+		/llmTelemetry\.snapshot = ev;/,
+		'a document LLM completion receipt must retain its produced/partial/failed status before Scan derives progress or usage',
+	);
 	console.log('PASS: serviceImplementsPort');
 }
 

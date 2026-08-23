@@ -39,8 +39,16 @@ export interface VaultScanOperationDefinition {
 	defaultEnabled: boolean;
 	model: string;
 	provider: string;
-	estimatedTokens: number;
-	estimatedCostUsd: number;
+	estimate: VaultScanOperationEstimateRule;
+}
+
+/** A model-agnostic planning rule. It is deliberately explicit and template
+ * backed so Scan never presents a hand-written whole-Vault token allowance as
+ * an observed measurement. */
+export interface VaultScanOperationEstimateRule {
+	inputShare: number;
+	promptTokensPerFile: number;
+	outputTokensPerFile: number;
 }
 
 export interface VaultScanCheckDefinition {
@@ -86,6 +94,12 @@ export interface VaultInventoryTypeGroup {
 export interface VaultIntelligenceConfig {
 	activityColors: string[];
 	fileTypeColors: string[];
+	/** Generic UTF-8 byte-to-token approximation, shared across providers. */
+	scanEstimateBytesPerToken: number;
+	progressPlan: {
+		version: 1;
+		weights: Record<'discover' | 'index' | 'ai' | 'prepare-review' | 'publish', number>;
+	};
 	/** Owner-facing groups derived from the source-confirmed file-format capability audit. */
 	inventoryTypeGroups: VaultInventoryTypeGroup[];
 	inventoryPreviewTypeLimit: number;
@@ -103,8 +117,8 @@ export async function loadVaultIntelligenceConfig(): Promise<VaultIntelligenceCo
 	if (!manager) return DEFAULT_VAULT_INTELLIGENCE_CONFIG;
 	try {
 		const loaded = await manager.loadJson<VaultIntelligenceConfig>(ConfigTemplateId.VaultIntelligence);
-		if (!loaded.inventoryObjects || !Array.isArray(loaded.inventoryTypeGroups) || !Array.isArray(loaded.checkGroups) || !Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations) || !Array.isArray(loaded.indexOutputs)) {
-			throw new Error('inventoryObjects must exist; inventoryTypeGroups, checkGroups, tasks, scanOperations and indexOutputs must be arrays');
+		if (!loaded.progressPlan?.weights || !loaded.inventoryObjects || !Number.isFinite(loaded.scanEstimateBytesPerToken) || loaded.scanEstimateBytesPerToken <= 0 || !Array.isArray(loaded.inventoryTypeGroups) || !Array.isArray(loaded.checkGroups) || !Array.isArray(loaded.tasks) || !Array.isArray(loaded.scanOperations) || !loaded.scanOperations.every((operation) => operation.estimate && Number.isFinite(operation.estimate.inputShare) && Number.isFinite(operation.estimate.promptTokensPerFile) && Number.isFinite(operation.estimate.outputTokensPerFile)) || !Array.isArray(loaded.indexOutputs)) {
+			throw new Error('scanEstimateBytesPerToken and per-operation estimate rules must be valid; inventoryObjects, inventoryTypeGroups, checkGroups, tasks, scanOperations and indexOutputs must exist');
 		}
 		return loaded;
 	} catch (error) {

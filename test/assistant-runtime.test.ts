@@ -2,8 +2,8 @@
  * Task B2 — Assistant runtime tests (plan §5.3).
  *
  * Covered slices:
- *   R1  Resolver: valid id → definition; missing id → null; deleted id → null;
- *       storage failure → null (never throws).
+ *   R1  Resolver: valid id → definition; missing binding → null; deleted id
+ *       and storage failure throw without substituting Default.
  *   R2  AssistantSlot: renders a system message from instructions when a
  *       ResolvedAssistant is on SlotBuildContext; renders nothing without one
  *       and nothing when instructions are empty. Compression drops the
@@ -155,17 +155,15 @@ async function testResolverMissingId(): Promise<void> {
 async function testResolverDeletedId(): Promise<void> {
 	const svc = stubAssistantService({ 'gone': null });
 	const conv = makeConversation({ assistantId: 'gone' });
-	const resolved = await resolveAssistantForConversation(svc, conv);
-	assert.strictEqual(resolved, null, 'unknown id → null, never throws');
-	console.log('PASS: resolver — deleted id');
+	await assert.rejects(() => resolveAssistantForConversation(svc, conv), /assistant fallback is disabled/i);
+	console.log('PASS: resolver — deleted id fails loudly');
 }
 
 async function testResolverStorageFailure(): Promise<void> {
 	const svc = stubAssistantService({ 'boom': new Error('storage offline') });
 	const conv = makeConversation({ assistantId: 'boom' });
-	const resolved = await resolveAssistantForConversation(svc, conv);
-	assert.strictEqual(resolved, null, 'storage failure degrades to Default');
-	console.log('PASS: resolver — storage failure safe');
+	await assert.rejects(() => resolveAssistantForConversation(svc, conv), /storage offline/);
+	console.log('PASS: resolver — storage failure propagates');
 }
 
 // ─── R2 AssistantSlot ─────────────────────────────────────────────────────────
@@ -547,32 +545,27 @@ function testPrecedenceAutoDefault(): void {
 }
 
 function testPrecedenceAssistantPreferredMissingFallsBack(): void {
-	// preferred profile is deleted — resolver drops to Auto and marks the drop.
+	// A deleted configured profile is a route error, not permission to use Chat.
 	const p1 = makeProfile({ id: 'p1', kind: 'openai' });
-	const res = resolveEffectiveModel({
+	assert.throws(() => resolveEffectiveModel({
 		fixedSelection: null,
 		assistantPreferred: { profileId: 'gone', modelId: 'claude-x' },
 		defaultModel: { modelId: 'auto-default', provider: 'openai' },
 		profileRegistry: fakeProfileRegistry({ profiles: [p1], activeChat: { profile: p1, modelId: 'chat-m' } }),
-	});
-	assert.strictEqual(res.source, 'auto-default');
-	assert.strictEqual(res.assistantPreferredUnavailable, true);
-	assert.strictEqual(res.modelId, 'chat-m');
-	console.log('PASS: precedence — assistant.preferredModel with unresolvable profile degrades to Auto');
+	}), /fallback is disabled/i);
+	console.log('PASS: precedence — missing assistant profile fails loudly');
 }
 
 function testPrecedenceAssistantPreferredDisabled(): void {
 	const p1 = makeProfile({ id: 'p1', kind: 'openai' });
 	const disabled = makeProfile({ id: 'p2', kind: 'anthropic', enabled: false });
-	const res = resolveEffectiveModel({
+	assert.throws(() => resolveEffectiveModel({
 		fixedSelection: null,
 		assistantPreferred: { profileId: 'p2', modelId: 'claude-x' },
 		defaultModel: { modelId: 'auto-default', provider: 'openai' },
 		profileRegistry: fakeProfileRegistry({ profiles: [p1, disabled], activeChat: { profile: p1, modelId: 'chat-m' } }),
-	});
-	assert.strictEqual(res.source, 'auto-default');
-	assert.strictEqual(res.assistantPreferredUnavailable, true);
-	console.log('PASS: precedence — disabled preferred profile also degrades');
+	}), /fallback is disabled/i);
+	console.log('PASS: precedence — disabled preferred profile fails loudly');
 }
 
 // ─── R6 builder safety ────────────────────────────────────────────────────────
@@ -693,7 +686,7 @@ async function main(): Promise<void> {
 		['resolver: valid id', testResolverValidId],
 		['resolver: missing id', testResolverMissingId],
 		['resolver: deleted id', testResolverDeletedId],
-		['resolver: storage failure safe', testResolverStorageFailure],
+		['resolver: storage failure propagates', testResolverStorageFailure],
 		// R2
 		['AssistantSlot: renders instructions', testAssistantSlotRenders],
 		['AssistantSlot: empty cases', testAssistantSlotEmpty],
@@ -714,8 +707,8 @@ async function main(): Promise<void> {
 		['precedence: conversation fixed wins', testPrecedenceFixed],
 		['precedence: assistant preferred', testPrecedenceAssistantPreferred],
 		['precedence: Auto default', testPrecedenceAutoDefault],
-		['precedence: assistant preferred → fallback on missing profile', testPrecedenceAssistantPreferredMissingFallsBack],
-		['precedence: disabled preferred profile falls back', testPrecedenceAssistantPreferredDisabled],
+		['precedence: missing assistant profile throws', testPrecedenceAssistantPreferredMissingFallsBack],
+		['precedence: disabled assistant profile throws', testPrecedenceAssistantPreferredDisabled],
 		// R6
 		['builder: cannot widen toolPolicy', testBuilderCannotWidenTools],
 	];

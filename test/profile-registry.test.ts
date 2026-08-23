@@ -58,7 +58,7 @@ async function run(): Promise<void> {
     {
       name: 'createPresetProfile: overrides are applied',
       fn: () => {
-        const p = createPresetProfile('anthropic', {
+		const p = createPresetProfile('anthropic', {
           name: 'My Custom',
           apiKey: 'sk-test',
           primaryModel: 'claude-sonnet-4-20250514',
@@ -82,7 +82,7 @@ async function run(): Promise<void> {
     {
       name: 'toEmbeddingConfig: returns config when fields set',
       fn: () => {
-        const p = createPresetProfile('anthropic', {
+        const p = createPresetProfile('openai', {
           apiKey: 'sk-test',
           embeddingEndpoint: 'https://embed.example.com',
           embeddingModel: 'text-embedding-3-small',
@@ -98,7 +98,7 @@ async function run(): Promise<void> {
     {
       name: 'toEmbeddingConfig: falls back to profile apiKey when embeddingApiKey is null',
       fn: () => {
-        const p = createPresetProfile('anthropic', {
+		const p = createPresetProfile('openai', {
           apiKey: 'sk-test',
           embeddingEndpoint: 'https://embed.example.com',
           embeddingModel: 'text-embedding-3-small',
@@ -142,7 +142,7 @@ async function run(): Promise<void> {
       },
     },
     {
-      name: 'ProfileRegistry.resolveSlot: research prefers tier config, falls back to agent role',
+      name: 'ProfileRegistry.resolveSlot: research requires its exact tier config',
       fn: () => {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
@@ -156,15 +156,14 @@ async function run(): Promise<void> {
           } as any,
           () => {},
         );
-        // No tier config yet → research falls back to the agent role.
-        assert.strictEqual(registry.resolveSlot('research')?.modelId, 'agent-role-model');
+        assert.strictEqual(registry.resolveSlot('research'), null);
         // Setting the Research tier binding makes it the single source.
         registry.setTierConfigs({ fast: null, research: { profileId: p.id, modelId: 'research-tier-model' }, stronger: null });
         assert.strictEqual(registry.resolveSlot('research')?.modelId, 'research-tier-model');
       },
     },
     {
-      name: 'ProfileRegistry.resolveSlot: fast prefers tier config, falls back to agent-fast role',
+      name: 'ProfileRegistry.resolveSlot: fast requires its exact tier config',
       fn: () => {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
@@ -179,7 +178,7 @@ async function run(): Promise<void> {
           } as any,
           () => {},
         );
-        assert.strictEqual(registry.resolveSlot('fast')?.modelId, 'agent-fast-model');
+        assert.strictEqual(registry.resolveSlot('fast'), null);
         registry.setTierConfigs({ fast: { profileId: p.id, modelId: 'fast-tier-model' }, research: null, stronger: null });
         assert.strictEqual(registry.resolveSlot('fast')?.modelId, 'fast-tier-model');
       },
@@ -285,8 +284,7 @@ async function run(): Promise<void> {
         assert.strictEqual(registry.getActiveAgentProfile()?.id, p2.id);
 
         registry.setActiveAgentProfile(null);
-        // Falls back to first profile when no active config is set
-        assert.strictEqual(registry.getActiveAgentProfile()?.id, p1.id);
+        assert.strictEqual(registry.getActiveAgentProfile(), null);
       },
     },
     {

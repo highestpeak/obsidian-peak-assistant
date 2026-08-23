@@ -12,7 +12,7 @@
 
 配套实施设计见 [生成产物与存储治理实现设计](../superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md)。较早的 [机器运行记录 JSONL 设计](../superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md) 仍保留历史背景；两者冲突时，以本文和 2026-08-02 实现设计为准。
 
-运行时 typed catalog 位于 `src/core/storage/generated-output/`，60 个 descriptor 与下方 60 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用。Chat、Project、Resource Summary、Profile proposal、receipts、Hub、Graph explanation、Peak Sheet、旧 Review 与 Plugin Command Gateway audit 已登记 canonical carrier；旧文件只读保留，不自动删除。
+运行时 typed catalog 位于 `src/core/storage/generated-output/`，descriptor 与下方文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用。Chat、Project、Resource Summary、Profile proposal、receipts、Hub、Graph explanation、Peak Sheet、旧 Review、Vault Scan 与 Plugin Command Gateway audit 已登记 canonical carrier；旧文件只读保留，不自动删除。
 
 ## Why
 
@@ -151,6 +151,9 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | DR-25 | Peak Sheet dataset events | 每次数据/结构/视图修改及 Undo/Redo 使用稳定事件追加记录 | `records/peak-sheets/<dataset-id>/events.jsonl`；只用于恢复与 Undo，永不覆盖或向前重放超过可见 `.peaksheet` 的 revision | 已实现 |
 | DR-26 | Vault Intelligence state | 当前 Scan checkpoint、最近完成 receipt、维护任务与 owner choice、Map text，以及仅含精确片段/源 hash 的待审 file proposal；完成的 Scan 不保留为 active run，绝不保存整篇用户笔记副本 | `records/vault-intelligence/state.json` | 已实现 |
 | DR-27 | Vault Intelligence event history | Scan 阶段、owner choice、proposal prepare/apply、map-text save 与 verify 的追加审计事件 | `records/vault-intelligence/events.jsonl` | 已实现 |
+| DR-28 | Vault Scan immutable run artifacts | Frozen plan、Evidence Manifest、Discovery/Prepare review snapshots 与 Completed body；event 只引用 artifact ref | `artifacts/vault-intelligence/runs/<scan-run-id>/<artifact-id>.json` | 已实现 |
+| DR-29 | Vault Scan per-run domain events | 每个 run 独立、单调 sequence、幂等 event ID 的 canonical JSONL；旧 DR-27 只作为 workspace/legacy audit 输入保留 | `records/vault-intelligence/runs/<scan-run-id>/events.jsonl` | 已实现 |
+| DR-30 | Vault Scan resumable checkpoint | 小型 parent/domain checkpoint、queue/frontier/budget、last event sequence 与 active artifact pointers | `records/vault-intelligence/runs/<scan-run-id>/checkpoint.json` | 已实现 |
 
 主要 writer 证据：
 

@@ -23,6 +23,60 @@ export interface UnifiedModelChoice {
 	unavailableReason: string | null;
 }
 
+/**
+ * The route picker deliberately works with the rendered operation-candidate
+ * shape (`model`), rather than leaking the catalog shape (`modelId`) into the
+ * Scan runtime. Keeping that boundary explicit prevents a valid bound LLM
+ * route from being looked up under an undefined property.
+ */
+export interface OperationRouteCandidate {
+	profileId: string;
+	model: string;
+	provider?: string;
+	selectable: boolean;
+}
+
+/**
+ * Resolve the model shown for an enabled Scan operation.
+ *
+ * Only an explicit compatible binding is executable. Catalog ordering and a
+ * single available candidate are presentation facts, never permission to
+ * replace an absent or stale owner configuration.
+ */
+export function resolveOperationRouteCandidate(
+	modelType: ModelType,
+	binding: { profileId: string; modelId: string } | null,
+	candidates: readonly OperationRouteCandidate[],
+): OperationRouteCandidate | null {
+	const bound = binding
+		? candidates.find((candidate) => (
+			candidate.profileId === binding.profileId
+			&& candidate.model === binding.modelId
+			&& candidate.selectable
+		))
+		: undefined;
+	void modelType;
+	return bound ?? null;
+}
+
+/**
+ * Resolve only an explicit compatible embedding binding. Candidate count and
+ * provider proximity never authorize a runtime model substitution.
+ */
+export function resolveEmbeddingDefault(
+	binding: { profileId: string; modelId: string } | null,
+	candidates: readonly Pick<UnifiedModelChoice, 'profileId' | 'modelId' | 'selectable'>[],
+): Pick<UnifiedModelChoice, 'profileId' | 'modelId' | 'selectable'> | null {
+	const bound = binding
+		? candidates.find((candidate) => (
+			candidate.profileId === binding.profileId
+			&& candidate.modelId === binding.modelId
+			&& candidate.selectable
+		))
+		: undefined;
+	return bound ?? null;
+}
+
 const PROFILE_CATALOG_IDS: Partial<Record<Profile['kind'], string>> = {
 	anthropic: 'claude',
 	openai: 'openai',

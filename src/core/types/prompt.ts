@@ -155,6 +155,8 @@ export enum PromptId {
 	// Copilot Vault Intelligence
 	VaultHealth = 'vault-health',
 	VaultSummary = 'vault-summary',
+	VaultIntelligenceScanPlan = 'vault-intelligence-scan-plan',
+	VaultIntelligenceTaskSuggestions = 'vault-intelligence-task-suggestions',
 
 	// Copilot Writing Assistance
 	WritingContinue = 'writing-continue',
@@ -688,6 +690,17 @@ export interface PromptVariables {
 	[PromptId.VaultSummary]: {
 		period: string;
 		noteList: string;
+	};
+	[PromptId.VaultIntelligenceScanPlan]: {
+		scope: string;
+		objectCount: number;
+		changedCount: number | string;
+		enabledOperations: string;
+		samplePaths: string;
+	};
+	[PromptId.VaultIntelligenceTaskSuggestions]: {
+		instruction: string;
+		taskPayload: string;
 	};
 	[PromptId.WritingContinue]: {
 		content: string;

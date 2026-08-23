@@ -15,6 +15,7 @@
 
 import type { VaultReviewSessionSnapshot } from './VaultReviewSession';
 import type { VaultReviewMode } from './VaultMetaAgentStream';
+import type { VaultMetaAgentRoute } from './VaultMetaAgentStream';
 import type {
 	VaultReviewHistoryRecord,
 } from './VaultReviewReportService';
@@ -24,6 +25,8 @@ import type { VaultFingerprint } from './VaultFingerprintService';
 export interface RunVaultReviewRuntimeOptions {
 	mode: VaultReviewMode;
 	signal: AbortSignal;
+	route?: VaultMetaAgentRoute;
+	focus?: { objectiveId: string; instruction: string; evidenceRefs: readonly string[] };
 }
 
 export interface VaultReviewRuntime {

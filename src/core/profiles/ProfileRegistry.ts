@@ -64,7 +64,7 @@ export class ProfileRegistry {
   ): void {
     this.profiles = settings.profiles.map(p => this.migrateProfileModelIds(p));
     this.activeAgentConfig = this.migrateRoleConfig(settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId));
-    this.activeAgentFastConfig = this.migrateRoleConfig((settings as any).activeAgentFastConfig) ?? this.deriveDefaultAgentFastConfig();
+    this.activeAgentFastConfig = this.migrateRoleConfig((settings as any).activeAgentFastConfig);
     this.activeChatConfig = this.migrateRoleConfig((settings as any).activeChatConfig);
     this.activeCopilotConfig = this.migrateRoleConfig((settings as any).activeCopilotConfig);
     this.activeEmbeddingConfig = this.migrateRoleConfig(settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId));
@@ -128,18 +128,6 @@ export class ProfileRegistry {
     return { profileId: id, modelId: profile.primaryModel };
   }
 
-  /**
-   * When Agent Fast is unset, derive a sensible default from the Agent profile's
-   * fast tier (typically Haiku). Keeps users out of the trap of paying Sonnet
-   * prices for the Fast role.
-   */
-  private deriveDefaultAgentFastConfig(): RoleConfig | null {
-    if (!this.activeAgentConfig) return null;
-    const profile = this.profiles.find(p => p.id === this.activeAgentConfig!.profileId);
-    if (!profile) return null;
-    return { profileId: profile.id, modelId: profile.fastModel };
-  }
-
   // --------------- Selectors ---------------
 
   getAllProfiles(): Profile[] {
@@ -147,9 +135,7 @@ export class ProfileRegistry {
   }
 
   getActiveAgentProfile(): Profile | null {
-    if (!this.activeAgentConfig) {
-      return this.profiles.length > 0 ? this.profiles[0] : null;
-    }
+    if (!this.activeAgentConfig) return null;
     return this.profiles.find((p) => p.id === this.activeAgentConfig!.profileId) ?? null;
   }
 
@@ -191,21 +177,18 @@ export class ProfileRegistry {
    * THE single model-binding resolver. Every Harness consumer resolves through
    * here, so a change to any AI Setup row takes effect everywhere that slot is used.
    *
-   * Fallback chains preserve the pre-unification behaviour:
-   *   fast          → Fast Lookup  ?? agent-fast role
-   *   research      → Research     ?? agent role
-   *   stronger      → Stronger     ?? Conversation (chat, which itself → agent)
-   *   conversation  → Conversation (chat, which itself → agent)
-   *   knowledgeIndex→ Knowledge Index (embedding)
+   * Every slot is exact. An unset or stale binding resolves to null so the
+   * owning runtime can surface a configuration error instead of switching
+   * profiles or models behind the user's back.
    */
   resolveSlot(slot: ModelSlot): { profile: Profile; modelId: string } | null {
     switch (slot) {
       case 'fast':
-        return this.configToBinding(this.tierFastConfig) ?? this.getActiveAgentFastConfig();
+        return this.configToBinding(this.tierFastConfig);
       case 'research':
-        return this.configToBinding(this.tierResearchConfig) ?? this.getActiveAgentConfig();
+        return this.configToBinding(this.tierResearchConfig);
       case 'stronger':
-        return this.configToBinding(this.tierStrongerConfig) ?? this.getActiveChatConfig();
+        return this.configToBinding(this.tierStrongerConfig);
       case 'conversation':
         return this.getActiveChatConfig();
       case 'knowledgeIndex':
@@ -214,20 +197,15 @@ export class ProfileRegistry {
   }
 
   getActiveChatProfile(): Profile | null {
-    if (this.activeChatConfig) {
-      return this.profiles.find((p) => p.id === this.activeChatConfig!.profileId) ?? null;
-    }
-    // Fallback: use agent profile
-    return this.getActiveAgentProfile();
+    if (!this.activeChatConfig) return null;
+    return this.profiles.find((p) => p.id === this.activeChatConfig!.profileId) ?? null;
   }
 
   getActiveChatConfig(): { profile: Profile; modelId: string } | null {
-    if (this.activeChatConfig) {
-      const profile = this.profiles.find((p) => p.id === this.activeChatConfig!.profileId);
-      if (profile) return { profile, modelId: this.activeChatConfig.modelId };
-    }
-    // Fallback: use agent config
-    return this.getActiveAgentConfig();
+    if (!this.activeChatConfig) return null;
+    const profile = this.profiles.find((p) => p.id === this.activeChatConfig!.profileId);
+    if (!profile) return null;
+    return { profile, modelId: this.activeChatConfig.modelId };
   }
 
   /**
@@ -387,7 +365,12 @@ export class ProfileRegistry {
     if (id === null) { this.activeEmbeddingConfig = null; this.persist(); return; }
     const profile = this.profiles.find((p) => p.id === id);
     if (!profile) throw new Error(`Profile with id "${id}" not found`);
-    this.activeEmbeddingConfig = { profileId: id, modelId: profile.embeddingModel ?? profile.primaryModel };
+    // A chat model is not a fallback embedding model. Persisting primaryModel
+    // here used to create an invalid Knowledge Index binding (for example,
+    // qwen3), which then hid a provider-declared embedding model from Scan.
+    this.activeEmbeddingConfig = profile.embeddingModel
+      ? { profileId: id, modelId: profile.embeddingModel }
+      : null;
     this.persist();
   }
 

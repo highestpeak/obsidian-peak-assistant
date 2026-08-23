@@ -17,7 +17,8 @@ export interface ComposerExecutionRequest {
 	promptId: string;
 	/** Variables produced by the definition's buildPromptVariables(). */
 	variables: Record<string, unknown>;
-	/** Optional per-run model override from the Copilot composer. */
+	/** Optional exact per-run route override from the Copilot composer. */
+	profileId?: string;
 	modelId?: string;
 	signal?: AbortSignal;
 }

@@ -108,8 +108,9 @@ function createFinalAssistantMessage(
 	error?: unknown
 ): ChatMessage {
 	// Get all required data
-	const modelId = conversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
-	const provider = conversation.meta.activeProvider || manager.getSettings().defaultModel.provider;
+	const modelId = conversation.meta.activeModel;
+	const provider = conversation.meta.activeProvider;
+	if (!modelId || !provider) throw new Error('This conversation has no configured model route. Runtime model fallback is disabled.');
 	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 	const streamingContent = useChatDataStore.getState().streamingContent;
 	const reasoningContent = useChatDataStore.getState().reasoningContent;

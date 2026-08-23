@@ -36,22 +36,10 @@ export class TierController {
         this.policy = { ...DEFAULT_TIER_POLICY, ...opts.policy };
         this.trace = opts.trace;
         this.loopId = opts.loopId ?? 'unknown';
-        const start = this.resolveStartTier(this.policy.preferred);
-        if (!start) {
-            throw new Error('[TierController] No usable tier bindings provided');
+        if (!this.bindings[this.policy.preferred]) {
+            throw new Error(`[TierController] The configured ${this.policy.preferred} model tier has no executable binding; runtime fallback is disabled.`);
         }
-        this.activeTier = start;
-    }
-
-    /** Pick the preferred tier if bound, else fall back to the next available. */
-    private resolveStartTier(preferred: ModelTier): ModelTier | null {
-        const idx = TIER_ORDER.indexOf(preferred);
-        for (let i = idx; i < TIER_ORDER.length; i += 1) {
-            const t = TIER_ORDER[i];
-            if (this.bindings[t]) return t;
-        }
-        for (const t of TIER_ORDER) if (this.bindings[t]) return t;
-        return null;
+        this.activeTier = this.policy.preferred;
     }
 
     current(): TierBinding {

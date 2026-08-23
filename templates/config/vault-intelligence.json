@@ -1,6 +1,11 @@
 {
   "activityColors": ["#efedf8", "#d9d4f2", "#b9afe8", "#8f7bd8", "#6651c8"],
   "fileTypeColors": ["#6757c8", "#8b82bd", "#a5a0bd", "#777483", "#c4c1cc", "#575361"],
+  "scanEstimateBytesPerToken": 3.5,
+  "progressPlan": {
+    "version": 1,
+    "weights": { "discover": 15, "index": 40, "ai": 33, "prepare-review": 10, "publish": 2 }
+  },
   "inventoryTypeGroups": [
     { "id": "markdown", "label": "Markdown", "extensions": ["md", "markdown"] },
     { "id": "text", "label": "Text", "extensions": ["txt"] },
@@ -73,16 +78,16 @@
     ] }
   ],
   "scanOperations": [
-    { "id": "plan-scan", "group": "plan", "label": "Plan scan", "description": "Freeze the selected scope, affected context and approved routes before work begins.", "defaultEnabled": true, "model": "Local planning", "provider": "Peak", "estimatedTokens": 0, "estimatedCostUsd": 0 },
-    { "id": "embedding-refresh", "group": "index", "label": "Embedding refresh", "description": "Build vectors after full-text passages and chunks are ready.", "defaultEnabled": true, "model": "Configured embedding model", "provider": "Configured provider", "estimatedTokens": 43200, "estimatedCostUsd": 0.006 },
-    { "id": "file-summaries", "group": "index", "label": "File summaries", "description": "Refresh machine summaries used by Search and maintenance context.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimatedTokens": 16800, "estimatedCostUsd": 0.046 },
-    { "id": "ai-tags", "group": "index", "label": "AI Tags and entities", "description": "Generate rebuildable machine-only knowledge without editing Markdown or YAML.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimatedTokens": 12200, "estimatedCostUsd": 0.034 },
-    { "id": "relationship-discovery", "group": "relations", "label": "Relationship discovery", "description": "Compare changed and known content for cited candidate relationships.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 30000, "estimatedCostUsd": 0.110 },
-    { "id": "semantic-review", "group": "relations", "label": "Semantic review", "description": "Retain or reject candidates against cited source and current history.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 18000, "estimatedCostUsd": 0.070 },
-    { "id": "community-analysis", "group": "structure", "label": "Community analysis", "description": "Compare Community identity, boundary drift and current graph evidence.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 22000, "estimatedCostUsd": 0.090 },
-    { "id": "hub-bridge-analysis", "group": "structure", "label": "Hub & bridge analysis", "description": "Inspect central notes, stale Hubs and cross-Community bridge facts.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 13000, "estimatedCostUsd": 0.050 },
-    { "id": "file-proposals", "group": "follow-up", "label": "Proposal evidence", "description": "Generate review evidence that may support a later file proposal; this Run does not create or apply a writable diff.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 8000, "estimatedCostUsd": 0.01 },
-    { "id": "maintenance-synthesis", "group": "follow-up", "label": "Maintenance synthesis", "description": "Keep only follow-up with a real owner action.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimatedTokens": 8000, "estimatedCostUsd": 0.01 }
+    { "id": "plan-scan", "group": "plan", "label": "Plan scan", "description": "Use the selected AI route to explain the frozen scope, execution order and write boundary before work begins.", "defaultEnabled": true, "model": "Not configured", "provider": "Not configured", "estimate": { "inputShare": 0, "promptTokensPerFile": 0, "outputTokensPerFile": 0 } },
+    { "id": "embedding-refresh", "group": "index", "label": "Embedding refresh", "description": "Build vectors after full-text passages and chunks are ready.", "defaultEnabled": true, "model": "Configured embedding model", "provider": "Configured provider", "estimate": { "inputShare": 1, "promptTokensPerFile": 0, "outputTokensPerFile": 0 } },
+    { "id": "file-summaries", "group": "index", "label": "File summaries", "description": "Refresh machine summaries used by Search and maintenance context.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimate": { "inputShare": 1, "promptTokensPerFile": 120, "outputTokensPerFile": 180 } },
+    { "id": "ai-tags", "group": "index", "label": "AI Tags and entities", "description": "Generate rebuildable machine-only knowledge without editing Markdown or YAML.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimate": { "inputShare": 0.7, "promptTokensPerFile": 80, "outputTokensPerFile": 60 } },
+    { "id": "relationship-discovery", "group": "relations", "label": "Relationship discovery", "description": "Compare changed and known content for cited candidate relationships.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimate": { "inputShare": 0.45, "promptTokensPerFile": 100, "outputTokensPerFile": 70 } },
+    { "id": "semantic-review", "group": "relations", "label": "Semantic review", "description": "Retain or reject candidates against cited source and current history.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimate": { "inputShare": 0.3, "promptTokensPerFile": 90, "outputTokensPerFile": 50 } },
+    { "id": "community-analysis", "group": "structure", "label": "Community analysis", "description": "Compare Community identity, boundary drift and current graph evidence.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimate": { "inputShare": 0.35, "promptTokensPerFile": 110, "outputTokensPerFile": 60 } },
+    { "id": "hub-bridge-analysis", "group": "structure", "label": "Hub & bridge analysis", "description": "Inspect central notes, stale Hubs and cross-Community bridge facts.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimate": { "inputShare": 0.25, "promptTokensPerFile": 100, "outputTokensPerFile": 50 } },
+    { "id": "file-proposals", "group": "follow-up", "label": "Proposal evidence", "description": "Generate review evidence that may support a later file proposal; this Run does not create or apply a writable diff.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimate": { "inputShare": 0.2, "promptTokensPerFile": 80, "outputTokensPerFile": 100 } },
+    { "id": "maintenance-synthesis", "group": "follow-up", "label": "Maintenance synthesis", "description": "Keep only follow-up with a real owner action.", "defaultEnabled": true, "model": "Configured review model", "provider": "Configured provider", "estimate": { "inputShare": 0.15, "promptTokensPerFile": 60, "outputTokensPerFile": 80 } }
   ],
   "indexOutputs": [
     { "id": "fulltext", "label": "Full-text index", "group": "core", "description": "Keyword and exact-phrase retrieval.", "availability": "required", "operationIds": [] },

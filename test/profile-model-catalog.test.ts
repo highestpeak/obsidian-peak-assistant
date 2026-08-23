@@ -3,6 +3,7 @@ import { createPresetProfile } from '@/core/profiles/presets';
 import { profileModelCatalogId } from '@/core/providers/profile-model-catalog';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { buildUnifiedModelChoices } from '@/core/providers/model-selection';
+import { ModelType } from '@/core/providers/types';
 
 const first = createPresetProfile('lmstudio', { id: 'lm-one' });
 const second = createPresetProfile('lmstudio', { id: 'lm-two' });
@@ -11,6 +12,18 @@ assert.equal(profileModelCatalogId(first), 'lmstudio:lm-one');
 assert.equal(profileModelCatalogId(second), 'lmstudio:lm-two');
 assert.notEqual(profileModelCatalogId(first), profileModelCatalogId(second));
 assert.equal(profileModelCatalogId(createPresetProfile('ollama')), 'ollama');
+assert.ok(
+	modelRegistry.getModelsForProvider('openai').some((model) => model.id === 'text-embedding-3-small' && model.modelType === ModelType.EMBEDDING),
+	'OpenAI embedding choices must be typed as embeddings, never inferred from a chat model name',
+);
+assert.ok(
+	modelRegistry.getModelsForProvider('google').some((model) => model.id === 'gemini-embedding-001' && model.modelType === ModelType.EMBEDDING),
+	'Google embedding choices must have an explicit capability declaration',
+);
+assert.ok(
+	modelRegistry.getModelsForProvider('perplexity').some((model) => model.id === 'pplx-embed-v1-0.6b' && model.modelType === ModelType.EMBEDDING),
+	'Perplexity embedding choices must have an explicit capability declaration',
+);
 
 modelRegistry.mergeRuntimeModels('lmstudio:lm-one', ['first-local-model']);
 modelRegistry.mergeRuntimeModels('lmstudio:lm-two', ['second-local-model']);

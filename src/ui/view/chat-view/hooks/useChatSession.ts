@@ -84,9 +84,10 @@ export const useChatSession = () => {
             activeModel: activeConversation.meta.activeModel,
             activeProvider: activeConversation.meta.activeProvider,
         });
-        if (selection.mode === 'fixed') {
-            const providerKind = activeConversation.meta.activeProvider || selection.profileId;
-            setSelectedModel(providerKind, selection.modelId);
+		if (selection.mode === 'fixed') {
+			const providerKind = activeConversation.meta.activeProvider;
+			if (!providerKind) throw new Error('The conversation model selection has no configured provider. Runtime provider fallback is disabled.');
+			setSelectedModel(providerKind, selection.modelId);
         } else {
             useChatViewStore.getState().clearSelectedModel();
         }
@@ -159,4 +160,3 @@ export const useChatSession = () => {
     // and made Auto unrecoverable. Model persistence now flows exclusively
     // through ComposerModelSelector → updateConversationModelSelection.
 };
-

@@ -1,5 +1,5 @@
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { toEmbeddingConfig } from '@/core/profiles/materialize';
+import { type EmbeddingCallConfig, toEmbeddingConfig } from '@/core/profiles/materialize';
 
 /**
  * Narrow port for reporting one embedding-call's usage to a sink (e.g. the
@@ -40,25 +40,16 @@ export function setEmbeddingUsageReporter(r: EmbeddingUsageReporter | null): voi
  * @returns Array of embedding vectors (one per input text)
  * @throws If no embedding profile is configured, or the API call fails
  */
-export async function embedTexts(texts: string[]): Promise<number[][]> {
+export async function embedTexts(texts: string[], route?: EmbeddingCallConfig): Promise<number[][]> {
   const startMs = Date.now();
-  const registry = ProfileRegistry.getInstance();
-  const profile =
-    registry.getActiveEmbeddingProfile() ?? registry.getActiveAgentProfile();
-  if (!profile) throw new Error('No embedding profile configured');
+	const registry = ProfileRegistry.getInstance();
+	const profile = registry.getActiveEmbeddingProfile();
+	if (!route && !profile) throw new Error('No embedding profile configured');
+	const config = route ?? (profile ? toEmbeddingConfig(profile) : null);
+	if (!config)
+		throw new Error('Embedding endpoint not configured on active profile');
 
-  const config = toEmbeddingConfig(profile);
-  if (!config)
-    throw new Error('Embedding endpoint not configured on active profile');
-
-  const response = await fetch(`${config.endpoint}/embeddings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({ model: config.model, input: texts }),
-  });
+	const response = await requestEmbeddings(texts, config);
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
@@ -67,18 +58,16 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
     );
   }
 
-  const data = await response.json();
-  const promptTokens: number = data.usage?.prompt_tokens ?? 0;
-  const embeddings = (data.data as Array<{ embedding: number[] }>).map(
-    (item) => item.embedding,
-  );
+	const data = await response.json();
+	const promptTokens: number = data.usage?.prompt_tokens ?? 0;
+	const embeddings = readEmbeddings(data, config.transport);
 
   if (promptTokens > 0 && reporter) {
     try {
       reporter.report({
         feature: 'indexing',
         action: 'embed',
-        provider: profile.kind,
+			provider: config.provider,
         model: config.model,
         inputTokens: promptTokens,
         durationMs: Date.now() - startMs,
@@ -89,6 +78,42 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   }
 
   return embeddings;
+}
+
+async function requestEmbeddings(texts: string[], config: EmbeddingCallConfig): Promise<Response> {
+	if (config.transport === 'ollama') {
+		return fetch(`${config.endpoint}/api/embed`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ model: config.model, input: texts }),
+		});
+	}
+	if (config.transport === 'gemini') {
+		return fetch(`${config.endpoint}/models/${encodeURIComponent(config.model)}:batchEmbedContents?key=${encodeURIComponent(config.apiKey)}`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				requests: texts.map((text) => ({
+					model: `models/${config.model}`,
+					content: { parts: [{ text }] },
+				})),
+			}),
+		});
+	}
+	return fetch(`${config.endpoint}/embeddings`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+		},
+		body: JSON.stringify({ model: config.model, input: texts }),
+	});
+}
+
+function readEmbeddings(data: any, transport: EmbeddingCallConfig['transport']): number[][] {
+	if (transport === 'ollama') return data.embeddings as number[][];
+	if (transport === 'gemini') return (data.embeddings as Array<{ values: number[] }>).map((item) => item.values);
+	return (data.data as Array<{ embedding: number[] }>).map((item) => item.embedding);
 }
 
 /**

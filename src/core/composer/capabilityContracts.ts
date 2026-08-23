@@ -126,6 +126,7 @@ export type ComposerInvocationPlacement =
 
 export interface ComposerInvocationOptions {
 	instruction?: string;
+	profileId?: string;
 	modelId?: string;
 	/** Explicit user-owned placement. The model may propose content, not move it. */
 	placement?: ComposerInvocationPlacement;

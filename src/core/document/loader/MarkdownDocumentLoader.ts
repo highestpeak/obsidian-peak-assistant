@@ -7,6 +7,7 @@ import type { Chunk } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
 import { emptyUsage, mergeTokenUsage } from '@/core/providers/types';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
@@ -38,7 +39,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 		vault: DocumentVaultReaderPort,
 		private readonly metadata: VaultMetadataResolverPort,
 		summaryConfig: DocumentSummaryConfig,
-		aiServiceManager?: IDocSummarizer,
+		aiServiceManager?: IDocSummarizer & IDocTagClassifier,
 	) {
 		super(vault, summaryConfig, aiServiceManager);
 	}
@@ -119,6 +120,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 			includeLlmTags,
 			includeLlmSummary,
 			onLlmIndexingComplete: readOptions?.onLlmIndexingComplete,
+			llmRoute: readOptions?.llmRoute,
 		});
 	}
 
@@ -231,13 +233,23 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 							existingUserTags: userKeywordTags.length ? userKeywordTags.join(', ') : undefined,
 							textrankKeywords: textrankKeywordsForLlm || undefined,
 							textrankSentences: textrankSentencesForLlm || undefined,
+							provider: readOptions.llmRoute?.provider,
+							profileId: readOptions.llmRoute?.profileId,
+							modelId: readOptions.llmRoute?.modelId,
 						}).catch((err) => {
 							console.warn('[MarkdownDocumentLoader] extractTopicAndFunctionalTags failed:', err);
 							return failedTag;
 						})
 					: Promise.resolve(skippedTag),
 				runSummaryLlm
-					? getDefaultDocumentSummary(summaryDocStub, this.summaryConfig, this.aiServiceManager!)
+					? getDefaultDocumentSummary(
+						summaryDocStub,
+						this.summaryConfig,
+						this.aiServiceManager!,
+						readOptions.llmRoute?.provider,
+						readOptions.llmRoute?.modelId,
+						{ profileId: readOptions.llmRoute?.profileId, modelId: readOptions.llmRoute?.modelId },
+					)
 					: Promise.resolve<ResourceSummaryWithLlmMeta>({
 							shortSummary: '',
 							fullSummary: undefined,
@@ -269,6 +281,15 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 					durationMs: Date.now() - tLlm,
 					usage: mergedUsage,
 					costUsd: mergedCostUsd,
+					status: (!runTagLlm || tagRes.llmTagRunStatus === 'success') && (!runSummaryLlm || Boolean(summaryContent.shortSummary))
+						? 'produced'
+						: (runTagLlm && tagRes.llmTagRunStatus === 'success') || (runSummaryLlm && Boolean(summaryContent.shortSummary))
+							? 'partial'
+							: 'failed',
+					outputs: {
+						tags: !runTagLlm ? 'not-requested' : tagRes.llmTagRunStatus === 'success' ? 'produced' : 'failed',
+						summary: !runSummaryLlm ? 'not-requested' : summaryContent.shortSummary ? 'produced' : 'failed',
+					},
 				});
 			}
 

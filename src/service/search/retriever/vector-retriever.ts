@@ -17,18 +17,12 @@ export class VectorRetriever implements SearchRetriever {
         if (!sqliteStoreManager.isVectorSearchEnabled()) return false;
 
         const registry = ProfileRegistry.getInstance();
-        const embProfile = registry.getActiveEmbeddingProfile() ?? registry.getActiveAgentProfile();
+		const embProfile = registry.getActiveEmbeddingProfile();
         return !!(embProfile?.embeddingEndpoint && embProfile?.embeddingModel);
     }
 
     async retrieve(plan: QueryPlan): Promise<RetrieverResult[]> {
-        let embedding: number[];
-        try {
-            embedding = await embedText(plan.raw);
-        } catch (error) {
-            console.error('[VectorRetriever] Failed to generate embedding:', error);
-            return [];
-        }
+		const embedding = await embedText(plan.raw);
 
         const topK = DEFAULT_SEARCH_TOP_K;
         const searchLimit = Math.min(topK * VECTOR_SEARCH_LIMIT_MULTIPLIER, 150);

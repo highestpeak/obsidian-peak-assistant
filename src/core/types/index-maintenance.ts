@@ -9,6 +9,8 @@
 // Nothing here has runtime behavior — it's all structural types.
 
 import type { IndexTenant } from '@/core/storage/sqlite/types';
+import type { LLMUsage } from '@/core/providers/types';
+import type { IndexLlmRoute } from '@/core/search/indexTypes';
 
 /** Batch-style maintenance phases; progress detail is in `progressTextSuffix`. */
 export type MobiusGlobalMaintenanceBatchPhase =
@@ -34,6 +36,7 @@ export type MobiusGlobalMaintenanceProgress = {
 /** Options for the global maintenance sweep. */
 export interface MobiusGlobalMaintenanceOptions {
 	onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void;
+	signal?: AbortSignal;
 }
 
 /** Result of batched deferred LLM enrichment (tags/summary). */
@@ -41,7 +44,19 @@ export type LlmIndexEnrichmentResult = {
 	processed: number;
 	skippedWrongTenant: number;
 	errors: Array<{ path: string; message: string }>;
+	attempts: LlmIndexEnrichmentAttempt[];
 };
+
+export interface LlmIndexEnrichmentAttempt {
+	path: string;
+	status: 'produced' | 'partial' | 'failed' | 'cancelled' | 'not-eligible';
+	startedAt: number;
+	completedAt: number;
+	route: IndexLlmRoute | null;
+	usage: LLMUsage;
+	costUsd: number;
+	error: string | null;
+}
 
 /** Result of batched deferred vector enrichment. */
 export type VectorIndexEnrichmentResult = {

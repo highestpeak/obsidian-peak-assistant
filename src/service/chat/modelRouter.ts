@@ -238,9 +238,8 @@ function usableContextTokens(c: AutoRoutingCandidate, safety: number): number {
 
 /**
  * Given filtered candidates, pick the best one using the tier list.
- * Returns null when no tier's preferOrder yields a survivor; caller then
- * takes the first candidate (any-model fallback) as long as required
- * capabilities are met.
+ * Returns null when no configured tier preference yields a survivor. The
+ * caller must surface that configuration error; catalog order is not routing.
  */
 function pickByTier(
 	filtered: AutoRoutingCandidate[],
@@ -350,21 +349,13 @@ export function routeAutoModel(input: {
 			},
 		};
 	}
-	// Fallback: no tier's preferOrder hit — take the first filtered candidate.
-	// This is the "your enabled profiles don't include the preferred models,
-	// but do include a capable one" branch. Reason string calls it out.
-	const fallback = filtered[0];
 	return {
-		ok: true,
-		value: {
-			profileId: fallback.profileId,
-			profileKind: fallback.profileKind,
-			modelId: fallback.modelId,
-			routeReason: renderMessage(input.config.messages.fallbackTier, {
-				tier: 'available',
-			}) + `; picked ${fallback.profileName}/${fallback.modelId}`,
+		ok: false,
+		error: {
+			kind: 'no-candidates',
+			message: `No configured Auto routing tier selects an executable model for ${requiredKeys.join(', ') || 'general chat'}. Runtime model fallback is disabled.`,
 			requiredCapabilities: requiredKeys,
-			tierId: 'fallback',
+			inspectedProfileCount: input.profiles.length,
 		},
 	};
 }

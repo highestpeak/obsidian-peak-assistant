@@ -4,6 +4,7 @@
 // dependencies should declare their own port instead.
 
 import type { UsageFeature } from '@/core/types/usage';
+import type { LLMUsage } from '@/core/providers/types';
 
 export interface DocSummarizerQueryOpts {
 	systemPrompt?: string;
@@ -11,6 +12,10 @@ export interface DocSummarizerQueryOpts {
 	usageFeature?: UsageFeature;
 	usageAction?: string;
 	usageSessionId?: string;
+	/** Explicit one-run binding. Callers must not mutate a global role to select it. */
+	profileId?: string;
+	modelId?: string;
+	usageCallback?: (usage: LLMUsage) => void;
 }
 
 /**

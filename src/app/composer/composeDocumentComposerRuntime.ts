@@ -283,8 +283,9 @@ export async function composeDocumentComposerRuntime(
 		blockDraftGeneration: createComposerBlockDraftGenerationPort(executor),
 		modelSelection: {
 			choices: () => {
-				const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
-				if (!profile) return [];
+				const config = ProfileRegistry.getInstance().getActiveAgentConfig();
+				if (!config) return [];
+				const profile = config.profile;
 				const catalogId = profileModelCatalogId(profile);
 				if (!catalogId) return [];
 				return modelRegistry.getModelsForProvider(catalogId).map((model) => ({
@@ -294,7 +295,7 @@ export async function composeDocumentComposerRuntime(
 				}));
 			},
 			defaultModelId: () =>
-				ProfileRegistry.getInstance().getActiveAgentProfile()?.primaryModel ?? null,
+				ProfileRegistry.getInstance().getActiveAgentConfig()?.modelId ?? null,
 		},
 	});
 	// The transaction-timing config lives in composer.json; load it asynchronously

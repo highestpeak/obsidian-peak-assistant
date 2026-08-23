@@ -160,6 +160,7 @@ function SessionView(): React.ReactElement {
 		[activeAgentProfile],
 	);
 	const [modelSelection, setModelSelection] = React.useState<ModelSelection>({ mode: 'auto' });
+	const selectedProfileId = modelSelection.mode === 'fixed' ? modelSelection.profileId : null;
 	const selectedModelId = modelSelection.mode === 'fixed' ? modelSelection.modelId : null;
 	const selectedCapability = capabilities.find((action) => action.capabilityId === selectedCapabilityId)
 		?? availableCapabilities[0]
@@ -240,7 +241,9 @@ function SessionView(): React.ReactElement {
 				context.snapshot,
 				{
 					instruction: text.trim(),
-					...(selectedModelId ? { modelId: selectedModelId } : {}),
+					...(selectedProfileId && selectedModelId
+						? { profileId: selectedProfileId, modelId: selectedModelId }
+						: {}),
 				},
 			);
 			externalRuns.current.set(handle.runId, frozen.runId);

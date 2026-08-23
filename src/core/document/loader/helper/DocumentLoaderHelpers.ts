@@ -1,4 +1,4 @@
-import { emptyUsage, type LLMUsage } from '@/core/providers/types';
+import { emptyUsage, mergeTokenUsage, type LLMUsage } from '@/core/providers/types';
 import type { Document, ResourceSummary } from '@/core/document/types';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import { PromptId } from '@/core/types/prompt';
@@ -28,6 +28,8 @@ export type DocumentSummaryOptions = {
 	textrankKeywords?: string;
 	/** TextRank numbered sentences (optional; else read from `document.metadata.custom`). */
 	textrankSentences?: string;
+	profileId?: string;
+	modelId?: string;
 };
 
 /** Summary text plus merged LLM usage for index telemetry. */
@@ -158,16 +160,21 @@ export async function getDefaultDocumentSummary(
 	let llmCostUsd = 0;
 	let shortSummary: string;
 	let fullSummary: string | undefined;
+	const queryOptions = {
+		profileId: options?.profileId,
+		modelId: options?.modelId ?? modelId,
+		usageCallback: (usage: LLMUsage) => { llmUsage = mergeTokenUsage(llmUsage, usage); },
+	};
 
 	if (needFull) {
 		const [shortText, fullText] = await Promise.all([
-			aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any),
-			aiServiceManager.queryText(PromptId.DocSummaryFull, fullVarsBase as any),
+			aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any, queryOptions),
+			aiServiceManager.queryText(PromptId.DocSummaryFull, fullVarsBase as any, queryOptions),
 		]);
 		shortSummary = shortText;
 		fullSummary = fullText;
 	} else {
-		shortSummary = await aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any);
+		shortSummary = await aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any, queryOptions);
 		fullSummary = undefined;
 	}
 

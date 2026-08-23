@@ -922,6 +922,10 @@ export default class MyPlugin extends Plugin {
 				if (this.unloading) return;
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
+					// The workspace can be opened before the asynchronous Search / Index
+					// boot sequence completes. Refresh it after IndexService is bound so
+					// the first early snapshot cannot remain "Readiness unavailable".
+					void this.appContext.runtimeRegistry.tryGetVaultIntelligenceRuntime()?.refresh();
 				}
 				// T6R: bind the Vault Lint runtime once sqlite is ready.
 				// Ownership lives on `AppContext` (delegating to the

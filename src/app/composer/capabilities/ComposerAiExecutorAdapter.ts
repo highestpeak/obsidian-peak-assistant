@@ -27,6 +27,7 @@ export class ComposerAiExecutorAdapter implements ComposerCapabilityExecutorPort
 		const prompter = this.resolvePrompter();
 		const opts = {
 			...(request.signal !== undefined ? { signal: request.signal } : {}),
+			...(request.profileId !== undefined ? { profileId: request.profileId } : {}),
 			...(request.modelId !== undefined ? { modelId: request.modelId } : {}),
 		};
 		for await (const event of prompter.queryStream(request.promptId, request.variables, opts)) {

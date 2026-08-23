@@ -111,10 +111,20 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
             const provider = createOllama({ baseURL: baseUrl || undefined });
             return provider(resolvedModelId);
         }
+        case 'lmstudio': {
+            // @ai-sdk/openai requires a non-empty key even when the selected
+            // OpenAI-compatible server is local and intentionally keyless.
+            // This value is only an SDK compatibility header; the frozen
+            // profile/model/baseURL remain the sole execution route.
+            const provider = createOpenAI({
+                baseURL: baseUrl || undefined,
+                apiKey: apiKey?.trim() || 'lm-studio-local',
+            });
+            return provider(resolvedModelId);
+        }
         case 'codex':
         case 'claude-code':
         case 'litellm':
-        case 'lmstudio':
         case 'custom': {
             // LM Studio, LiteLLM and custom use the OpenAI-compatible API.
             const provider = createOpenAI({

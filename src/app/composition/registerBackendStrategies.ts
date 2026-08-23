@@ -3,7 +3,7 @@
 // Composition site helper: inspect the currently-configured
 // providers/profiles and register one BackendStrategy per BackendKind
 // that is *actually* available. Unregistered backends are simply
-// skipped — `resolveBackendStrategy` walks `[preferred, ...fallback]`
+// rejected — `resolveBackendStrategy` executes only the configured preferred backend
 // and falls through to the next candidate, so palette commands and
 // capabilities do not need to know which backends are live.
 //

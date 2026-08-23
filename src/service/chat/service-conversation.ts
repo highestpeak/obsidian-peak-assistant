@@ -393,6 +393,7 @@ export class ConversationService {
 		parentConversationId?: string;
 		parentMessageId?: string;
 	}): Promise<ChatConversation> {
+		if (!params.modelId || !params.provider) throw new Error('Creating a conversation requires an explicitly configured model route. Runtime model fallback is disabled.');
 		const timestamp = Date.now();
 		const meta: ChatConversationMeta = {
 			id: generateUuidWithoutHyphens(),
@@ -400,8 +401,8 @@ export class ConversationService {
 			projectId: params.project?.id,
 			createdAtTimestamp: timestamp,
 			updatedAtTimestamp: timestamp,
-			activeModel: params.modelId || this.defaultModel.modelId,
-			activeProvider: params.provider || this.defaultModel.provider,
+			activeModel: params.modelId,
+			activeProvider: params.provider,
 			tokenUsageTotal: 0,
 			conversationType: params.conversationType,
 			parentConversationId: params.parentConversationId,
@@ -550,20 +551,11 @@ export class ConversationService {
 			const registry = ProfileRegistry.getInstance();
 			const convProvider = prepared.provider;
 			const convModelId = prepared.modelId;
-			const chatConfig = registry.getActiveChatConfig();
-			let profile = prepared.modelResolution.profileId
+			const profile = prepared.modelResolution.profileId
 				? registry.getProfileById(prepared.modelResolution.profileId)
 				: null;
-			if (!profile || profile.enabled === false) {
-				profile = chatConfig?.profile.kind === convProvider
-					? chatConfig.profile
-					: registry.getAllProfiles().find(p => p.kind === convProvider && p.enabled !== false && p.apiKey)
-						?? null;
-			}
-
-			if (!profile) {
-				throw new Error(`No active profile found for provider "${convProvider}". Please configure it in Settings → Profiles.`);
-			}
+			if (!profile || profile.enabled === false) throw new Error(`The configured profile for ${convProvider}/${convModelId} is unavailable. Runtime profile fallback is disabled.`);
+			if (!convModelId) throw new Error('The configured chat model id is empty. Runtime model fallback is disabled.');
 
 			// 2026-07-05 chat-unified-mode (Track B): resolve execution shape
 			// through a single helper. The UI no longer presents Chat / Agent /
@@ -744,7 +736,7 @@ export class ConversationService {
 			});
 			const harnessGen = harnessStreamChat({
 				profile,
-				modelId: convModelId || profile.primaryModel,
+				modelId: convModelId,
 				messages: prepared.prompt,
 				tools: strategy.tools,
 				loopId: runId,
@@ -926,8 +918,11 @@ export class ConversationService {
 			}
 		}
 
-		const modelId = modelResolution.modelId || this.defaultModel.modelId;
-		const provider = modelResolution.provider || this.defaultModel.provider;
+		if (!modelResolution.modelId || !modelResolution.provider) {
+			throw new Error('The configured chat route is incomplete. Runtime model fallback is disabled.');
+		}
+		const modelId = modelResolution.modelId;
+		const provider = modelResolution.provider;
 
 		// B2 (plan §5.3.3): fold assistant knowledgeRefs into the same
 		// explicit-ref/attachment pipe the Composer already uses. `vault-file`

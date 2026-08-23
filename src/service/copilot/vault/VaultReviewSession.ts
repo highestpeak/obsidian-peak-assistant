@@ -18,6 +18,7 @@ import { CopilotOutputCollector, type ReviewSubmission } from '../CopilotOutputC
 import type { VaultDigest } from './VaultDigestService';
 import type {
 	VaultReviewMode,
+	VaultMetaAgentRoute,
 	VaultPreviousRoundSummary,
 } from './VaultMetaAgentStream';
 import type { VaultReviewSessionDeps } from './ports/VaultReviewPorts';
@@ -77,6 +78,8 @@ function previousRoundSummary(
 export interface RunVaultReviewOptions {
 	mode: VaultReviewMode;
 	signal: AbortSignal;
+	route?: VaultMetaAgentRoute;
+	focus?: { objectiveId: string; instruction: string; evidenceRefs: readonly string[] };
 }
 
 export async function* runVaultReview(
@@ -176,6 +179,8 @@ export async function* runVaultReview(
 				collector,
 				maxTurns: maxTurnsPerRound,
 				signal: options.signal,
+				route: options.route,
+				focus: options.focus,
 				onTurnIncrement: () => {
 					round.turnCount += 1;
 				},

@@ -500,16 +500,16 @@ ${sourcesList}${topicsList}
 ---
 *This conversation was created from an AI Search analysis. You can reference the sources above to continue the discussion.*`;
 
-		// Get default model and timezone
-		const defaultModel = this.settings.defaultModel;
+		const chatConfig = ProfileRegistry.getInstance().getActiveChatConfig();
+		if (!chatConfig) throw new Error('AI Search handoff requires a configured Conversation model. Runtime model fallback is disabled.');
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 		// Create initial message with search context
 		const initialMessage = createChatMessage(
 			'user',
 			content,
-			defaultModel.modelId,
-			defaultModel.provider,
+			chatConfig.modelId,
+			chatConfig.profile.kind,
 			timezone
 		);
 		initialMessage.isMarkdownContent = true;
@@ -518,6 +518,8 @@ ${sourcesList}${topicsList}
 		const conversation = await this.conv.createConversation({
 			title,
 			initialMessages: [initialMessage],
+			modelId: chatConfig.modelId,
+			provider: chatConfig.profile.kind,
 		});
 
 		return conversation;
@@ -717,17 +719,31 @@ ${sourcesList}${topicsList}
 	private resolveAgentProfileAndModel(): { profile: Profile; modelId: string } {
 		const config = ProfileRegistry.getInstance().getActiveAgentConfig();
 		if (config) return config;
-		const profile = this.requireActiveProfile();
-		return { profile, modelId: profile.primaryModel };
+		throw new Error('No Agent model is configured. Configure the Agent model explicitly in Settings. Runtime model fallback is disabled.');
 	}
 
 	/**
-	 * Resolve the Copilot slot's profile and model. Falls back to Agent slot.
+	 * Resolve the Copilot slot's explicitly configured profile and model.
 	 */
 	private resolveCopilotProfileAndModel(): { profile: Profile; modelId: string } {
 		const config = ProfileRegistry.getInstance().getActiveCopilotConfig();
 		if (config) return config;
-		return this.resolveAgentProfileAndModel();
+		throw new Error('No Copilot model is configured. Configure the Copilot model explicitly in Settings. Runtime model fallback is disabled.');
+	}
+
+	private resolveRequestedProfileAndModel(
+		profileId: string | undefined,
+		modelId: string | undefined,
+		configured: { profile: Profile; modelId: string },
+	): { profile: Profile; modelId: string } {
+		if (!profileId) {
+			if (modelId && modelId !== configured.modelId) throw new Error('A model override requires its configured profileId. Runtime model fallback is disabled.');
+			return configured;
+		}
+		const profile = ProfileRegistry.getInstance().getAllProfiles().find((candidate) => candidate.id === profileId);
+		if (!profile) throw new Error(`The selected AI profile "${profileId}" is no longer configured.`);
+		if (!modelId) throw new Error(`The selected AI profile "${profileId}" has no explicit model for this operation.`);
+		return { profile, modelId };
 	}
 
 	/**
@@ -845,10 +861,8 @@ ${sourcesList}${topicsList}
 	): void {
 		try {
 			if (!usage) return;
-			const activeProfile = ProfileRegistry.getInstance().getActiveAgentProfile();
-			const provider = executedModel?.provider ?? activeProfile?.kind;
-			const modelId = executedModel?.modelId ?? activeProfile?.primaryModel;
-			if (!provider || !modelId) return;
+			if (!executedModel) throw new Error('Usage attribution requires the exact executed model route. Runtime model fallback is disabled.');
+			const { provider, modelId } = executedModel;
 			void this.getModelInfo(modelId, provider).then(modelInfo => {
 				const costUsd = computeUsdFromUsage(usage, modelInfo);
 				EventBus.getInstance(this.app).dispatch(new UsageRecordedViewEvent({
@@ -886,12 +900,13 @@ ${sourcesList}${topicsList}
 	async queryText(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; modelId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string; usageCallback?: (usage: LLMUsage) => void },
 	): Promise<string> {
 		const startMs = Date.now();
-		const resolved = this.resolveAgentProfileAndModel();
+		const configured = this.resolveAgentProfileAndModel();
+		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
 		const profile = resolved.profile;
-		const modelId = opts?.modelId ?? resolved.modelId;
+		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -916,6 +931,7 @@ ${sourcesList}${topicsList}
 			opts?.usageSessionId,
 			{ provider: profile.kind, modelId },
 		);
+		if (usage && opts?.usageCallback) opts.usageCallback(usage);
 		return text;
 	}
 
@@ -927,12 +943,13 @@ ${sourcesList}${topicsList}
 	async *queryTextStream(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; modelId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string },
 	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string; usage?: LLMUsage }> {
 		const startMs = Date.now();
-		const resolved = this.resolveCopilotProfileAndModel();
+		const configured = this.resolveCopilotProfileAndModel();
+		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
 		const profile = resolved.profile;
-		const modelId = opts?.modelId ?? resolved.modelId;
+		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -981,12 +998,13 @@ ${sourcesList}${topicsList}
 	async *queryStream(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; modelId?: string },
+		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string },
 	): AsyncGenerator<LLMStreamEvent> {
 		const startMs = Date.now();
-		const resolved = this.resolveAgentProfileAndModel();
+		const configured = this.resolveAgentProfileAndModel();
+		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
 		const profile = resolved.profile;
-		const modelId = opts?.modelId ?? resolved.modelId;
+		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -1037,12 +1055,13 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		schema?: unknown,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void; modelId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void; profileId?: string; modelId?: string },
 	): Promise<T> {
 		const startMs = Date.now();
-		const resolved = this.resolveCopilotProfileAndModel();
+		const configured = this.resolveCopilotProfileAndModel();
+		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
 		const profile = resolved.profile;
-		const modelId = opts?.modelId ?? resolved.modelId;
+		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,

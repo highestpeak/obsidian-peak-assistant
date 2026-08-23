@@ -42,9 +42,13 @@ import { ObsidianProgressReporter } from '@/app/platform/ObsidianProgressReporte
 import { FileAtlasSessionStore } from '@/app/file-atlas/FileAtlasSessionStore';
 import { VaultIntelligenceRuntime } from '@/app/vault-intelligence/VaultIntelligenceRuntime';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { PromptId } from '@/core/types/prompt';
 import { refreshLocalProfileModelCatalogs } from '@/core/providers/refreshLocalProfileModelCatalogs';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
-import { buildProfileModelItems } from '@/ui/component/model-picker/modelPickerData';
+import { buildUnifiedModelChoices, resolveOperationRouteCandidate } from '@/core/providers/model-selection';
+import { modelRegistry } from '@/core/providers/model-registry';
+import { ModelType } from '@/core/providers/types';
+import { toEmbeddingConfig } from '@/core/profiles/materialize';
 
 /**
  * Application context containing all global dependencies.
@@ -532,18 +536,61 @@ export class AppContext {
 			resolveIndexService: () => this.runtimeRegistry.tryGetIndexService(),
 			resolveGeneratedOutputs: () => this.runtimeRegistry.tryGetGeneratedOutputPersistenceRuntime(),
 			getSearchSettings: () => this.settings.search,
-			runCoreIndex: async (scope, paths) => {
+			runCoreIndex: async (scope, paths, onProgress, shouldContinue) => {
 				const initializer = plugin.indexInitializer;
 				if (!initializer) throw new Error('Knowledge Index is still loading.');
 				if (scope === 'entire') {
-					await initializer.performFastCoreFullIndexing(false);
+					await initializer.performFastCoreFullIndexing(false, onProgress, shouldContinue);
 					return;
 				}
-				await initializer.performFastCoreIncrementalIndexing(paths);
+				await initializer.performFastCoreIncrementalIndexing(paths, onProgress, shouldContinue);
 			},
 			resolveProjectCount: async () => (await manager.proj.listProjects()).length,
 			refreshOperationRouteCandidates: async () => {
 				await refreshLocalProfileModelCatalogs(ProfileRegistry.getInstance().getAllProfiles());
+			},
+			runScanPlanning: async (input) => {
+				let capturedUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 };
+				const text = await manager.queryText(PromptId.VaultIntelligenceScanPlan, {
+					scope: input.scope,
+					objectCount: input.objectCount,
+					changedCount: input.changedCount ?? 'Not available',
+					enabledOperations: input.enabledOperations.join(', '),
+					samplePaths: input.samplePaths.length > 0 ? input.samplePaths.map((path) => `- ${path}`).join('\n') : '- No objects in the frozen scope',
+				}, {
+					profileId: input.route.profileId,
+					modelId: input.route.model,
+					signal: input.signal,
+					usageFeature: 'indexing',
+					usageAction: 'vault_intelligence_scan_plan',
+					usageSessionId: `vault-intelligence-scan-plan-${Date.now()}`,
+					usageCallback: (usage) => {
+						const inputTokens = usage.inputTokens ?? 0;
+						const outputTokens = usage.outputTokens ?? 0;
+						capturedUsage = { inputTokens, outputTokens, totalTokens: usage.totalTokens ?? inputTokens + outputTokens, costUsd: 0 };
+					},
+				});
+				return { text, usage: capturedUsage };
+			},
+			runTaskSuggestionRefresh: async (input) => {
+				let capturedUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 };
+				const text = await manager.queryText(PromptId.VaultIntelligenceTaskSuggestions, {
+					instruction: input.instruction,
+					taskPayload: input.taskPayload,
+				}, {
+					profileId: input.route.profileId,
+					modelId: input.route.model,
+					signal: input.signal,
+					usageFeature: 'indexing',
+					usageAction: 'vault_intelligence_task_suggestions',
+					usageSessionId: `vault-intelligence-task-suggestions-${Date.now()}`,
+					usageCallback: (usage) => {
+						const inputTokens = usage.inputTokens ?? 0;
+						const outputTokens = usage.outputTokens ?? 0;
+						capturedUsage = { inputTokens, outputTokens, totalTokens: usage.totalTokens ?? inputTokens + outputTokens, costUsd: 0 };
+					},
+				});
+				return { text, usage: capturedUsage };
 			},
 			openOwnerSurface: async (surface) => {
 				if (surface === 'files') {
@@ -559,44 +606,72 @@ export class AppContext {
 			resolveOperationRoutes: () => {
 				const profiles = ProfileRegistry.getInstance();
 				const embedding = profiles.resolveSlot('knowledgeIndex');
-				const agent = profiles.getActiveAgentConfig();
-				const review = profiles.getActiveAgentFastConfig() ?? agent;
-				const candidates = buildProfileModelItems(profiles.getAllProfiles()).map((model) => ({
-					profileId: model.profileId,
-					model: model.modelId,
-					provider: model.profileKind,
-				}));
-				const route = (binding: typeof agent) => binding ? {
-					profileId: binding.profile.id,
-					model: binding.modelId,
-					provider: binding.profile.kind,
-					available: binding.profile.enabled,
-					candidates,
-				} : { profileId: null, model: 'Not configured', provider: 'Not configured', available: false, candidates };
+				const agent = profiles.resolveSlot('research');
+				const review = profiles.resolveSlot('fast');
+				const candidatesFor = (modelType: ModelType) => buildUnifiedModelChoices(
+					modelRegistry,
+					profiles.getAllProfiles(),
+					{ modelType },
+				).map((model) => {
+					const profile = profiles.getAllProfiles().find((item) => item.id === model.profileId);
+					const embeddingConfig = modelType === ModelType.EMBEDDING && profile
+						? toEmbeddingConfig(profile, model.modelId)
+						: true;
+					const executable = model.selectable !== false && embeddingConfig !== null;
+					return {
+						profileId: model.profileId,
+						model: model.modelId,
+						provider: model.profileKind,
+						displayName: model.displayName,
+						modelType: model.modelType,
+						selectable: executable,
+						unavailableReason: executable
+							? null
+							: model.unavailableReason ?? 'Configure this provider’s embedding endpoint and credentials before selecting this model.',
+					};
+				});
+				const route = (
+					binding: typeof agent,
+					candidates: ReturnType<typeof candidatesFor>,
+					modelType: ModelType,
+				) => {
+					// Never infer a Scan recommendation from catalog iteration order or
+					// readiness. The runtime applies a valid model from the last completed
+					// Scan first. For embeddings only, one server-declared executable
+					// candidate is unambiguous; multiple candidates remain unresolved until
+					// the owner-configured candidate-priority policy exists.
+					const selectedCandidate = resolveOperationRouteCandidate(
+						modelType,
+						binding ? { profileId: binding.profile.id, modelId: binding.modelId } : null,
+						candidates,
+					);
+					if (!selectedCandidate) return { profileId: null, model: 'Not configured', provider: 'Not configured', available: false, candidates };
+					return {
+						profileId: selectedCandidate.profileId,
+						model: selectedCandidate.model,
+						provider: selectedCandidate.provider ?? 'Not configured',
+						available: true,
+						candidates,
+					};
+				};
 				return {
-					'plan-scan': { profileId: null, model: 'Local planning', provider: 'Peak', available: true, candidates: [] },
-					'embedding-refresh': route(embedding),
-					'file-summaries': route(agent),
-					'ai-tags': route(agent),
-					'relationship-discovery': route(review),
-					'semantic-review': route(review),
-					'community-analysis': route(review),
-					'hub-bridge-analysis': route(review),
-					'file-proposals': route(review),
-					'maintenance-synthesis': route(review),
+					'plan-scan': route(agent, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'embedding-refresh': route(embedding, candidatesFor(ModelType.EMBEDDING), ModelType.EMBEDDING),
+					'file-summaries': route(agent, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'ai-tags': route(agent, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'relationship-discovery': route(review, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'semantic-review': route(review, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'community-analysis': route(review, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'hub-bridge-analysis': route(review, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'file-proposals': route(review, candidatesFor(ModelType.LLM), ModelType.LLM),
+					'maintenance-synthesis': route(review, candidatesFor(ModelType.LLM), ModelType.LLM),
 				};
 			},
-			selectOperationRoute: (operationId, candidate) => {
-				const profiles = ProfileRegistry.getInstance();
-				if (operationId === 'embedding-refresh') {
-					profiles.setActiveEmbeddingConfig({ profileId: candidate.profileId, modelId: candidate.model });
-					return;
-				}
-				if (operationId === 'file-summaries' || operationId === 'ai-tags') {
-					profiles.setActiveAgentConfig({ profileId: candidate.profileId, modelId: candidate.model });
-					return;
-				}
-				if (operationId !== 'plan-scan') profiles.setActiveAgentFastConfig({ profileId: candidate.profileId, modelId: candidate.model });
+			resolveEmbeddingCallConfig: (route) => {
+				if (!route.profileId || !route.model) return null;
+				const profile = ProfileRegistry.getInstance().getAllProfiles().find((item) => item.id === route.profileId);
+				if (!profile || !profile.enabled) return null;
+				return toEmbeddingConfig(profile, route.model);
 			},
 			calculateCostUsd: async (provider, model, usage) => {
 				const info = await manager.getModelInfo(model, provider);

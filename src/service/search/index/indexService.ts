@@ -8,6 +8,7 @@ import {
 	type Chunk,
 	defaultIndexDocumentOptions,
 	type IndexDocumentOptions,
+	type IndexLlmRoute,
 	type LlmIndexingCompleteEvent,
 } from '@/core/search/indexTypes';
 import type { DocumentLoaderReadOptions } from '@/core/document/loader/types';
@@ -15,7 +16,6 @@ import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { IndexedDocumentRecord } from '@/core/storage/sqlite/ddl';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
-import { normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
 import { normalizeTextForFts } from '@/core/utils/segmenter';
 import { stemText } from '@/core/utils/porter-stemmer';
 import type { SearchSettings } from '@/core/config/settingsTypes';
@@ -55,6 +55,7 @@ import {
 } from '@/core/utils/id-utils';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { embedTexts } from '@/service/search/embeddings/embedClient';
+import { toEmbeddingConfig, type EmbeddingCallConfig } from '@/core/profiles/materialize';
 import { parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import { mapWithConcurrency } from '@/core/utils/concurrent-utils';
 import { AdaptiveConcurrencyPool } from '@/core/utils/adaptive-concurrency';
@@ -304,6 +305,19 @@ export class IndexService
 		// Seed the tenant-helper cell so free `getIndexTenantForPath(...)`
 		// callers can resolve without holding an IndexService reference.
 		currentChatRootFolder = env.rootFolder;
+	}
+
+	getPathIndexEligibility(path: string): { fullText: boolean; embeddings: boolean; aiEnrichment: boolean; reason: string | null } {
+		const loaderManager = DocumentLoaderManager.getInstance();
+		const type = loaderManager.getTypeForPath(path) ?? 'unknown';
+		const fullText = loaderManager.shouldIndexDocument({ type, sourceFileInfo: { path } } as Document);
+		if (!fullText) return { fullText: false, embeddings: false, aiEnrichment: false, reason: `Unsupported file type: ${type}` };
+		return {
+			fullText: true,
+			embeddings: true,
+			aiEnrichment: type === 'markdown',
+			reason: type === 'markdown' ? null : 'AI enrichment is available for Markdown documents only.',
+		};
 	}
 
 	/**
@@ -624,6 +638,7 @@ export class IndexService
 		settings: SearchSettings,
 		indexOptions?: IndexDocumentOptions,
 		preloadedDocument?: Document,
+		execution?: { embeddingConfig?: EmbeddingCallConfig },
 	): Promise<void> {
 		if (!this.aiServiceManager) {
 			throw new Error('[IndexService] init(AIServiceManager) must be called before indexing');
@@ -649,6 +664,7 @@ export class IndexService
 				includeLlmTags: opts.includeLlmTags,
 				includeLlmSummary: opts.includeLlmSummary,
 				...(opts.onLlmIndexingComplete ? { onLlmIndexingComplete: opts.onLlmIndexingComplete } : {}),
+				...(opts.llmRoute ? { llmRoute: opts.llmRoute } : {}),
 			};
 
 			sw.start('Read document');
@@ -670,8 +686,7 @@ export class IndexService
 			}
 			sw.stop();
 			if (!rawDoc) {
-				console.warn(`[IndexService] Failed to load document: ${docPath}`);
-				return;
+				throw new Error(`[IndexService] Failed to load document: ${docPath}`);
 			}
 
 			const tenant = this.getTenantForPath(rawDoc.sourceFileInfo.path);
@@ -687,8 +702,7 @@ export class IndexService
 
 			const loader = loaderManager.getLoaderForDocumentType(doc.type);
 			if (!loader) {
-				console.warn(`No loader found for document type: ${doc.type}`);
-				return;
+				throw new Error(`No loader found for document type: ${doc.type}`);
 			}
 
 			let chunks: Chunk[] = [];
@@ -725,14 +739,17 @@ export class IndexService
 
 			const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
 			const registry = ProfileRegistry.getInstance();
-			const embProfile = registry.getActiveEmbeddingProfile() ?? registry.getActiveAgentProfile();
-			const hasEmbedding = !!(embProfile?.embeddingEndpoint && embProfile?.embeddingModel);
-			const embeddingModelName = hasEmbedding ? embProfile!.embeddingModel! : undefined;
+			const embProfile = registry.getActiveEmbeddingProfile();
+			const embeddingConfig = execution?.embeddingConfig ?? (embProfile ? toEmbeddingConfig(embProfile) : null);
+			const hasEmbedding = Boolean(embeddingConfig);
+			const embeddingModelName = embeddingConfig?.model;
+			if (opts.includeEmbeddings && !vectorSearchAvailable) throw new Error('Embedding generation was requested but vector search is unavailable.');
+			if (opts.includeEmbeddings && !embeddingConfig) throw new Error('Embedding generation was requested but the configured Knowledge Index route is unavailable. Runtime model fallback is disabled.');
 			const canGenerateEmbeddings = opts.includeEmbeddings && hasEmbedding && vectorSearchAvailable;
 			let vectorCompleted = false;
 			if (canGenerateEmbeddings) {
 				sw.start('Generate embeddings');
-				await this.generateAndFillEmbeddings(chunks);
+				await this.generateAndFillEmbeddings(chunks, embeddingConfig);
 				sw.stop();
 				vectorCompleted = true;
 			}
@@ -1047,11 +1064,11 @@ export class IndexService
 	 *
 	 * @param chunks - Chunks to generate embeddings for
 	 */
-	private async generateAndFillEmbeddings(chunks: Chunk[]): Promise<void> {
+	private async generateAndFillEmbeddings(chunks: Chunk[], embeddingConfig?: EmbeddingCallConfig): Promise<void> {
 		if (!chunks.length) return;
 
 		try {
-			const embeddings = await embedTexts(chunks.map(chunk => chunk.content));
+			const embeddings = await embedTexts(chunks.map(chunk => chunk.content), embeddingConfig);
 
 			// Fill embeddings into chunk.embedding fields
 			for (let i = 0; i < chunks.length && i < embeddings.length; i++) {
@@ -1710,23 +1727,31 @@ export class IndexService
 		options?: MobiusGlobalMaintenanceOptions,
 	): Promise<void> {
 		const onProgress = options?.onProgress;
+		const signal = options?.signal;
 		const sw = new Stopwatch('[IndexService] runMobiusGlobalMaintenance');
+		const assertActive = () => signal?.throwIfAborted();
 
+		assertActive();
 		sw.start('mobius_aggregates');
 		for (const tenant of tenants) {
+			assertActive();
 			await this.refreshMobiusAggregatesInternal(tenant, onProgress);
+			assertActive();
 		}
 		sw.stop();
 
 		sw.start('mobius_pagerank');
 		for (const tenant of tenants) {
+			assertActive();
 			await this.computeAndPersistVaultPageRankInternal(tenant, onProgress);
+			assertActive();
 		}
 		sw.stop();
 
 		sw.start('semantic_related_edges');
 		const semanticRebuildResults: RebuildSemanticEdgesBatchResult[] = [];
 		for (const tenant of tenants) {
+			assertActive();
 			const r = await SemanticRelatedEdgesRebuildService.rebuildForTenant(tenant, {
 				onProgress: !onProgress ? undefined : (p) =>
 					onProgress({
@@ -1735,37 +1760,47 @@ export class IndexService
 						progressTextSuffix: `${p.processed}/${p.total} docs`,
 					})
 			});
+			assertActive();
 			semanticRebuildResults.push(r);
 			await yieldForLargePass();
+			assertActive();
 		}
 		sw.stop();
 
 		sw.start('semantic_pagerank');
 		for (let i = 0; i < tenants.length; i++) {
+			assertActive();
 			const tenant = tenants[i]!;
 			const rebuild = semanticRebuildResults[i];
 			if (rebuild?.skipped) continue;
 			await this.computeAndPersistSemanticPageRankInternal(tenant, onProgress);
+			assertActive();
 		}
 		sw.stop();
 
 		if (tenants.includes('vault')) {
+			assertActive();
 			sw.start('structural_analysis');
 			await runStructuralAnalysis({
 				louvainResolution: LOUVAIN_RESOLUTION,
 				communityConfig: this.env.communityConfig,
 			});
+			assertActive();
 			sw.stop();
 		}
 
 		if (tenants.includes('vault')) {
+			assertActive();
 			sw.start('folder_hub_stats');
 			await this.rebuildFolderHubStatsForVaultInternal(onProgress);
+			assertActive();
 			sw.stop();
 		}
 
 		sw.print();
+		assertActive();
 		await this.resetMaintenanceDebtAfterFullMaintenance(tenants);
+		assertActive();
 	}
 
 	// ---------------------------------------------------------------
@@ -2200,6 +2235,7 @@ export class IndexService
 			paths?: readonly string[];
 			includeTags?: boolean;
 			includeSummary?: boolean;
+			llmRoute?: IndexLlmRoute;
 		},
 	): Promise<LlmIndexEnrichmentResult> {
 		if (!sqliteStoreManager.isInitialized()) {
@@ -2207,6 +2243,7 @@ export class IndexService
 				processed: 0,
 				skippedWrongTenant: 0,
 				errors: [{ path: '', message: 'SQLite not initialized' }],
+				attempts: [],
 			};
 		}
 
@@ -2220,19 +2257,30 @@ export class IndexService
 		let processed = 0;
 		let skippedWrongTenant = 0;
 		const errors: Array<{ path: string; message: string }> = [];
+		const attempts: LlmIndexEnrichmentResult['attempts'] = [];
 
 		const pendingPaths: string[] = [];
-		const allowedPaths = options?.paths ? new Set(options.paths) : null;
-		for (const tenant of tenants) {
-			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-			const paths = await repo.listPathsWithPendingLlm();
-			for (const path of paths) {
-				if (allowedPaths && !allowedPaths.has(path)) continue;
-				if (this.getTenantForPath(path) !== tenant) {
-					skippedWrongTenant++;
+		if (options?.paths) {
+			for (const path of [...new Set(options.paths)]) {
+				const eligibility = this.getPathIndexEligibility(path);
+				if (!eligibility.aiEnrichment) {
+					const now = Date.now();
+					attempts.push({ path, status: 'not-eligible', startedAt: now, completedAt: now, route: null, usage: emptyUsage(), costUsd: 0, error: eligibility.reason });
 					continue;
 				}
 				pendingPaths.push(path);
+			}
+		} else {
+			for (const tenant of tenants) {
+				const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+				const paths = await repo.listPathsWithPendingLlm();
+				for (const path of paths) {
+					if (this.getTenantForPath(path) !== tenant) {
+						skippedWrongTenant++;
+						continue;
+					}
+					pendingPaths.push(path);
+				}
 			}
 		}
 		const total = pendingPaths.length;
@@ -2253,27 +2301,6 @@ export class IndexService
 			return content.length;
 		};
 
-		/**
-		 * After each path finishes: read indexed row from SQLite and log full summary/tags text (DevTools).
-		 * Logs can be very large for long notes.
-		 */
-		const logPendingLlmEnrichmentDocComplete = async (params: {
-			path: string;
-			docType: string | null;
-			status: 'success' | 'error';
-			wallMs: number;
-			usage: LLMUsage;
-			costUsd: number;
-			done: number;
-			total: number;
-			error?: unknown;
-		}): Promise<void> => {
-			const tenant = this.getTenantForPath(params.path);
-			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-			const indexed = await repo.getByPath(params.path);
-			const tok = normalizeUsageTokens(params.usage);
-		};
-
 		const adaptivePool = new AdaptiveConcurrencyPool({
 			initial: LLM_PENDING_ENRICH_CONCURRENCY,
 			min: 1,
@@ -2285,6 +2312,8 @@ export class IndexService
 			pendingPaths,
 			async (path) => {
 				if (options?.shouldContinue && !options.shouldContinue()) {
+					const now = Date.now();
+					attempts.push({ path, status: 'cancelled', startedAt: now, completedAt: now, route: options.llmRoute ?? null, usage: emptyUsage(), costUsd: 0, error: null });
 					return;
 				}
 				const docType = loaderMgr.getTypeForPath(path);
@@ -2295,11 +2324,11 @@ export class IndexService
 				}
 
 				/** Per-path ref so concurrent workers do not share telemetry state. */
-				const llmTelemetry: { snapshot: { usage: LLMUsage; costUsd: number } | null } = {
+				const llmTelemetry: { snapshot: LlmIndexingCompleteEvent | null } = {
 					snapshot: null,
 				};
 				const onLlmIndexingComplete = (ev: LlmIndexingCompleteEvent) => {
-					llmTelemetry.snapshot = { usage: ev.usage, costUsd: ev.costUsd };
+					llmTelemetry.snapshot = ev;
 				};
 
 				const t0 = Date.now();
@@ -2307,27 +2336,21 @@ export class IndexService
 					await indexSvc.indexDocument(path, settings, {
 						...baseOpts,
 						onLlmIndexingComplete,
+						llmRoute: options?.llmRoute,
 					});
-					processed++;
-					done++;
 					const wallMs = Date.now() - t0;
 					const snap = llmTelemetry.snapshot;
+					if (!snap) throw new Error('LLM enrichment returned without a provider completion receipt.');
+					if (snap.status !== 'produced') throw new Error(`LLM enrichment ${snap.status}; requested outputs were not fully produced.`);
+					processed++;
+					done++;
 					const actual = {
 						durationMs: wallMs,
-						usage: snap?.usage ?? emptyUsage(),
-						costUsd: snap?.costUsd ?? 0,
+						usage: snap.usage,
+						costUsd: snap.costUsd,
 					};
+					attempts.push({ path, status: 'produced', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: null });
 					tracker.recordDocComplete(plan, actual);
-					await logPendingLlmEnrichmentDocComplete({
-						path,
-						docType,
-						status: 'success',
-						wallMs,
-						usage: actual.usage,
-						costUsd: actual.costUsd,
-						done,
-						total,
-					});
 					options?.onProgress?.(
 						tracker.snapshot({
 							path,
@@ -2339,7 +2362,8 @@ export class IndexService
 						}),
 					);
 				} catch (e) {
-					errors.push({ path, message: (e as Error).message ?? String(e) });
+					const message = (e as Error).message ?? String(e);
+					errors.push({ path, message });
 					done++;
 					const wallMs = Date.now() - t0;
 					const snap = llmTelemetry.snapshot;
@@ -2348,18 +2372,8 @@ export class IndexService
 						usage: snap?.usage ?? emptyUsage(),
 						costUsd: snap?.costUsd ?? 0,
 					};
+					attempts.push({ path, status: snap?.status === 'partial' ? 'partial' : 'failed', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: message });
 					tracker.recordDocComplete(plan, actual);
-					await logPendingLlmEnrichmentDocComplete({
-						path,
-						docType,
-						status: 'error',
-						wallMs,
-						usage: actual.usage,
-						costUsd: actual.costUsd,
-						done,
-						total,
-						error: e,
-					});
 					options?.onProgress?.(
 						tracker.snapshot({
 							path,
@@ -2370,13 +2384,12 @@ export class IndexService
 							lastActual: actual,
 						}),
 					);
-					throw e;
 				}
 			},
 			{},
 		);
 
-		return { processed, skippedWrongTenant, errors };
+		return { processed, skippedWrongTenant, errors, attempts };
 	}
 
 	/**
@@ -2388,6 +2401,7 @@ export class IndexService
 			onProgress?: (ev: PendingEnrichmentProgress) => void;
 			shouldContinue?: () => boolean;
 			paths?: readonly string[];
+			embeddingConfig?: EmbeddingCallConfig;
 		},
 	): Promise<VectorIndexEnrichmentResult> {
 		if (!sqliteStoreManager.isInitialized()) {
@@ -2406,17 +2420,21 @@ export class IndexService
 		const errors: Array<{ path: string; message: string }> = [];
 
 		const pendingPaths: string[] = [];
-		const allowedPaths = options?.paths ? new Set(options.paths) : null;
-		for (const tenant of tenants) {
-			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-			const paths = await repo.listPathsWithPendingVector();
-			for (const path of paths) {
-				if (allowedPaths && !allowedPaths.has(path)) continue;
-				if (this.getTenantForPath(path) !== tenant) {
-					skippedWrongTenant++;
-					continue;
+		if (options?.paths) {
+			for (const path of [...new Set(options.paths)]) {
+				if (this.getPathIndexEligibility(path).embeddings) pendingPaths.push(path);
+			}
+		} else {
+			for (const tenant of tenants) {
+				const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+				const paths = await repo.listPathsWithPendingVector();
+				for (const path of paths) {
+					if (this.getTenantForPath(path) !== tenant) {
+						skippedWrongTenant++;
+						continue;
+					}
+					pendingPaths.push(path);
 				}
-				pendingPaths.push(path);
 			}
 		}
 		const total = pendingPaths.length;
@@ -2424,7 +2442,9 @@ export class IndexService
 		for (const path of pendingPaths) {
 			if (options?.shouldContinue && !options.shouldContinue()) break;
 			try {
-				await index.indexDocument(path, settings, opts);
+				await index.indexDocument(path, settings, opts, undefined, {
+					embeddingConfig: options?.embeddingConfig,
+				});
 				processed++;
 				done++;
 				options?.onProgress?.({ processed: done, total, path });

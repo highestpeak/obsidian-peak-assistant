@@ -60,10 +60,9 @@ export type CostTier = 'fast' | 'deep' | 'premium';
 export type BackendKind = 'hermes-harness' | 'provider-direct';
 
 /**
- * Policy for picking a backend. `preferred` is tried first; `fallback` is
- * used when the preferred backend is unavailable (e.g. no API key). An
- * empty fallback array means the run fails-loud instead of silently
- * downgrading.
+ * Policy for picking a backend. Runtime executes only `preferred` and fails
+ * loudly when it is unavailable. `fallback` is retained as declarative legacy
+ * metadata and is never consulted by the production resolver.
  */
 export interface BackendPolicy {
 	readonly preferred: BackendKind;

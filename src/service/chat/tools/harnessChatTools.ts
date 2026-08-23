@@ -228,35 +228,27 @@ function buildWebSearchTool(deps: ChatToolDeps): ToolDef {
 		kind: 'read',
 		async execute(args: { query: string }) {
 			receipts?.recordWebQuery(args.query);
-			try {
-				const tm = TemplateManager.getInstance();
-				if (!tm) return ok('Web search error: template manager not bound');
-				const systemPrompt = await tm.render(PromptId.WebSearchToolSystem, {});
-				const webProfile = webProfileId
-					? ProfileRegistry.getInstance()
-							.getAllProfiles()
-							.find((p) => p.id === webProfileId)
-					: ProfileRegistry.getInstance().getActiveWebSearchProfile();
-				if (!webProfile) return ok('Web search error: no active Web Search profile');
-				const { text } = await runHarnessText({
-					loopId: `${deps.pluginId}-chat-web-search-${crypto.randomUUID()}`,
-					profile: webProfile,
-					modelId: webModelId ?? webProfile.primaryModel,
-					prompt: args.query,
-					systemPrompt,
-					maxSteps: 1,
-				});
-				const answer = text || 'No results found.';
-				if (receipts) {
-					for (const source of extractWebSourcesFromText(answer)) {
-						receipts.recordWebSource(source);
-					}
+			const tm = TemplateManager.getInstance();
+			if (!tm) throw new Error('Web search template manager is not bound.');
+			if (!webProfileId || !webModelId) throw new Error('No exact Web Search profile/model route is configured. Runtime model fallback is disabled.');
+			const webProfile = ProfileRegistry.getInstance().getAllProfiles().find((profile) => profile.id === webProfileId);
+			if (!webProfile || webProfile.enabled === false) throw new Error('The configured Web Search profile is unavailable. Runtime profile fallback is disabled.');
+			const systemPrompt = await tm.render(PromptId.WebSearchToolSystem, {});
+			const { text } = await runHarnessText({
+				loopId: `${deps.pluginId}-chat-web-search-${crypto.randomUUID()}`,
+				profile: webProfile,
+				modelId: webModelId,
+				prompt: args.query,
+				systemPrompt,
+				maxSteps: 1,
+			});
+			const answer = text || 'No results found.';
+			if (receipts) {
+				for (const source of extractWebSourcesFromText(answer)) {
+					receipts.recordWebSource(source);
 				}
-				return ok(answer);
-			} catch (err) {
-				const msg = err instanceof Error ? err.message : 'Web search failed';
-				return ok(`Web search error: ${msg}`);
 			}
+			return ok(answer);
 		},
 	};
 }

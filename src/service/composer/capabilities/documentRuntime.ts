@@ -92,6 +92,7 @@ interface CandidateMeta {
 	anchor?: { from: number; to: number };
 	lastRunId: string;
 	runIdsByVariant: Record<string, string>;
+	profileId?: string;
 	modelId?: string;
 	placement?: ComposerInvocationPlacement;
 	/** Native object path + frozen base bytes (native-file-patch runs only). */
@@ -252,6 +253,7 @@ export class ComposerCapabilityDocumentRuntime
 			...(anchor !== undefined ? { anchor } : {}),
 			lastRunId: runId,
 			runIdsByVariant: { [candidate.activeVariantId]: runId },
+			...(options?.profileId !== undefined ? { profileId: options.profileId } : {}),
 			...(options?.modelId !== undefined ? { modelId: options.modelId } : {}),
 			...(options?.placement !== undefined ? { placement: options.placement } : {}),
 		});
@@ -261,6 +263,7 @@ export class ComposerCapabilityDocumentRuntime
 			candidate.activeVariantId,
 			runId,
 			options?.instruction,
+			options?.profileId,
 			options?.modelId,
 		);
 		return { runId, cancel: () => this.cancel(candidate.candidateId) };
@@ -324,7 +327,7 @@ export class ComposerCapabilityDocumentRuntime
 		const runId = nextRunId();
 		meta.lastRunId = runId;
 		meta.runIdsByVariant[updated.activeVariantId] = runId;
-		this.startGeneration(def, candidateId, updated.activeVariantId, runId, instruction, meta.modelId);
+		this.startGeneration(def, candidateId, updated.activeVariantId, runId, instruction, meta.profileId, meta.modelId);
 		return { runId, cancel: () => this.cancel(candidateId) };
 	}
 
@@ -575,12 +578,13 @@ export class ComposerCapabilityDocumentRuntime
 		variantId: string,
 		runId: string,
 		instruction?: string,
+		profileId?: string,
 		modelId?: string,
 	): void {
 		const abort = new AbortController();
 		this.activeRuns.set(candidateId, { runId, variantId, abort });
 		this.emit({ type: 'run-started', runId, capabilityId: def.manifest.id, candidateId, variantId });
-		void this.runGeneration(def, candidateId, variantId, runId, abort, instruction, modelId).finally(() => {
+		void this.runGeneration(def, candidateId, variantId, runId, abort, instruction, profileId, modelId).finally(() => {
 			this.activeRuns.delete(candidateId);
 		});
 	}
@@ -592,6 +596,7 @@ export class ComposerCapabilityDocumentRuntime
 		runId: string,
 		abort: AbortController,
 		instruction?: string,
+		profileId?: string,
 		modelId?: string,
 	): Promise<void> {
 		const meta = this.requireMeta(candidateId);
@@ -622,6 +627,7 @@ export class ComposerCapabilityDocumentRuntime
 						capabilityId: def.manifest.id,
 						promptId: def.promptId!,
 						variables,
+						...(profileId !== undefined ? { profileId } : {}),
 						...(modelId !== undefined ? { modelId } : {}),
 						signal: abort.signal,
 					});

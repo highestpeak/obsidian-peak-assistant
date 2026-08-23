@@ -94,22 +94,15 @@ export function useChatSubmit() {
 		const latestActiveConversation = useChatDataStore.getState().activeConversation;
 		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
 		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
-		// Fallback chain: initialSelectedModel → UI selectedModel → default
-		// assistant profile.
-		//
-		// 2026-07 F.B: mode routing retired. The AI does not have a
-		// Chat/Agent/Plan concept — every submission resolves to the single
-		// default assistant profile. "Planning" or "chat-only" UX is a
-		// prompt-level concern layered on top of the same profile, not a
-		// separate routing branch. `getConfigForMode()` still exists on
-		// ProfileRegistry for history-restore reasons, but we no longer call
-		// it here; using `getActiveAgentConfig()` directly makes the intent
-		// explicit and stops future readers from thinking mode influences
-		// profile selection.
+		// Explicit one-time selection wins; otherwise use the configured
+		// Conversation slot. No Agent/Fast model may substitute for it.
 		const latestSelectedModel = useChatViewStore.getState().selectedModel;
-		const defaultConfig = ProfileRegistry.getInstance().getActiveAgentConfig();
-		const profileFallback = defaultConfig ? { provider: defaultConfig.profile.kind, modelId: defaultConfig.modelId } : null;
-		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel ?? profileFallback;
+		const defaultConfig = ProfileRegistry.getInstance().getActiveChatConfig();
+		const configuredConversation = defaultConfig ? { provider: defaultConfig.profile.kind, modelId: defaultConfig.modelId } : null;
+		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel ?? configuredConversation;
+		if (!modelForNewConversation?.modelId || !modelForNewConversation.provider) {
+			throw new Error('Configure the Conversation model before creating a chat. Runtime model fallback is disabled.');
+		}
 
 		let conversation = latestActiveConversation || null;
 		if (!conversation && latestPendingConversation) {
@@ -138,8 +131,9 @@ export function useChatSubmit() {
 		conversation: ChatConversation,
 		content: string
 	): ChatMessage => {
-		const modelId = conversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
-		const provider = conversation.meta.activeProvider || 'other';
+		const modelId = conversation.meta.activeModel;
+		const provider = conversation.meta.activeProvider;
+		if (!modelId || !provider) throw new Error('This conversation has no configured model route. Runtime model fallback is disabled.');
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 		return createChatMessage('user', content, modelId, provider, timezone);
 	}, []);
@@ -219,9 +213,9 @@ export function useChatSubmit() {
 		// the conversation directly without reloading from storage (faster for better UX)
 		// Resolve actual model for this message: store selection → chat profile → conversation meta
 		const currentSelectedModel = useChatViewStore.getState().selectedModel;
-		const currentChatConfig = ProfileRegistry.getInstance().getActiveChatConfig();
-		const actualModel = currentSelectedModel?.modelId ?? currentChatConfig?.modelId ?? conversation.meta.activeModel;
-		const actualProvider = currentSelectedModel?.provider ?? (currentChatConfig ? currentChatConfig.profile.kind : null) ?? conversation.meta.activeProvider;
+		const actualModel = currentSelectedModel?.modelId ?? conversation.meta.activeModel;
+		const actualProvider = currentSelectedModel?.provider ?? conversation.meta.activeProvider;
+		if (!actualModel || !actualProvider) throw new Error('This conversation has no configured model route. Runtime model fallback is disabled.');
 
 		const conversationWithUserMessage: ChatConversation = {
 			...conversation,
@@ -444,4 +438,3 @@ export function useChatSubmit() {
 		createTempUserMessage: createUserMessage,
 	};
 }
-

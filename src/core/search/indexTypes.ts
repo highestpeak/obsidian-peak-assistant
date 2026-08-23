@@ -10,7 +10,18 @@ export type LlmIndexingCompleteEvent = {
 	durationMs: number;
 	usage: LLMUsage;
 	costUsd: number;
+	status: 'produced' | 'partial' | 'failed';
+	outputs: {
+		tags: 'not-requested' | 'produced' | 'failed';
+		summary: 'not-requested' | 'produced' | 'failed';
+	};
 };
+
+export interface IndexLlmRoute {
+	profileId: string;
+	modelId: string;
+	provider: string;
+}
 
 /**
  * Why this index run was triggered (drives default {@link IndexDocumentOptions}).
@@ -53,6 +64,8 @@ export interface IndexDocumentOptions {
 	reason: IndexDocumentReason;
 	/** Optional; forwarded to markdown loader for LLM usage telemetry (e.g. pending enrichment progress). */
 	onLlmIndexingComplete?: (ev: LlmIndexingCompleteEvent) => void;
+	/** Frozen route selected by the owning run. */
+	llmRoute?: IndexLlmRoute;
 }
 
 /**
