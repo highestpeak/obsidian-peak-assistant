@@ -3,6 +3,7 @@ import type { DocumentType } from '@/core/document/types';
 import type { Document as CoreDocument } from '@/core/document/types';
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
+import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
 import type { DocumentVaultReaderPort } from '@/core/ports/DocumentVaultReaderPort';
 import type { VaultMetadataResolverPort } from '@/core/ports/VaultMetadataResolverPort';
 import type { BinaryDocumentTextExtractorPort } from '@/core/ports/BinaryDocumentTextExtractorPort';
@@ -51,7 +52,7 @@ export class DocumentLoaderManager {
 	private settings: SearchSettings;
 	private readonly vault: DocumentVaultReaderPort;
 	private readonly metadata: VaultMetadataResolverPort;
-	private aiServiceManager?: IDocSummarizer;
+	private aiServiceManager?: IDocSummarizer & IDocTagClassifier;
 	private readonly ignoreMatcher: IgnoreMatcher;
 
 	/**
@@ -86,7 +87,7 @@ export class DocumentLoaderManager {
 		vault: DocumentVaultReaderPort,
 		metadata: VaultMetadataResolverPort,
 		settings: SearchSettings,
-		aiServiceManager?: IDocSummarizer,
+		aiServiceManager?: IDocSummarizer & IDocTagClassifier,
 		binaryTextExtractor?: BinaryDocumentTextExtractorPort,
 	): DocumentLoaderManager {
 		if (DocumentLoaderManager.instance) {
@@ -107,7 +108,7 @@ export class DocumentLoaderManager {
 		vault: DocumentVaultReaderPort,
 		metadata: VaultMetadataResolverPort,
 		settings: SearchSettings,
-		aiServiceManager?: IDocSummarizer,
+		aiServiceManager?: IDocSummarizer & IDocTagClassifier,
 		private readonly binaryTextExtractor?: BinaryDocumentTextExtractorPort,
 	) {
 		this.vault = vault;
@@ -165,7 +166,7 @@ export class DocumentLoaderManager {
 	 * `ResourceSummaryService` which calls `getInstance()` synchronously —
 	 * so the AI dep is wired in after the cycle is broken.
 	 */
-	setAiServiceManager(aiServiceManager: IDocSummarizer): void {
+	setAiServiceManager(aiServiceManager: IDocSummarizer & IDocTagClassifier): void {
 		this.aiServiceManager = aiServiceManager;
 		this.registerAllLoaders();
 	}

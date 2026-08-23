@@ -664,6 +664,7 @@ export class IndexService
 				includeLlmTags: opts.includeLlmTags,
 				includeLlmSummary: opts.includeLlmSummary,
 				...(opts.onLlmIndexingComplete ? { onLlmIndexingComplete: opts.onLlmIndexingComplete } : {}),
+				...(opts.onLlmIndexingProgress ? { onLlmIndexingProgress: opts.onLlmIndexingProgress } : {}),
 				...(opts.llmRoute ? { llmRoute: opts.llmRoute } : {}),
 			};
 
@@ -2231,6 +2232,7 @@ export class IndexService
 		settings: SearchSettings,
 		options?: {
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
+			onActivity?: (ev: import('@/core/search/indexTypes').LlmIndexingProgressEvent) => void;
 			shouldContinue?: () => boolean;
 			paths?: readonly string[];
 			includeTags?: boolean;
@@ -2335,6 +2337,7 @@ export class IndexService
 					await indexSvc.indexDocument(path, settings, {
 						...baseOpts,
 						onLlmIndexingComplete,
+						onLlmIndexingProgress: options?.onActivity,
 						llmRoute: options?.llmRoute,
 					});
 					const wallMs = Date.now() - t0;
@@ -2348,7 +2351,7 @@ export class IndexService
 						usage: snap.usage,
 						costUsd: snap.costUsd,
 					};
-					attempts.push({ path, status: 'produced', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: null, outputs: snap.outputs, generatedKnowledge: snap.generatedKnowledge });
+					attempts.push({ path, status: 'produced', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: null, outputs: snap.outputs, outputUsage: snap.outputUsage, generatedKnowledge: snap.generatedKnowledge });
 					tracker.recordDocComplete(plan, actual);
 					options?.onProgress?.(
 						tracker.snapshot({

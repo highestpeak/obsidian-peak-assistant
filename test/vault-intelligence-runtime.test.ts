@@ -461,15 +461,17 @@ async function main(): Promise<void> {
 			enrichmentPaths.push([...(options.paths ?? [])]);
 			return { processed: 1, skippedWrongTenant: 0, errors: [] };
 		},
-		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[]; includeSummary?: boolean; includeTags?: boolean; llmRoute: { profileId: string; modelId: string; provider: string } }) => {
+		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[]; includeSummary?: boolean; includeTags?: boolean; llmRoute: { profileId: string; modelId: string; provider: string }; onActivity?: (event: { path: string; operation: 'summary' | 'tags'; phase: 'request-started'; text: string; updatedAt: number }) => void }) => {
 			enrichmentPaths.push([...(options.paths ?? [])]);
 			llmRoutes.push(options.llmRoute);
+			if (options.includeSummary) options.onActivity?.({ path: options.paths?.[0] ?? '', operation: 'summary', phase: 'request-started', text: 'Summary request started.', updatedAt: now });
 			return {
 				processed: 1, skippedWrongTenant: 0, errors: [],
 				attempts: [{
 					path: options.paths?.[0] ?? '', status: 'produced', startedAt: now, completedAt: now + 1,
 					usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }, costUsd: 0, error: null,
 					outputs: { summary: options.includeSummary ? 'produced' : 'not-requested', tags: 'produced' },
+					outputUsage: { summary: { inputTokens: 6, outputTokens: 3, totalTokens: 9 }, tags: { inputTokens: 4, outputTokens: 2, totalTokens: 6 } },
 					generatedKnowledge: { summary: options.includeSummary ? 'Generated summary' : null, tags: ['generated-tag'] },
 				}],
 			};
@@ -492,6 +494,9 @@ async function main(): Promise<void> {
 	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.attempts?.[0]?.status, 'produced');
 	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.attempts?.[0]?.generatedKnowledge?.summary, 'Generated summary');
 	assert.deepEqual(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'ai-tags')?.attempts?.[0]?.generatedKnowledge?.tags, ['generated-tag']);
+	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.usage.totalTokens, 9, 'Summary must retain only its own provider usage');
+	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'ai-tags')?.usage.totalTokens, 6, 'AI Tags must retain only its own provider usage');
+	assert.ok(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.liveEvidence?.some((event) => event.text === 'Summary request started.'), 'current document must receive observable generation activity immediately');
 
 	const pipelineEvents: string[] = [];
 	let firstDocumentEnrichmentStarted!: () => void;

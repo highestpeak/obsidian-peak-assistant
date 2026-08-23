@@ -1231,12 +1231,26 @@ export class VaultIntelligenceRuntime {
 			if (this.snapshot.run.stopRequested) return;
 			const executionId = this.operation(group.ids[0]!)?.executionId ?? this.idFactory();
 			const startedAt = this.now();
-			for (const id of group.ids) this.patchOperation(id, { status: 'running', executionId, currentPath: path });
+			for (const id of group.ids) this.patchOperation(id, {
+				status: 'running', executionId, currentPath: path,
+				liveEvidence: [{ kind: 'status', text: `Preparing ${id === 'file-summaries' ? 'Summary' : 'AI Tags'} for ${path}.`, updatedAt: startedAt }],
+			});
 			const result = await index.runPendingLlmIndexEnrichment(this.deps.getSearchSettings(), {
 				paths: [path], includeSummary: group.ids.includes('file-summaries'), includeTags: group.ids.includes('ai-tags'),
 				llmRoute: { profileId: group.route.profileId, modelId: group.route.model, provider: group.route.provider },
 				shouldContinue: () => !this.snapshot.run.stopRequested && group.ids.some((id) => this.operation(id)?.status !== 'skipped'),
 				onProgress: (progress) => { for (const id of group.ids) this.patchOperation(id, { currentPath: progress.path }); },
+				onActivity: (activity) => {
+					const operationId: VaultScanAiOperationId = activity.operation === 'summary' ? 'file-summaries' : 'ai-tags';
+					if (!group.ids.includes(operationId)) return;
+					const operation = this.operation(operationId);
+					const liveEvidence = [...(operation?.liveEvidence ?? []), {
+						kind: activity.phase === 'response-received' ? 'text' as const : 'status' as const,
+						text: activity.text,
+						updatedAt: activity.updatedAt,
+					}].slice(-8);
+					this.patchOperation(operationId, { currentPath: activity.path, liveEvidence });
+				},
 			});
 			this.indexErrors.push(...result.errors);
 			if (result.attempts.length === 0) throw new Error(`AI enrichment route ${group.route.provider}/${group.route.model} returned without a terminal receipt for ${path}.`);
@@ -1256,10 +1270,17 @@ export class VaultIntelligenceRuntime {
 							? 'failed'
 							: attempt.status;
 					const produced = status === 'produced' || status === 'partial';
+					const attributedUsage = attempt.outputUsage?.[outputKey] ?? (group.ids.length === 1 ? attempt.usage : {
+						inputTokens: Math.round((attempt.usage.inputTokens ?? 0) / group.ids.length),
+						outputTokens: Math.round((attempt.usage.outputTokens ?? 0) / group.ids.length),
+						totalTokens: Math.round((attempt.usage.totalTokens ?? 0) / group.ids.length),
+						reasoningTokens: Math.round((attempt.usage.reasoningTokens ?? 0) / group.ids.length),
+						cachedInputTokens: Math.round((attempt.usage.cachedInputTokens ?? 0) / group.ids.length),
+					});
 					return {
 						id: this.idFactory(), executionId, path: attempt.path, status,
 						plannedRoute: group.route, actualRoute: produced ? group.route : null,
-						startedAt: attempt.startedAt, completedAt: attempt.completedAt, usage: normalizeUsage(attempt.usage, attempt.costUsd), error: status === 'produced' ? null : attempt.error,
+						startedAt: attempt.startedAt, completedAt: attempt.completedAt, usage: normalizeUsage(attributedUsage, 0), error: status === 'produced' ? null : attempt.error,
 						evidence: [attempt.status === 'not-eligible' ? `${id === 'file-summaries' ? 'Summary' : 'AI Tags'} is not supported for ${attempt.path}.` : status === 'produced' ? `${id === 'file-summaries' ? 'Summary' : 'AI Tags'} was produced for ${attempt.path}.` : attempt.error ?? `${id === 'file-summaries' ? 'Summary' : 'AI Tags'} did not complete for ${attempt.path}.`],
 						generatedKnowledge: id === 'file-summaries'
 							? { summary: attempt.generatedKnowledge?.summary ?? null }
@@ -1268,7 +1289,7 @@ export class VaultIntelligenceRuntime {
 				});
 				const attempts = [...(current.attempts ?? []), ...receipts];
 				const usage = sumAttemptUsage(attempts);
-				if (receiptUsage.costUsd > 0 && usage.costUsd === 0) usage.costUsd = receiptUsage.costUsd;
+				if (usage.totalTokens > 0 && usage.costUsd === 0) usage.costUsd = await this.deps.calculateCostUsd(group.route.provider, group.route.model, usage);
 				this.patchOperation(id, { status: 'running', processed: attempts.filter((candidate) => candidate.status !== 'not-eligible').length, currentPath: null, usage, actualRoute: receipts.some((attempt) => attempt.actualRoute) ? group.route : current.actualRoute ?? null, attempts, error: result.errors[0]?.message ?? current.error ?? null, evidence: [`${attempts.filter((attempt) => attempt.status === 'produced').length.toLocaleString()} provider-produced and ${attempts.filter((attempt) => attempt.status === 'already-current').length.toLocaleString()} already-current document receipts.`] });
 			}
 			const failed = sourceAttempts.find((attempt) => ['failed', 'partial', 'cancelled'].includes(attempt.status));

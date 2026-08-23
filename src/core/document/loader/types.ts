@@ -1,5 +1,5 @@
 import type { DocumentType, Document, ResourceSummary, Summarizable } from '@/core/document/types';
-import type { Chunk, IndexLlmRoute, LlmIndexingCompleteEvent } from '@/core/search/indexTypes';
+import type { Chunk, IndexLlmRoute, LlmIndexingCompleteEvent, LlmIndexingProgressEvent } from '@/core/search/indexTypes';
 import type { ChunkingSettings } from '@/core/config/settingsTypes';
 
 /**
@@ -11,6 +11,8 @@ export interface DocumentLoaderReadOptions {
 	includeLlmSummary?: boolean;
 	/** Fires after markdown LLM tag + summary batch for this path (index telemetry). */
 	onLlmIndexingComplete?: (ev: LlmIndexingCompleteEvent) => void;
+	/** Emits observable request/response/commit phases; never synthetic model reasoning. */
+	onLlmIndexingProgress?: (ev: LlmIndexingProgressEvent) => void;
 	llmRoute?: IndexLlmRoute;
 }
 

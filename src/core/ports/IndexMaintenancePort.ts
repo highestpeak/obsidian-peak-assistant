@@ -24,6 +24,7 @@ import type {
 	MobiusGlobalMaintenanceOptions,
 	OrphanIndexCleanupCounts,
 	PendingEnrichmentProgress,
+	PendingLlmEnrichmentActivity,
 	PendingLlmEnrichmentProgress,
 	VectorIndexEnrichmentResult,
 } from '@/core/types/index-maintenance';
@@ -40,6 +41,7 @@ export interface IndexMaintenancePort {
 		settings: SearchSettings,
 		options?: {
 			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
+			onActivity?: (ev: PendingLlmEnrichmentActivity) => void;
 			shouldContinue?: () => boolean;
 			paths?: readonly string[];
 			includeTags?: boolean;

@@ -15,11 +15,25 @@ export type LlmIndexingCompleteEvent = {
 		tags: 'not-requested' | 'produced' | 'failed';
 		summary: 'not-requested' | 'produced' | 'failed';
 	};
+	/** Provider usage attributed to each independent generated output. */
+	outputUsage: {
+		tags: LLMUsage;
+		summary: LLMUsage;
+	};
 	/** Presentation-safe generated knowledge committed by this pass. */
 	generatedKnowledge: {
 		summary: string | null;
 		tags: string[];
 	};
+};
+
+/** Presentation-safe lifecycle evidence for one index-time generation. */
+export type LlmIndexingProgressEvent = {
+	path: string;
+	operation: 'summary' | 'tags';
+	phase: 'request-started' | 'response-received' | 'failed' | 'committed';
+	text: string;
+	updatedAt: number;
 };
 
 export interface IndexLlmRoute {
@@ -69,6 +83,7 @@ export interface IndexDocumentOptions {
 	reason: IndexDocumentReason;
 	/** Optional; forwarded to markdown loader for LLM usage telemetry (e.g. pending enrichment progress). */
 	onLlmIndexingComplete?: (ev: LlmIndexingCompleteEvent) => void;
+	onLlmIndexingProgress?: (ev: LlmIndexingProgressEvent) => void;
 	/** Frozen route selected by the owning run. */
 	llmRoute?: IndexLlmRoute;
 }

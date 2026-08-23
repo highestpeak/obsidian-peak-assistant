@@ -11,6 +11,7 @@
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { LLMUsage } from '@/core/providers/types';
 import type { IndexLlmRoute } from '@/core/search/indexTypes';
+import type { LlmIndexingProgressEvent } from '@/core/search/indexTypes';
 
 /** Batch-style maintenance phases; progress detail is in `progressTextSuffix`. */
 export type MobiusGlobalMaintenanceBatchPhase =
@@ -64,6 +65,10 @@ export interface LlmIndexEnrichmentAttempt {
 		summary: string | null;
 		tags: string[];
 	};
+	outputUsage?: {
+		tags: LLMUsage;
+		summary: LLMUsage;
+	};
 }
 
 /** Result of batched deferred vector enrichment. */
@@ -101,6 +106,8 @@ export type PendingLlmEnrichmentProgress = {
 	estimatedFinalTotalTokens: number;
 	estimatedFinalCostUsd: number;
 };
+
+export type PendingLlmEnrichmentActivity = LlmIndexingProgressEvent;
 
 /** Cleanup counters returned by orphaned-index sweep. */
 export type OrphanIndexCleanupCounts = {

@@ -120,6 +120,7 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 			includeLlmTags,
 			includeLlmSummary,
 			onLlmIndexingComplete: readOptions?.onLlmIndexingComplete,
+			onLlmIndexingProgress: readOptions?.onLlmIndexingProgress,
 			llmRoute: readOptions?.llmRoute,
 		});
 	}
@@ -223,40 +224,54 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 			};
 			const failedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'failed' };
 			const skippedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'skipped' };
+			const reportProgress = (operation: 'summary' | 'tags', phase: 'request-started' | 'response-received' | 'failed' | 'committed', text: string) => {
+				readOptions.onLlmIndexingProgress?.({ path: file.path, operation, phase, text, updatedAt: Date.now() });
+			};
+			if (runTagLlm) reportProgress('tags', 'request-started', 'AI Tags request sent to the selected model.');
+			if (runSummaryLlm) reportProgress('summary', 'request-started', 'Summary request sent to the selected model.');
+			const tagTask = runTagLlm
+				? extractTopicAndFunctionalTags(content, this.aiServiceManager!, {
+						title,
+						existingUserTags: userKeywordTags.length ? userKeywordTags.join(', ') : undefined,
+						textrankKeywords: textrankKeywordsForLlm || undefined,
+						textrankSentences: textrankSentencesForLlm || undefined,
+						provider: readOptions.llmRoute?.provider,
+						profileId: readOptions.llmRoute?.profileId,
+						modelId: readOptions.llmRoute?.modelId,
+					}).then((result) => {
+						reportProgress('tags', 'response-received', 'AI Tags response received; validating the structured labels.');
+						return result;
+					}).catch((err) => {
+						reportProgress('tags', 'failed', `AI Tags failed: ${err instanceof Error ? err.message : String(err)}`);
+						console.warn('[MarkdownDocumentLoader] extractTopicAndFunctionalTags failed:', err);
+						return failedTag;
+					})
+				: Promise.resolve(skippedTag);
+			const summaryTask = runSummaryLlm
+				? getDefaultDocumentSummary(
+					summaryDocStub,
+					this.summaryConfig,
+					this.aiServiceManager!,
+					readOptions.llmRoute?.provider,
+					readOptions.llmRoute?.modelId,
+					{ profileId: readOptions.llmRoute?.profileId, modelId: readOptions.llmRoute?.modelId },
+				).then((result) => {
+					reportProgress('summary', 'response-received', 'Summary response received; validating and committing the generated text.');
+					return result;
+				}).catch((err) => {
+					reportProgress('summary', 'failed', `Summary failed: ${err instanceof Error ? err.message : String(err)}`);
+					throw err;
+				})
+				: Promise.resolve<ResourceSummaryWithLlmMeta>({
+						shortSummary: '',
+						fullSummary: undefined,
+						llmUsage: emptyUsage(),
+						llmCostUsd: 0,
+					});
 			const [tagRes, summaryContent]: [
 				DocLlmTagResult,
 				ResourceSummaryWithLlmMeta | { shortSummary: string; fullSummary?: undefined },
-			] = await Promise.all([
-				runTagLlm
-					? extractTopicAndFunctionalTags(content, this.aiServiceManager!, {
-							title,
-							existingUserTags: userKeywordTags.length ? userKeywordTags.join(', ') : undefined,
-							textrankKeywords: textrankKeywordsForLlm || undefined,
-							textrankSentences: textrankSentencesForLlm || undefined,
-							provider: readOptions.llmRoute?.provider,
-							profileId: readOptions.llmRoute?.profileId,
-							modelId: readOptions.llmRoute?.modelId,
-						}).catch((err) => {
-							console.warn('[MarkdownDocumentLoader] extractTopicAndFunctionalTags failed:', err);
-							return failedTag;
-						})
-					: Promise.resolve(skippedTag),
-				runSummaryLlm
-					? getDefaultDocumentSummary(
-						summaryDocStub,
-						this.summaryConfig,
-						this.aiServiceManager!,
-						readOptions.llmRoute?.provider,
-						readOptions.llmRoute?.modelId,
-						{ profileId: readOptions.llmRoute?.profileId, modelId: readOptions.llmRoute?.modelId },
-					)
-					: Promise.resolve<ResourceSummaryWithLlmMeta>({
-							shortSummary: '',
-							fullSummary: undefined,
-							llmUsage: emptyUsage(),
-							llmCostUsd: 0,
-						}),
-			]);
+			] = await Promise.all([tagTask, summaryTask]);
 			if (runTagLlm || runSummaryLlm) {
 				console.info('[MarkdownDocumentLoader] readMarkdownFile: LLM batch done', {
 					path: file.path,
@@ -290,6 +305,10 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 						tags: !runTagLlm ? 'not-requested' : tagRes.llmTagRunStatus === 'success' ? 'produced' : 'failed',
 						summary: !runSummaryLlm ? 'not-requested' : summaryContent.shortSummary ? 'produced' : 'failed',
 					},
+					outputUsage: {
+						tags: runTagLlm && tagRes.llmUsage ? tagRes.llmUsage : emptyUsage(),
+						summary: runSummaryLlm && 'llmUsage' in summaryContent ? summaryContent.llmUsage : emptyUsage(),
+					},
 					generatedKnowledge: {
 						summary: runSummaryLlm && summaryContent.shortSummary?.trim()
 							? summaryContent.shortSummary.trim()
@@ -305,6 +324,8 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 							: [],
 					},
 				});
+				if (runTagLlm && tagRes.llmTagRunStatus === 'success') reportProgress('tags', 'committed', 'AI Tags validated and committed to Peak-owned Index data.');
+				if (runSummaryLlm && summaryContent.shortSummary) reportProgress('summary', 'committed', 'Summary committed to Peak-owned Index data.');
 			}
 
 			const functionalTagStatus: 'pending' | 'failed' | 'success-empty' | 'success' =

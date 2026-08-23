@@ -190,6 +190,11 @@ assert.match(
 	/\.peak-design-root \.pk-vi-build-inspect-row\.pk-btn\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-height:\s*40px !important;[\s\S]*?max-height:\s*none !important;[\s\S]*?padding:\s*0 15px !important;/,
 	'Vault Intelligence document-state rows must retain the Mock table geometry under the Obsidian reset',
 );
+assert.match(
+	primitiveCss,
+	/\.peak-design-root \.pk-vi-build-inspect-row\.pk-btn\s*\{[\s\S]*?display:\s*grid !important;[\s\S]*?justify-content:\s*stretch !important;[\s\S]*?justify-items:\s*start;/,
+	'Vault Intelligence document-state columns must not inherit the shared button centering behavior',
+);
 
 assert.doesNotMatch(
 	primitiveCss,
