@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Assistant · Prepare review</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface-2: #faf9fb;
+      --ink: #28242e;
+      --ink-2: #625e69;
+      --ink-3: #8c8793;
+      --line: #e5e3e8;
+      --line-2: #d7d3dc;
+      --accent: #6954dc;
+      --accent-soft: #f1edff;
+      --green: #177a63;
+      --green-soft: #eaf8f3;
+      --amber: #a6671f;
+      --amber-soft: #fff5e7;
+      --rose: #a9506a;
+      --rose-soft: #fff0f4;
+      --blue: #3675a8;
+      --blue-soft: #edf6fb;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body { margin: 0; color: var(--ink); background: var(--bg); font: 13px/1.5 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, select { color: inherit; font: inherit; }
+    button:focus-visible, select:focus-visible { outline: 2px solid rgba(105,84,220,.45); outline-offset: 2px; }
+    .icon { width: 18px; height: 18px; display: block; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .icon.sm { width: 14px; height: 14px; }
+    .card { overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 1px 2px rgba(37,31,49,.025); }
+    .btn { min-height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 8px; color: var(--ink-2); background: var(--surface); font-size: 11px; font-weight: 700; cursor: pointer; }
+    .btn:hover { color: var(--ink); background: var(--surface-2); }
+    .btn.soft { border-color: #ded8f7; color: #5945c5; background: var(--accent-soft); }
+    .btn.danger { border-color: #e7c9d0; color: #a13d58; background: #fffafb; }
+    .btn:disabled { cursor: default; opacity: .45; }
+
+    .topbar { position: sticky; z-index: 20; top: 0; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 28px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 15px; font-weight: 760; }
+    .brand-icon { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid #ddd6fa; border-radius: 9px; color: var(--accent); background: var(--accent-soft); }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .run-chip { height: 29px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 10.5px; font-weight: 720; }
+    .run-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(105,84,220,.12); }
+    body.paused .run-dot { background: var(--amber); box-shadow: 0 0 0 3px rgba(166,103,31,.12); }
+    body.complete .run-dot { background: var(--green); box-shadow: 0 0 0 3px rgba(23,122,99,.12); }
+    body.stopped .run-dot { background: var(--rose); box-shadow: 0 0 0 3px rgba(169,80,106,.12); }
+
+    .page { max-width: 1480px; margin: 0 auto; padding: 18px 28px 40px; }
+    .breadcrumb { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: var(--ink-3); font-size: 10.5px; }
+    .breadcrumb strong { color: var(--ink-2); }
+
+    .hero { min-height: 170px; display: grid; grid-template-columns: minmax(0, 1fr) 490px; }
+    .hero-main { min-width: 0; display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 20px; align-items: center; padding: 22px 24px; }
+    .hero-icon { width: 64px; height: 64px; display: grid; place-items: center; border: 1px solid #d9d1fb; border-radius: 50%; color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 9px rgba(105,84,220,.04); }
+    .hero-icon .icon { width: 29px; height: 29px; }
+    .hero-title { font-size: 21px; line-height: 1.22; font-weight: 770; letter-spacing: -.025em; }
+    .hero-progress { display: flex; align-items: baseline; gap: 8px; margin-top: 11px; }
+    .hero-progress strong { color: #5c47cf; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .hero-progress span { color: var(--ink-2); font-size: 11.5px; font-weight: 700; }
+    .progress-line { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 12px; align-items: center; max-width: 700px; margin-top: 12px; }
+    .progress-track { height: 7px; overflow: hidden; border-radius: 999px; background: #eae8ef; }
+    .progress-track span { display: block; width: var(--progress, 0%); height: 100%; border-radius: inherit; background: var(--accent); transition: width 280ms ease; }
+    .progress-copy { color: var(--ink-3); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .hero-timing { display: flex; gap: 24px; margin-top: 12px; color: var(--ink-2); font-size: 11px; }
+    .hero-timing span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero-timing b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+    .milestones { border-left: 1px solid var(--line); background: #fcfbfd; }
+    .milestone { min-height: 56px; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 0 19px; border-bottom: 1px solid var(--line); }
+    .milestone:last-child { border-bottom: 0; }
+    .milestone-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
+    .milestone-icon .icon { width: 15px; height: 15px; }
+    .milestone strong { font-size: 11.5px; }
+    .milestone-value { display: flex; align-items: baseline; gap: 7px; font-variant-numeric: tabular-nums; }
+    .milestone-value b { font-size: 15px; }
+    .milestone-value span { min-width: 58px; color: var(--ink-3); font-size: 9.5px; }
+    .milestone.is-good .milestone-icon, .milestone.is-good .milestone-value b { color: var(--green); background: var(--green-soft); }
+    .milestone.is-attention .milestone-icon, .milestone.is-attention .milestone-value b { color: var(--amber); background: var(--amber-soft); }
+
+    .workspace { margin-top: 13px; }
+    .section-head { min-height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
+    .section-title { display: flex; align-items: center; gap: 9px; }
+    .section-title strong { font-size: 13px; }
+    .section-title .icon { color: var(--ink-2); }
+    .legend { display: flex; align-items: center; gap: 17px; color: var(--ink-3); font-size: 10px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); }
+    .legend .is-running { background: var(--accent); }
+    .legend .is-ready { background: var(--green); }
+    .legend .is-attention { background: var(--amber); }
+
+    .task-plan { min-height: 490px; }
+    .planning-state { min-height: 110px; display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--ink-2); font-size: 12px; font-weight: 700; }
+    .spinner { width: 18px; height: 18px; border: 2px solid #ded9f4; border-top-color: var(--accent); border-radius: 50%; animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    body.paused .spinner, body.complete .spinner, body.stopped .spinner { animation-play-state: paused; }
+    .task-row { min-height: 76px; display: grid; grid-template-columns: 52px minmax(260px, 1.2fr) 150px minmax(220px, .8fr) 170px; gap: 16px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); animation: row-in 180ms ease; }
+    .task-row:first-child { border-top: 0; }
+    @keyframes row-in { from { opacity: 0; transform: translateY(3px); } }
+    .task-icon { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid #e1dcf8; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
+    .task-icon .icon { width: 19px; height: 19px; }
+    .task-main { min-width: 0; }
+    .task-main strong { display: block; overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .task-count { font-size: 12px; font-weight: 720; font-variant-numeric: tabular-nums; }
+    .task-progress { min-width: 0; }
+    .task-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--ink-2); font-size: 10px; }
+    .task-progress-head b { color: var(--ink); font-size: 10.5px; }
+    .mini-track { height: 5px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: #ebe9ef; }
+    .mini-track i { display: block; width: var(--row-progress, 0%); height: 100%; border-radius: inherit; background: var(--accent); transition: width 260ms ease; }
+    .task-row.is-ready .mini-track i { background: var(--green); }
+    .task-row.is-attention .mini-track i { background: var(--amber); }
+    .task-route { justify-self: end; max-width: 170px; text-align: right; }
+    .task-route strong { display: block; overflow: hidden; color: var(--ink-2); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .status-pill { min-width: 92px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 5px 9px; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 9.5px; font-weight: 760; }
+    .status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .task-row.is-ready .status-pill { color: var(--green); background: var(--green-soft); }
+    .task-row.is-attention .status-pill { color: var(--amber); background: var(--amber-soft); }
+    .task-row.is-waiting .status-pill { color: var(--ink-3); background: #f1f0f3; }
+
+    .log { margin-top: 13px; }
+    .log-actions { display: flex; align-items: center; gap: 10px; }
+    .model-note { color: var(--ink-3); font-size: 10px; }
+    .new-events { display: none; min-height: 28px; align-items: center; padding: 0 10px; border: 1px solid #d8d1f5; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 9.5px; font-weight: 720; cursor: pointer; }
+    .new-events.visible { display: inline-flex; }
+    .log-list { height: 300px; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+    .log-empty { min-height: 150px; display: grid; place-items: center; color: var(--ink-3); }
+    .log-row { display: grid; grid-template-columns: 78px 116px minmax(0, 1fr) 170px; gap: 15px; align-items: start; min-height: 54px; padding: 13px 17px; border-bottom: 1px solid var(--line); background: #fff; animation: row-in 150ms ease; }
+    .log-row:last-child { border-bottom: 0; }
+    .log-row time { padding-top: 2px; color: var(--ink-3); font: 9.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .log-kind { display: inline-flex; align-items: center; gap: 7px; color: var(--blue); font-size: 10px; font-weight: 760; }
+    .log-kind i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .log-row.is-result .log-kind { color: var(--green); }
+    .log-row.is-attention .log-kind { color: var(--amber); }
+    .log-copy { color: #3b3741; font-size: 11.5px; line-height: 1.6; }
+    .log-source { color: var(--ink-3); font-size: 10px; text-align: right; }
+
+    .modal-backdrop { position: fixed; z-index: 50; inset: 0; display: none; place-items: center; padding: 24px; background: rgba(31,27,38,.34); backdrop-filter: blur(3px); }
+    .modal-backdrop.open { display: grid; }
+    .modal { width: min(680px, 100%); overflow: hidden; border: 1px solid var(--line-2); border-radius: 13px; background: #fff; box-shadow: 0 22px 70px rgba(31,27,38,.22); }
+    .modal-head { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 21px; border-bottom: 1px solid var(--line); }
+    .modal-head strong { font-size: 16px; }
+    .icon-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 8px; color: var(--ink-2); background: transparent; cursor: pointer; }
+    .icon-btn:hover { background: var(--surface-2); }
+    .model-options { padding: 16px 20px 5px; }
+    .model-option { min-height: 64px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+    .model-option + .model-option { margin-top: 9px; }
+    .model-option.is-selected { border-color: #cfc6f5; background: #fbfaff; }
+    .radio { width: 17px; height: 17px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 50%; }
+    .is-selected .radio { border-color: var(--accent); }
+    .is-selected .radio::after { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+    .model-option strong { font-size: 12px; }
+    .model-option span { color: var(--ink-3); font-size: 10.5px; }
+    .model-option select { min-width: 196px; height: 34px; padding: 0 30px 0 10px; border: 1px solid var(--line-2); border-radius: 7px; background: #fff; font-size: 10.5px; }
+    .ai-toggle-row { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 12px 20px 0; padding: 0 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .ai-toggle-row strong { font-size: 11.5px; }
+    .switch { width: 38px; height: 22px; position: relative; border: 0; border-radius: 999px; background: #d5d2da; cursor: pointer; }
+    .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.17); transition: transform 160ms ease; }
+    .switch.is-on { background: var(--accent); }
+    .switch.is-on::after { transform: translateX(16px); }
+    .proposal-boundary { margin: 15px 20px 0; padding: 12px; border-radius: 8px; color: var(--ink-2); background: var(--surface-2); font-size: 11px; }
+    .modal-foot { min-height: 64px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; padding: 0 20px; border-top: 1px solid var(--line); }
+
+    @media (max-width: 1120px) {
+      .hero { grid-template-columns: minmax(0, 1fr); }
+      .milestones { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 0; }
+      .milestone { border-right: 1px solid var(--line); border-bottom: 0; }
+      .task-row { grid-template-columns: 48px minmax(260px, 1fr) 130px minmax(190px, .8fr); }
+      .task-route { grid-column: 2 / -1; justify-self: start; display: flex; gap: 8px; text-align: left; }
+      .log-row { grid-template-columns: 70px 100px minmax(0, 1fr); }
+      .log-source { grid-column: 3; text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <symbol id="i-review" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v14h14v-3"/><path d="M9 2h6v4H9zM8 11h5M8 15h4"/><path d="m15 13 2 2 4-5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".7"/><circle cx="3.5" cy="12" r=".7"/><circle cx="3.5" cy="18" r=".7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.7 2.5 17.2A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.8L13.7 3.7a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></symbol>
+    <symbol id="i-community" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c.6-4 2.2-6 5-6s4.4 2 5 6M13 19c.5-3 1.8-4.5 4-4.5 2.1 0 3.4 1.5 4 4.5"/></symbol>
+    <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v6M12 9c0 4-7 3-7 8v4M12 9c0 4 7 3 7 8v4"/><path d="m2 18 3 3 3-3M16 18l3 3 3-3"/></symbol>
+    <symbol id="i-recovery" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-model" viewBox="0 0 24 24"><path d="m12 3 1.3 4.2L17 9l-3.7 1.8L12 15l-1.3-4.2L7 9l3.7-1.8L12 3Z"/><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8V4Z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon"><svg class="icon"><use href="#i-review"/></svg></span><span>Prepare review</span></div>
+    <div class="top-actions">
+      <button class="btn soft" type="button" id="model-btn"><svg class="icon sm"><use href="#i-model"/></svg><span id="model-btn-label">Auto · Claude Sonnet 4</span></button>
+      <span class="run-chip"><span class="run-dot"></span><span id="run-state">Running · checkpoint active</span></span>
+      <button class="btn" type="button" id="restart-btn"><svg class="icon sm"><use href="#i-restart"/></svg>Restart demo</button>
+      <button class="btn" type="button" id="pause-btn"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button>
+      <button class="btn danger" type="button" id="stop-btn"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="breadcrumb"><span>Scan setup</span><span>/</span><span>Run progress</span><span>/</span><strong>Prepare review</strong><span>·</span><span>run-vault-7f2c</span></div>
+
+    <section class="card hero">
+      <div class="hero-main">
+        <div class="hero-icon"><svg class="icon"><use href="#i-review"/></svg></div>
+        <div>
+          <div class="hero-title" id="hero-title">Planning review work.</div>
+          <div class="hero-progress"><strong id="percent">Planning…</strong><span id="phase-label">normalizing findings</span></div>
+          <div class="progress-line"><div class="progress-track"><span id="progress-bar"></span></div><span class="progress-copy" id="progress-copy">Freezing review inputs</span></div>
+          <div class="hero-timing"><span><svg class="icon sm"><use href="#i-clock"/></svg>Elapsed <b id="elapsed">0 sec</b></span><span>Estimated remaining <b id="remaining">Estimating…</b></span></div>
+        </div>
+      </div>
+      <div class="milestones">
+        <div class="milestone is-good"><span class="milestone-icon"><svg class="icon"><use href="#i-check"/></svg></span><strong>Findings accounted</strong><span class="milestone-value"><b id="accounted">0 / 42</b><span id="accounted-state">running</span></span></div>
+        <div class="milestone"><span class="milestone-icon"><svg class="icon"><use href="#i-list"/></svg></span><strong>Tasks planned</strong><span class="milestone-value"><b id="planned">—</b><span id="planned-state">planning</span></span></div>
+        <div class="milestone is-attention"><span class="milestone-icon"><svg class="icon"><use href="#i-alert"/></svg></span><strong>Ready / attention</strong><span class="milestone-value"><b id="ready-attention">0 / 0</b><span id="ready-state">waiting</span></span></div>
+      </div>
+    </section>
+
+    <section class="card workspace">
+      <div class="section-head">
+        <div class="section-title"><svg class="icon"><use href="#i-list"/></svg><strong>Review work</strong></div>
+        <div class="legend"><span><i class="is-running"></i>Running</span><span><i class="is-ready"></i>Ready</span><span><i class="is-attention"></i>Needs attention</span><span><i></i>Waiting</span></div>
+      </div>
+      <div class="task-plan" id="task-plan"><div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div></div>
+    </section>
+
+    <section class="card log">
+      <div class="section-head">
+        <div class="section-title"><svg class="icon"><use href="#i-review"/></svg><strong>Preparation log</strong></div>
+        <div class="log-actions"><button class="new-events" id="new-events" type="button">0 new events · jump to latest</button><span class="model-note" id="model-note">Model is called only for ambiguous groups</span></div>
+      </div>
+      <div class="log-list" id="log-list"><div class="log-empty">Preparation events will appear here. The list will not move automatically.</div></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="model-modal" role="dialog" aria-modal="true" aria-labelledby="model-title">
+    <section class="modal">
+      <div class="modal-head"><strong id="model-title">Prepare review model</strong><button class="icon-btn" id="model-close" type="button" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button></div>
+      <div class="model-options">
+        <div class="model-option is-selected" data-route="inherit" tabindex="0"><span class="radio"></span><strong>Inherit Vault-wide review model</strong><span id="inherited-model">Claude Sonnet 4 · Anthropic</span></div>
+        <div class="model-option" data-route="fixed" tabindex="0"><span class="radio"></span><strong>Choose another model</strong><select id="fixed-model" disabled aria-label="Prepare review model"><option value="GPT-5 mini|OpenAI|remote">GPT-5 mini · OpenAI</option><option value="Gemini 2.5 Flash|Google|remote">Gemini 2.5 Flash · Google</option><option value="Gemma 4 local|LM Studio|local">Gemma 4 local · LM Studio</option></select></div>
+      </div>
+      <div class="ai-toggle-row"><strong>Use AI for ambiguous task groups</strong><button class="switch is-on" id="ai-toggle" type="button" aria-pressed="true" aria-label="Use AI for ambiguous task groups"></button></div>
+      <div class="proposal-boundary">File proposal models are selected later, after you choose an outcome. Prepare review never edits user files.</div>
+      <div class="modal-foot"><button class="btn" type="button" id="model-cancel">Cancel</button><button class="btn soft" type="button" id="model-save">Save for this scan</button></div>
+    </section>
+  </div>
+
+  <script>
+    const TASKS = [
+      { id: 'properties', icon: 'i-file', title: 'Organize Research interview records', count: '12 files', atoms: 19, route: 'Local rules', provider: 'No model call', appears: 4, ready: 8 },
+      { id: 'links', icon: 'i-link', title: 'Repair broken references', count: '63 references', atoms: 63, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 5, ready: 17 },
+      { id: 'membership', icon: 'i-community', title: 'Review Community membership', count: '9 notes', atoms: 9, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 6, ready: 14 },
+      { id: 'connections', icon: 'i-link', title: 'Review changed knowledge connections', count: '3 connections', atoms: 3, route: 'Local rules', provider: 'No model call', appears: 7, ready: 11 },
+      { id: 'splits', icon: 'i-split', title: 'Review possible note splits', count: '3 source notes', atoms: 9, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 7, ready: 19 },
+      { id: 'structure', icon: 'i-community', title: 'Decide Community structure changes', count: '4 Communities', atoms: 4, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 8, ready: 21 },
+      { id: 'recovery', icon: 'i-recovery', title: 'Recover unreadable documents', count: '3 documents', atoms: 3, route: 'Local recovery', provider: 'No model call', appears: 8, ready: 13, attention: true },
+    ];
+
+    const EVENTS = [
+      { tick: 1, kind: 'System', text: 'Frozen 42 retained findings, 7 automatic receipts, and the previous owner-work ledger.', source: 'Review snapshot rp-42' },
+      { tick: 3, kind: 'System', text: 'Accounted for deterministic findings and preserved 6 existing owner choices.', source: 'Local rules' },
+      { tick: 5, kind: 'Plan', text: 'Reused 2 existing tasks and opened 5 new task groups.', source: 'Plan revision 1' },
+      { tick: 7, kind: 'Plan', text: 'Frozen a 7-task plan. Three groups require model assistance; four remain local.', source: 'Plan revision 2' },
+      { tick: 9, kind: 'Result', text: 'Property findings share one owner question and remain one task with 19 atomic changes.', source: '12 files · 19 changes' },
+      { tick: 11, kind: 'Result', text: 'Changed knowledge connections passed deterministic grouping and evidence checks.', source: '3 cited connections' },
+      { tick: 13, kind: 'Attention', text: 'Three unreadable documents have a recovery path but no reviewable content yet.', source: 'Parser receipts' },
+      { tick: 15, kind: 'Result', text: 'Community membership suggestions retained the existing owner overrides.', source: '9 notes · 3 Communities' },
+      { tick: 17, kind: 'Result', text: 'Broken-reference group is complete with target, file, and exact-reference projections.', source: '63 references · 18 files' },
+      { tick: 19, kind: 'Result', text: 'Split candidates now have owner actions and verification exits; no source diff was generated.', source: '3 source notes' },
+      { tick: 21, kind: 'Result', text: 'Community structure task passed the duplicate-work and write-boundary checks.', source: '4 Communities' },
+      { tick: 23, kind: 'System', text: 'Published 7 maintenance tasks, 7 automatic receipts, and one attention result.', source: 'Completed snapshot' },
+    ];
+
+    const state = {
+      running: true,
+      stopped: false,
+      tick: 0,
+      elapsed: 0,
+      eventIndex: 0,
+      unreadEvents: 0,
+      routeMode: 'inherit',
+      selectedModel: 'Claude Sonnet 4',
+      selectedProvider: 'Anthropic',
+      routeClass: 'remote',
+      aiEnabled: true,
+      draftRouteMode: 'inherit',
+      draftAiEnabled: true,
+    };
+
+    const logList = document.getElementById('log-list');
+    const newEvents = document.getElementById('new-events');
+
+    function formatDuration(seconds) {
+      if (seconds < 60) return `${seconds} sec`;
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`;
+    }
+
+    function currentPhase() {
+      if (state.tick < 4) return 'normalizing findings';
+      if (state.tick < 8) return 'planning owner work';
+      if (state.tick < 18) return 'drafting and validating';
+      if (state.tick < 23) return 'final validation';
+      return 'complete';
+    }
+
+    function percent() {
+      if (state.tick < 4) return null;
+      return Math.min(100, Math.round((state.tick - 3) / 20 * 100));
+    }
+
+    function routeLabel(task) {
+      if (task.provider === 'No model call') return { model: task.route, provider: task.provider };
+      if (!state.aiEnabled) return { model: 'AI disabled', provider: 'Needs attention if ambiguous' };
+      return { model: state.selectedModel, provider: state.routeMode === 'inherit' ? 'Inherited review model' : state.selectedProvider };
+    }
+
+    function taskStatus(task) {
+      if (state.tick < task.appears) return { label: 'Waiting', className: 'is-waiting', progress: 0 };
+      if (state.tick >= task.ready) {
+        if (task.attention || (!state.aiEnabled && task.provider !== 'No model call')) return { label: 'Needs attention', className: 'is-attention', progress: 100 };
+        return { label: 'Ready', className: 'is-ready', progress: 100 };
+      }
+      const span = Math.max(1, task.ready - task.appears);
+      const progress = Math.min(92, Math.round((state.tick - task.appears + 1) / span * 100));
+      if (state.tick < 8) return { label: 'Grouping', className: 'is-running', progress };
+      if (task.provider !== 'No model call' && state.aiEnabled && state.tick < task.ready - 2) return { label: 'Drafting', className: 'is-running', progress };
+      return { label: 'Validating', className: 'is-running', progress };
+    }
+
+    function renderTasks() {
+      if (state.tick < 4) {
+        document.getElementById('task-plan').innerHTML = '<div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div>';
+        return;
+      }
+      const rows = TASKS.map((task) => {
+        const status = taskStatus(task);
+        const route = routeLabel(task);
+        const processed = status.label === 'Waiting' ? 0 : status.label === 'Ready' || status.label === 'Needs attention' ? task.atoms : Math.min(task.atoms, Math.max(1, Math.round(task.atoms * status.progress / 100)));
+        return `<div class="task-row ${status.className}" data-task="${task.id}">
+          <span class="task-icon"><svg class="icon"><use href="#${task.icon}"/></svg></span>
+          <div class="task-main"><strong title="${task.title}">${task.title}</strong></div>
+          <div class="task-count" title="${task.atoms} review atoms">${task.count}</div>
+          <div class="task-progress"><div class="task-progress-head"><b>${status.label}</b><span>${processed} / ${task.atoms}</span></div><div class="mini-track" style="--row-progress:${status.progress}%"><i></i></div></div>
+          <div class="task-route" title="${route.provider}"><strong>${route.model}</strong></div>
+        </div>`;
+      }).join('');
+      document.getElementById('task-plan').innerHTML = rows;
+    }
+
+    function updateHeader() {
+      const complete = state.tick >= 23;
+      document.body.classList.toggle('paused', !state.running && !state.stopped && !complete);
+      document.body.classList.toggle('complete', complete);
+      document.body.classList.toggle('stopped', state.stopped);
+      const value = percent();
+      document.getElementById('percent').textContent = value === null ? 'Planning…' : `${value}%`;
+      document.getElementById('phase-label').textContent = currentPhase();
+      document.getElementById('progress-bar').style.width = `${value ?? 0}%`;
+      document.getElementById('progress-copy').textContent = value === null ? 'Freezing review inputs' : `${Math.min(20, Math.max(0, state.tick - 3))} of 20 planned units complete`;
+      document.getElementById('elapsed').textContent = formatDuration(state.elapsed);
+      const remaining = complete ? '0 sec' : state.tick < 4 ? 'Estimating…' : state.routeClass === 'local' ? `${Math.max(1, 6 - Math.floor(state.tick / 5))}–${Math.max(2, 8 - Math.floor(state.tick / 5))} min` : `${Math.max(1, 4 - Math.floor(state.tick / 7))}–${Math.max(2, 6 - Math.floor(state.tick / 7))} min`;
+      document.getElementById('remaining').textContent = remaining;
+      document.getElementById('hero-title').textContent = complete ? 'Review work is ready.' : state.stopped ? 'Review preparation stopped.' : state.running ? 'Preparing work for review.' : 'Review preparation paused.';
+      document.getElementById('run-state').textContent = complete ? 'Complete · checkpoint closed' : state.stopped ? 'Stopped · partial work saved' : state.running ? 'Running · checkpoint active' : 'Paused · checkpoint saved';
+      const pause = document.getElementById('pause-btn');
+      pause.disabled = complete || state.stopped;
+      pause.innerHTML = state.running ? '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>' : '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>';
+
+      const accounted = Math.min(42, Math.round(state.tick / 7 * 42));
+      document.getElementById('accounted').textContent = `${accounted} / 42`;
+      document.getElementById('accounted-state').textContent = accounted === 42 ? 'complete' : 'running';
+      document.getElementById('planned').textContent = state.tick < 7 ? '—' : '7';
+      document.getElementById('planned-state').textContent = state.tick < 7 ? 'planning' : 'plan frozen';
+      const visible = state.tick < 4 ? [] : TASKS.map(taskStatus);
+      const ready = visible.filter(item => item.label === 'Ready').length;
+      const attention = visible.filter(item => item.label === 'Needs attention').length;
+      document.getElementById('ready-attention').textContent = `${ready} / ${attention}`;
+      document.getElementById('ready-state').textContent = complete ? 'published' : 'updating';
+    }
+
+    function appendEvent(event) {
+      const empty = logList.querySelector('.log-empty');
+      if (empty) empty.remove();
+      const row = document.createElement('div');
+      const className = event.kind === 'Result' ? 'is-result' : event.kind === 'Attention' ? 'is-attention' : '';
+      row.className = `log-row ${className}`;
+      row.innerHTML = `<time>${formatDuration(state.elapsed)}</time><span class="log-kind"><i></i>${event.kind}</span><span class="log-copy">${event.text}</span><span class="log-source">${event.source}</span>`;
+      logList.appendChild(row);
+      const nearBottom = logList.scrollHeight - logList.scrollTop - logList.clientHeight < 40;
+      if (!nearBottom && logList.scrollHeight > logList.clientHeight) {
+        state.unreadEvents += 1;
+        newEvents.textContent = `${state.unreadEvents} new event${state.unreadEvents === 1 ? '' : 's'} · jump to latest`;
+        newEvents.classList.add('visible');
+      }
+    }
+
+    function updateEvents() {
+      while (state.eventIndex < EVENTS.length && EVENTS[state.eventIndex].tick <= state.tick) {
+        appendEvent(EVENTS[state.eventIndex]);
+        state.eventIndex += 1;
+      }
+    }
+
+    function render() {
+      updateHeader();
+      renderTasks();
+      updateEvents();
+    }
+
+    function restart() {
+      state.running = true;
+      state.stopped = false;
+      state.tick = 0;
+      state.elapsed = 0;
+      state.eventIndex = 0;
+      state.unreadEvents = 0;
+      logList.innerHTML = '<div class="log-empty">Preparation events will appear here. The list will not move automatically.</div>';
+      newEvents.classList.remove('visible');
+      render();
+    }
+
+    document.getElementById('pause-btn').addEventListener('click', () => {
+      if (state.stopped || state.tick >= 23) return;
+      state.running = !state.running;
+      render();
+    });
+    document.getElementById('restart-btn').addEventListener('click', restart);
+    document.getElementById('stop-btn').addEventListener('click', () => {
+      if (state.tick >= 23) return;
+      state.running = false;
+      state.stopped = true;
+      appendEvent({ kind: 'Attention', text: 'Scan stopped. Completed groups and the unprocessed review ledger were saved.', source: 'Partial checkpoint' });
+      render();
+    });
+    newEvents.addEventListener('click', () => {
+      logList.scrollTop = logList.scrollHeight;
+      state.unreadEvents = 0;
+      newEvents.classList.remove('visible');
+    });
+
+    const modal = document.getElementById('model-modal');
+    function openModel() {
+      state.draftRouteMode = state.routeMode;
+      state.draftAiEnabled = state.aiEnabled;
+      document.querySelectorAll('.model-option').forEach(option => option.classList.toggle('is-selected', option.dataset.route === state.draftRouteMode));
+      document.getElementById('fixed-model').disabled = state.draftRouteMode !== 'fixed';
+      document.getElementById('ai-toggle').classList.toggle('is-on', state.draftAiEnabled);
+      document.getElementById('ai-toggle').setAttribute('aria-pressed', String(state.draftAiEnabled));
+      modal.classList.add('open');
+      document.getElementById('model-close').focus();
+    }
+    function closeModel() { modal.classList.remove('open'); document.getElementById('model-btn').focus(); }
+    document.getElementById('model-btn').addEventListener('click', openModel);
+    document.getElementById('model-close').addEventListener('click', closeModel);
+    document.getElementById('model-cancel').addEventListener('click', closeModel);
+    modal.addEventListener('click', event => { if (event.target === modal) closeModel(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && modal.classList.contains('open')) closeModel(); });
+    document.querySelectorAll('.model-option').forEach(option => {
+      const select = () => {
+        state.draftRouteMode = option.dataset.route;
+        document.querySelectorAll('.model-option').forEach(item => item.classList.toggle('is-selected', item === option));
+        document.getElementById('fixed-model').disabled = state.draftRouteMode !== 'fixed';
+      };
+      option.addEventListener('click', event => { if (event.target.tagName !== 'SELECT') select(); });
+      option.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(); } });
+    });
+    document.getElementById('ai-toggle').addEventListener('click', event => {
+      state.draftAiEnabled = !state.draftAiEnabled;
+      event.currentTarget.classList.toggle('is-on', state.draftAiEnabled);
+      event.currentTarget.setAttribute('aria-pressed', String(state.draftAiEnabled));
+    });
+    document.getElementById('model-save').addEventListener('click', () => {
+      state.routeMode = state.draftRouteMode;
+      state.aiEnabled = state.draftAiEnabled;
+      if (state.routeMode === 'inherit') {
+        state.selectedModel = 'Claude Sonnet 4';
+        state.selectedProvider = 'Anthropic';
+        state.routeClass = 'remote';
+      } else {
+        const [model, provider, routeClass] = document.getElementById('fixed-model').value.split('|');
+        state.selectedModel = model;
+        state.selectedProvider = provider;
+        state.routeClass = routeClass;
+      }
+      document.getElementById('model-btn-label').textContent = state.routeMode === 'inherit' ? `Auto · ${state.selectedModel}` : state.selectedModel;
+      document.getElementById('model-note').textContent = state.aiEnabled ? 'Model is called only for ambiguous groups' : 'AI is off · ambiguous groups need attention';
+      closeModel();
+      render();
+    });
+
+    setInterval(() => {
+      if (!state.running || state.stopped || state.tick >= 23) return;
+      state.elapsed += 9;
+      state.tick += 1;
+      if (state.tick >= 23) state.running = false;
+      render();
+    }, 900);
+
+    render();
+  </script>
+</body>
+</html>
