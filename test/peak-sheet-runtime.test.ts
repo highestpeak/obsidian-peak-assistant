@@ -68,7 +68,9 @@ async function testRuntimeHistoryAndReload(): Promise<void> {
 	assert.equal(accepted[0].name, 'Keep');
 	const blank = await reloaded.createBlankDataset();
 	assert.equal(blank.name, 'Untitled sheet');
-	assert.equal(blank.fields[0].name, 'Name');
+	assert.equal(blank.fields.length, 0, 'blank sheets begin as a virtual Excel-style grid');
+	assert.equal(blank.rows.length, 0);
+	assert.equal(blank.views[0]?.type, 'table');
 	reloaded.requestDatasetFocus(blank.datasetId);
 	assert.equal(reloaded.takeDatasetFocusRequest(), blank.datasetId);
 	assert.equal(reloaded.takeDatasetFocusRequest(), null, 'focus requests are consumed exactly once');

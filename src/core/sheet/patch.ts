@@ -100,6 +100,18 @@ export function validatePeakSheetSnapshot(snapshot: PeakSheetDatasetSnapshot): v
 		viewIds.add(view.id);
 		validateView(view, snapshot.fields);
 	}
+	const scriptIds = new Set<string>();
+	for (const script of snapshot.scripts ?? []) {
+		validateScript(script);
+		if (scriptIds.has(script.id)) throw new PeakSheetPatchError(`Duplicate script id: ${script.id}.`);
+		scriptIds.add(script.id);
+	}
+	const runIds = new Set<string>();
+	for (const run of snapshot.scriptRuns ?? []) {
+		if (!run.id.trim() || !run.scriptId.trim()) throw new PeakSheetPatchError('Script run id and script id are required.');
+		if (runIds.has(run.id)) throw new PeakSheetPatchError(`Duplicate script run id: ${run.id}.`);
+		runIds.add(run.id);
+	}
 }
 
 function applyOperation(
@@ -135,6 +147,14 @@ function applyOperation(
 			return upsertView(snapshot, operation.view);
 		case 'deleteView':
 			return deleteView(snapshot, operation.viewId);
+		case 'upsertScript':
+			return upsertScript(snapshot, operation.script);
+		case 'deleteScript':
+			return deleteScript(snapshot, operation.scriptId);
+		case 'appendScriptRun':
+			return appendScriptRun(snapshot, operation.run);
+		case 'deleteScriptRun':
+			return deleteScriptRun(snapshot, operation.runId);
 		case 'renameDataset':
 			return {
 				snapshot: { ...snapshot, name: operation.name },
@@ -354,6 +374,57 @@ function deleteView(
 	};
 }
 
+function upsertScript(
+	snapshot: PeakSheetDatasetSnapshot,
+	script: NonNullable<PeakSheetDatasetSnapshot['scripts']>[number],
+): { snapshot: PeakSheetDatasetSnapshot; inverse: PeakSheetPatchOperation } {
+	validateScript(script);
+	const existing = snapshot.scripts?.find((candidate) => candidate.id === script.id);
+	const scripts = existing
+		? (snapshot.scripts ?? []).map((candidate) => candidate.id === script.id ? cloneScript(script) : candidate)
+		: [...(snapshot.scripts ?? []), cloneScript(script)];
+	return {
+		snapshot: { ...snapshot, scripts },
+		inverse: existing ? { type: 'upsertScript', script: cloneScript(existing) } : { type: 'deleteScript', scriptId: script.id },
+	};
+}
+
+function deleteScript(
+	snapshot: PeakSheetDatasetSnapshot,
+	scriptId: string,
+): { snapshot: PeakSheetDatasetSnapshot; inverse: PeakSheetPatchOperation } {
+	const existing = snapshot.scripts?.find((script) => script.id === scriptId);
+	if (!existing) throw new PeakSheetPatchError(`Unknown script ${scriptId}.`);
+	return {
+		snapshot: { ...snapshot, scripts: snapshot.scripts?.filter((script) => script.id !== scriptId) },
+		inverse: { type: 'upsertScript', script: cloneScript(existing) },
+	};
+}
+
+function appendScriptRun(
+	snapshot: PeakSheetDatasetSnapshot,
+	run: NonNullable<PeakSheetDatasetSnapshot['scriptRuns']>[number],
+): { snapshot: PeakSheetDatasetSnapshot; inverse: PeakSheetPatchOperation } {
+	if (!run.id.trim() || !run.scriptId.trim()) throw new PeakSheetPatchError('Script run id and script id are required.');
+	if ((snapshot.scriptRuns ?? []).some((candidate) => candidate.id === run.id)) throw new PeakSheetPatchError(`Script run ${run.id} already exists.`);
+	return {
+		snapshot: { ...snapshot, scriptRuns: [...(snapshot.scriptRuns ?? []), { ...run, diagnostics: [...run.diagnostics] }] },
+		inverse: { type: 'deleteScriptRun', runId: run.id },
+	};
+}
+
+function deleteScriptRun(
+	snapshot: PeakSheetDatasetSnapshot,
+	runId: string,
+): { snapshot: PeakSheetDatasetSnapshot; inverse: PeakSheetPatchOperation } {
+	const existing = snapshot.scriptRuns?.find((run) => run.id === runId);
+	if (!existing) throw new PeakSheetPatchError(`Unknown script run ${runId}.`);
+	return {
+		snapshot: { ...snapshot, scriptRuns: snapshot.scriptRuns?.filter((run) => run.id !== runId) },
+		inverse: { type: 'appendScriptRun', run: { ...existing, diagnostics: [...existing.diagnostics] } },
+	};
+}
+
 function pruneViewsForDeletedField(
 	views: readonly PeakSheetViewDefinition[],
 	fieldId: string,
@@ -370,6 +441,7 @@ function pruneViewsForDeletedField(
 				filters,
 				sorts,
 				groupBy: view.groupBy === fieldId ? undefined : view.groupBy,
+				groupByFields: view.groupByFields?.filter((id) => id !== fieldId),
 				hiddenFieldIds: view.hiddenFieldIds?.filter((id) => id !== fieldId),
 			});
 			continue;
@@ -439,6 +511,7 @@ function validateView(view: PeakSheetViewDefinition, fields: readonly PeakSheetF
 	for (const rule of view.filters?.rules ?? []) requireFieldId(fieldIds, rule.fieldId, view.name);
 	for (const sort of view.sorts ?? []) requireFieldId(fieldIds, sort.fieldId, view.name);
 	if (view.type === 'table' && view.groupBy) requireFieldId(fieldIds, view.groupBy, view.name);
+	if (view.type === 'table') for (const fieldId of view.groupByFields ?? []) requireFieldId(fieldIds, fieldId, view.name);
 	if (view.type === 'chart') {
 		requireFieldId(fieldIds, view.categoryFieldId, view.name);
 		if (view.series.length === 0) throw new PeakSheetPatchError(`Chart view ${view.name} needs a series.`);
@@ -502,7 +575,19 @@ function cloneSnapshot(snapshot: PeakSheetDatasetSnapshot): PeakSheetDatasetSnap
 		fields: snapshot.fields.map((field) => ({ ...field, options: field.options?.map((option) => ({ ...option })) })),
 		rows: snapshot.rows.map(cloneRow),
 		views: snapshot.views.map(cloneView),
+		scripts: snapshot.scripts?.map(cloneScript),
+		scriptRuns: snapshot.scriptRuns?.map((run) => ({ ...run, diagnostics: [...run.diagnostics] })),
 	};
+}
+
+function validateScript(script: NonNullable<PeakSheetDatasetSnapshot['scripts']>[number]): void {
+	if (!script.id.trim() || !script.name.trim()) throw new PeakSheetPatchError('Script id and name are required.');
+	if (!script.summary.trim()) throw new PeakSheetPatchError(`Script ${script.name} needs a summary.`);
+	if (script.steps.length === 0 || script.steps.length > 24) throw new PeakSheetPatchError(`Script ${script.name} needs 1 to 24 bounded steps.`);
+}
+
+function cloneScript<T extends NonNullable<PeakSheetDatasetSnapshot['scripts']>[number]>(script: T): T {
+	return { ...script, steps: script.steps.map((step) => structuredClone(step)) } as T;
 }
 
 function cloneRow(row: PeakSheetRow): PeakSheetRow {

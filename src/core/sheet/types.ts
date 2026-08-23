@@ -78,6 +78,8 @@ interface PeakSheetViewBase {
 
 export interface PeakSheetTableViewDefinition extends PeakSheetViewBase {
 	readonly type: 'table';
+	/** Ordered grouping fields. `groupBy` remains a schema-v1 compatibility read. */
+	readonly groupByFields?: readonly string[];
 	readonly groupBy?: string;
 	readonly hiddenFieldIds?: readonly string[];
 }
@@ -122,6 +124,8 @@ export interface PeakSheetDatasetSnapshot {
 	readonly fields: readonly PeakSheetFieldDefinition[];
 	readonly rows: readonly PeakSheetRow[];
 	readonly views: readonly PeakSheetViewDefinition[];
+	readonly scripts?: readonly PeakSheetScriptDefinition[];
+	readonly scriptRuns?: readonly PeakSheetScriptRun[];
 	readonly createdAt: string;
 	readonly updatedAt: string;
 	readonly deletedAt?: string;
@@ -140,6 +144,10 @@ export type PeakSheetPatchOperation =
 	| { readonly type: 'setFieldFormula'; readonly fieldId: string; readonly formula?: string; readonly values?: Readonly<Record<string, PeakSheetCellValue>> }
 	| { readonly type: 'upsertView'; readonly view: PeakSheetViewDefinition }
 	| { readonly type: 'deleteView'; readonly viewId: string }
+	| { readonly type: 'upsertScript'; readonly script: PeakSheetScriptDefinition }
+	| { readonly type: 'deleteScript'; readonly scriptId: string }
+	| { readonly type: 'appendScriptRun'; readonly run: PeakSheetScriptRun }
+	| { readonly type: 'deleteScriptRun'; readonly runId: string }
 	| { readonly type: 'renameDataset'; readonly name: string }
 	| { readonly type: 'setDatasetDeleted'; readonly deletedAt?: string };
 
@@ -201,6 +209,28 @@ export type PeakSheetAnalysisStep =
 	| { readonly op: 'derive'; readonly fieldId: string; readonly formula: string }
 	| { readonly op: 'chart'; readonly chartType: 'bar' | 'line' | 'pie'; readonly categoryFieldId: string; readonly metrics: readonly PeakSheetAggregateMetric[] };
 
+export interface PeakSheetScriptDefinition {
+	readonly id: string;
+	readonly name: string;
+	readonly summary: string;
+	readonly steps: readonly PeakSheetAnalysisStep[];
+	readonly createdAt: string;
+	readonly updatedAt: string;
+}
+
+export interface PeakSheetScriptRun {
+	readonly id: string;
+	readonly scriptId: string;
+	readonly scope: 'selection' | 'view' | 'all';
+	readonly baseRevision: number;
+	readonly resultRevision: number;
+	readonly changedRows: number;
+	readonly unchangedRows: number;
+	readonly failedRows: number;
+	readonly diagnostics: readonly string[];
+	readonly completedAt: string;
+}
+
 export interface PeakSheetAnalysisPlan {
 	readonly planId: string;
 	readonly datasetId: string;
@@ -246,6 +276,7 @@ export interface PeakSheetDatasetDraft {
 	readonly name: string;
 	readonly fields: readonly PeakSheetFieldDefinition[];
 	readonly rows: readonly PeakSheetRow[];
+	readonly scripts?: readonly PeakSheetScriptDefinition[];
 	readonly diagnostics: readonly string[];
 	readonly source: 'manual' | 'ai' | 'csv' | 'json' | 'xlsx';
 	readonly sourceHash?: string;

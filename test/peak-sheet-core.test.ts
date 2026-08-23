@@ -137,6 +137,30 @@ function testImports(): void {
 	console.log('PASS: Peak Sheet CSV and flat JSON import');
 }
 
+function testMultiGroupAndSavedScripts(): void {
+	const original = snapshot();
+	const now = '2026-08-24T00:00:00.000Z';
+	const applied = applyPeakSheetPatch(original, {
+		patchId: 'p-script', datasetId: original.datasetId, baseRevision: original.revision,
+		operations: [
+			{ type: 'upsertView', view: { id: 'table-main', name: 'Table', type: 'table', groupByFields: ['area', 'done'] } },
+			{ type: 'upsertScript', script: { id: 'risk', name: 'Risk count', summary: 'Area to count', steps: [{ op: 'group', fieldId: 'area' }], createdAt: now, updatedAt: now } },
+			{ type: 'appendScriptRun', run: { id: 'run-1', scriptId: 'risk', scope: 'all', baseRevision: 1, resultRevision: 1, changedRows: 0, unchangedRows: 2, failedRows: 0, diagnostics: [], completedAt: now } },
+		],
+		actor: { kind: 'user' }, createdAt: now,
+	});
+	const table = applied.snapshot.views[0];
+	assert.equal(table.type, 'table');
+	if (table.type === 'table') assert.deepEqual(table.groupByFields, ['area', 'done']);
+	assert.equal(applied.snapshot.scripts?.[0]?.name, 'Risk count');
+	assert.equal(applied.snapshot.scriptRuns?.[0]?.unchangedRows, 2);
+	const restored = applyPeakSheetPatch(applied.snapshot, applied.inverse).snapshot;
+	assert.equal(restored.scripts?.length ?? 0, 0);
+	assert.equal(restored.scriptRuns?.length ?? 0, 0);
+	console.log('PASS: Peak Sheet ordered grouping and saved declarative script history');
+}
+
 testPatchInverseAndFormula();
 testQueryAnalysisAndPerformance();
 testImports();
+testMultiGroupAndSavedScripts();

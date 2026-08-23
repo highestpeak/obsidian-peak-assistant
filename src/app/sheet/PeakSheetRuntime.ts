@@ -77,7 +77,7 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 	createBlankDataset(options?: PeakSheetCreateOptions): Promise<PeakSheetDatasetSnapshot> {
 		return this.createDataset({
 			name: 'Untitled sheet',
-			fields: [{ id: `field-${this.idFactory()}`, name: 'Name', type: 'text', width: 240 }],
+			fields: [],
 			rows: [],
 			diagnostics: [],
 			source: 'manual',
@@ -215,6 +215,8 @@ export class PeakSheetRuntime implements PeakSheetUiPort {
 			fields: draft.fields.map((field) => ({ ...field, options: field.options?.map((option) => ({ ...option })) })),
 			rows: draft.rows.map((row) => ({ ...row, cells: { ...row.cells } })),
 			views: deriveDefaultViews(draft),
+			scripts: draft.scripts?.map((script) => ({ ...script, steps: script.steps.map((step) => ({ ...step })) })),
+			scriptRuns: [],
 			createdAt,
 			updatedAt: createdAt,
 		};

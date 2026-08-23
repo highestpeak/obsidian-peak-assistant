@@ -17,6 +17,8 @@ const snapshot: PeakSheetDatasetSnapshot = {
 	fields: [{ id: 'task', name: 'Task', type: 'text', width: 220 }],
 	rows: [{ id: 'row-1', cells: { task: 'Ship file-native Sheet' } }],
 	views: [{ id: 'table-main', name: 'Table', type: 'table' }],
+	scripts: [{ id: 'count', name: 'Count', summary: 'Count rows', steps: [{ op: 'aggregate', metrics: [{ id: 'count', operation: 'count' }] }], createdAt: '2026-08-11T00:00:00.000Z', updatedAt: '2026-08-11T00:00:00.000Z' }],
+	scriptRuns: [],
 	createdAt: '2026-08-11T00:00:00.000Z',
 	updatedAt: '2026-08-11T00:01:00.000Z',
 };
@@ -33,6 +35,7 @@ async function run(): Promise<void> {
 	assert.equal(restored.name, 'Launch Tracker');
 	assert.equal(restored.datasetId, snapshot.datasetId);
 	assert.deepEqual(restored.rows, snapshot.rows);
+	assert.deepEqual(restored.scripts, snapshot.scripts);
 
 	const legacy = parsePeakSheetFileOrLegacy(JSON.stringify(snapshot), 'Archive/Renamed.peaksheet');
 	assert.equal(legacy.name, 'Renamed');

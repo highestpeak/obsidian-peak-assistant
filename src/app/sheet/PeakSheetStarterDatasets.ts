@@ -1,4 +1,4 @@
-import type { PeakSheetDatasetDraft, PeakSheetFieldDefinition, PeakSheetRow } from '@/core/sheet';
+import type { PeakSheetDatasetDraft, PeakSheetFieldDefinition, PeakSheetRow, PeakSheetScriptDefinition } from '@/core/sheet';
 
 export function createPeakSheetStarterDrafts(now: string): readonly PeakSheetDatasetDraft[] {
 	return [launchTracker(now), betaFeedback(), launchContent()];
@@ -21,7 +21,15 @@ function launchTracker(now: string): PeakSheetDatasetDraft {
 		row('beta-blockers', fields, { Task: 'Triage beta blockers', Area: 'Product', Priority: 'P0', Status: 'Doing', 'Created At': now, 'Updated At': now }),
 		row('onboarding', fields, { Task: 'Polish onboarding', Area: 'UI', Priority: 'P1', Status: 'Backlog', 'Created At': now, 'Updated At': now }),
 	];
-	return { name: 'Peak Assistant Launch Tracker', fields, rows, diagnostics: [], source: 'manual' };
+	return { name: 'Peak Assistant Launch Tracker', fields, rows, scripts: starterScripts(now), diagnostics: [], source: 'manual' };
+}
+
+function starterScripts(now: string): PeakSheetScriptDefinition[] {
+	return [
+		{ id: 'normalize-priority', name: 'Normalize priority', summary: 'Priority → normalize text for analysis', steps: [{ op: 'cast', fieldId: 'priority', target: 'text' }], createdAt: now, updatedAt: now },
+		{ id: 'release-risk-count', name: 'Count release risks', summary: 'Status → group → count open work', steps: [{ op: 'group', fieldId: 'status' }, { op: 'aggregate', metrics: [{ id: 'count', operation: 'count' }] }], createdAt: now, updatedAt: now },
+		{ id: 'area-chart', name: 'Chart work by area', summary: 'Area → grouped count → bar chart', steps: [{ op: 'chart', chartType: 'bar', categoryFieldId: 'area', metrics: [{ id: 'count', operation: 'count' }] }], createdAt: now, updatedAt: now },
+	];
 }
 
 function betaFeedback(): PeakSheetDatasetDraft {

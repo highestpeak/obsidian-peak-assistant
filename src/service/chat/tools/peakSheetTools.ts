@@ -24,7 +24,7 @@ const filtersSchema = z.object({ conjunction: z.enum(['all', 'any']), rules: z.a
 const sortsSchema = z.array(z.object({ fieldId: z.string(), direction: z.enum(['asc', 'desc']) }));
 const viewBaseSchema = { id: z.string(), name: z.string(), filters: filtersSchema.optional(), sorts: sortsSchema.optional() };
 const viewSchema = z.discriminatedUnion('type', [
-	z.object({ ...viewBaseSchema, type: z.literal('table'), groupBy: z.string().optional(), hiddenFieldIds: z.array(z.string()).optional() }),
+	z.object({ ...viewBaseSchema, type: z.literal('table'), groupBy: z.string().optional(), groupByFields: z.array(z.string()).optional(), hiddenFieldIds: z.array(z.string()).optional() }),
 	z.object({ ...viewBaseSchema, type: z.literal('chart'), chartType: z.enum(['bar', 'line', 'pie']), categoryFieldId: z.string(), series: z.array(z.object({ fieldId: z.string(), aggregate: z.enum(['count', 'sum', 'average', 'min', 'max']), label: z.string().optional() })).min(1) }),
 	z.object({ ...viewBaseSchema, type: z.literal('board'), laneFieldId: z.string(), titleFieldId: z.string(), cardFieldIds: z.array(z.string()).optional() }),
 	z.object({ ...viewBaseSchema, type: z.literal('calendar'), dateFieldId: z.string(), titleFieldId: z.string() }),
@@ -41,6 +41,13 @@ const analysisStepSchema = z.discriminatedUnion('op', [
 	z.object({ op: z.literal('derive'), fieldId: z.string(), formula: z.string() }),
 	z.object({ op: z.literal('chart'), chartType: z.enum(['bar', 'line', 'pie']), categoryFieldId: z.string(), metrics: z.array(metricSchema) }),
 ]);
+const scriptDefinitionSchema = z.object({
+	id: z.string(), name: z.string(), summary: z.string(), steps: z.array(analysisStepSchema).min(1).max(24), createdAt: z.string(), updatedAt: z.string(),
+});
+const scriptRunSchema = z.object({
+	id: z.string(), scriptId: z.string(), scope: z.enum(['selection', 'view', 'all']), baseRevision: z.number().int().positive(), resultRevision: z.number().int().positive(),
+	changedRows: z.number().int().nonnegative(), unchangedRows: z.number().int().nonnegative(), failedRows: z.number().int().nonnegative(), diagnostics: z.array(z.string()), completedAt: z.string(),
+});
 const operationSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('setCell'), rowId: z.string(), fieldId: z.string(), value: cellValueSchema }),
 	z.object({ type: z.literal('addRow'), row: rowSchema, index: z.number().optional() }),
@@ -54,6 +61,10 @@ const operationSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('setFieldFormula'), fieldId: z.string(), formula: z.string().optional() }),
 	z.object({ type: z.literal('upsertView'), view: viewSchema }),
 	z.object({ type: z.literal('deleteView'), viewId: z.string() }),
+	z.object({ type: z.literal('upsertScript'), script: scriptDefinitionSchema }),
+	z.object({ type: z.literal('deleteScript'), scriptId: z.string() }),
+	z.object({ type: z.literal('appendScriptRun'), run: scriptRunSchema }),
+	z.object({ type: z.literal('deleteScriptRun'), runId: z.string() }),
 	z.object({ type: z.literal('renameDataset'), name: z.string() }),
 	z.object({ type: z.literal('setDatasetDeleted'), deletedAt: z.string().optional() }),
 ]);

@@ -19,6 +19,8 @@ export interface PeakSheetFileDocument {
 	readonly fields: readonly PeakSheetFieldDefinition[];
 	readonly rows: readonly PeakSheetRow[];
 	readonly views: readonly PeakSheetViewDefinition[];
+	readonly scripts?: PeakSheetDatasetSnapshot['scripts'];
+	readonly scriptRuns?: PeakSheetDatasetSnapshot['scriptRuns'];
 	readonly createdAt: string;
 	readonly updatedAt: string;
 }
@@ -33,6 +35,8 @@ export function serializePeakSheetFile(snapshot: PeakSheetDatasetSnapshot): stri
 		fields: snapshot.fields,
 		rows: snapshot.rows,
 		views: snapshot.views,
+		scripts: snapshot.scripts,
+		scriptRuns: snapshot.scriptRuns,
 		createdAt: snapshot.createdAt,
 		updatedAt: snapshot.updatedAt,
 	};
@@ -55,6 +59,8 @@ export function parsePeakSheetFile(text: string, filePath: string): PeakSheetDat
 		fields: document.fields,
 		rows: document.rows,
 		views: document.views,
+		scripts: document.scripts,
+		scriptRuns: document.scriptRuns,
 		createdAt: document.createdAt,
 		updatedAt: document.updatedAt,
 	};
