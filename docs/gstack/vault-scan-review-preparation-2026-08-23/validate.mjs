@@ -33,6 +33,11 @@ const requiredIds = [
   'planned',
   'ready-attention',
   'task-plan',
+  'stream-kind',
+  'stream-route',
+  'stream-time',
+  'stream-text',
+  'stream-citation',
   'log-list',
   'new-events',
 ];
@@ -60,6 +65,8 @@ const contracts = [
   ['remaining estimate', /Estimated remaining/],
   ['read-only model receipt', /Models are read-only here · configured in Scan setup/],
   ['actual task model', /Claude Sonnet 4/],
+  ['live agent stream', /function renderLiveStream/],
+  ['full-row citation', /class="live-citation"/],
   ['non-follow log behavior', /The list will not move automatically/],
   ['pause interaction', /pause-btn/],
   ['restart interaction', /restart-btn/],
@@ -80,6 +87,9 @@ if (!/taskPlan\.dataset\.mode/.test(html)) {
 }
 if (/\.task-row\s*\{[^}]*animation:/s.test(html) || /\.log-row\s*\{[^}]*animation:/s.test(html)) {
   throw new Error('Repeated task and log updates must not replay entrance animations.');
+}
+if (/cursor-blink|stream-text::after/.test(html)) {
+  throw new Error('Live output must not restore a blinking cursor.');
 }
 
 if ((tags.get('h1') ?? 0) + (tags.get('h2') ?? 0) + (tags.get('p') ?? 0) > 0) {

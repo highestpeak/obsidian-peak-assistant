@@ -126,7 +126,15 @@
     .model-note { color: var(--ink-3); font-size: 10px; }
     .new-events { display: none; min-height: 28px; align-items: center; padding: 0 10px; border: 1px solid #d8d1f5; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 9.5px; font-weight: 720; cursor: pointer; }
     .new-events.visible { display: inline-flex; }
-    .log-list { height: 300px; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+    .live-output { min-height: 190px; padding: 17px 20px 15px; border-bottom: 1px solid var(--line); background: #fcfbff; }
+    .live-meta { display: flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: 10px; font-weight: 720; }
+    .live-meta i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .live-meta time { margin-left: auto; color: var(--ink-3); font: 9.5px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .live-copy { max-width: 1160px; min-height: 76px; margin-top: 15px; color: #393440; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
+    .live-citation { min-height: 34px; display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ece9f2; color: var(--ink-2); font-size: 10.5px; }
+    .live-citation .icon { color: var(--ink-3); }
+    .history-head { min-height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 0 17px; border-bottom: 1px solid var(--line); color: var(--ink-3); background: var(--surface-2); font-size: 9.5px; font-weight: 680; }
+    .log-list { height: 280px; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
     .log-empty { min-height: 150px; display: grid; place-items: center; color: var(--ink-3); }
     .log-row { display: grid; grid-template-columns: 78px 116px minmax(0, 1fr) 170px; gap: 15px; align-items: start; min-height: 54px; padding: 13px 17px; border-bottom: 1px solid var(--line); background: #fff; }
     .log-row:last-child { border-bottom: 0; }
@@ -210,6 +218,12 @@
         <div class="section-title"><svg class="icon"><use href="#i-review"/></svg><strong>Preparation log</strong></div>
         <div class="log-actions"><button class="new-events" id="new-events" type="button">0 new events · jump to latest</button><span class="model-note">Models are read-only here · configured in Scan setup</span></div>
       </div>
+      <div class="live-output">
+        <div class="live-meta"><i></i><span id="stream-kind">Controller</span><strong id="stream-route">Local rules</strong><time id="stream-time">0 sec</time></div>
+        <div class="live-copy" id="stream-text">Starting review preparation…</div>
+        <div class="live-citation"><svg class="icon sm"><use href="#i-file"/></svg><span id="stream-citation">Frozen review snapshot rp-42</span></div>
+      </div>
+      <div class="history-head"><span>Earlier in this preparation</span><span>Appends without moving your scroll position</span></div>
       <div class="log-list" id="log-list"><div class="log-empty">Preparation events will appear here. The list will not move automatically.</div></div>
     </section>
   </main>
@@ -240,6 +254,15 @@
       { tick: 23, kind: 'System', text: 'Published 7 maintenance tasks, 7 automatic receipts, and one attention result.', source: 'Completed snapshot' },
     ];
 
+    const STREAMS = [
+      { key: 'normalize', start: 0, end: 3, kind: 'Controller', route: 'Local rules', text: 'I am accounting for every retained finding before creating owner work. Deterministic lint results, index recovery receipts, existing tasks, and saved owner choices are being normalized into one frozen review ledger.', citation: 'Review snapshot rp-42 · 42 retained findings · 6 saved choices' },
+      { key: 'plan', start: 4, end: 7, kind: 'Agent', route: 'Claude Sonnet 4', text: 'I am comparing candidate groups with existing Work queue items. Property findings share one owner question, while Community membership and source-file changes must stay separate because they have different write boundaries and verification paths.', citation: 'Existing tasks mt-12 and mt-18 · Community evidence v19' },
+      { key: 'draft', start: 8, end: 12, kind: 'Agent', route: 'Claude Sonnet 4', text: 'The broken-reference evidence contains 63 exact references across 18 files. I am keeping this as one owner task with interchangeable Target, File, and exact-reference views instead of creating one task per file.', citation: '63 broken-reference atoms · 18 source revisions · 11 unresolved targets' },
+      { key: 'validate', start: 13, end: 17, kind: 'Agent', route: 'Claude Sonnet 4', text: 'I am validating suggested Community membership against the owner overrides retained from the previous scan. The suggestions can change, but the six saved owner choices remain authoritative and will not be overwritten.', citation: '9 membership candidates · 6 owner choices · Research Community v19' },
+      { key: 'boundary', start: 18, end: 22, kind: 'Controller', route: 'Local validator', text: 'I am checking that every task has an owner action, an owner surface, a write boundary, cited evidence, and a verifiable exit. Split candidates remain needs-choice because no guarded source proposal exists yet.', citation: '7 planned tasks · completion gate revision 2' },
+      { key: 'complete', start: 23, end: 23, kind: 'Controller', route: 'Local receipt', text: 'Review preparation is complete. Seven maintenance tasks and seven automatic receipts were published. One recovery task needs attention. No proposal was generated and no user file was changed.', citation: 'Completed snapshot · run-vault-7f2c' },
+    ];
+
     const state = {
       running: true,
       stopped: false,
@@ -251,6 +274,8 @@
       selectedProvider: 'Anthropic',
       routeClass: 'remote',
       aiEnabled: true,
+      streamKey: null,
+      streamChars: 0,
     };
 
     const logList = document.getElementById('log-list');
@@ -381,10 +406,30 @@
       }
     }
 
+    function activeStream() {
+      if (state.stopped) return { key: 'stopped', kind: 'Controller', route: 'Local checkpoint', text: 'Review preparation stopped. Completed task groups and every unprocessed review atom were saved to the partial checkpoint.', citation: 'Partial checkpoint · run-vault-7f2c' };
+      return STREAMS.find(stream => state.tick >= stream.start && state.tick <= stream.end) ?? STREAMS[STREAMS.length - 1];
+    }
+
+    function renderLiveStream(advance = false) {
+      const stream = activeStream();
+      if (state.streamKey !== stream.key) {
+        state.streamKey = stream.key;
+        state.streamChars = state.tick >= 23 || state.stopped ? stream.text.length : 0;
+      }
+      if (advance && state.running && state.tick < 23) state.streamChars = Math.min(stream.text.length, state.streamChars + 7);
+      document.getElementById('stream-kind').textContent = stream.kind;
+      document.getElementById('stream-route').textContent = stream.route;
+      document.getElementById('stream-time').textContent = formatDuration(state.elapsed);
+      document.getElementById('stream-text').textContent = stream.text.slice(0, state.streamChars) || 'Starting review preparation…';
+      document.getElementById('stream-citation').textContent = stream.citation;
+    }
+
     function render() {
       updateHeader();
       renderTasks();
       updateEvents();
+      renderLiveStream();
     }
 
     function restart() {
@@ -394,6 +439,8 @@
       state.elapsed = 0;
       state.eventIndex = 0;
       state.unreadEvents = 0;
+      state.streamKey = null;
+      state.streamChars = 0;
       logList.innerHTML = '<div class="log-empty">Preparation events will appear here. The list will not move automatically.</div>';
       newEvents.classList.remove('visible');
       render();
@@ -425,6 +472,8 @@
       if (state.tick >= 23) state.running = false;
       render();
     }, 900);
+
+    setInterval(() => renderLiveStream(true), 70);
 
     render();
   </script>
