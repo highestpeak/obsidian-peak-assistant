@@ -1095,13 +1095,22 @@ export class VaultIntelligenceRuntime {
 		this.startStage('index', 'Updating full-text passages and the Knowledge Index.');
 		this.patchStage('index', { processed: completedCore.size, total: fullTextPaths.length, currentPath: null });
 		this.preparePerDocumentOperations(index, pathEligibility);
-		let enrichmentTail = Promise.resolve();
+		let embeddingTail = Promise.resolve();
+		let aiEnrichmentTail = Promise.resolve();
 		let enrichmentFailure: unknown = null;
 		const enqueueEnrichment = (path: string) => {
-			enrichmentTail = enrichmentTail.then(async () => {
+			embeddingTail = embeddingTail.then(async () => {
 				if (this.snapshot.run.stopRequested || enrichmentFailure || !index) return;
 				try {
-					await this.enrichReadyDocument(index, path);
+					await this.runVectorEnrichmentForPath(index, path);
+				} catch (error) {
+					enrichmentFailure = error;
+				}
+			});
+			aiEnrichmentTail = aiEnrichmentTail.then(async () => {
+				if (this.snapshot.run.stopRequested || enrichmentFailure || !index) return;
+				try {
+					await this.runLlmEnrichmentForPath(index, path);
 				} catch (error) {
 					enrichmentFailure = error;
 				}
@@ -1126,7 +1135,7 @@ export class VaultIntelligenceRuntime {
 			},
 			() => !this.snapshot.run.stopRequested && !enrichmentFailure,
 		);
-		await enrichmentTail;
+		await Promise.all([embeddingTail, aiEnrichmentTail]);
 		if (enrichmentFailure) throw enrichmentFailure;
 		if (this.snapshot.run.stopRequested) throw new Error('Vault Scan stopped at the next core-index document checkpoint.');
 		this.finalizePerDocumentOperations();
@@ -1166,12 +1175,6 @@ export class VaultIntelligenceRuntime {
 			});
 			this.patchOperation(id, { status: 'running', total: eligiblePaths.length, processed: existing.filter((attempt) => attempt.status !== 'not-eligible').length, plannedRoute, startedAt: operation.startedAt ?? this.now(), executionId: operation.executionId ?? this.idFactory(), attempts: [...existing, ...ineligibleReceipts], error: null });
 		}
-	}
-
-	private async enrichReadyDocument(index: IndexService, path: string): Promise<void> {
-		await this.runVectorEnrichmentForPath(index, path);
-		if (this.snapshot.run.stopRequested) return;
-		await this.runLlmEnrichmentForPath(index, path);
 	}
 
 	private async runVectorEnrichmentForPath(index: IndexService, path: string): Promise<void> {
@@ -1238,22 +1241,37 @@ export class VaultIntelligenceRuntime {
 			this.indexErrors.push(...result.errors);
 			if (result.attempts.length === 0) throw new Error(`AI enrichment route ${group.route.provider}/${group.route.model} returned without a terminal receipt for ${path}.`);
 			const sourceAttempts = result.attempts;
-			const receipts: VaultScanOperationAttemptReceipt[] = sourceAttempts.map((attempt) => ({
-				id: this.idFactory(), executionId, path: attempt.path, status: attempt.status,
-				plannedRoute: group.route, actualRoute: attempt.status === 'produced' || attempt.status === 'partial' ? group.route : null,
-				startedAt: attempt.startedAt, completedAt: attempt.completedAt, usage: normalizeUsage(attempt.usage, attempt.costUsd), error: attempt.error,
-				evidence: [attempt.status === 'not-eligible' ? `AI enrichment is not supported for ${attempt.path}.` : attempt.status === 'produced' ? `Requested generated knowledge was produced for ${attempt.path}.` : attempt.error ?? `Generated knowledge did not complete for ${attempt.path}.`],
-			}));
-			const receiptUsage = sumAttemptUsage(receipts);
+			const receiptUsage = sourceAttempts.reduce<VaultScanUsage>((total, attempt) => {
+				return addVaultUsage(total, normalizeUsage(attempt.usage, attempt.costUsd));
+			}, { ...EMPTY_USAGE });
 			if (receiptUsage.totalTokens > 0 && receiptUsage.costUsd === 0) receiptUsage.costUsd = await this.deps.calculateCostUsd(group.route.provider, group.route.model, receiptUsage);
 			for (const id of group.ids) {
 				const current = this.operation(id)!;
+				const outputKey = id === 'file-summaries' ? 'summary' : 'tags';
+				const receipts: VaultScanOperationAttemptReceipt[] = sourceAttempts.map((attempt) => {
+					const outputStatus = attempt.outputs?.[outputKey];
+					const status: VaultScanOperationAttemptReceipt['status'] = outputStatus === 'produced'
+						? 'produced'
+						: outputStatus === 'failed'
+							? 'failed'
+							: attempt.status;
+					const produced = status === 'produced' || status === 'partial';
+					return {
+						id: this.idFactory(), executionId, path: attempt.path, status,
+						plannedRoute: group.route, actualRoute: produced ? group.route : null,
+						startedAt: attempt.startedAt, completedAt: attempt.completedAt, usage: normalizeUsage(attempt.usage, attempt.costUsd), error: status === 'produced' ? null : attempt.error,
+						evidence: [attempt.status === 'not-eligible' ? `${id === 'file-summaries' ? 'Summary' : 'AI Tags'} is not supported for ${attempt.path}.` : status === 'produced' ? `${id === 'file-summaries' ? 'Summary' : 'AI Tags'} was produced for ${attempt.path}.` : attempt.error ?? `${id === 'file-summaries' ? 'Summary' : 'AI Tags'} did not complete for ${attempt.path}.`],
+						generatedKnowledge: id === 'file-summaries'
+							? { summary: attempt.generatedKnowledge?.summary ?? null }
+							: { tags: attempt.generatedKnowledge?.tags ?? [] },
+					};
+				});
 				const attempts = [...(current.attempts ?? []), ...receipts];
 				const usage = sumAttemptUsage(attempts);
 				if (receiptUsage.costUsd > 0 && usage.costUsd === 0) usage.costUsd = receiptUsage.costUsd;
 				this.patchOperation(id, { status: 'running', processed: attempts.filter((candidate) => candidate.status !== 'not-eligible').length, currentPath: null, usage, actualRoute: receipts.some((attempt) => attempt.actualRoute) ? group.route : current.actualRoute ?? null, attempts, error: result.errors[0]?.message ?? current.error ?? null, evidence: [`${attempts.filter((attempt) => attempt.status === 'produced').length.toLocaleString()} provider-produced and ${attempts.filter((attempt) => attempt.status === 'already-current').length.toLocaleString()} already-current document receipts.`] });
 			}
-			const failed = receipts.find((attempt) => ['failed', 'partial', 'cancelled'].includes(attempt.status));
+			const failed = sourceAttempts.find((attempt) => ['failed', 'partial', 'cancelled'].includes(attempt.status));
 			if (failed) throw new Error(`AI enrichment route ${group.route.provider}/${group.route.model} failed for ${path}: ${failed.error ?? 'provider completion was not produced'}`);
 		}
 	}

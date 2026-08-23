@@ -1408,12 +1408,39 @@ function AiRunWorkspace({ run, runtime }: { run: VaultIntelligenceSnapshot['run'
 
 function BuildIndexParityWorkspace({ run, stage }: { run: VaultIntelligenceSnapshot['run']; stage: VaultIntelligenceSnapshot['run']['stages'][number] }) {
 	const [inspectOpen, setInspectOpen] = useState(false);
+	const [knowledgePath, setKnowledgePath] = useState<string | null>(null);
+	const knowledgeTriggerRef = useRef<HTMLButtonElement | null>(null);
+	const closeKnowledge = () => {
+		setKnowledgePath(null);
+		queueMicrotask(() => knowledgeTriggerRef.current?.focus());
+	};
+	useEffect(() => {
+		if (!knowledgePath) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== 'Escape') return;
+			event.preventDefault();
+			closeKnowledge();
+		};
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
+	}, [knowledgePath]);
 	const corePaths = new Set(run.coreIndexedPaths ?? []);
 	const operations = run.operations.filter((operation) => ['embedding-refresh', 'file-summaries', 'ai-tags'].includes(operation.id));
 	const embedding = operations.find((operation) => operation.id === 'embedding-refresh') ?? null;
 	const aiOperations = operations.filter((operation) => operation.id === 'file-summaries' || operation.id === 'ai-tags');
+	const summaries = aiOperations.find((operation) => operation.id === 'file-summaries') ?? null;
+	const aiTags = aiOperations.find((operation) => operation.id === 'ai-tags') ?? null;
 	const attemptDone = (operation: typeof embedding, path: string) => Boolean(operation?.attempts?.some((attempt) => attempt.path === path && ['produced', 'already-current'].includes(attempt.status)));
 	const attemptNotEligible = (operation: typeof embedding, path: string) => Boolean(operation?.attempts?.some((attempt) => attempt.path === path && attempt.status === 'not-eligible'));
+	const attemptFor = (operation: typeof embedding, path: string) => [...(operation?.attempts ?? [])].reverse().find((attempt) => attempt.path === path) ?? null;
+	const knowledgeState = (operation: typeof embedding, path: string, eligible: boolean) => {
+		if (!eligible || attemptNotEligible(operation, path)) return { label: 'Not eligible', className: 'is-not-supported' };
+		const attempt = attemptFor(operation, path);
+		if (attempt?.status === 'produced' || attempt?.status === 'already-current') return { label: 'Ready', className: 'is-done' };
+		if (attempt && ['failed', 'partial', 'cancelled'].includes(attempt.status)) return { label: 'Failed', className: 'is-failed' };
+		if (operation?.currentPath === path) return { label: 'Generating', className: 'is-running' };
+		return { label: corePaths.has(path) ? 'Queued' : 'Waiting for text', className: '' };
+	};
 	const searchEligiblePaths = run.frozenPaths.filter((path) => run.pathEligibility?.[path]?.fullText !== false);
 	const embeddingEligiblePaths = run.frozenPaths.filter((path) => run.pathEligibility?.[path]?.embeddings !== false);
 	const aiEligiblePaths = run.frozenPaths.filter((path) => run.pathEligibility?.[path]?.aiEnrichment !== false);
@@ -1429,6 +1456,14 @@ function BuildIndexParityWorkspace({ run, stage }: { run: VaultIntelligenceSnaps
 	const percent = workTotal > 0 ? Math.round(workDone / workTotal * 100) : 0;
 	const elapsed = run.startedAt ? elapsedLabel(run.startedAt, Date.now()) : '0s';
 	const usage = displayRunUsage(aiOperations);
+	const latestGeneratedPath = aiOperations.flatMap((operation) => operation.attempts ?? [])
+		.filter((attempt) => attempt.path && attempt.generatedKnowledge)
+		.sort((left, right) => right.completedAt - left.completedAt)[0]?.path ?? null;
+	const currentKnowledgePath = aiOperations.find((operation) => operation.currentPath)?.currentPath
+		?? latestGeneratedPath
+		?? aiEligiblePaths.find((path) => corePaths.has(path))
+		?? aiEligiblePaths[0]
+		?? null;
 	const laneRows = (kind: 'search' | 'embedding' | 'ai') => {
 		const activePath = kind === 'search' ? stage.currentPath : kind === 'embedding' ? embedding?.currentPath : aiOperations.find((operation) => operation.currentPath)?.currentPath;
 		const paths = kind === 'search' ? searchEligiblePaths : kind === 'embedding' ? embeddingEligiblePaths : aiEligiblePaths;
@@ -1445,11 +1480,32 @@ function BuildIndexParityWorkspace({ run, stage }: { run: VaultIntelligenceSnaps
 		{ id: 'embedding' as const, title: 'Embeddings', icon: <GitBranch size={23} />, count: counts.embedding, total: totals.embedding, rate: 'Measuring…', facts: ['Estimated time calculating', 'Chunks counted at commit', `${embedding?.currentPath ? 1 : 0} active files`], tooltip: 'Chunks eligible search-ready documents and generates vectors with the configured model.' },
 		{ id: 'ai' as const, title: 'AI enrichment', icon: <Sparkles size={23} />, count: counts.ai, total: totals.ai, rate: usage.providerReceiptCount ? `${formatCompactNumber(usage.totalTokens)} tokens` : 'Usage unavailable', facts: ['Eligible Markdown only', usage.providerReceiptCount ? `${formatMoney(usage.costUsd)} actual` : 'No provider receipt yet', `${aiOperations.filter((operation) => operation.status === 'running').length} active operations`], tooltip: 'Generates summaries and machine-only AI Tags for eligible Markdown files. Unsupported files are explicitly Not supported.' },
 	];
+	const previewSummaryReceipt = currentKnowledgePath ? attemptFor(summaries, currentKnowledgePath) : null;
+	const previewTagsReceipt = currentKnowledgePath ? attemptFor(aiTags, currentKnowledgePath) : null;
+	const previewEligible = Boolean(currentKnowledgePath && run.pathEligibility?.[currentKnowledgePath]?.aiEnrichment !== false);
+	const previewSummaryState = currentKnowledgePath ? knowledgeState(summaries, currentKnowledgePath, previewEligible) : { label: 'Queued', className: '' };
+	const previewTagsState = currentKnowledgePath ? knowledgeState(aiTags, currentKnowledgePath, previewEligible) : { label: 'Queued', className: '' };
+	const previewTags = previewTagsReceipt?.generatedKnowledge?.tags ?? [];
+	const detailSummaryReceipt = knowledgePath ? attemptFor(summaries, knowledgePath) : null;
+	const detailTagsReceipt = knowledgePath ? attemptFor(aiTags, knowledgePath) : null;
+	const detailEligible = Boolean(knowledgePath && run.pathEligibility?.[knowledgePath]?.aiEnrichment !== false);
+	const detailSummaryState = knowledgePath ? knowledgeState(summaries, knowledgePath, detailEligible) : { label: 'Queued', className: '' };
+	const detailTagsState = knowledgePath ? knowledgeState(aiTags, knowledgePath, detailEligible) : { label: 'Queued', className: '' };
 	return <div className="pk-vi-build-parity">
 		<section className="pk-vi-build-summary"><div className="pk-vi-build-overall"><i><ListChecks size={28} /></i><div><strong>Building search, semantic, and AI layers.</strong><span className="pk-vi-build-number">{percent}% <small>overall progress</small></span><ProgressBar value={percent} /><span className="pk-vi-build-facts"><b>{elapsed}</b> elapsed <b>Calculating…</b> target <b>{workDone} / {workTotal}</b> eligible layer passes</span></div></div><div className="pk-vi-build-outcomes">{lanes.map((lane) => { const lanePercent = lane.total > 0 ? Math.round(lane.count / lane.total * 100) : 100; return <div key={lane.id} className={`is-${lane.count >= lane.total ? 'complete' : stage.status}`} title={lane.tooltip}><i>{lane.icon}</i><strong>{lane.id === 'search' ? 'Building search' : lane.id === 'embedding' ? 'Semantic ready' : 'Fully enriched'}</strong><span><b>{lanePercent}%</b><small>done</small></span><span><b>{lane.count} / {lane.total}</b><small>eligible</small></span><span><b>{elapsed}</b><small>elapsed</small></span><span><b>Calculating…</b><small>target</small></span></div>; })}</div></section>
 		<section className="pk-vi-build-card"><header><strong>One document stream · three independent lanes</strong><span><i />Complete <i />Running <i />Queued</span></header><div className="pk-vi-build-pipeline">{lanes.map((lane, laneIndex) => { const lanePercent = lane.total > 0 ? Math.round(lane.count / lane.total * 100) : 100; const rows = laneRows(lane.id); return <article key={lane.id} className={`pk-vi-build-lane is-${lane.id}`}><span className="pk-vi-build-marker">{laneIndex + 1}</span><div className="pk-vi-build-lane-title"><i>{lane.icon}</i><span><strong>{lane.title}</strong><em>{lane.count >= lane.total ? 'Complete' : stage.status === 'running' ? 'Running' : stage.status}</em></span></div><div className="pk-vi-build-lane-progress"><span><b>{lane.count} / {lane.total}</b> eligible documents <strong>{lane.rate}</strong></span><ProgressBar value={lanePercent} /><div>{lane.facts.map((fact) => <small key={fact}>{fact}</small>)}</div></div><div className="pk-vi-build-window"><header><span>Current files</span><span>{rows.filter((row) => row.state === 'running').length} active · {rows.filter((row) => row.state === 'queued').length} next</span></header>{rows.length ? rows.map((row) => <span key={row.path} className={`is-${row.state}`}><i /><strong title={row.path}>{row.path}</strong><em>{row.model}</em><small>{row.label}</small></span>) : <div className="pk-vi-build-empty">No eligible files in this lane.</div>}</div></article>; })}</div></section>
-		<details className="pk-vi-build-inspect" onToggle={(event) => setInspectOpen(event.currentTarget.open)}><summary><span><FileText size={14} /><strong>Inspect all document states</strong><small>{run.frozenPaths.length} files</small></span><ChevronDown size={14} /></summary>{inspectOpen && <div><header><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>AI enrichment</span></header>{run.frozenPaths.length ? run.frozenPaths.map((path) => { const searchUnsupported = run.pathEligibility?.[path]?.fullText === false; const embeddingUnsupported = run.pathEligibility?.[path]?.embeddings === false || attemptNotEligible(embedding, path); const aiUnsupported = run.pathEligibility?.[path]?.aiEnrichment === false || (aiOperations.length > 0 && aiOperations.every((operation) => attemptNotEligible(operation, path))); const aiComplete = !aiUnsupported && aiOperations.length > 0 && aiOperations.every((operation) => attemptDone(operation, path)); return <span key={path}><strong>{path}</strong><em className={corePaths.has(path) ? 'is-done' : searchUnsupported ? 'is-not-supported' : ''}>{searchUnsupported ? 'Not supported' : corePaths.has(path) ? 'Complete' : path === stage.currentPath ? 'Running' : 'Queued'}</em><em className={attemptDone(embedding, path) ? 'is-done' : embeddingUnsupported ? 'is-not-supported' : ''}>{embeddingUnsupported ? 'Not supported' : attemptDone(embedding, path) ? 'Complete' : embedding?.currentPath === path ? 'Running' : 'Queued'}</em><em className={aiComplete ? 'is-done' : aiUnsupported ? 'is-not-supported' : ''}>{aiUnsupported ? 'Not supported' : aiComplete ? 'Complete' : aiOperations.some((operation) => operation.currentPath === path) ? 'Running' : 'Queued'}</em></span>; }) : <div className="pk-vi-build-empty">No documents are in the frozen Scan scope.</div>}</div>}
-		</details>
+		<section className="pk-vi-generated-preview" aria-live="polite">
+			<header><div><strong>Generated knowledge · current document</strong><span>See the Summary and AI Tags as each selected operation finishes.</span></div><Button variant="outline" disabled={!currentKnowledgePath || !previewEligible} onClick={(event) => { knowledgeTriggerRef.current = event.currentTarget; setKnowledgePath(currentKnowledgePath); }}>Inspect generated knowledge</Button></header>
+			<div className="pk-vi-generated-preview-body">
+				<div className="pk-vi-generated-document"><span>Current document</span><strong title={currentKnowledgePath ?? undefined}>{currentKnowledgePath ?? 'Waiting for Core Search'}</strong><small>{currentKnowledgePath ? summaries?.plannedRoute?.model === aiTags?.plannedRoute?.model ? summaries?.plannedRoute?.model ?? 'AI route pending' : `Summary · ${summaries?.plannedRoute?.model ?? 'Not selected'} · AI Tags · ${aiTags?.plannedRoute?.model ?? 'Not selected'}` : 'AI enrichment has not started'}</small></div>
+				<div className="pk-vi-generated-output-list">
+					<div className="pk-vi-generated-output"><span>Summary</span><strong>{previewSummaryReceipt?.generatedKnowledge?.summary || (previewSummaryState.label === 'Generating' ? 'Generating the complete Summary response…' : previewSummaryState.label)}</strong><em className={previewSummaryState.className}>{previewSummaryState.label}</em></div>
+					<div className="pk-vi-generated-output"><span>AI Tags</span><div className="pk-vi-generated-tags">{previewTags.length ? previewTags.map((tag) => <i key={tag}>{tag}</i>) : <strong>{previewTagsState.label === 'Generating' ? 'Generating AI Tags…' : previewTagsState.label}</strong>}</div><em className={previewTagsState.className}>{previewTagsState.label}</em></div>
+				</div>
+			</div>
+		</section>
+		<details className="pk-vi-build-inspect" onToggle={(event) => setInspectOpen(event.currentTarget.open)}><summary><span><FileText size={14} /><strong>Inspect all document states</strong><small>{run.frozenPaths.length} files</small></span><ChevronDown size={14} /></summary>{inspectOpen && <div><header><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>Summary</span><span>AI Tags</span></header>{run.frozenPaths.length ? run.frozenPaths.map((path) => { const searchUnsupported = run.pathEligibility?.[path]?.fullText === false; const embeddingUnsupported = run.pathEligibility?.[path]?.embeddings === false || attemptNotEligible(embedding, path); const aiEligible = run.pathEligibility?.[path]?.aiEnrichment !== false; const summaryState = knowledgeState(summaries, path, aiEligible); const tagState = knowledgeState(aiTags, path, aiEligible); const openable = aiEligible && (corePaths.has(path) || Boolean(attemptFor(summaries, path) || attemptFor(aiTags, path))); return <Button key={path} variant="ghost" className="pk-vi-build-inspect-row" disabled={!openable} onClick={(event) => { knowledgeTriggerRef.current = event.currentTarget; setKnowledgePath(path); }}><strong title={path}>{path}</strong><em className={corePaths.has(path) ? 'is-done' : searchUnsupported ? 'is-not-supported' : ''}>{searchUnsupported ? 'Not supported' : corePaths.has(path) ? 'Complete' : path === stage.currentPath ? 'Running' : 'Queued'}</em><em className={attemptDone(embedding, path) ? 'is-done' : embeddingUnsupported ? 'is-not-supported' : ''}>{embeddingUnsupported ? 'Not supported' : attemptDone(embedding, path) ? 'Complete' : embedding?.currentPath === path ? 'Running' : 'Queued'}</em><em className={summaryState.className}>{summaryState.label}</em><em className={tagState.className}>{tagState.label}</em></Button>; }) : <div className="pk-vi-build-empty">No documents are in the frozen Scan scope.</div>}</div>}</details>
+		{knowledgePath && <div className="pk-vi-generated-overlay" onPointerDown={(event) => { if (event.target === event.currentTarget) closeKnowledge(); }}><section role="dialog" aria-modal="true" aria-label="Generated knowledge"><header><div><span>Generated knowledge</span><strong>{knowledgePath.split('/').at(-1)}</strong></div><Button variant="ghost" className="pk-vi-dialog-close" aria-label="Close generated knowledge" onClick={closeKnowledge}><X size={17} /></Button></header><div className="pk-vi-generated-detail"><section><strong>Source document</strong><span><small>Path</small><b>{knowledgePath}</b></span><span><small>Eligibility</small><b>{detailEligible ? 'Markdown · selected enrichment can run' : 'Not eligible for Markdown enrichment · skipped'}</b></span></section><section><strong>Summary <em className={detailSummaryState.className}>{detailSummaryState.label}</em></strong><span className="pk-vi-generated-detail-copy">{detailSummaryReceipt?.generatedKnowledge?.summary || (detailSummaryState.label === 'Generating' ? 'The model request is active. The complete response appears after it is committed.' : detailSummaryState.label)}</span><span><small>Model</small><b>{summaries?.plannedRoute?.model ?? 'Not selected'}</b></span></section><section><strong>AI Tags <em className={detailTagsState.className}>{detailTagsState.label}</em></strong><div className="pk-vi-generated-tags">{detailTagsReceipt?.generatedKnowledge?.tags?.length ? detailTagsReceipt.generatedKnowledge.tags.map((tag) => <i key={tag}>{tag}</i>) : <span>{detailTagsState.label === 'Generating' ? 'The tag request is active. Tags appear after the complete response is committed.' : detailTagsState.label}</span>}</div><span><small>Model</small><b>{aiTags?.plannedRoute?.model ?? 'Not selected'}</b></span></section><section><strong>Storage boundary</strong><span><small>Source file</small><b>Unchanged</b></span><span><small>Generated data</small><b>Peak-owned machine knowledge in the Index</b></span></section></div><footer><Button variant="outline" onClick={closeKnowledge}>Close</Button></footer></section></div>}
 	</div>;
 }
 

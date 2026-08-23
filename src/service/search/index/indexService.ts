@@ -2348,7 +2348,7 @@ export class IndexService
 						usage: snap.usage,
 						costUsd: snap.costUsd,
 					};
-					attempts.push({ path, status: 'produced', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: null });
+					attempts.push({ path, status: 'produced', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: null, outputs: snap.outputs, generatedKnowledge: snap.generatedKnowledge });
 					tracker.recordDocComplete(plan, actual);
 					options?.onProgress?.(
 						tracker.snapshot({
@@ -2371,7 +2371,7 @@ export class IndexService
 						usage: snap?.usage ?? emptyUsage(),
 						costUsd: snap?.costUsd ?? 0,
 					};
-					attempts.push({ path, status: snap?.status === 'partial' ? 'partial' : 'failed', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: message });
+					attempts.push({ path, status: snap?.status === 'partial' ? 'partial' : 'failed', startedAt: t0, completedAt: Date.now(), route: options?.llmRoute ?? null, usage: actual.usage, costUsd: actual.costUsd, error: message, outputs: snap?.outputs, generatedKnowledge: snap?.generatedKnowledge });
 					tracker.recordDocComplete(plan, actual);
 					options?.onProgress?.(
 						tracker.snapshot({

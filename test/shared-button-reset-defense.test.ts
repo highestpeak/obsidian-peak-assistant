@@ -185,6 +185,12 @@ assert.match(
 	'Vault Intelligence activity cells must remain square under the Obsidian reset',
 );
 
+assert.match(
+	primitiveCss,
+	/\.peak-design-root \.pk-vi-build-inspect-row\.pk-btn\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-height:\s*40px !important;[\s\S]*?max-height:\s*none !important;[\s\S]*?padding:\s*0 15px !important;/,
+	'Vault Intelligence document-state rows must retain the Mock table geometry under the Obsidian reset',
+);
+
 assert.doesNotMatch(
 	primitiveCss,
 	/\.pk-vi-graph-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 240px;/,

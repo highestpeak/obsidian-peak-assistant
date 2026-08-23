@@ -290,6 +290,20 @@ export class MarkdownDocumentLoader extends BaseDocumentLoader {
 						tags: !runTagLlm ? 'not-requested' : tagRes.llmTagRunStatus === 'success' ? 'produced' : 'failed',
 						summary: !runSummaryLlm ? 'not-requested' : summaryContent.shortSummary ? 'produced' : 'failed',
 					},
+					generatedKnowledge: {
+						summary: runSummaryLlm && summaryContent.shortSummary?.trim()
+							? summaryContent.shortSummary.trim()
+							: null,
+						tags: runTagLlm
+							? [...new Set([
+								...tagRes.topicTags,
+								...tagRes.functionalTagEntries.map((entry) => entry.label?.trim() || entry.id),
+								...tagRes.timeTags,
+								...tagRes.geoTags,
+								...tagRes.personTags,
+							].filter(Boolean))].slice(0, 12)
+							: [],
+					},
 				});
 			}
 

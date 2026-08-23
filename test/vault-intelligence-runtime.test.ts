@@ -461,12 +461,17 @@ async function main(): Promise<void> {
 			enrichmentPaths.push([...(options.paths ?? [])]);
 			return { processed: 1, skippedWrongTenant: 0, errors: [] };
 		},
-		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[]; includeSummary?: boolean; llmRoute: { profileId: string; modelId: string; provider: string } }) => {
+		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[]; includeSummary?: boolean; includeTags?: boolean; llmRoute: { profileId: string; modelId: string; provider: string } }) => {
 			enrichmentPaths.push([...(options.paths ?? [])]);
 			llmRoutes.push(options.llmRoute);
 			return {
 				processed: 1, skippedWrongTenant: 0, errors: [],
-				attempts: [{ path: options.paths?.[0] ?? '', status: 'produced', startedAt: now, completedAt: now + 1, usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }, costUsd: 0, error: null }],
+				attempts: [{
+					path: options.paths?.[0] ?? '', status: 'produced', startedAt: now, completedAt: now + 1,
+					usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }, costUsd: 0, error: null,
+					outputs: { summary: options.includeSummary ? 'produced' : 'not-requested', tags: 'produced' },
+					generatedKnowledge: { summary: options.includeSummary ? 'Generated summary' : null, tags: ['generated-tag'] },
+				}],
 			};
 		},
 		runMobiusGlobalMaintenance: async () => undefined,
@@ -485,14 +490,20 @@ async function main(): Promise<void> {
 	assert.deepEqual(enrichmentPaths, [[otherFile.path], [otherFile.path], [otherFile.path]], 'every selected enrichment operation must stay inside the frozen scope');
 	assert.deepEqual(llmRoutes[0], { profileId: 'lmstudio', modelId: 'gemma-3', provider: 'lmstudio' }, 'the selected local summary route must reach the real document provider call');
 	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.attempts?.[0]?.status, 'produced');
+	assert.equal(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'file-summaries')?.attempts?.[0]?.generatedKnowledge?.summary, 'Generated summary');
+	assert.deepEqual(enrichedRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'ai-tags')?.attempts?.[0]?.generatedKnowledge?.tags, ['generated-tag']);
 
 	const pipelineEvents: string[] = [];
 	let firstDocumentEnrichmentStarted!: () => void;
 	const firstDocumentEnrichment = new Promise<void>((resolve) => { firstDocumentEnrichmentStarted = resolve; });
+	let releaseFirstVector!: () => void;
+	const firstVectorGate = new Promise<void>((resolve) => { releaseFirstVector = resolve; });
 	const pipelinedIndexService = {
 		...indexService,
 		runPendingVectorIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[] }) => {
-			pipelineEvents.push(`vector:${options.paths?.[0]}`);
+			const path = options.paths?.[0] ?? '';
+			pipelineEvents.push(`vector:${path}`);
+			if (path === file.path) await firstVectorGate;
 			return { processed: 1, skippedWrongTenant: 0, errors: [] };
 		},
 		runPendingLlmIndexEnrichment: async (_settings: unknown, options: { paths?: readonly string[] }) => {
@@ -517,7 +528,16 @@ async function main(): Promise<void> {
 		...operation,
 		enabled: ['embedding-refresh', 'file-summaries'].includes(operation.id),
 	}));
-	await pipelinedRuntime.startScan(pipelinedPlan);
+	const pipelinedScan = pipelinedRuntime.startScan(pipelinedPlan);
+	await firstDocumentEnrichment;
+	assert.ok(
+		pipelineEvents.includes(`vector:${file.path}`) && pipelineEvents.includes(`llm:${file.path}`),
+		'Embedding and AI enrichment must start as independent lanes for the same Core Search-ready document',
+	);
+	assert.equal(pipelinedRuntime.getSnapshot().run.currentStage, 'index', 'Build Index must remain current until every selected enrichment lane reaches a terminal receipt');
+	assert.equal(pipelinedRuntime.getSnapshot().run.stages.find((stage) => stage.id === 'ai')?.status, 'waiting', 'Vault-wide discovery must not start while an Index lane is still active');
+	releaseFirstVector();
+	await pipelinedScan;
 	assert.ok(
 		pipelineEvents.indexOf(`llm:${file.path}`) < pipelineEvents.indexOf(`core:${otherFile.path}`),
 		'per-document AI enrichment must start as soon as the first Core Search document is ready',

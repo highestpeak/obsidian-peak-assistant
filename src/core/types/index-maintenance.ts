@@ -56,6 +56,14 @@ export interface LlmIndexEnrichmentAttempt {
 	usage: LLMUsage;
 	costUsd: number;
 	error: string | null;
+	outputs?: {
+		tags: 'not-requested' | 'produced' | 'failed';
+		summary: 'not-requested' | 'produced' | 'failed';
+	};
+	generatedKnowledge?: {
+		summary: string | null;
+		tags: string[];
+	};
 }
 
 /** Result of batched deferred vector enrichment. */

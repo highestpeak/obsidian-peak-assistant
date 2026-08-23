@@ -15,6 +15,11 @@ export type LlmIndexingCompleteEvent = {
 		tags: 'not-requested' | 'produced' | 'failed';
 		summary: 'not-requested' | 'produced' | 'failed';
 	};
+	/** Presentation-safe generated knowledge committed by this pass. */
+	generatedKnowledge: {
+		summary: string | null;
+		tags: string[];
+	};
 };
 
 export interface IndexLlmRoute {

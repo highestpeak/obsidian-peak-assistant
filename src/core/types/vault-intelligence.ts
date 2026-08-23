@@ -152,6 +152,11 @@ export interface VaultScanOperationAttemptReceipt {
 	usage: VaultScanUsage;
 	error: string | null;
 	evidence: string[];
+	/** Operation-specific generated output retained with the durable Scan receipt. */
+	generatedKnowledge?: {
+		summary?: string | null;
+		tags?: string[];
+	};
 }
 
 export interface VaultScanOperationState extends VaultScanAiOperationPlan {

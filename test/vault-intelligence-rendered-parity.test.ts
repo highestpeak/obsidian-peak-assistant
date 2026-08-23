@@ -103,6 +103,10 @@ assert.match(source, /: 'No'.*current connections/, 'a zero connection count mus
 assert.match(runtimeSource, /activityTextPreview/, 'Activity must receive a readable chat preview instead of a raw conversation identifier');
 assert.doesNotMatch(html, /pk-vi-continue-summary/, 'an absent last scan must not invent a Continue work summary');
 assert.match(source, /Prepare a safe Vault scan/, 'Scan setup keeps the reference-safe title');
+assert.match(source, /Generated knowledge · current document/, 'Build Index must expose the Mock generated-knowledge preview in Production');
+assert.match(source, /<span>Summary<\/span><span>AI Tags<\/span>/, 'document inspection must keep Summary and AI Tags as independent status columns');
+assert.match(source, /generatedKnowledge\?\.summary/, 'the preview must render provider-produced Summary content instead of placeholder samples');
+assert.match(source, /generatedKnowledge\?\.tags/, 'the preview must render provider-produced AI Tags instead of placeholder samples');
 assert.match(html, /pk-vi-overview-activity-body/);
 assert.match(html, /pk-vi-index-overview-body/);
 assert.doesNotMatch(html, /pk-vi-overview-secondary/);
