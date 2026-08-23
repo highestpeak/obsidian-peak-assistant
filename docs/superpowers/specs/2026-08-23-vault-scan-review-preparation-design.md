@@ -29,24 +29,25 @@ Build Index
 
 它应该有独立进度，但仍属于同一个 Scan run 和同一个 Run progress 页面，不应增加新的顶层导航页。
 
-Agent 数量也不等于任务数量。建议只有：
+Agent 数量也不等于任务数量。生产结构固定为：
 
 - **一个确定性的 `ReviewPreparationController`**，拥有状态、进度、去重、发布和完成条件；
-- **一个可复用的 `TaskSynthesisAgent` 定义**，只在分组或说明存在歧义时被调用 0 到 N 次；
+- **一个可复用的 `ReviewPreparationAgent` capability**，反复执行 work shaping、review artifact drafting、validator-driven revision 三类 bounded jobs；
 - **零个“每种任务一个 Agent”**；
 - 后续生成真实 diff 的 `ProposalDraftAgent` 属于 owner 做出选择后的 Proposal 阶段，不属于本步骤。
 
-所以一次 Scan 可以得到 0、3、11 或 30 个 maintenance tasks；也可能完全不用 AI。当前 Mock 中的 11 行只是评审数据，不能成为 Agent 数量或生产任务数量的合同。
+所以一次 Scan 可以得到 0、3、11 或 30 个 maintenance tasks，但运行时仍只有一个 Prepare review Agent capability。只要存在需要 owner 理解、比较或选择的 reviewable work，就必须生成经过验证的 Agent review artifact；只有 0 项 reviewable work，或 catalog 明确声明为 deterministic-only 的 recovery/receipt，才允许 0 次 Agent job。当前 Mock 中的 11 行只是评审数据，不能成为 Agent 数量或生产任务数量的合同。
 
-## 2. 先区分四种东西
+## 2. 先区分五种东西
 
-当前最容易混淆的是把 finding、task、suggestion 和 proposal 都叫作“可 review 信息”。它们必须分开：
+当前最容易混淆的是把 finding、task、review artifact、suggestion 和 proposal 都叫作“可 review 信息”。它们必须分开：
 
 | 对象 | 含义 | 谁生成 | 是否可写用户文件 |
 |---|---|---|---|
 | `Finding` | 有证据支持的异常、关系、结构变化或风险 | detector / Discovery Harness | 否 |
-| `Maintenance task` | owner 可以执行并关闭的一项工作 | Prepare review | 否 |
-| `Suggestion` | 对 task 的建议选择、解释或排序 | 规则或 TaskSynthesisAgent | 否 |
+| `Maintenance task` | owner 可以执行并关闭的一项工作容器；稳定身份与状态不来自模型 | ReviewPreparationController | 否 |
+| `Review artifact` | 用户实际阅读的证据摘要、影响、选项、建议和注意事项 | ReviewPreparationAgent，Controller 验证后接纳 | 否 |
+| `Suggestion` | Review artifact 中对 task 的建议选择、解释或排序 | ReviewPreparationAgent 或 catalog 声明的 deterministic producer | 否 |
 | `Proposal` | 具体、可审核、带 revision guard 的 source diff | owner 选择后的 Proposal 阶段 | 只有显式 Apply 后才写 |
 
 一个 finding 不一定产生 task：
@@ -57,7 +58,7 @@ Agent 数量也不等于任务数量。建议只有：
 - 多个 finding 可以合并成一项 owner work；
 - 一个 finding 也可能因 owner surface 或退出条件不同而拆成多项 work。
 
-`Ready for review` 不能表示“AI 已经说了几句话”。只有真实的 review artifact 已存在并通过校验时，task 才能进入这个状态。
+Completed 列表里的 `Ready for review` 不能表示“AI 已经说了几句话”。只有结构化 review artifact 已 durable、citation 可达、validator 通过时，task preparation status 才能成为 `prepared`，UI 才显示该 badge。Agent stream 是生成过程，不是最终产物本身；proposal workflow 中的 `ready-review` 则仍专指已经存在具体 source diff 的更晚状态。
 
 ## 3. 当前实现为什么不够
 
@@ -90,10 +91,11 @@ flowchart LR
     LINT["Deterministic findings<br/>lint + index errors"] --> FREEZE
     HISTORY["Existing work<br/>choices + unresolved tasks"] --> FREEZE
     FREEZE --> NORMALIZE["Normalize and dedupe<br/>deterministic"]
-    NORMALIZE --> PLAN["Build owner-work plan<br/>controller first"]
-    PLAN -->|"ambiguous bundles only"| AGENT["TaskSynthesisAgent jobs<br/>0..N bounded calls"]
-    AGENT --> PLAN
-    PLAN --> VALIDATE["Validate action, boundary,<br/>evidence and exit condition"]
+    NORMALIZE --> PLAN["Build provisional work graph<br/>controller-owned identity"]
+    PLAN --> JOBS["Schedule review preparation jobs<br/>conflict-aware batches"]
+    JOBS --> AGENT["ReviewPreparationAgent<br/>inspect → shape → draft"]
+    AGENT --> VALIDATE["Deterministic validation<br/>schema / evidence / boundary"]
+    VALIDATE -->|"repairable errors"| AGENT
     VALIDATE --> AUTO["Automatic receipts"]
     VALIDATE --> TASKS["Maintenance tasks"]
     VALIDATE --> BLOCKED["Blocked / attention results"]
@@ -105,15 +107,16 @@ flowchart LR
     CHOICE -->|"source change requested"| PROPOSAL["Proposal → diff → Apply<br/>→ re-index → Verify"]
 ```
 
-### 4.1 五个内部阶段
+### 4.1 六个内部步骤
 
 1. **Normalize**：把 lint finding、index error、Discovery finding、旧 task 和 receipts 转成统一 review atoms。
-2. **Plan**：确定哪些 atom 自动关闭、哪些合并、哪些拆开、哪些复用现有 task、哪些暂时 blocked。
-3. **Draft**：仅对歧义 task group 生成 owner-facing title、建议和简洁说明。
-4. **Validate**：验证每项 task 是否真的有 owner action、owner surface、write boundary 和退出条件。
-5. **Publish**：原子保存 Completed snapshot、receipts、task updates 和 unresolved input ledger。
+2. **Provisional plan**：Controller 先建立不丢 atom 的 provisional bundles、稳定 anchors、冲突图和 deterministic dispositions。
+3. **Agent preparation**：ReviewPreparationAgent 读取冻结证据，提出 merge/split/defer，生成 owner-facing review artifact。
+4. **Validate and revise**：Validator 检查 schema、citation、boundary、identity、owner choice 和退出条件；可修复问题返回 Agent 继续修订。
+5. **Freeze review work**：Controller 接纳通过校验的 artifact，冻结 task plan、workKey 和状态；不可修复项进入 attention。
+6. **Publish**：原子保存 Completed snapshot、receipts、task updates 和 unresolved input ledger。
 
-前四步是 `Prepare review`；第五步是很短的 publish commit，不需要再伪装成一个长 AI 阶段。
+前五步是 `Prepare review`；第六步是很短的 publish commit，不需要再伪装成一个长 AI 阶段。
 
 ## 5. 输入与输出合同
 
@@ -158,14 +161,47 @@ interface ReviewPreparationResult {
   taskPlan: ReviewTaskPlan;
   publishedTaskIds: string[];
   blockedResults: ReviewBlockedResult[];
-  agentReceipts: TaskSynthesisReceipt[];
+  reviewArtifactRefs: string[];
+  agentReceipts: ReviewPreparationAgentReceipt[];
   completedAt: number;
 }
 ```
 
 `Completed` 展示的是这个 result 的投影，而不是重新从 UI 文案推断状态。
 
-## 6. Maintenance task 到底怎样生成
+### 5.3 Review artifact
+
+每一项正常发布的 reviewable task 都引用一个 immutable artifact：
+
+```ts
+interface ReviewWorkArtifact {
+  schemaVersion: 1;
+  artifactId: string;
+  scanRunId: string;
+  workKey: string;
+  planRevision: number;
+  title: string;
+  ownerQuestion: string;
+  evidenceSummary: string;
+  affectedObjectRefs: string[];
+  citations: ReviewCitationRef[];
+  choices: ReviewChoice[];
+  recommendedChoiceId: string | null;
+  recommendationReason: string | null;
+  impact: 'low' | 'medium' | 'high';
+  caveats: string[];
+  writeBoundary: 'peak-owned' | 'proposal' | 'no-change' | 'recovery';
+  verificationKind: string;
+  exitCondition: string;
+  sourceRevisionRefs: string[];
+  generatedBy: ReviewPreparationAgentReceipt;
+  validationReceiptId: string;
+}
+```
+
+Agent 生成的是 artifact proposal，不能设置 `artifactId`、`workKey`、最终 impact、task state 或 validation receipt。Controller 根据 frozen plan 补齐 canonical fields，Validator 决定是否接纳。
+
+## 6. Maintenance task 和 review artifact 怎样生成
 
 ### 6.1 Task 不是 detector category
 
@@ -181,7 +217,7 @@ interface ReviewPreparationResult {
 
 ### 6.2 分组规则
 
-Controller 先做确定性分组：
+Controller 先做确定性 provisional grouping：
 
 ```text
 candidate group key =
@@ -197,6 +233,23 @@ candidate group key =
 - 两个都叫 Community 的 finding，如果一个是 Peak-owned membership、一个要求修改 source note，就不能硬合并。
 - 同一种 task kind 如果对应不同 project、不同 owner surface 或不同验证方式，可以拆成多个 task。
 - 不同 finding kinds 如果共同回答同一个 owner question，可以合并成一个 task。
+
+这一步只得到不丢输入的 provisional work graph，不直接得到用户可见产物。ReviewPreparationAgent 可以基于语义和证据提出 merge、split、defer 或 informational，但它只能在 provisional graph 的 atom 集合内调整；每个 atom 的最终 disposition 仍由 Controller 提交。
+
+正常 reviewable task 的生成链固定为：
+
+```text
+frozen atoms
+→ provisional bundle
+→ ReviewPreparationAgent inspection
+→ task shape proposal
+→ review artifact draft
+→ deterministic validation
+→ Agent revision（0..N）
+→ Controller commit workKey + artifact
+→ task preparation becomes Prepared / Needs attention
+→ owner workflow projects Needs your choice where a decision is required
+```
 
 ### 6.3 稳定身份与跨 Scan 去重
 
@@ -215,7 +268,7 @@ interface ReviewTaskGroup {
 }
 ```
 
-若已有 active task 具有相同 `workKey`：
+Agent 无权生成 canonical `workKey`。若已有 active task 具有相同 `workKey`：
 
 - 新 atom 合入已有 task；
 - 已消失 atom 按证据状态解决或保留 stale history；
@@ -229,45 +282,126 @@ interface ReviewTaskGroup {
 
 - Normalize 期间：只能显示 `Organizing findings`，不能承诺“将生成 11 项”。
 - Task plan 首次冻结后：显示 `11 tasks planned`。
-- 若 validator 合并、拆分或拒绝 group，必须发布 plan revision receipt，UI 数量可以变化一次并说明原因。
+- 若 Agent 提议且 validator 接纳合并、拆分或拒绝 group，必须发布 plan revision receipt，UI 数量可以变化一次并说明原因。
 - Draft 阶段开始后，planned task denominator 应稳定；新发现不得偷偷加入本次运行。
 
 11 个 config kinds 只是允许的 task catalog，不是每次运行的 output list。
 
-## 7. Agent 设计
+## 7. Prepare review Agent Harness
 
 ### 7.1 需要几个 Agent
 
 | 组件 | 数量 | 性质 | 负责 |
 |---|---:|---|---|
-| `ReviewPreparationController` | 1 | 确定性应用层控制器 | ledger、分组、进度、预算、状态、发布 |
-| `TaskSynthesisAgent` | 1 个定义，0..N jobs | 有界 Agent | 歧义分组、owner-facing wording、suggestion |
+| `ReviewPreparationController` | 1 | 确定性应用层控制器 | ledger、provisional graph、冲突图、进度、预算、状态、发布 |
+| `ReviewPreparationAgent` | 1 个 capability，0..N jobs | 有界 Agent Harness | 读证据、调整 work shape、生成 review artifact、根据 validator 修订 |
 | Validator | 1 | 纯代码 gate | schema、evidence、boundary、dedupe、exit condition |
 | `ProposalDraftAgent` | 本阶段 0 | 后续独立能力 | owner 选择后生成具体 proposal artifact |
 
-这里的 `0..N jobs` 不表示创建 N 个不同 Agent persona。它是同一个 capability，针对不同 ambiguity bundle 多次调用。
+这里的 `0..N jobs` 不表示创建 N 个不同 Agent persona。它是同一个 capability，针对 conflict graph 中互不冲突的 bundle batches 多次调用。一个 job 可以产生一个或多个 review artifacts，但每个 artifact 必须单独验证和提交。
 
 示例：
 
 ```text
 42 retained findings
-→ 31 个可确定性归类
-→ 8 个重复或 informational
-→ 3 个 ambiguity bundles
-→ TaskSynthesisAgent 被调用 3 次
-→ 最终形成 7 个 tasks
+→ Controller 形成 9 个 provisional bundles
+→ 2 个 deterministic receipt / recovery bundles
+→ 7 个 reviewable bundles 组成 3 个无冲突 batches
+→ ReviewPreparationAgent 执行 3 个 jobs
+→ 其中 1 个 artifact 被 validator 驳回并在同一 job 中修订
+→ 最终形成 7 个 validated review artifacts / tasks
 ```
 
 另一次运行可能是：
 
 ```text
 18 deterministic findings
-→ 规则全部可归类
+→ 规则形成 2 个 recovery tasks + 5 个 automatic receipts
+→ catalog 将 recovery tasks 声明为 deterministic-only
 → 0 次 Agent 调用
-→ 2 个 tasks + 5 个 automatic receipts
+→ 2 个 deterministic artifacts + 5 个 automatic receipts
 ```
 
-### 7.2 为什么不设计 11 个 category Agents
+### 7.2 一个 job 内部怎样运行
+
+每个 job 都是复用 `runAgentLoop` 的 bounded attempt：
+
+1. `review_get_state` 读取 job、预算、已有 work 和 validator feedback；
+2. Agent 通过 inspect/search tools 读取冻结 evidence 与 source passages；
+3. Agent 提出 work shape；必要时 merge/split/defer；
+4. Agent 为每个目标 workKey 提交结构化 review artifact draft；
+5. Agent 调用 `review_request_validation`；
+6. Validator 返回 accepted 或逐字段错误；
+7. 可修复错误回到步骤 2–5；预算耗尽或不可修复错误形成 attention receipt；
+8. job 只有在所有 bundle 都有 terminal disposition 后结束。
+
+`stopWhen` 只能结束当前 job attempt。Prepare review session 是否完成仍由 Controller 的 ledger 和 completion gate 决定。
+
+```ts
+interface ReviewPreparationJob {
+  jobId: string;
+  sessionId: string;
+  planRevision: number;
+  mode: 'shape-and-draft' | 'draft-only' | 'revise';
+  bundleRefs: string[];
+  conflictKeys: string[];
+  routePolicyId: 'review-work-shaping' | 'review-artifact-drafting';
+  status: 'queued' | 'inspecting' | 'drafting' | 'validating' | 'revising' | 'completed' | 'attention';
+  attemptIds: string[];
+  draftRefs: string[];
+  validationChallengeId: string | null;
+  checkpointRef: string | null;
+}
+```
+
+下面的时序是一个 job 的完整生产闭环。它解释了为何 Agent 可以灵活推理，但不能跳过证据、校验或 canonical commit：
+
+```mermaid
+sequenceDiagram
+    participant C as ReviewPreparationController
+    participant A as ReviewPreparationAgent
+    participant T as Typed review tools
+    participant V as Deterministic validator
+    participant S as Canonical store
+    participant U as Run progress UI
+
+    C->>S: Persist queued job and checkpoint
+    C->>A: Start bounded attempt with frozen bundle refs
+    A-->>U: reasoning and activity stream
+    A->>T: Inspect bundle, evidence, history
+    T-->>A: Frozen facts, citations, owner choices
+    A->>T: Propose shape and draft artifacts
+    T->>V: Validate draft checksum and references
+    alt Draft has repairable errors
+        V-->>A: Field errors and validation challenge
+        A-->>U: validation feedback and revision stream
+        A->>T: Submit revised artifact
+        T->>V: Validate new checksum
+    end
+    V-->>C: Accepted artifact proposals
+    C->>S: Commit workKey, artifacts, receipts and event sequence
+    S-->>U: Publish durable task projection
+```
+
+UI stream event union 至少覆盖：
+
+```ts
+type ReviewPreparationStreamEvent =
+  | { type: 'job-queued'; jobId: string; bundleCount: number }
+  | { type: 'reasoning-delta'; jobId: string; text: string }
+  | { type: 'tool-start'; jobId: string; toolName: string }
+  | { type: 'tool-result'; jobId: string; toolName: string; summary: string }
+  | { type: 'artifact-draft'; jobId: string; draftRef: string; workKeyHint: string }
+  | { type: 'validation-failed'; jobId: string; errors: ReviewValidationError[] }
+  | { type: 'validation-passed'; jobId: string; draftRef: string }
+  | { type: 'artifact-committed'; jobId: string; artifactId: string; workKey: string }
+  | { type: 'job-completed'; jobId: string; status: 'completed' | 'attention' }
+  | { type: 'checkpoint'; sessionId: string; checkpointRef: string };
+```
+
+只有 `artifact-committed` 会推进上方 task row 到 Prepared。`reasoning-delta`、`artifact-draft` 和 `validation-passed` 都不能单独改变 canonical task 状态。
+
+### 7.3 为什么不设计 11 个 category Agents
 
 - task kind 不是执行阶段；
 - 同一个 owner task 可能跨多个 finding kinds；
@@ -275,17 +409,41 @@ interface ReviewTaskGroup {
 - 小 Vault 的成本和等待时间会被无意义放大；
 - 本来能用确定性代码完成的 dedupe、boundary 和 state transition 不应交给模型。
 
-### 7.3 并发
+### 7.4 Job partition 和并发
 
 - 本地模型默认串行；
 - remote route 可以使用有界 rolling pool；
-- 并发单位是互不重叠的 ambiguity bundle，不是 task kind；
-- 同一 `workKey` 或共享 atomic item 的 jobs 必须串行；
+- Controller 根据共享 atom、object anchor、existing workKey 和 owner choice 构建 conflict graph；
+- 并发单位是互不相连的 bundle batch，不是 task kind；
+- 同一 `workKey`、共享 atomic item 或共享 owner choice 的 jobs 必须串行；
+- 每个 job 受 token、tool call、wall-clock、revision 和 artifact 数上限约束；
 - controller 只在 job 完成并通过 validator 后提交结果。
 
-## 8. TaskSynthesisAgent 的工具
+### 7.5 整个 Scan 到底有几个 Agent 流程
 
-Agent 不应拿到“生成全部任务”的黑盒工具。工具必须让它能够反复观察、比较、提出方案，同时由 controller 保留最终控制权。
+Scan 内只有两个用户可理解的 Agent sessions：
+
+1. `VaultDiscoveryAgent`：反复调查 Vault，产生 validated findings；
+2. `ReviewPreparationAgent`：把 findings 变成 validated review artifacts。
+
+Build Index 的 embedding / summary / tags 是 provider jobs，不是 Agent loop。Content-health 与 graph collectors 是确定性系统 jobs，也不是 Agent。Completed 后若 owner 要修改文件，才进入第三个独立的 `ProposalDraftAgent`，它不属于 Scan run。
+
+### 7.6 模型路线
+
+模型仍然只在 Scan setup 配置。Prepare review 在 setup 中保留两个 operation route policies，但它们属于同一个 Agent session：
+
+| operation | 什么时候调用 | 产物 |
+|---|---|---|
+| `review-work-shaping` | provisional bundle 存在语义分组歧义时 | merge / split / defer proposal |
+| `review-artifact-drafting` | 存在非 deterministic-only reviewable work 时 | ReviewWorkArtifact draft / revision |
+
+两个 operation 可以使用同一模型，也可以分别使用本地和远端 route pool；每个 job 保存 planned/actual route receipt。两个 route policies 不代表两个 Agent persona、两条 UI stream 或两个完成条件。
+
+旧的 `maintenance-synthesis` 迁移为 `review-work-shaping`，旧的 `file-proposals` 迁移为 `review-artifact-drafting`。后者在 Prepare review 中只生成无写入能力的 review artifact；真实 source proposal 仍在 owner choice 之后生成。
+
+## 8. ReviewPreparationAgent 的工具
+
+Agent 不应拿到“生成全部任务”的黑盒工具。工具必须让它能够反复观察、比较、调整 work shape、生成 artifact 和根据 validation feedback 修订，同时由 controller 保留最终控制权。
 
 ### 8.1 读取工具
 
@@ -301,6 +459,10 @@ Agent 不应拿到“生成全部任务”的黑盒工具。工具必须让它�
 
 查找相同或相近 `workKey` 的 active / verified / stale task，并返回 owner choices 和 history。防止每次 Scan 重复创建工作。
 
+#### `review_search_evidence`
+
+在 frozen Evidence Manifest 内做受限检索，返回 passages、graph facts、counter-evidence 和 source revision refs。不能搜索 snapshot 外的新内容。
+
 ### 8.2 提议工具
 
 #### `review_propose_task_group`
@@ -311,15 +473,19 @@ Agent 不应拿到“生成全部任务”的黑盒工具。工具必须让它�
 
 提出 `merge | split | revise | defer | informational`，并说明原 group refs 和目标 refs。
 
-#### `review_propose_task_copy`
+#### `review_draft_artifact`
 
-只生成简短 title、owner question、choice wording 和 suggestion rationale。关键状态和数量不从文案解析。
+提交完整 `ReviewWorkArtifactDraft`：title、owner question、evidence summary、citations、choices、recommendation、caveats、boundary 和 exit condition。关键状态、stable ID、最终 impact 和数量不从文案解析。
 
 ### 8.3 校验工具
 
 #### `review_request_publish_check`
 
-要求 controller 运行 deterministic validator，并返回逐条可修复错误。Agent 可以据此修订 proposal，但不能绕过错误。
+要求 controller 运行 deterministic validator，并返回逐字段、可修复错误以及一次性 validation challenge ID。Agent 可以据此修订 artifact，但不能绕过错误。
+
+#### `review_submit_validated_artifact`
+
+提交 artifact draft ref 与最近一次 validation challenge ID。Controller 只在 challenge 与当前 draft checksum 匹配且 validator 已 accepted 时 commit；旧 challenge 或改过内容的 draft 一律拒绝。
 
 ### 8.4 明确禁止的工具
 
@@ -348,29 +514,38 @@ input progress = accounted atoms / total input atoms
 
 **第二次冻结：Task plan**
 
-Grouping plan 通过首轮完整性检查后，冻结 `plannedGroups` 和 `plannedAgentJobs`。
+Provisional graph 通过首轮完整性检查，并完成 conflict-aware job partition 后，冻结 `plannedGroups`、`plannedAgentJobs` 和 `plannedArtifacts`。
 
 ```text
 draft progress = terminal groups / planned groups
 agent progress = terminal jobs / planned agent jobs
+artifact progress = terminal validated artifacts / planned artifacts
 ```
 
 这里的 terminal 包括 ready、blocked、merged、excluded 和 failed；成功数量必须单独显示，不能把失败冒充成功。
 
 ### 9.2 总进度
 
-UI 可以给一个 phase percent，但只在第一次 denominator 冻结后出现：
+UI 可以给一个 phase percent，但只在第一次 denominator 冻结后出现。Prepare review 内部 credits 固定为：
+
+| work class | phase credits | denominator |
+|---|---:|---|
+| Normalize input | 20 | accounted atoms / frozen atoms |
+| Provisional plan | 15 | terminal provisional groups + job partition gate |
+| Agent preparation | 30 | terminal ReviewPreparationAgent jobs / frozen jobs |
+| Artifact validation | 25 | terminal artifacts / frozen planned artifacts |
+| Freeze review package | 10 | atoms 全部处置、workKey 唯一、owner choice 保留、artifact refs 可达、package receipt durable 五个 system gates |
 
 ```text
 Prepare review progress =
   normalized input units
   + terminal planned groups
   + terminal Agent jobs
-  + validation units
+  + terminal artifact validation units
   + one atomic publish unit
 ```
 
-每种 unit 的数量来自冻结 plan，不使用 finding 数、token 数或模型自报“42%”。plan revision 只能由 controller 产生，并留下 receipt；percent 必须单调不回退。
+每种 unit 的数量来自冻结 plan，不使用 finding 数、token 数或模型自报“42%”。没有 Agent jobs 的 deterministic-only run 将 Agent/Artifact 类别明确记为 skipped-terminal，而不是从 denominator 悄悄删掉；plan revision 只能由 controller 产生，并留下 receipt；percent 必须单调不回退。
 
 在 task plan 尚未冻结前，界面显示 `Planning review work` 和 activity，而不是一个虚假的百分比。
 
@@ -394,9 +569,9 @@ remaining ETA =
 ### 9.4 暂停、停止与失败
 
 - **Pause**：停止派发新 Agent job；在当前 tool / provider 边界 checkpoint。
-- **Resume**：从 persisted plan revision 和 ledger 恢复，不重做已 accepted job。
+- **Resume**：从 persisted plan revision、job transcript checkpoint 和 ledger 恢复，不重做已 accepted artifact。
 - **Stop**：保存 partial preparation result，未处理 atoms 显式标为 blocked / unprocessed。
-- **Agent failure**：确定性 receipts 和已验证 tasks 仍有效；失败 bundle 可 retry 或发布为 attention。
+- **Agent failure**：确定性 receipts 和已验证 artifacts 仍有效；失败 bundle 可用新 attempt retry 或发布为 attention。
 - **Validator failure**：task 不得进入 ready，错误常驻在 UI。
 
 ## 10. 界面合同
@@ -453,7 +628,7 @@ Preparing work for review
 - 当前正在处理该 bundle 的 model（只有真实 AI job 活跃时）；
 - 展开后才显示 evidence、grouping reason、write boundary 和 validation detail。
 
-统一状态：`Grouping | Drafting | Validating | Ready | Needs attention`。不要把 detector 名、内部 kind、token receipt 或两层解释文字常驻在主列表。
+统一 preparation 状态：`Grouping | Inspecting | Drafting | Validating | Revising | Prepared | Needs attention`。UI 可以把 `Prepared` 显示为 `Ready for review`；不要把 detector 名、内部 kind、token receipt 或两层解释文字常驻在主列表。
 
 ### 10.4 Session log
 
@@ -462,12 +637,13 @@ Task list 下方保留一个 session log，显示真实控制器事件：
 ```text
 14:03:12  Accounted for 42 retained findings
 14:03:13  Reused 2 existing owner tasks
-14:03:14  Grouping 3 ambiguous finding bundles
-14:03:31  Merged duplicate bridge findings into one owner task
-14:03:42  Validation blocked one task: no executable owner action
+14:03:14  Prepared 3 review batches from 7 reviewable bundles
+14:03:31  Drafted evidence and choices for Repair broken references
+14:03:42  Validation requested one revision: two citations are stale
+14:03:51  Revision accepted · review artifact ready
 ```
 
-- Agent reasoning 可以流式显示为普通 log text，但不自动成为 task；
+- Agent reasoning 可以流式显示为普通 log text，但不自动成为 task 或 artifact；
 - cited evidence 是独占整行，不做左右两栏；
 - log 不自动追踪滚动，避免晃眼；
 - 新事件追加到底部，并提供未读计数 / `Jump to latest`；
@@ -490,11 +666,13 @@ Completed 页面不负责现场生成 tasks。它只读取已经原子发布的 
 ```mermaid
 stateDiagram-v2
     [*] --> planning
-    planning --> needsChoice: task published; owner outcome required
+    planning --> prepared: review artifact validated
     planning --> recovery: executable recovery path
     planning --> blocked: no safe owner action or missing evidence
+    prepared --> needsChoice: owner outcome required
+    prepared --> verified: Peak-owned or no-change work verified
     needsChoice --> needsProposal: owner selects proposal boundary
-    needsChoice --> verified: Peak-owned or no-change choice verified
+    needsChoice --> verified: owner selects no-change outcome
     needsProposal --> readyReview: actual guarded proposal artifact exists
     readyReview --> applying: explicit owner Apply
     applying --> reindexing
@@ -506,9 +684,10 @@ stateDiagram-v2
 
 关键规则：
 
+- `prepared`（Prepare review 内部状态）：validated ReviewWorkArtifact 已存在；Completed UI 可显示 `Ready for review`，但还没有 source diff。
 - `needs-choice`：有证据和合法 choices，但没有 source diff。
 - `needs-proposal`：owner 已选 proposal-boundary outcome，proposal 尚未生成。
-- `ready-review`：真实 artifact 已存在；不能只靠 AI summary 进入该状态。
+- `ready-review`（Proposal workflow 状态）：真实、revision-guarded source diff artifact 已存在；不能只靠 ReviewWorkArtifact 或 AI summary 进入该状态。
 - `recovery`：有可执行 recovery scope 和验证方式。
 - `verified`：fresh verification 已通过，不等于“用户点过接受”。
 
@@ -523,7 +702,7 @@ Controller 只有在以下条件全部成立时，才能发布正常 Completed�
 5. evidence refs 均来自 frozen snapshot，source revisions 可追溯；
 6. 没有与现有 active work 重复的 task；
 7. owner choices 和 previous verified history 没有被模型覆盖；
-8. `ready-review` task 确实有可读的 review artifact；
+8. 每个普通 reviewable task 都有 validated ReviewWorkArtifact；任何 workflow state 为 `ready-review` 的 task 还必须有 guarded proposal artifact；
 9. failures、blocked atoms 和 skipped AI jobs 均未被隐藏；
 10. Completed snapshot、task changes、receipts 和 plan revision 原子持久化。
 
@@ -548,7 +727,8 @@ interface ReviewPreparationSession {
   inputLedger: ReviewAtomLedger;
   plan: ReviewTaskPlan | null;
   planRevision: number;
-  agentJobs: TaskSynthesisJob[];
+  agentJobs: ReviewPreparationJob[];
+  reviewArtifacts: ReviewWorkArtifactRef[];
   validation: ReviewValidationState;
   progress: ReviewPreparationProgress;
   events: ReviewPreparationEventRef[];
@@ -556,7 +736,14 @@ interface ReviewPreparationSession {
 }
 
 interface ReviewPreparationProgress {
-  phase: 'normalizing' | 'grouping' | 'drafting' | 'validating' | 'publishing';
+  phase:
+    | 'normalizing'
+    | 'grouping'
+    | 'inspecting'
+    | 'drafting'
+    | 'validating'
+    | 'revising'
+    | 'freezing';
   terminalUnits: number;
   successfulUnits: number;
   failedUnits: number;
@@ -585,14 +772,15 @@ interface ReviewPreparationProgress {
 - 从 [`performPublish`](../../../src/app/vault-intelligence/VaultIntelligenceRuntime.ts) 移出 task derivation。
 - 把现有 lint / index error / review evidence adapter 转成 review atoms。
 - 实现 disposition、existing-task reconciliation、owner choice preservation 和 completion gate。
-- 初期可以保持“一种 kind 一个 group”的兼容 planner，但必须通过新 ledger 暴露过程；随后再启用真正动态 group。
+- 直接实现 provisional work graph 和 dynamic grouping；“一种 kind 一个大桶”只能保留为迁移输入 adapter，不能进入新生产 planner。
 
-### Slice 3：Agent capability
+### Slice 3：Agent capability 与 artifact pipeline
 
-- 在 app layer 组合 `TaskSynthesisAgent` capability；复用现有 Agent Harness，不创建 service singleton。
+- 在 app layer 组合统一的 `ReviewPreparationAgent` capability；复用现有 Agent Harness，不创建 service singleton。
 - 注册本设计中的 typed tools 和 schema。
 - 从 shared Vault Review execution group 移除 `file-proposals` / `maintenance-synthesis`；Discovery 只输出 findings。
-- 只对 controller 标记为 ambiguous 的 bundles 调用模型。
+- 实现 provisional graph、conflict-aware job partition、artifact draft、validator feedback 和 revision loop。
+- 只要有非 deterministic-only reviewable work，就必须产生 validated Agent artifact。
 
 ### Slice 4：Run progress UI
 
@@ -611,7 +799,8 @@ interface ReviewPreparationProgress {
 | 场景 | 必须证明 |
 |---|---|
 | 0 findings | 0 task、0 Agent call、正常 Completed |
-| 全确定性 findings | 正确 tasks / receipts，0 Agent call |
+| catalog 声明为 deterministic-only 的 findings | 正确 recovery tasks / receipts，0 Agent call |
+| 普通 reviewable findings | 至少一个 Agent job；每个 task 有 validated artifact |
 | 多 finding 合一 | 一个 stable workKey，原子项不丢失 |
 | 一 finding 拆分 | 不同 owner surface / exit condition 形成不同 tasks |
 | 重复 Scan | 复用 active task，不复制；owner choices 保留 |
@@ -620,6 +809,7 @@ interface ReviewPreparationProgress {
 | remote model | bounded pool，互斥 workKey 不并发 |
 | pause / resume | plan revision 和 accepted jobs 不重做 |
 | Agent failure | deterministic result 保留，失败 bundle 显式 attention |
+| validator revision | 同一 draft checksum 失效，Agent 修订后用新 challenge 提交 |
 | stale source | proposal 不进入 ready-review，task 进入 recovery |
 | fake ready-review | 没有 artifact ID 时 validator 拒绝 |
 | partial stop | 未处理 atoms 可枚举、可恢复、不静默丢失 |
@@ -630,6 +820,7 @@ interface ReviewPreparationProgress {
 ## 16. 明确拒绝的方向
 
 - 不设计 11 个 task-specific Agents。
+- 不把 Prepare review 降级成“规则分组 + AI 偶尔润色”。
 - 不把 11 个 config kinds 当固定输出任务。
 - 不让 Discovery Agent 一边发现、一边直接发布 Work queue。
 - 不用 finding 数、token 数或 reasoning 字数冒充完成度。

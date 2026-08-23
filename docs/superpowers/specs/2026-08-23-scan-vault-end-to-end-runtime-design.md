@@ -197,12 +197,12 @@ Agent、worker 和 provider callback 只能返回 proposal/event，不能直接�
 复用现有 `CapabilityRunner`、`runAgentLoop`、`PermissionGuard`、`TraceBus`、ToolDef 和 RunEnvelope。一个 AgentLoop 是有预算的 attempt，不等于整个 Scan，也不拥有 stage 完成权。
 
 - Discovery Controller 可以反复启动 0..N 次调查 attempt；
-- Prepare review 只为歧义 bundle 启动 0..N 次 TaskSynthesis attempt；
+- Prepare review 以一个统一的 ReviewPreparationAgent session 启动 0..N 次 bounded jobs：歧义 work shaping 可选，review artifact drafting 对普通 reviewable work 必需；
 - Agent 只能通过 typed tools 读取 evidence、提出 finding 或提交 draft；
 - Controller 根据 schema、证据、预算、覆盖和收敛 gate 接受或拒绝；
 - `stopWhen` 只结束当前 bounded attempt，不能宣布整个 Scan 完成。
 
-运行时只有两种逻辑 Agent capability：Discovery investigator 和歧义任务的 Task synthesis。Relationships、Communities、Hubs、Bridges 不是四个 Agent；Embedding、Index 和 deterministic detectors 也不是 Agent。Discovery 默认一次只运行一个会修改 frontier 的 attempt；若配置允许并行，只能并行互不重叠的只读 investigation，最终 finding/frontier commit 仍由 Controller 串行。Prepare review 可以按不相同的 workKey 并行起草，但同一 workKey 必须串行。
+整个 Scan 只有两个用户可理解的 Agent sessions：Vault Discovery 和 Prepare review。Relationships、Communities、Hubs、Bridges 不是四个 Agent；Review task kinds 也不是多组 Agent；Embedding、Index 和 deterministic detectors 则是 provider/system jobs，不是 Agent loop。Discovery 默认一次只运行一个会修改 frontier 的 attempt；若配置允许并行，只能并行互不重叠的只读 investigation，最终 finding/frontier commit 仍由 Controller 串行。Prepare review 按 conflict graph 对无冲突 work bundles 分批并行，但同一 workKey、共享 atom 或共享 owner choice 必须串行。
 
 ## 7. 父状态机
 
@@ -374,15 +374,16 @@ Session log 记录真实 Agent/Tool 流：reasoning delta、tool start/result、
 
 输入冻结后，后续 late event 进入下一次 Scan，不得偷偷改变当前 denominator。
 
-### 11.2 五步 controller pipeline
+### 11.2 Agent 驱动的产物 pipeline
 
-1. Normalize：统一成 typed atoms 并去重；
-2. Plan：按 owner surface、owner question、write boundary、verification kind 和 canonical anchors 形成 stable workKey；
-3. Draft：只有歧义 bundle 才调用 TaskSynthesisAgent；
-4. Validate：证据、patch safety、冲突、owner-choice preservation 和 review artifact 完整性；
-5. Publish package：形成 immutable `ReviewPreparationPackage`，但尚不进入 Completed。
+1. Normalize：Controller 统一成 typed atoms 并去重；
+2. Provisional plan：Controller 按 owner surface、owner question、write boundary、verification kind 和 canonical anchors 建立不丢输入的 provisional graph；
+3. Agent preparation：ReviewPreparationAgent 读取冻结证据，提出必要的 merge/split/defer，并为每项普通 reviewable work 生成完整 artifact；
+4. Validate and revise：deterministic validator 返回 citation、schema、boundary、identity 和退出条件错误，Agent 根据反馈反复修订；
+5. Freeze review work：Controller 接纳 artifact、生成 stable workKey 并冻结 task plan；
+6. Publish package：形成 immutable `ReviewPreparationPackage`，但尚不进入 Completed。
 
-每个输入 atom 必须有且只有一个 disposition。`Ready for review` 必须已经有可 inspect 的具体 artifact；`Needs your choice` 必须有明确问题和选项；`Needs recovery` 必须说明缺失输入和恢复动作。
+每个输入 atom 必须有且只有一个 disposition。Completed UI 显示 `Ready for review` 时，必须已经有可 inspect 的 `ReviewWorkArtifact`、有效 citations 和 validation receipt；它不等于 proposal workflow 的 `ready-review` source-diff 状态。`Needs your choice` 必须有明确问题和选项；`Needs recovery` 必须说明缺失输入和恢复动作。Agent stream 只是生成过程，不能直接成为 task 或 artifact。
 
 ## 12. Publish
 
@@ -461,7 +462,7 @@ Agent 文字、token 数和 tool call 数不直接增加百分比。高优先 fr
 
 这些 cap 只约束仍在运行的 session。若预算或证据限制使完整收敛不可能，Controller 必须先把每个剩余 frontier/evidence unit 变成有原因、有恢复动作的 terminal blocker，再签发 `completed-with-attention` receipt；此时该阶段的未完成 credits 作为“已处置但未成功”终态计入，因此整个 Scan 仍可在 Publish 后显示 100%。百分比表示流程处理完毕，成功、失败和 attention 数量另行显示，不能出现“运行已经结束但永久停在 93%”。
 
-Prepare review 使用两次 denominator freeze：input atoms 冻结前 local fraction 为 0；task plan/jobs 冻结后按 accounted atoms、terminal jobs、validated work 和 package receipt 的配置 credits 计算。不能因为初始不知道会生成几项 task 就显示伪造百分比。
+Prepare review 使用两次 denominator freeze：input atoms 冻结前 local fraction 为 0；provisional graph 和 job partition 冻结后按下列 stage-local credits 计算：Normalize 20、Provisional plan 15、Agent preparation 30、Artifact validation 25、Freeze review package 10。普通 reviewable work 必须经过 ReviewPreparationAgent job 和 artifact validation；deterministic-only 类别则用显式 skipped-terminal receipt 关闭相应 credits。不能因为初始不知道会生成几项 task 就显示伪造百分比。
 
 Publish 的 2 credits 只在 current pointer 原子更新和 read-back 通过后全部获得；准备临时文件不算完成。
 
@@ -473,7 +474,7 @@ ETA 由 `ScanEtaEstimator` 单独计算：
 - Embedding 用 route-specific chunks/sec、batch wait 和 queue depth；
 - AI enrichment 用 route-specific docs/min 和 active slots；
 - Discovery 用近几轮 investigation duration、frontier pressure 和 evidence coverage，输出范围；
-- Prepare review 用 remaining deterministic jobs 与 ambiguity attempt 分布；
+- Prepare review 用 remaining deterministic jobs、ReviewPreparationAgent job batches 与 validation/revision 分布；
 - 全局 ETA 取运行 DAG 关键路径，不做各 lane 时间简单相加。
 
 样本不足、provider 限流或 frontier 扩张时显示范围或 `Estimating`。ETA 可以增加；它不参与百分比，不能为了视觉稳定而撒谎。

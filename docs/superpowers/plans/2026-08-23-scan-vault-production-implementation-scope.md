@@ -49,7 +49,7 @@ Build Index 和 AI work 可按证据 gate 重叠，但 Prepare review 和 Publis
 2. Discover 冻结 plan、scope、routes、DAG 和 ProgressPlan；
 3. Build Index 三 lane、route-aware scheduler、backpressure 和 receipts；
 4. deterministic evidence assembly + VaultDiscoveryController + Agent Harness + tools + completion gate；
-5. ReviewPreparationController + stable workKey + validator；
+5. ReviewPreparationController + unified ReviewPreparationAgent + review artifacts + stable workKey + validator/revision loop；
 6. deterministic atomic Publish 与 Completed handoff；
 7. Approved Mock 一比一生产 UI port；
 8. pause/resume/stop/retry/stale/rebuild/observability；
@@ -260,13 +260,18 @@ src/app/vault-intelligence/ReviewPreparationRuntime.ts
 src/service/vault-review-preparation/ReviewPreparationController.ts
 src/service/vault-review-preparation/ReviewInputNormalizer.ts
 src/service/vault-review-preparation/ReviewWorkPlanner.ts
-src/service/vault-review-preparation/TaskSynthesisAgent.ts
+src/service/vault-review-preparation/ReviewPreparationAgent.ts
+src/service/vault-review-preparation/ReviewJobScheduler.ts
+src/service/vault-review-preparation/ReviewArtifactStore.ts
 src/service/vault-review-preparation/ReviewWorkValidator.ts
-templates/prompts/vault-review-task-synthesis.md
+src/service/vault-review-preparation/tools/*
+templates/prompts/vault-review-preparation.md
 templates/config/vault-review-preparation.json
 ```
 
-`deriveVaultMaintenanceTasks()` 从 UI model 和 Publish 路径移除。Stable workKey、owner choice reconcile 和 exact-patch safety 必须在 service/controller 层完成。
+`deriveVaultMaintenanceTasks()` 从 UI model 和 Publish 路径移除。Controller 先建立 provisional work graph；ReviewPreparationAgent 为所有非 deterministic-only reviewable work 生成并修订 `ReviewWorkArtifact`；Validator 通过后才能冻结 stable workKey 和 task。Owner choice reconcile 和 exact-patch safety 必须在 service/controller 层完成。
+
+Setup 保留 `review-work-shaping` 与 `review-artifact-drafting` 两个 route policies，但二者由同一个 Agent session 消费。旧 `maintenance-synthesis` / `file-proposals` 只作为迁移别名，不再代表 shared Vault Review 或提前生成 source proposal。
 
 ### 4.8 Publish and Completed
 
@@ -355,12 +360,12 @@ Gate：非线性发现、citation、budget、pause/resume、completion gate test
 
 ### Slice 5：Prepare review
 
-- input freeze、workKey planner、ambiguous Agent jobs、validation；
+- input freeze、provisional graph、conflict-aware job scheduler、统一 Agent jobs、artifact drafting、validation/revision；
 - preserve owner choices；
 - stream 与 work row 因果连接；
 - `deriveVaultMaintenanceTasks()` 退出生产路径。
 
-Gate：每 atom 恰一 disposition；task plan 可 replay；没有 review artifact 不得 Ready。
+Gate：每 atom 恰一 disposition；task plan 可 replay；普通 reviewable task 必须有 Agent receipt 和 validated artifact；没有 review artifact 不得 Ready。
 
 ### Slice 6：Publish 与 Completed
 
@@ -409,6 +414,9 @@ test/vault-discovery-controller.test.ts
 test/vault-discovery-completion-gate.test.ts
 test/vault-review-preparation-controller.test.ts
 test/vault-review-work-key.test.ts
+test/vault-review-preparation-agent.test.ts
+test/vault-review-artifact-validation.test.ts
+test/vault-review-job-conflicts.test.ts
 test/vault-scan-publish-atomicity.test.ts
 test/vault-scan-user-files-unchanged.test.ts
 test/vault-intelligence-scan-rendered-parity.test.ts
