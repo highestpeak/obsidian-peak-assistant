@@ -734,14 +734,13 @@ ${sourcesList}${topicsList}
 	private resolveRequestedProfileAndModel(
 		profileId: string | undefined,
 		modelId: string | undefined,
-		configured: { profile: Profile; modelId: string },
+		resolveConfigured: () => { profile: Profile; modelId: string },
 	): { profile: Profile; modelId: string } {
-		if (!profileId) {
-			if (modelId && modelId !== configured.modelId) throw new Error('A model override requires its configured profileId. Runtime model fallback is disabled.');
-			return configured;
-		}
+		if (!profileId && !modelId) return resolveConfigured();
+		if (!profileId) throw new Error('A model override requires its configured profileId. Runtime model fallback is disabled.');
 		const profile = ProfileRegistry.getInstance().getAllProfiles().find((candidate) => candidate.id === profileId);
 		if (!profile) throw new Error(`The selected AI profile "${profileId}" is no longer configured.`);
+		if (!profile.enabled) throw new Error(`The selected AI profile "${profileId}" is disabled.`);
 		if (!modelId) throw new Error(`The selected AI profile "${profileId}" has no explicit model for this operation.`);
 		return { profile, modelId };
 	}
@@ -903,8 +902,11 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string; usageCallback?: (usage: LLMUsage) => void },
 	): Promise<string> {
 		const startMs = Date.now();
-		const configured = this.resolveAgentProfileAndModel();
-		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
+		const resolved = this.resolveRequestedProfileAndModel(
+			opts?.profileId,
+			opts?.modelId,
+			() => this.resolveAgentProfileAndModel(),
+		);
 		const profile = resolved.profile;
 		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
@@ -946,8 +948,11 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string },
 	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string; usage?: LLMUsage }> {
 		const startMs = Date.now();
-		const configured = this.resolveCopilotProfileAndModel();
-		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
+		const resolved = this.resolveRequestedProfileAndModel(
+			opts?.profileId,
+			opts?.modelId,
+			() => this.resolveCopilotProfileAndModel(),
+		);
 		const profile = resolved.profile;
 		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
@@ -1001,8 +1006,11 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; profileId?: string; modelId?: string },
 	): AsyncGenerator<LLMStreamEvent> {
 		const startMs = Date.now();
-		const configured = this.resolveAgentProfileAndModel();
-		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
+		const resolved = this.resolveRequestedProfileAndModel(
+			opts?.profileId,
+			opts?.modelId,
+			() => this.resolveAgentProfileAndModel(),
+		);
 		const profile = resolved.profile;
 		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
@@ -1058,8 +1066,11 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void; profileId?: string; modelId?: string },
 	): Promise<T> {
 		const startMs = Date.now();
-		const configured = this.resolveCopilotProfileAndModel();
-		const resolved = this.resolveRequestedProfileAndModel(opts?.profileId, opts?.modelId, configured);
+		const resolved = this.resolveRequestedProfileAndModel(
+			opts?.profileId,
+			opts?.modelId,
+			() => this.resolveCopilotProfileAndModel(),
+		);
 		const profile = resolved.profile;
 		const modelId = resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(

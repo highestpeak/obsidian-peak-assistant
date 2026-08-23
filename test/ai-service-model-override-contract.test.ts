@@ -22,8 +22,13 @@ function testAllSingleTurnQueryShapesConsumeModelOverride(): void {
 		assert.match(body, /modelId\?: string/, `${methodName} must expose modelId in its query options`);
 		assert.match(
 			body,
-			/resolveRequestedProfileAndModel\(opts\?\.profileId, opts\?\.modelId, configured\)/,
+			/resolveRequestedProfileAndModel\([\s\S]*?opts\?\.profileId,[\s\S]*?opts\?\.modelId,[\s\S]*?\(\) => this\.resolve(?:Agent|Copilot)ProfileAndModel\(\),[\s\S]*?\)/,
 			`${methodName} must resolve the requested profile and model as one exact route`,
+		);
+		assert.doesNotMatch(
+			body,
+			/const configured = this\.resolve(?:Agent|Copilot)ProfileAndModel\(\)/,
+			`${methodName} must not require a global slot before resolving a complete per-run route`,
 		);
 		assert.match(
 			body,
@@ -39,4 +44,23 @@ function testAllSingleTurnQueryShapesConsumeModelOverride(): void {
 	console.log('PASS: allSingleTurnQueryShapesConsumeModelOverride');
 }
 
+function testExactOverridePrecedesGlobalSlotResolution(): void {
+	const resolverStart = source.indexOf('private resolveRequestedProfileAndModel(');
+	const resolverEnd = source.indexOf('\n\t/**', resolverStart);
+	const resolver = source.slice(resolverStart, resolverEnd);
+	assert.ok(resolverStart >= 0, 'exact route resolver must exist');
+	assert.match(
+		resolver,
+		/if \(!profileId && !modelId\) return resolveConfigured\(\);/,
+		'a global slot is resolved only when the caller supplied no per-run route',
+	);
+	assert.match(
+		resolver,
+		/if \(!profile\.enabled\) throw new Error/,
+		'a complete override still fails closed when its selected profile is disabled',
+	);
+	console.log('PASS: exactOverridePrecedesGlobalSlotResolution');
+}
+
 testAllSingleTurnQueryShapesConsumeModelOverride();
+testExactOverridePrecedesGlobalSlotResolution();

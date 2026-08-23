@@ -69,6 +69,7 @@ Mock geometry remains the reference. Only the incorrect menu placement, duplicat
 - Role slots resolve only their matching configuration.
 - Conversation, Agent, Agent Fast, Copilot, Knowledge Index, Web Search, and Harness tiers do not borrow another role.
 - Overrides require an exact `profileId + modelId`; stale bindings throw.
+- A complete per-run Scan route is resolved before consulting any global role slot, so an explicitly configured Scan does not require a second hidden Agent/Copilot default.
 - Auto routing does not choose the first remaining candidate when a configured tier misses.
 - Backend resolution executes only `preferred`.
 - Assistant storage/profile errors propagate instead of substituting Default.
