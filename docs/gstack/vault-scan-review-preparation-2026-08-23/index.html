@@ -126,7 +126,7 @@
     .model-note { color: var(--ink-3); font-size: 10px; }
     .new-events { display: none; min-height: 28px; align-items: center; padding: 0 10px; border: 1px solid #d8d1f5; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 9.5px; font-weight: 720; cursor: pointer; }
     .new-events.visible { display: inline-flex; }
-    .live-output { min-height: 190px; padding: 17px 20px 15px; border-bottom: 1px solid var(--line); background: #fcfbff; }
+    .live-output { min-height: 190px; margin: 0 18px 12px 70px; padding: 17px 20px 15px; border: 1px solid #e1dcf3; border-left: 2px solid var(--accent); border-radius: 8px; background: #fcfbff; }
     .live-meta { display: flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: 10px; font-weight: 720; }
     .live-meta i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
     .live-meta time { margin-left: auto; color: var(--ink-3); font: 9.5px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -179,7 +179,7 @@
     <div class="brand"><span class="brand-icon"><svg class="icon"><use href="#i-review"/></svg></span><span>Prepare review</span></div>
     <div class="top-actions">
       <span class="run-chip"><span class="run-dot"></span><span id="run-state">Running · checkpoint active</span></span>
-      <button class="btn" type="button" id="restart-btn"><svg class="icon sm"><use href="#i-restart"/></svg>Restart demo</button>
+      <button class="btn" type="button" id="restart-btn"><svg class="icon sm"><use href="#i-restart"/></svg>Restart run</button>
       <button class="btn" type="button" id="pause-btn"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button>
       <button class="btn danger" type="button" id="stop-btn"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button>
     </div>
@@ -210,57 +210,59 @@
         <div class="section-title"><svg class="icon"><use href="#i-list"/></svg><strong>Review work</strong></div>
         <div class="legend"><span><i class="is-running"></i>Running</span><span><i class="is-ready"></i>Ready</span><span><i class="is-attention"></i>Needs attention</span><span><i></i>Waiting</span></div>
       </div>
-      <div class="task-plan" id="task-plan"><div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div></div>
+      <div class="task-plan" id="task-plan">
+        <div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div>
+        <div class="live-output" id="live-output">
+          <div class="live-meta"><i></i><span id="stream-kind">Controller</span><strong id="stream-route">Local rules</strong><time id="stream-time">0 sec</time></div>
+          <div class="live-copy" id="stream-text">Starting review preparation…</div>
+          <div class="live-citation"><svg class="icon sm"><use href="#i-file"/></svg><span id="stream-citation">Frozen review snapshot rp-42</span></div>
+        </div>
+      </div>
     </section>
 
     <section class="card log">
       <div class="section-head">
-        <div class="section-title"><svg class="icon"><use href="#i-review"/></svg><strong>Preparation log</strong></div>
-        <div class="log-actions"><button class="new-events" id="new-events" type="button">0 new events · jump to latest</button><span class="model-note">Models are read-only here · configured in Scan setup</span></div>
+        <div class="section-title"><svg class="icon"><use href="#i-review"/></svg><strong>Session receipts</strong></div>
+        <div class="log-actions"><button class="new-events" id="new-events" type="button">0 new events · jump to latest</button><span class="model-note">Completed work only</span></div>
       </div>
-      <div class="live-output">
-        <div class="live-meta"><i></i><span id="stream-kind">Controller</span><strong id="stream-route">Local rules</strong><time id="stream-time">0 sec</time></div>
-        <div class="live-copy" id="stream-text">Starting review preparation…</div>
-        <div class="live-citation"><svg class="icon sm"><use href="#i-file"/></svg><span id="stream-citation">Frozen review snapshot rp-42</span></div>
-      </div>
-      <div class="history-head"><span>Earlier in this preparation</span><span>Appends without moving your scroll position</span></div>
-      <div class="log-list" id="log-list"><div class="log-empty">Preparation events will appear here. The list will not move automatically.</div></div>
+      <div class="history-head"><span>Validated outcomes</span><span>Appends without moving your scroll position</span></div>
+      <div class="log-list" id="log-list"><div class="log-empty">A receipt appears only after the active work above finishes.</div></div>
     </section>
   </main>
 
   <script>
     const TASKS = [
-      { id: 'properties', icon: 'i-file', title: 'Organize Research interview records', count: '12 files', atoms: 19, route: 'Local rules', provider: 'No model call', appears: 4, ready: 8 },
-      { id: 'links', icon: 'i-link', title: 'Repair broken references', count: '63 references', atoms: 63, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 5, ready: 17 },
-      { id: 'membership', icon: 'i-community', title: 'Review Community membership', count: '9 notes', atoms: 9, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 6, ready: 14 },
-      { id: 'connections', icon: 'i-link', title: 'Review changed knowledge connections', count: '3 connections', atoms: 3, route: 'Local rules', provider: 'No model call', appears: 7, ready: 11 },
-      { id: 'splits', icon: 'i-split', title: 'Review possible note splits', count: '3 source notes', atoms: 9, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 7, ready: 19 },
-      { id: 'structure', icon: 'i-community', title: 'Decide Community structure changes', count: '4 Communities', atoms: 4, route: 'Claude Sonnet 4', provider: 'Inherited review model', appears: 8, ready: 21 },
-      { id: 'recovery', icon: 'i-recovery', title: 'Recover unreadable documents', count: '3 documents', atoms: 3, route: 'Local recovery', provider: 'No model call', appears: 8, ready: 13, attention: true },
+      { id: 'properties', icon: 'i-file', title: 'Organize Research interview records', count: '12 files', atoms: 19, route: 'Local rules', provider: 'No model call', start: 1, ready: 2 },
+      { id: 'links', icon: 'i-link', title: 'Repair broken references', count: '63 references', atoms: 63, route: 'Claude Sonnet 4', provider: 'Inherited review model', start: 2, ready: 3 },
+      { id: 'membership', icon: 'i-community', title: 'Review Community membership', count: '9 notes', atoms: 9, route: 'Claude Sonnet 4', provider: 'Inherited review model', start: 3, ready: 4 },
+      { id: 'connections', icon: 'i-link', title: 'Review changed knowledge connections', count: '3 connections', atoms: 3, route: 'Local rules', provider: 'No model call', start: 4, ready: 5 },
+      { id: 'recovery', icon: 'i-recovery', title: 'Recover unreadable documents', count: '3 documents', atoms: 3, route: 'Local recovery', provider: 'No model call', start: 5, ready: 6, attention: true },
+      { id: 'splits', icon: 'i-split', title: 'Review possible note splits', count: '3 source notes', atoms: 9, route: 'Claude Sonnet 4', provider: 'Inherited review model', start: 6, ready: 7 },
+      { id: 'structure', icon: 'i-community', title: 'Decide Community structure changes', count: '4 Communities', atoms: 4, route: 'Claude Sonnet 4', provider: 'Inherited review model', start: 7, ready: 8 },
     ];
 
     const EVENTS = [
-      { tick: 1, kind: 'System', text: 'Frozen 42 retained findings, 7 automatic receipts, and the previous owner-work ledger.', source: 'Review snapshot rp-42' },
-      { tick: 3, kind: 'System', text: 'Accounted for deterministic findings and preserved 6 existing owner choices.', source: 'Local rules' },
-      { tick: 5, kind: 'Plan', text: 'Reused 2 existing tasks and opened 5 new task groups.', source: 'Plan revision 1' },
-      { tick: 7, kind: 'Plan', text: 'Frozen a 7-task plan. Three groups require model assistance; four remain local.', source: 'Plan revision 2' },
-      { tick: 9, kind: 'Result', text: 'Property findings share one owner question and remain one task with 19 atomic changes.', source: '12 files · 19 changes' },
-      { tick: 11, kind: 'Result', text: 'Changed knowledge connections passed deterministic grouping and evidence checks.', source: '3 cited connections' },
-      { tick: 13, kind: 'Attention', text: 'Three unreadable documents have a recovery path but no reviewable content yet.', source: 'Parser receipts' },
-      { tick: 15, kind: 'Result', text: 'Community membership suggestions retained the existing owner overrides.', source: '9 notes · 3 Communities' },
-      { tick: 17, kind: 'Result', text: 'Broken-reference group is complete with target, file, and exact-reference projections.', source: '63 references · 18 files' },
-      { tick: 19, kind: 'Result', text: 'Split candidates now have owner actions and verification exits; no source diff was generated.', source: '3 source notes' },
-      { tick: 21, kind: 'Result', text: 'Community structure task passed the duplicate-work and write-boundary checks.', source: '4 Communities' },
-      { tick: 23, kind: 'System', text: 'Published 7 maintenance tasks, 7 automatic receipts, and one attention result.', source: 'Completed snapshot' },
+      { tick: 1, kind: 'Plan', text: 'Frozen a 7-task plan after accounting for all 42 findings and existing owner work.', source: 'Plan revision 2' },
+      { tick: 2, kind: 'Result', text: 'Research interview property findings passed grouping and boundary validation.', source: '12 files · 19 changes' },
+      { tick: 3, kind: 'Result', text: 'Broken references are ready as one task with Target, File, and exact-reference views.', source: '63 references · 18 files' },
+      { tick: 4, kind: 'Result', text: 'Community membership suggestions retained all existing owner overrides.', source: '9 notes · 6 owner choices' },
+      { tick: 5, kind: 'Result', text: 'Changed knowledge connections passed deterministic evidence checks.', source: '3 cited connections' },
+      { tick: 6, kind: 'Attention', text: 'Unreadable documents published as recovery work, not reviewable content.', source: '3 parser receipts' },
+      { tick: 7, kind: 'Result', text: 'Split candidates now have owner actions and verification exits; no proposal exists yet.', source: '3 source notes' },
+      { tick: 8, kind: 'Result', text: 'Community structure work passed duplicate-work and write-boundary validation.', source: '4 Communities' },
+      { tick: 9, kind: 'System', text: 'Published 7 maintenance tasks, 7 automatic receipts, and one attention result.', source: 'Completed snapshot' },
     ];
 
     const STREAMS = [
-      { key: 'normalize', start: 0, end: 3, kind: 'Controller', route: 'Local rules', text: 'I am accounting for every retained finding before creating owner work. Deterministic lint results, index recovery receipts, existing tasks, and saved owner choices are being normalized into one frozen review ledger.', citation: 'Review snapshot rp-42 · 42 retained findings · 6 saved choices' },
-      { key: 'plan', start: 4, end: 7, kind: 'Agent', route: 'Claude Sonnet 4', text: 'I am comparing candidate groups with existing Work queue items. Property findings share one owner question, while Community membership and source-file changes must stay separate because they have different write boundaries and verification paths.', citation: 'Existing tasks mt-12 and mt-18 · Community evidence v19' },
-      { key: 'draft', start: 8, end: 12, kind: 'Agent', route: 'Claude Sonnet 4', text: 'The broken-reference evidence contains 63 exact references across 18 files. I am keeping this as one owner task with interchangeable Target, File, and exact-reference views instead of creating one task per file.', citation: '63 broken-reference atoms · 18 source revisions · 11 unresolved targets' },
-      { key: 'validate', start: 13, end: 17, kind: 'Agent', route: 'Claude Sonnet 4', text: 'I am validating suggested Community membership against the owner overrides retained from the previous scan. The suggestions can change, but the six saved owner choices remain authoritative and will not be overwritten.', citation: '9 membership candidates · 6 owner choices · Research Community v19' },
-      { key: 'boundary', start: 18, end: 22, kind: 'Controller', route: 'Local validator', text: 'I am checking that every task has an owner action, an owner surface, a write boundary, cited evidence, and a verifiable exit. Split candidates remain needs-choice because no guarded source proposal exists yet.', citation: '7 planned tasks · completion gate revision 2' },
-      { key: 'complete', start: 23, end: 23, kind: 'Controller', route: 'Local receipt', text: 'Review preparation is complete. Seven maintenance tasks and seven automatic receipts were published. One recovery task needs attention. No proposal was generated and no user file was changed.', citation: 'Completed snapshot · run-vault-7f2c' },
+      { key: 'plan', tick: 0, kind: 'Controller', route: 'Local rules', text: 'I am accounting for every retained finding before creating owner work. Deterministic results, index recovery receipts, existing tasks, and saved owner choices must all receive a disposition before the seven-task plan can be frozen.', citation: 'Review snapshot rp-42 · 42 retained findings · 6 saved choices' },
+      { key: 'properties', tick: 1, kind: 'Controller', route: 'Local rules', text: 'These 19 property findings answer one owner question across 12 Research interview files. I am validating them as one task while preserving file-level choices and source revisions.', citation: '12 files · 19 property atoms · source revisions frozen' },
+      { key: 'links', tick: 2, kind: 'Agent', route: 'Claude Sonnet 4', text: 'The broken-reference evidence contains 63 exact references across 18 files. I am keeping it as one owner task with interchangeable Target, File, and exact-reference views instead of creating one task per file.', citation: '63 broken-reference atoms · 18 source revisions · 11 unresolved targets' },
+      { key: 'membership', tick: 3, kind: 'Agent', route: 'Claude Sonnet 4', text: 'I am validating Community membership suggestions against the owner overrides retained from the previous scan. Suggestions may change, but the six saved owner choices remain authoritative.', citation: '9 membership candidates · 6 owner choices · Research Community v19' },
+      { key: 'connections', tick: 4, kind: 'Controller', route: 'Local validator', text: 'Three changed connections share one owner decision and the same Peak-owned write boundary. Their cited endpoints and verification path are complete, so no model-generated proposal is required.', citation: '3 connection findings · graph snapshot v19' },
+      { key: 'recovery', tick: 5, kind: 'Controller', route: 'Local recovery', text: 'These documents have parser failures rather than reviewable content. I am publishing one recovery task with exact retry scope and receipts, and marking it Needs attention rather than inventing recommendations.', citation: '3 parser failures · retry scope frozen' },
+      { key: 'splits', tick: 6, kind: 'Agent', route: 'Claude Sonnet 4', text: 'The three split candidates have an executable owner question and a verification exit, but no guarded source diff exists. I am keeping them in Needs choice instead of labeling them Ready for review.', citation: '3 source notes · 9 destination candidates · no proposal artifact' },
+      { key: 'structure', tick: 7, kind: 'Agent', route: 'Claude Sonnet 4', text: 'I am comparing four Community structure changes with existing Work queue items. The retained group has one owner surface, no duplicate active task, and a Peak-owned verification path.', citation: '4 Communities · task history mt-18 · graph snapshot v19' },
+      { key: 'publish', tick: 8, kind: 'Controller', route: 'Local receipt', text: 'Every task now has a stable identity, owner action, evidence boundary, and verification exit. I am atomically publishing the task set, automatic receipts, and the one recovery attention result.', citation: '7 tasks · 7 automatic receipts · completion gate passed' },
     ];
 
     const state = {
@@ -288,16 +290,15 @@
     }
 
     function currentPhase() {
-      if (state.tick < 4) return 'normalizing findings';
-      if (state.tick < 8) return 'planning owner work';
-      if (state.tick < 18) return 'drafting and validating';
-      if (state.tick < 23) return 'final validation';
+      if (state.tick < 1) return 'planning owner work';
+      if (state.tick < 8) return 'drafting and validating';
+      if (state.tick < 9) return 'publishing receipts';
       return 'complete';
     }
 
     function percent() {
-      if (state.tick < 4) return null;
-      return Math.min(100, Math.round((state.tick - 3) / 20 * 100));
+      if (state.tick < 1) return null;
+      return Math.min(100, Math.round(state.tick / 9 * 100));
     }
 
     function routeLabel(task) {
@@ -307,37 +308,27 @@
     }
 
     function taskStatus(task) {
-      if (state.tick < task.appears) return { label: 'Waiting', className: 'is-waiting', progress: 0 };
+      if (state.tick < task.start) return { label: 'Waiting', className: 'is-waiting', progress: 0 };
       if (state.tick >= task.ready) {
         if (task.attention || (!state.aiEnabled && task.provider !== 'No model call')) return { label: 'Needs attention', className: 'is-attention', progress: 100 };
         return { label: 'Ready', className: 'is-ready', progress: 100 };
       }
-      const span = Math.max(1, task.ready - task.appears);
-      const progress = Math.min(92, Math.round((state.tick - task.appears + 1) / span * 100));
-      if (state.tick < 8) return { label: 'Grouping', className: 'is-running', progress };
-      if (task.provider !== 'No model call' && state.aiEnabled && state.tick < task.ready - 2) return { label: 'Drafting', className: 'is-running', progress };
-      return { label: 'Validating', className: 'is-running', progress };
+      const stream = activeStream();
+      const progress = stream.text.length ? Math.min(99, Math.round(state.streamChars / stream.text.length * 100)) : 0;
+      const label = progress < 82 && task.provider !== 'No model call' ? 'Drafting' : 'Validating';
+      return { label, className: 'is-running', progress };
     }
 
-    function renderTasks() {
-      const taskPlan = document.getElementById('task-plan');
-      if (state.tick < 4) {
-        if (taskPlan.dataset.mode !== 'planning') {
-          taskPlan.dataset.mode = 'planning';
-          taskPlan.innerHTML = '<div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div>';
-        }
-        return;
-      }
-      if (taskPlan.dataset.mode !== 'tasks') {
-        taskPlan.dataset.mode = 'tasks';
-        taskPlan.innerHTML = TASKS.map((task) => `<div class="task-row is-waiting" data-task="${task.id}">
-          <span class="task-icon"><svg class="icon"><use href="#${task.icon}"/></svg></span>
-          <div class="task-main"><strong title="${task.title}">${task.title}</strong></div>
-          <div class="task-count" title="${task.atoms} review atoms">${task.count}</div>
-          <div class="task-progress"><div class="task-progress-head"><b data-task-status>Waiting</b><span data-task-count>0 / ${task.atoms}</span></div><div class="mini-track"><i></i></div></div>
-          <div class="task-route"><strong data-task-route>Waiting</strong></div>
-        </div>`).join('');
-      }
+    function liveOutputMarkup() {
+      return `<div class="live-output" id="live-output">
+        <div class="live-meta"><i></i><span id="stream-kind">Controller</span><strong id="stream-route">Local rules</strong><time id="stream-time">0 sec</time></div>
+        <div class="live-copy" id="stream-text">Starting review preparation…</div>
+        <div class="live-citation"><svg class="icon sm"><use href="#i-file"/></svg><span id="stream-citation">Frozen review snapshot rp-42</span></div>
+      </div>`;
+    }
+
+    function updateTaskRows(taskPlan) {
+      if (taskPlan.dataset.mode !== 'tasks') return;
       for (const task of TASKS) {
         const row = taskPlan.querySelector(`[data-task="${task.id}"]`);
         const status = taskStatus(task);
@@ -352,8 +343,39 @@
       }
     }
 
+    function renderTasks() {
+      const taskPlan = document.getElementById('task-plan');
+      if (state.tick < 1) {
+        if (taskPlan.dataset.mode !== 'planning') {
+          taskPlan.dataset.mode = 'planning';
+          taskPlan.innerHTML = `<div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div>${liveOutputMarkup()}`;
+        }
+        return;
+      }
+      if (taskPlan.dataset.mode !== 'tasks') {
+        taskPlan.dataset.mode = 'tasks';
+        taskPlan.innerHTML = TASKS.map((task) => `<div class="task-row is-waiting" data-task="${task.id}">
+          <span class="task-icon"><svg class="icon"><use href="#${task.icon}"/></svg></span>
+          <div class="task-main"><strong title="${task.title}">${task.title}</strong></div>
+          <div class="task-count" title="${task.atoms} review atoms">${task.count}</div>
+          <div class="task-progress"><div class="task-progress-head"><b data-task-status>Waiting</b><span data-task-count>0 / ${task.atoms}</span></div><div class="mini-track"><i></i></div></div>
+          <div class="task-route"><strong data-task-route>Waiting</strong></div>
+        </div>`).join('');
+      }
+      let liveOutput = document.getElementById('live-output');
+      if (!liveOutput) {
+        taskPlan.insertAdjacentHTML('beforeend', liveOutputMarkup());
+        liveOutput = document.getElementById('live-output');
+      }
+      const activeTask = TASKS.find(task => state.tick >= task.start && state.tick < task.ready);
+      const activeRow = activeTask ? taskPlan.querySelector(`[data-task="${activeTask.id}"]`) : null;
+      if (activeRow) activeRow.insertAdjacentElement('afterend', liveOutput);
+      else taskPlan.appendChild(liveOutput);
+      updateTaskRows(taskPlan);
+    }
+
     function updateHeader() {
-      const complete = state.tick >= 23;
+      const complete = state.tick >= 9;
       document.body.classList.toggle('paused', !state.running && !state.stopped && !complete);
       document.body.classList.toggle('complete', complete);
       document.body.classList.toggle('stopped', state.stopped);
@@ -361,22 +383,27 @@
       document.getElementById('percent').textContent = value === null ? 'Planning…' : `${value}%`;
       document.getElementById('phase-label').textContent = currentPhase();
       document.getElementById('progress-bar').style.width = `${value ?? 0}%`;
-      document.getElementById('progress-copy').textContent = value === null ? 'Freezing review inputs' : `${Math.min(20, Math.max(0, state.tick - 3))} of 20 planned units complete`;
+      document.getElementById('progress-copy').textContent = value === null ? 'Freezing review inputs' : `${Math.min(9, state.tick)} of 9 planned units complete`;
       document.getElementById('elapsed').textContent = formatDuration(state.elapsed);
-      const remaining = complete ? '0 sec' : state.tick < 4 ? 'Estimating…' : state.routeClass === 'local' ? `${Math.max(1, 6 - Math.floor(state.tick / 5))}–${Math.max(2, 8 - Math.floor(state.tick / 5))} min` : `${Math.max(1, 4 - Math.floor(state.tick / 7))}–${Math.max(2, 6 - Math.floor(state.tick / 7))} min`;
+      const remaining = complete ? '0 sec' : state.tick < 1 ? 'Estimating…' : `${Math.max(1, 4 - Math.floor(state.tick / 3))}–${Math.max(2, 6 - Math.floor(state.tick / 3))} min`;
       document.getElementById('remaining').textContent = remaining;
       document.getElementById('hero-title').textContent = complete ? 'Review work is ready.' : state.stopped ? 'Review preparation stopped.' : state.running ? 'Preparing work for review.' : 'Review preparation paused.';
       document.getElementById('run-state').textContent = complete ? 'Complete · checkpoint closed' : state.stopped ? 'Stopped · partial work saved' : state.running ? 'Running · checkpoint active' : 'Paused · checkpoint saved';
       const pause = document.getElementById('pause-btn');
       pause.disabled = complete || state.stopped;
-      pause.innerHTML = state.running ? '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>' : '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>';
+      const pauseMode = state.running ? 'pause' : 'resume';
+      if (pause.dataset.mode !== pauseMode) {
+        pause.dataset.mode = pauseMode;
+        pause.innerHTML = state.running ? '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>' : '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>';
+      }
 
-      const accounted = Math.min(42, Math.round(state.tick / 7 * 42));
+      const planningStream = STREAMS[0];
+      const accounted = state.tick > 0 ? 42 : Math.min(42, Math.round(state.streamChars / planningStream.text.length * 42));
       document.getElementById('accounted').textContent = `${accounted} / 42`;
       document.getElementById('accounted-state').textContent = accounted === 42 ? 'complete' : 'running';
-      document.getElementById('planned').textContent = state.tick < 7 ? '—' : '7';
-      document.getElementById('planned-state').textContent = state.tick < 7 ? 'planning' : 'plan frozen';
-      const visible = state.tick < 4 ? [] : TASKS.map(taskStatus);
+      document.getElementById('planned').textContent = state.tick < 1 ? '—' : '7';
+      document.getElementById('planned-state').textContent = state.tick < 1 ? 'planning' : 'plan frozen';
+      const visible = state.tick < 1 ? [] : TASKS.map(taskStatus);
       const ready = visible.filter(item => item.label === 'Ready').length;
       const attention = visible.filter(item => item.label === 'Needs attention').length;
       document.getElementById('ready-attention').textContent = `${ready} / ${attention}`;
@@ -408,21 +435,23 @@
 
     function activeStream() {
       if (state.stopped) return { key: 'stopped', kind: 'Controller', route: 'Local checkpoint', text: 'Review preparation stopped. Completed task groups and every unprocessed review atom were saved to the partial checkpoint.', citation: 'Partial checkpoint · run-vault-7f2c' };
-      return STREAMS.find(stream => state.tick >= stream.start && state.tick <= stream.end) ?? STREAMS[STREAMS.length - 1];
+      return STREAMS.find(stream => state.tick === stream.tick) ?? STREAMS[STREAMS.length - 1];
     }
 
     function renderLiveStream(advance = false) {
       const stream = activeStream();
       if (state.streamKey !== stream.key) {
         state.streamKey = stream.key;
-        state.streamChars = state.tick >= 23 || state.stopped ? stream.text.length : 0;
+        state.streamChars = state.tick >= 9 || state.stopped ? stream.text.length : 0;
       }
-      if (advance && state.running && state.tick < 23) state.streamChars = Math.min(stream.text.length, state.streamChars + 7);
+      if (advance && state.running && state.tick < 9) state.streamChars = Math.min(stream.text.length, state.streamChars + 5);
       document.getElementById('stream-kind').textContent = stream.kind;
       document.getElementById('stream-route').textContent = stream.route;
       document.getElementById('stream-time').textContent = formatDuration(state.elapsed);
       document.getElementById('stream-text').textContent = stream.text.slice(0, state.streamChars) || 'Starting review preparation…';
       document.getElementById('stream-citation').textContent = stream.citation;
+      updateTaskRows(document.getElementById('task-plan'));
+      updateHeader();
     }
 
     function render() {
@@ -441,19 +470,19 @@
       state.unreadEvents = 0;
       state.streamKey = null;
       state.streamChars = 0;
-      logList.innerHTML = '<div class="log-empty">Preparation events will appear here. The list will not move automatically.</div>';
+      logList.innerHTML = '<div class="log-empty">A receipt appears only after the active work above finishes.</div>';
       newEvents.classList.remove('visible');
       render();
     }
 
     document.getElementById('pause-btn').addEventListener('click', () => {
-      if (state.stopped || state.tick >= 23) return;
+      if (state.stopped || state.tick >= 9) return;
       state.running = !state.running;
       render();
     });
     document.getElementById('restart-btn').addEventListener('click', restart);
     document.getElementById('stop-btn').addEventListener('click', () => {
-      if (state.tick >= 23) return;
+      if (state.tick >= 9) return;
       state.running = false;
       state.stopped = true;
       appendEvent({ kind: 'Attention', text: 'Scan stopped. Completed groups and the unprocessed review ledger were saved.', source: 'Partial checkpoint' });
@@ -466,12 +495,22 @@
     });
 
     setInterval(() => {
-      if (!state.running || state.stopped || state.tick >= 23) return;
-      state.elapsed += 9;
+      if (!state.running || state.stopped || state.tick >= 9) return;
+      state.elapsed += 1;
+      updateHeader();
+      renderLiveStream();
+    }, 1000);
+
+    setInterval(() => {
+      if (!state.running || state.stopped || state.tick >= 9) return;
+      const stream = activeStream();
+      if (state.streamChars < stream.text.length) return;
       state.tick += 1;
-      if (state.tick >= 23) state.running = false;
+      state.streamKey = null;
+      state.streamChars = 0;
+      if (state.tick >= 9) state.running = false;
       render();
-    }, 900);
+    }, 320);
 
     setInterval(() => renderLiveStream(true), 70);
 
