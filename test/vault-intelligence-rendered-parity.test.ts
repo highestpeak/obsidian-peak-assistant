@@ -107,9 +107,11 @@ assert.match(source, /Generated knowledge · current document/, 'Build Index mus
 assert.match(source, /<span>Summary<\/span><span>AI Tags<\/span>/, 'document inspection must keep Summary and AI Tags as independent status columns');
 assert.match(source, /generatedKnowledge\?\.summary/, 'the preview must render provider-produced Summary content instead of placeholder samples');
 assert.match(source, /generatedKnowledge\?\.tags/, 'the preview must render provider-produced AI Tags instead of placeholder samples');
-assert.match(source, /Live generation activity/, 'the current document must expose observable provider lifecycle activity');
+assert.match(source, /liveActivity\.length > 0/, 'provider lifecycle activity must appear only when real events exist');
+assert.match(source, />Activity</, 'the current document must expose observable provider lifecycle activity without an explanatory panel');
+assert.doesNotMatch(source, /<small>Model<\/small>/, 'the generated-knowledge result view must not repeat model routing already shown by Scan setup and lanes');
+assert.doesNotMatch(source, /Observable provider lifecycle/, 'the generated-knowledge result view must not expose implementation commentary');
 assert.match(source, /Output unavailable/, 'legacy completion receipts without retained output must not render as Ready');
-assert.match(source, /inputTokens[\s\S]*outputTokens/, 'Summary and AI Tags must disclose separately attributed provider usage');
 assert.match(html, /pk-vi-overview-activity-body/);
 assert.match(html, /pk-vi-index-overview-body/);
 assert.doesNotMatch(html, /pk-vi-overview-secondary/);
