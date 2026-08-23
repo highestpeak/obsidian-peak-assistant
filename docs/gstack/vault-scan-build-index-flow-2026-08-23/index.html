@@ -78,8 +78,7 @@
       color: var(--accent);
       background: var(--accent-soft);
     }
-    .brand-kicker { color: var(--ink-3); font-size: 9px; font-weight: 760; letter-spacing: .055em; text-transform: uppercase; }
-    .brand-title { margin-top: 3px; font-size: 16px; font-weight: 730; letter-spacing: -.02em; }
+    .brand-title { font-size: 16px; font-weight: 730; letter-spacing: -.02em; }
     .top-actions { display: flex; align-items: center; gap: 8px; }
     .btn {
       min-height: 33px;
@@ -127,13 +126,10 @@
       border-radius: 10px 10px 0 0;
       background: var(--surface);
     }
-    .eyebrow { display: flex; align-items: center; gap: 7px; color: var(--accent-2); font-size: 9px; font-weight: 780; letter-spacing: .055em; text-transform: uppercase; }
-    .hero-title { margin-top: 6px; font-size: 21px; line-height: 1.15; font-weight: 750; letter-spacing: -.03em; }
-    .hero-copy { max-width: 730px; margin-top: 6px; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
+    .hero-title { display: flex; align-items: center; gap: 8px; font-size: 21px; line-height: 1.15; font-weight: 750; letter-spacing: -.03em; }
     .completion-estimate { min-width: 245px; text-align: right; }
     .estimate-main { color: var(--ink); font-size: 15px; font-weight: 740; }
     .estimate-main strong { color: var(--accent-2); font-size: 24px; letter-spacing: -.035em; }
-    .estimate-sub { margin-top: 4px; color: var(--green); font-size: 10px; font-weight: 680; }
 
     .outcomes {
       display: grid;
@@ -144,20 +140,18 @@
       overflow: hidden;
       background: #fcfbfd;
     }
-    .outcome { min-height: 66px; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 15px; border-right: 1px solid var(--line); }
+    .outcome { min-height: 54px; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 15px; border-right: 1px solid var(--line); }
     .outcome:last-child { border-right: 0; }
     .outcome-icon { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-3); background: var(--surface-3); }
     .outcome.complete .outcome-icon { color: var(--green); background: var(--green-soft); }
     .outcome.running .outcome-icon { color: var(--accent-2); background: var(--accent-soft); }
     .outcome-copy strong { display: block; font-size: 11.5px; }
-    .outcome-copy span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 9.5px; }
     .outcome-value { color: var(--ink-2); font-size: 13px; font-weight: 730; font-variant-numeric: tabular-nums; }
     .outcome.complete .outcome-value { color: var(--green); }
 
     .card { margin-top: 13px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 1px 1px rgba(36, 31, 49, .015); }
-    .card-head { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 11px 16px; border-bottom: 1px solid var(--line); }
+    .card-head { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
     .card-head strong { display: block; font-size: 12.5px; }
-    .card-head span { display: block; margin-top: 4px; color: var(--ink-3); font-size: 9.5px; }
     .legend { display: flex; align-items: center; gap: 14px; color: var(--ink-3); font-size: 9px; white-space: nowrap; }
     .legend i { width: 7px; height: 7px; display: inline-block; margin-right: 5px; border-radius: 50%; background: var(--green); }
     .legend span:nth-child(2) i { background: var(--accent); }
@@ -165,7 +159,7 @@
 
     .pipeline { position: relative; }
     .pipeline::before { content: ""; position: absolute; z-index: 0; top: 38px; bottom: 38px; left: 39px; width: 2px; background: linear-gradient(var(--green) 0 29%, #8fb9cc 29% 64%, #aa9bea 64% 100%); opacity: .46; }
-    .lane { position: relative; z-index: 1; display: grid; grid-template-columns: 46px minmax(215px, .8fr) minmax(300px, 1.25fr) minmax(325px, 1.05fr); gap: 15px; align-items: center; min-height: 142px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .lane { position: relative; z-index: 1; display: grid; grid-template-columns: 46px minmax(215px, .8fr) minmax(300px, 1.25fr) minmax(325px, 1.05fr); gap: 15px; align-items: center; min-height: 154px; padding: 13px 16px; border-bottom: 1px solid var(--line); }
     .lane:last-child { border-bottom: 0; }
     .lane-number { width: 28px; height: 28px; display: grid; place-items: center; justify-self: center; border: 1px solid var(--line-2); border-radius: 50%; color: var(--ink-3); background: white; font-size: 10px; font-weight: 760; }
     .lane.complete .lane-number { border-color: #9fd2c3; color: var(--green); background: var(--green-soft); }
@@ -175,8 +169,6 @@
     .badge { height: 20px; display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border-radius: 999px; color: var(--ink-3); background: var(--surface-3); font-size: 8.5px; font-weight: 720; white-space: nowrap; }
     .badge.local { color: var(--green); background: var(--green-soft); }
     .badge.remote { color: var(--blue); background: var(--blue-soft); }
-    .lane-description { max-width: 315px; margin-top: 5px; color: var(--ink-3); font-size: 9.5px; line-height: 1.45; }
-    .lane-scope { margin-top: 8px; color: var(--ink-2); font-size: 9px; font-weight: 650; }
     .progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
     .progress-count { font-size: 18px; font-weight: 750; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
     .progress-count span { color: var(--ink-3); font-size: 10px; font-weight: 560; letter-spacing: 0; }
@@ -187,61 +179,48 @@
     .lane.embedding .progress-track > span { background: #548fb0; }
     .progress-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
     .progress-fact { min-width: 0; }
-    .progress-fact strong { display: block; overflow: hidden; color: var(--ink-2); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-    .progress-fact span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8.5px; }
+    .progress-fact strong { display: block; overflow: hidden; color: var(--ink-2); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
 
-    .activity-box { min-height: 106px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
-    .activity-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: var(--ink-3); font-size: 8.5px; font-weight: 720; text-transform: uppercase; letter-spacing: .045em; }
-    .activity-head span:last-child { color: var(--ink-2); text-transform: none; letter-spacing: 0; }
-    .done-receipt { height: 65px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 7px; color: var(--green); background: var(--green-soft); }
-    .done-receipt strong { display: block; font-size: 10.5px; }
-    .done-receipt span { display: block; margin-top: 3px; color: #4d776c; font-size: 8.8px; }
-    .batch-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 9px; border-radius: 7px; background: white; }
-    .batch-row strong { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-    .batch-row span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 8.5px; }
-    .batch-state { color: var(--blue); font-size: 9px; font-weight: 720; white-space: nowrap; }
-    .slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-    .slot { min-width: 0; height: 58px; padding: 7px; border: 1px solid var(--line); border-radius: 7px; background: white; }
-    .slot strong { display: block; overflow: hidden; font-size: 8.8px; text-overflow: ellipsis; white-space: nowrap; }
-    .slot span { display: block; overflow: hidden; margin-top: 4px; color: var(--ink-3); font-size: 7.8px; text-overflow: ellipsis; white-space: nowrap; }
-    .slot i { height: 2px; display: block; margin-top: 7px; overflow: hidden; border-radius: 999px; background: #e4e0f5; }
-    .slot i::after { content: ""; width: var(--slot-progress); height: 100%; display: block; border-radius: inherit; background: var(--accent); }
-    .local-mode .slots { grid-template-columns: minmax(0, 1fr) 86px; }
-    .local-mode .slot:nth-child(n+3) { display: none; }
-    .local-mode .slot:nth-child(2) { display: grid; place-items: center; color: var(--ink-3); background: transparent; border-style: dashed; font-size: 8px; text-align: center; }
-    .local-mode .slot:nth-child(2) strong { white-space: normal; }
-    .queue-note { margin-top: 7px; color: var(--ink-3); font-size: 8.3px; }
+    .lane-window { height: 126px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+    .lane-window-head { height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 10px; border-bottom: 1px solid var(--line); color: var(--ink-2); font-size: 9.5px; font-weight: 720; }
+    .lane-window-count { color: var(--ink-3); font-weight: 650; }
+    .scan-file-list { display: grid; }
+    .scan-file-row { min-height: 24px; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 0 10px; border-bottom: 1px solid #ebe9ee; background: white; }
+    .scan-file-row:last-child { border-bottom: 0; }
+    .scan-file-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); }
+    .scan-file-row.running .scan-file-dot { background: var(--accent); box-shadow: 0 0 0 2px rgba(104, 87, 217, .12); }
+    .scan-file-row.done .scan-file-dot { background: var(--green); }
+    .embedding .scan-file-row.running .scan-file-dot { background: #548fb0; box-shadow: 0 0 0 2px rgba(84, 143, 176, .12); }
+    .scan-file-name { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 660; text-overflow: ellipsis; white-space: nowrap; }
+    .scan-file-state { color: var(--ink-3); font-size: 9.5px; font-weight: 650; white-space: nowrap; }
+    .scan-file-row.running .scan-file-state { color: var(--accent-2); }
+    .scan-file-row.done .scan-file-state { color: var(--green); }
 
-    .lower-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(310px, .7fr); gap: 13px; }
-    .lower-grid .card { min-height: 178px; }
+    .lower-grid { display: block; }
     .workset { display: grid; }
     .work-row { min-height: 52px; display: grid; grid-template-columns: 26px 135px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 14px; border-bottom: 1px solid var(--line); }
     .work-row:last-child { border-bottom: 0; }
     .work-icon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-3); background: var(--surface-3); }
     .work-row.complete .work-icon { color: var(--green); background: var(--green-soft); }
     .work-lane strong { display: block; font-size: 10px; }
-    .work-lane span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8.5px; }
-    .work-current { min-width: 0; overflow: hidden; color: var(--ink-2); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .work-current { min-width: 0; overflow: hidden; color: var(--ink-2); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
     .work-state { color: var(--ink-3); font-size: 9px; font-weight: 690; }
-    .principles { padding: 12px 15px; }
-    .principle { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 9px; padding: 8px 0; }
-    .principle + .principle { border-top: 1px solid var(--line); }
+    .principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0 15px; }
+    .principle { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 9px; align-items: center; min-height: 58px; padding: 8px 14px; cursor: help; }
+    .principle + .principle { border-left: 1px solid var(--line); }
     .principle-icon { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--accent-2); background: var(--accent-soft); }
     .principle strong { display: block; font-size: 10.5px; }
-    .principle span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 8.8px; line-height: 1.4; }
 
     details.inspect { margin-top: 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
     details.inspect > summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 15px; cursor: pointer; list-style: none; }
     details.inspect > summary::-webkit-details-marker { display: none; }
     .inspect-title { display: flex; align-items: center; gap: 9px; }
     .inspect-title strong { font-size: 11px; }
-    .inspect-title span { color: var(--ink-3); font-size: 9px; }
     .inspect-table { border-top: 1px solid var(--line); }
     .inspect-row { display: grid; grid-template-columns: minmax(230px, 1fr) repeat(3, minmax(150px, .56fr)); gap: 12px; align-items: center; min-height: 42px; padding: 0 15px; border-bottom: 1px solid var(--line); font-size: 9.5px; }
     .inspect-row:last-child { border-bottom: 0; }
     .inspect-row.head { min-height: 32px; color: var(--ink-3); background: var(--surface-2); font-size: 8.5px; font-weight: 720; }
     .file strong { display: block; font-size: 9.8px; }
-    .file span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8.2px; }
     .state { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); }
     .state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); }
     .state.done { color: var(--green); }
@@ -263,11 +242,47 @@
     .scenario-btn.active { color: var(--accent-2); background: var(--accent-soft); }
     .scenario-btn:hover { color: var(--ink-2); background: var(--surface-2); }
 
+    .title-with-hint { display: flex; align-items: center; gap: 6px; }
+    .hint-btn {
+      width: 18px;
+      height: 18px;
+      display: inline-grid;
+      place-items: center;
+      flex: none;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      color: var(--ink-3);
+      background: transparent;
+      cursor: help;
+    }
+    .hint-btn:hover, .hint-btn:focus-visible { color: var(--accent-2); background: var(--accent-soft); }
+    .hint-btn .icon { width: 12px; height: 12px; }
+    [data-tooltip] { cursor: help; }
+    .tooltip-layer {
+      position: fixed;
+      z-index: 100;
+      width: max-content;
+      max-width: 320px;
+      padding: 9px 11px;
+      border: 1px solid #d9d5e2;
+      border-radius: 7px;
+      color: #f8f7fb;
+      background: #332f3a;
+      box-shadow: 0 10px 26px rgba(25, 21, 32, .18);
+      font-size: 10.5px;
+      line-height: 1.45;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 90ms ease, transform 90ms ease;
+    }
+    .tooltip-layer.visible { opacity: 1; transform: translateY(0); }
+
     @media (max-width: 1180px) {
       .page { padding-inline: 18px; }
       .lane { grid-template-columns: 42px minmax(190px, .75fr) minmax(260px, 1fr) minmax(280px, .95fr); gap: 11px; }
-      .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .slot { height: 44px; }
+      .scan-file-name { max-width: 150px; }
     }
   </style>
 </head>
@@ -285,13 +300,14 @@
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
   </svg>
 
   <main class="shell" id="app">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark"><svg class="icon"><use href="#i-layers"/></svg></div>
-        <div><div class="brand-kicker">Vault Intelligence · Scan</div><div class="brand-title">Build Index</div></div>
+        <div class="brand-title">Build Index</div>
       </div>
       <div class="top-actions">
         <div class="mock-switch" role="group" aria-label="Mock execution scenario">
@@ -300,8 +316,9 @@
           <button class="scenario-btn" type="button" data-mode="local">Local serial</button>
         </div>
         <span class="run-chip"><i class="pulse"></i><span id="run-state">Running · checkpoint active</span></span>
+        <button class="btn" type="button" id="restart-btn"><svg class="icon sm"><use href="#i-restart"/></svg><span>Restart demo</span></button>
         <button class="btn" type="button" id="pause-btn"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button>
-        <button class="btn danger" type="button"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button>
+        <button class="btn danger" type="button" id="stop-btn"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button>
       </div>
     </header>
 
@@ -309,186 +326,351 @@
       <div class="breadcrumb"><span>Scan setup</span><span>/</span><span>Run progress</span><span>/</span><strong>Build Index</strong><span>·</span><span>run-vault-7f2c</span></div>
 
       <section class="hero">
-        <div>
-          <div class="eyebrow"><span class="pulse"></span>Index pipeline active</div>
-          <div class="hero-title">Search is ready. Semantic and AI layers are still catching up.</div>
-          <div class="hero-copy">Each document flows into the next eligible lane as soon as its text is ready. Fast local indexing never waits for an embedding provider or an AI model.</div>
-        </div>
+        <div class="hero-title"><span id="hero-title">Building search, semantic, and AI layers.</span><button class="hint-btn" type="button" data-tooltip="Each document enters the next eligible lane as soon as its text is ready. Fast local indexing never waits for an embedding provider or AI model." aria-label="How the Index pipeline works"><svg class="icon"><use href="#i-info"/></svg></button></div>
         <div class="completion-estimate">
-          <div class="estimate-main">Full index in <strong id="full-eta">5–8 min</strong></div>
-          <div class="estimate-sub">Search ready after 11 seconds</div>
+          <div class="estimate-main">Full index <strong id="full-eta">5–8 min</strong></div>
         </div>
       </section>
 
       <section class="outcomes" aria-label="Index readiness outcomes">
-        <div class="outcome complete">
-          <div class="outcome-icon"><svg class="icon sm"><use href="#i-check"/></svg></div>
-          <div class="outcome-copy"><strong>Search ready</strong><span>Files, text, keywords, and full-text passages</span></div>
-          <div class="outcome-value">146 / 146</div>
+        <div class="outcome running" id="search-outcome" tabindex="0" data-tooltip="Files become searchable as soon as text, keywords, and full-text passages are committed locally.">
+          <div class="outcome-icon"><svg class="icon sm"><use id="search-outcome-icon" href="#i-search"/></svg></div>
+          <div class="outcome-copy"><strong id="search-outcome-label">Building search</strong></div>
+          <div class="outcome-value" id="search-outcome-value">24 / 146</div>
         </div>
-        <div class="outcome running">
+        <div class="outcome running" id="embedding-outcome" tabindex="0" data-tooltip="Semantic readiness counts documents whose current text has a verified vector embedding.">
           <div class="outcome-icon"><svg class="icon sm"><use href="#i-vector"/></svg></div>
-          <div class="outcome-copy"><strong>Semantic ready</strong><span>Documents with current embeddings</span></div>
-          <div class="outcome-value">91 / 146</div>
+          <div class="outcome-copy"><strong>Semantic ready</strong></div>
+          <div class="outcome-value" id="embedding-outcome-value">8 / 146</div>
         </div>
-        <div class="outcome running">
+        <div class="outcome running" id="ai-outcome" tabindex="0" data-tooltip="Fully enriched documents have a summary, machine-only AI Tags, entities, and file-level relationship signals.">
           <div class="outcome-icon"><svg class="icon sm"><use href="#i-spark"/></svg></div>
-          <div class="outcome-copy"><strong>Fully enriched</strong><span>Summary, AI Tags, entities, and file-level signals</span></div>
-          <div class="outcome-value">38 / 146</div>
+          <div class="outcome-copy"><strong>Fully enriched</strong></div>
+          <div class="outcome-value" id="ai-outcome-value">2 / 146</div>
         </div>
       </section>
 
       <section class="card">
         <div class="card-head">
-          <div><strong>One document stream · three independent lanes</strong><span>There is no blended “document speed.” Every lane reports only the work it actually performs.</span></div>
+          <div class="title-with-hint"><strong>One document stream · three independent lanes</strong><button class="hint-btn" type="button" data-tooltip="Every lane reports its own progress and throughput. There is no blended document speed." aria-label="Why there are three lanes"><svg class="icon"><use href="#i-info"/></svg></button></div>
           <div class="legend"><span><i></i>Complete</span><span><i></i>Running</span><span><i></i>Queued</span></div>
         </div>
         <div class="pipeline">
-          <article class="lane complete search">
-            <div class="lane-number"><svg class="icon sm"><use href="#i-check"/></svg></div>
+          <article class="lane running search" id="search-lane">
+            <div class="lane-number" id="search-marker">1</div>
             <div>
-              <div class="lane-title"><strong>Full-text search</strong><span class="badge local">Local · no AI</span></div>
-              <div class="lane-description">Read text, extract keywords and passages, then update the local full-text index.</div>
-              <div class="lane-scope">Per document · prerequisite for downstream lanes</div>
+              <div class="lane-title"><strong>Full-text search</strong><span class="badge local">Local · no AI</span><button class="hint-btn" type="button" data-tooltip="Reads each document, extracts keywords and passages, and commits them to the local full-text index." aria-label="Full-text search details"><svg class="icon"><use href="#i-info"/></svg></button></div>
             </div>
             <div>
-              <div class="progress-head"><div class="progress-count">146 / 146 <span>documents</span></div><div class="progress-rate">796 docs/min</div></div>
-              <div class="progress-track" style="--progress:100%"><span></span></div>
+              <div class="progress-head"><div class="progress-count"><span id="search-count">24 / 146</span> <span>documents</span></div><div class="progress-rate" id="search-rate">796 docs/min</div></div>
+              <div class="progress-track" id="search-track" style="--progress:16.4%"><span></span></div>
               <div class="progress-facts">
-                <div class="progress-fact"><strong>11 sec</strong><span>finished</span></div>
-                <div class="progress-fact"><strong>4,812</strong><span>passages</span></div>
-                <div class="progress-fact"><strong>0 failed</strong><span>read / parse</span></div>
+                <div class="progress-fact"><strong id="search-eta">~9 sec left</strong></div>
+                <div class="progress-fact"><strong id="search-passages">792 passages</strong></div>
+                <div class="progress-fact"><strong>0 read failures</strong></div>
               </div>
             </div>
-            <div class="activity-box">
-              <div class="activity-head"><span>Lane status</span><span>Complete</span></div>
-              <div class="done-receipt"><svg class="icon"><use href="#i-search"/></svg><div><strong>Search can be used now</strong><span>Later enrichment cannot block this verified local layer.</span></div></div>
+            <div class="lane-window">
+              <div class="lane-window-head"><span>Current files</span><span class="lane-window-count" id="search-window-count">1 scanning · 2 next</span></div>
+              <div class="scan-file-list" id="search-file-list"></div>
             </div>
           </article>
 
-          <article class="lane running embedding">
-            <div class="lane-number">2</div>
+          <article class="lane running embedding" id="embedding-lane">
+            <div class="lane-number" id="embedding-marker">2</div>
             <div>
-              <div class="lane-title"><strong>Embeddings</strong><span class="badge remote">Remote batch</span></div>
-              <div class="lane-description">Chunk search-ready documents and generate vectors in bounded provider batches.</div>
-              <div class="lane-scope">Per document · starts as soon as text and chunks are ready</div>
+              <div class="lane-title"><strong>Embeddings</strong><span class="badge remote">Remote batch</span><button class="hint-btn" type="button" data-tooltip="Chunks search-ready documents and generates vectors in bounded provider batches." aria-label="Embedding details"><svg class="icon"><use href="#i-info"/></svg></button></div>
             </div>
             <div>
-              <div class="progress-head"><div class="progress-count">91 / 146 <span>documents</span></div><div class="progress-rate">34 chunks/sec</div></div>
-              <div class="progress-track" style="--progress:62.3%"><span></span></div>
+              <div class="progress-head"><div class="progress-count"><span id="embedding-count">8 / 146</span> <span>documents</span></div><div class="progress-rate">34 chunks/sec</div></div>
+              <div class="progress-track" id="embedding-track" style="--progress:5.5%"><span></span></div>
               <div class="progress-facts">
-                <div class="progress-fact"><strong>~49 sec</strong><span>remaining</span></div>
-                <div class="progress-fact"><strong>1,824 / 2,916</strong><span>chunks</span></div>
-                <div class="progress-fact"><strong>8 docs</strong><span>current batch</span></div>
+                <div class="progress-fact"><strong id="embedding-eta">~34 sec left</strong></div>
+                <div class="progress-fact"><strong id="embedding-chunks">160 / 2,916 chunks</strong></div>
+                <div class="progress-fact"><strong id="embedding-active">4 active files</strong></div>
               </div>
             </div>
-            <div class="activity-box">
-              <div class="activity-head"><span>Active batch</span><span>Batch 24 of 37</span></div>
-              <div class="batch-row"><div><strong>8 search-ready documents</strong><span>182 chunks · text-embedding-3-small</span></div><div class="batch-state">Uploading</div></div>
-              <div class="queue-note">47 documents waiting · next batch opens when this receipt closes</div>
+            <div class="lane-window">
+              <div class="lane-window-head"><span>Current files</span><span class="lane-window-count" id="embedding-window-count">4 vectorizing</span></div>
+              <div class="scan-file-list" id="embedding-file-list"></div>
             </div>
           </article>
 
           <article class="lane running ai-lane" id="ai-lane">
-            <div class="lane-number">3</div>
+            <div class="lane-number" id="ai-marker">3</div>
             <div>
-              <div class="lane-title"><strong>AI enrichment</strong><span class="badge remote" id="ai-provider-badge">OpenRouter · rolling pool</span></div>
-              <div class="lane-description">Generate a summary, machine-only AI Tags, entities, and relationship signals from each file independently.</div>
-              <div class="lane-scope">Per document only · Vault-wide reasoning belongs to AI Work</div>
+              <div class="lane-title"><strong>AI enrichment</strong><span class="badge remote" id="ai-provider-badge">OpenRouter · 4 concurrent</span><button class="hint-btn" type="button" data-tooltip="Generates a summary, machine-only AI Tags, entities, and relationship signals for each file independently. Vault-wide reasoning belongs to AI Work." aria-label="AI enrichment details"><svg class="icon"><use href="#i-info"/></svg></button></div>
             </div>
             <div>
-              <div class="progress-head"><div class="progress-count">38 / 146 <span>documents</span></div><div class="progress-rate" id="ai-rate">6.2 docs/min</div></div>
-              <div class="progress-track" style="--progress:26%"><span></span></div>
+              <div class="progress-head"><div class="progress-count"><span id="ai-count">2 / 146</span> <span>documents</span></div><div class="progress-rate" id="ai-rate">6.2 docs/min</div></div>
+              <div class="progress-track" id="ai-track" style="--progress:1.4%"><span></span></div>
               <div class="progress-facts">
-                <div class="progress-fact"><strong id="ai-eta">5–8 min</strong><span>lane ETA</span></div>
-                <div class="progress-fact"><strong id="ai-usage">17.3K tokens</strong><span>used · $0.08</span></div>
-                <div class="progress-fact"><strong id="ai-concurrency">4 active · 4 max</strong><span>concurrency</span></div>
+                <div class="progress-fact"><strong id="ai-eta">5–8 min ETA</strong></div>
+                <div class="progress-fact"><strong id="ai-usage">0.9K tokens · $0.01</strong></div>
+                <div class="progress-fact"><strong id="ai-concurrency">4 / 4 active</strong></div>
               </div>
             </div>
-            <div class="activity-box">
-              <div class="activity-head"><span id="pool-label">Rolling pool · 4 slots</span><span id="pool-state">4 active</span></div>
-              <div class="slots">
-                <div class="slot"><strong>Research synthesis.md</strong><span>Summary · tags</span><i style="--slot-progress:72%"></i></div>
-                <div class="slot"><strong>Interview notes.md</strong><span>Entities · signals</span><i style="--slot-progress:48%"></i></div>
-                <div class="slot"><strong>Launch contract.pdf</strong><span>Summary · tags</span><i style="--slot-progress:29%"></i></div>
-                <div class="slot"><strong>AI Graph experiments.md</strong><span>Waiting first token</span><i style="--slot-progress:8%"></i></div>
-              </div>
-              <div class="queue-note" id="ai-queue-note">104 queued · each completed request immediately admits the next eligible file</div>
+            <div class="lane-window">
+              <div class="lane-window-head"><span>Current files</span><span class="lane-window-count" id="ai-window-count">4 generating</span></div>
+              <div class="scan-file-list" id="ai-file-list"></div>
             </div>
           </article>
         </div>
       </section>
 
-      <div class="lower-grid">
-        <section class="card">
-          <div class="card-head"><div><strong>Active workset</strong><span>A compact live view of each lane—not three repeated document lists.</span></div><button class="btn ghost" type="button" onclick="document.getElementById('inspect').open=true;document.getElementById('inspect').scrollIntoView({behavior:'smooth'})">Inspect files <svg class="icon sm"><use href="#i-chevron"/></svg></button></div>
-          <div class="workset">
-            <div class="work-row complete"><div class="work-icon"><svg class="icon sm"><use href="#i-check"/></svg></div><div class="work-lane"><strong>Full-text search</strong><span>Local lane</span></div><div class="work-current">All 146 documents committed to the local index</div><div class="work-state">Complete</div></div>
-            <div class="work-row"><div class="work-icon"><svg class="icon sm"><use href="#i-vector"/></svg></div><div class="work-lane"><strong>Embeddings</strong><span>Batch 24</span></div><div class="work-current">8 documents · 182 chunks · provider receipt pending</div><div class="work-state">Uploading</div></div>
-            <div class="work-row"><div class="work-icon"><svg class="icon sm"><use href="#i-spark"/></svg></div><div class="work-lane"><strong>AI enrichment</strong><span id="work-pool">4-slot pool</span></div><div class="work-current" id="work-current">4 active documents · next file enters on completion</div><div class="work-state">Generating</div></div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="card-head"><div><strong>Completion model</strong><span>Two milestones, not one misleading weighted percentage.</span></div></div>
-          <div class="principles">
-            <div class="principle"><div class="principle-icon"><svg class="icon sm"><use href="#i-search"/></svg></div><div><strong>Search-ready is independently publishable</strong><span>Users can search as soon as the verified local layer finishes.</span></div></div>
-            <div class="principle"><div class="principle-icon"><svg class="icon sm"><use href="#i-spark"/></svg></div><div><strong>Fully enriched is optional and slower</strong><span>Its ETA follows the AI lane and changes with provider capacity.</span></div></div>
-            <div class="principle"><div class="principle-icon"><svg class="icon sm"><use href="#i-info"/></svg></div><div><strong>No Vault-wide analysis in Build Index</strong><span>Cross-file discovery, Communities, and synthesis remain under AI Work.</span></div></div>
-          </div>
-        </section>
-      </div>
-
       <details class="inspect" id="inspect">
-        <summary><div class="inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect document states</strong><span>Secondary diagnostic view · 146 documents</span></div><svg class="icon sm"><use href="#i-chevron"/></svg></summary>
+        <summary><div class="inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect all document states</strong></div><svg class="icon sm"><use href="#i-chevron"/></svg></summary>
         <div class="inspect-table">
           <div class="inspect-row head"><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>AI enrichment</span></div>
-          <div class="inspect-row"><div class="file"><strong>Research synthesis.md</strong><span>Projects / Research</span></div><span class="state done">Ready</span><span class="state done">Ready</span><span class="state live">Summary · tags</span></div>
-          <div class="inspect-row"><div class="file"><strong>Launch contract.pdf</strong><span>Projects / Peak Launch</span></div><span class="state done">Ready</span><span class="state live">Batch 24</span><span class="state live">Summary · tags</span></div>
-          <div class="inspect-row"><div class="file"><strong>Ambient notes.md</strong><span>Daily / 2026 / August</span></div><span class="state done">Ready</span><span class="state">Queued</span><span class="state">Queued</span></div>
+          <div class="inspect-row"><div class="file"><strong>Research synthesis.md</strong></div><span class="state done">Ready</span><span class="state done">Ready</span><span class="state live">Summary · tags</span></div>
+          <div class="inspect-row"><div class="file"><strong>Launch contract.pdf</strong></div><span class="state done">Ready</span><span class="state live">Vectorizing</span><span class="state live">Summary · tags</span></div>
+          <div class="inspect-row"><div class="file"><strong>Ambient notes.md</strong></div><span class="state done">Ready</span><span class="state">Queued</span><span class="state">Queued</span></div>
         </div>
       </details>
     </div>
 
   </main>
 
+  <div class="tooltip-layer" id="tooltip" role="tooltip"></div>
   <script>
+    const TOTAL = 146;
+    const FILES = [
+      'Research synthesis.md',
+      'Interview notes.md',
+      'Launch contract.pdf',
+      'AI Graph experiments.md',
+      'Ambient notes.md',
+      'Knowledge garden.md',
+      'Scanned receipt.pdf',
+      'Product direction.md',
+      'Customer interview 07.md',
+      'Release checklist.md',
+      'Vault architecture.md',
+      'Market notes.md',
+      'Roadmap decisions.md',
+      'Design review.md',
+      'Weekly synthesis.md',
+      'Search evaluation.md'
+    ];
     const app = document.getElementById('app');
-    const aiLane = document.getElementById('ai-lane');
+    const pauseButton = document.getElementById('pause-btn');
     const scenarioButtons = [...document.querySelectorAll('.scenario-btn')];
-    const setText = (id, value) => { document.getElementById(id).textContent = value; };
+    const run = { search: 18, embedding: 4, ai: 1, tick: 0, mode: 'remote', running: true, stopped: false };
+
+    function setText(id, value) {
+      const element = document.getElementById(id);
+      if (!element) return;
+      element.textContent = value;
+    }
+
+    function fileAt(index) {
+      const safeIndex = ((index % FILES.length) + FILES.length) % FILES.length;
+      return FILES[safeIndex];
+    }
+
+    function row(name, state, label) {
+      return `<div class="scan-file-row ${state}"><span class="scan-file-dot"></span><span class="scan-file-name">${name}</span><span class="scan-file-state">${label}</span></div>`;
+    }
+
+    function renderSearchFiles() {
+      const list = document.getElementById('search-file-list');
+      if (run.search >= TOTAL) {
+        list.innerHTML = [0, 1, 2, 3].map((offset) => row(fileAt(TOTAL - 1 - offset), 'done', 'Indexed')).join('');
+        setText('search-window-count', 'Recently indexed');
+        return;
+      }
+      const current = run.search;
+      const rows = [];
+      if (current > 0) rows.push(row(fileAt(current - 1), 'done', 'Indexed'));
+      rows.push(row(fileAt(current), 'running', 'Extracting'));
+      rows.push(row(fileAt(current + 1), '', 'Next'));
+      rows.push(row(fileAt(current + 2), '', 'Next'));
+      list.innerHTML = rows.slice(0, 4).join('');
+      setText('search-window-count', '1 scanning · 2 next');
+    }
+
+    function renderEmbeddingFiles() {
+      const list = document.getElementById('embedding-file-list');
+      if (run.embedding >= TOTAL) {
+        list.innerHTML = [0, 1, 2, 3].map((offset) => row(fileAt(TOTAL - 1 - offset), 'done', 'Embedded')).join('');
+        setText('embedding-window-count', 'Recently embedded');
+        return;
+      }
+      const available = Math.max(0, run.search - run.embedding);
+      const active = Math.min(4, available);
+      const rows = [];
+      for (let index = 0; index < active; index += 1) {
+        rows.push(row(fileAt(run.embedding + index), 'running', `${22 + ((run.tick + index) * 17) % 71}%`));
+      }
+      while (rows.length < 4) {
+        rows.push(row(fileAt(run.embedding + rows.length), '', 'Waiting for text'));
+      }
+      list.innerHTML = rows.join('');
+      setText('embedding-window-count', active ? `${active} vectorizing` : 'Waiting for search');
+    }
+
+    function renderAIFiles() {
+      const list = document.getElementById('ai-file-list');
+      if (run.ai >= TOTAL) {
+        list.innerHTML = [0, 1, 2, 3].map((offset) => row(fileAt(TOTAL - 1 - offset), 'done', 'Enriched')).join('');
+        setText('ai-window-count', 'Recently enriched');
+        return;
+      }
+      const capacity = run.mode === 'local' ? 1 : 4;
+      const available = Math.max(0, run.search - run.ai);
+      const active = Math.min(capacity, available);
+      const stages = ['Summary', 'AI Tags', 'Entities', 'File signals'];
+      const rows = [];
+      for (let index = 0; index < active; index += 1) {
+        rows.push(row(fileAt(run.ai + index), 'running', stages[(run.tick + index) % stages.length]));
+      }
+      while (rows.length < 4) {
+        rows.push(row(fileAt(run.ai + rows.length), '', active ? 'Queued' : 'Waiting for text'));
+      }
+      list.innerHTML = rows.join('');
+      setText('ai-window-count', active ? `${active} generating` : 'Waiting for search');
+    }
+
+    function setLaneState(id, markerId, count, waiting) {
+      const lane = document.getElementById(id);
+      lane.classList.toggle('complete', count >= TOTAL);
+      lane.classList.toggle('running', count < TOTAL && !waiting);
+      lane.classList.toggle('queued', count < TOTAL && waiting);
+      setText(markerId, count >= TOTAL ? '✓' : id === 'search-lane' ? '1' : id === 'embedding-lane' ? '2' : '3');
+    }
+
+    function updateRunButton() {
+      app.classList.toggle('paused', !run.running && !run.stopped && run.ai < TOTAL);
+      pauseButton.disabled = run.stopped || run.ai >= TOTAL;
+      pauseButton.innerHTML = run.running
+        ? '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>'
+        : '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>';
+      if (run.stopped) {
+        setText('run-state', 'Stopped · partial results kept');
+        return;
+      }
+      if (run.ai >= TOTAL) {
+        setText('run-state', 'Complete · checkpoint closed');
+        return;
+      }
+      setText('run-state', run.running ? 'Running · checkpoint active' : 'Paused · checkpoint saved');
+    }
+
+    function render() {
+      const searchPercent = (run.search / TOTAL) * 100;
+      const embeddingPercent = (run.embedding / TOTAL) * 100;
+      const aiPercent = (run.ai / TOTAL) * 100;
+      setText('search-count', `${run.search} / ${TOTAL}`);
+      setText('embedding-count', `${run.embedding} / ${TOTAL}`);
+      setText('ai-count', `${run.ai} / ${TOTAL}`);
+      setText('search-outcome-value', `${run.search} / ${TOTAL}`);
+      setText('embedding-outcome-value', `${run.embedding} / ${TOTAL}`);
+      setText('ai-outcome-value', `${run.ai} / ${TOTAL}`);
+      document.getElementById('search-track').style.setProperty('--progress', `${searchPercent}%`);
+      document.getElementById('embedding-track').style.setProperty('--progress', `${embeddingPercent}%`);
+      document.getElementById('ai-track').style.setProperty('--progress', `${aiPercent}%`);
+      setText('search-eta', run.search >= TOTAL ? 'Finished in 11 sec' : `~${Math.max(1, Math.ceil((TOTAL - run.search) / 12))} sec left`);
+      setText('search-passages', `${Math.round(run.search * 32.96).toLocaleString()} passages`);
+      setText('embedding-eta', run.embedding >= TOTAL ? 'Embedding complete' : `~${Math.max(1, Math.ceil((TOTAL - run.embedding) / 4))} sec left`);
+      setText('embedding-chunks', `${Math.round(run.embedding * 19.97).toLocaleString()} / 2,916 chunks`);
+      setText('embedding-active', `${Math.min(4, Math.max(0, run.search - run.embedding))} active files`);
+      setText('ai-usage', run.mode === 'local' ? `${Math.round(run.ai * 460).toLocaleString()} local tokens` : `${(run.ai * .46).toFixed(1)}K tokens · $${(run.ai * .002).toFixed(2)}`);
+      setText('ai-concurrency', run.mode === 'local' ? '1 / 1 active' : '4 / 4 active');
+
+      const searchDone = run.search >= TOTAL;
+      const embeddingDone = run.embedding >= TOTAL;
+      const aiDone = run.ai >= TOTAL;
+      setText('search-outcome-label', searchDone ? 'Search ready' : 'Building search');
+      document.getElementById('search-outcome-icon').setAttribute('href', searchDone ? '#i-check' : '#i-search');
+      document.getElementById('search-outcome').className = `outcome ${searchDone ? 'complete' : 'running'}`;
+      document.getElementById('embedding-outcome').className = `outcome ${embeddingDone ? 'complete' : 'running'}`;
+      document.getElementById('ai-outcome').className = `outcome ${aiDone ? 'complete' : 'running'}`;
+      setLaneState('search-lane', 'search-marker', run.search, false);
+      setLaneState('embedding-lane', 'embedding-marker', run.embedding, run.search === 0);
+      setLaneState('ai-lane', 'ai-marker', run.ai, run.search === 0);
+
+      if (aiDone) setText('hero-title', 'Knowledge Index is ready.');
+      else if (searchDone) setText('hero-title', 'Search is ready. Semantic and AI layers are still catching up.');
+      else setText('hero-title', 'Building search, semantic, and AI layers.');
+
+      renderSearchFiles();
+      renderEmbeddingFiles();
+      renderAIFiles();
+      updateRunButton();
+    }
+
+    function advance() {
+      if (!run.running || run.stopped) return;
+      run.tick += 1;
+      run.search = Math.min(TOTAL, run.search + 7 + (run.tick % 3));
+      const embeddingRoom = Math.max(0, run.search - run.embedding);
+      run.embedding = Math.min(TOTAL, run.embedding + Math.min(4, embeddingRoom));
+      const aiRoom = Math.max(0, run.search - run.ai);
+      const aiStep = run.mode === 'local' ? (run.tick % 2) : 2;
+      run.ai = Math.min(TOTAL, run.ai + Math.min(aiStep, aiRoom));
+      if (run.ai >= TOTAL) run.running = false;
+      render();
+    }
 
     function setScenario(mode) {
-      const local = mode === 'local';
-      app.classList.toggle('local-mode', local);
+      run.mode = mode;
       scenarioButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
+      const local = mode === 'local';
       setText('full-eta', local ? '36–52 min' : '5–8 min');
-      setText('ai-provider-badge', local ? 'Ollama · serial queue' : 'OpenRouter · rolling pool');
+      setText('ai-provider-badge', local ? 'Ollama · 1 at a time' : 'OpenRouter · 4 concurrent');
       document.getElementById('ai-provider-badge').className = `badge ${local ? 'local' : 'remote'}`;
       setText('ai-rate', local ? '0.7 docs/min' : '6.2 docs/min');
-      setText('ai-eta', local ? '36–52 min' : '5–8 min');
-      setText('ai-usage', local ? 'Local tokens only' : '17.3K tokens');
-      setText('ai-concurrency', local ? '1 active · 1 max' : '4 active · 4 max');
-      setText('pool-label', local ? 'Serial queue · 1 slot' : 'Rolling pool · 4 slots');
-      setText('pool-state', local ? '1 active' : '4 active');
-      setText('ai-queue-note', local ? '107 queued · the next file starts only after the local model finishes' : '104 queued · each completed request immediately admits the next eligible file');
-      setText('work-pool', local ? '1-slot queue' : '4-slot pool');
-      setText('work-current', local ? '1 active document · 107 waiting for the local model' : '4 active documents · next file enters on completion');
-      aiLane.querySelector('.slot:nth-child(2) strong').textContent = local ? '107 waiting' : 'Interview notes.md';
+      setText('ai-eta', local ? '36–52 min ETA' : '5–8 min ETA');
+      render();
+    }
+
+    function restart() {
+      run.search = 0;
+      run.embedding = 0;
+      run.ai = 0;
+      run.tick = 0;
+      run.running = true;
+      run.stopped = false;
+      render();
     }
 
     scenarioButtons.forEach((button) => button.addEventListener('click', () => setScenario(button.dataset.mode)));
-
-    const pauseButton = document.getElementById('pause-btn');
-    let paused = false;
+    document.getElementById('restart-btn').addEventListener('click', restart);
     pauseButton.addEventListener('click', () => {
-      paused = !paused;
-      app.classList.toggle('paused', paused);
-      pauseButton.innerHTML = paused
-        ? '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>'
-        : '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>';
-      setText('run-state', paused ? 'Paused · checkpoint saved' : 'Running · checkpoint active');
+      if (run.stopped || run.ai >= TOTAL) return;
+      run.running = !run.running;
+      render();
     });
+    document.getElementById('stop-btn').addEventListener('click', () => {
+      run.running = false;
+      run.stopped = true;
+      render();
+    });
+
+    const tooltip = document.getElementById('tooltip');
+    function showTooltip(target) {
+      tooltip.textContent = target.dataset.tooltip;
+      tooltip.classList.add('visible');
+      const targetRect = target.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - tooltipRect.width - 12, Math.max(12, targetRect.left));
+      const below = targetRect.bottom + 7;
+      const top = below + tooltipRect.height < window.innerHeight ? below : targetRect.top - tooltipRect.height - 7;
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${Math.max(8, top)}px`;
+    }
+    function hideTooltip() {
+      tooltip.classList.remove('visible');
+    }
+    document.querySelectorAll('[data-tooltip]').forEach((target) => {
+      target.addEventListener('mouseenter', () => showTooltip(target));
+      target.addEventListener('mouseleave', hideTooltip);
+      target.addEventListener('focus', () => showTooltip(target));
+      target.addEventListener('blur', hideTooltip);
+    });
+
+    render();
+    window.setInterval(advance, 750);
   </script>
 </body>
 </html>
