@@ -19,24 +19,25 @@
     .crumb { display:flex; align-items:center; gap:7px; margin-bottom:12px; color:var(--ink-3); font-size:10px; }
     .crumb b { color:var(--ink-2); }
     .card { overflow:hidden; border:1px solid var(--line); border-radius:9px; background:var(--surface); box-shadow:0 1px 2px rgba(30,24,50,.04); }
-    .run-top { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:10px 16px 10px 18px; }
+    .run-card { overflow:visible; }
+    .run-top { position:relative; min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:10px 16px 10px 18px; }
     .run-name { display:flex; align-items:baseline; gap:10px; }
     .run-name strong { font-size:14px; }
-    .run-name span { color:var(--ink-3); font-size:10px; }
+    .stage-menu-wrap { position:relative; }
+    .stage-menu-trigger { padding:0; border:0; color:var(--accent-2); background:transparent; font-size:10px; font-weight:680; cursor:pointer; }
+    .stage-menu { position:absolute; z-index:5; top:26px; left:0; width:210px; display:none; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 10px 28px rgba(35,28,58,.14); }
+    .stage-menu.open { display:block; }
+    .stage-menu-item { min-height:38px; display:grid; grid-template-columns:19px minmax(0,1fr); gap:9px; align-items:center; padding:7px 11px; border-bottom:1px solid var(--line); color:var(--ink-3); font-size:10.5px; }
+    .stage-menu-item:last-child { border-bottom:0; }
+    .stage-menu-item i { width:18px; height:18px; display:grid; place-items:center; border:1px solid var(--line-2); border-radius:50%; background:#fff; font-size:8px; font-style:normal; }
+    .stage-menu-item.done { color:var(--green); }
+    .stage-menu-item.done i { border-color:#a5d6c6; background:var(--green-soft); }
+    .stage-menu-item.current { color:var(--accent-2); font-weight:700; }
+    .stage-menu-item.current i { border-color:var(--accent); color:#fff; background:var(--accent); }
     .actions { display:flex; align-items:center; gap:8px; }
     .boundary { padding:4px 9px; border-radius:999px; color:var(--ink-3); background:#f3f2f5; font-size:10px; font-weight:670; }
     .btn { min-height:32px; display:inline-flex; align-items:center; gap:7px; padding:0 12px; border:1px solid var(--line-2); border-radius:7px; color:var(--ink-2); background:#fff; font-weight:680; cursor:pointer; }
     .btn.danger { color:var(--red); border-color:#ecd0d5; }
-
-    .stage-track { position:relative; display:grid; grid-template-columns:repeat(5,1fr); padding:12px 36px 13px; border-top:1px solid var(--line); }
-    .stage-track::before { content:""; position:absolute; top:23px; right:calc(10% + 21px); left:calc(10% + 21px); height:1px; }
-    .stage-track::before { background:var(--line-2); }
-    .stage { position:relative; z-index:1; display:grid; justify-items:center; gap:4px; color:var(--ink-3); }
-    .stage-dot { width:22px; height:22px; display:grid; place-items:center; border:1px solid var(--line-2); border-radius:50%; background:#fff; font-size:9px; }
-    .stage.done .stage-dot { border-color:#a5d6c6; color:var(--green); background:var(--green-soft); }
-    .stage.current .stage-dot { border-color:var(--accent); color:#fff; background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-    .stage-name { color:var(--ink-2); font-size:11px; font-weight:700; }
-    .stage.current .stage-name { color:var(--accent-2); }
 
     .overall { display:grid; grid-template-columns:120px minmax(0,1fr) minmax(270px,.52fr); align-items:center; min-height:106px; border-top:1px solid var(--line); background:var(--surface-2); }
     .overall-number { padding:18px; }
@@ -90,15 +91,8 @@
   <nav class="tabs"><span>Overview</span><span>Vault map</span><span>Work queue&nbsp; 11</span></nav>
   <main class="page">
     <div class="crumb"><span>‹</span><b>Scan setup</b><span>/</span><b>Run progress</b><span>/</span><span>run-vault-live-7f2c</span></div>
-    <section class="card">
-      <div class="run-top"><div class="run-name"><strong>Run progress</strong><span id="run-note">Started moments ago</span></div><div class="actions"><span class="boundary">User files unchanged</span><button class="btn" id="pause" type="button"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button><button class="btn danger" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Stop scan</button></div></div>
-      <div class="stage-track" id="stage-track">
-        <div class="stage" data-stage="0"><span class="stage-dot">1</span><span class="stage-name">Discover</span></div>
-        <div class="stage" data-stage="1"><span class="stage-dot">2</span><span class="stage-name">Build Index</span></div>
-        <div class="stage" data-stage="2"><span class="stage-dot">3</span><span class="stage-name">AI work</span></div>
-        <div class="stage" data-stage="3"><span class="stage-dot">4</span><span class="stage-name">Prepare review</span></div>
-        <div class="stage" data-stage="4"><span class="stage-dot">5</span><span class="stage-name">Publish</span></div>
-      </div>
+    <section class="card run-card">
+      <div class="run-top"><div class="run-name"><strong id="run-stage-title">Stage 1 of 5 · Discover</strong><div class="stage-menu-wrap"><button class="stage-menu-trigger" id="stage-menu-trigger" type="button" aria-expanded="false">View 5 stages</button><div class="stage-menu" id="stage-menu"></div></div></div><div class="actions"><span class="boundary">User files unchanged</span><button class="btn" id="pause" type="button"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button><button class="btn danger" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Stop scan</button></div></div>
       <div class="overall">
         <div class="overall-number"><strong id="overall">10%</strong><span>overall progress</span></div>
         <div class="overall-main"><div class="facts"><div class="fact"><strong id="processed">15 / 146</strong><span>objects processed</span></div><div class="fact"><strong id="elapsed">0:43</strong><span>elapsed</span></div><div class="fact"><strong id="remaining">~6:26</strong><span>remaining</span></div><div class="fact"><strong id="speed">21 / min</strong><span>current rate</span></div></div></div>
@@ -119,14 +113,15 @@
     const state={progress:10,paused:false,elapsed:43};
     const $=selector=>document.querySelector(selector);
     const stageBounds=[0,12,55,84,97,101];
+    const stageNames=['Discover','Build Index','AI work','Prepare review','Publish'];
     const stageIndex=value=>Math.max(0,stageBounds.findIndex((bound,index)=>index>0&&value<bound)-1);
     function clock(seconds){const m=Math.floor(seconds/60);return `${m}:${String(seconds%60).padStart(2,'0')}`;}
     function render(){
       const index=stageIndex(state.progress);const processed=Math.min(146,Math.round(state.progress*1.46));const remaining=Math.max(0,Math.round((100-state.progress)*4.28));
       $('#overall').textContent=`${state.progress}%`;$('#processed').textContent=`${processed} / 146`;$('#elapsed').textContent=clock(state.elapsed);$('#remaining').textContent=state.progress>=100?'Complete':`~${clock(remaining)}`;$('#speed').textContent=state.paused?'—':`${20+Math.round(state.progress/12)} / min`;
-      $('#run-note').textContent=state.paused?'Paused · checkpoint saved':`Step ${index+1} of 5`;
+      $('#run-stage-title').textContent=`Stage ${index+1} of 5 · ${stageNames[index]}`;
       $('#cost').textContent=`$${(state.progress*.00048).toFixed(3)}`;$('#tokens').textContent=`${(state.progress*.105).toFixed(1)}K tokens used`;
-      document.querySelectorAll('.stage').forEach((node,nodeIndex)=>node.className=`stage ${nodeIndex<index?'done':nodeIndex===index?'current':''}`);
+      $('#stage-menu').innerHTML=stageNames.map((name,nodeIndex)=>`<div class="stage-menu-item ${nodeIndex<index?'done':nodeIndex===index?'current':''}"><i>${nodeIndex<index?'✓':nodeIndex+1}</i><span>${name}</span></div>`).join('');
       const indexProgress=Math.max(0,Math.min(100,Math.round((state.progress-12)/43*100)));$('#index-percent').textContent=`${indexProgress}%`;$('#index-bar').style.width=`${indexProgress}%`;$('#index-elapsed').textContent=`${Math.round(indexProgress*.43)} sec`;$('#passes').textContent=`${Math.round(indexProgress*4.38)} / 438`;
       const search=Math.min(100,Math.round(indexProgress*2.1)),semantic=Math.min(100,Math.max(0,Math.round((indexProgress-8)*1.45))),ai=Math.min(100,Math.max(0,Math.round((indexProgress-24)*1.2)));
       [['search',search],['semantic',semantic],['ai',ai]].forEach(([key,value])=>{$(`#${key}-pct`).textContent=`${value}%`;$(`#${key}-files`).textContent=`${Math.round(value*1.46)} / 146`;$(`#${key}-time`).textContent=`${Math.round(value*.11)} sec`;});
@@ -134,6 +129,8 @@
     render();
     window.setInterval(()=>{if(state.paused)return;state.progress=state.progress>=100?0:state.progress+1;state.elapsed+=4;render();},520);
     $('#pause').addEventListener('click',()=>{state.paused=!state.paused;$('#pause span').textContent=state.paused?'Resume':'Pause';render();});
+    $('#stage-menu-trigger').addEventListener('click',()=>{const menu=$('#stage-menu');const open=!menu.classList.contains('open');menu.classList.toggle('open',open);$('#stage-menu-trigger').setAttribute('aria-expanded',String(open));});
+    document.addEventListener('click',event=>{if(event.target.closest('.stage-menu-wrap'))return;$('#stage-menu').classList.remove('open');$('#stage-menu-trigger').setAttribute('aria-expanded','false');});
   </script>
 </body>
 </html>
