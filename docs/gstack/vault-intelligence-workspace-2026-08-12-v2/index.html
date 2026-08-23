@@ -1257,6 +1257,7 @@
     .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(104,87,217,.30); } 50% { box-shadow: 0 0 0 5px rgba(104,87,217,0); } }
     .progress-title { margin-top: 6px; font-size: 20px; font-weight: 730; letter-spacing: -.025em; }
+    .progress-hero .stage-track { margin: 0; border-right: 0; border-left: 0; border-radius: 0; }
     .run-progress-band { display: grid; grid-template-columns: 118px minmax(0, 1fr) minmax(320px, .72fr); gap: 20px; align-items: center; padding: 15px 18px 16px; border-top: 1px solid var(--line); background: #fcfbfe; }
     .percent { font-size: 34px; font-weight: 750; letter-spacing: -.04em; }
     .percent > span:nth-child(2) { font-size: 20px; }
@@ -4416,18 +4417,18 @@
           <div class="breadcrumb"><button type="button" data-back="scan-setup"><svg class="icon sm"><use href="#i-back"/></svg>Scan setup</button><span>/</span><strong>Run progress</strong><span>/</span><span id="run-id">run-vault-live-7f2c</span></div>
           <div class="card progress-hero">
             <div class="progress-title-row"><div><div class="live-label"><span class="pulse-dot" id="live-dot"></span><span id="run-state-label">VAULT SCAN RUNNING</span></div><div class="progress-title" id="run-title">Discovering changed inputs and affected context</div></div><div class="progress-title-actions"><span class="status neutral">User files unchanged</span><button hidden id="complete-mock-run" type="button">Complete run</button><button class="btn small" id="review-remaining-plan" type="button" style="display:none">Review plan</button><button class="btn small" id="pause-run" type="button"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button><button class="btn small danger" id="stop-run" type="button"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button></div></div>
+            <div class="stage-track" id="stage-track" role="tablist" aria-label="Inspect scan stages">
+              <button class="stage current selected" type="button" role="tab" data-stage="0" data-run-stage-tab="discover" aria-selected="true"><span class="stage-marker">1</span><span class="stage-name">Discover</span><span class="stage-state">Running</span></button>
+              <button class="stage" type="button" role="tab" data-stage="1" data-run-stage-tab="local" aria-selected="false"><span class="stage-marker">2</span><span class="stage-name">Build Index</span><span class="stage-state">Waiting</span></button>
+              <button class="stage" type="button" role="tab" data-stage="2" data-run-stage-tab="ai" aria-selected="false"><span class="stage-marker">3</span><span class="stage-name">AI work</span><span class="stage-state">Parallel</span></button>
+              <button class="stage" type="button" role="tab" data-stage="3" data-run-stage-tab="review" aria-selected="false"><span class="stage-marker">4</span><span class="stage-name">Prepare review</span><span class="stage-state">Waiting</span></button>
+              <button class="stage" type="button" role="tab" data-stage="4" data-run-stage-tab="publish" aria-selected="false"><span class="stage-marker">5</span><span class="stage-name">Publish</span><span class="stage-state">Waiting</span></button>
+            </div>
             <div class="run-progress-band">
               <div class="percent"><span id="run-percent">0</span><span>%</span><span class="percent-label">overall progress</span></div>
               <div><div class="big-progress"><span id="run-progress-fill"></span></div><div class="progress-facts"><span class="progress-fact"><strong><span id="processed-count">0</span> / <span id="run-total">146</span></strong>objects advanced</span><span class="progress-fact"><strong id="run-time-summary">Calculating</strong>elapsed · remaining</span><span class="progress-fact"><strong id="run-throughput">—</strong>objects / min</span></div></div>
               <div class="progress-ai-usage"><div class="progress-ai-usage-title"><span>AI usage</span><button class="text-link" type="button" data-demo-toast="Every model request stores model, token usage, price basis, status, and provider receipt">View receipts</button></div><div class="progress-ai-current"><strong id="ai-actual-cost">$0.000</strong><span id="ai-actual-tokens">0 tokens used</span></div><div class="progress-ai-projection"><span>Projected</span><strong id="ai-projected-total">~$0.46 · 181K tokens</strong></div></div>
             </div>
-          </div>
-          <div class="stage-track" id="stage-track" role="tablist" aria-label="Inspect scan stages">
-            <button class="stage current selected" type="button" role="tab" data-stage="0" data-run-stage-tab="discover" aria-selected="true"><span class="stage-marker">1</span><span class="stage-name">Discover</span><span class="stage-state">Running</span></button>
-            <button class="stage" type="button" role="tab" data-stage="1" data-run-stage-tab="local" aria-selected="false"><span class="stage-marker">2</span><span class="stage-name">Build Index</span><span class="stage-state">Waiting</span></button>
-            <button class="stage" type="button" role="tab" data-stage="2" data-run-stage-tab="ai" aria-selected="false"><span class="stage-marker">3</span><span class="stage-name">AI work</span><span class="stage-state">Parallel</span></button>
-            <button class="stage" type="button" role="tab" data-stage="3" data-run-stage-tab="review" aria-selected="false"><span class="stage-marker">4</span><span class="stage-name">Prepare review</span><span class="stage-state">Waiting</span></button>
-            <button class="stage" type="button" role="tab" data-stage="4" data-run-stage-tab="publish" aria-selected="false"><span class="stage-marker">5</span><span class="stage-name">Publish</span><span class="stage-state">Waiting</span></button>
           </div>
           <div class="run-layout">
             <section class="card run-stage-panel active" data-run-stage-panel="discover" role="tabpanel">
