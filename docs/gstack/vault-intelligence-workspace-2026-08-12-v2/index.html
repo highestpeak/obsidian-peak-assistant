@@ -1495,9 +1495,28 @@
     .bix-inspect-title strong { font-size: 11.5px; }
     .bix-inspect-count { color: var(--ink-2); font-size: 10.5px; font-weight: 690; }
     .bix-inspect-table { max-height: 390px; overflow: auto; scrollbar-gutter: stable; border-top: 1px solid var(--line); }
-    .bix-inspect-row { display: grid; grid-template-columns: minmax(250px, 1fr) repeat(3, minmax(170px, .62fr)); gap: 12px; align-items: center; min-height: 40px; padding: 0 15px; border-bottom: 1px solid var(--line); font-size: 10px; }
+    .bix-generated-preview { margin: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: white; }
+    .bix-generated-preview-head { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+    .bix-generated-preview-head strong { display: block; font-size: 11.5px; }
+    .bix-generated-preview-head span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 9px; }
+    .bix-generated-preview-body { display: grid; grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr); }
+    .bix-generated-document { min-width: 0; padding: 14px; border-right: 1px solid var(--line); background: var(--surface-2); }
+    .bix-generated-document > span { display: block; color: var(--ink-3); font-size: 8.5px; font-weight: 720; text-transform: uppercase; letter-spacing: .04em; }
+    .bix-generated-document > strong { display: block; overflow: hidden; margin-top: 7px; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .bix-generated-document > small { display: block; overflow: hidden; margin-top: 5px; color: var(--ink-3); font-size: 8.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .bix-generated-output-list { min-width: 0; }
+    .bix-generated-output { min-height: 62px; display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 11px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line); }
+    .bix-generated-output:last-child { border-bottom: 0; }
+    .bix-generated-output-label { font-size: 10px; font-weight: 730; }
+    .bix-generated-result { min-width: 0; overflow: hidden; color: var(--ink-2); font-size: 9.5px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+    .bix-generated-tags { display: flex; min-width: 0; gap: 5px; overflow: hidden; }
+    .bix-generated-tag { height: 20px; display: inline-flex; align-items: center; flex: none; padding: 0 7px; border-radius: 999px; color: var(--accent-2); background: var(--accent-soft); font-size: 8.5px; font-weight: 680; }
+    .bix-inspect-row { display: grid; grid-template-columns: minmax(230px, 1fr) repeat(4, minmax(138px, .56fr)); gap: 12px; align-items: center; min-height: 40px; padding: 0 15px; border-bottom: 1px solid var(--line); font-size: 10px; }
     .bix-inspect-row:last-child { border-bottom: 0; }
     .bix-inspect-row.head { position: sticky; z-index: 2; top: 0; min-height: 36px; color: var(--ink-2); background: var(--surface-2); font-size: 9px; font-weight: 720; }
+    .bix-inspect-row[data-bix-knowledge-open] { cursor: pointer; }
+    .bix-inspect-row[data-bix-knowledge-open]:hover,
+    .bix-inspect-row[data-bix-knowledge-open]:focus-visible { outline: none; background: var(--accent-soft); }
     .bix-inspect-file { min-width: 0; overflow: hidden; font-weight: 690; text-overflow: ellipsis; white-space: nowrap; }
     .bix-state { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); }
     .bix-state::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--line-2); }
@@ -1506,10 +1525,15 @@
     .bix-state.live { color: var(--accent-2); }
     .bix-state.live::before { background: var(--accent); }
 
+    .bix-knowledge-summary { margin-top: 9px; color: var(--ink-2); font-size: 11px; line-height: 1.65; }
+    .bix-knowledge-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .bix-knowledge-tags .bix-generated-tag { height: 23px; font-size: 9px; }
+
     @media (max-width: 1120px) {
       .bix-summary { grid-template-columns: minmax(0, 1fr); }
       .bix-outcomes { border-top: 1px solid var(--line); border-left: 0; }
       .bix-lane { grid-template-columns: 42px minmax(220px, .82fr) minmax(260px, 1fr) minmax(330px, 1fr); gap: 11px; }
+      .bix-generated-preview-body { grid-template-columns: minmax(190px, .62fr) minmax(0, 1.38fr); }
     }
     .queue-table-wrap { min-height: 401px; overflow: hidden; }
     .current-panel { min-height: 401px; }
@@ -4505,13 +4529,23 @@
                 <article class="bix-lane bix-ai" id="bix-ai-lane">
                   <div class="bix-lane-marker" id="bix-ai-marker">3</div>
                   <div class="bix-lane-summary"><div class="bix-lane-icon"><svg class="icon"><use href="#i-spark"/></svg></div><div class="bix-lane-title"><strong>AI enrichment</strong><span class="bix-lane-status" id="bix-ai-status">Queued</span></div></div>
-                  <div><div class="bix-progress-head"><div class="bix-progress-count"><span id="bix-ai-count">0 / 146</span> <span>documents</span></div><div class="bix-progress-rate" id="bix-ai-rate">6.2 docs/min</div></div><div class="bix-track" id="bix-ai-track"><span></span></div><div class="bix-progress-facts"><div class="bix-progress-fact"><strong id="bix-ai-time">Waiting</strong></div><div class="bix-progress-fact"><strong id="bix-ai-usage">0 tokens · $0.00</strong></div><div class="bix-progress-fact"><strong id="bix-ai-active">0 active files</strong></div></div></div>
+                  <div><div class="bix-progress-head"><div class="bix-progress-count"><span id="bix-ai-count">0 / 146</span> <span>eligible documents</span></div><div class="bix-progress-rate" id="bix-ai-rate">6.2 docs/min</div></div><div class="bix-track" id="bix-ai-track"><span></span></div><div class="bix-progress-facts"><div class="bix-progress-fact"><strong id="bix-ai-time">Waiting</strong></div><div class="bix-progress-fact"><strong id="bix-ai-usage">0 tokens · $0.00</strong></div><div class="bix-progress-fact"><strong id="bix-ai-active">0 active files</strong></div></div></div>
                   <div class="bix-file-window"><div class="bix-file-window-head"><span>Current files</span><span class="bix-file-window-count" id="bix-ai-window-count">Waiting</span></div><div class="bix-file-list" id="bix-ai-file-list"></div></div>
                 </article>
               </div>
+              <section class="bix-generated-preview" id="bix-generated-preview" aria-live="polite">
+                <div class="bix-generated-preview-head"><div><strong>Generated knowledge · current document</strong><span>See the Summary and AI Tags as each selected operation finishes.</span></div><button class="btn" id="bix-generated-open" type="button" disabled>Inspect generated knowledge</button></div>
+                <div class="bix-generated-preview-body">
+                  <div class="bix-generated-document"><span>Current document</span><strong id="bix-generated-file">Waiting for Core Search</strong><small id="bix-generated-model">AI enrichment has not started</small></div>
+                  <div class="bix-generated-output-list">
+                    <div class="bix-generated-output"><span class="bix-generated-output-label">Summary</span><span class="bix-generated-result" id="bix-generated-summary">Waiting for complete response</span><span class="status neutral" id="bix-generated-summary-state">Queued</span></div>
+                    <div class="bix-generated-output"><span class="bix-generated-output-label">AI Tags</span><span class="bix-generated-tags" id="bix-generated-tags"><span class="bix-generated-result">Waiting for complete response</span></span><span class="status neutral" id="bix-generated-tags-state">Queued</span></div>
+                  </div>
+                </div>
+              </section>
               <details class="bix-inspect" id="bix-inspect" open>
                 <summary><div class="bix-inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect all document states</strong><span class="bix-inspect-count" id="bix-inspect-count">146 files</span></div><svg class="icon sm"><use href="#i-chevron"/></svg></summary>
-                <div class="bix-inspect-table" id="bix-inspect-table"><div class="bix-inspect-row head"><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>AI enrichment</span></div><div id="bix-inspect-rows"></div></div>
+                <div class="bix-inspect-table" id="bix-inspect-table"><div class="bix-inspect-row head"><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>Summary</span><span>AI Tags</span></div><div id="bix-inspect-rows"></div></div>
               </details>
               <div hidden aria-hidden="true">
               <div class="run-stage-head"><div><strong>Build and enrich the Knowledge Index</strong><span>Core Search leads each document; selected embeddings, summaries, and machine-only AI Tags follow as soon as that document is ready.</span></div><span class="status neutral" data-run-panel-state="local">Waiting</span></div>
@@ -5642,6 +5676,17 @@
     document.getElementById('scan-vault').addEventListener('click', openPreflight);
     document.querySelectorAll('[data-close-overlay]').forEach((button) => button.addEventListener('click', closeOverlays));
     document.querySelectorAll('.overlay').forEach((overlay) => overlay.addEventListener('mousedown', (event) => { if (event.target === overlay) closeOverlays(); }));
+    document.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-bix-knowledge-open]');
+      if (!target || target.disabled) return;
+      openBuildIndexKnowledgeDetail(Number(target.dataset.bixKnowledgeOpen));
+    });
+    document.addEventListener('keydown', (event) => {
+      const target = event.target.closest('[data-bix-knowledge-open]');
+      if (!target || (event.key !== 'Enter' && event.key !== ' ')) return;
+      event.preventDefault();
+      openBuildIndexKnowledgeDetail(Number(target.dataset.bixKnowledgeOpen));
+    });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeOverlays(); closeInlineDetail(); } });
     document.querySelectorAll('[data-open-contents]').forEach((button) => button.addEventListener('click', () => { selectContentsFileType('', true); }));
     document.querySelectorAll('[data-open-contents-graph]').forEach((button) => button.addEventListener('click', openContentsGraph));
@@ -5732,7 +5777,7 @@
         document.getElementById('stop-run').style.display = '';
         document.getElementById('pause-run').innerHTML = '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>';
         document.getElementById('review-remaining-plan').style.display = 'none';
-        runProgress = state === 'indexing' ? 30 : state === 'ai-work' ? 55 : 88;
+        runProgress = state === 'indexing' ? 30 : state === 'ai-work' ? 76 : 88;
         inspectedRunStage = null;
         skippedAIOperations = new Set();
         stoppedAIOperationsAt = new Map();
@@ -11277,15 +11322,14 @@
 
     document.querySelectorAll('[data-result-tab]').forEach((button) => button.addEventListener('click', () => { const name = button.dataset.resultTab; document.querySelectorAll('[data-result-tab]').forEach((item) => item.classList.toggle('active', item === button)); document.querySelectorAll('[data-result-panel]').forEach((panel) => panel.classList.toggle('active', panel.dataset.resultPanel === name)); }));
 
+    const indexRunWindow = { start: 15, verify: 70, end: 74 };
     const stageDefinitions = [
       { key: 'discover', at: 0, label: 'Discover', title: 'Discovering changed inputs and affected context', tooltip: 'Find changed inputs, resolve affected context, and freeze the current graph baseline.', state: 'VAULT SCAN RUNNING' },
       { key: 'local', at: 15, label: 'Build Index', title: 'Building and enriching the Knowledge Index', tooltip: 'Build full-text search, embeddings, and per-file AI enrichment as independent lanes.', state: 'INDEX PIPELINE RUNNING' },
-      { key: 'ai', at: 55, label: 'AI work', title: 'Discovering vault-wide meaning and relationships', tooltip: 'Revisit relationships, Communities, hubs, and bridges across repeated evidence passes.', state: 'AI WORK IN PROGRESS' },
+      { key: 'ai', at: indexRunWindow.end, label: 'AI work', title: 'Discovering vault-wide meaning and relationships', tooltip: 'Revisit relationships, Communities, hubs, and bridges across repeated evidence passes.', state: 'AI WORK IN PROGRESS' },
       { key: 'review', at: 88, label: 'Prepare review', title: 'Preparing retained findings and reviewable work', tooltip: 'Account for retained findings, group owner decisions, and validate cited evidence.', state: 'REVIEW PREPARATION RUNNING' },
       { key: 'publish', at: 98, label: 'Publish', title: 'Publishing verified machine knowledge and checkpoints', tooltip: 'Save the updated Index, retained findings, receipts, and the resumable run checkpoint.', state: 'FINALIZING RESULTS' }
     ];
-    const indexRunWindow = { start: 15, verify: 70, end: 74 };
-
     const aiGroupDefinitions = {
       plan: { operations: ['plan-scan'] },
       file: { operations: ['embedding-refresh', 'file-summaries', 'ai-tags'] },
@@ -12202,7 +12246,7 @@
         const key = badge.dataset.runPanelState;
         const aiRunning = Object.entries(aiOperationRunDefinitions).filter(([operationId, definition]) => definition.enabled && !skippedAIOperations.has(operationId) && progress >= definition.start && progress < definition.end).length;
         const done = key === 'discover' ? progress >= indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.end : key === 'ai' ? progress >= 88 : key === 'review' ? reviewPreparationState.tick >= 9 : progress >= 100;
-        const active = key === 'discover' ? progress < indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.start && progress < indexRunWindow.end : key === 'ai' ? progress >= 55 && progress < 88 : key === 'review' ? progress >= 88 && reviewPreparationState.tick < 9 : progress >= 98;
+        const active = key === 'discover' ? progress < indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.start && progress < indexRunWindow.end : key === 'ai' ? progress >= indexRunWindow.end && progress < 88 : key === 'review' ? progress >= 88 && reviewPreparationState.tick < 9 : progress >= 98;
         badge.textContent = done ? 'Complete' : active ? key === 'ai' ? `${aiRunning} running · parallel` : 'Live' : 'Waiting';
         badge.className = `status ${done ? 'green' : active ? 'purple' : 'neutral'}`;
       });
@@ -12400,6 +12444,88 @@
       return [...new Set(models.length ? models : ['Not selected'])];
     }
 
+    const buildIndexKnowledgeSamples = [
+      { summary: 'Captures observations from customer interviews and the decisions those observations support.', tags: ['customer research', 'evidence', 'decision support'] },
+      { summary: 'Records the current operating context, open questions, and follow-up signals from the day.', tags: ['daily note', 'open questions', 'follow-up'] },
+      { summary: 'Explores how graph structure, semantic evidence, and AI-assisted discovery should work together.', tags: ['AI graph', 'experiment', 'knowledge structure'] },
+      { summary: 'Defines launch requirements, ownership boundaries, and the evidence required to pass each gate.', tags: ['launch', 'requirements', 'release gate'] },
+      { summary: 'Connects evergreen concepts into a maintained knowledge garden with explicit links and review cues.', tags: ['evergreen', 'knowledge garden', 'maintenance'] },
+      { summary: 'Preserves imported source evidence and its provenance for later verification.', tags: ['archive', 'source evidence', 'provenance'] },
+      { summary: 'Synthesizes research evidence into reusable findings for product direction and future decisions.', tags: ['research synthesis', 'product direction', 'insight'] },
+      { summary: 'Tracks launch work, completion criteria, and unresolved blockers before release.', tags: ['launch checklist', 'operations', 'blocker'] }
+    ];
+    let currentBuildIndexLaneState = null;
+
+    function buildIndexKnowledgeAt(index) {
+      const safeIndex = ((index % localIndexDocuments.length) + localIndexDocuments.length) % localIndexDocuments.length;
+      const file = localIndexDocuments[safeIndex];
+      return { ...buildIndexKnowledgeSamples[safeIndex], index, file, eligible: file.name.toLowerCase().endsWith('.md') };
+    }
+
+    function buildIndexEligibleIndexes(total) {
+      return Array.from({ length: total }, (_, index) => index).filter((index) => buildIndexKnowledgeAt(index).eligible);
+    }
+
+    function buildIndexDocumentOperationState(selected, count, index, searchCount, eligibleIndexes = buildIndexEligibleIndexes(selectedScanTotal())) {
+      if (!selected) return { key: 'off', label: 'Not selected', statusClass: 'neutral' };
+      if (!buildIndexKnowledgeAt(index).eligible) return { key: 'skipped', label: 'Not eligible', statusClass: 'neutral' };
+      const ordinal = eligibleIndexes.indexOf(index);
+      const searchableEligible = eligibleIndexes.filter((eligibleIndex) => eligibleIndex < searchCount).length;
+      if (ordinal < count) return { key: 'done', label: 'Ready', statusClass: 'green' };
+      if (ordinal < Math.min(searchableEligible, count + 2)) return { key: 'live', label: 'Generating', statusClass: 'purple' };
+      return { key: 'queued', label: index < searchCount ? 'Queued' : 'Waiting for text', statusClass: 'neutral' };
+    }
+
+    function buildIndexOperationCell(operationState, model) {
+      const suffix = operationState.key === 'done' || operationState.key === 'live' ? ` · ${model}` : '';
+      return buildIndexStateCell(operationState.key === 'done' ? 'done' : operationState.key === 'live' ? 'live' : '', `${operationState.label}${suffix}`);
+    }
+
+    function renderBuildIndexGeneratedPreview(state) {
+      currentBuildIndexLaneState = state;
+      const { total, searchCount, summaryCount, tagCount, summarySelected, tagSelected, enrichmentIndexes } = state;
+      const completedIndex = Math.max(summaryCount, tagCount) - 1;
+      const currentOrdinal = completedIndex >= 0 ? completedIndex : Math.min(enrichmentIndexes.length - 1, Math.max(summaryCount, tagCount));
+      const documentIndex = enrichmentIndexes[Math.max(0, currentOrdinal)] ?? 0;
+      const knowledge = buildIndexKnowledgeAt(documentIndex);
+      const summaryState = buildIndexDocumentOperationState(summarySelected, summaryCount, documentIndex, searchCount, enrichmentIndexes);
+      const tagState = buildIndexDocumentOperationState(tagSelected, tagCount, documentIndex, searchCount, enrichmentIndexes);
+      const summaryModel = aiOperationRunDefinitions['file-summaries'].model || 'Not selected';
+      const tagModel = aiOperationRunDefinitions['ai-tags'].model || 'Not selected';
+      setBuildIndexText('bix-generated-file', buildIndexFileAt(documentIndex, true));
+      setBuildIndexText('bix-generated-model', summaryModel === tagModel ? summaryModel : `Summary · ${summaryModel} · AI Tags · ${tagModel}`);
+      setBuildIndexText('bix-generated-summary', summaryState.key === 'done' ? knowledge.summary : summaryState.key === 'live' ? 'Generating the complete Summary response…' : summaryState.label);
+      const tags = document.getElementById('bix-generated-tags');
+      tags.innerHTML = tagState.key === 'done'
+        ? knowledge.tags.map((tag) => `<span class="bix-generated-tag">${tag}</span>`).join('')
+        : `<span class="bix-generated-result">${tagState.key === 'live' ? 'Generating AI Tags…' : tagState.label}</span>`;
+      [['summary', summaryState], ['tags', tagState]].forEach(([key, operationState]) => {
+        const badge = document.getElementById(`bix-generated-${key}-state`);
+        badge.textContent = operationState.label;
+        badge.className = `status ${operationState.statusClass}`;
+      });
+      const openButton = document.getElementById('bix-generated-open');
+      openButton.disabled = !knowledge.eligible || searchCount <= documentIndex;
+      openButton.dataset.bixKnowledgeOpen = String(documentIndex);
+    }
+
+    function openBuildIndexKnowledgeDetail(index) {
+      const state = currentBuildIndexLaneState;
+      if (!state) return;
+      const knowledge = buildIndexKnowledgeAt(index);
+      const summaryState = buildIndexDocumentOperationState(state.summarySelected, state.summaryCount, index, state.searchCount, state.enrichmentIndexes);
+      const tagState = buildIndexDocumentOperationState(state.tagSelected, state.tagCount, index, state.searchCount, state.enrichmentIndexes);
+      const summaryModel = aiOperationRunDefinitions['file-summaries'].model || 'Not selected';
+      const tagModel = aiOperationRunDefinitions['ai-tags'].model || 'Not selected';
+      const modal = detailOverlay.querySelector('.detail-modal');
+      modal.classList.remove('orphan-resolution-modal', 'completion-action-modal', 'completion-object-workspace-modal');
+      document.getElementById('detail-eyebrow').textContent = 'Generated knowledge';
+      document.getElementById('detail-header').textContent = knowledge.file.name;
+      document.getElementById('detail-content').innerHTML = `<div class="detail-section"><div class="detail-section-title">Source document</div><div class="detail-kv"><span>Path</span><strong>${buildIndexFileAt(index, true)}</strong></div><div class="detail-kv"><span>Eligibility</span><strong>${knowledge.eligible ? 'Markdown · selected enrichment can run' : 'Unsupported for Markdown enrichment · skipped'}</strong></div></div><div class="detail-section"><div class="detail-section-title">Summary <span class="status ${summaryState.statusClass}">${summaryState.label}</span></div><div class="bix-knowledge-summary">${summaryState.key === 'done' ? knowledge.summary : summaryState.key === 'live' ? 'The model request is active. This area will show the complete response after it is committed.' : summaryState.label}</div><div class="detail-kv"><span>Model</span><strong>${summaryModel}</strong></div></div><div class="detail-section"><div class="detail-section-title">AI Tags <span class="status ${tagState.statusClass}">${tagState.label}</span></div><div class="bix-knowledge-tags">${tagState.key === 'done' ? knowledge.tags.map((tag) => `<span class="bix-generated-tag">${tag}</span>`).join('') : `<span class="bix-generated-result">${tagState.key === 'live' ? 'The tag request is active. Tags appear only after the complete response is committed.' : tagState.label}</span>`}</div><div class="detail-kv"><span>Model</span><strong>${tagModel}</strong></div></div><div class="detail-section"><div class="detail-section-title">Storage boundary</div><div class="detail-kv"><span>Source file</span><strong>Unchanged</strong></div><div class="detail-kv"><span>Generated data</span><strong>Peak-owned machine knowledge in the Index</strong></div></div><div class="detail-actions"><button class="btn" type="button" data-detail-close>Close</button></div>`;
+      bindDetailActions(document.getElementById('detail-content'), closeOverlays);
+      detailOverlay.classList.add('open');
+    }
+
     function buildIndexFileRow(name, state, label, model) {
       return `<div class="bix-file-row ${state}"><span class="bix-file-dot"></span><span class="bix-file-name">${name}</span><span class="bix-file-model">${model}</span><span class="bix-file-state">${label}</span></div>`;
     }
@@ -12430,7 +12556,7 @@
     }
 
     function renderBuildIndexFileWindows(state, progress) {
-      const { total, localReached, searchCount, embeddingCount, aiCount, embeddingSelected, aiSelected } = state;
+      const { total, localReached, searchCount, embeddingCount, aiCount, embeddingSelected, aiSelected, enrichmentIndexes } = state;
       const embeddingModels = buildIndexEmbeddingModels();
       const aiModels = buildIndexAIModels();
       const renderRecent = (count, label, models) => [0, 1, 2, 3].map((offset) => {
@@ -12470,16 +12596,17 @@
       }
 
       if (!aiSelected) {
-        document.getElementById('bix-ai-file-list').innerHTML = [0, 1, 2, 3].map((offset) => buildIndexFileRow(buildIndexFileAt(offset), '', 'Not selected', '—')).join('');
+        document.getElementById('bix-ai-file-list').innerHTML = enrichmentIndexes.slice(0, 4).map((fileIndex) => buildIndexFileRow(buildIndexFileAt(fileIndex), '', 'Not selected', '—')).join('');
         setBuildIndexText('bix-ai-window-count', 'Not selected');
-      } else if (aiCount >= total) {
-        document.getElementById('bix-ai-file-list').innerHTML = renderRecent(total, 'Enriched', aiModels);
+      } else if (aiCount >= enrichmentIndexes.length) {
+        document.getElementById('bix-ai-file-list').innerHTML = enrichmentIndexes.slice(-4).reverse().map((fileIndex) => buildIndexFileRow(buildIndexFileAt(fileIndex), 'done', 'Enriched', buildIndexModelAt(aiModels, fileIndex))).join('');
         setBuildIndexText('bix-ai-window-count', 'Recently enriched');
       } else {
         const stages = ['Summary', 'AI tags', 'Entities', 'File signals'];
-        const active = Math.min(4, Math.max(0, searchCount - aiCount));
+        const searchableEligible = enrichmentIndexes.filter((fileIndex) => fileIndex < searchCount).length;
+        const active = Math.min(4, Math.max(0, searchableEligible - aiCount));
         const rows = Array.from({ length: 4 }, (_, offset) => {
-          const fileIndex = aiCount + offset;
+          const fileIndex = enrichmentIndexes[Math.min(enrichmentIndexes.length - 1, aiCount + offset)];
           const running = offset < active;
           return buildIndexFileRow(buildIndexFileAt(fileIndex), running ? 'running' : '', running ? stages[(Math.round(progress) + offset) % stages.length] : 'Queued', buildIndexModelAt(aiModels, fileIndex));
         });
@@ -12488,13 +12615,12 @@
       }
     }
 
-    function renderBuildIndexInspect(state, progress) {
-      const { total, localReached, searchCount, embeddingCount, aiCount, embeddingSelected, aiSelected } = state;
+    function renderBuildIndexInspect(state) {
+      const { total, localReached, searchCount, embeddingCount, summaryCount, tagCount, embeddingSelected, summarySelected, tagSelected } = state;
       const embeddingModels = buildIndexEmbeddingModels();
-      const aiModels = buildIndexAIModels();
       const embeddingActiveEnd = Math.min(searchCount, embeddingCount + 4);
-      const aiActiveEnd = Math.min(searchCount, aiCount + 4);
-      const aiStages = ['Summary', 'AI tags', 'Entities', 'File signals'];
+      const summaryModel = aiOperationRunDefinitions['file-summaries'].model || 'Not selected';
+      const tagModel = aiOperationRunDefinitions['ai-tags'].model || 'Not selected';
       setBuildIndexText('bix-inspect-count', `${total.toLocaleString()} files`);
       const rows = Array.from({ length: total }, (_, index) => {
         const searchState = index < searchCount
@@ -12510,15 +12636,9 @@
             : index < embeddingActiveEnd
               ? buildIndexStateCell('live', `Vectorizing · ${embeddingModel}`)
               : buildIndexStateCell('', index < searchCount ? 'Queued' : 'Waiting for text');
-        const aiModel = buildIndexModelAt(aiModels, index);
-        const aiState = !aiSelected
-          ? buildIndexStateCell('', 'Not selected')
-          : index < aiCount
-            ? buildIndexStateCell('done', `Ready · ${aiModel}`)
-            : index < aiActiveEnd
-              ? buildIndexStateCell('live', `${aiStages[(Math.round(progress) + index) % aiStages.length]} · ${aiModel}`)
-              : buildIndexStateCell('', index < searchCount ? 'Queued' : 'Waiting for text');
-        return `<div class="bix-inspect-row"><div class="bix-inspect-file">${buildIndexFileAt(index, true)}</div>${searchState}${embeddingState}${aiState}</div>`;
+        const summaryState = buildIndexDocumentOperationState(summarySelected, summaryCount, index, searchCount, state.enrichmentIndexes);
+        const tagState = buildIndexDocumentOperationState(tagSelected, tagCount, index, searchCount, state.enrichmentIndexes);
+        return `<div class="bix-inspect-row" data-bix-knowledge-open="${index}" tabindex="0"><div class="bix-inspect-file">${buildIndexFileAt(index, true)}</div>${searchState}${embeddingState}${buildIndexOperationCell(summaryState, summaryModel)}${buildIndexOperationCell(tagState, tagModel)}</div>`;
       });
       document.getElementById('bix-inspect-rows').innerHTML = rows.join('');
     }
@@ -12527,20 +12647,27 @@
       const total = selectedScanTotal();
       const { localReached, coreRatio } = calculateIndexRunProgress(progress, total, true);
       const embeddingRatioValue = buildIndexOperationRatio('embedding-refresh', progress);
-      const aiRatioValues = ['file-summaries', 'ai-tags']
-        .map((operationId) => buildIndexOperationRatio(operationId, progress))
-        .filter((ratio) => ratio !== null);
+      const summaryRatioValue = buildIndexOperationRatio('file-summaries', progress);
+      const tagRatioValue = buildIndexOperationRatio('ai-tags', progress);
+      const aiRatioValues = [summaryRatioValue, tagRatioValue].filter((ratio) => ratio !== null);
       const embeddingSelected = embeddingRatioValue !== null;
+      const summarySelected = summaryRatioValue !== null;
+      const tagSelected = tagRatioValue !== null;
       const aiSelected = aiRatioValues.length > 0;
       const embeddingRatio = embeddingSelected ? embeddingRatioValue : 0;
+      const summaryRatio = summarySelected ? summaryRatioValue : 0;
+      const tagRatio = tagSelected ? tagRatioValue : 0;
       const aiRatio = aiSelected ? Math.min(...aiRatioValues) : 0;
-      const selectedRatios = [coreRatio, ...(embeddingSelected ? [embeddingRatio] : []), ...(aiSelected ? [aiRatio] : [])];
-      const overallRatio = selectedRatios.reduce((sum, ratio) => sum + ratio, 0) / selectedRatios.length;
+      const enrichmentIndexes = buildIndexEligibleIndexes(total);
+      const enrichmentTotal = enrichmentIndexes.length;
       const searchCount = Math.min(total, Math.floor(total * coreRatio));
       const embeddingCount = Math.min(total, Math.floor(total * embeddingRatio));
-      const aiCount = Math.min(total, Math.floor(total * aiRatio));
+      const summaryCount = Math.min(enrichmentTotal, Math.floor(enrichmentTotal * summaryRatio));
+      const tagCount = Math.min(enrichmentTotal, Math.floor(enrichmentTotal * tagRatio));
+      const aiCount = Math.min(enrichmentTotal, Math.floor(enrichmentTotal * aiRatio));
       const completedWork = searchCount + (embeddingSelected ? embeddingCount : 0) + (aiSelected ? aiCount : 0);
-      const totalWork = total * selectedRatios.length;
+      const totalWork = total + (embeddingSelected ? total : 0) + (aiSelected ? enrichmentTotal : 0);
+      const overallRatio = totalWork ? completedWork / totalWork : 0;
       const totalSeconds = Math.max(60, estimatedRunSeconds);
       const clampedIndexProgress = Math.max(indexRunWindow.start, Math.min(indexRunWindow.end, progress));
       const indexElapsed = localReached ? totalSeconds * (clampedIndexProgress - indexRunWindow.start) / 100 : 0;
@@ -12565,19 +12692,20 @@
       setBuildIndexText('bix-overall-work', `${completedWork.toLocaleString()} / ${totalWork.toLocaleString()}`);
       document.getElementById('bix-overall-track').style.setProperty('--bix-progress', `${overallRatio * 100}%`);
 
-      const laneState = { total, localReached, searchCount, embeddingCount, aiCount, embeddingSelected, aiSelected };
+      const laneState = { total, localReached, searchCount, embeddingCount, summaryCount, tagCount, aiCount, embeddingSelected, summarySelected, tagSelected, aiSelected, enrichmentIndexes, enrichmentTotal };
       [['search', coreRatio, true], ['embedding', embeddingRatio, embeddingSelected], ['ai', aiRatio, aiSelected]].forEach(([key, ratio, selected], index) => {
         const started = selected && localReached && (key === 'search' || ratio > 0);
         setBuildIndexOutcome(key, ratio, selected, started);
         setBuildIndexLane(key, index + 1, ratio, selected, started);
         setBuildIndexText(`bix-${key}-percent`, selected ? `${Math.round(ratio * 100)}%` : '—');
-        setBuildIndexText(`bix-${key}-files`, selected ? `${laneState[`${key}Count`].toLocaleString()} / ${total.toLocaleString()}` : '—');
+        const laneTotal = key === 'ai' ? enrichmentTotal : total;
+        setBuildIndexText(`bix-${key}-files`, selected ? `${laneState[`${key}Count`].toLocaleString()} / ${laneTotal.toLocaleString()}` : '—');
         document.getElementById(`bix-${key}-track`).style.setProperty('--bix-progress', `${selected ? ratio * 100 : 0}%`);
       });
       setBuildIndexText('bix-search-outcome-label', searchDone ? 'Search ready' : 'Building search');
       setBuildIndexText('bix-search-count', `${searchCount.toLocaleString()} / ${total.toLocaleString()}`);
       setBuildIndexText('bix-embedding-count', embeddingSelected ? `${embeddingCount.toLocaleString()} / ${total.toLocaleString()}` : 'Not selected');
-      setBuildIndexText('bix-ai-count', aiSelected ? `${aiCount.toLocaleString()} / ${total.toLocaleString()}` : 'Not selected');
+      setBuildIndexText('bix-ai-count', aiSelected ? `${aiCount.toLocaleString()} / ${enrichmentTotal.toLocaleString()}` : 'Not selected');
       setBuildIndexText('bix-search-elapsed', formatBuildIndexDuration(11 * coreRatio));
       setBuildIndexText('bix-embedding-elapsed', formatBuildIndexDuration(embeddingElapsed));
       setBuildIndexText('bix-ai-elapsed', formatBuildIndexDuration(aiElapsed));
@@ -12594,7 +12722,8 @@
       setBuildIndexText('bix-ai-usage', `${formatTokens(fileUsage.tokens)} · $${fileUsage.cost.toFixed(2)}`);
       setBuildIndexText('bix-ai-active', `${aiSelected ? Math.min(4, Math.max(0, searchCount - aiCount)) : 0} active files`);
       renderBuildIndexFileWindows(laneState, progress);
-      renderBuildIndexInspect(laneState, progress);
+      renderBuildIndexGeneratedPreview(laneState);
+      renderBuildIndexInspect(laneState);
     }
 
     function renderRunProgress() {
