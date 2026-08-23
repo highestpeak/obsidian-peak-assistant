@@ -6,7 +6,12 @@
  * completion semantics. External agent runtimes must not be introduced here.
  */
 
-import type { LanguageModel } from 'ai';
+import {
+	defaultSettingsMiddleware,
+	wrapLanguageModel,
+	type LanguageModel,
+} from 'ai';
+import type { LanguageModelV3CallOptions } from '@ai-sdk/provider';
 import type { Profile } from '@/core/profiles/types';
 import type {
 	LLMStreamEvent,
@@ -41,6 +46,9 @@ export interface HarnessModelRunRequest {
 	maxTokens?: number;
 	maxToolCalls?: number;
 	modelSettings?: AgentLoopModelSettings;
+	/** Provider-level output contract. Structured callers use this to pass the
+	 * actual JSON Schema instead of relying on prompt-only JSON instructions. */
+	responseFormat?: LanguageModelV3CallOptions['responseFormat'];
 	signal?: AbortSignal;
 	stopWhen?: (step: StepResult) => boolean | Promise<boolean>;
 	treatBareTextAsFinal?: boolean;
@@ -60,8 +68,16 @@ export async function runHarnessModel(
 ): Promise<AgentLoopResult> {
 	const tools = request.tools ?? [];
 	const tier = request.tier ?? 'research';
-	const languageModel =
+	const baseLanguageModel =
 		request.languageModel ?? createLanguageModel(request.profile, request.modelId);
+	const languageModel = request.responseFormat
+		? wrapLanguageModel({
+			model: baseLanguageModel,
+			middleware: defaultSettingsMiddleware({
+				settings: { responseFormat: request.responseFormat },
+			}),
+		})
+		: baseLanguageModel;
 	const binding: TierBinding = {
 		tier,
 		providerId: request.profile.id ?? request.profile.kind,

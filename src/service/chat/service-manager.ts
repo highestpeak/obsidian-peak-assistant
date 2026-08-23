@@ -57,6 +57,8 @@ import type { SingleTurnGenerationTraceEvent } from '@/core/llm/SingleTurnGenera
 import type { HarnessSettings } from '@/core/config/settingsTypes';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import type { WorkingContext } from '@/service/context/types';
+import type { LanguageModelV3CallOptions } from '@ai-sdk/provider';
+import { LLMResponseError } from '@/core/errors';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -1112,6 +1114,7 @@ ${sourcesList}${topicsList}
 		emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'request', startedAt: startMs, systemPrompt: effectiveSystemPrompt, userPrompt });
 		let text: string;
 		let usage: LLMUsage;
+		let providerFinishReason = 'unknown';
 		let streamedText = '';
 		let streamedReasoning = '';
 		let lastStreamTraceAt = 0;
@@ -1124,6 +1127,7 @@ ${sourcesList}${topicsList}
 				systemPrompt: effectiveSystemPrompt,
 				maxSteps: 1,
 				modelSettings: opts?.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : undefined,
+				responseFormat: structuredResponseFormat(schema),
 				onStreamEvent: (event) => {
 					if (event.type === 'text_delta') streamedText += event.delta;
 					if (event.type === 'reasoning_delta') streamedReasoning += event.delta;
@@ -1137,7 +1141,7 @@ ${sourcesList}${topicsList}
 			});
 			text = result.text;
 			usage = result.usage;
-			emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'response', startedAt: startMs, completedAt: Date.now(), systemPrompt: effectiveSystemPrompt, userPrompt, responseText: text, reasoningText: streamedReasoning, usage });
+			providerFinishReason = result.result.steps.at(-1)?.finishReason ?? result.result.finishReason;
 		} catch (error) {
 			emitSingleTurnTrace(opts?.traceCallback, { requestId, phase: 'failed', startedAt: startMs, completedAt: Date.now(), systemPrompt: effectiveSystemPrompt, userPrompt, responseText: streamedText, reasoningText: streamedReasoning, error: error instanceof Error ? error.message : String(error) });
 			throw error;
@@ -1155,10 +1159,55 @@ ${sourcesList}${topicsList}
 		// Extract JSON from potential markdown code fences
 		const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
 		const raw = jsonMatch[1]?.trim();
-		if (!raw) throw new Error('LLM returned empty response — no JSON to parse');
-		return JSON.parse(raw) as T;
+		if (!raw) {
+			const message = emptyStructuredResponseMessage(providerFinishReason, usage);
+			emitSingleTurnTrace(opts?.traceCallback, {
+				requestId, phase: 'failed', startedAt: startMs, completedAt: Date.now(),
+				systemPrompt: effectiveSystemPrompt, userPrompt, responseText: text,
+				reasoningText: streamedReasoning, finishReason: providerFinishReason,
+				usage, error: message,
+			});
+			throw new LLMResponseError(message, text);
+		}
+		try {
+			const parsed = JSON.parse(raw) as T;
+			emitSingleTurnTrace(opts?.traceCallback, {
+				requestId, phase: 'response', startedAt: startMs, completedAt: Date.now(),
+				systemPrompt: effectiveSystemPrompt, userPrompt, responseText: text,
+				reasoningText: streamedReasoning, finishReason: providerFinishReason, usage,
+			});
+			return parsed;
+		} catch (error) {
+			const message = `LLM returned invalid JSON (finish reason: ${providerFinishReason}): ${error instanceof Error ? error.message : String(error)}`;
+			emitSingleTurnTrace(opts?.traceCallback, {
+				requestId, phase: 'failed', startedAt: startMs, completedAt: Date.now(),
+				systemPrompt: effectiveSystemPrompt, userPrompt, responseText: text,
+				reasoningText: streamedReasoning, finishReason: providerFinishReason,
+				usage, error: message,
+			});
+			throw new LLMResponseError(message, text);
+		}
 	}
 
+}
+
+function structuredResponseFormat(schema: unknown): LanguageModelV3CallOptions['responseFormat'] {
+	if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return { type: 'json' };
+	return {
+		type: 'json',
+		schema: schema as Extract<NonNullable<LanguageModelV3CallOptions['responseFormat']>, { type: 'json' }>['schema'],
+		name: 'peak_structured_response',
+		description: 'Peak Assistant validated structured response',
+	};
+}
+
+function emptyStructuredResponseMessage(finishReason: string, usage: LLMUsage): string {
+	const outputTokens = usage.outputTokens ?? 0;
+	const reasoningTokens = usage.reasoningTokens ?? 0;
+	if (finishReason === 'length' || (outputTokens > 0 && reasoningTokens >= outputTokens)) {
+		return `LLM exhausted the output limit before emitting JSON (finish reason: ${finishReason}; ${outputTokens} output tokens, ${reasoningTokens} reasoning tokens).`;
+	}
+	return `LLM returned no JSON content (finish reason: ${finishReason}; ${outputTokens} output tokens, ${reasoningTokens} reasoning tokens).`;
 }
 
 function emitSingleTurnTrace(

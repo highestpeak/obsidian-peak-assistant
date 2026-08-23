@@ -21,6 +21,8 @@ assert.doesNotMatch(loaderSource, /Ignore read errors; indexing should be best-e
 assert.match(indexSource, /\[IndexService\] Error indexing document:[\s\S]*?throw error;/, 'IndexService must log and rethrow the original provider failure');
 assert.match(serviceSource, /modelSettings: opts\?\.maxOutputTokens/, 'single-turn calls must forward their bounded output limit to the Harness');
 assert.match(tagSource, /includeSchemaInPrompt: false/, 'the compact Tag prompt must not resend a duplicate full JSON Schema for every document');
+assert.match(serviceSource, /responseFormat: structuredResponseFormat\(schema\)/, 'structured generation must send the actual JSON Schema to the provider even when it is omitted from the prompt');
+assert.match(serviceSource, /exhausted the output limit before emitting JSON/, 'reasoning-only token exhaustion must remain a specific diagnosable failure');
 assert.match(serviceSource, /event\.type === 'reasoning_delta'/, 'provider reasoning deltas must remain observable rather than disappearing inside output usage');
 
 const usage = usageFromHarnessResult({

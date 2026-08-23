@@ -11,6 +11,8 @@ export type SingleTurnGenerationTraceEvent = {
 	responseText?: string;
 	/** Provider-emitted reasoning channel only; never synthesized by Peak. */
 	reasoningText?: string;
+	/** Terminal reason reported by the provider round-trip. */
+	finishReason?: string;
 	usage?: LLMUsage;
 	error?: string;
 };

@@ -1546,10 +1546,10 @@ function BuildIndexParityWorkspace({ run, stage, runtime }: { run: VaultIntellig
 							? `${formatCompactNumber(trace.usage.inputTokens ?? 0)} in · ${formatCompactNumber(answer)} answer${reasoning > 0 ? ` · ${formatCompactNumber(reasoning)} reasoning` : ''}`
 							: trace.phase === 'request' ? 'Awaiting receipt' : 'Usage unavailable';
 						return <article key={`${trace.operation}:${trace.requestId}`}>
-							<header><strong>{trace.operation === 'summary' ? 'Summary' : 'AI Tags'}{trace.phase === 'stream' ? ' · streaming' : ''}</strong><span>{usageText}</span></header>
+							<header><strong>{trace.operation === 'summary' ? 'Summary' : 'AI Tags'}{trace.phase === 'stream' ? ' · streaming' : trace.phase === 'failed' ? ' · failed' : ''}</strong><span>{trace.finishReason ? `${usageText} · ${trace.finishReason}` : usageText}</span></header>
 							<section><strong>Request</strong><pre>{`SYSTEM\n${trace.systemPrompt || '(empty)'}\n\nUSER\n${trace.userPrompt}`}</pre></section>
 							{trace.reasoningText ? <section><strong>Provider reasoning</strong><pre>{trace.reasoningText}</pre></section> : null}
-							<section><strong>Raw response</strong><pre>{trace.phase === 'failed' ? trace.error ?? 'Request failed.' : trace.responseText ?? 'Waiting for the provider response…'}</pre></section>
+							<section><strong>Raw response</strong><pre>{trace.phase === 'failed' ? `${trace.error ?? 'Request failed.'}\n\n${trace.responseText?.trim() || '(empty provider content)'}` : trace.responseText ?? 'Waiting for the provider response…'}</pre></section>
 						</article>;
 					}) : <span className="pk-vi-generation-log-empty">The exact request and raw response will appear here when this document starts generation.</span>}</div>
 				</details>
