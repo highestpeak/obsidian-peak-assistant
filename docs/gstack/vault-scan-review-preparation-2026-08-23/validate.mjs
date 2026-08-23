@@ -21,7 +21,6 @@ function visit(node) {
 visit(document);
 
 const requiredIds = [
-  'model-btn',
   'run-state',
   'restart-btn',
   'pause-btn',
@@ -36,10 +35,6 @@ const requiredIds = [
   'task-plan',
   'log-list',
   'new-events',
-  'model-modal',
-  'fixed-model',
-  'ai-toggle',
-  'model-save',
 ];
 
 const missing = requiredIds.filter((id) => !ids.has(id));
@@ -63,23 +58,33 @@ const contracts = [
   ['planning without fake percent', /Planning…/],
   ['elapsed time', /Elapsed/],
   ['remaining estimate', /Estimated remaining/],
-  ['inherited review model', /Inherit Vault-wide review model/],
-  ['optional ambiguous-group AI', /Use AI for ambiguous task groups/],
-  ['proposal boundary', /File proposal models are selected later/],
+  ['read-only model receipt', /Models are read-only here · configured in Scan setup/],
+  ['actual task model', /Claude Sonnet 4/],
   ['non-follow log behavior', /The list will not move automatically/],
   ['pause interaction', /pause-btn/],
   ['restart interaction', /restart-btn/],
   ['stop interaction', /stop-btn/],
-  ['local model path', /Gemma 4 local/],
-  ['remote model path', /GPT-5 mini/],
 ];
 
 const missingContracts = contracts.filter(([, pattern]) => !pattern.test(html)).map(([label]) => label);
 if (missingContracts.length) throw new Error(`Missing interaction contracts: ${missingContracts.join(', ')}`);
+
+const forbiddenProgressControls = ['model-btn', 'model-modal', 'fixed-model', 'ai-toggle', 'model-save'];
+const leakedControls = forbiddenProgressControls.filter((id) => ids.has(id));
+if (leakedControls.length || /Inherit Vault-wide review model|Choose another model/.test(html)) {
+  throw new Error(`Model routing belongs in Scan setup, not Run progress: ${leakedControls.join(', ')}`);
+}
+
+if (!/taskPlan\.dataset\.mode/.test(html)) {
+  throw new Error('Task rows must keep stable DOM nodes between timer updates.');
+}
+if (/\.task-row\s*\{[^}]*animation:/s.test(html) || /\.log-row\s*\{[^}]*animation:/s.test(html)) {
+  throw new Error('Repeated task and log updates must not replay entrance animations.');
+}
 
 if ((tags.get('h1') ?? 0) + (tags.get('h2') ?? 0) + (tags.get('p') ?? 0) > 0) {
   throw new Error('Mock should use the same neutral div/span hierarchy as the existing Scan artifacts.');
 }
 
 console.log(`Validated ${path.relative(process.cwd(), file)}`);
-console.log(`${ids.size} unique ids · ${tags.get('button') ?? 0} buttons · ${tags.get('select') ?? 0} model selector`);
+console.log(`${ids.size} unique ids · ${tags.get('button') ?? 0} buttons · no model controls in Run progress`);

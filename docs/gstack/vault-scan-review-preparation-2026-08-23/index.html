@@ -99,9 +99,8 @@
     .spinner { width: 18px; height: 18px; border: 2px solid #ded9f4; border-top-color: var(--accent); border-radius: 50%; animation: spin .9s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     body.paused .spinner, body.complete .spinner, body.stopped .spinner { animation-play-state: paused; }
-    .task-row { min-height: 76px; display: grid; grid-template-columns: 52px minmax(260px, 1.2fr) 150px minmax(220px, .8fr) 170px; gap: 16px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); animation: row-in 180ms ease; }
+    .task-row { min-height: 76px; display: grid; grid-template-columns: 52px minmax(260px, 1.2fr) 150px minmax(220px, .8fr) 170px; gap: 16px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); }
     .task-row:first-child { border-top: 0; }
-    @keyframes row-in { from { opacity: 0; transform: translateY(3px); } }
     .task-icon { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid #e1dcf8; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
     .task-icon .icon { width: 19px; height: 19px; }
     .task-main { min-width: 0; }
@@ -129,7 +128,7 @@
     .new-events.visible { display: inline-flex; }
     .log-list { height: 300px; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
     .log-empty { min-height: 150px; display: grid; place-items: center; color: var(--ink-3); }
-    .log-row { display: grid; grid-template-columns: 78px 116px minmax(0, 1fr) 170px; gap: 15px; align-items: start; min-height: 54px; padding: 13px 17px; border-bottom: 1px solid var(--line); background: #fff; animation: row-in 150ms ease; }
+    .log-row { display: grid; grid-template-columns: 78px 116px minmax(0, 1fr) 170px; gap: 15px; align-items: start; min-height: 54px; padding: 13px 17px; border-bottom: 1px solid var(--line); background: #fff; }
     .log-row:last-child { border-bottom: 0; }
     .log-row time { padding-top: 2px; color: var(--ink-3); font: 9.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
     .log-kind { display: inline-flex; align-items: center; gap: 7px; color: var(--blue); font-size: 10px; font-weight: 760; }
@@ -138,32 +137,6 @@
     .log-row.is-attention .log-kind { color: var(--amber); }
     .log-copy { color: #3b3741; font-size: 11.5px; line-height: 1.6; }
     .log-source { color: var(--ink-3); font-size: 10px; text-align: right; }
-
-    .modal-backdrop { position: fixed; z-index: 50; inset: 0; display: none; place-items: center; padding: 24px; background: rgba(31,27,38,.34); backdrop-filter: blur(3px); }
-    .modal-backdrop.open { display: grid; }
-    .modal { width: min(680px, 100%); overflow: hidden; border: 1px solid var(--line-2); border-radius: 13px; background: #fff; box-shadow: 0 22px 70px rgba(31,27,38,.22); }
-    .modal-head { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 21px; border-bottom: 1px solid var(--line); }
-    .modal-head strong { font-size: 16px; }
-    .icon-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 8px; color: var(--ink-2); background: transparent; cursor: pointer; }
-    .icon-btn:hover { background: var(--surface-2); }
-    .model-options { padding: 16px 20px 5px; }
-    .model-option { min-height: 64px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
-    .model-option + .model-option { margin-top: 9px; }
-    .model-option.is-selected { border-color: #cfc6f5; background: #fbfaff; }
-    .radio { width: 17px; height: 17px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 50%; }
-    .is-selected .radio { border-color: var(--accent); }
-    .is-selected .radio::after { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
-    .model-option strong { font-size: 12px; }
-    .model-option span { color: var(--ink-3); font-size: 10.5px; }
-    .model-option select { min-width: 196px; height: 34px; padding: 0 30px 0 10px; border: 1px solid var(--line-2); border-radius: 7px; background: #fff; font-size: 10.5px; }
-    .ai-toggle-row { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 12px 20px 0; padding: 0 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .ai-toggle-row strong { font-size: 11.5px; }
-    .switch { width: 38px; height: 22px; position: relative; border: 0; border-radius: 999px; background: #d5d2da; cursor: pointer; }
-    .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.17); transition: transform 160ms ease; }
-    .switch.is-on { background: var(--accent); }
-    .switch.is-on::after { transform: translateX(16px); }
-    .proposal-boundary { margin: 15px 20px 0; padding: 12px; border-radius: 8px; color: var(--ink-2); background: var(--surface-2); font-size: 11px; }
-    .modal-foot { min-height: 64px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; padding: 0 20px; border-top: 1px solid var(--line); }
 
     @media (max-width: 1120px) {
       .hero { grid-template-columns: minmax(0, 1fr); }
@@ -188,18 +161,15 @@
     <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v6M12 9c0 4-7 3-7 8v4M12 9c0 4 7 3 7 8v4"/><path d="m2 18 3 3 3-3M16 18l3 3 3-3"/></symbol>
     <symbol id="i-recovery" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-    <symbol id="i-model" viewBox="0 0 24 24"><path d="m12 3 1.3 4.2L17 9l-3.7 1.8L12 15l-1.3-4.2L7 9l3.7-1.8L12 3Z"/><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8V4Z"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
     <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
-    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
   </svg>
 
   <header class="topbar">
     <div class="brand"><span class="brand-icon"><svg class="icon"><use href="#i-review"/></svg></span><span>Prepare review</span></div>
     <div class="top-actions">
-      <button class="btn soft" type="button" id="model-btn"><svg class="icon sm"><use href="#i-model"/></svg><span id="model-btn-label">Auto · Claude Sonnet 4</span></button>
       <span class="run-chip"><span class="run-dot"></span><span id="run-state">Running · checkpoint active</span></span>
       <button class="btn" type="button" id="restart-btn"><svg class="icon sm"><use href="#i-restart"/></svg>Restart demo</button>
       <button class="btn" type="button" id="pause-btn"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button>
@@ -238,24 +208,11 @@
     <section class="card log">
       <div class="section-head">
         <div class="section-title"><svg class="icon"><use href="#i-review"/></svg><strong>Preparation log</strong></div>
-        <div class="log-actions"><button class="new-events" id="new-events" type="button">0 new events · jump to latest</button><span class="model-note" id="model-note">Model is called only for ambiguous groups</span></div>
+        <div class="log-actions"><button class="new-events" id="new-events" type="button">0 new events · jump to latest</button><span class="model-note">Models are read-only here · configured in Scan setup</span></div>
       </div>
       <div class="log-list" id="log-list"><div class="log-empty">Preparation events will appear here. The list will not move automatically.</div></div>
     </section>
   </main>
-
-  <div class="modal-backdrop" id="model-modal" role="dialog" aria-modal="true" aria-labelledby="model-title">
-    <section class="modal">
-      <div class="modal-head"><strong id="model-title">Prepare review model</strong><button class="icon-btn" id="model-close" type="button" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button></div>
-      <div class="model-options">
-        <div class="model-option is-selected" data-route="inherit" tabindex="0"><span class="radio"></span><strong>Inherit Vault-wide review model</strong><span id="inherited-model">Claude Sonnet 4 · Anthropic</span></div>
-        <div class="model-option" data-route="fixed" tabindex="0"><span class="radio"></span><strong>Choose another model</strong><select id="fixed-model" disabled aria-label="Prepare review model"><option value="GPT-5 mini|OpenAI|remote">GPT-5 mini · OpenAI</option><option value="Gemini 2.5 Flash|Google|remote">Gemini 2.5 Flash · Google</option><option value="Gemma 4 local|LM Studio|local">Gemma 4 local · LM Studio</option></select></div>
-      </div>
-      <div class="ai-toggle-row"><strong>Use AI for ambiguous task groups</strong><button class="switch is-on" id="ai-toggle" type="button" aria-pressed="true" aria-label="Use AI for ambiguous task groups"></button></div>
-      <div class="proposal-boundary">File proposal models are selected later, after you choose an outcome. Prepare review never edits user files.</div>
-      <div class="modal-foot"><button class="btn" type="button" id="model-cancel">Cancel</button><button class="btn soft" type="button" id="model-save">Save for this scan</button></div>
-    </section>
-  </div>
 
   <script>
     const TASKS = [
@@ -290,13 +247,10 @@
       elapsed: 0,
       eventIndex: 0,
       unreadEvents: 0,
-      routeMode: 'inherit',
       selectedModel: 'Claude Sonnet 4',
       selectedProvider: 'Anthropic',
       routeClass: 'remote',
       aiEnabled: true,
-      draftRouteMode: 'inherit',
-      draftAiEnabled: true,
     };
 
     const logList = document.getElementById('log-list');
@@ -324,7 +278,7 @@
     function routeLabel(task) {
       if (task.provider === 'No model call') return { model: task.route, provider: task.provider };
       if (!state.aiEnabled) return { model: 'AI disabled', provider: 'Needs attention if ambiguous' };
-      return { model: state.selectedModel, provider: state.routeMode === 'inherit' ? 'Inherited review model' : state.selectedProvider };
+      return { model: state.selectedModel, provider: `${state.selectedProvider} · configured in Scan setup` };
     }
 
     function taskStatus(task) {
@@ -341,23 +295,36 @@
     }
 
     function renderTasks() {
+      const taskPlan = document.getElementById('task-plan');
       if (state.tick < 4) {
-        document.getElementById('task-plan').innerHTML = '<div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div>';
+        if (taskPlan.dataset.mode !== 'planning') {
+          taskPlan.dataset.mode = 'planning';
+          taskPlan.innerHTML = '<div class="planning-state"><span class="spinner"></span><span>Organizing findings into owner work</span></div>';
+        }
         return;
       }
-      const rows = TASKS.map((task) => {
-        const status = taskStatus(task);
-        const route = routeLabel(task);
-        const processed = status.label === 'Waiting' ? 0 : status.label === 'Ready' || status.label === 'Needs attention' ? task.atoms : Math.min(task.atoms, Math.max(1, Math.round(task.atoms * status.progress / 100)));
-        return `<div class="task-row ${status.className}" data-task="${task.id}">
+      if (taskPlan.dataset.mode !== 'tasks') {
+        taskPlan.dataset.mode = 'tasks';
+        taskPlan.innerHTML = TASKS.map((task) => `<div class="task-row is-waiting" data-task="${task.id}">
           <span class="task-icon"><svg class="icon"><use href="#${task.icon}"/></svg></span>
           <div class="task-main"><strong title="${task.title}">${task.title}</strong></div>
           <div class="task-count" title="${task.atoms} review atoms">${task.count}</div>
-          <div class="task-progress"><div class="task-progress-head"><b>${status.label}</b><span>${processed} / ${task.atoms}</span></div><div class="mini-track" style="--row-progress:${status.progress}%"><i></i></div></div>
-          <div class="task-route" title="${route.provider}"><strong>${route.model}</strong></div>
-        </div>`;
-      }).join('');
-      document.getElementById('task-plan').innerHTML = rows;
+          <div class="task-progress"><div class="task-progress-head"><b data-task-status>Waiting</b><span data-task-count>0 / ${task.atoms}</span></div><div class="mini-track"><i></i></div></div>
+          <div class="task-route"><strong data-task-route>Waiting</strong></div>
+        </div>`).join('');
+      }
+      for (const task of TASKS) {
+        const row = taskPlan.querySelector(`[data-task="${task.id}"]`);
+        const status = taskStatus(task);
+        const route = routeLabel(task);
+        const processed = status.label === 'Waiting' ? 0 : status.label === 'Ready' || status.label === 'Needs attention' ? task.atoms : Math.min(task.atoms, Math.max(1, Math.round(task.atoms * status.progress / 100)));
+        row.className = `task-row ${status.className}`;
+        row.querySelector('[data-task-status]').textContent = status.label;
+        row.querySelector('[data-task-count]').textContent = `${processed} / ${task.atoms}`;
+        row.querySelector('.mini-track i').style.width = `${status.progress}%`;
+        row.querySelector('[data-task-route]').textContent = route.model;
+        row.querySelector('.task-route').title = route.provider;
+      }
     }
 
     function updateHeader() {
@@ -449,56 +416,6 @@
       logList.scrollTop = logList.scrollHeight;
       state.unreadEvents = 0;
       newEvents.classList.remove('visible');
-    });
-
-    const modal = document.getElementById('model-modal');
-    function openModel() {
-      state.draftRouteMode = state.routeMode;
-      state.draftAiEnabled = state.aiEnabled;
-      document.querySelectorAll('.model-option').forEach(option => option.classList.toggle('is-selected', option.dataset.route === state.draftRouteMode));
-      document.getElementById('fixed-model').disabled = state.draftRouteMode !== 'fixed';
-      document.getElementById('ai-toggle').classList.toggle('is-on', state.draftAiEnabled);
-      document.getElementById('ai-toggle').setAttribute('aria-pressed', String(state.draftAiEnabled));
-      modal.classList.add('open');
-      document.getElementById('model-close').focus();
-    }
-    function closeModel() { modal.classList.remove('open'); document.getElementById('model-btn').focus(); }
-    document.getElementById('model-btn').addEventListener('click', openModel);
-    document.getElementById('model-close').addEventListener('click', closeModel);
-    document.getElementById('model-cancel').addEventListener('click', closeModel);
-    modal.addEventListener('click', event => { if (event.target === modal) closeModel(); });
-    document.addEventListener('keydown', event => { if (event.key === 'Escape' && modal.classList.contains('open')) closeModel(); });
-    document.querySelectorAll('.model-option').forEach(option => {
-      const select = () => {
-        state.draftRouteMode = option.dataset.route;
-        document.querySelectorAll('.model-option').forEach(item => item.classList.toggle('is-selected', item === option));
-        document.getElementById('fixed-model').disabled = state.draftRouteMode !== 'fixed';
-      };
-      option.addEventListener('click', event => { if (event.target.tagName !== 'SELECT') select(); });
-      option.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(); } });
-    });
-    document.getElementById('ai-toggle').addEventListener('click', event => {
-      state.draftAiEnabled = !state.draftAiEnabled;
-      event.currentTarget.classList.toggle('is-on', state.draftAiEnabled);
-      event.currentTarget.setAttribute('aria-pressed', String(state.draftAiEnabled));
-    });
-    document.getElementById('model-save').addEventListener('click', () => {
-      state.routeMode = state.draftRouteMode;
-      state.aiEnabled = state.draftAiEnabled;
-      if (state.routeMode === 'inherit') {
-        state.selectedModel = 'Claude Sonnet 4';
-        state.selectedProvider = 'Anthropic';
-        state.routeClass = 'remote';
-      } else {
-        const [model, provider, routeClass] = document.getElementById('fixed-model').value.split('|');
-        state.selectedModel = model;
-        state.selectedProvider = provider;
-        state.routeClass = routeClass;
-      }
-      document.getElementById('model-btn-label').textContent = state.routeMode === 'inherit' ? `Auto · ${state.selectedModel}` : state.selectedModel;
-      document.getElementById('model-note').textContent = state.aiEnabled ? 'Model is called only for ambiguous groups' : 'AI is off · ambiguous groups need attention';
-      closeModel();
-      render();
     });
 
     setInterval(() => {
