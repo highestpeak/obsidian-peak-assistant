@@ -3671,6 +3671,76 @@
       font-size: 12px;
     }
 
+    /* Vault-wide discovery is a recursive session, not a fixed left-to-right checklist. */
+    .legacy-ai-panel { display: none !important; }
+    .vault-discovery-panel { background: var(--bg); }
+    .vault-discovery-hero { min-height: 148px; display: grid; grid-template-columns: minmax(0, 1fr) 560px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .vault-discovery-hero-main { min-width: 0; display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 17px; align-items: center; padding: 20px 22px; }
+    .vault-discovery-hero-icon { width: 54px; height: 54px; display: grid; place-items: center; border: 1px solid #d9d1fb; border-radius: 50%; color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 8px rgba(105,84,220,.04); }
+    .vault-discovery-hero-icon .icon { width: 25px; height: 25px; }
+    .vault-discovery-title { font-size: 20px; line-height: 1.2; font-weight: 760; letter-spacing: -.025em; }
+    .vault-discovery-phase { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ink-2); font-size: 11px; font-weight: 650; }
+    .vault-discovery-phase i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .vault-discovery-coverage-line { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 12px; align-items: center; max-width: 620px; margin-top: 13px; }
+    .vault-discovery-coverage-track { height: 6px; overflow: hidden; border-radius: 999px; background: #eae8ef; }
+    .vault-discovery-coverage-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 220ms ease; }
+    .vault-discovery-coverage-copy { color: var(--ink-3); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .vault-discovery-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-left: 1px solid var(--line); background: #fcfbfd; }
+    .vault-discovery-fact { min-width: 0; display: grid; place-content: center; gap: 5px; padding: 18px 14px; border-right: 1px solid var(--line); }
+    .vault-discovery-fact:last-child { border-right: 0; }
+    .vault-discovery-fact strong { overflow: hidden; font-size: 18px; line-height: 1.1; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+    .vault-discovery-fact span { color: var(--ink-3); font-size: 10px; font-weight: 650; }
+    .vault-discovery-card { margin: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+    .vault-discovery-card + .vault-discovery-card { margin-top: 0; }
+    .vault-discovery-section-head { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 9px 15px; border-bottom: 1px solid var(--line); }
+    .vault-discovery-section-head strong { font-size: 13px; }
+    .vault-discovery-details-toggle { min-height: 30px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 7px; color: var(--ink-2); background: #fff; font-size: 10.5px; font-weight: 700; cursor: pointer; }
+    .vault-discovery-finding-summary { min-height: 76px; display: flex; align-items: center; gap: 20px; padding: 0 18px; }
+    .vault-discovery-finding-total { display: flex; align-items: baseline; gap: 8px; padding-right: 20px; border-right: 1px solid var(--line); }
+    .vault-discovery-finding-total strong { font-size: 25px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .vault-discovery-finding-total span { color: var(--ink-2); font-size: 11px; font-weight: 680; }
+    .vault-discovery-breakdown { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--ink-2); font-size: 11px; }
+    .vault-discovery-breakdown span { white-space: nowrap; }
+    .vault-discovery-breakdown b { margin-left: 4px; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .vault-discovery-details { display: none; border-top: 1px solid var(--line); }
+    .vault-discovery-details.open { display: block; }
+    .vault-discovery-finding-head, .vault-discovery-finding-row { display: grid; grid-template-columns: 140px minmax(320px, 1fr) minmax(260px, .72fr); gap: 16px; align-items: center; }
+    .vault-discovery-finding-head { min-height: 34px; padding: 0 18px; color: var(--ink-3); background: var(--surface-2); font-size: 10px; font-weight: 700; }
+    .vault-discovery-finding-list { max-height: 290px; overflow: auto; }
+    .vault-discovery-empty { min-height: 100px; display: grid; place-items: center; color: var(--ink-3); font-size: 11px; }
+    .vault-discovery-finding-row { min-height: 52px; padding: 9px 18px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 10.5px; }
+    .vault-discovery-finding-row:first-child { border-top: 0; }
+    .vault-discovery-finding-type { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 720; }
+    .vault-discovery-finding-type i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .vault-discovery-finding-text { color: var(--ink); font-size: 11px; line-height: 1.5; }
+    .vault-discovery-finding-evidence { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vault-discovery-session-actions { display: flex; align-items: center; gap: 9px; }
+    .vault-discovery-new-events { display: none; min-height: 26px; padding: 0 9px; border: 1px solid #d8d1f5; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 10px; font-weight: 720; cursor: pointer; }
+    .vault-discovery-new-events.visible { display: inline-flex; align-items: center; }
+    .vault-discovery-session-model { color: var(--ink-3); font-size: 10px; font-weight: 650; }
+    .vault-discovery-live { min-height: 184px; padding: 18px 20px 17px; border-bottom: 1px solid var(--line); background: #fcfbff; }
+    .vault-discovery-live-line { display: flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: 10.5px; font-weight: 700; }
+    .vault-discovery-live-line i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .vault-discovery-live-line time { margin-left: auto; color: var(--ink-3); font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .vault-discovery-stream-text { max-width: 1120px; min-height: 64px; max-height: 132px; overflow: auto; margin-top: 15px; padding-right: 14px; color: #36313e; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
+    .vault-discovery-citation { display: none; align-items: center; gap: 8px; margin-top: 12px; color: var(--ink-2); font-size: 11px; }
+    .vault-discovery-citation.visible { display: flex; }
+    .vault-discovery-history-head { min-height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--line); color: var(--ink-3); background: var(--surface-2); font-size: 10px; font-weight: 680; }
+    .vault-discovery-history { height: 420px; overflow: auto; overflow-anchor: none; scrollbar-gutter: stable; }
+    .vault-discovery-entry { --entry-color: var(--ink-3); display: grid; grid-template-columns: 66px minmax(0, 1fr); gap: 13px; min-height: 55px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: #fff; }
+    .vault-discovery-entry.finding { --entry-color: var(--accent); }
+    .vault-discovery-entry.reasoning { --entry-color: #4e6e93; background: #fbfcfe; }
+    .vault-discovery-entry time { padding-top: 2px; color: var(--ink-3); font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .vault-discovery-entry-copy { min-width: 0; color: #393540; font-size: 11.5px; line-height: 1.65; }
+    .vault-discovery-entry-kind { display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; color: var(--entry-color); font-size: 10px; font-weight: 760; }
+    .vault-discovery-entry-kind i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .vault-discovery-entry-citation { display: flex; align-items: center; gap: 7px; margin-top: 7px; color: var(--ink-2); font-size: 10.5px; }
+    @media (max-width: 1320px) {
+      .vault-discovery-hero { grid-template-columns: minmax(0, 1fr) 460px; }
+      .vault-discovery-finding-head, .vault-discovery-finding-row { grid-template-columns: 120px minmax(280px, 1fr); }
+      .vault-discovery-finding-evidence { grid-column: 2; white-space: normal; }
+    }
+
     /* Prepare review is a causal run stage: active output lives inside the task it gates. */
     .stage-track { grid-template-columns: repeat(5, 1fr); }
     .stage-track::before, .stage-track::after { right: calc(10% + 21px); left: calc(10% + 21px); }
@@ -4470,7 +4540,15 @@
               <div class="local-index-parallel"><strong>Parallel lanes</strong><span>Local content health</span><span>Deterministic graph facts</span><span>AI Index enrichment uses the approved models and appears under AI Work</span><span class="status neutral" id="local-index-parallel-state">Waiting</span></div>
               </div>
             </section>
-            <section class="card run-stage-panel ai-operation-card" data-run-stage-panel="ai" role="tabpanel">
+            <section class="card run-stage-panel vault-discovery-panel" data-run-stage-panel="ai" role="tabpanel">
+              <div class="vault-discovery-hero">
+                <div class="vault-discovery-hero-main"><div class="vault-discovery-hero-icon"><svg class="icon"><use href="#i-graph"/></svg></div><div><div class="vault-discovery-title" id="vault-discovery-title">Discovering structure across your vault.</div><div class="vault-discovery-phase"><i></i><span id="vault-discovery-phase">Pass 1 · assembling evidence</span></div><div class="vault-discovery-coverage-line"><div class="vault-discovery-coverage-track"><span id="vault-discovery-coverage-track"></span></div><span class="vault-discovery-coverage-copy" id="vault-discovery-coverage-copy">0 of 7,120 evidence records checked</span></div></div></div>
+                <div class="vault-discovery-facts"><div class="vault-discovery-fact"><strong id="vault-discovery-coverage">0%</strong><span>evidence coverage</span></div><div class="vault-discovery-fact"><strong id="vault-discovery-remaining">8–12 min</strong><span>estimated remaining</span></div><div class="vault-discovery-fact"><strong id="vault-discovery-elapsed">0 sec</strong><span>elapsed</span></div><div class="vault-discovery-fact"><strong id="vault-discovery-usage">$0.000</strong><span>model usage</span></div></div>
+              </div>
+              <section class="vault-discovery-card"><div class="vault-discovery-section-head"><strong>Findings</strong><button class="vault-discovery-details-toggle" id="vault-discovery-details-toggle" type="button" aria-expanded="false">View findings</button></div><div class="vault-discovery-finding-summary"><div class="vault-discovery-finding-total"><strong id="vault-discovery-finding-count">0</strong><span>retained</span></div><div class="vault-discovery-breakdown"><span>Relationships <b data-vault-discovery-type="relationship">0</b></span><span>Communities <b data-vault-discovery-type="community">0</b></span><span>Hubs <b data-vault-discovery-type="hub">0</b></span><span>Bridges <b data-vault-discovery-type="bridge">0</b></span><span>Islands <b data-vault-discovery-type="island">0</b></span><span>Drift <b data-vault-discovery-type="drift">0</b></span></div></div><div class="vault-discovery-details" id="vault-discovery-details"><div class="vault-discovery-finding-head"><span>Type</span><span>Finding</span><span>Evidence</span></div><div class="vault-discovery-finding-list" id="vault-discovery-finding-list"><div class="vault-discovery-empty">Retained findings will appear here.</div></div></div></section>
+              <section class="vault-discovery-card"><div class="vault-discovery-section-head"><strong>Session</strong><div class="vault-discovery-session-actions"><button class="vault-discovery-new-events" id="vault-discovery-new-events" type="button">0 new outputs</button><span class="vault-discovery-session-model" id="vault-discovery-session-route">Pass 1 · Local graph engine</span></div></div><div class="vault-discovery-live"><div class="vault-discovery-live-line"><i></i><span id="vault-discovery-stream-kind">Agent</span><span id="vault-discovery-stream-route">Local graph engine</span><time id="vault-discovery-stream-time">00:00</time></div><div class="vault-discovery-stream-text" id="vault-discovery-stream-text">Starting session…</div><div class="vault-discovery-citation" id="vault-discovery-citation"><svg class="icon sm"><use href="#i-file"/></svg><span></span></div></div><div class="vault-discovery-history-head"><span>Earlier in this session</span><span>Newest first · scroll position stays fixed</span></div><div class="vault-discovery-history" id="vault-discovery-history"><div class="vault-discovery-empty">Output will appear here as the session continues.</div></div></section>
+            </section>
+            <section class="card run-stage-panel ai-operation-card legacy-ai-panel" data-run-stage-panel="ai-legacy" aria-hidden="true">
               <div class="ai-operation-head"><div><div style="display:flex;align-items:center;gap:9px"><div class="card-title">AI work has two execution scopes</div><span class="status purple" id="ai-operation-summary">9 operations</span></div><div class="card-caption">Per-document enrichment follows the Index. Vault-wide analysis owns evidence discovery and review; task synthesis begins in the next stage.</div></div><span class="status neutral" data-run-panel-state="ai">Waiting</span></div>
               <div class="ai-operation-list" id="ai-operation-list">
                 <div class="ai-scope-divider foundation"><div class="ai-scope-copy"><span class="ai-scope-eyebrow">Once per Scan · run foundation</span></div><span class="status neutral ai-scope-state" id="ai-foundation-state">Waiting</span></div>
@@ -5642,19 +5720,23 @@
         document.getElementById('stop-run').style.display = '';
         document.getElementById('pause-run').innerHTML = '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>';
         document.getElementById('review-remaining-plan').style.display = 'none';
-        runProgress = state === 'indexing' ? 30 : state === 'ai-work' ? 76 : 88;
+        runProgress = state === 'indexing' ? 30 : state === 'ai-work' ? 55 : 88;
         inspectedRunStage = null;
         skippedAIOperations = new Set();
         stoppedAIOperationsAt = new Map();
         resetAIGroupExpansionTracking();
+        resetVaultDiscovery();
         resetReviewPreparation();
         syncRunAIProfiles();
         showScreen('active-run');
         renderRunProgress();
-        if (state === 'prepare-review') {
+        if (state === 'ai-work' || state === 'prepare-review') {
           runTimer = window.setInterval(() => {
             if (runPaused) return;
-            if (reviewPreparationState.tick < 9) {
+            if (runProgress >= 55 && vaultDiscoveryState.outputIndex < vaultDiscoveryOutputs.length) {
+              vaultDiscoveryState.elapsed += 1;
+              advanceVaultDiscoveryGate();
+            } else if (reviewPreparationState.tick < 9) {
               reviewPreparationState.elapsed += 1;
               advanceReviewPreparationGate();
             } else {
@@ -11218,6 +11300,201 @@
       { key: 'review', number: 3, title: 'Review and explain', description: 'Test candidates against source evidence, Communities, Hubs, bridges, and history.', start: 60, end: 88, running: 'Reviewing evidence', operations: ['semantic-review', 'community-analysis', 'hub-bridge-analysis'] }
     ];
 
+    const vaultDiscoveryTypeLabels = { relationship: 'Relationship', community: 'Community', hub: 'Hub', bridge: 'Bridge', island: 'Island', drift: 'Drift' };
+    const vaultDiscoveryOutputs = [
+      { kind: 'system', pass: 1, coverage: 8, stage: 'assembling evidence', route: 'Local graph engine', text: 'I froze the current graph, source revisions, and affected context. The first pass is starting from 146 changed inputs and 4,860 known graph records.', citation: 'Vault snapshot v18 · 146 changed inputs' },
+      { kind: 'reasoning', pass: 1, coverage: 15, stage: 'exploring changed evidence', route: 'Configured discovery model', text: 'I am comparing changed passages with already-known Research and Product context. Several phrases repeat, but repetition alone is not enough. I am ranking candidate connections and holding back matches whose wording is similar but whose decisions belong to different product periods.', citation: '1,068 of 7,120 evidence records checked' },
+      { kind: 'finding', type: 'relationship', amount: 4, pass: 1, coverage: 21, stage: 'retaining supported links', route: 'Configured discovery model', text: 'Found 4 supported relationships connecting launch decisions with customer interview themes.', details: [{ text: 'Product direction ↔ customer interview themes', evidence: 'Product direction.md · Customer interview 07.md' }, { text: 'Launch timing ↔ interview urgency', evidence: 'Launch tracker.xlsx · Interview notes.md' }, { text: 'Beta scope ↔ repeated feature requests', evidence: 'Beta plan.md · Customer themes.md' }, { text: 'Pricing decision ↔ support objections', evidence: 'Pricing notes.md · Support themes.md' }], citation: 'Product direction.md · Customer interview 07.md · Launch tracker.xlsx', cost: .012 },
+      { kind: 'reasoning', pass: 2, coverage: 27, stage: 'testing a Community boundary', route: 'Configured structure model', text: 'Those new relationships pull two interview files toward the Research cluster. I am testing that boundary against the existing Community identity instead of waiting for a separate Community stage.', citation: 'Research Community · existing identity v18', cost: .008 },
+      { kind: 'finding', type: 'community', amount: 1, pass: 2, coverage: 31, stage: 'retaining a boundary change', route: 'Configured structure model', text: 'Research Community expanded by 2 files while keeping its existing identity.', finding: 'Research Community expanded by 2 files', citation: 'Interview notes.md · Customer interview 07.md', cost: .011 },
+      { kind: 'reasoning', pass: 2, coverage: 36, stage: 'revisiting relationships', route: 'Configured discovery model', text: 'The revised Research boundary changes which passages should be compared. I am returning to relationship discovery with the new Community evidence and rejecting two earlier candidates that no longer cross the strongest boundary.', citation: 'Community boundary v19 applied to 418 candidate passages', cost: .009 },
+      { kind: 'finding', type: 'relationship', amount: 3, pass: 2, coverage: 41, stage: 'retaining revised links', route: 'Configured discovery model', text: 'Retained 3 additional relationships after applying the revised Research boundary.', details: [{ text: 'Research synthesis ↔ interview decision context', evidence: 'Research synthesis.md · Interview notes.md' }, { text: 'Evidence gaps ↔ follow-up interview plan', evidence: 'Research gaps.md · Interview plan.md' }, { text: 'Customer language ↔ roadmap decision rationale', evidence: 'Customer themes.md · Roadmap decisions.md' }], citation: 'Research synthesis.md · Interview notes.md', cost: .010 },
+      { kind: 'reasoning', pass: 3, coverage: 47, stage: 'checking centrality', route: 'Local graph engine', text: 'The new links change graph reach. I am checking whether Research synthesis is merely popular or now functions as a true Hub across otherwise separated evidence groups.', citation: 'Current graph overlaid on snapshot v18' },
+      { kind: 'finding', type: 'hub', amount: 1, pass: 3, coverage: 51, stage: 'retaining a Hub', route: 'Local graph engine', text: 'Research synthesis became a stronger Hub with centrality up 18%.', finding: 'Research synthesis.md · centrality +18%', citation: 'Research synthesis.md · 31 inbound paths' },
+      { kind: 'reasoning', pass: 3, coverage: 56, stage: 'checking cross-group paths', route: 'Configured structure model', text: 'The stronger Hub exposes a weaker Product-to-Research route. I am comparing the old bridge with alternative paths before deciding whether this is ordinary variation or a meaningful structural change.', citation: 'Product ↔ Research paths · snapshot v18 comparison', cost: .008 },
+      { kind: 'finding', type: 'bridge', amount: 1, pass: 3, coverage: 60, stage: 'retaining a Bridge change', route: 'Configured structure model', text: 'The existing Product ↔ Research Bridge weakened from 88% to 61% coverage.', finding: 'Product ↔ Research Bridge weakened', citation: 'Launch decisions.md · Research synthesis.md', cost: .010 },
+      { kind: 'reasoning', pass: 4, coverage: 65, stage: 'revisiting uncovered evidence', route: 'Configured discovery model', text: 'A weakened Bridge leaves some launch evidence unexplained. I am returning to the source pool, expanding around launch checklists and support themes, and looking for relationships that were not eligible in the first pass.', citation: '612 previously uncovered passages', cost: .011 },
+      { kind: 'finding', type: 'relationship', amount: 4, pass: 4, coverage: 69, stage: 'retaining new links', route: 'Configured discovery model', text: 'Found 4 more relationships across launch checklists, support themes, and operating notes.', details: [{ text: 'Launch checklist ↔ support readiness', evidence: 'Launch checklist.md · Support themes.md' }, { text: 'Release gate ↔ unresolved customer blocker', evidence: 'Release gates.md · Customer blockers.md' }, { text: 'Weekly operations ↔ launch risk', evidence: 'Weekly operations.md · Launch risks.md' }, { text: 'Support escalation ↔ rollout sequencing', evidence: 'Escalations.md · Rollout plan.md' }], citation: 'Launch checklist.md · Support themes.md · Weekly operations.md', cost: .014 },
+      { kind: 'finding', type: 'island', amount: 1, pass: 4, coverage: 73, stage: 'checking disconnected evidence', route: 'Configured structure model', text: 'Found an island of 14 publishing drafts with no resolved outbound relationships.', finding: 'Publishing drafts · 14 disconnected files', citation: 'Publishing/Drafts · 14 files' },
+      { kind: 'reasoning', pass: 5, coverage: 78, stage: 'retesting Community structure', route: 'Configured structure model', text: 'The new operational relationships are dense enough to retest Community structure. I am comparing them with existing identities and will preserve a provisional name because the group has not appeared consistently across earlier scans.', citation: '18 files · three boundary comparisons', cost: .012 },
+      { kind: 'finding', type: 'community', amount: 1, pass: 5, coverage: 82, stage: 'retaining an emerging Community', route: 'Configured structure model', text: 'Found an emerging Product operations Community spanning 18 files.', finding: 'Product operations · emerging Community', citation: 'Launch checklist.md · Support themes.md · Weekly operations.md', cost: .009 },
+      { kind: 'finding', type: 'relationship', amount: 3, pass: 5, coverage: 85, stage: 'closing remaining link gaps', route: 'Configured discovery model', text: 'Retained 3 relationships created by the emerging Product operations boundary.', details: [{ text: 'Product operations ↔ launch decision evidence', evidence: 'Product operations candidate · Launch decisions.md' }, { text: 'Operating cadence ↔ support feedback loop', evidence: 'Weekly operations.md · Support feedback.md' }, { text: 'Release ownership ↔ escalation response', evidence: 'Release owners.md · Escalations.md' }], citation: 'Product operations candidate · 3 cited links', cost: .011 },
+      { kind: 'finding', type: 'drift', amount: 1, pass: 5, coverage: 88, stage: 'checking historical drift', route: 'Configured structure model', text: 'Detected Product boundary drift across 11 files and 3 source groups.', finding: 'Product boundary drift · 11 files', citation: 'Product Community · snapshot v18 comparison', cost: .013 },
+      { kind: 'finding', type: 'hub', amount: 1, pass: 6, coverage: 91, stage: 'rechecking centrality', route: 'Local graph engine', text: 'Interview notes gained local Hub behavior across Research, Product, and Support.', finding: 'Interview notes.md · local Hub behavior', citation: 'Interview notes.md · betweenness +0.14' },
+      { kind: 'finding', type: 'bridge', amount: 2, pass: 6, coverage: 94, stage: 'testing replacement paths', route: 'Configured structure model', text: 'Found 2 candidate Bridges that may replace the weakened Product ↔ Research route.', details: [{ text: 'Research synthesis → Customer themes → Product direction', evidence: 'Research synthesis.md · Customer themes.md' }, { text: 'Interview notes → Product operations → Launch decisions', evidence: 'Interview notes.md · Launch decisions.md' }], citation: 'Research synthesis.md · Customer themes.md', cost: .015 },
+      { kind: 'finding', type: 'drift', amount: 1, pass: 6, coverage: 96, stage: 'checking three-scan history', route: 'Configured structure model', text: 'The legacy launch cluster declined in both centrality and active citations across 3 scans.', finding: 'Legacy launch cluster · sustained decline', citation: 'Launch archive · three-scan history' },
+      { kind: 'reasoning', pass: 7, coverage: 99, stage: 'testing the stop condition', route: 'Configured discovery model + local graph', text: 'I revisited the remaining uncovered evidence using the retained Communities, Hubs, Bridges, and relationship changes. The last pass produced no material new structure, and the unexplained evidence is below the configured threshold. Coverage is stable enough to end this discovery loop.', citation: 'Pass 7 · no material findings · 1% excluded or unreadable', cost: .006 },
+      { kind: 'system', pass: 7, coverage: 100, stage: 'complete', route: 'Local receipt', text: 'Vault-wide discovery is complete. Every retained finding has source revisions, model receipts, and inspectable evidence. No user files were changed.', citation: 'Checkpoint saved · run-vault-7f2c' }
+    ];
+
+    const vaultDiscoveryState = { outputIndex: 0, tokenIndex: 0, elapsed: 0, cost: 0, coverage: 0, waiting: 0, unseen: 0, tokens: [], active: null, findings: Object.fromEntries(Object.keys(vaultDiscoveryTypeLabels).map((key) => [key, 0])) };
+
+    function vaultDiscoveryDuration(seconds) {
+      if (seconds < 60) return `${seconds} sec`;
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`;
+    }
+
+    function vaultDiscoveryClock(seconds) {
+      return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+    }
+
+    function vaultDiscoveryRoute(route) {
+      if (route === 'Configured discovery model') return aiOperationRunDefinitions['relationship-discovery'].enabled ? aiOperationRunDefinitions['relationship-discovery'].model : 'AI disabled';
+      if (route === 'Configured structure model') return aiOperationRunDefinitions['community-analysis'].enabled ? aiOperationRunDefinitions['community-analysis'].model : 'AI disabled';
+      if (route === 'Configured discovery model + local graph') return `${vaultDiscoveryRoute('Configured discovery model')} + local graph`;
+      return route;
+    }
+
+    function vaultDiscoveryFindingTotal() {
+      return Object.values(vaultDiscoveryState.findings).reduce((sum, count) => sum + count, 0);
+    }
+
+    function vaultDiscoveryRemaining() {
+      const coverage = vaultDiscoveryState.coverage;
+      if (coverage >= 100) return 'Complete';
+      if (coverage >= 94) return '<1 min';
+      if (coverage >= 82) return '1–2 min';
+      if (coverage >= 65) return '2–4 min';
+      if (coverage >= 42) return '4–6 min';
+      if (coverage >= 20) return '6–8 min';
+      return '8–12 min';
+    }
+
+    function renderVaultDiscovery() {
+      if (!document.getElementById('vault-discovery-title')) return;
+      const complete = vaultDiscoveryState.outputIndex >= vaultDiscoveryOutputs.length && !vaultDiscoveryState.active;
+      document.getElementById('vault-discovery-title').textContent = complete ? 'Vault-wide discovery is complete.' : runPaused ? 'Vault-wide discovery is paused.' : 'Discovering structure across your vault.';
+      document.getElementById('vault-discovery-phase').textContent = complete ? 'Coverage stable · discovery checkpoint saved' : vaultDiscoveryState.active ? `Pass ${vaultDiscoveryState.active.pass} · ${vaultDiscoveryState.active.stage}` : 'Pass 1 · assembling evidence';
+      document.getElementById('vault-discovery-coverage').textContent = `${vaultDiscoveryState.coverage}%`;
+      document.getElementById('vault-discovery-remaining').textContent = vaultDiscoveryRemaining();
+      document.getElementById('vault-discovery-elapsed').textContent = vaultDiscoveryDuration(vaultDiscoveryState.elapsed);
+      document.getElementById('vault-discovery-usage').textContent = `$${vaultDiscoveryState.cost.toFixed(3)}`;
+      document.getElementById('vault-discovery-coverage-track').style.width = `${vaultDiscoveryState.coverage}%`;
+      document.getElementById('vault-discovery-coverage-copy').textContent = `${Math.round(7120 * vaultDiscoveryState.coverage / 100).toLocaleString()} of 7,120 evidence records checked`;
+      document.getElementById('vault-discovery-finding-count').textContent = vaultDiscoveryFindingTotal();
+      const newEvents = document.getElementById('vault-discovery-new-events');
+      newEvents.textContent = `${vaultDiscoveryState.unseen} new output${vaultDiscoveryState.unseen === 1 ? '' : 's'}`;
+      newEvents.classList.toggle('visible', vaultDiscoveryState.unseen > 0);
+    }
+
+    function resetVaultDiscovery() {
+      vaultDiscoveryState.outputIndex = 0;
+      vaultDiscoveryState.tokenIndex = 0;
+      vaultDiscoveryState.elapsed = 0;
+      vaultDiscoveryState.cost = 0;
+      vaultDiscoveryState.coverage = 0;
+      vaultDiscoveryState.waiting = 0;
+      vaultDiscoveryState.unseen = 0;
+      vaultDiscoveryState.tokens = [];
+      vaultDiscoveryState.active = null;
+      Object.keys(vaultDiscoveryState.findings).forEach((key) => { vaultDiscoveryState.findings[key] = 0; });
+      document.querySelectorAll('[data-vault-discovery-type]').forEach((count) => { count.textContent = '0'; });
+      document.getElementById('vault-discovery-finding-list').innerHTML = '<div class="vault-discovery-empty">Retained findings will appear here.</div>';
+      document.getElementById('vault-discovery-history').innerHTML = '<div class="vault-discovery-empty">Output will appear here as the session continues.</div>';
+      document.getElementById('vault-discovery-stream-text').textContent = 'Starting session…';
+      document.getElementById('vault-discovery-citation').classList.remove('visible');
+      document.getElementById('vault-discovery-details').classList.remove('open');
+      const toggle = document.getElementById('vault-discovery-details-toggle');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = 'View findings';
+      renderVaultDiscovery();
+    }
+
+    function beginVaultDiscoveryOutput(output) {
+      vaultDiscoveryState.active = output;
+      vaultDiscoveryState.coverage = output.coverage;
+      vaultDiscoveryState.tokens = output.text.match(/\S+\s*/g) || [output.text];
+      vaultDiscoveryState.tokenIndex = 0;
+      vaultDiscoveryState.waiting = 0;
+      document.getElementById('vault-discovery-stream-text').textContent = '';
+      const citation = document.getElementById('vault-discovery-citation');
+      citation.classList.remove('visible');
+      citation.querySelector('span').textContent = '';
+      const label = output.kind === 'reasoning' ? 'Reasoning' : output.kind === 'finding' ? vaultDiscoveryTypeLabels[output.type] : 'Agent';
+      document.getElementById('vault-discovery-stream-kind').textContent = label;
+      document.getElementById('vault-discovery-stream-route').textContent = vaultDiscoveryRoute(output.route);
+      document.getElementById('vault-discovery-session-route').textContent = `Pass ${output.pass} · ${vaultDiscoveryRoute(output.route)}`;
+      document.getElementById('vault-discovery-stream-time').textContent = vaultDiscoveryClock(vaultDiscoveryState.elapsed);
+      renderVaultDiscovery();
+    }
+
+    function archiveVaultDiscoveryOutput(output) {
+      const history = document.getElementById('vault-discovery-history');
+      history.querySelector('.vault-discovery-empty')?.remove();
+      const awayFromTop = history.scrollTop > 12;
+      const previousHeight = history.scrollHeight;
+      const entry = document.createElement('div');
+      entry.className = `vault-discovery-entry ${output.kind}`;
+      const label = output.kind === 'reasoning' ? 'Reasoning' : output.kind === 'finding' ? vaultDiscoveryTypeLabels[output.type] : 'Agent';
+      entry.innerHTML = `<time>${vaultDiscoveryClock(vaultDiscoveryState.elapsed)}</time><div class="vault-discovery-entry-copy"><span class="vault-discovery-entry-kind"><i></i>${label}</span>${output.text}<div class="vault-discovery-entry-citation"><svg class="icon sm"><use href="#i-file"/></svg><span>${output.citation}</span></div></div>`;
+      history.prepend(entry);
+      if (!awayFromTop) return;
+      history.scrollTop += history.scrollHeight - previousHeight;
+      vaultDiscoveryState.unseen += 1;
+    }
+
+    function retainVaultDiscoveryFinding(output) {
+      if (!output.type) return;
+      vaultDiscoveryState.findings[output.type] += output.amount || 1;
+      document.querySelector(`[data-vault-discovery-type="${output.type}"]`).textContent = vaultDiscoveryState.findings[output.type];
+      const list = document.getElementById('vault-discovery-finding-list');
+      list.querySelector('.vault-discovery-empty')?.remove();
+      const details = output.details || [{ text: output.finding || output.text, evidence: output.citation }];
+      details.slice().reverse().forEach((detail) => {
+        const row = document.createElement('div');
+        row.className = 'vault-discovery-finding-row';
+        row.innerHTML = `<span class="vault-discovery-finding-type"><i></i>${vaultDiscoveryTypeLabels[output.type]}</span><span class="vault-discovery-finding-text">${detail.text}</span><span class="vault-discovery-finding-evidence">${detail.evidence}</span>`;
+        list.prepend(row);
+      });
+    }
+
+    function finishVaultDiscoveryOutput() {
+      const output = vaultDiscoveryState.active;
+      if (!output) return;
+      archiveVaultDiscoveryOutput(output);
+      retainVaultDiscoveryFinding(output);
+      vaultDiscoveryState.cost += output.cost || 0;
+      vaultDiscoveryState.outputIndex += 1;
+      vaultDiscoveryState.active = null;
+      vaultDiscoveryState.tokens = [];
+      vaultDiscoveryState.tokenIndex = 0;
+      runProgress = 55 + output.coverage * .33;
+      if (vaultDiscoveryState.outputIndex >= vaultDiscoveryOutputs.length) runProgress = 88;
+      renderVaultDiscovery();
+    }
+
+    function streamVaultDiscoveryText() {
+      if (!runActive || runPaused || runProgress < 55 || vaultDiscoveryState.outputIndex >= vaultDiscoveryOutputs.length) return;
+      if (!vaultDiscoveryState.active) {
+        beginVaultDiscoveryOutput(vaultDiscoveryOutputs[vaultDiscoveryState.outputIndex]);
+        return;
+      }
+      if (vaultDiscoveryState.tokenIndex >= vaultDiscoveryState.tokens.length) return;
+      const nextIndex = Math.min(vaultDiscoveryState.tokens.length, vaultDiscoveryState.tokenIndex + 3);
+      document.getElementById('vault-discovery-stream-text').textContent += vaultDiscoveryState.tokens.slice(vaultDiscoveryState.tokenIndex, nextIndex).join('');
+      vaultDiscoveryState.tokenIndex = nextIndex;
+    }
+
+    function advanceVaultDiscoveryGate() {
+      if (vaultDiscoveryState.outputIndex >= vaultDiscoveryOutputs.length && !vaultDiscoveryState.active) return true;
+      if (!vaultDiscoveryState.active) {
+        beginVaultDiscoveryOutput(vaultDiscoveryOutputs[vaultDiscoveryState.outputIndex]);
+        return false;
+      }
+      if (vaultDiscoveryState.tokenIndex < vaultDiscoveryState.tokens.length) return false;
+      const citation = document.getElementById('vault-discovery-citation');
+      if (!citation.classList.contains('visible')) {
+        citation.querySelector('span').textContent = vaultDiscoveryState.active.citation;
+        citation.classList.add('visible');
+        return false;
+      }
+      vaultDiscoveryState.waiting += 1;
+      if (vaultDiscoveryState.waiting < 2) return false;
+      finishVaultDiscoveryOutput();
+      return vaultDiscoveryState.outputIndex >= vaultDiscoveryOutputs.length;
+    }
+
     const reviewPreparationTasks = [
       { id: 'properties', icon: 'i-file', title: 'Organize Research interview records', count: '12 files', atoms: 19, route: 'Local rules', start: 1, ready: 2 },
       { id: 'links', icon: 'i-link', title: 'Repair broken references', count: '63 references', atoms: 63, route: 'Configured review model', start: 2, ready: 3 },
@@ -11598,7 +11875,7 @@
 
     function focusPendingVaultPhase() {
       if (currentScreen !== 'active-run' || !vaultPhaseAutoFocusPending.size) return;
-      const panel = document.querySelector('[data-run-stage-panel="ai"]');
+      const panel = document.querySelector('[data-run-stage-panel="ai-legacy"]');
       if (!panel.classList.contains('active')) return;
       const definition = [...vaultAnalysisPhaseDefinitions]
         .reverse()
@@ -12348,6 +12625,7 @@
       updateLocalIndexWorkbench(progress);
       updateBuildIndexWorkspace(progress);
       renderAIOperations(progress);
+      renderVaultDiscovery();
       renderReviewPreparation();
     }
 
@@ -12421,6 +12699,7 @@
       skippedAIOperations = new Set();
       stoppedAIOperationsAt = new Map();
       resetAIGroupExpansionTracking();
+      resetVaultDiscovery();
       resetReviewPreparation();
       inspectedRunStage = null;
       syncRunAIProfiles();
@@ -12443,7 +12722,10 @@
       let lastStage = -1;
       runTimer = window.setInterval(() => {
         if (runPaused) return;
-        if (runProgress >= 88 && reviewPreparationState.tick < 9) {
+        if (runProgress >= 55 && vaultDiscoveryState.outputIndex < vaultDiscoveryOutputs.length) {
+          vaultDiscoveryState.elapsed += 1;
+          advanceVaultDiscoveryGate();
+        } else if (runProgress >= 88 && reviewPreparationState.tick < 9) {
           reviewPreparationState.elapsed += 1;
           advanceReviewPreparationGate();
         } else {
@@ -12487,6 +12769,8 @@
       document.getElementById('run-state-label').textContent = runPaused ? 'PAUSED · CHECKPOINT SAVED' : stageDefinitions[currentStageIndex(runProgress)].state;
       document.getElementById('scan-label').textContent = runPaused ? 'Resume scan' : 'View progress';
       appendEvent(runPaused ? 'Paused' : 'Resumed', runPaused ? 'Checkpoint saved for the same run identity' : 'Run resumed from the saved checkpoint');
+      renderVaultDiscovery();
+      renderReviewPreparation();
       updateRunEntryPoints();
     });
     document.getElementById('stop-run').addEventListener('click', () => { if (!runActive) return; runPaused = true; document.getElementById('pause-run').innerHTML = '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>'; document.getElementById('run-state-label').textContent = 'STOPPED · PARTIAL RESULTS RETAINED'; document.getElementById('scan-label').textContent = 'Resume scan'; appendEvent('Stopped', 'Completed stages and partial results were retained', 'Warning'); showToast('Prototype stop: partial facts remain visible and the same run can resume'); updateRunEntryPoints(); });
@@ -12514,6 +12798,30 @@
     }));
     document.getElementById('complete-mock-run').addEventListener('click', finishRun);
     runStrip.addEventListener('click', () => showScreen('active-run'));
+
+    document.getElementById('vault-discovery-details-toggle').addEventListener('click', () => {
+      const details = document.getElementById('vault-discovery-details');
+      const open = !details.classList.contains('open');
+      details.classList.toggle('open', open);
+      document.getElementById('vault-discovery-details-toggle').setAttribute('aria-expanded', String(open));
+      document.getElementById('vault-discovery-details-toggle').textContent = open ? 'Hide findings' : 'View findings';
+    });
+    document.getElementById('vault-discovery-new-events').addEventListener('click', () => {
+      document.getElementById('vault-discovery-history').scrollTop = 0;
+      vaultDiscoveryState.unseen = 0;
+      renderVaultDiscovery();
+    });
+    document.getElementById('vault-discovery-history').addEventListener('scroll', () => {
+      const history = document.getElementById('vault-discovery-history');
+      if (history.scrollTop > 12 || !vaultDiscoveryState.unseen) return;
+      vaultDiscoveryState.unseen = 0;
+      renderVaultDiscovery();
+    }, { passive: true });
+
+    window.setInterval(() => {
+      if (!runActive || runComplete || runPaused || runProgress < 55 || vaultDiscoveryState.outputIndex >= vaultDiscoveryOutputs.length) return;
+      streamVaultDiscoveryText();
+    }, 90);
 
     window.setInterval(() => {
       if (!runActive || runComplete || runPaused || runProgress < 88 || reviewPreparationState.tick >= 9) return;
