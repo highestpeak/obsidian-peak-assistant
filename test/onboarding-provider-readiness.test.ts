@@ -20,7 +20,8 @@ class FakeHttp implements HttpClientPort {
 function testVersionedEndpoints(): void {
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('openai')).catalog, 'https://api.openai.com/v1/models');
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('anthropic')).generation, 'https://api.anthropic.com/v1/messages');
-	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('openrouter')).catalog, 'https://openrouter.ai/api/v1/models');
+	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('openrouter')).authentication, 'https://openrouter.ai/api/v1/key');
+	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('openrouter')).catalog, 'https://openrouter.ai/api/v1/models/user');
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('codex')).generation, 'http://127.0.0.1:8787/v1/chat/completions');
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('custom', { baseUrl: 'https://example.test/api/v1/' })).catalog, 'https://example.test/api/v1/models');
 	assert.equal(resolveProviderProbeEndpoints(createPresetProfile('lmstudio')).catalog, 'http://127.0.0.1:1234/v1/models');
@@ -69,15 +70,18 @@ async function testLMStudioUsesLiveOpenAICompatibleCatalog(): Promise<void> {
 }
 
 async function testEmptyCatalogIsNotReady(): Promise<void> {
-	const result = await inspectProviderConnection(new FakeHttp([response(200, '{"data":[]}'), response(200)]), createPresetProfile('openrouter', { apiKey: 'secret' }));
+	const result = await inspectProviderConnection(new FakeHttp([
+		response(200, '{"data":{"label":"test key"}}'),
+		response(200, '{"data":[]}'),
+	]), createPresetProfile('openrouter', { apiKey: 'secret' }));
 	assert.equal(result.ready, false);
 	assert.equal(result.failureReason, 'catalog');
 }
 
-async function testOpenRouterUsesConnectionRouterWhenConfiguredModelIsStale(): Promise<void> {
+async function testOpenRouterConnectionTestNeverInvokesAModel(): Promise<void> {
 	const http = new FakeHttp([
-		response(200, '{"data":[{"id":"meta/specialist-model"},{"id":"openrouter/auto"}]}'),
-		response(200, '{"choices":[{"message":{"content":"OK"}}]}'),
+		response(200, '{"data":{"label":"test key","limit_remaining":10}}'),
+		response(200, '{"data":[{"id":"openai/gpt-5.4"},{"id":"google/gemini-3.1-pro"}]}'),
 	]);
 	const profile = createPresetProfile('openrouter', {
 		apiKey: 'secret',
@@ -86,7 +90,22 @@ async function testOpenRouterUsesConnectionRouterWhenConfiguredModelIsStale(): P
 	const result = await inspectProviderConnection(http, profile);
 
 	assert.equal(result.ready, true);
-	assert.equal(JSON.parse(http.requests[1]?.body ?? '{}').model, 'openrouter/auto');
+	assert.equal(result.minimumGeneration.state, 'not-checked');
+	assert.deepEqual(http.requests.map((request) => [request.method, request.url]), [
+		['GET', 'https://openrouter.ai/api/v1/key'],
+		['GET', 'https://openrouter.ai/api/v1/models/user'],
+	]);
+	assert.equal(http.requests.some((request) => request.method === 'POST'), false);
+}
+
+async function testOpenRouterRejectsInvalidKeyBeforeCatalogLookup(): Promise<void> {
+	const http = new FakeHttp([response(401, '{"error":{"message":"invalid key"}}')]);
+	const result = await inspectProviderConnection(http, createPresetProfile('openrouter', { apiKey: 'invalid' }));
+
+	assert.equal(result.ready, false);
+	assert.equal(result.failureReason, 'authentication');
+	assert.equal(result.authentication.message, 'Credentials were rejected');
+	assert.equal(http.requests.length, 1);
 }
 
 async function main(): Promise<void> {
@@ -96,7 +115,8 @@ async function main(): Promise<void> {
 	await testOllama404IsNotReady();
 	await testLMStudioUsesLiveOpenAICompatibleCatalog();
 	await testEmptyCatalogIsNotReady();
-	await testOpenRouterUsesConnectionRouterWhenConfiguredModelIsStale();
+	await testOpenRouterConnectionTestNeverInvokesAModel();
+	await testOpenRouterRejectsInvalidKeyBeforeCatalogLookup();
 	console.log('PASS onboarding-provider-readiness');
 }
 

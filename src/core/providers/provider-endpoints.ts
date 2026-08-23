@@ -11,6 +11,7 @@ function appendVersionedPath(baseUrl: string, path: string): string {
 }
 
 export interface ProviderProbeEndpoints {
+	authentication?: string;
 	catalog: string;
 	generation: string;
 }
@@ -33,6 +34,13 @@ export function resolveProviderProbeEndpoints(profile: Profile): ProviderProbeEn
 		return {
 			catalog: `${appendVersionedPath(base, 'models')}?key=${key}`,
 			generation: `${appendVersionedPath(base, `models/${encodeURIComponent(profile.primaryModel)}:generateContent`)}?key=${key}`,
+		};
+	}
+	if (profile.kind === 'openrouter') {
+		return {
+			authentication: appendVersionedPath(base, 'key'),
+			catalog: appendVersionedPath(base, 'models/user'),
+			generation: appendVersionedPath(base, 'chat/completions'),
 		};
 	}
 	if (profile.kind === 'anthropic') {

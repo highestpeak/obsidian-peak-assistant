@@ -88,12 +88,6 @@ function generationBody(profile: Profile): string {
 	return JSON.stringify({ model: profile.primaryModel, max_tokens: 1, messages: [{ role: 'user', content: 'Reply OK' }] });
 }
 
-function connectionProbeModel(profile: Profile, discoveredModelIds: readonly string[]): string {
-	if (discoveredModelIds.includes(profile.primaryModel)) return profile.primaryModel;
-	if (profile.kind === 'openrouter' && discoveredModelIds.includes('openrouter/auto')) return 'openrouter/auto';
-	return discoveredModelIds[0] ?? '';
-}
-
 export async function inspectProviderConnection(http: HttpClientPort, profile: Profile): Promise<ConnectionEvidence> {
 	const endpoints = resolveProviderProbeEndpoints(profile);
 	if (!profile.baseUrl.trim()) return failedConnection(profile, '', 'configuration', 'Base URL is required');
@@ -119,6 +113,53 @@ export async function inspectProviderConnection(http: HttpClientPort, profile: P
 		}
 
 		const headers = headersFor(profile);
+		if (profile.kind === 'openrouter') {
+			const authenticationUrl = endpoints.authentication ?? '';
+			const authentication = await http.request({ url: authenticationUrl, method: 'GET', headers, throwOnError: false });
+			if (authentication.status === 401 || authentication.status === 403) {
+				return failedConnection(profile, authenticationUrl, 'authentication', 'Credentials were rejected');
+			}
+			if (authentication.status < 200 || authentication.status >= 300) {
+				return failedConnection(profile, authenticationUrl, 'authentication', `API key check returned ${authentication.status}`);
+			}
+			let authenticationPayload: unknown;
+			try {
+				authenticationPayload = parseJson(authentication.text);
+			} catch {
+				return failedConnection(profile, authenticationUrl, 'authentication', 'API key check returned invalid JSON');
+			}
+			if (!authenticationPayload || typeof authenticationPayload !== 'object' || !(authenticationPayload as Record<string, unknown>).data) {
+				return failedConnection(profile, authenticationUrl, 'authentication', 'API key check did not return key details');
+			}
+
+			const catalog = await http.request({ url: endpoints.catalog, method: 'GET', headers, throwOnError: false });
+			if (catalog.status < 200 || catalog.status >= 300) {
+				return failedConnection(profile, endpoints.catalog, 'catalog', `Model catalog returned ${catalog.status}`);
+			}
+			let catalogPayload: unknown;
+			try {
+				catalogPayload = parseJson(catalog.text);
+			} catch {
+				return failedConnection(profile, endpoints.catalog, 'catalog', 'Model catalog returned invalid JSON');
+			}
+			const discoveredModelIds = catalogModelIds(profile, catalogPayload);
+			if (discoveredModelIds.length === 0) {
+				return failedConnection(profile, endpoints.catalog, 'catalog', 'No models are available under the current account policies');
+			}
+			return {
+				profileId: profile.id,
+				checkedAt: Date.now(),
+				probeUrl: endpoints.catalog,
+				authentication: evidence('passed', 'API key accepted'),
+				catalog: evidence('passed', 'Account-compatible model catalog loaded'),
+				minimumGeneration: evidence('not-checked', 'Checked when a specific model is used'),
+				tools: evidence('not-checked', 'Checked when a Hermes model is selected'),
+				catalogModelIds: discoveredModelIds,
+				failureReason: 'none',
+				ready: true,
+			};
+		}
+
 		const catalog = await http.request({ url: endpoints.catalog, method: 'GET', headers, throwOnError: false });
 		if (catalog.status === 401 || catalog.status === 403) {
 			return failedConnection(profile, endpoints.catalog, 'authentication', 'Credentials were rejected');
@@ -136,7 +177,9 @@ export async function inspectProviderConnection(http: HttpClientPort, profile: P
 		if (discoveredModelIds.length === 0) {
 			return failedConnection(profile, endpoints.catalog, 'catalog', 'Model catalog did not contain a model list');
 		}
-		const generationModel = connectionProbeModel(profile, discoveredModelIds);
+		const generationModel = discoveredModelIds.includes(profile.primaryModel)
+			? profile.primaryModel
+			: discoveredModelIds[0];
 		const generationProfile = { ...profile, primaryModel: generationModel };
 		const generationEndpoints = resolveProviderProbeEndpoints(generationProfile);
 
