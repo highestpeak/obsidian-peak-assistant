@@ -1249,15 +1249,33 @@
 
     .breadcrumb { display: flex; align-items: center; gap: 7px; margin-bottom: 13px; color: var(--ink-3); font-size: 9.5px; }
     .breadcrumb button { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; color: var(--accent-2); background: transparent; font-weight: 680; cursor: pointer; }
-    .progress-hero { margin-bottom: 12px; overflow: hidden; }
+    .progress-hero { margin-bottom: 12px; overflow: visible; }
     .progress-title-row { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 15px 18px; }
     .progress-title-actions { display: flex; align-items: center; gap: 8px; flex: none; }
     .progress-title-actions::before { content: ""; width: 1px; height: 28px; margin-right: 4px; background: var(--line); }
     .live-label { display: inline-flex; align-items: center; gap: 7px; color: var(--accent-2); font-size: 10.5px; font-weight: 740; letter-spacing: .02em; }
     .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(104,87,217,.30); } 50% { box-shadow: 0 0 0 5px rgba(104,87,217,0); } }
-    .progress-title { margin-top: 6px; font-size: 20px; font-weight: 730; letter-spacing: -.025em; }
-    .progress-hero .stage-track { margin: 0; border-right: 0; border-left: 0; border-radius: 0; }
+    .progress-title-copy { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .progress-title { min-width: 0; font-size: 20px; font-weight: 730; letter-spacing: -.025em; }
+    .run-stage-disclosure-wrap { position: relative; flex: none; }
+    .run-stage-disclosure-wrap::after { content: ""; position: absolute; top: 14px; left: 0; width: 230px; height: 12px; }
+    .run-stage-disclosure-trigger { padding: 0; border: 0; color: var(--accent-2); background: transparent; font: inherit; font-size: 10px; font-weight: 690; cursor: pointer; }
+    .run-stage-disclosure { position: absolute; z-index: 20; top: 22px; left: 0; width: 230px; display: none; overflow: visible; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 10px 28px rgba(35,28,58,.14); }
+    .run-stage-disclosure.open, .run-stage-disclosure-wrap:hover .run-stage-disclosure, .run-stage-disclosure-wrap:focus-within .run-stage-disclosure { display: block; }
+    .run-stage-disclosure-item { position: relative; width: 100%; min-height: 39px; display: grid; grid-template-columns: 20px minmax(0,1fr); gap: 9px; align-items: center; padding: 7px 11px; border: 0; border-bottom: 1px solid var(--line); color: var(--ink-3); background: white; font: inherit; font-size: 10.5px; text-align: left; cursor: pointer; }
+    .run-stage-disclosure-item:first-child { border-radius: 7px 7px 0 0; }
+    .run-stage-disclosure-item:last-child { border-bottom: 0; border-radius: 0 0 7px 7px; }
+    .run-stage-disclosure-item:hover, .run-stage-disclosure-item:focus-visible { z-index: 2; color: var(--ink-2); background: #faf9fc; outline: none; }
+    .run-stage-disclosure-marker { width: 19px; height: 19px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 50%; color: var(--ink-3); background: white; font-size: 8px; font-style: normal; }
+    .run-stage-disclosure-item.done { color: var(--green); }
+    .run-stage-disclosure-item.done .run-stage-disclosure-marker { border-color: #a5d6c6; background: var(--green-soft); }
+    .run-stage-disclosure-item.live { color: var(--accent-2); font-weight: 700; }
+    .run-stage-disclosure-item.live .run-stage-disclosure-marker { border-color: var(--accent); color: white; background: var(--accent); }
+    .run-stage-disclosure-item.selected { background: var(--accent-soft); }
+    .run-stage-disclosure-tooltip { position: absolute; top: 50%; left: calc(100% + 5px); width: 270px; display: none; padding: 10px 11px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-2); background: white; box-shadow: 0 8px 24px rgba(35,28,58,.13); font-size: 10.5px; font-weight: 520; line-height: 1.45; transform: translateY(-50%); }
+    .run-stage-disclosure-tooltip::before { content: ""; position: absolute; top: 0; bottom: 0; left: -6px; width: 6px; }
+    .run-stage-disclosure-item:hover .run-stage-disclosure-tooltip, .run-stage-disclosure-item:focus-visible .run-stage-disclosure-tooltip { display: block; }
     .run-progress-band { display: grid; grid-template-columns: 118px minmax(0, 1fr) minmax(320px, .72fr); gap: 20px; align-items: center; padding: 15px 18px 16px; border-top: 1px solid var(--line); background: #fcfbfe; }
     .percent { font-size: 34px; font-weight: 750; letter-spacing: -.04em; }
     .percent > span:nth-child(2) { font-size: 20px; }
@@ -4416,14 +4434,7 @@
         <div class="screen-inner">
           <div class="breadcrumb"><button type="button" data-back="scan-setup"><svg class="icon sm"><use href="#i-back"/></svg>Scan setup</button><span>/</span><strong>Run progress</strong><span>/</span><span id="run-id">run-vault-live-7f2c</span></div>
           <div class="card progress-hero">
-            <div class="progress-title-row"><div><div class="live-label"><span class="pulse-dot" id="live-dot"></span><span id="run-state-label">VAULT SCAN RUNNING</span></div><div class="progress-title" id="run-title">Discovering changed inputs and affected context</div></div><div class="progress-title-actions"><span class="status neutral">User files unchanged</span><button hidden id="complete-mock-run" type="button">Complete run</button><button class="btn small" id="review-remaining-plan" type="button" style="display:none">Review plan</button><button class="btn small" id="pause-run" type="button"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button><button class="btn small danger" id="stop-run" type="button"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button></div></div>
-            <div class="stage-track" id="stage-track" role="tablist" aria-label="Inspect scan stages">
-              <button class="stage current selected" type="button" role="tab" data-stage="0" data-run-stage-tab="discover" aria-selected="true"><span class="stage-marker">1</span><span class="stage-name">Discover</span><span class="stage-state">Running</span></button>
-              <button class="stage" type="button" role="tab" data-stage="1" data-run-stage-tab="local" aria-selected="false"><span class="stage-marker">2</span><span class="stage-name">Build Index</span><span class="stage-state">Waiting</span></button>
-              <button class="stage" type="button" role="tab" data-stage="2" data-run-stage-tab="ai" aria-selected="false"><span class="stage-marker">3</span><span class="stage-name">AI work</span><span class="stage-state">Parallel</span></button>
-              <button class="stage" type="button" role="tab" data-stage="3" data-run-stage-tab="review" aria-selected="false"><span class="stage-marker">4</span><span class="stage-name">Prepare review</span><span class="stage-state">Waiting</span></button>
-              <button class="stage" type="button" role="tab" data-stage="4" data-run-stage-tab="publish" aria-selected="false"><span class="stage-marker">5</span><span class="stage-name">Publish</span><span class="stage-state">Waiting</span></button>
-            </div>
+            <div class="progress-title-row"><div class="progress-title-copy"><div class="progress-title" id="run-title">Stage 1 of 5 · Discovering changed inputs and affected context</div><div class="run-stage-disclosure-wrap"><button class="run-stage-disclosure-trigger" id="run-stage-disclosure-trigger" type="button" aria-expanded="false">View 5 stages</button><div class="run-stage-disclosure" id="run-stage-disclosure"></div></div><span id="run-state-label" hidden>VAULT SCAN RUNNING</span></div><div class="progress-title-actions"><span class="status neutral">User files unchanged</span><button hidden id="complete-mock-run" type="button">Complete run</button><button class="btn small" id="review-remaining-plan" type="button" style="display:none">Review plan</button><button class="btn small" id="pause-run" type="button"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button><button class="btn small danger" id="stop-run" type="button"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button></div></div>
             <div class="run-progress-band">
               <div class="percent"><span id="run-percent">0</span><span>%</span><span class="percent-label">overall progress</span></div>
               <div><div class="big-progress"><span id="run-progress-fill"></span></div><div class="progress-facts"><span class="progress-fact"><strong><span id="processed-count">0</span> / <span id="run-total">146</span></strong>objects advanced</span><span class="progress-fact"><strong id="run-time-summary">Calculating</strong>elapsed · remaining</span><span class="progress-fact"><strong id="run-throughput">—</strong>objects / min</span></div></div>
@@ -11267,11 +11278,11 @@
     document.querySelectorAll('[data-result-tab]').forEach((button) => button.addEventListener('click', () => { const name = button.dataset.resultTab; document.querySelectorAll('[data-result-tab]').forEach((item) => item.classList.toggle('active', item === button)); document.querySelectorAll('[data-result-panel]').forEach((panel) => panel.classList.toggle('active', panel.dataset.resultPanel === name)); }));
 
     const stageDefinitions = [
-      { key: 'discover', at: 0, title: 'Discovering changed inputs and affected context', state: 'VAULT SCAN RUNNING' },
-      { key: 'local', at: 15, title: 'Building and enriching the Knowledge Index', state: 'INDEX PIPELINE RUNNING' },
-      { key: 'ai', at: 55, title: 'Analyzing meaning, relationships, and structure', state: 'AI WORK IN PROGRESS' },
-      { key: 'review', at: 88, title: 'Preparing work for review', state: 'REVIEW PREPARATION RUNNING' },
-      { key: 'publish', at: 98, title: 'Publishing verified results and review work', state: 'FINALIZING RESULTS' }
+      { key: 'discover', at: 0, label: 'Discover', title: 'Discovering changed inputs and affected context', tooltip: 'Find changed inputs, resolve affected context, and freeze the current graph baseline.', state: 'VAULT SCAN RUNNING' },
+      { key: 'local', at: 15, label: 'Build Index', title: 'Building and enriching the Knowledge Index', tooltip: 'Build full-text search, embeddings, and per-file AI enrichment as independent lanes.', state: 'INDEX PIPELINE RUNNING' },
+      { key: 'ai', at: 55, label: 'AI work', title: 'Discovering vault-wide meaning and relationships', tooltip: 'Revisit relationships, Communities, hubs, and bridges across repeated evidence passes.', state: 'AI WORK IN PROGRESS' },
+      { key: 'review', at: 88, label: 'Prepare review', title: 'Preparing retained findings and reviewable work', tooltip: 'Account for retained findings, group owner decisions, and validate cited evidence.', state: 'REVIEW PREPARATION RUNNING' },
+      { key: 'publish', at: 98, label: 'Publish', title: 'Publishing verified machine knowledge and checkpoints', tooltip: 'Save the updated Index, retained findings, receipts, and the resumable run checkpoint.', state: 'FINALIZING RESULTS' }
     ];
     const indexRunWindow = { start: 15, verify: 70, end: 74 };
 
@@ -12173,33 +12184,19 @@
     }
 
     function updateStageTrack(index, progress) {
-      const stages = [...document.querySelectorAll('[data-run-stage-tab]')];
-      const selectedKey = inspectedRunStage || stageDefinitions[index].key;
-      const nextStageAt = stageDefinitions[index + 1]?.at ?? 100;
-      const currentStageAt = stageDefinitions[index].at;
-      const stageRatio = Math.max(0, Math.min(1, (progress - currentStageAt) / Math.max(1, nextStageAt - currentStageAt)));
-      const trackSegments = Math.max(1, stageDefinitions.length - 1);
-      document.getElementById('stage-track').style.setProperty('--scan-stage-ratio', String(Math.min(1, (index + stageRatio) / trackSegments)));
-      stages.forEach((stage, stageIndex) => {
-        const key = stage.dataset.runStageTab;
-        const aiRunning = Object.entries(aiOperationRunDefinitions).filter(([operationId, definition]) => definition.enabled && !skippedAIOperations.has(operationId) && progress >= definition.start && progress < definition.end).length;
+      const liveKey = stageDefinitions[index].key;
+      const selectedKey = inspectedRunStage || liveKey;
+      const selectedIndex = Math.max(0, stageDefinitions.findIndex((stage) => stage.key === selectedKey));
+      const selectedDefinition = stageDefinitions[selectedIndex];
+      document.getElementById('run-title').textContent = `Stage ${selectedIndex + 1} of ${stageDefinitions.length} · ${selectedDefinition.title}`;
+      document.getElementById('run-stage-disclosure').innerHTML = stageDefinitions.map((stage, stageIndex) => {
+        const key = stage.key;
         const done = key === 'discover' ? progress >= indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.end : key === 'ai' ? progress >= 88 : key === 'review' ? reviewPreparationState.tick >= 9 : progress >= 100;
-        const active = key === 'discover' ? progress < indexRunWindow.start : key === 'local' ? progress >= indexRunWindow.start && progress < indexRunWindow.end : key === 'ai' ? progress >= 55 && progress < 88 : key === 'review' ? progress >= 88 && reviewPreparationState.tick < 9 : progress >= 98 && progress < 100;
         const current = stageIndex === index;
-        stage.classList.toggle('done', done);
-        stage.classList.toggle('current', current);
-        stage.classList.toggle('concurrent', active && !current);
-        stage.classList.toggle('selected', stage.dataset.runStageTab === selectedKey);
-        stage.setAttribute('aria-selected', String(stage.dataset.runStageTab === selectedKey));
-        const state = stage.querySelector('.stage-state');
-        const marker = stage.querySelector('.stage-marker');
-        if (done) { state.textContent = 'Complete'; marker.innerHTML = '<svg class="icon sm"><use href="#i-check"/></svg>'; return; }
-        if (key === 'local' && active) { state.textContent = `Index ${Math.round(Math.max(0, Math.min(1, (progress - indexRunWindow.start) / (indexRunWindow.end - indexRunWindow.start))) * 100)}%`; marker.textContent = String(stageIndex + 1); return; }
-        if (key === 'ai' && active) { state.textContent = `${aiRunning} operation${aiRunning === 1 ? '' : 's'} running`; marker.textContent = String(stageIndex + 1); return; }
-        if (key === 'review' && active) { state.textContent = reviewPreparationState.tick < 1 ? 'Planning' : `${Math.round(reviewPreparationState.tick / 9 * 100)}%`; marker.textContent = String(stageIndex + 1); return; }
-        if (active || current) { state.textContent = 'Live'; marker.textContent = String(stageIndex + 1); return; }
-        state.textContent = 'Waiting'; marker.textContent = String(stageIndex + 1);
-      });
+        const marker = done ? '<svg class="icon sm"><use href="#i-check"/></svg>' : String(stageIndex + 1);
+        const classes = ['run-stage-disclosure-item', done ? 'done' : '', current ? 'live' : '', key === selectedKey ? 'selected' : ''].filter(Boolean).join(' ');
+        return `<button class="${classes}" type="button" data-run-stage-menu="${key}" aria-current="${current ? 'step' : 'false'}"><i class="run-stage-disclosure-marker">${marker}</i><span>${stage.label}</span><span class="run-stage-disclosure-tooltip" role="tooltip">${stage.tooltip}</span></button>`;
+      }).join('');
       document.querySelectorAll('[data-run-stage-panel]').forEach((panel) => panel.classList.toggle('active', panel.dataset.runStagePanel === selectedKey));
       document.querySelectorAll('[data-run-panel-state]').forEach((badge) => {
         const key = badge.dataset.runPanelState;
@@ -12610,7 +12607,6 @@
       document.getElementById('run-progress-fill').style.width = `${progress}%`;
       document.getElementById('processed-count').textContent = processed;
       document.getElementById('run-total').textContent = total;
-      document.getElementById('run-title').textContent = definition.title;
       document.getElementById('run-state-label').textContent = runPaused ? 'PAUSED · CHECKPOINT SAVED' : definition.state;
       const totalSeconds = Math.max(60, estimatedRunSeconds);
       const elapsedSeconds = Math.round(totalSeconds * progress / 100);
@@ -12775,11 +12771,27 @@
       updateRunEntryPoints();
     });
     document.getElementById('stop-run').addEventListener('click', () => { if (!runActive) return; runPaused = true; document.getElementById('pause-run').innerHTML = '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>'; document.getElementById('run-state-label').textContent = 'STOPPED · PARTIAL RESULTS RETAINED'; document.getElementById('scan-label').textContent = 'Resume scan'; appendEvent('Stopped', 'Completed stages and partial results were retained', 'Warning'); showToast('Prototype stop: partial facts remain visible and the same run can resume'); updateRunEntryPoints(); });
-    document.querySelectorAll('[data-run-stage-tab]').forEach((button) => button.addEventListener('click', () => {
+    const runStageDisclosure = document.getElementById('run-stage-disclosure');
+    const runStageDisclosureTrigger = document.getElementById('run-stage-disclosure-trigger');
+    runStageDisclosureTrigger.addEventListener('click', () => {
+      const open = !runStageDisclosure.classList.contains('open');
+      runStageDisclosure.classList.toggle('open', open);
+      runStageDisclosureTrigger.setAttribute('aria-expanded', String(open));
+    });
+    runStageDisclosure.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-run-stage-menu]');
+      if (!button) return;
       const liveKey = stageDefinitions[currentStageIndex(runProgress)].key;
-      inspectedRunStage = button.dataset.runStageTab === liveKey ? null : button.dataset.runStageTab;
+      inspectedRunStage = button.dataset.runStageMenu === liveKey ? null : button.dataset.runStageMenu;
+      runStageDisclosure.classList.remove('open');
+      runStageDisclosureTrigger.setAttribute('aria-expanded', 'false');
       renderRunProgress();
-    }));
+    });
+    document.addEventListener('click', (event) => {
+      if (event.target.closest('.run-stage-disclosure-wrap')) return;
+      runStageDisclosure.classList.remove('open');
+      runStageDisclosureTrigger.setAttribute('aria-expanded', 'false');
+    });
     document.querySelectorAll('[data-ai-run-toggle]').forEach((button) => button.addEventListener('click', () => {
       const group = button.closest('[data-ai-run]');
       const willOpen = !group.classList.contains('expanded');
