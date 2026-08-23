@@ -118,10 +118,6 @@ function createRuntime(
 		}),
 		resolveProjectCount: async () => 0,
 		refreshOperationRouteCandidates: async () => { routeCandidatesRefreshed += 1; },
-		runScanPlanning: async ({ objectCount }) => ({
-			text: `Frozen scope contains ${objectCount} objects.\nIndex before Vault-wide review.\nUser files remain unchanged.`,
-			usage: { inputTokens: 12, outputTokens: 9, totalTokens: 21, costUsd: 0 },
-		}),
 		runTaskSuggestionRefresh: async ({ taskPayload }) => {
 			const payload = JSON.parse(taskPayload) as { items: Array<{ id: string }> };
 			return {
@@ -130,10 +126,6 @@ function createRuntime(
 			};
 		},
 		resolveOperationRoutes: () => ({
-			'plan-scan': {
-				profileId: 'openai', model: 'agent-test', provider: 'openai', available: true,
-				candidates: [{ profileId: 'openai', model: 'agent-test', provider: 'openai', modelType: 'llm' }],
-			},
 			'embedding-refresh': {
 				profileId: 'openai', model: 'embed-test', provider: 'openai', available: true,
 				candidates: [{ profileId: 'openai', model: 'embed-test', provider: 'openai', modelType: 'embedding' }],
@@ -245,16 +237,12 @@ async function main(): Promise<void> {
 		[otherFile.path, 'Another note with [[Also Missing]].'],
 	], 'Start through Completed must leave every user file byte-for-byte unchanged');
 
-	const planningRuntime = createRuntime();
-	const planningPlan = planFor('broken-links');
-	planningPlan.aiOperations = planningPlan.aiOperations.map((operation) => ({ ...operation, enabled: operation.id === 'plan-scan' }));
-	await planningRuntime.startScan(planningPlan);
-	const planningOperation = planningRuntime.getSnapshot().run.operations.find((operation) => operation.id === 'plan-scan');
-	assert.equal(planningOperation?.status, 'completed', 'Plan this Scan must be a real provider operation, not a local synthetic completion');
-	assert.equal(planningOperation?.actualRoute?.model, 'agent-test');
-	assert.equal(planningOperation?.attempts?.[0]?.status, 'produced');
-	assert.equal(planningOperation?.usage.totalTokens, 21);
-	assert.ok(planningOperation?.liveEvidence?.some((entry) => entry.kind === 'text'));
+	const deterministicPlanningRuntime = createRuntime();
+	const deterministicPlan = planFor('broken-links');
+	await deterministicPlanningRuntime.startScan(deterministicPlan);
+	assert.equal(deterministicPlanningRuntime.getSnapshot().run.operations.some((operation) => operation.id === 'plan-scan'), false, 'new Scans must not create a model-backed planning operation');
+	assert.deepEqual(deterministicPlanningRuntime.getSnapshot().run.frozenPaths, [file.path], 'the deterministic Discover controller must still freeze the selected scope without an LLM');
+	assert.equal(deterministicPlanningRuntime.getSnapshot().run.stages.find((stage) => stage.id === 'discover')?.status, 'completed');
 
 	const task = completed.tasks[0]!;
 	await runtime.refreshTaskSuggestions([task.id], 'Prefer preserving intentional unresolved references.');

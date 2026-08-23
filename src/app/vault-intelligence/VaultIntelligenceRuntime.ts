@@ -76,15 +76,6 @@ export interface VaultIntelligenceRuntimeDeps {
 	runCoreIndex: (scope: VaultScanScopeMode, paths: string[], onProgress?: (progress: { processed: number; total: number; path: string | null; failed: number; succeeded?: boolean }) => void, shouldContinue?: () => boolean) => Promise<void>;
 	resolveProjectCount: () => Promise<number>;
 	refreshOperationRouteCandidates?: () => Promise<void>;
-	runScanPlanning?: (input: {
-		route: VaultScanResolvedRoute;
-		scope: VaultScanScopeMode;
-		objectCount: number;
-		changedCount: number | null;
-		enabledOperations: string[];
-		samplePaths: string[];
-		signal: AbortSignal;
-	}) => Promise<{ text: string; usage: VaultScanUsage }>;
 	runTaskSuggestionRefresh?: (input: {
 		route: VaultScanResolvedRoute;
 		instruction: string;
@@ -1017,9 +1008,6 @@ export class VaultIntelligenceRuntime {
 
 	private async performDiscover(): Promise<void> {
 		this.startStage('discover', 'Freezing scope and affected inputs.');
-		const startedAt = this.now();
-		const executionId = this.idFactory();
-		this.patchOperation('plan-scan', { status: 'running', startedAt, executionId, evidence: ['Resolving selected scope and affected context.'], liveEvidence: [{ kind: 'status', text: 'Freezing the selected scope before AI planning.', updatedAt: startedAt }] });
 		const plan = this.requirePlan();
 		const allFiles = this.deps.app.vault.getFiles();
 		let frozen = allFiles.map((file) => file.path);
@@ -1048,60 +1036,9 @@ export class VaultIntelligenceRuntime {
 			const ref = await scanStore.putArtifact(frozenPlan.scanRunId, `frozen-plan-${frozenPlan.fingerprint}`, frozenPlan);
 			await this.appendScanDomainEvent('plan.frozen', 'discover', { plan: frozenPlan, ref }, [ref]);
 		}
-		await this.performScanPlanning(frozen, executionId, startedAt);
 		this.completeStage('discover', `${frozen.length.toLocaleString()} objects frozen for this run.`, frozen.length, frozen.length);
 		await this.recordEvent('stage-changed', this.snapshot.run.id, `Discover completed with ${frozen.length} objects.`);
 		await this.flushPersist();
-	}
-
-	private async performScanPlanning(frozenPaths: string[], executionId: string, startedAt: number): Promise<void> {
-		const operation = this.operation('plan-scan');
-		if (!operation || operation.status === 'skipped') return;
-		const route = operation.plannedRoute ?? resolvedRoute(this.resolveOperationRoutes()['plan-scan']);
-		if (!route || !this.deps.runScanPlanning) {
-			throw new Error('No executable AI route is configured for Scan planning. Runtime model fallback is disabled.');
-		}
-		this.patchOperation('plan-scan', {
-			plannedRoute: route,
-			currentPath: 'Preparing execution plan',
-			liveEvidence: [{ kind: 'status', text: `Waiting for ${route.provider} · ${route.model} to plan this Scan.`, updatedAt: this.now() }],
-		});
-		try {
-			const result = await this.deps.runScanPlanning({
-				route,
-				scope: this.requirePlan().scope.mode,
-				objectCount: frozenPaths.length,
-				changedCount: this.snapshot.changedSinceScan,
-				enabledOperations: this.requirePlan().aiOperations.filter((candidate) => candidate.enabled).map((candidate) => candidate.id),
-				samplePaths: frozenPaths.slice(0, 12),
-				signal: this.abortController!.signal,
-			});
-			const completedAt = this.now();
-			const costUsd = result.usage.totalTokens > 0 && result.usage.costUsd === 0
-				? await this.deps.calculateCostUsd(route.provider, route.model, result.usage).catch(() => 0)
-				: result.usage.costUsd;
-			const usage = { ...result.usage, costUsd };
-			const evidence = result.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 8);
-			const receipt: VaultScanOperationAttemptReceipt = {
-				id: this.idFactory(), executionId, path: null, status: 'produced', plannedRoute: route, actualRoute: route,
-				startedAt, completedAt, usage, error: null,
-				evidence: evidence.length > 0 ? evidence : ['The provider returned an empty Scan plan.'],
-			};
-			this.patchOperation('plan-scan', {
-				status: 'completed', processed: 1, total: 1, currentPath: null, completedAt, actualRoute: route,
-				usage, attempts: [receipt], error: null, evidence: receipt.evidence, liveEvidence: receipt.evidence.map((text) => ({ kind: 'text' as const, text, updatedAt: completedAt })),
-			});
-		} catch (error) {
-			const completedAt = this.now();
-			const message = errorMessage(error);
-			const receipt: VaultScanOperationAttemptReceipt = {
-				id: this.idFactory(), executionId, path: null,
-				status: this.snapshot.run.stopRequested ? 'cancelled' : 'failed', plannedRoute: route, actualRoute: null,
-				startedAt, completedAt, usage: { ...EMPTY_USAGE }, error: message, evidence: [message],
-			};
-			this.patchOperation('plan-scan', { status: 'failed', processed: 1, total: 1, currentPath: null, completedAt, error: message, attempts: [receipt], liveEvidence: [], evidence: [message] });
-			throw error;
-		}
 	}
 
 	private async performIndex(): Promise<void> {
@@ -1633,8 +1570,12 @@ export class VaultIntelligenceRuntime {
 		const activeRun = persisted.activeRun ? {
 			...persisted.activeRun,
 			stages: migrateRunStages(persisted.activeRun.stages),
+			operations: persisted.activeRun.operations.filter((operation) => operation.id !== 'plan-scan'),
 			plan: persisted.activeRun.plan
-				? migratePlanChecks(persisted.activeRun.plan, DEFAULT_VAULT_INTELLIGENCE_CONFIG)
+				? {
+					...migratePlanChecks(persisted.activeRun.plan, DEFAULT_VAULT_INTELLIGENCE_CONFIG),
+					aiOperations: persisted.activeRun.plan.aiOperations.filter((operation) => operation.id !== 'plan-scan'),
+				}
 				: null,
 		} : null;
 		const migrated = {

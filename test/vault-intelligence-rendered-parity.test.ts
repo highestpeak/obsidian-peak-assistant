@@ -188,6 +188,8 @@ assert.match(source, /pk-vi-run-overview/, 'Run title and progress band must sha
 assert.match(source, /globalThis\.setInterval\(\(\) => setClockNow\(Date\.now\(\)\), 1_000\)/, 'a live Scan must keep elapsed time moving between durable runtime events');
 assert.match(source, /pk-vi-run-liveness/, 'slow local-model startup must expose an explicit live activity row instead of appearing frozen');
 assert.match(source, /Waiting for the next response from/, 'the live activity row must explain first-response latency');
+assert.doesNotMatch(source, /Planning this Scan with/, 'Discover must not block on a model-backed explanation of an already-frozen deterministic plan');
+assert.doesNotMatch(runtimeSource, /runScanPlanning|performScanPlanning/, 'the removed planning model must not remain in the Production runtime path');
 assert.match(source, /liveStageIds/, 'parallel Index and AI stages must both remain visibly live');
 assert.match(source, /pk-vi-build-parity/, 'Build Index must use the focused Mock three-lane production subtree');
 assert.match(source, /onToggle=\{\(event\) => setInspectOpen\(event\.currentTarget\.open\)\}/, 'the all-document table must stay unmounted while collapsed');

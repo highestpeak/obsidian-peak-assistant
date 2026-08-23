@@ -19,6 +19,7 @@ export type VaultMaintenanceTaskKind =
 	| 'unusual-notes'
 	| 'unreadable-files';
 export type VaultScanAiOperationId =
+	/** Legacy persisted operation. New Scan plans never create or execute it. */
 	| 'plan-scan'
 	| 'embedding-refresh'
 	| 'file-summaries'

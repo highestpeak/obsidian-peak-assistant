@@ -78,7 +78,6 @@
     ] }
   ],
   "scanOperations": [
-    { "id": "plan-scan", "group": "plan", "label": "Plan scan", "description": "Use the selected AI route to explain the frozen scope, execution order and write boundary before work begins.", "defaultEnabled": true, "model": "Not configured", "provider": "Not configured", "estimate": { "inputShare": 0, "promptTokensPerFile": 0, "outputTokensPerFile": 0 } },
     { "id": "embedding-refresh", "group": "index", "label": "Embedding refresh", "description": "Build vectors after full-text passages and chunks are ready.", "defaultEnabled": true, "model": "Configured embedding model", "provider": "Configured provider", "estimate": { "inputShare": 1, "promptTokensPerFile": 0, "outputTokensPerFile": 0 } },
     { "id": "file-summaries", "group": "index", "label": "File summaries", "description": "Refresh machine summaries used by Search and maintenance context.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimate": { "inputShare": 1, "promptTokensPerFile": 120, "outputTokensPerFile": 180 } },
     { "id": "ai-tags", "group": "index", "label": "AI Tags and entities", "description": "Generate rebuildable machine-only knowledge without editing Markdown or YAML.", "defaultEnabled": true, "model": "Configured summary model", "provider": "Configured provider", "estimate": { "inputShare": 0.7, "promptTokensPerFile": 80, "outputTokensPerFile": 60 } },

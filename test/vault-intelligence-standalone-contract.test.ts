@@ -106,7 +106,8 @@ assert.match(outputs, /records\/vault-intelligence\/events\.jsonl/);
 assert.equal((config.match(/\"kind\":/g) ?? []).length, 11);
 assert.equal((config.match(/\"checkId\":/g) ?? []).length, 19);
 assert.equal((config.match(/\"id\": \"(?:knowledge-index|content|connections|follow-up)\"/g) ?? []).length, 4);
-assert.equal((config.match(/\"id\": \"(?:plan-scan|embedding-refresh|file-summaries|ai-tags|relationship-discovery|semantic-review|community-analysis|hub-bridge-analysis|file-proposals|maintenance-synthesis)\"/g) ?? []).length, 10);
+assert.equal((config.match(/\"id\": \"(?:embedding-refresh|file-summaries|ai-tags|relationship-discovery|semantic-review|community-analysis|hub-bridge-analysis|file-proposals|maintenance-synthesis)\"/g) ?? []).length, 9);
+assert.doesNotMatch(config, /\"id\": \"plan-scan\"/);
 assert.equal((config.match(/\"availability\":/g) ?? []).length, 20);
 
 assert.match(quickSearch, /onOpenVaultIntelligence/);

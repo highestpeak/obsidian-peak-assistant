@@ -549,29 +549,6 @@ export class AppContext {
 			refreshOperationRouteCandidates: async () => {
 				await refreshLocalProfileModelCatalogs(ProfileRegistry.getInstance().getAllProfiles());
 			},
-			runScanPlanning: async (input) => {
-				let capturedUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 };
-				const text = await manager.queryText(PromptId.VaultIntelligenceScanPlan, {
-					scope: input.scope,
-					objectCount: input.objectCount,
-					changedCount: input.changedCount ?? 'Not available',
-					enabledOperations: input.enabledOperations.join(', '),
-					samplePaths: input.samplePaths.length > 0 ? input.samplePaths.map((path) => `- ${path}`).join('\n') : '- No objects in the frozen scope',
-				}, {
-					profileId: input.route.profileId,
-					modelId: input.route.model,
-					signal: input.signal,
-					usageFeature: 'indexing',
-					usageAction: 'vault_intelligence_scan_plan',
-					usageSessionId: `vault-intelligence-scan-plan-${Date.now()}`,
-					usageCallback: (usage) => {
-						const inputTokens = usage.inputTokens ?? 0;
-						const outputTokens = usage.outputTokens ?? 0;
-						capturedUsage = { inputTokens, outputTokens, totalTokens: usage.totalTokens ?? inputTokens + outputTokens, costUsd: 0 };
-					},
-				});
-				return { text, usage: capturedUsage };
-			},
 			runTaskSuggestionRefresh: async (input) => {
 				let capturedUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 };
 				const text = await manager.queryText(PromptId.VaultIntelligenceTaskSuggestions, {
@@ -655,7 +632,6 @@ export class AppContext {
 					};
 				};
 				return {
-					'plan-scan': route(agent, candidatesFor(ModelType.LLM), ModelType.LLM),
 					'embedding-refresh': route(embedding, candidatesFor(ModelType.EMBEDDING), ModelType.EMBEDDING),
 					'file-summaries': route(agent, candidatesFor(ModelType.LLM), ModelType.LLM),
 					'ai-tags': route(agent, candidatesFor(ModelType.LLM), ModelType.LLM),

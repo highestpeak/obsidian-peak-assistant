@@ -34,7 +34,8 @@ function derive(findings: LintFinding[], previous: VaultMaintenanceTask[] = []) 
 }
 
 assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.tasks.length, 11, 'the owner surface must cover all 11 maintenance task kinds');
-assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.scanOperations.length, 10, 'scan setup must disclose every routed V2 operation');
+assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.scanOperations.length, 9, 'scan setup must disclose the nine real routed operations without a model-backed planning call');
+assert.equal(DEFAULT_VAULT_INTELLIGENCE_CONFIG.scanOperations.some((operation) => operation.id === 'plan-scan'), false, 'the deterministic frozen plan must not appear as an AI operation');
 assert.deepEqual(
 	DEFAULT_VAULT_INTELLIGENCE_CONFIG.checkGroups.map((group) => group.id),
 	['knowledge-index', 'content', 'connections', 'follow-up'],
