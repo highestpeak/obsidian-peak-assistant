@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak · Scan enrichment visibility mock</title>
+  <link rel="stylesheet" href="mock.css">
+</head>
+<body>
+  <nav class="prototype-nav">
+    <strong>Focused Mock · Scan enrichment visibility</strong>
+    <div class="prototype-tabs">
+      <a class="prototype-tab active" href="index.html">Overview</a>
+      <a class="prototype-tab" href="01-scan-setup.html">1 · Setup</a>
+      <a class="prototype-tab" href="02-enrichment-running.html">2 · Running</a>
+      <a class="prototype-tab" href="03-document-detail.html">3 · Document detail</a>
+      <a class="prototype-tab" href="04-enrichment-complete.html">4 · Complete</a>
+    </div>
+  </nav>
+  <header class="topbar"><div class="brand"><span class="brand-mark"><svg class="icon"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M12 6l4 2.2v4.6L12 15l-4-2.2V8.2z"/></svg></span><span class="brand-title">Vault Intelligence</span></div><span class="boundary">Design-only · Production unchanged</span></header>
+  <main class="page">
+    <section class="card">
+      <div class="setup-hero">
+        <div><span class="section-kicker">Review path</span><h1>Make generated knowledge visible without turning Scan into a log viewer.</h1><p>Four connected states show why Summary and AI Tags are selected, what Gemma is doing now, what each document produced, and whether the complete run needs attention.</p></div>
+        <div class="setup-summary"><div><strong>501</strong><span>eligible Markdown files</span></div><div><strong>Machine-only</strong><span>no Markdown or YAML writes</span></div><div><strong>2 outputs</strong><span>Summary + AI Tags</span></div><div><strong>One route</strong><span>Gemma 4 26B · LM Studio</span></div></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><div class="card-title"><strong>Proposed flow</strong><span>Open each state in order; every screen remains a separate inspectable file.</span></div></div>
+      <div class="choice-list">
+        <a class="choice" href="01-scan-setup.html"><span class="choice-icon"><svg class="icon"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="11" cy="18" r="2"/></svg></span><span class="choice-copy"><strong>1 · Scan Setup</strong><span>Decide whether the outputs are worth generating before local-model work begins.</span></span><span class="choice-meta"><strong>Purpose + model</strong><span>Eligibility, time, storage boundary</span></span><span class="status running">Review</span><span>→</span></a>
+        <a class="choice" href="02-enrichment-running.html"><span class="choice-icon"><svg class="icon"><path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8m-7.2 7.2-2.8 2.8"/><circle cx="12" cy="12" r="3"/></svg></span><span class="choice-copy"><strong>2 · Build Index running</strong><span>Keep the three-lane structure, but expose Summary and AI Tags as separate child work.</span></span><span class="choice-meta"><strong>Current + recent</strong><span>No token-by-token streaming</span></span><span class="status running">Live</span><span>→</span></a>
+        <a class="choice" href="03-document-detail.html"><span class="choice-icon"><svg class="icon"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v5h5M9 12h7M9 16h7"/></svg></span><span class="choice-copy"><strong>3 · Document detail</strong><span>Inspect the actual summary, tag groups, provenance, storage and retry state.</span></span><span class="choice-meta"><strong>One document</strong><span>Opened from current/recent/table</span></span><span class="status complete">Inspect</span><span>→</span></a>
+        <a class="choice" href="04-enrichment-complete.html"><span class="choice-icon"><svg class="icon"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="10"/></svg></span><span class="choice-copy"><strong>4 · Build Index complete</strong><span>Show coverage, partial results and failed-only retry before advancing.</span></span><span class="choice-meta"><strong>Outcome summary</strong><span>Samples, failures, next-stage gate</span></span><span class="status complete">Done</span><span>→</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
