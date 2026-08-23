@@ -26,7 +26,7 @@
     .stage-menu-wrap { position:relative; }
     .stage-menu-trigger { padding:0; border:0; color:var(--accent-2); background:transparent; font-size:10px; font-weight:680; cursor:pointer; }
     .stage-menu { position:absolute; z-index:5; top:26px; left:0; width:210px; display:none; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 10px 28px rgba(35,28,58,.14); }
-    .stage-menu.open { display:block; }
+    .stage-menu.open,.stage-menu-wrap:hover .stage-menu,.stage-menu-wrap:focus-within .stage-menu { display:block; }
     .stage-menu-item { min-height:38px; display:grid; grid-template-columns:19px minmax(0,1fr); gap:9px; align-items:center; padding:7px 11px; border-bottom:1px solid var(--line); color:var(--ink-3); font-size:10.5px; }
     .stage-menu-item:last-child { border-bottom:0; }
     .stage-menu-item i { width:18px; height:18px; display:grid; place-items:center; border:1px solid var(--line-2); border-radius:50%; background:#fff; font-size:8px; font-style:normal; }
@@ -46,9 +46,9 @@
     .overall-main { min-width:0; padding:17px 22px 16px; }
     .bar { height:8px; overflow:hidden; border-radius:99px; background:#e8e6ec; }
     .bar i { display:block; width:0; height:100%; border-radius:inherit; background:var(--accent); transition:width .32s ease; }
-    .facts { display:grid; grid-template-columns:repeat(4,minmax(95px,1fr)); gap:16px; }
-    .fact strong { display:block; color:var(--ink-2); font-size:12px; font-variant-numeric:tabular-nums; }
-    .fact span { display:block; margin-top:2px; color:var(--ink-3); font-size:9.5px; }
+    .facts { display:flex; align-items:center; gap:28px; margin-top:11px; color:var(--ink-3); font-size:10px; }
+    .fact { white-space:nowrap; }
+    .fact strong { margin-right:4px; color:var(--ink-2); font-size:12px; font-variant-numeric:tabular-nums; }
     .usage { min-height:72px; display:grid; align-content:center; gap:5px; padding:15px 18px 15px 22px; border-left:1px solid var(--line); }
     .usage-head { display:flex; align-items:center; justify-content:space-between; color:var(--ink-3); font-size:10px; font-weight:680; }
     .usage-head button { padding:0; border:0; color:var(--accent-2); background:transparent; font-size:9.5px; font-weight:680; }
@@ -95,7 +95,7 @@
       <div class="run-top"><div class="run-name"><strong id="run-stage-title">Stage 1 of 5 · Discover</strong><div class="stage-menu-wrap"><button class="stage-menu-trigger" id="stage-menu-trigger" type="button" aria-expanded="false">View 5 stages</button><div class="stage-menu" id="stage-menu"></div></div></div><div class="actions"><span class="boundary">User files unchanged</span><button class="btn" id="pause" type="button"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button><button class="btn danger" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Stop scan</button></div></div>
       <div class="overall">
         <div class="overall-number"><strong id="overall">10%</strong><span>overall progress</span></div>
-        <div class="overall-main"><div class="facts"><div class="fact"><strong id="processed">15 / 146</strong><span>objects processed</span></div><div class="fact"><strong id="elapsed">0:43</strong><span>elapsed</span></div><div class="fact"><strong id="remaining">~6:26</strong><span>remaining</span></div><div class="fact"><strong id="speed">21 / min</strong><span>current rate</span></div></div></div>
+        <div class="overall-main"><div class="bar"><i id="overall-bar"></i></div><div class="facts"><span class="fact"><strong id="processed">15 / 146</strong>objects advanced</span><span class="fact"><strong id="time-summary">0:43 / 6:26</strong>elapsed · remaining</span><span class="fact"><strong id="speed">21</strong>objects / min</span></div></div>
         <div class="usage"><div class="usage-head"><span>AI usage</span><button type="button">View receipts</button></div><div class="usage-current"><strong id="cost">$0.000</strong><span id="tokens">0 tokens used</span></div><div class="usage-projected">Projected&nbsp; <b>~$0.46 · 180.8K tokens</b></div></div>
       </div>
     </section>
@@ -118,7 +118,7 @@
     function clock(seconds){const m=Math.floor(seconds/60);return `${m}:${String(seconds%60).padStart(2,'0')}`;}
     function render(){
       const index=stageIndex(state.progress);const processed=Math.min(146,Math.round(state.progress*1.46));const remaining=Math.max(0,Math.round((100-state.progress)*4.28));
-      $('#overall').textContent=`${state.progress}%`;$('#processed').textContent=`${processed} / 146`;$('#elapsed').textContent=clock(state.elapsed);$('#remaining').textContent=state.progress>=100?'Complete':`~${clock(remaining)}`;$('#speed').textContent=state.paused?'—':`${20+Math.round(state.progress/12)} / min`;
+      $('#overall').textContent=`${state.progress}%`;$('#overall-bar').style.width=`${state.progress}%`;$('#processed').textContent=`${processed} / 146`;$('#time-summary').textContent=state.progress>=100?`${clock(state.elapsed)} / Complete`:`${clock(state.elapsed)} / ${clock(remaining)}`;$('#speed').textContent=state.paused?'—':String(20+Math.round(state.progress/12));
       $('#run-stage-title').textContent=`Stage ${index+1} of 5 · ${stageNames[index]}`;
       $('#cost').textContent=`$${(state.progress*.00048).toFixed(3)}`;$('#tokens').textContent=`${(state.progress*.105).toFixed(1)}K tokens used`;
       $('#stage-menu').innerHTML=stageNames.map((name,nodeIndex)=>`<div class="stage-menu-item ${nodeIndex<index?'done':nodeIndex===index?'current':''}"><i>${nodeIndex<index?'✓':nodeIndex+1}</i><span>${name}</span></div>`).join('');
