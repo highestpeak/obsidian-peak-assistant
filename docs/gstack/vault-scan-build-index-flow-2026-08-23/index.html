@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · Build Index Flow</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f3f5;
+      --surface: #ffffff;
+      --surface-2: #f8f8fa;
+      --surface-3: #f0eff4;
+      --ink: #222127;
+      --ink-2: #55525c;
+      --ink-3: #746f79;
+      --line: #e5e3e8;
+      --line-2: #d8d5dd;
+      --accent: #6857d9;
+      --accent-2: #5545bf;
+      --accent-soft: #f0edff;
+      --green: #187a64;
+      --green-soft: #eaf7f2;
+      --blue: #356ea9;
+      --blue-soft: #eaf2fb;
+      --amber: #9b5d19;
+      --amber-soft: #fff4e5;
+      --red: #ae4354;
+      --red-soft: #fcecef;
+      --shadow: 0 14px 36px rgba(36, 31, 49, .08), 0 2px 5px rgba(36, 31, 49, .04);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-width: 1080px; min-height: 100%; margin: 0; }
+    body {
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { color: inherit; font: inherit; }
+    button:focus-visible, summary:focus-visible {
+      outline: 2px solid rgba(104, 87, 217, .42);
+      outline-offset: 2px;
+    }
+    .icon {
+      width: 16px;
+      height: 16px;
+      display: block;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .icon.sm { width: 13px; height: 13px; }
+    .shell { min-height: 100vh; background: var(--bg); }
+
+    .topbar {
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 0 30px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #ddd8f4;
+      border-radius: 8px;
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .brand-kicker { color: var(--ink-3); font-size: 9px; font-weight: 760; letter-spacing: .055em; text-transform: uppercase; }
+    .brand-title { margin-top: 3px; font-size: 16px; font-weight: 730; letter-spacing: -.02em; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .btn {
+      min-height: 33px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 11px;
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 11px;
+      font-weight: 680;
+      cursor: pointer;
+      transition: 120ms ease;
+    }
+    .btn:hover { border-color: #c6c1cd; background: #faf9fb; }
+    .btn.danger { border-color: #e7c6cd; color: var(--red); background: #fffafb; }
+    .btn.ghost { border-color: transparent; background: transparent; }
+    .run-chip {
+      height: 25px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 8px;
+      border-radius: 999px;
+      color: var(--accent-2);
+      background: var(--accent-soft);
+      font-size: 9.5px;
+      font-weight: 720;
+    }
+    .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(104, 87, 217, .12); }
+    .paused .pulse { background: var(--amber); box-shadow: 0 0 0 3px rgba(155, 93, 25, .12); }
+
+    .page { max-width: 1420px; margin: 0 auto; padding: 18px 28px 34px; }
+    .breadcrumb { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: var(--ink-3); font-size: 10px; }
+    .breadcrumb strong { color: var(--ink-2); }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px;
+      align-items: end;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 10px 10px 0 0;
+      background: var(--surface);
+    }
+    .eyebrow { display: flex; align-items: center; gap: 7px; color: var(--accent-2); font-size: 9px; font-weight: 780; letter-spacing: .055em; text-transform: uppercase; }
+    .hero-title { margin-top: 6px; font-size: 21px; line-height: 1.15; font-weight: 750; letter-spacing: -.03em; }
+    .hero-copy { max-width: 730px; margin-top: 6px; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
+    .completion-estimate { min-width: 245px; text-align: right; }
+    .estimate-main { color: var(--ink); font-size: 15px; font-weight: 740; }
+    .estimate-main strong { color: var(--accent-2); font-size: 24px; letter-spacing: -.035em; }
+    .estimate-sub { margin-top: 4px; color: var(--green); font-size: 10px; font-weight: 680; }
+
+    .outcomes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-top: 0;
+      border-radius: 0 0 10px 10px;
+      overflow: hidden;
+      background: #fcfbfd;
+    }
+    .outcome { min-height: 66px; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 15px; border-right: 1px solid var(--line); }
+    .outcome:last-child { border-right: 0; }
+    .outcome-icon { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-3); background: var(--surface-3); }
+    .outcome.complete .outcome-icon { color: var(--green); background: var(--green-soft); }
+    .outcome.running .outcome-icon { color: var(--accent-2); background: var(--accent-soft); }
+    .outcome-copy strong { display: block; font-size: 11.5px; }
+    .outcome-copy span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 9.5px; }
+    .outcome-value { color: var(--ink-2); font-size: 13px; font-weight: 730; font-variant-numeric: tabular-nums; }
+    .outcome.complete .outcome-value { color: var(--green); }
+
+    .card { margin-top: 13px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 1px 1px rgba(36, 31, 49, .015); }
+    .card-head { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 11px 16px; border-bottom: 1px solid var(--line); }
+    .card-head strong { display: block; font-size: 12.5px; }
+    .card-head span { display: block; margin-top: 4px; color: var(--ink-3); font-size: 9.5px; }
+    .legend { display: flex; align-items: center; gap: 14px; color: var(--ink-3); font-size: 9px; white-space: nowrap; }
+    .legend i { width: 7px; height: 7px; display: inline-block; margin-right: 5px; border-radius: 50%; background: var(--green); }
+    .legend span:nth-child(2) i { background: var(--accent); }
+    .legend span:nth-child(3) i { background: var(--line-2); }
+
+    .pipeline { position: relative; }
+    .pipeline::before { content: ""; position: absolute; z-index: 0; top: 38px; bottom: 38px; left: 39px; width: 2px; background: linear-gradient(var(--green) 0 29%, #8fb9cc 29% 64%, #aa9bea 64% 100%); opacity: .46; }
+    .lane { position: relative; z-index: 1; display: grid; grid-template-columns: 46px minmax(215px, .8fr) minmax(300px, 1.25fr) minmax(325px, 1.05fr); gap: 15px; align-items: center; min-height: 142px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .lane:last-child { border-bottom: 0; }
+    .lane-number { width: 28px; height: 28px; display: grid; place-items: center; justify-self: center; border: 1px solid var(--line-2); border-radius: 50%; color: var(--ink-3); background: white; font-size: 10px; font-weight: 760; }
+    .lane.complete .lane-number { border-color: #9fd2c3; color: var(--green); background: var(--green-soft); }
+    .lane.running .lane-number { border-color: #b8aceb; color: var(--accent-2); background: var(--accent-soft); box-shadow: 0 0 0 3px white; }
+    .lane-title { display: flex; align-items: center; gap: 7px; }
+    .lane-title strong { font-size: 13px; }
+    .badge { height: 20px; display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border-radius: 999px; color: var(--ink-3); background: var(--surface-3); font-size: 8.5px; font-weight: 720; white-space: nowrap; }
+    .badge.local { color: var(--green); background: var(--green-soft); }
+    .badge.remote { color: var(--blue); background: var(--blue-soft); }
+    .lane-description { max-width: 315px; margin-top: 5px; color: var(--ink-3); font-size: 9.5px; line-height: 1.45; }
+    .lane-scope { margin-top: 8px; color: var(--ink-2); font-size: 9px; font-weight: 650; }
+    .progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .progress-count { font-size: 18px; font-weight: 750; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+    .progress-count span { color: var(--ink-3); font-size: 10px; font-weight: 560; letter-spacing: 0; }
+    .progress-rate { color: var(--ink-2); font-size: 10px; font-weight: 700; }
+    .progress-track { height: 6px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: #ebe9ef; }
+    .progress-track > span { display: block; width: var(--progress); height: 100%; border-radius: inherit; background: var(--accent); transition: width 180ms ease; }
+    .lane.complete .progress-track > span { background: var(--green); }
+    .lane.embedding .progress-track > span { background: #548fb0; }
+    .progress-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .progress-fact { min-width: 0; }
+    .progress-fact strong { display: block; overflow: hidden; color: var(--ink-2); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .progress-fact span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8.5px; }
+
+    .activity-box { min-height: 106px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+    .activity-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: var(--ink-3); font-size: 8.5px; font-weight: 720; text-transform: uppercase; letter-spacing: .045em; }
+    .activity-head span:last-child { color: var(--ink-2); text-transform: none; letter-spacing: 0; }
+    .done-receipt { height: 65px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 7px; color: var(--green); background: var(--green-soft); }
+    .done-receipt strong { display: block; font-size: 10.5px; }
+    .done-receipt span { display: block; margin-top: 3px; color: #4d776c; font-size: 8.8px; }
+    .batch-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 9px; border-radius: 7px; background: white; }
+    .batch-row strong { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .batch-row span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 8.5px; }
+    .batch-state { color: var(--blue); font-size: 9px; font-weight: 720; white-space: nowrap; }
+    .slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .slot { min-width: 0; height: 58px; padding: 7px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+    .slot strong { display: block; overflow: hidden; font-size: 8.8px; text-overflow: ellipsis; white-space: nowrap; }
+    .slot span { display: block; overflow: hidden; margin-top: 4px; color: var(--ink-3); font-size: 7.8px; text-overflow: ellipsis; white-space: nowrap; }
+    .slot i { height: 2px; display: block; margin-top: 7px; overflow: hidden; border-radius: 999px; background: #e4e0f5; }
+    .slot i::after { content: ""; width: var(--slot-progress); height: 100%; display: block; border-radius: inherit; background: var(--accent); }
+    .local-mode .slots { grid-template-columns: minmax(0, 1fr) 86px; }
+    .local-mode .slot:nth-child(n+3) { display: none; }
+    .local-mode .slot:nth-child(2) { display: grid; place-items: center; color: var(--ink-3); background: transparent; border-style: dashed; font-size: 8px; text-align: center; }
+    .local-mode .slot:nth-child(2) strong { white-space: normal; }
+    .queue-note { margin-top: 7px; color: var(--ink-3); font-size: 8.3px; }
+
+    .lower-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(310px, .7fr); gap: 13px; }
+    .lower-grid .card { min-height: 178px; }
+    .workset { display: grid; }
+    .work-row { min-height: 52px; display: grid; grid-template-columns: 26px 135px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 14px; border-bottom: 1px solid var(--line); }
+    .work-row:last-child { border-bottom: 0; }
+    .work-icon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-3); background: var(--surface-3); }
+    .work-row.complete .work-icon { color: var(--green); background: var(--green-soft); }
+    .work-lane strong { display: block; font-size: 10px; }
+    .work-lane span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8.5px; }
+    .work-current { min-width: 0; overflow: hidden; color: var(--ink-2); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .work-state { color: var(--ink-3); font-size: 9px; font-weight: 690; }
+    .principles { padding: 12px 15px; }
+    .principle { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 9px; padding: 8px 0; }
+    .principle + .principle { border-top: 1px solid var(--line); }
+    .principle-icon { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--accent-2); background: var(--accent-soft); }
+    .principle strong { display: block; font-size: 10.5px; }
+    .principle span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 8.8px; line-height: 1.4; }
+
+    details.inspect { margin-top: 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    details.inspect > summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 15px; cursor: pointer; list-style: none; }
+    details.inspect > summary::-webkit-details-marker { display: none; }
+    .inspect-title { display: flex; align-items: center; gap: 9px; }
+    .inspect-title strong { font-size: 11px; }
+    .inspect-title span { color: var(--ink-3); font-size: 9px; }
+    .inspect-table { border-top: 1px solid var(--line); }
+    .inspect-row { display: grid; grid-template-columns: minmax(230px, 1fr) repeat(3, minmax(150px, .56fr)); gap: 12px; align-items: center; min-height: 42px; padding: 0 15px; border-bottom: 1px solid var(--line); font-size: 9.5px; }
+    .inspect-row:last-child { border-bottom: 0; }
+    .inspect-row.head { min-height: 32px; color: var(--ink-3); background: var(--surface-2); font-size: 8.5px; font-weight: 720; }
+    .file strong { display: block; font-size: 9.8px; }
+    .file span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8.2px; }
+    .state { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); }
+    .state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); }
+    .state.done { color: var(--green); }
+    .state.done::before { background: var(--green); }
+    .state.live { color: var(--accent-2); }
+    .state.live::before { background: var(--accent); }
+
+    .mock-switch {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid var(--line-2);
+      border-radius: 9px;
+      background: var(--surface-2);
+    }
+    .mock-label { padding: 0 7px; color: var(--ink-3); font-size: 8px; font-weight: 740; text-transform: uppercase; letter-spacing: .045em; }
+    .scenario-btn { min-height: 28px; padding: 0 9px; border: 0; border-radius: 6px; color: var(--ink-3); background: transparent; font-size: 9px; font-weight: 690; cursor: pointer; }
+    .scenario-btn.active { color: var(--accent-2); background: var(--accent-soft); }
+    .scenario-btn:hover { color: var(--ink-2); background: var(--surface-2); }
+
+    @media (max-width: 1180px) {
+      .page { padding-inline: 18px; }
+      .lane { grid-template-columns: 42px minmax(190px, .75fr) minmax(260px, 1fr) minmax(280px, .95fr); gap: 11px; }
+      .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .slot { height: 44px; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8V4Z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-vector" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="m6.5 10.5 4-4m3 0 4 4m0 3-4 4m-3 0-4-4"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Z"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6V2Z"/><path d="M14 2v5h5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  </svg>
+
+  <main class="shell" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"><svg class="icon"><use href="#i-layers"/></svg></div>
+        <div><div class="brand-kicker">Vault Intelligence · Scan</div><div class="brand-title">Build Index</div></div>
+      </div>
+      <div class="top-actions">
+        <div class="mock-switch" role="group" aria-label="Mock execution scenario">
+          <span class="mock-label">Mock scenario</span>
+          <button class="scenario-btn active" type="button" data-mode="remote">Remote pool</button>
+          <button class="scenario-btn" type="button" data-mode="local">Local serial</button>
+        </div>
+        <span class="run-chip"><i class="pulse"></i><span id="run-state">Running · checkpoint active</span></span>
+        <button class="btn" type="button" id="pause-btn"><svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span></button>
+        <button class="btn danger" type="button"><svg class="icon sm"><use href="#i-stop"/></svg>Stop scan</button>
+      </div>
+    </header>
+
+    <div class="page">
+      <div class="breadcrumb"><span>Scan setup</span><span>/</span><span>Run progress</span><span>/</span><strong>Build Index</strong><span>·</span><span>run-vault-7f2c</span></div>
+
+      <section class="hero">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span>Index pipeline active</div>
+          <div class="hero-title">Search is ready. Semantic and AI layers are still catching up.</div>
+          <div class="hero-copy">Each document flows into the next eligible lane as soon as its text is ready. Fast local indexing never waits for an embedding provider or an AI model.</div>
+        </div>
+        <div class="completion-estimate">
+          <div class="estimate-main">Full index in <strong id="full-eta">5–8 min</strong></div>
+          <div class="estimate-sub">Search ready after 11 seconds</div>
+        </div>
+      </section>
+
+      <section class="outcomes" aria-label="Index readiness outcomes">
+        <div class="outcome complete">
+          <div class="outcome-icon"><svg class="icon sm"><use href="#i-check"/></svg></div>
+          <div class="outcome-copy"><strong>Search ready</strong><span>Files, text, keywords, and full-text passages</span></div>
+          <div class="outcome-value">146 / 146</div>
+        </div>
+        <div class="outcome running">
+          <div class="outcome-icon"><svg class="icon sm"><use href="#i-vector"/></svg></div>
+          <div class="outcome-copy"><strong>Semantic ready</strong><span>Documents with current embeddings</span></div>
+          <div class="outcome-value">91 / 146</div>
+        </div>
+        <div class="outcome running">
+          <div class="outcome-icon"><svg class="icon sm"><use href="#i-spark"/></svg></div>
+          <div class="outcome-copy"><strong>Fully enriched</strong><span>Summary, AI Tags, entities, and file-level signals</span></div>
+          <div class="outcome-value">38 / 146</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div><strong>One document stream · three independent lanes</strong><span>There is no blended “document speed.” Every lane reports only the work it actually performs.</span></div>
+          <div class="legend"><span><i></i>Complete</span><span><i></i>Running</span><span><i></i>Queued</span></div>
+        </div>
+        <div class="pipeline">
+          <article class="lane complete search">
+            <div class="lane-number"><svg class="icon sm"><use href="#i-check"/></svg></div>
+            <div>
+              <div class="lane-title"><strong>Full-text search</strong><span class="badge local">Local · no AI</span></div>
+              <div class="lane-description">Read text, extract keywords and passages, then update the local full-text index.</div>
+              <div class="lane-scope">Per document · prerequisite for downstream lanes</div>
+            </div>
+            <div>
+              <div class="progress-head"><div class="progress-count">146 / 146 <span>documents</span></div><div class="progress-rate">796 docs/min</div></div>
+              <div class="progress-track" style="--progress:100%"><span></span></div>
+              <div class="progress-facts">
+                <div class="progress-fact"><strong>11 sec</strong><span>finished</span></div>
+                <div class="progress-fact"><strong>4,812</strong><span>passages</span></div>
+                <div class="progress-fact"><strong>0 failed</strong><span>read / parse</span></div>
+              </div>
+            </div>
+            <div class="activity-box">
+              <div class="activity-head"><span>Lane status</span><span>Complete</span></div>
+              <div class="done-receipt"><svg class="icon"><use href="#i-search"/></svg><div><strong>Search can be used now</strong><span>Later enrichment cannot block this verified local layer.</span></div></div>
+            </div>
+          </article>
+
+          <article class="lane running embedding">
+            <div class="lane-number">2</div>
+            <div>
+              <div class="lane-title"><strong>Embeddings</strong><span class="badge remote">Remote batch</span></div>
+              <div class="lane-description">Chunk search-ready documents and generate vectors in bounded provider batches.</div>
+              <div class="lane-scope">Per document · starts as soon as text and chunks are ready</div>
+            </div>
+            <div>
+              <div class="progress-head"><div class="progress-count">91 / 146 <span>documents</span></div><div class="progress-rate">34 chunks/sec</div></div>
+              <div class="progress-track" style="--progress:62.3%"><span></span></div>
+              <div class="progress-facts">
+                <div class="progress-fact"><strong>~49 sec</strong><span>remaining</span></div>
+                <div class="progress-fact"><strong>1,824 / 2,916</strong><span>chunks</span></div>
+                <div class="progress-fact"><strong>8 docs</strong><span>current batch</span></div>
+              </div>
+            </div>
+            <div class="activity-box">
+              <div class="activity-head"><span>Active batch</span><span>Batch 24 of 37</span></div>
+              <div class="batch-row"><div><strong>8 search-ready documents</strong><span>182 chunks · text-embedding-3-small</span></div><div class="batch-state">Uploading</div></div>
+              <div class="queue-note">47 documents waiting · next batch opens when this receipt closes</div>
+            </div>
+          </article>
+
+          <article class="lane running ai-lane" id="ai-lane">
+            <div class="lane-number">3</div>
+            <div>
+              <div class="lane-title"><strong>AI enrichment</strong><span class="badge remote" id="ai-provider-badge">OpenRouter · rolling pool</span></div>
+              <div class="lane-description">Generate a summary, machine-only AI Tags, entities, and relationship signals from each file independently.</div>
+              <div class="lane-scope">Per document only · Vault-wide reasoning belongs to AI Work</div>
+            </div>
+            <div>
+              <div class="progress-head"><div class="progress-count">38 / 146 <span>documents</span></div><div class="progress-rate" id="ai-rate">6.2 docs/min</div></div>
+              <div class="progress-track" style="--progress:26%"><span></span></div>
+              <div class="progress-facts">
+                <div class="progress-fact"><strong id="ai-eta">5–8 min</strong><span>lane ETA</span></div>
+                <div class="progress-fact"><strong id="ai-usage">17.3K tokens</strong><span>used · $0.08</span></div>
+                <div class="progress-fact"><strong id="ai-concurrency">4 active · 4 max</strong><span>concurrency</span></div>
+              </div>
+            </div>
+            <div class="activity-box">
+              <div class="activity-head"><span id="pool-label">Rolling pool · 4 slots</span><span id="pool-state">4 active</span></div>
+              <div class="slots">
+                <div class="slot"><strong>Research synthesis.md</strong><span>Summary · tags</span><i style="--slot-progress:72%"></i></div>
+                <div class="slot"><strong>Interview notes.md</strong><span>Entities · signals</span><i style="--slot-progress:48%"></i></div>
+                <div class="slot"><strong>Launch contract.pdf</strong><span>Summary · tags</span><i style="--slot-progress:29%"></i></div>
+                <div class="slot"><strong>AI Graph experiments.md</strong><span>Waiting first token</span><i style="--slot-progress:8%"></i></div>
+              </div>
+              <div class="queue-note" id="ai-queue-note">104 queued · each completed request immediately admits the next eligible file</div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div class="lower-grid">
+        <section class="card">
+          <div class="card-head"><div><strong>Active workset</strong><span>A compact live view of each lane—not three repeated document lists.</span></div><button class="btn ghost" type="button" onclick="document.getElementById('inspect').open=true;document.getElementById('inspect').scrollIntoView({behavior:'smooth'})">Inspect files <svg class="icon sm"><use href="#i-chevron"/></svg></button></div>
+          <div class="workset">
+            <div class="work-row complete"><div class="work-icon"><svg class="icon sm"><use href="#i-check"/></svg></div><div class="work-lane"><strong>Full-text search</strong><span>Local lane</span></div><div class="work-current">All 146 documents committed to the local index</div><div class="work-state">Complete</div></div>
+            <div class="work-row"><div class="work-icon"><svg class="icon sm"><use href="#i-vector"/></svg></div><div class="work-lane"><strong>Embeddings</strong><span>Batch 24</span></div><div class="work-current">8 documents · 182 chunks · provider receipt pending</div><div class="work-state">Uploading</div></div>
+            <div class="work-row"><div class="work-icon"><svg class="icon sm"><use href="#i-spark"/></svg></div><div class="work-lane"><strong>AI enrichment</strong><span id="work-pool">4-slot pool</span></div><div class="work-current" id="work-current">4 active documents · next file enters on completion</div><div class="work-state">Generating</div></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><div><strong>Completion model</strong><span>Two milestones, not one misleading weighted percentage.</span></div></div>
+          <div class="principles">
+            <div class="principle"><div class="principle-icon"><svg class="icon sm"><use href="#i-search"/></svg></div><div><strong>Search-ready is independently publishable</strong><span>Users can search as soon as the verified local layer finishes.</span></div></div>
+            <div class="principle"><div class="principle-icon"><svg class="icon sm"><use href="#i-spark"/></svg></div><div><strong>Fully enriched is optional and slower</strong><span>Its ETA follows the AI lane and changes with provider capacity.</span></div></div>
+            <div class="principle"><div class="principle-icon"><svg class="icon sm"><use href="#i-info"/></svg></div><div><strong>No Vault-wide analysis in Build Index</strong><span>Cross-file discovery, Communities, and synthesis remain under AI Work.</span></div></div>
+          </div>
+        </section>
+      </div>
+
+      <details class="inspect" id="inspect">
+        <summary><div class="inspect-title"><svg class="icon sm"><use href="#i-file"/></svg><strong>Inspect document states</strong><span>Secondary diagnostic view · 146 documents</span></div><svg class="icon sm"><use href="#i-chevron"/></svg></summary>
+        <div class="inspect-table">
+          <div class="inspect-row head"><span>Document</span><span>Full-text search</span><span>Embeddings</span><span>AI enrichment</span></div>
+          <div class="inspect-row"><div class="file"><strong>Research synthesis.md</strong><span>Projects / Research</span></div><span class="state done">Ready</span><span class="state done">Ready</span><span class="state live">Summary · tags</span></div>
+          <div class="inspect-row"><div class="file"><strong>Launch contract.pdf</strong><span>Projects / Peak Launch</span></div><span class="state done">Ready</span><span class="state live">Batch 24</span><span class="state live">Summary · tags</span></div>
+          <div class="inspect-row"><div class="file"><strong>Ambient notes.md</strong><span>Daily / 2026 / August</span></div><span class="state done">Ready</span><span class="state">Queued</span><span class="state">Queued</span></div>
+        </div>
+      </details>
+    </div>
+
+  </main>
+
+  <script>
+    const app = document.getElementById('app');
+    const aiLane = document.getElementById('ai-lane');
+    const scenarioButtons = [...document.querySelectorAll('.scenario-btn')];
+    const setText = (id, value) => { document.getElementById(id).textContent = value; };
+
+    function setScenario(mode) {
+      const local = mode === 'local';
+      app.classList.toggle('local-mode', local);
+      scenarioButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
+      setText('full-eta', local ? '36–52 min' : '5–8 min');
+      setText('ai-provider-badge', local ? 'Ollama · serial queue' : 'OpenRouter · rolling pool');
+      document.getElementById('ai-provider-badge').className = `badge ${local ? 'local' : 'remote'}`;
+      setText('ai-rate', local ? '0.7 docs/min' : '6.2 docs/min');
+      setText('ai-eta', local ? '36–52 min' : '5–8 min');
+      setText('ai-usage', local ? 'Local tokens only' : '17.3K tokens');
+      setText('ai-concurrency', local ? '1 active · 1 max' : '4 active · 4 max');
+      setText('pool-label', local ? 'Serial queue · 1 slot' : 'Rolling pool · 4 slots');
+      setText('pool-state', local ? '1 active' : '4 active');
+      setText('ai-queue-note', local ? '107 queued · the next file starts only after the local model finishes' : '104 queued · each completed request immediately admits the next eligible file');
+      setText('work-pool', local ? '1-slot queue' : '4-slot pool');
+      setText('work-current', local ? '1 active document · 107 waiting for the local model' : '4 active documents · next file enters on completion');
+      aiLane.querySelector('.slot:nth-child(2) strong').textContent = local ? '107 waiting' : 'Interview notes.md';
+    }
+
+    scenarioButtons.forEach((button) => button.addEventListener('click', () => setScenario(button.dataset.mode)));
+
+    const pauseButton = document.getElementById('pause-btn');
+    let paused = false;
+    pauseButton.addEventListener('click', () => {
+      paused = !paused;
+      app.classList.toggle('paused', paused);
+      pauseButton.innerHTML = paused
+        ? '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>'
+        : '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>';
+      setText('run-state', paused ? 'Paused · checkpoint saved' : 'Running · checkpoint active');
+    });
+  </script>
+</body>
+</html>
