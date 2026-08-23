@@ -7,46 +7,44 @@
   <style>
     :root {
       --bg: #f5f5f7;
-      --surface: #ffffff;
+      --surface: #fff;
       --surface-2: #faf9fb;
-      --surface-3: #f1f0f4;
-      --ink: #24212b;
-      --ink-2: #5d5966;
-      --ink-3: #8b8792;
+      --ink: #26232c;
+      --ink-2: #625e69;
+      --ink-3: #918d98;
       --line: #e5e3e8;
-      --line-2: #d8d5dc;
-      --accent: #6b57dc;
-      --accent-2: #5845c6;
-      --accent-soft: #f0edff;
-      --green: #187a64;
+      --line-2: #d9d6de;
+      --accent: #6954dc;
+      --accent-soft: #f1edff;
+      --green: #177a63;
       --green-soft: #eaf8f3;
-      --blue: #3574a9;
+      --blue: #3675a8;
       --blue-soft: #edf6fb;
-      --amber: #a7661d;
-      --amber-soft: #fff6e9;
-      --rose: #a9506b;
+      --amber: #a6671f;
+      --amber-soft: #fff5e7;
+      --rose: #a9506a;
       --rose-soft: #fff0f4;
-      --slate: #59677e;
+      --slate: #5b687c;
       --slate-soft: #f0f3f7;
-      --shadow: 0 1px 2px rgba(37, 31, 49, .025);
     }
 
     * { box-sizing: border-box; }
     html, body { min-height: 100%; }
-    body { margin: 0; color: var(--ink); background: var(--bg); font: 13px/1.45 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; color: var(--ink); background: var(--bg); font: 13px/1.55 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     button { color: inherit; font: inherit; }
-    button:focus-visible, [tabindex="0"]:focus-visible { outline: 2px solid rgba(107,87,220,.45); outline-offset: 2px; }
+    button:focus-visible { outline: 2px solid rgba(105,84,220,.42); outline-offset: 2px; }
     .icon { width: 18px; height: 18px; display: block; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
     .icon.sm { width: 14px; height: 14px; }
+    .card { overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 1px 2px rgba(37,31,49,.025); }
 
     .topbar { position: sticky; z-index: 20; top: 0; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 28px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
     .brand { display: flex; align-items: center; gap: 11px; font-size: 15px; font-weight: 760; }
     .brand-icon { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #ddd6fa; border-radius: 9px; color: var(--accent); background: var(--accent-soft); }
     .top-actions { display: flex; align-items: center; gap: 8px; }
-    .run-chip { height: 28px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: 999px; color: var(--accent-2); background: var(--accent-soft); font-size: 10px; font-weight: 720; }
-    .run-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(107,87,220,.12); }
-    .paused .run-dot { background: var(--amber); box-shadow: 0 0 0 3px rgba(167,102,29,.12); }
-    .complete .run-dot { background: var(--green); box-shadow: 0 0 0 3px rgba(24,122,100,.12); }
+    .run-chip { height: 28px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 10px; font-weight: 720; }
+    .run-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(105,84,220,.12); }
+    .paused .run-dot { background: var(--amber); box-shadow: 0 0 0 3px rgba(166,103,31,.12); }
+    .complete .run-dot { background: var(--green); box-shadow: 0 0 0 3px rgba(23,122,99,.12); }
     .btn { min-height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 11px; border: 1px solid var(--line-2); border-radius: 8px; color: var(--ink-2); background: var(--surface); font-size: 10.5px; font-weight: 700; cursor: pointer; }
     .btn:hover { color: var(--ink); background: var(--surface-2); }
     .btn.danger { border-color: #e7c9d0; color: #a13d58; background: #fffafb; }
@@ -55,133 +53,99 @@
     .page { max-width: 1480px; margin: 0 auto; padding: 18px 28px 36px; }
     .breadcrumb { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: var(--ink-3); font-size: 10px; }
     .breadcrumb strong { color: var(--ink-2); }
-    .card { overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: var(--shadow); }
 
-    .run-hero { display: grid; grid-template-columns: minmax(0, 1fr) 570px; min-height: 150px; }
-    .hero-main { min-width: 0; display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 18px; align-items: center; padding: 19px 22px; }
-    .hero-icon { width: 62px; height: 62px; display: grid; place-items: center; border: 1px solid #d9d1fb; border-radius: 50%; color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 8px rgba(107,87,220,.04), 0 8px 24px rgba(107,87,220,.1); }
-    .hero-icon .icon { width: 28px; height: 28px; }
-    .hero-title { font-size: 21px; line-height: 1.18; font-weight: 760; letter-spacing: -.03em; }
-    .hero-live { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ink-2); font-size: 11px; font-weight: 650; }
-    .hero-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-    .hero-track { height: 7px; margin-top: 11px; overflow: hidden; border-radius: 999px; background: #ebe9ef; }
-    .hero-track span { display: block; width: var(--progress, 0%); height: 100%; border-radius: inherit; background: var(--accent); transition: width 220ms ease; }
-    .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; border-left: 1px solid var(--line); background: #fcfbfd; }
-    .hero-metric { min-width: 0; display: grid; align-content: center; gap: 4px; padding: 18px 14px; border-right: 1px solid var(--line); }
-    .hero-metric:last-child { border-right: 0; }
-    .hero-metric strong { overflow: hidden; font-size: 18px; line-height: 1.1; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-    .hero-metric span { color: var(--ink-3); font-size: 9.5px; font-weight: 650; }
+    .hero { min-height: 132px; display: grid; grid-template-columns: minmax(0, 1fr) 470px; }
+    .hero-main { min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 17px; align-items: center; padding: 20px 22px; }
+    .hero-icon { width: 58px; height: 58px; display: grid; place-items: center; border: 1px solid #d9d1fb; border-radius: 50%; color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 8px rgba(105,84,220,.04); }
+    .hero-icon .icon { width: 27px; height: 27px; }
+    .hero-title { font-size: 20px; line-height: 1.2; font-weight: 760; letter-spacing: -.025em; }
+    .hero-phase { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ink-2); font-size: 11px; font-weight: 650; }
+    .hero-phase i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-left: 1px solid var(--line); background: #fcfbfd; }
+    .fact { min-width: 0; display: grid; place-content: center; gap: 5px; padding: 18px 14px; border-right: 1px solid var(--line); }
+    .fact:last-child { border-right: 0; }
+    .fact strong { overflow: hidden; font-size: 18px; line-height: 1.1; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+    .fact span { color: var(--ink-3); font-size: 10px; font-weight: 650; }
 
-    .radar { margin-top: 13px; }
+    .discoveries { margin-top: 13px; }
     .section-head { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 9px 15px; border-bottom: 1px solid var(--line); }
     .section-head strong { font-size: 12.5px; }
     .section-head-meta { color: var(--ink-3); font-size: 10px; font-weight: 650; }
-    .finding-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
-    .finding-slot { --type-color: var(--ink-3); --type-soft: var(--surface-2); position: relative; min-width: 0; height: 112px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-content: center; padding: 13px 14px; border-right: 1px solid var(--line); background: white; transition: background 180ms ease, box-shadow 180ms ease; }
-    .finding-slot:last-child { border-right: 0; }
-    .finding-slot[data-type="relationship"] { --type-color: var(--accent-2); --type-soft: var(--accent-soft); }
-    .finding-slot[data-type="community"] { --type-color: var(--green); --type-soft: var(--green-soft); }
-    .finding-slot[data-type="hub"] { --type-color: var(--blue); --type-soft: var(--blue-soft); }
-    .finding-slot[data-type="bridge"] { --type-color: var(--amber); --type-soft: var(--amber-soft); }
-    .finding-slot[data-type="island"] { --type-color: var(--rose); --type-soft: var(--rose-soft); }
-    .finding-slot[data-type="drift"] { --type-color: var(--slate); --type-soft: var(--slate-soft); }
-    .finding-slot.active { background: var(--type-soft); box-shadow: inset 0 3px 0 var(--type-color); }
-    .finding-slot.flash { animation: finding-flash 700ms ease; }
-    @keyframes finding-flash { 0% { box-shadow: inset 0 3px 0 var(--type-color), 0 0 0 0 color-mix(in srgb, var(--type-color) 24%, transparent); } 45% { box-shadow: inset 0 3px 0 var(--type-color), 0 0 0 5px transparent; } 100% { box-shadow: inset 0 3px 0 var(--type-color); } }
-    .finding-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: var(--ink-3); background: var(--surface-3); }
-    .finding-slot.active .finding-icon { color: var(--type-color); background: rgba(255,255,255,.76); }
-    .finding-copy { min-width: 0; }
-    .finding-top { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; }
-    .finding-top strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-    .finding-count { color: var(--ink-3); font-size: 15px; font-weight: 760; font-variant-numeric: tabular-nums; }
-    .finding-slot.active .finding-count { color: var(--type-color); }
-    .finding-latest { height: 34px; display: -webkit-box; overflow: hidden; margin-top: 5px; color: var(--ink-3); font-size: 9.5px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-    .finding-slot.active .finding-latest { color: var(--ink-2); }
+    .discovery-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .discovery { --type-color: var(--ink-3); --type-soft: var(--surface-2); min-width: 0; height: 68px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-right: 1px solid var(--line); background: #fff; transition: background 160ms ease, box-shadow 160ms ease; }
+    .discovery:last-child { border-right: 0; }
+    .discovery[data-type="relationship"] { --type-color: var(--accent); --type-soft: var(--accent-soft); }
+    .discovery[data-type="community"] { --type-color: var(--green); --type-soft: var(--green-soft); }
+    .discovery[data-type="hub"] { --type-color: var(--blue); --type-soft: var(--blue-soft); }
+    .discovery[data-type="bridge"] { --type-color: var(--amber); --type-soft: var(--amber-soft); }
+    .discovery[data-type="island"] { --type-color: var(--rose); --type-soft: var(--rose-soft); }
+    .discovery[data-type="drift"] { --type-color: var(--slate); --type-soft: var(--slate-soft); }
+    .discovery.active { color: var(--type-color); background: var(--type-soft); box-shadow: inset 0 3px 0 var(--type-color); }
+    .discovery.flash { animation: discovery-flash 580ms ease; }
+    @keyframes discovery-flash { 45% { background: #fff; } }
+    .discovery-icon { width: 30px; height: 30px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 8px; color: var(--ink-3); background: #f1f0f4; }
+    .discovery.active .discovery-icon { color: var(--type-color); background: rgba(255,255,255,.74); }
+    .discovery-name { min-width: 0; overflow: hidden; color: var(--ink-2); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .discovery.active .discovery-name { color: var(--type-color); }
+    .discovery-count { margin-left: auto; font-size: 17px; font-weight: 780; font-variant-numeric: tabular-nums; }
 
-    .workspace { display: grid; grid-template-columns: minmax(0, 1.68fr) minmax(320px, .72fr); gap: 13px; margin-top: 13px; align-items: start; }
-    .log-card { min-width: 0; }
-    .log-head-actions { display: flex; align-items: center; gap: 8px; }
-    .new-events { display: none; min-height: 26px; padding: 0 9px; border: 1px solid #d8d1f5; border-radius: 999px; color: var(--accent-2); background: var(--accent-soft); font-size: 9px; font-weight: 720; cursor: pointer; }
+    .session { margin-top: 13px; }
+    .session-actions { display: flex; align-items: center; gap: 9px; }
+    .new-events { display: none; min-height: 26px; padding: 0 9px; border: 1px solid #d8d1f5; border-radius: 999px; color: #5945c5; background: var(--accent-soft); font-size: 9px; font-weight: 720; cursor: pointer; }
     .new-events.visible { display: inline-flex; align-items: center; }
-    .log-order { color: var(--ink-3); font-size: 9.5px; font-weight: 650; }
-    .log-columns, .log-row { display: grid; grid-template-columns: 70px 34px minmax(250px, 1.12fr) minmax(230px, .88fr) 138px; gap: 10px; align-items: center; }
-    .log-columns { min-height: 34px; padding: 0 13px; border-bottom: 1px solid var(--line); color: var(--ink-3); background: var(--surface-2); font-size: 8.5px; font-weight: 710; }
-    .log-stream { height: 565px; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
-    .log-empty { min-height: 160px; display: grid; place-items: center; color: var(--ink-3); }
-    .log-row { --event-color: var(--ink-3); min-height: 62px; padding: 9px 13px; border-bottom: 1px solid var(--line); background: white; animation: row-in 180ms ease; }
-    @keyframes row-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-    .log-row.finding.relationship { --event-color: var(--accent-2); }
-    .log-row.finding.community { --event-color: var(--green); }
-    .log-row.finding.hub { --event-color: var(--blue); }
-    .log-row.finding.bridge { --event-color: var(--amber); }
-    .log-row.finding.island { --event-color: var(--rose); }
-    .log-row.finding.drift { --event-color: var(--slate); }
-    .log-row.model { --event-color: #4c6d93; background: #fbfcfe; }
-    .log-row.phase { --event-color: var(--accent-2); background: #fcfbff; }
-    .event-time { color: var(--ink-3); font: 9.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
-    .event-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; color: var(--event-color); background: color-mix(in srgb, var(--event-color) 10%, white); }
-    .event-main, .event-evidence { min-width: 0; }
-    .event-main strong { display: block; overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
-    .event-main span, .event-evidence span { display: block; overflow: hidden; margin-top: 3px; color: var(--ink-3); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-    .event-evidence strong { display: block; overflow: hidden; color: var(--ink-2); font-size: 9.5px; font-weight: 690; text-overflow: ellipsis; white-space: nowrap; }
-    .event-meta { justify-self: end; min-width: 0; text-align: right; }
-    .event-meta strong { display: block; overflow: hidden; color: var(--ink-2); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
-    .event-meta span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 8.5px; }
-    .type-pill { height: 20px; display: inline-flex !important; align-items: center; margin-top: 4px !important; padding: 0 7px; border-radius: 999px; color: var(--event-color) !important; background: color-mix(in srgb, var(--event-color) 9%, white); font-size: 8px !important; font-weight: 730; }
+    .session-model { color: var(--ink-3); font-size: 9.5px; font-weight: 650; }
+    .live-output { min-height: 184px; padding: 18px 20px 17px; border-bottom: 1px solid var(--line); background: #fcfbff; }
+    .live-line { display: flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: 10px; font-weight: 700; }
+    .live-line i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(105,84,220,.09); }
+    .live-line time { margin-left: auto; color: var(--ink-3); font: 9.5px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .stream-text { max-width: 1120px; min-height: 64px; max-height: 132px; overflow: auto; margin-top: 15px; padding-right: 14px; color: #36313e; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
+    .stream-text::after { content: ''; display: inline-block; width: 6px; height: 14px; margin-left: 3px; vertical-align: -2px; background: var(--accent); animation: cursor-blink .82s steps(2, end) infinite; }
+    .complete .stream-text::after, .paused .stream-text::after { display: none; }
+    @keyframes cursor-blink { 50% { opacity: 0; } }
+    .stream-citation { display: none; align-items: center; gap: 8px; margin-top: 12px; color: var(--ink-2); font-size: 11px; }
+    .stream-citation.visible { display: flex; }
+    .stream-citation .icon { color: var(--ink-3); }
+    .history-head { min-height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--line); color: var(--ink-3); background: var(--surface-2); font-size: 9.5px; font-weight: 680; }
+    .history { height: 490px; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+    .history-empty { min-height: 150px; display: grid; place-items: center; color: var(--ink-3); }
+    .entry { --entry-color: var(--ink-3); display: grid; grid-template-columns: 66px minmax(0, 1fr); gap: 13px; min-height: 55px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: #fff; animation: entry-in 150ms ease; }
+    @keyframes entry-in { from { opacity: 0; transform: translateY(-3px); } }
+    .entry.finding.relationship { --entry-color: var(--accent); }
+    .entry.finding.community { --entry-color: var(--green); }
+    .entry.finding.hub { --entry-color: var(--blue); }
+    .entry.finding.bridge { --entry-color: var(--amber); }
+    .entry.finding.island { --entry-color: var(--rose); }
+    .entry.finding.drift { --entry-color: var(--slate); }
+    .entry.reasoning { --entry-color: #4e6e93; background: #fbfcfe; }
+    .entry-time { padding-top: 2px; color: var(--ink-3); font: 9.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+    .entry-copy { min-width: 0; color: #393540; font-size: 11.5px; line-height: 1.65; }
+    .entry-kind { display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; color: var(--entry-color); font-size: 10px; font-weight: 760; }
+    .entry-kind i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .entry-citation { display: flex; align-items: center; gap: 7px; margin-top: 7px; color: var(--ink-2); font-size: 10.5px; }
+    .entry-citation .icon { color: var(--ink-3); }
 
-    .side-card + .side-card { margin-top: 13px; }
-    .current-operation { padding: 15px; }
-    .operation-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .operation-title strong { font-size: 13px; }
-    .operation-state { height: 23px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 999px; color: var(--accent-2); background: var(--accent-soft); font-size: 8.5px; font-weight: 720; }
-    .operation-state i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-    .operation-input { margin-top: 14px; padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
-    .operation-input span { display: block; color: var(--ink-3); font-size: 8.5px; font-weight: 680; }
-    .operation-input strong { display: block; margin-top: 5px; font-size: 10.5px; line-height: 1.45; }
-    .operation-model { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; color: var(--ink-3); font-size: 9px; }
-    .operation-model strong { color: var(--ink-2); }
-    .operation-track { height: 5px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: #ebe9ef; }
-    .operation-track span { display: block; width: var(--operation-progress, 0%); height: 100%; border-radius: inherit; background: var(--accent); transition: width 220ms ease; }
-    .operation-queue { display: grid; }
-    .operation-row { min-height: 56px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px 13px; border-bottom: 1px solid var(--line); }
-    .operation-row:last-child { border-bottom: 0; }
-    .operation-number { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 50%; color: var(--ink-3); font-size: 8px; font-weight: 740; }
-    .operation-row.running .operation-number { border-color: #b9acee; color: var(--accent-2); background: var(--accent-soft); }
-    .operation-row.done .operation-number { border-color: #9fd2c3; color: var(--green); background: var(--green-soft); }
-    .operation-copy strong { display: block; font-size: 10px; }
-    .operation-copy span { display: block; margin-top: 3px; color: var(--ink-3); font-size: 8.5px; }
-    .operation-row > span { color: var(--ink-3); font-size: 8.5px; font-weight: 690; }
-    .operation-row.running > span { color: var(--accent-2); }
-    .operation-row.done > span { color: var(--green); }
-
-    @media (max-width: 1180px) {
-      .run-hero { grid-template-columns: minmax(0, 1fr); }
-      .hero-metrics { border-top: 1px solid var(--line); border-left: 0; }
-      .finding-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .finding-slot:nth-child(3) { border-right: 0; }
-      .finding-slot:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
-      .workspace { grid-template-columns: minmax(0, 1fr); }
+    @media (max-width: 1050px) {
+      .hero { grid-template-columns: minmax(0, 1fr); }
+      .facts { border-top: 1px solid var(--line); border-left: 0; }
+      .discovery-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .discovery:nth-child(3) { border-right: 0; }
+      .discovery:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
     }
   </style>
 </head>
 <body>
   <svg width="0" height="0" aria-hidden="true" style="position:absolute">
-    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></symbol>
     <symbol id="i-network" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="m6.5 10.5 4-4m3 0 4 4m0 3-4 4m-3 0-4-4"/></symbol>
     <symbol id="i-community" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c.6-4 2.2-6 5-6s4.4 2 5 6M13 19c.5-3 1.8-4.5 4-4.5 2.1 0 3.4 1.5 4 4.5"/></symbol>
     <symbol id="i-hub" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="19" r="2"/><circle cx="20" cy="19" r="2"/><path d="m9.5 10-4-3m9 3 4-3m-9 7-4 4m9-4 4 4"/></symbol>
     <symbol id="i-bridge" viewBox="0 0 24 24"><path d="M3 18h18M5 18V9m14 9V9M5 12c4-6 10-6 14 0M9 18v-7m6 7v-7"/></symbol>
     <symbol id="i-island" viewBox="0 0 24 24"><circle cx="7" cy="8" r="4"/><circle cx="17" cy="16" r="4"/><path d="M10 11l4 2"/></symbol>
     <symbol id="i-drift" viewBox="0 0 24 24"><path d="M4 7h10m0 0-3-3m3 3-3 3M20 17H10m0 0 3-3m-3 3 3 3"/></symbol>
-    <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5"/></symbol>
-    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M9 1v3m6-3v3M9 20v3m6-3v3M1 9h3m-3 6h3m16-6h3m-3 6h3"/></symbol>
-    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8V4Z"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
     <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
-    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-source" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
   </svg>
 
   <header class="topbar" id="app-shell">
@@ -197,135 +161,85 @@
   <main class="page">
     <div class="breadcrumb"><span>Scan setup</span><span>/</span><span>Run progress</span><span>/</span><strong>Vault-wide discovery</strong><span>·</span><span>run-vault-7f2c</span></div>
 
-    <section class="card run-hero">
+    <section class="card hero">
       <div class="hero-main">
         <div class="hero-icon"><svg class="icon"><use href="#i-network"/></svg></div>
         <div>
-          <div class="hero-title" id="hero-title">Reading structure across the current vault.</div>
-          <div class="hero-live"><i></i><span id="hero-current">Assembling graph evidence</span></div>
-          <div class="hero-track" id="hero-track"><span></span></div>
+          <div class="hero-title" id="hero-title">Discovering structure across your vault.</div>
+          <div class="hero-phase"><i></i><span id="hero-phase">Assembling evidence</span></div>
         </div>
       </div>
-      <div class="hero-metrics">
-        <div class="hero-metric"><strong id="metric-progress">0%</strong><span>session progress</span></div>
-        <div class="hero-metric"><strong id="metric-elapsed">0 sec</strong><span>elapsed</span></div>
-        <div class="hero-metric"><strong id="metric-evidence">0</strong><span>evidence records</span></div>
-        <div class="hero-metric"><strong id="metric-usage">$0.000</strong><span>model usage</span></div>
+      <div class="facts">
+        <div class="fact"><strong id="elapsed">0 sec</strong><span>elapsed</span></div>
+        <div class="fact"><strong id="finding-count">0</strong><span>findings</span></div>
+        <div class="fact"><strong id="usage">$0.000</strong><span>model usage</span></div>
       </div>
     </section>
 
-    <section class="card radar">
-      <div class="section-head"><strong>Discoveries</strong><span class="section-head-meta" id="finding-total">No findings yet</span></div>
-      <div class="finding-grid" id="finding-grid">
-        <article class="finding-slot" data-type="relationship"><div class="finding-icon"><svg class="icon"><use href="#i-network"/></svg></div><div class="finding-copy"><div class="finding-top"><strong>Relationships</strong><span class="finding-count" data-finding-count>0</span></div><div class="finding-latest" data-finding-latest>Waiting for candidate evidence</div></div></article>
-        <article class="finding-slot" data-type="community"><div class="finding-icon"><svg class="icon"><use href="#i-community"/></svg></div><div class="finding-copy"><div class="finding-top"><strong>Communities</strong><span class="finding-count" data-finding-count>0</span></div><div class="finding-latest" data-finding-latest>Waiting for boundary comparison</div></div></article>
-        <article class="finding-slot" data-type="hub"><div class="finding-icon"><svg class="icon"><use href="#i-hub"/></svg></div><div class="finding-copy"><div class="finding-top"><strong>Hubs</strong><span class="finding-count" data-finding-count>0</span></div><div class="finding-latest" data-finding-latest>Waiting for centrality evidence</div></div></article>
-        <article class="finding-slot" data-type="bridge"><div class="finding-icon"><svg class="icon"><use href="#i-bridge"/></svg></div><div class="finding-copy"><div class="finding-top"><strong>Bridges</strong><span class="finding-count" data-finding-count>0</span></div><div class="finding-latest" data-finding-latest>Waiting for cross-group paths</div></div></article>
-        <article class="finding-slot" data-type="island"><div class="finding-icon"><svg class="icon"><use href="#i-island"/></svg></div><div class="finding-copy"><div class="finding-top"><strong>Islands</strong><span class="finding-count" data-finding-count>0</span></div><div class="finding-latest" data-finding-latest>Waiting for disconnected regions</div></div></article>
-        <article class="finding-slot" data-type="drift"><div class="finding-icon"><svg class="icon"><use href="#i-drift"/></svg></div><div class="finding-copy"><div class="finding-top"><strong>Drift</strong><span class="finding-count" data-finding-count>0</span></div><div class="finding-latest" data-finding-latest>Waiting for historical comparison</div></div></article>
+    <section class="card discoveries">
+      <div class="section-head"><strong>Discoveries</strong></div>
+      <div class="discovery-strip">
+        <div class="discovery" data-type="relationship"><span class="discovery-icon"><svg class="icon"><use href="#i-network"/></svg></span><span class="discovery-name">Relationships</span><span class="discovery-count">—</span></div>
+        <div class="discovery" data-type="community"><span class="discovery-icon"><svg class="icon"><use href="#i-community"/></svg></span><span class="discovery-name">Communities</span><span class="discovery-count">—</span></div>
+        <div class="discovery" data-type="hub"><span class="discovery-icon"><svg class="icon"><use href="#i-hub"/></svg></span><span class="discovery-name">Hubs</span><span class="discovery-count">—</span></div>
+        <div class="discovery" data-type="bridge"><span class="discovery-icon"><svg class="icon"><use href="#i-bridge"/></svg></span><span class="discovery-name">Bridges</span><span class="discovery-count">—</span></div>
+        <div class="discovery" data-type="island"><span class="discovery-icon"><svg class="icon"><use href="#i-island"/></svg></span><span class="discovery-name">Islands</span><span class="discovery-count">—</span></div>
+        <div class="discovery" data-type="drift"><span class="discovery-icon"><svg class="icon"><use href="#i-drift"/></svg></span><span class="discovery-name">Drift</span><span class="discovery-count">—</span></div>
       </div>
     </section>
 
-    <div class="workspace">
-      <section class="card log-card">
-        <div class="section-head"><strong>Session log</strong><div class="log-head-actions"><button class="new-events" id="new-events" type="button">0 new events</button><span class="log-order">Newest first</span></div></div>
-        <div class="log-columns"><span>Time</span><span></span><span>Agent activity</span><span>Evidence or finding</span><span>Model receipt</span></div>
-        <div class="log-stream" id="log-stream"><div class="log-empty">Session is starting…</div></div>
-      </section>
-
-      <aside>
-        <section class="card side-card">
-          <div class="section-head"><strong>Current analysis</strong><span class="section-head-meta" id="operation-position">1 / 4</span></div>
-          <div class="current-operation">
-            <div class="operation-title"><strong id="operation-title">Assemble evidence</strong><span class="operation-state"><i></i><span id="operation-state">Running</span></span></div>
-            <div class="operation-input"><span>Current input</span><strong id="operation-input">Changed files, affected context, and current graph snapshot</strong></div>
-            <div class="operation-model"><span>Route</span><strong id="operation-model">Local graph engine · no model call</strong></div>
-            <div class="operation-track" id="operation-track"><span></span></div>
-          </div>
-        </section>
-        <section class="card side-card">
-          <div class="section-head"><strong>Analysis queue</strong><span class="section-head-meta">4 operations</span></div>
-          <div class="operation-queue">
-            <div class="operation-row running" data-operation="evidence"><span class="operation-number">1</span><div class="operation-copy"><strong>Assemble evidence</strong><span>Freeze graph and source revisions</span></div><span>Running</span></div>
-            <div class="operation-row" data-operation="relationship"><span class="operation-number">2</span><div class="operation-copy"><strong>Relationship discovery</strong><span>Find and review candidate meaning</span></div><span>Queued</span></div>
-            <div class="operation-row" data-operation="community"><span class="operation-number">3</span><div class="operation-copy"><strong>Community analysis</strong><span>Compare identities and boundaries</span></div><span>Queued</span></div>
-            <div class="operation-row" data-operation="structure"><span class="operation-number">4</span><div class="operation-copy"><strong>Hub and bridge analysis</strong><span>Inspect centrality, islands, and drift</span></div><span>Queued</span></div>
-          </div>
-        </section>
-      </aside>
-    </div>
+    <section class="card session">
+      <div class="section-head">
+        <strong>Session</strong>
+        <div class="session-actions"><button class="new-events" id="new-events" type="button">0 new outputs</button><span class="session-model" id="session-route">Local graph engine</span></div>
+      </div>
+      <div class="live-output">
+        <div class="live-line"><i></i><span id="stream-kind">Agent</span><span id="stream-route">Local graph engine</span><time id="stream-time">00:00</time></div>
+        <div class="stream-text" id="stream-text">Starting session…</div>
+        <div class="stream-citation" id="stream-citation"><svg class="icon sm"><use href="#i-source"/></svg><span></span></div>
+      </div>
+      <div class="history-head"><span>Earlier in this session</span><span>Newest first</span></div>
+      <div class="history" id="history"><div class="history-empty">Output will appear here as the session continues.</div></div>
+    </section>
   </main>
 
   <script>
     const TYPE_LABELS = {
-      relationship: 'Relationship',
-      community: 'Community',
-      hub: 'Hub',
-      bridge: 'Bridge',
-      island: 'Island',
-      drift: 'Drift'
+      relationship: 'Relationship', community: 'Community', hub: 'Hub', bridge: 'Bridge', island: 'Island', drift: 'Drift'
     };
 
-    const TYPE_ICONS = {
-      relationship: 'i-network',
-      community: 'i-community',
-      hub: 'i-hub',
-      bridge: 'i-bridge',
-      island: 'i-island',
-      drift: 'i-drift',
-      phase: 'i-layers',
-      model: 'i-cpu',
-      system: 'i-log'
-    };
-
-    const OPERATIONS = [
-      { key: 'evidence', title: 'Assemble evidence', input: 'Changed files, affected context, and current graph snapshot', model: 'Local graph engine · no model call', start: 0, end: 3 },
-      { key: 'relationship', title: 'Relationship discovery', input: 'Candidate passages across changed and already-known content', model: 'Claude Sonnet 4 · Anthropic', start: 3, end: 8 },
-      { key: 'community', title: 'Community analysis', input: 'Deterministic clusters, existing Community identities, and history', model: 'Claude Sonnet 4 · Anthropic', start: 8, end: 13 },
-      { key: 'structure', title: 'Hub and bridge analysis', input: 'Centrality, cross-Community paths, islands, and prior graph state', model: 'Claude Sonnet 4 + Gemma 4 local', start: 13, end: 24 }
-    ];
-
-    const EVENTS = [
-      { kind: 'phase', title: 'Session opened', detail: 'Vault-wide analysis started from the current Index checkpoint', evidence: 'Run identity and selected scope frozen', receipt: 'Local evidence', meta: 'No model call' },
-      { kind: 'system', title: 'Freeze graph snapshot', detail: 'Captured the maintained graph before overlaying changed evidence', evidence: '4,860 graph records · snapshot v18', receipt: 'Local evidence', meta: '0 tokens' },
-      { kind: 'system', title: 'Resolve affected context', detail: 'Expanded 146 changed inputs into their connected evidence boundary', evidence: '38 affected objects added', receipt: 'Local evidence', meta: '0 tokens' },
-      { kind: 'phase', title: 'Relationship discovery started', detail: 'Searching changed and already-known content for possible meaning', evidence: '2,184 source passages in candidate pool', receipt: 'Claude Sonnet 4', meta: 'Anthropic' },
-      { kind: 'finding', type: 'relationship', amount: 4, title: 'Four candidate relationships found', detail: 'New evidence connects launch decisions with customer interview themes', evidence: 'Product direction.md ↔ Interview notes.md', receipt: '3.2K tokens', meta: '$0.012 actual' },
-      { kind: 'model', title: 'Candidate ranking completed', detail: 'Ranked possible relations and removed duplicate endpoints', evidence: '14 retained from 27 candidates', receipt: 'Claude Sonnet 4', meta: '10.2K · $0.037' },
-      { kind: 'finding', type: 'relationship', amount: 5, title: 'Five relationships retained', detail: 'Semantic review confirmed direction, meaning, and cited support', evidence: '5 reviewed · 5 evidence bundles', receipt: '4.8K tokens', meta: '$0.018 actual' },
-      { kind: 'finding', type: 'relationship', amount: 5, title: 'Nine additional relationships retained', detail: 'Research and launch clusters share repeated decision evidence', evidence: 'Research synthesis.md → Launch tracker.xlsx', receipt: '5.1K tokens', meta: '$0.020 actual' },
-      { kind: 'phase', title: 'Community analysis started', detail: 'Comparing deterministic clusters with existing Community identities', evidence: '7 current Communities · history through v18', receipt: 'Claude Sonnet 4', meta: 'Anthropic' },
-      { kind: 'system', title: 'Load existing Community identities', detail: 'Reused stable IDs, prior names, and accepted boundary history', evidence: '7 identities · 19 prior decisions', receipt: 'Local evidence', meta: '0 tokens' },
-      { kind: 'finding', type: 'community', amount: 1, title: 'Research Community boundary changed', detail: 'Two interview files now fit the Research evidence cluster more strongly', evidence: '52 files · +2 boundary members', receipt: '5.6K tokens', meta: '$0.022 actual' },
-      { kind: 'finding', type: 'community', amount: 1, title: 'Product operations cluster emerging', detail: 'Launch checklists and support themes now form a stable local group', evidence: '18 files · confidence 0.86', receipt: '4.9K tokens', meta: '$0.019 actual' },
-      { kind: 'model', title: 'Community comparison completed', detail: 'Compared current clusters with identity and boundary history', evidence: '2 changed · 5 stable', receipt: 'Claude Sonnet 4', meta: '10.5K · $0.041' },
-      { kind: 'phase', title: 'Structural review started', detail: 'Inspecting centrality, cross-group paths, islands, and drift', evidence: 'Current graph overlaid on snapshot v18', receipt: 'Claude + local', meta: '2 routes active' },
-      { kind: 'finding', type: 'hub', amount: 1, title: 'Research synthesis became a stronger Hub', detail: 'It now connects six evidence groups with lower path redundancy', evidence: 'Centrality +18% · 31 inbound paths', receipt: '3.1K tokens', meta: '$0.012 actual' },
-      { kind: 'finding', type: 'bridge', amount: 1, title: 'Product ↔ Research bridge weakened', detail: 'Three launch notes lost their previous cross-Community links', evidence: 'Coverage 88% → 61%', receipt: '2.7K tokens', meta: '$0.010 actual' },
-      { kind: 'finding', type: 'island', amount: 1, title: 'Publishing drafts form an island', detail: 'Fourteen draft notes remain disconnected from the resolved graph', evidence: '14 notes · 0 resolved outbound links', receipt: 'Gemma 4 local', meta: 'Local' },
-      { kind: 'finding', type: 'drift', amount: 1, title: 'Product boundary drift detected', detail: 'Eleven files moved away from the accepted Product v18 boundary', evidence: '11 files · 3 source groups', receipt: '3.4K tokens', meta: '$0.013 actual' },
-      { kind: 'finding', type: 'hub', amount: 1, title: 'Interview notes gained local Hub behavior', detail: 'Repeated citations now connect Research, Product, and Support evidence', evidence: 'Betweenness +0.14', receipt: '2.9K tokens', meta: '$0.011 actual' },
-      { kind: 'finding', type: 'bridge', amount: 2, title: 'Two candidate bridges found', detail: 'New cross-group paths may replace the weakened Product ↔ Research route', evidence: 'Research synthesis.md · Customer themes.md', receipt: '3.8K tokens', meta: '$0.015 actual' },
-      { kind: 'finding', type: 'drift', amount: 1, title: 'Legacy launch cluster is fading', detail: 'Centrality and active citations both declined across three scans', evidence: 'Centrality −24% · 3-scan trend', receipt: 'Gemma 4 local', meta: 'Local' },
-      { kind: 'model', title: 'Hub and bridge review completed', detail: 'Cross-checked model findings against deterministic graph facts', evidence: '9 findings retain inspectable evidence', receipt: 'Claude Sonnet 4', meta: '13.0K · $0.050' },
-      { kind: 'system', title: 'Store discovery receipts', detail: 'Saved source revisions, graph snapshot, models, tokens, and finding evidence', evidence: '22 session events · 31 cited sources', receipt: 'Local receipt', meta: 'Stored' },
-      { kind: 'phase', title: 'Vault-wide discovery complete', detail: 'Findings are ready for the later recommendation and follow-up stage', evidence: 'No user files changed', receipt: 'Session complete', meta: 'Checkpoint saved' }
+    const OUTPUTS = [
+      { kind: 'system', stage: 'Assembling evidence', route: 'Local graph engine', text: 'I froze the current graph, source revisions, and affected context. The analysis is working from 146 changed inputs and 4,860 graph records.', citation: 'Vault snapshot v18 · 146 changed inputs' },
+      { kind: 'reasoning', stage: 'Relationship discovery', route: 'Claude Sonnet 4', text: 'I am comparing passages from changed files with already-known Research and Product context. Several phrases repeat, but repetition alone is not enough. I am ranking candidate connections, removing duplicate endpoints, and checking whether each remaining relationship has direct source support. One possible connection between release timing and interview urgency is being held back because the language is similar but the cited decisions point to different product periods. I will keep it visible in this reasoning trace without promoting it to a retained finding.', citation: '2,184 source passages in the candidate pool' },
+      { kind: 'finding', type: 'relationship', amount: 4, stage: 'Relationship discovery', route: 'Claude Sonnet 4', text: 'Found 4 supported relationships connecting launch decisions with customer interview themes.', citation: 'Product direction.md · Customer interview 07.md · Launch tracker.xlsx', cost: .012 },
+      { kind: 'reasoning', stage: 'Relationship discovery', route: 'Claude Sonnet 4', text: 'The strongest signal is not simple keyword overlap. The interview notes describe the same trade-off that later appears as a decision in Product direction. I am retaining the connection because both direction and evidence agree, while discarding weaker matches that only share vocabulary.', citation: '5 evidence bundles under semantic review', cost: .008 },
+      { kind: 'finding', type: 'relationship', amount: 10, stage: 'Relationship discovery', route: 'Claude Sonnet 4', text: 'Retained 10 more relationships after semantic review. The relationship set now contains 14 supported connections.', citation: 'Research synthesis.md · Interview notes.md · Launch checklist.md', cost: .026 },
+      { kind: 'system', stage: 'Community analysis', route: 'Local graph engine', text: 'Loaded 7 stable Community identities and their accepted boundary history before comparing the current clusters.', citation: 'Community history through snapshot v18' },
+      { kind: 'reasoning', stage: 'Community analysis', route: 'Claude Sonnet 4', text: 'The Research cluster remains recognizable, but two interview files now sit inside its strongest evidence boundary. I am preserving the existing Community identity rather than creating a new label, and recording only the boundary change.', citation: 'Research Community · 52 files · existing identity retained', cost: .011 },
+      { kind: 'finding', type: 'community', amount: 1, stage: 'Community analysis', route: 'Claude Sonnet 4', text: 'Research Community expanded by 2 files while keeping its existing identity.', citation: 'Interview notes.md · Customer interview 07.md', cost: .011 },
+      { kind: 'reasoning', stage: 'Community analysis', route: 'Claude Sonnet 4', text: 'Launch checklists, support themes, and operating notes now form a stable local group. The boundary is distinct enough to retain as an emerging Community candidate, but its name remains provisional.', citation: '18 files · boundary confidence 0.86', cost: .015 },
+      { kind: 'finding', type: 'community', amount: 1, stage: 'Community analysis', route: 'Claude Sonnet 4', text: 'Found an emerging Product operations Community spanning 18 files.', citation: 'Launch checklist.md · Support themes.md · Weekly operations.md', cost: .009 },
+      { kind: 'reasoning', stage: 'Hub and bridge analysis', route: 'Claude Sonnet 4 + local graph', text: 'I am overlaying current centrality and cross-Community paths on the previous graph. A Hub must gain meaningful reach, not just more links. A Bridge must connect otherwise separated evidence groups and survive source review.', citation: 'Current graph compared with snapshot v18', cost: .006 },
+      { kind: 'finding', type: 'hub', amount: 1, stage: 'Hub and bridge analysis', route: 'Local graph engine', text: 'Research synthesis became a stronger Hub with centrality up 18%.', citation: 'Research synthesis.md · 31 inbound paths' },
+      { kind: 'finding', type: 'bridge', amount: 1, stage: 'Hub and bridge analysis', route: 'Claude Sonnet 4', text: 'The existing Product ↔ Research bridge weakened from 88% to 61% coverage.', citation: 'Launch decisions.md · Research synthesis.md', cost: .010 },
+      { kind: 'finding', type: 'island', amount: 1, stage: 'Hub and bridge analysis', route: 'Gemma 4 local', text: 'Found an island of 14 publishing drafts with no resolved outbound relationships.', citation: 'Publishing/Drafts · 14 files' },
+      { kind: 'finding', type: 'drift', amount: 1, stage: 'Hub and bridge analysis', route: 'Claude Sonnet 4', text: 'Detected Product boundary drift across 11 files and 3 source groups.', citation: 'Product Community · snapshot v18 comparison', cost: .013 },
+      { kind: 'finding', type: 'hub', amount: 1, stage: 'Hub and bridge analysis', route: 'Local graph engine', text: 'Interview notes gained local Hub behavior across Research, Product, and Support.', citation: 'Interview notes.md · betweenness +0.14' },
+      { kind: 'finding', type: 'bridge', amount: 2, stage: 'Hub and bridge analysis', route: 'Claude Sonnet 4', text: 'Found 2 candidate Bridges that may replace the weakened Product ↔ Research route.', citation: 'Research synthesis.md · Customer themes.md', cost: .015 },
+      { kind: 'finding', type: 'drift', amount: 1, stage: 'Hub and bridge analysis', route: 'Gemma 4 local', text: 'The legacy launch cluster has declined in both centrality and active citations across 3 scans.', citation: 'Launch archive · three-scan history' },
+      { kind: 'system', stage: 'Complete', route: 'Local receipt', text: 'Vault-wide discovery is complete. Every retained finding has source revisions, model receipts, and inspectable evidence. No user files were changed.', citation: 'Checkpoint saved · run-vault-7f2c' }
     ];
 
     const state = {
-      cursor: 0,
-      elapsed: 0,
-      evidence: 0,
-      tokens: 0,
-      cost: 0,
-      running: true,
-      stopped: false,
-      unseen: 0,
-      findings: Object.fromEntries(Object.keys(TYPE_LABELS).map((key) => [key, { count: 0, latest: '' }]))
+      outputIndex: 0, tokenIndex: 0, elapsed: 0, cost: 0, running: true, stopped: false, waiting: 0, unseen: 0,
+      tokens: [], active: null,
+      findings: Object.fromEntries(Object.keys(TYPE_LABELS).map((key) => [key, 0]))
     };
 
     const shell = document.getElementById('app-shell');
-    const logStream = document.getElementById('log-stream');
+    const history = document.getElementById('history');
+    const streamText = document.getElementById('stream-text');
+    const streamCitation = document.getElementById('stream-citation');
     const pauseButton = document.getElementById('pause-btn');
     const newEventsButton = document.getElementById('new-events');
 
@@ -340,158 +254,163 @@
       return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
     }
 
-    function eventIcon(event) {
-      const icon = event.type ? TYPE_ICONS[event.type] : TYPE_ICONS[event.kind] || TYPE_ICONS.system;
-      return `<svg class="icon sm"><use href="#${icon}"/></svg>`;
+    function totalFindings() {
+      return Object.values(state.findings).reduce((sum, count) => sum + count, 0);
     }
 
-    function updateUnseenButton() {
-      newEventsButton.textContent = `${state.unseen} new event${state.unseen === 1 ? '' : 's'}`;
+    function updateNewEvents() {
+      newEventsButton.textContent = `${state.unseen} new output${state.unseen === 1 ? '' : 's'}`;
       newEventsButton.classList.toggle('visible', state.unseen > 0);
     }
 
-    function prependEvent(event) {
-      logStream.querySelector('.log-empty')?.remove();
-      const awayFromTop = logStream.scrollTop > 12;
-      const previousHeight = logStream.scrollHeight;
-      const row = document.createElement('div');
-      row.className = `log-row ${event.kind}${event.type ? ` ${event.type}` : ''}`;
-      const pill = event.type ? `<span class="type-pill">${TYPE_LABELS[event.type]} finding</span>` : '';
-      row.innerHTML = `<span class="event-time">${formatClock(state.elapsed)}</span><span class="event-icon">${eventIcon(event)}</span><div class="event-main"><strong>${event.title}</strong><span>${event.detail}</span>${pill}</div><div class="event-evidence"><strong>${event.evidence}</strong><span>${event.kind === 'finding' ? 'Evidence attached to finding' : 'Session evidence'}</span></div><div class="event-meta"><strong>${event.receipt}</strong><span>${event.meta}</span></div>`;
-      logStream.prepend(row);
-      if (awayFromTop) {
-        logStream.scrollTop += logStream.scrollHeight - previousHeight;
-        state.unseen += 1;
-        updateUnseenButton();
-      }
-      while (logStream.children.length > 80) logStream.lastElementChild.remove();
-    }
-
-    function updateFinding(event) {
-      if (!event.type) return;
-      const finding = state.findings[event.type];
-      finding.count += event.amount || 1;
-      finding.latest = event.title;
-      const slot = document.querySelector(`[data-type="${event.type}"]`);
-      slot.classList.add('active', 'flash');
-      slot.querySelector('[data-finding-count]').textContent = finding.count;
-      slot.querySelector('[data-finding-latest]').textContent = finding.latest;
-      window.setTimeout(() => slot.classList.remove('flash'), 720);
-      const total = Object.values(state.findings).reduce((sum, value) => sum + value.count, 0);
-      document.getElementById('finding-total').textContent = `${total} findings across ${Object.values(state.findings).filter((value) => value.count).length} types`;
-    }
-
-    function currentOperation() {
-      const eventIndex = Math.max(0, state.cursor - 1);
-      return OPERATIONS.find((operation) => eventIndex >= operation.start && eventIndex < operation.end) || OPERATIONS.at(-1);
-    }
-
-    function renderOperations() {
-      const eventIndex = Math.max(0, state.cursor - 1);
-      const current = currentOperation();
-      const currentIndex = OPERATIONS.indexOf(current);
-      document.getElementById('operation-position').textContent = `${currentIndex + 1} / ${OPERATIONS.length}`;
-      document.getElementById('operation-title').textContent = state.cursor >= EVENTS.length ? 'Discovery complete' : current.title;
-      document.getElementById('operation-input').textContent = state.cursor >= EVENTS.length ? 'All retained findings and their cited evidence' : current.input;
-      document.getElementById('operation-model').textContent = current.model;
-      document.getElementById('operation-state').textContent = state.cursor >= EVENTS.length ? 'Complete' : state.running ? 'Running' : state.stopped ? 'Stopped' : 'Paused';
-      const operationRatio = Math.max(0, Math.min(1, (eventIndex - current.start + 1) / Math.max(1, current.end - current.start)));
-      document.getElementById('operation-track').style.setProperty('--operation-progress', `${operationRatio * 100}%`);
-      document.querySelectorAll('[data-operation]').forEach((row, index) => {
-        const done = index < currentIndex || state.cursor >= EVENTS.length;
-        const running = index === currentIndex && state.cursor < EVENTS.length;
-        row.classList.toggle('done', done);
-        row.classList.toggle('running', running);
-        row.querySelector('.operation-number').textContent = done ? '✓' : String(index + 1);
-        row.lastElementChild.textContent = done ? 'Complete' : running ? state.running ? 'Running' : state.stopped ? 'Stopped' : 'Paused' : 'Queued';
-      });
-    }
-
-    function renderHero() {
-      const progress = Math.round(state.cursor / EVENTS.length * 100);
-      const current = currentOperation();
-      document.getElementById('metric-progress').textContent = `${progress}%`;
-      document.getElementById('metric-elapsed').textContent = formatDuration(state.elapsed);
-      document.getElementById('metric-evidence').textContent = state.evidence.toLocaleString();
-      document.getElementById('metric-usage').textContent = `$${state.cost.toFixed(3)}`;
-      document.getElementById('hero-track').style.setProperty('--progress', `${progress}%`);
-      document.getElementById('hero-current').textContent = state.cursor >= EVENTS.length ? 'Discovery checkpoint saved' : current.title;
-      document.getElementById('hero-title').textContent = state.cursor >= EVENTS.length ? 'Vault-wide discovery is complete.' : 'Reading structure across the current vault.';
-      document.getElementById('run-state').textContent = state.cursor >= EVENTS.length ? 'Complete · checkpoint saved' : state.stopped ? 'Stopped · findings retained' : state.running ? 'Running · session active' : 'Paused · checkpoint saved';
-      shell.classList.toggle('paused', !state.running && !state.stopped && state.cursor < EVENTS.length);
-      shell.classList.toggle('complete', state.cursor >= EVENTS.length);
-      pauseButton.disabled = state.stopped || state.cursor >= EVENTS.length;
+    function renderHeader() {
+      const complete = state.outputIndex >= OUTPUTS.length && !state.active;
+      document.getElementById('elapsed').textContent = formatDuration(state.elapsed);
+      document.getElementById('finding-count').textContent = totalFindings();
+      document.getElementById('usage').textContent = `$${state.cost.toFixed(3)}`;
+      document.getElementById('hero-phase').textContent = complete ? 'Discovery checkpoint saved' : state.active?.stage || 'Assembling evidence';
+      document.getElementById('hero-title').textContent = complete ? 'Vault-wide discovery is complete.' : 'Discovering structure across your vault.';
+      document.getElementById('run-state').textContent = complete ? 'Complete · checkpoint saved' : state.stopped ? 'Stopped · findings retained' : state.running ? 'Running · session active' : 'Paused · checkpoint saved';
+      shell.classList.toggle('paused', !state.running && !state.stopped && !complete);
+      shell.classList.toggle('complete', complete);
+      document.body.classList.toggle('paused', !state.running && !state.stopped && !complete);
+      document.body.classList.toggle('complete', complete);
+      pauseButton.disabled = state.stopped || complete;
       pauseButton.innerHTML = state.running ? '<svg class="icon sm"><use href="#i-pause"/></svg><span>Pause</span>' : '<svg class="icon sm"><use href="#i-play"/></svg><span>Resume</span>';
-      renderOperations();
     }
 
-    function advance() {
-      if (!state.running || state.stopped || state.cursor >= EVENTS.length) return;
-      const event = EVENTS[state.cursor];
-      state.elapsed += 4 + (state.cursor % 3);
-      state.evidence = Math.min(4860, state.evidence + 170 + (state.cursor % 5) * 41);
-      if (event.kind === 'model' || event.kind === 'finding') {
-        state.tokens += event.kind === 'model' ? 10200 : 2400 + (state.cursor % 4) * 700;
-        state.cost += event.kind === 'model' ? .037 : .009 + (state.cursor % 4) * .002;
+    function beginOutput(output) {
+      state.active = output;
+      state.tokens = output.text.match(/\S+\s*/g) || [output.text];
+      state.tokenIndex = 0;
+      state.waiting = 0;
+      streamText.textContent = '';
+      streamCitation.classList.remove('visible');
+      streamCitation.querySelector('span').textContent = '';
+      document.getElementById('stream-kind').textContent = output.kind === 'reasoning' ? 'Reasoning' : output.kind === 'finding' ? TYPE_LABELS[output.type] : 'Agent';
+      document.getElementById('stream-route').textContent = output.route;
+      document.getElementById('session-route').textContent = output.route;
+      document.getElementById('stream-time').textContent = formatClock(state.elapsed);
+      renderHeader();
+    }
+
+    function updateDiscovery(output) {
+      if (!output.type) return;
+      state.findings[output.type] += output.amount || 1;
+      const slot = document.querySelector(`[data-type="${output.type}"]`);
+      slot.classList.add('active', 'flash');
+      slot.querySelector('.discovery-count').textContent = state.findings[output.type];
+      window.setTimeout(() => slot.classList.remove('flash'), 600);
+    }
+
+    function archiveOutput(output) {
+      history.querySelector('.history-empty')?.remove();
+      const awayFromTop = history.scrollTop > 12;
+      const previousHeight = history.scrollHeight;
+      const entry = document.createElement('div');
+      entry.className = `entry ${output.kind}${output.type ? ` ${output.type}` : ''}`;
+      const label = output.kind === 'reasoning' ? 'Reasoning' : output.kind === 'finding' ? TYPE_LABELS[output.type] : 'Agent';
+      entry.innerHTML = `<time class="entry-time">${formatClock(state.elapsed)}</time><div class="entry-copy"><span class="entry-kind"><i></i>${label}</span>${output.text}<div class="entry-citation"><svg class="icon sm"><use href="#i-source"/></svg><span>${output.citation}</span></div></div>`;
+      history.prepend(entry);
+      if (awayFromTop) {
+        history.scrollTop += history.scrollHeight - previousHeight;
+        state.unseen += 1;
+        updateNewEvents();
       }
-      state.cursor += 1;
-      prependEvent(event);
-      updateFinding(event);
-      if (state.cursor >= EVENTS.length) state.running = false;
-      renderHero();
+    }
+
+    function finishOutput() {
+      const output = state.active;
+      archiveOutput(output);
+      updateDiscovery(output);
+      state.cost += output.cost || 0;
+      state.outputIndex += 1;
+      state.active = null;
+      state.tokens = [];
+      state.tokenIndex = 0;
+      renderHeader();
+    }
+
+    function streamTick() {
+      if (!state.running || state.stopped) return;
+      if (!state.active) {
+        if (state.outputIndex >= OUTPUTS.length) return;
+        beginOutput(OUTPUTS[state.outputIndex]);
+        return;
+      }
+      if (state.tokenIndex < state.tokens.length) {
+        const nextIndex = Math.min(state.tokens.length, state.tokenIndex + 3);
+        streamText.textContent += state.tokens.slice(state.tokenIndex, nextIndex).join('');
+        state.tokenIndex = nextIndex;
+        return;
+      }
+      if (!streamCitation.classList.contains('visible')) {
+        streamCitation.querySelector('span').textContent = state.active.citation;
+        streamCitation.classList.add('visible');
+      }
+      state.waiting += 1;
+      if (state.waiting < 7) return;
+      finishOutput();
     }
 
     function restart() {
-      state.cursor = 0;
+      state.outputIndex = 0;
+      state.tokenIndex = 0;
       state.elapsed = 0;
-      state.evidence = 0;
-      state.tokens = 0;
       state.cost = 0;
       state.running = true;
       state.stopped = false;
+      state.waiting = 0;
       state.unseen = 0;
-      Object.keys(state.findings).forEach((key) => { state.findings[key] = { count: 0, latest: '' }; });
-      logStream.innerHTML = '<div class="log-empty">Session is starting…</div>';
-      logStream.scrollTop = 0;
+      state.tokens = [];
+      state.active = null;
+      Object.keys(state.findings).forEach((key) => { state.findings[key] = 0; });
       document.querySelectorAll('[data-type]').forEach((slot) => {
         slot.classList.remove('active', 'flash');
-        slot.querySelector('[data-finding-count]').textContent = '0';
-        slot.querySelector('[data-finding-latest]').textContent = {
-          relationship: 'Waiting for candidate evidence', community: 'Waiting for boundary comparison', hub: 'Waiting for centrality evidence', bridge: 'Waiting for cross-group paths', island: 'Waiting for disconnected regions', drift: 'Waiting for historical comparison'
-        }[slot.dataset.type];
+        slot.querySelector('.discovery-count').textContent = '—';
       });
-      document.getElementById('finding-total').textContent = 'No findings yet';
-      updateUnseenButton();
-      renderHero();
-      window.setTimeout(advance, 180);
+      history.innerHTML = '<div class="history-empty">Output will appear here as the session continues.</div>';
+      history.scrollTop = 0;
+      streamText.textContent = 'Starting session…';
+      streamCitation.classList.remove('visible');
+      document.getElementById('stream-kind').textContent = 'Agent';
+      document.getElementById('stream-route').textContent = 'Local graph engine';
+      document.getElementById('session-route').textContent = 'Local graph engine';
+      document.getElementById('stream-time').textContent = '00:00';
+      updateNewEvents();
+      renderHeader();
     }
 
     pauseButton.addEventListener('click', () => {
-      if (state.stopped || state.cursor >= EVENTS.length) return;
+      if (state.stopped || (state.outputIndex >= OUTPUTS.length && !state.active)) return;
       state.running = !state.running;
-      renderHero();
+      renderHeader();
     });
     document.getElementById('restart-btn').addEventListener('click', restart);
     document.getElementById('stop-btn').addEventListener('click', () => {
-      if (state.cursor >= EVENTS.length) return;
+      if (state.outputIndex >= OUTPUTS.length && !state.active) return;
       state.running = false;
       state.stopped = true;
-      renderHero();
+      renderHeader();
     });
     newEventsButton.addEventListener('click', () => {
-      logStream.scrollTop = 0;
+      history.scrollTop = 0;
       state.unseen = 0;
-      updateUnseenButton();
+      updateNewEvents();
     });
-    logStream.addEventListener('scroll', () => {
-      if (logStream.scrollTop > 12 || !state.unseen) return;
+    history.addEventListener('scroll', () => {
+      if (history.scrollTop > 12 || !state.unseen) return;
       state.unseen = 0;
-      updateUnseenButton();
+      updateNewEvents();
     }, { passive: true });
 
-    renderHero();
-    window.setTimeout(advance, 180);
-    window.setInterval(advance, 980);
+    renderHeader();
+    window.setInterval(streamTick, 90);
+    window.setInterval(() => {
+      if (!state.running || state.stopped || (state.outputIndex >= OUTPUTS.length && !state.active)) return;
+      state.elapsed += 1;
+      renderHeader();
+    }, 1000);
   </script>
 </body>
 </html>
