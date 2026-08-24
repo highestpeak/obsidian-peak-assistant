@@ -293,6 +293,12 @@
                 <td><span class="pill gold">SDK retired · gateway convergence pending</span></td>
               </tr>
               <tr>
+                <td><strong>Scan 模型候选优先级策略</strong></td>
+                <td><strong>已决定方向，尚未实现。</strong>首次 Scan 的自动推荐必须来自 template-backed、可审计的候选优先级列表，而非 model catalog 的迭代顺序或“第一个 Ready”。路由顺序为：仍有效的上次成功 Scan 路由 → 明确的全局默认绑定 → 按 operation / capability / provider / local 与 privacy 偏好 / 成本与用户配置解释的策略推荐 → 无匹配时明确说明并引导配置。用户始终可以只覆写当前 operation；无论何种 provider，历史失效不得静默替换为任意可用模型。</td>
+                <td>Vault Intelligence follow-up · priority-policy spec required</td>
+                <td><span class="pill gold">decided · policy/configuration pending</span></td>
+              </tr>
+              <tr>
                 <td><strong>Composer Intelligence Surface + Block AI Contract</strong></td>
                 <td>固定 Block AI 操作、source-range transaction、候选历史、对象级 review、Composer-owned runtime、共享 Result Browser 与 Markdown/native source-of-truth 已落地。后续又补齐了基于未完成任务的 deterministic production finding producer，以及持久化 task session、Suggestions / Talk / History、Task Documents 和跨文件 review workspace。当前仍缺 Ambient-backed Brief finding、显式 multi-block target / context-slot Agent 链路，以及 task switching、hover corridor、跨文件 review、IME / bitmap / drag 等真实 Obsidian 验收；旧 Copilot 删除仍受 parity gate 保护。</td>
                 <td><a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI contract</a><br><a href="superpowers/specs/2026-08-12-composer-intelligence-task-workspace-design.md">Task workspace design</a><br><a href="superpowers/plans/2026-08-12-composer-intelligence-task-workspace-implementation.md">当前实施记录</a><br><a href="superpowers/plans/2026-07-27-peak-composer-implementation-note.md">原 closure checkpoint</a></td>

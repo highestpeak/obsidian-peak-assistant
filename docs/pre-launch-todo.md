@@ -42,6 +42,10 @@
 - [ ] **P1 · 模型基础设施** · [23 · 在线模型目录与能力证据收口](pre-launch/23-online-model-catalog-and-capability-registry.md)
   - 把当前 bundled catalog、未接线的 server sync 骨架和 Ollama 探测收口成可缓存、可回滚、可解释的统一目录。
   - 提供模型隐藏、别名、能力证据与新鲜度的唯一 AI & Models 管理入口，并为 Peak Hermes 提供 fail-closed capability gate。
+- [ ] **P1 · 模型路由策略** · Scan 首次自动推荐的候选优先级
+  - 为每类 Scan operation 建立 template-backed、可审计的候选优先级；优先级必须能表达 provider / model / capability、local 与 privacy 偏好、成本与用户设置，不能由 catalog 顺序或“第一个 Ready”隐式决定。
+  - 生效顺序固定为：仍有效的上次成功 Scan 路由 → 明确的全局默认绑定 → 该优先级策略的可解释推荐 → 无匹配时说明原因并引导配置；用户手动覆写只作用于当前 operation。
+  - 验收覆盖 Ollama、LM Studio、OpenRouter 和其他 profile：每次默认与降级都有证据，历史模型失效不会静默换成任意 Ready 模型。
 
 ### 阶段二 · Landing Page、README 与公开材料
 
