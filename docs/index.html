@@ -156,6 +156,7 @@
           <h2>怎么用这个索引</h2>
           <p class="lead">第一次看项目，先不要从历史稿开始。根目录编号正稿是当前项目状态的可维护入口。</p>
           <p class="prose">这个索引只回答“该打开哪份文档”。每份功能自己的用户行为、运行路径、代码证据，放在对应编号文档里。旧根目录文档没有删除，只是不再作为主入口出现。</p>
+          <p class="prose"><strong>当前上位产品裁决：</strong>V1 已进入全线范围冻结和功能退役审计；裁剪前完整产品先保存为不可移动的远端 Tag，master 再逐步收敛为 V1，未来 V2 仅在真正启动时从 Tag 建分支。下面的功能树仍承担现有文档导航，因此在审计完成前会包含后续可能并入、隐藏或退役的历史产品面，不能据此自动扩大 V1。先读 <a href="roadmap.html#v1-scope-freeze-and-archive-tag">V1 范围冻结与完整快照裁决</a> 和 <a href="pre-launch-todo.md#阶段一--范围冻结与剩余功能收口">上线前执行闸门</a>。</p>
         </section>
 
         <section id="docs">
@@ -177,6 +178,7 @@
                     </div>
                   </div>
                   <ul class="tree-children">
+                    <li><a href="roadmap.html#v1-scope-freeze-and-archive-tag"><strong>V1 范围冻结与裁剪前完整快照</strong></a> — 六个核心能力、受限 Peak Sheet、Vault Intelligence 收缩边界，以及先建立 annotated Tag、再逐波退役的分支策略。</li>
                     <li><a href="01-architecture.html"><strong>架构与运行时边界</strong></a> — 系统边界与统一运行时。</li>
                     <li><a href="02-code-organization.html"><strong>代码组织</strong></a> — 目录职责、依赖方向和读代码顺序。</li>
                     <li><a href="05-use-case-playbook.html"><strong>用户任务入口</strong></a> — 从用户要完成的工作反查功能入口。</li>
@@ -386,6 +388,8 @@
                     </div>
                   </div>
                   <ul class="tree-children">
+                    <li><a href="roadmap.html#v1-scope-freeze-and-archive-tag"><strong>当前 V1 范围冻结</strong></a> — 约束所有已决策待建、调研候选和历史计划；未通过裁决的内容不得自动进入 V1。</li>
+                    <li><a href="pre-launch-todo.md#阶段一--范围冻结与剩余功能收口"><strong>上线前范围冻结与 Tag 闸门</strong></a> — 基线提交、验证、远端 Tag、退役审计与 V1 收缩顺序。</li>
                     <li><a href="roadmap.html"><strong>Roadmap</strong></a> — 关键远期设想、已决策待建、调研候选和 backlog。</li>
                     <li><a href="planned-requirements.html"><strong>局部需求登记</strong></a> — 只展示仍待实现、尚未升级为正式规格或 Roadmap 里程碑的小需求；完成后从页面移除。</li>
                   </ul>

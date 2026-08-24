@@ -268,6 +268,12 @@
               <tr><th>项</th><th>内容</th><th>Spec / Ref</th><th>状态</th></tr>
             </thead>
             <tbody>
+              <tr id="v1-scope-freeze-and-archive-tag">
+                <td><strong>V1 全线范围冻结与裁剪前完整快照</strong></td>
+                <td><strong>Owner decision · 2026-08-24。</strong>V1 主线冻结为 General Search、Chat Studio、File Atlas、Composer、AI Search、AI Graph 六个核心能力，以及受限范围内的 Peak Sheet；不再新增一级产品概念。Vault Intelligence 收缩为 <code>Community Discovery → Hub Discovery → Hub Generation</code>，通用 Scan、评分、enrichment、Findings / Work Queue 和 Vault 自动重构不再作为 V1 产品承诺。执行前先审计所有 surface、runtime、writer、持久化与共享依赖，审阅并提交应保留的完整基线，通过基线验证后创建并远端验证不可移动的 annotated Tag <code>archive/pre-v1-scope-cut-2026-08-24</code>。随后只在工作分支逐波收缩 master：先取消入口和运行时可达性，再删除确认无消费者的代码与 writer；历史数据保留安全读取。Tag 只保存裁剪前完整产品，不持续 rebase master；未来真正启动 V2 时从该 Tag 新建分支。</td>
+                <td><a href="pre-launch-todo.md#阶段一--范围冻结与剩余功能收口">上线前范围冻结与 Tag 闸门</a><br><a href="index.html#orientation">文档入口说明</a></td>
+                <td><span class="pill gold">decided · audit / baseline commit / tag / V1 retirement pending</span></td>
+              </tr>
               <tr>
                 <td><strong>架构收口 A0-A4</strong></td>
                 <td>守卫与依赖方向已经取得实质进展：当前 boundary baseline 为 19 个 lower-layer type edge，<code>service → ui/app</code>、service/core Obsidian side effect 与 UI 外 Zustand store 均为 0；service boundary、React modal、Prompt override 和 Agent SDK retirement guards 已存在。剩余工作不再照搬 7 月清单，而是围绕 19 个 core→service 类型反向依赖、非 app 层 <code>AppContext.getInstance</code>、重复模型/provider resolver、旧 Copilot / Ambient / Heading Mode 产品岛与到期兼容链重新建立当前 candidate matrix。</td>

@@ -4,7 +4,7 @@
 >
 > 目标：为首次公开上线或公开 Beta 提供任务顺序、优先级和最终闸门。
 >
-> 最后更新：2026-08-21。
+> 最后更新：2026-08-24。
 
 ## 使用规则
 
@@ -22,6 +22,14 @@
 
 ### 阶段一 · 范围冻结与剩余功能收口
 
+- [ ] **P0 · 产品边界与历史保护** · V1 全线范围冻结、退役审计与裁剪前完整快照 Tag
+  - V1 冻结为 General Search、Chat Studio、File Atlas、Composer、AI Search、AI Graph 六个核心能力，以及受限范围内的 Peak Sheet；从本裁决开始不新增一级产品概念。
+  - Vault Intelligence 只保留 `Community Discovery → Hub Discovery → Hub Generation`；通用 Scan、Tag / Summary enrichment、评分、复杂 Findings / Work Queue、Split / Merge、单文档结构建议和自动重构不进入 V1。
+  - 先完成全产品 surface / runtime / writer / persistence / shared-dependency 裁决矩阵；每项标记为 V1 Core、Supporting System、Merge Into Core、Hidden Compatibility 或 Retired。
+  - 审阅并提交所有应保留的裁剪前基线，排除运行数据和临时产物；通过基线验证后创建 annotated Tag `archive/pre-v1-scope-cut-2026-08-24`，推送远端并验证 Tag 指向准确 commit。
+  - Tag 是不可移动的历史保护点，不持续 rebase master，也不承担日常 V2 开发；未来真正启动 V2 时才从 Tag 新建分支。master 只承载 V1，裁剪先在独立工作分支完成并通过验收后再合入。
+  - 退役顺序固定为：冻结公开承诺 → 取消入口和 runtime reachability → 验证六个核心能力与 Peak Sheet 不再依赖旧路径 → 停止旧 writer → 保留历史数据安全读取 → 删除无消费者代码和兼容链。
+  - 本 P0 完成前，完整 Vault Scan 扩张、Scan 专属模型路由策略和其他未裁决产品面不得继续升级为上线任务。
 - [ ] **P0** · [01 · 上线范围与历史任务审计](pre-launch/01-release-scope-and-task-audit.md)
   - 冻结首次公开版本。
   - 判决 Roadmap、Codex/Claude session、worktree 和历史任务。
@@ -122,6 +130,9 @@
 
 ## 总体 Go / No-Go
 
+- [ ] 裁剪前完整基线已经提交、验证，并由远端 annotated Tag 锁定；本地与远端 Tag 指向同一 commit。
+- [ ] 每个非 V1 surface、runtime、writer、持久化输出和历史数据读取路径都有明确裁决，没有仅靠隐藏 UI 冒充退役。
+- [ ] master 上的 V1 不再依赖已退役产品路径；未来 V2 只能从完整快照 Tag 显式创建，不通过长期 V2 分支整体 rebase master。
 - [ ] 首次公开版本的功能、平台和限制已经冻结。
 - [ ] 所有历史 task/session 都有明确判决。
 - [ ] 所有纳入首次公开版本的剩余功能已经完成并通过对应验收。
@@ -139,6 +150,9 @@
 
 ## 明确不做
 
+- 不在完整基线 commit、验证和远端 Tag 建立前物理删除产品代码或历史数据。
+- 不维护一个持续整体 rebase master 的长期 V2 分支；V1 删除提交不得反复污染完整产品历史。
+- 不把“移动到另一个分支”理解为复制文件或维护两套共享底座；Tag 保存完整历史，V1 通过可验证退役收缩。
 - 不把所有 Roadmap、Researching 和历史 session 都当成上线阻塞项。
 - 不用 mock、source inspection 或绿色 build 冒充真实 Obsidian E2E。
 - 不在 UI 和功能范围稳定前反复录制最终视频。
