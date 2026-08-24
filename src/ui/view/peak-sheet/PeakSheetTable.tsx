@@ -4,7 +4,7 @@ import { Copy, Plus, Trash2 } from 'lucide-react';
 import { computeSelectionStats, displayValue, projectPeakSheetRows, stableSortRows } from '@/core/sheet';
 import type { PeakSheetCellValue, PeakSheetDatasetSnapshot, PeakSheetFieldDefinition, PeakSheetPatchOperation, PeakSheetRow, PeakSheetTableViewDefinition } from '@/core/sheet';
 import { Button } from '@/ui/component/shared-ui/button';
-import { blankPeakSheetRow, buildPeakSheetMaterializeOperations, peakSheetColumnName, peakSheetFieldWidth, peakSheetGridBounds, visiblePeakSheetColumnCount, visiblePeakSheetRowCount } from './PeakSheetGridState';
+import { blankPeakSheetRow, buildPeakSheetMaterializeOperations, buildPeakSheetMatrixPasteOperations, parsePeakSheetClipboardText, peakSheetColumnName, peakSheetFieldWidth, peakSheetGridBounds, visiblePeakSheetColumnCount, visiblePeakSheetRowCount } from './PeakSheetGridState';
 import type { PeakSheetGridState } from './PeakSheetGridState';
 
 interface PeakSheetTableProps {
@@ -92,7 +92,7 @@ function GridRow(props: { readonly snapshot: PeakSheetDatasetSnapshot; readonly 
 		const inRange = props.rowIndex >= props.bounds.top && props.rowIndex <= props.bounds.bottom && fieldIndex >= props.bounds.left && fieldIndex <= props.bounds.right;
 		const classes = ['peak-sheet-cell', field ? '' : 'is-virtual', inRange ? 'is-in-range' : '', inRange && props.rowIndex === props.bounds.top ? 'is-range-top' : '', inRange && props.rowIndex === props.bounds.bottom ? 'is-range-bottom' : '', inRange && fieldIndex === props.bounds.left ? 'is-range-left' : '', inRange && fieldIndex === props.bounds.right ? 'is-range-right' : '', props.rowIndex === props.focused.focusRow && fieldIndex === props.focused.focusField ? 'is-selected' : ''].filter(Boolean).join(' ');
 		const materializeFieldIndex = field ? props.snapshot.fields.findIndex((candidate) => candidate.id === field.id) : props.snapshot.fields.length + Math.max(0, fieldIndex - visibleMaterializedFields);
-		return <td key={field?.id ?? `virtual-${fieldIndex}`} className={classes} data-row-index={props.rowIndex} data-field-index={fieldIndex} tabIndex={0} onPointerDown={(event) => { if (event.button === 0) props.onSelect(props.rowIndex, fieldIndex, event.shiftKey); }} onPointerEnter={() => props.onExtend(props.rowIndex, fieldIndex)} onDoubleClick={() => props.onEdit({ rowIndex: props.rowIndex, fieldIndex })}><PeakSheetCell snapshot={props.snapshot} row={props.row} rowIndex={props.rowIndex} field={field} fieldIndex={materializeFieldIndex} editing={props.editing?.rowIndex === props.rowIndex && props.editing.fieldIndex === fieldIndex} initial={props.editing?.rowIndex === props.rowIndex && props.editing.fieldIndex === fieldIndex ? props.editing.initial : undefined} onFinish={props.onFinishEdit} onMutate={props.onMutate} /></td>;
+		return <td key={field?.id ?? `virtual-${fieldIndex}`} className={classes} data-row-index={props.rowIndex} data-field-index={fieldIndex} tabIndex={0} onPointerDown={(event) => { if (event.button !== 0) return; event.currentTarget.focus({ preventScroll: true }); props.onSelect(props.rowIndex, fieldIndex, event.shiftKey); }} onPointerEnter={() => props.onExtend(props.rowIndex, fieldIndex)} onDoubleClick={() => props.onEdit({ rowIndex: props.rowIndex, fieldIndex })}><PeakSheetCell snapshot={props.snapshot} row={props.row} rowIndex={props.rowIndex} field={field} fieldIndex={materializeFieldIndex} editing={props.editing?.rowIndex === props.rowIndex && props.editing.fieldIndex === fieldIndex} initial={props.editing?.rowIndex === props.rowIndex && props.editing.fieldIndex === fieldIndex ? props.editing.initial : undefined} onFinish={props.onFinishEdit} onMutate={props.onMutate} /></td>;
 	})}</tr>;
 }
 
@@ -193,24 +193,20 @@ function copyRange(event: React.ClipboardEvent, props: PeakSheetTableProps, rows
 
 function pasteRange(event: React.ClipboardEvent, props: PeakSheetTableProps, rows: readonly PeakSheetRow[], fields: readonly PeakSheetFieldDefinition[]): void {
 	const text = event.clipboardData.getData('text/plain');
-	if (!text) return;
+	const matrix = clipboardMatrix(text, event.clipboardData.getData('text/html'));
+	if (!matrix.length) return;
 	event.preventDefault();
-	const matrix = text.replace(/\r/g, '').split('\n').map((line) => line.split('\t'));
-	let working = props.snapshot;
-	const operations: PeakSheetPatchOperation[] = [];
-	for (let rowOffset = 0; rowOffset < matrix.length; rowOffset++) {
-		for (let fieldOffset = 0; fieldOffset < matrix[rowOffset].length; fieldOffset++) {
-			const rowIndex = props.gridState.focusRow + rowOffset;
-			const visibleFieldIndex = props.gridState.focusField + fieldOffset;
-			const visibleField = fields[visibleFieldIndex];
-			const fieldIndex = visibleField ? working.fields.findIndex((field) => field.id === visibleField.id) : props.snapshot.fields.length + Math.max(0, visibleFieldIndex - fields.length);
-			const next = buildPeakSheetMaterializeOperations(working, rowIndex, fieldIndex, matrix[rowOffset][fieldOffset], rows[rowIndex]?.id);
-			operations.push(...next);
-			working = simulateShape(working, next);
-		}
-	}
+	const operations = buildPeakSheetMatrixPasteOperations(props.snapshot, rows, fields, props.gridState.focusRow, props.gridState.focusField, matrix);
 	if (operations.length) props.onMutate(operations);
 	props.onGridState({ anchorRow: props.gridState.focusRow, anchorField: props.gridState.focusField, focusRow: props.gridState.focusRow + matrix.length - 1, focusField: props.gridState.focusField + Math.max(...matrix.map((row) => row.length)) - 1, mode: 'navigation' });
+}
+
+function clipboardMatrix(text: string, html: string): readonly (readonly string[])[] {
+	const plain = parsePeakSheetClipboardText(text);
+	if (plain.some((row) => row.length > 1) || !html.includes('<table')) return plain;
+	const document = new DOMParser().parseFromString(html, 'text/html');
+	const rows = [...document.querySelectorAll('table tr')].map((row) => [...row.querySelectorAll('th,td')].map((cell) => cell.textContent?.trim() ?? ''));
+	return rows.some((row) => row.length > 1) ? rows : plain;
 }
 
 function clearRange(props: PeakSheetTableProps, rows: readonly PeakSheetRow[], fields: readonly PeakSheetFieldDefinition[]): void {
@@ -253,8 +249,6 @@ function startResize(event: React.PointerEvent<HTMLSpanElement>, field: PeakShee
 
 function newTextField(snapshot: PeakSheetDatasetSnapshot, index: number): PeakSheetFieldDefinition { return { id: `field-${crypto.randomUUID()}`, name: uniqueFieldName(snapshot, `Column ${peakSheetColumnName(index)}`), type: 'text', width: 220 }; }
 function uniqueFieldName(snapshot: PeakSheetDatasetSnapshot, base: string): string { const names = new Set(snapshot.fields.map((field) => field.name.toLocaleLowerCase())); if (!names.has(base.toLocaleLowerCase())) return base; let suffix = 2; while (names.has(`${base} ${suffix}`.toLocaleLowerCase())) suffix++; return `${base} ${suffix}`; }
-function simulateShape(snapshot: PeakSheetDatasetSnapshot, operations: readonly PeakSheetPatchOperation[]): PeakSheetDatasetSnapshot { let fields = [...snapshot.fields]; let rows = [...snapshot.rows]; for (const operation of operations) { if (operation.type === 'addField') fields = [...fields, operation.field]; if (operation.type === 'addRow') rows = [...rows, operation.row]; } return { ...snapshot, fields, rows }; }
-
 export function selectedGridValues(fields: readonly PeakSheetFieldDefinition[], rows: readonly PeakSheetRow[], state: PeakSheetGridState): { readonly values: readonly PeakSheetCellValue[]; readonly stats: ReturnType<typeof computeSelectionStats> } {
 	const bounds = peakSheetGridBounds(state); const values: PeakSheetCellValue[] = [];
 	for (let row = bounds.top; row <= bounds.bottom; row++) for (let field = bounds.left; field <= bounds.right; field++) values.push(rows[row]?.cells[fields[field]?.id] ?? null);

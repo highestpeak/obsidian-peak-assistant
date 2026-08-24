@@ -109,6 +109,70 @@ export function buildPeakSheetMaterializeOperations(
 	return operations;
 }
 
+export function parsePeakSheetClipboardText(text: string): readonly (readonly string[])[] {
+	const normalized = text.replace(/\r\n?/g, '\n');
+	const lines = normalized.split('\n');
+	while (lines.length > 1 && lines.at(-1) === '') lines.pop();
+	if (!lines.length || lines.length === 1 && lines[0] === '') return [];
+	return lines.map((line) => line.split('\t'));
+}
+
+export function buildPeakSheetMatrixPasteOperations(
+	snapshot: PeakSheetDatasetSnapshot,
+	projectedRows: readonly PeakSheetRow[],
+	visibleFields: readonly PeakSheetFieldDefinition[],
+	startRow: number,
+	startField: number,
+	matrix: readonly (readonly string[])[],
+): readonly PeakSheetPatchOperation[] {
+	if (!matrix.length) return [];
+	const columnCount = Math.max(0, ...matrix.map((row) => row.length));
+	if (!columnCount) return [];
+	const operations: PeakSheetPatchOperation[] = [];
+	const finalFields = [...snapshot.fields];
+	const targetFields: PeakSheetFieldDefinition[] = [];
+	const createdVirtualFields: PeakSheetFieldDefinition[] = [];
+	for (let offset = 0; offset < columnCount; offset++) {
+		const visibleIndex = startField + offset;
+		const existing = visibleFields[visibleIndex];
+		if (existing) {
+			targetFields.push(existing);
+			continue;
+		}
+		const virtualOffset = Math.max(0, visibleIndex - visibleFields.length);
+		while (createdVirtualFields.length <= virtualOffset) {
+			const index = finalFields.length;
+			const field: PeakSheetFieldDefinition = {
+				id: `field-${crypto.randomUUID()}`,
+				name: `Column ${peakSheetColumnName(index)}`,
+				type: 'text',
+				width: FIELD_WIDTHS.text.default,
+			};
+			finalFields.push(field);
+			createdVirtualFields.push(field);
+			operations.push({ type: 'addField', field });
+		}
+		targetFields.push(createdVirtualFields[virtualOffset]);
+	}
+	const rowSlots = [...projectedRows];
+	const lastTargetRow = startRow + matrix.length - 1;
+	while (rowSlots.length <= lastTargetRow) {
+		const row = blankPeakSheetRow(finalFields);
+		rowSlots.push(row);
+		operations.push({ type: 'addRow', row });
+	}
+	for (let rowOffset = 0; rowOffset < matrix.length; rowOffset++) {
+		const row = rowSlots[startRow + rowOffset];
+		if (!row) continue;
+		for (let fieldOffset = 0; fieldOffset < matrix[rowOffset].length; fieldOffset++) {
+			const field = targetFields[fieldOffset];
+			if (!field || field.formula) continue;
+			operations.push({ type: 'setCell', rowId: row.id, fieldId: field.id, value: normalizePeakSheetInput(matrix[rowOffset][fieldOffset], field) });
+		}
+	}
+	return operations;
+}
+
 export function blankPeakSheetRow(fields: readonly PeakSheetFieldDefinition[]): PeakSheetRow {
 	return {
 		id: `row-${crypto.randomUUID()}`,

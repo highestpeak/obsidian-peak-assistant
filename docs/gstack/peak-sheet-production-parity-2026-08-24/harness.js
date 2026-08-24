@@ -28525,6 +28525,61 @@ function buildPeakSheetMaterializeOperations(snapshot2, rowIndex, fieldIndex, va
   operations.push({ type: "setCell", rowId: targetRowId, fieldId: field.id, value: normalizePeakSheetInput(value, field) });
   return operations;
 }
+function parsePeakSheetClipboardText(text2) {
+  const normalized = text2.replace(/\r\n?/g, "\n");
+  const lines = normalized.split("\n");
+  while (lines.length > 1 && lines.at(-1) === "") lines.pop();
+  if (!lines.length || lines.length === 1 && lines[0] === "") return [];
+  return lines.map((line) => line.split("	"));
+}
+function buildPeakSheetMatrixPasteOperations(snapshot2, projectedRows, visibleFields, startRow, startField, matrix) {
+  if (!matrix.length) return [];
+  const columnCount = Math.max(0, ...matrix.map((row2) => row2.length));
+  if (!columnCount) return [];
+  const operations = [];
+  const finalFields = [...snapshot2.fields];
+  const targetFields = [];
+  const createdVirtualFields = [];
+  for (let offset = 0; offset < columnCount; offset++) {
+    const visibleIndex = startField + offset;
+    const existing = visibleFields[visibleIndex];
+    if (existing) {
+      targetFields.push(existing);
+      continue;
+    }
+    const virtualOffset = Math.max(0, visibleIndex - visibleFields.length);
+    while (createdVirtualFields.length <= virtualOffset) {
+      const index = finalFields.length;
+      const field = {
+        id: `field-${crypto.randomUUID()}`,
+        name: `Column ${peakSheetColumnName(index)}`,
+        type: "text",
+        width: FIELD_WIDTHS.text.default
+      };
+      finalFields.push(field);
+      createdVirtualFields.push(field);
+      operations.push({ type: "addField", field });
+    }
+    targetFields.push(createdVirtualFields[virtualOffset]);
+  }
+  const rowSlots = [...projectedRows];
+  const lastTargetRow = startRow + matrix.length - 1;
+  while (rowSlots.length <= lastTargetRow) {
+    const row2 = blankPeakSheetRow(finalFields);
+    rowSlots.push(row2);
+    operations.push({ type: "addRow", row: row2 });
+  }
+  for (let rowOffset = 0; rowOffset < matrix.length; rowOffset++) {
+    const row2 = rowSlots[startRow + rowOffset];
+    if (!row2) continue;
+    for (let fieldOffset = 0; fieldOffset < matrix[rowOffset].length; fieldOffset++) {
+      const field = targetFields[fieldOffset];
+      if (!field || field.formula) continue;
+      operations.push({ type: "setCell", rowId: row2.id, fieldId: field.id, value: normalizePeakSheetInput(matrix[rowOffset][fieldOffset], field) });
+    }
+  }
+  return operations;
+}
 function blankPeakSheetRow(fields) {
   return {
     id: `row-${crypto.randomUUID()}`,
@@ -28937,7 +28992,9 @@ function GridRow(props) {
     const classes = ["peak-sheet-cell", field ? "" : "is-virtual", inRange ? "is-in-range" : "", inRange && props.rowIndex === props.bounds.top ? "is-range-top" : "", inRange && props.rowIndex === props.bounds.bottom ? "is-range-bottom" : "", inRange && fieldIndex === props.bounds.left ? "is-range-left" : "", inRange && fieldIndex === props.bounds.right ? "is-range-right" : "", props.rowIndex === props.focused.focusRow && fieldIndex === props.focused.focusField ? "is-selected" : ""].filter(Boolean).join(" ");
     const materializeFieldIndex = field ? props.snapshot.fields.findIndex((candidate) => candidate.id === field.id) : props.snapshot.fields.length + Math.max(0, fieldIndex - visibleMaterializedFields);
     return /* @__PURE__ */ import_react8.default.createElement("td", { key: field?.id ?? `virtual-${fieldIndex}`, className: classes, "data-row-index": props.rowIndex, "data-field-index": fieldIndex, tabIndex: 0, onPointerDown: (event) => {
-      if (event.button === 0) props.onSelect(props.rowIndex, fieldIndex, event.shiftKey);
+      if (event.button !== 0) return;
+      event.currentTarget.focus({ preventScroll: true });
+      props.onSelect(props.rowIndex, fieldIndex, event.shiftKey);
     }, onPointerEnter: () => props.onExtend(props.rowIndex, fieldIndex), onDoubleClick: () => props.onEdit({ rowIndex: props.rowIndex, fieldIndex }) }, /* @__PURE__ */ import_react8.default.createElement(PeakSheetCell, { snapshot: props.snapshot, row: props.row, rowIndex: props.rowIndex, field, fieldIndex: materializeFieldIndex, editing: props.editing?.rowIndex === props.rowIndex && props.editing.fieldIndex === fieldIndex, initial: props.editing?.rowIndex === props.rowIndex && props.editing.fieldIndex === fieldIndex ? props.editing.initial : void 0, onFinish: props.onFinishEdit, onMutate: props.onMutate }));
   }));
 }
@@ -29081,24 +29138,19 @@ function copyRange(event, props, rows, fields) {
 }
 function pasteRange(event, props, rows, fields) {
   const text2 = event.clipboardData.getData("text/plain");
-  if (!text2) return;
+  const matrix = clipboardMatrix(text2, event.clipboardData.getData("text/html"));
+  if (!matrix.length) return;
   event.preventDefault();
-  const matrix = text2.replace(/\r/g, "").split("\n").map((line) => line.split("	"));
-  let working = props.snapshot;
-  const operations = [];
-  for (let rowOffset = 0; rowOffset < matrix.length; rowOffset++) {
-    for (let fieldOffset = 0; fieldOffset < matrix[rowOffset].length; fieldOffset++) {
-      const rowIndex = props.gridState.focusRow + rowOffset;
-      const visibleFieldIndex = props.gridState.focusField + fieldOffset;
-      const visibleField = fields[visibleFieldIndex];
-      const fieldIndex = visibleField ? working.fields.findIndex((field) => field.id === visibleField.id) : props.snapshot.fields.length + Math.max(0, visibleFieldIndex - fields.length);
-      const next = buildPeakSheetMaterializeOperations(working, rowIndex, fieldIndex, matrix[rowOffset][fieldOffset], rows[rowIndex]?.id);
-      operations.push(...next);
-      working = simulateShape(working, next);
-    }
-  }
+  const operations = buildPeakSheetMatrixPasteOperations(props.snapshot, rows, fields, props.gridState.focusRow, props.gridState.focusField, matrix);
   if (operations.length) props.onMutate(operations);
   props.onGridState({ anchorRow: props.gridState.focusRow, anchorField: props.gridState.focusField, focusRow: props.gridState.focusRow + matrix.length - 1, focusField: props.gridState.focusField + Math.max(...matrix.map((row2) => row2.length)) - 1, mode: "navigation" });
+}
+function clipboardMatrix(text2, html) {
+  const plain = parsePeakSheetClipboardText(text2);
+  if (plain.some((row2) => row2.length > 1) || !html.includes("<table")) return plain;
+  const document2 = new DOMParser().parseFromString(html, "text/html");
+  const rows = [...document2.querySelectorAll("table tr")].map((row2) => [...row2.querySelectorAll("th,td")].map((cell) => cell.textContent?.trim() ?? ""));
+  return rows.some((row2) => row2.length > 1) ? rows : plain;
 }
 function clearRange(props, rows, fields) {
   const bounds = peakSheetGridBounds(props.gridState);
@@ -29182,15 +29234,6 @@ function uniqueFieldName(snapshot2, base) {
   let suffix = 2;
   while (names.has(`${base} ${suffix}`.toLocaleLowerCase())) suffix++;
   return `${base} ${suffix}`;
-}
-function simulateShape(snapshot2, operations) {
-  let fields = [...snapshot2.fields];
-  let rows = [...snapshot2.rows];
-  for (const operation of operations) {
-    if (operation.type === "addField") fields = [...fields, operation.field];
-    if (operation.type === "addRow") rows = [...rows, operation.row];
-  }
-  return { ...snapshot2, fields, rows };
 }
 function selectedGridValues(fields, rows, state) {
   const bounds = peakSheetGridBounds(state);
@@ -29420,6 +29463,7 @@ var draft = createPeakSheetStarterDrafts(now)[0];
 var snapshot = {
   format: "peak-sheet",
   version: 2,
+  schemaVersion: 1,
   datasetId: "parity-launch-tracker",
   name: draft.name,
   revision: 1,

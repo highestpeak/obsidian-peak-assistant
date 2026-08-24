@@ -10,7 +10,7 @@ import { PeakSheet } from '@/ui/view/peak-sheet/PeakSheet';
 const now = '2026-08-24T00:00:00.000Z';
 const draft = createPeakSheetStarterDrafts(now)[0];
 let snapshot: PeakSheetDatasetSnapshot = {
-	format: 'peak-sheet', version: 2, datasetId: 'parity-launch-tracker', name: draft.name,
+	format: 'peak-sheet', version: 2, schemaVersion: 1, datasetId: 'parity-launch-tracker', name: draft.name,
 	revision: 1, fields: draft.fields, rows: draft.rows, scripts: draft.scripts,
 	views: [
 		{ id: 'table-main', name: 'Table', type: 'table' },
